@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
 
@@ -43,6 +42,9 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
 
   useEffect(() => {
     if (videoRef.current && !isYouTube) {
+      // Synchroniser le mute state avec le prop
+      videoRef.current.muted = isMuted;
+      
       if (autoPlay) {
         videoRef.current.play().then(() => {
           setIsPlaying(true);
@@ -54,7 +56,7 @@ const EnhancedVideoPlayer: React.FC<EnhancedVideoPlayerProps> = ({
         onPause?.();
       }
     }
-  }, [autoPlay, onPlay, onPause, isYouTube]);
+  }, [autoPlay, isMuted, onPlay, onPause, isYouTube]);
 
   const togglePlay = () => {
     if (!videoRef.current && !isYouTube) return;

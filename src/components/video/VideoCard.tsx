@@ -1,12 +1,12 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, ShoppingCart } from 'lucide-react';
+import { Play, Pause, ShoppingCart, Volume2, VolumeX, Heart, MessageCircle, Share, Bookmark, Plus } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import VideoActions from '@/components/VideoActions';
-import VideoComment from '@/components/VideoComment';
+import { Badge } from '@/components/ui/badge';
 import EnhancedVideoPlayer from '@/components/video/EnhancedVideoPlayer';
 import { useNavigate } from 'react-router-dom';
+import { useVideoLikes } from '@/hooks/useVideoLikes';
+import { toast } from 'sonner';
 
 interface Video {
   id: string;
@@ -31,12 +31,17 @@ interface Video {
 interface VideoCardProps {
   video: Video;
   isActive: boolean;
+  onLikeWithConfetti?: () => void;
 }
 
-const VideoCard: React.FC<VideoCardProps> = ({ video, isActive }) => {
+const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfetti }) => {
   const navigate = useNavigate();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const { isLiked, likesCount, toggleLike, isLoading } = useVideoLikes(video.id, video.likes_count);
 
   useEffect(() => {
     if (isActive) {
@@ -66,7 +71,35 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive }) => {
       }).catch(console.error);
     } else {
       navigator.clipboard.writeText(window.location.href);
+      toast.success('Lien copié !');
     }
+  };
+
+  const handleLike = () => {
+    toggleLike();
+    if (!isLiked) {
+      onLikeWithConfetti?.();
+    }
+  };
+
+  const handleSave = () => {
+    setIsSaved(!isSaved);
+    toast.success(isSaved ? 'Vidéo retirée des favoris' : 'Vidéo ajoutée aux favoris');
+  };
+
+  const handleFollow = () => {
+    setIsFollowing(!isFollowing);
+    toast.success(isFollowing ? 'Désabonné' : 'Abonné !');
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
+  const formatCount = (count: number) => {
+    if (count < 1000) return count.toString();
+    if (count < 1000000) return (count / 1000).toFixed(1) + 'K';
+    return (count / 1000000).toFixed(1) + 'M';
   };
 
   return (
@@ -81,11 +114,31 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive }) => {
           poster={video.thumbnail_url}
           className="h-full w-full object-cover"
           autoPlay={isPlaying}
-          muted={true}
+          muted={isMuted}
           loop={true}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
         />
+        
+        {/* Badge Formation pour les vidéos promo */}
+        {video.video_type === 'promo' && (
+          <Badge className="absolute top-4 left-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold px-3 py-1 z-20">
+            🎓 Formation
+          </Badge>
+        )}
+
+        {/* Contrôle audio en haut à droite */}
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleMute();
+          }}
+          variant="ghost"
+          size="sm"
+          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 z-20"
+        >
+          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </Button>
       </div>
 
       {/* Informations vidéo - bas gauche */}
@@ -113,29 +166,142 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive }) => {
           #{video.title}
         </p>
 
-        {/* Bouton promo pour les vidéos de type 'promo' */}
+        {/* Boutons pour les vidéos de type 'promo' */}
         {video.video_type === 'promo' && video.formation_id && (
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePromoButtonClick(video.formation_id!);
-            }}
-            size="sm"
-            className="mt-3 mb-4 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-full flex items-center space-x-2 text-xs sm:text-sm z-50"
-          >
-            <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span>Découvrir</span>
-          </Button>
+          <div className="flex flex-col space-y-2 mt-3">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePromoButtonClick(video.formation_id!);
+              }}
+              size="sm"
+              className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-full flex items-center space-x-2 text-xs sm:text-sm z-50"
+            >
+              <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Découvrir</span>
+            </Button>
+            
+            {video.price && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePromoButtonClick(video.formation_id!);
+                }}
+                size="sm"
+                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-2 px-4 rounded-full flex items-center space-x-2 text-xs sm:text-sm z-50"
+              >
+                <span>💰 Acheter {video.price}€/mois</span>
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Actions vidéo - droite */}
-      <div className="absolute right-2 sm:right-4 bottom-32 z-20">
-        <VideoActions
-          video={video}
-          onCommentClick={handleCommentClick}
-          onShareClick={handleShareClick}
-        />
+      {/* Actions vidéo - droite avec profil utilisateur */}
+      <div className="absolute right-2 sm:right-4 bottom-32 z-20 flex flex-col items-center space-y-4">
+        {/* Profil de l'auteur */}
+        <div className="flex flex-col items-center mb-2">
+          <Avatar className="w-12 h-12 border-2 border-white mb-2">
+            <AvatarImage src={video.profiles?.avatar_url} />
+            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
+              {video.profiles?.first_name?.[0] || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFollow();
+            }}
+            size="sm"
+            className={`w-6 h-6 rounded-full text-xs font-bold ${
+              isFollowing 
+                ? 'bg-gray-500 text-white' 
+                : 'bg-red-500 text-white hover:bg-red-600'
+            }`}
+          >
+            {isFollowing ? '✓' : '+'}
+          </Button>
+        </div>
+
+        {/* Actions vidéo */}
+        <div className="flex flex-col items-center space-y-4">
+          {/* Like */}
+          <div className="flex flex-col items-center">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLike();
+              }}
+              disabled={isLoading}
+              variant="ghost"
+              size="sm"
+              className={`w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 ${
+                isLiked ? 'text-red-500' : ''
+              }`}
+            >
+              <Heart size={20} className={isLiked ? 'fill-current' : ''} />
+            </Button>
+            <span className="text-white text-xs mt-1 font-medium">
+              {formatCount(likesCount)}
+            </span>
+          </div>
+
+          {/* Comment */}
+          <div className="flex flex-col items-center">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCommentClick();
+              }}
+              variant="ghost"
+              size="sm"
+              className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200"
+            >
+              <MessageCircle size={20} />
+            </Button>
+            <span className="text-white text-xs mt-1 font-medium">
+              {formatCount(video.comments_count)}
+            </span>
+          </div>
+
+          {/* Share */}
+          <div className="flex flex-col items-center">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShareClick();
+              }}
+              variant="ghost"
+              size="sm"
+              className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200"
+            >
+              <Share size={20} />
+            </Button>
+            <span className="text-white text-xs mt-1 font-medium">
+              Partager
+            </span>
+          </div>
+
+          {/* Save */}
+          <div className="flex flex-col items-center">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSave();
+              }}
+              variant="ghost"
+              size="sm"
+              className={`w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 ${
+                isSaved ? 'text-yellow-500' : ''
+              }`}
+            >
+              <Bookmark size={20} className={isSaved ? 'fill-current' : ''} />
+            </Button>
+            <span className="text-white text-xs mt-1 font-medium">
+              {isSaved ? 'Sauvé' : 'Sauver'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Commentaires intégrés */}

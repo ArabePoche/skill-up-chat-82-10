@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Play, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVideos } from '@/hooks/useVideos';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Video {
   id: string;
@@ -32,6 +35,7 @@ interface Video {
 
 const VideosManagement = () => {
   const { data: videos = [], refetch } = useVideos();
+  const { user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [formData, setFormData] = useState({
@@ -39,8 +43,9 @@ const VideosManagement = () => {
     description: '',
     video_url: '',
     thumbnail_url: '',
-    video_type: 'lesson' as 'lesson' | 'promo' | 'classic',
+    video_type: 'classic' as 'lesson' | 'promo' | 'classic',
     formation_id: '',
+    price: '',
   });
 
   const resetForm = () => {
@@ -49,8 +54,9 @@ const VideosManagement = () => {
       description: '',
       video_url: '',
       thumbnail_url: '',
-      video_type: 'lesson' as 'lesson' | 'promo' | 'classic',
+      video_type: 'classic' as 'lesson' | 'promo' | 'classic',
       formation_id: '',
+      price: '',
     });
   };
 
@@ -58,18 +64,22 @@ const VideosManagement = () => {
     e.preventDefault();
 
     try {
+      const videoData = {
+        title: formData.title,
+        description: formData.description,
+        video_url: formData.video_url,
+        thumbnail_url: formData.thumbnail_url,
+        video_type: formData.video_type,
+        formation_id: formData.formation_id || null,
+        price: formData.price ? parseFloat(formData.price) : null,
+        author_id: user?.id,
+      };
+
       if (editingVideo) {
         // Modification
         const { error } = await supabase
           .from('videos')
-          .update({
-            title: formData.title,
-            description: formData.description,
-            video_url: formData.video_url,
-            thumbnail_url: formData.thumbnail_url,
-            video_type: formData.video_type,
-            formation_id: formData.formation_id || null,
-          })
+          .update(videoData)
           .eq('id', editingVideo.id);
 
         if (error) throw error;
@@ -79,14 +89,7 @@ const VideosManagement = () => {
         // Création
         const { error } = await supabase
           .from('videos')
-          .insert({
-            title: formData.title,
-            description: formData.description,
-            video_url: formData.video_url,
-            thumbnail_url: formData.thumbnail_url,
-            video_type: formData.video_type,
-            formation_id: formData.formation_id || null,
-          });
+          .insert(videoData);
 
         if (error) throw error;
         toast.success('Vidéo créée avec succès');
@@ -108,8 +111,9 @@ const VideosManagement = () => {
       description: video.description,
       video_url: video.video_url,
       thumbnail_url: video.thumbnail_url,
-      video_type: (video.video_type as 'lesson' | 'promo' | 'classic') || 'lesson',
+      video_type: (video.video_type as 'lesson' | 'promo' | 'classic') || 'classic',
       formation_id: video.formation_id || '',
+      price: video.price ? video.price.toString() : '',
     });
   };
 
@@ -173,7 +177,51 @@ const VideosManagement = () => {
           onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
         />
       </div>
-      
+
+      <div>
+        <Label htmlFor="video_type">Type de vidéo</Label>
+        <Select
+          value={formData.video_type}
+          onValueChange={(value: 'lesson' | 'promo' | 'classic') => 
+            setFormData({ ...formData, video_type: value })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Sélectionner le type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="classic">Classique</SelectItem>
+            <SelectItem value="promo">Promotion</SelectItem>
+            <SelectItem value="lesson">Leçon</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {formData.video_type === 'promo' && (
+        <>
+          <div>
+            <Label htmlFor="formation_id">ID Formation</Label>
+            <Input
+              id="formation_id"
+              value={formData.formation_id}
+              onChange={(e) => setFormData({ ...formData, formation_id: e.target.value })}
+              placeholder="UUID de la formation"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="price">Prix (€/mois)</Label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              placeholder="29.99"
+            />
+          </div>
+        </>
+      )}
       
       <div className="flex space-x-2">
         <Button type="submit" className="flex-1">
@@ -205,7 +253,7 @@ const VideosManagement = () => {
               Nouvelle Vidéo
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Créer une nouvelle vidéo</DialogTitle>
             </DialogHeader>
@@ -232,6 +280,18 @@ const VideosManagement = () => {
               <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                 <Play size={32} className="text-white" />
               </div>
+              {video.video_type && (
+                <div className="absolute top-2 left-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    video.video_type === 'promo' ? 'bg-purple-500 text-white' :
+                    video.video_type === 'lesson' ? 'bg-blue-500 text-white' :
+                    'bg-gray-500 text-white'
+                  }`}>
+                    {video.video_type === 'promo' ? '🎓 Promo' :
+                     video.video_type === 'lesson' ? '📚 Leçon' : '📹 Classique'}
+                  </span>
+                </div>
+              )}
             </div>
             
             <CardHeader className="pb-2">
@@ -246,6 +306,7 @@ const VideosManagement = () => {
               <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                 <span>👍 {video.likes_count}</span>
                 <span>💬 {video.comments_count}</span>
+                {video.video_type === 'promo' && <span>💰 Promo</span>}
               </div>
               
               <div className="flex space-x-2">
@@ -274,7 +335,7 @@ const VideosManagement = () => {
       {/* Modal de modification */}
       {editingVideo && (
         <Dialog open={!!editingVideo} onOpenChange={() => setEditingVideo(null)}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Modifier la vidéo</DialogTitle>
             </DialogHeader>

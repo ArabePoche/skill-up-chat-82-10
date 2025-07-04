@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import TikTokTabs from '@/components/TikTokTabs';
-import TikTokSection from '@/components/TikTokSection';
+import TikTokVideosView from '@/components/TikTokVideosView';
 import PostsSection from '@/components/PostsSection';
 import SearchView from '@/components/SearchView';
 
@@ -12,7 +12,7 @@ const Home = () => {
       case 'videos':
         return (
           <div className="h-full overflow-y-auto snap-y snap-mandatory">
-            <TikTokSection />
+            <TikTokVideosView />
           </div>
         );
       case 'posts':
@@ -22,7 +22,7 @@ const Home = () => {
       default:
         return (
           <div className="h-full overflow-y-auto snap-y snap-mandatory">
-            <TikTokSection />
+            <TikTokVideosView />
           </div>
         );
     }

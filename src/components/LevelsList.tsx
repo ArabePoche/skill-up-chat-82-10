@@ -112,7 +112,7 @@ const LevelsList: React.FC<LevelsListProps> = ({ levels, formationId, onLessonCl
               </div>
               
               <div className="flex items-center space-x-2">
-                {/* Badge des messages non lus du niveau (remplace le nombre de leçons) */}
+                {/* Badge des messages non lus du niveau  */}
                 {getLevelUnreadCount(level.id) > 0 && (
                   <Badge variant="destructive" className="bg-red-500 text-white rounded-full px-2 py-1 text-xs font-bold min-w-[20px] h-5 flex items-center justify-center">
                     {getLevelUnreadCount(level.id) > 99 ? '99+' : getLevelUnreadCount(level.id)}

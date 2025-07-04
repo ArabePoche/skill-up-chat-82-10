@@ -221,7 +221,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
             Annuler
           </Button>
           <Button onClick={savePricingOptions} disabled={loading}>
-            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+            {loading ? 'Save...' : 'Save'}
           </Button>
         </div>
       </div>
@@ -337,7 +337,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
                       type="number"
                       value={option.time_limit_minutes_per_week || ''}
                       onChange={(e) => updatePricingOption(index, 'time_limit_minutes_per_week', parseInt(e.target.value) || undefined)}
-                      placeholder="Ex: 120"
+                      placeholder="Ex: 120mn"
                     />
                   </div>
                 </>

@@ -1,11 +1,15 @@
-
 /* Styles spécifiques pour l'interface TikTok */
 .snap-y {
   scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
 }
 
 .snap-start {
   scroll-snap-align: start;
+}
+
+.snap-always {
+  scroll-snap-stop: always;
 }
 
 /* Masquer la scrollbar mais garder la fonctionnalité */
