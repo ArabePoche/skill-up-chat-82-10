@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, MessageCircle, BookOpen, Play } from 'lucide-react';
 import TeacherDiscussionsList from './TeacherDiscussionsList';
 import TeacherStudentChat from './TeacherStudentChat';
+import LessonVideoPlayer from './LessonVideoPlayer';
 import { useUnreadMessagesBadge } from '@/hooks/useUnreadMessagesBadge';
 import { Badge } from '@/components/ui/badge';
 
@@ -96,13 +97,9 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
         {showVideoPlayer && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-semibold mb-2">Aperçu de la formation</h3>
-            <div className="aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <Play size={48} className="mx-auto mb-2" />
-                <p>Lecteur vidéo de prévisualisation</p>
-                <p className="text-sm">Formation: {formation.title}</p>
-              </div>
-            </div>
+            <LessonVideoPlayer
+              url=""
+            />
           </div>
         )}
       </div>

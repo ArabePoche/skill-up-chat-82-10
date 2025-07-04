@@ -64,9 +64,9 @@ const TikTokSection: React.FC<TikTokSectionProps> = ({ videos: propVideos, onEnr
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0">
       {videos.map((video) => (
-        <div key={video.id} className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-h-[600px]">
+        <div key={video.id} className="relative bg-black overflow-hidden h-screen w-full snap-start snap-always">
           {/* Video Element */}
           <video
             ref={(el) => {

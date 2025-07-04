@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, ShoppingBag, BookOpen, MessageSquare, User } from 'lucide-react';
+import { Home, ShoppingBag, BookOpen, MessageSquare, User, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 
@@ -12,7 +12,7 @@ const Navbar = () => {
   const navItems = [
     { icon: Home, label: 'Accueil', path: '/' },
     { icon: ShoppingBag, label: 'Shop', path: '/shop' },
-    { icon: BookOpen, label: 'Cours', path: '/cours' },
+    { icon: GraduationCap, label: 'Cours', path: '/cours', special: true },
     { icon: MessageSquare, label: 'Messages', path: '/messages' },
     { icon: User, label: 'Profil', path: '/profil' },
   ];
@@ -33,10 +33,10 @@ const Navbar = () => {
                 isActive
                   ? 'text-edu-primary bg-edu-primary/10'
                   : 'text-gray-600 hover:text-edu-primary hover:bg-gray-50'
-              }`}
+              } ${item.special ? 'scale-110' : ''}`}
             >
               <div className="relative">
-                <Icon size={20} className={`mb-1 ${isActive ? 'animate-bounce-subtle' : ''}`} />
+                <Icon size={item.special ? 24 : 20} className={`mb-1 ${isActive ? 'animate-bounce-subtle' : ''} ${item.special ? 'text-[#25d366]' : ''}`} />
                 {showBadge && (
                   <Badge 
                     variant="destructive" 
@@ -46,7 +46,7 @@ const Navbar = () => {
                   </Badge>
                 )}
               </div>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className={`text-xs font-medium ${item.special ? 'font-bold' : ''}`}>{item.label}</span>
             </Link>
           );
         })}

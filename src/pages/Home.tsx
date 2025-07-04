@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import TikTokTabs from '@/components/TikTokTabs';
-import TikTokVideosView from '@/components/TikTokVideosView';
+import TikTokSection from '@/components/TikTokSection';
 import PostsSection from '@/components/PostsSection';
 import SearchView from '@/components/SearchView';
 
@@ -10,13 +10,21 @@ const Home = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'videos':
-        return <TikTokVideosView />;
+        return (
+          <div className="h-full overflow-y-auto snap-y snap-mandatory">
+            <TikTokSection />
+          </div>
+        );
       case 'posts':
         return <PostsSection />;
       case 'search':
         return <SearchView />;
       default:
-        return <TikTokVideosView />;
+        return (
+          <div className="h-full overflow-y-auto snap-y snap-mandatory">
+            <TikTokSection />
+          </div>
+        );
     }
   };
 

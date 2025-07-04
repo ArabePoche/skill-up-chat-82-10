@@ -24,21 +24,26 @@ const SimpleImageEditor: React.FC<SimpleImageEditorProps> = ({
   return (
     <>
       <Button
-        variant="secondary"
+        variant="outline"
         size="sm"
-        onClick={() => setIsEditorOpen(true)}
-        className="bg-white/90 hover:bg-white shadow-sm"
+        onClick={() => {
+          console.log('Opening image editor for:', fileUrl);
+          setIsEditorOpen(true);
+        }}
+        className="p-1.5 h-auto"
         title="Éditer l'image"
       >
         <Edit3 size={14} />
       </Button>
 
       {isEditorOpen && (
-        <ModernImageEditor
-          imageUrl={fileUrl}
-          onSave={handleSaveEdit}
-          onClose={() => setIsEditorOpen(false)}
-        />
+        <div className="fixed inset-0 z-50 bg-black/80">
+          <ModernImageEditor
+            imageUrl={fileUrl}
+            onSave={handleSaveEdit}
+            onClose={() => setIsEditorOpen(false)}
+          />
+        </div>
       )}
     </>
   );

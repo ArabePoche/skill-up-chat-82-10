@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, BookOpen, Package, Settings, BarChart3, Shield, Activity, MessageCircle, CheckCircle, Clock, Crown, UserCheck } from 'lucide-react';
+import { Users, BookOpen, Package, Settings, BarChart3, Shield, Activity, MessageCircle, CheckCircle, Clock, Crown, UserCheck, Video } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +13,7 @@ import ServicesManagement from '@/components/admin/ServicesManagement';
 import DashboardStats from '@/components/admin/DashboardStats';
 import OnlineUsersList from '@/components/admin/OnlineUsersList';
 import FormationsList from '@/components/admin/FormationsList';
+import VideosManagement from '@/components/admin/VideosManagement';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -163,7 +164,7 @@ const AdminDashboard = () => {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <ScrollArea className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-4 sm:mb-6 h-auto min-w-max">
+              <TabsList className="grid w-full grid-cols-6 mb-4 sm:mb-6 h-auto min-w-max">
                 <TabsTrigger value="stats" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 min-w-0">
                   <BarChart3 size={14} className="flex-shrink-0" />
                   <span className="text-xs sm:text-sm truncate">Stats</span>
@@ -179,6 +180,10 @@ const AdminDashboard = () => {
                 <TabsTrigger value="products" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 min-w-0">
                   <Package size={14} className="flex-shrink-0" />
                   <span className="text-xs sm:text-sm truncate">Produits</span>
+                </TabsTrigger>
+                <TabsTrigger value="videos" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 min-w-0">
+                  <Video size={14} className="flex-shrink-0" />
+                  <span className="text-xs sm:text-sm truncate">Vidéos</span>
                 </TabsTrigger>
                 <TabsTrigger value="users" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3 min-w-0">
                   <Users size={14} className="flex-shrink-0" />
@@ -202,6 +207,10 @@ const AdminDashboard = () => {
 
               <TabsContent value="products" className="mt-4">
                 <ProductsManagement />
+              </TabsContent>
+
+              <TabsContent value="videos" className="mt-4">
+                <VideosManagement />
               </TabsContent>
 
               <TabsContent value="users" className="mt-4">
