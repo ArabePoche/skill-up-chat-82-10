@@ -1,34 +1,34 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, ShoppingBag, BookOpen, MessageSquare, User, GraduationCap } from 'lucide-react';
+import { Home, ShoppingBag, MessageSquare, User, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
 
 const Navbar = () => {
-  const location = useLocation();
+  const { currentView, setCurrentView } = useNavigation();
   const { data: unreadCounts } = useUnreadCounts();
 
   const navItems = [
-    { icon: Home, label: 'Accueil', path: '/' },
-    { icon: ShoppingBag, label: 'Shop', path: '/shop' },
-    { icon: GraduationCap, label: 'Cours', path: '/cours', special: true },
-    { icon: MessageSquare, label: 'Messages', path: '/messages' },
-    { icon: User, label: 'Profil', path: '/profil' },
+    { icon: Home, label: 'Accueil', view: 'home' as NavigationView },
+    { icon: ShoppingBag, label: 'Shop', view: 'shop' as NavigationView },
+    { icon: GraduationCap, label: 'Cours', view: 'cours' as NavigationView, special: true },
+    { icon: MessageSquare, label: 'Messages', view: 'messages' as NavigationView },
+    { icon: User, label: 'Profil', view: 'profil' as NavigationView },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-gray-200 px-4 py-2 z-40 md:top-0 md:bottom-auto md:border-t-0 md:border-b">
-      <div className="flex justify-around items-center md:justify-center md:space-x-8">
+    <nav className="bg-white border-t border-gray-200 px-4 py-2">
+      <div className="flex justify-around items-center">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = currentView === item.view;
           const Icon = item.icon;
-          const showBadge = item.path === '/messages' && unreadCounts && unreadCounts.total > 0;
+          const showBadge = item.view === 'messages' && unreadCounts && unreadCounts.total > 0;
           
           return (
-            <Link
-              key={item.path}
-              to={item.path}
+            <button
+              key={item.view}
+              onClick={() => setCurrentView(item.view)}
               className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 relative ${
                 isActive
                   ? 'text-edu-primary bg-edu-primary/10'
@@ -47,7 +47,7 @@ const Navbar = () => {
                 )}
               </div>
               <span className={`text-xs font-medium ${item.special ? 'font-bold' : ''}`}>{item.label}</span>
-            </Link>
+            </button>
           );
         })}
       </div>

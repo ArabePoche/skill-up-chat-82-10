@@ -126,10 +126,7 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
         </div>
       )}
 
-      {/* Section Pricing */}
-      <div className="bg-white mb-2 shadow-sm">
-        <FormationPricing formationId={formation.id.toString()} />
-      </div>
+     
 
       {/* Lessons List */}
       <LevelsList 
