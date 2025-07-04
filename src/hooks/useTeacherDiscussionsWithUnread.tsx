@@ -31,17 +31,12 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
 
       console.log('Fetching teacher discussions with unread counts for formation:', formationId);
 
-      // Vérifier que l'utilisateur est bien professeur via teacher_formations
+      // Vérifier que l'utilisateur est bien professeur de cette formation
       const { data: teacherCheck } = await supabase
         .from('teachers')
-        .select(`
-          id,
-          teacher_formations!inner (
-            formation_id
-          )
-        `)
+        .select('id')
         .eq('user_id', user.id)
-        .eq('teacher_formations.formation_id', formationId)
+        .eq('formation_id', formationId)
         .single();
 
       if (!teacherCheck) {
@@ -49,8 +44,7 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         return [];
       }
 
-      // Récupérer tous les étudiants inscrits dans cette formation
-      // MÊME s'ils sont professeurs dans d'autres formations
+      // Récupérer TOUS les étudiants inscrits dans cette formation (approuvés)
       const { data: enrolledStudents } = await supabase
         .from('enrollment_requests')
         .select('user_id')
@@ -63,24 +57,9 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
       }
 
       const studentIds = enrolledStudents.map(e => e.user_id);
+      console.log('Enrolled student IDs:', studentIds);
 
-      // Exclure les professeurs de CETTE formation spécifique des discussions
-      const { data: currentFormationTeachers } = await supabase
-        .from('teachers')
-        .select('user_id')
-        .eq('formation_id', formationId);
-
-      const currentFormationTeacherIds = currentFormationTeachers?.map(t => t.user_id) || [];
-      
-      // Filtrer pour exclure uniquement les profs de la formation courante
-      const validStudentIds = studentIds.filter(id => !currentFormationTeacherIds.includes(id));
-
-      if (validStudentIds.length === 0) {
-        console.log('No valid students found after filtering teachers');
-        return [];
-      }
-
-      // Récupérer toutes les discussions (combinaison unique student + lesson)
+      // Récupérer toutes les discussions (messages des étudiants uniquement)
       // EXCLURE les messages du système
       const { data: discussions, error } = await supabase
         .from('lesson_messages')
@@ -92,7 +71,7 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         `)
         .eq('formation_id', formationId)
         .neq('sender_id', SYSTEM_USER_ID) // Exclure les messages système
-        .in('sender_id', validStudentIds) // Inclure seulement les étudiants valides
+        .in('sender_id', studentIds) // Inclure seulement les étudiants inscrits
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -100,8 +79,15 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         return [];
       }
 
+      console.log('Found discussions:', discussions?.length || 0);
+
+      if (!discussions || discussions.length === 0) {
+        console.log('No discussions found');
+        return [];
+      }
+
       // Récupérer les informations des leçons séparément
-      const lessonIds = [...new Set(discussions?.map(msg => msg.lesson_id) || [])];
+      const lessonIds = [...new Set(discussions.map(msg => msg.lesson_id))];
       const { data: lessons } = await supabase
         .from('lessons')
         .select('id, title')
@@ -110,7 +96,7 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
       // Créer un map des leçons pour un accès rapide
       const lessonsMap = new Map(lessons?.map(lesson => [lesson.id, lesson]) || []);
 
-      // Grouper par étudiant et leçon
+      // Grouper par étudiant et leçon pour créer les discussions uniques
       const discussionMap = new Map<string, {
         student_id: string;
         lesson_id: string;
@@ -119,7 +105,7 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         last_message_content: string;
       }>();
 
-      discussions?.forEach(msg => {
+      discussions.forEach(msg => {
         const key = `${msg.sender_id}-${msg.lesson_id}`;
         if (!discussionMap.has(key)) {
           const lesson = lessonsMap.get(msg.lesson_id);
@@ -141,10 +127,11 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         .select('id, first_name, last_name, username, avatar_url')
         .in('id', studentProfileIds);
 
-      // Récupérer les compteurs de messages non lus pour chaque discussion
+      // Créer les discussions avec compteurs de messages non lus
       const discussionsWithUnread: StudentDiscussion[] = [];
 
       for (const discussion of discussionMap.values()) {
+        // Compter les messages non lus pour cette discussion
         const { data: unreadCount } = await supabase.rpc('get_unread_messages_count', {
           p_formation_id: formationId,
           p_lesson_id: discussion.lesson_id,
@@ -173,7 +160,7 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         return new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime();
       });
 
-      console.log('Final sorted discussions (including teacher-students from other formations):', sortedDiscussions);
+      console.log('Final sorted discussions:', sortedDiscussions);
       return sortedDiscussions;
     },
     enabled: !!formationId && !!user?.id,
