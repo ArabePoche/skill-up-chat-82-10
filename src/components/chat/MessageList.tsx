@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsTeacherInFormation } from '@/hooks/useIsTeacherInFormation';
 import MessageItem from './MessageItem';
 import SystemMessage from './SystemMessage';
 import ExerciseDisplay from './ExerciseDisplay';
@@ -62,12 +63,14 @@ const MessageList: React.FC<MessageListProps> = ({
   formationId,
   isTeacherView = false,
   studentName,
-  isTeacher = false,
   onValidateExercise
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [showCelebration, setShowCelebration] = useState(false);
+  
+  // Vérifier si l'utilisateur est professeur dans cette formation
+  const { data: isTeacherInThisFormation = false } = useIsTeacherInFormation(formationId);
   
   // Écouter les indicateurs de frappe
   const typingUsers = useTypingListener(lesson.id.toString(), formationId);
@@ -99,6 +102,7 @@ const MessageList: React.FC<MessageListProps> = ({
   console.log('MessageList render - messages count:', messages?.length || 0);
   console.log('Typing users:', typingUsers);
   console.log('Pending evaluations:', pendingEvaluations);
+  console.log('Is teacher in this formation:', isTeacherInThisFormation);
 
   return (
     <div className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
@@ -156,7 +160,7 @@ const MessageList: React.FC<MessageListProps> = ({
             <div key={msg.id} className="message-appear">
               <MessageItem
                 message={msg}
-                isTeacher={isTeacher}
+                isTeacher={isTeacherInThisFormation}
                 onValidateExercise={onValidateExercise}
               />
             </div>
