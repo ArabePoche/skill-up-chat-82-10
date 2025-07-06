@@ -39,42 +39,25 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         .eq('formation_id', formationId)
         .maybeSingle();
 
-      // Si pas professeur de cette formation spécifique, vérifier s'il est professeur d'une autre formation mais étudiant de celle-ci
-      let isTeacherOfThisFormation = !!teacherCheck;
-      
       if (!teacherCheck) {
-        // Vérifier s'il est étudiant inscrit dans cette formation
-        const { data: studentCheck } = await supabase
-          .from('enrollment_requests')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('formation_id', formationId)
-          .eq('status', 'approved')
-          .maybeSingle();
-        
-        // Vérifier aussi s'il est professeur d'une autre formation
-        const { data: isTeacherElsewhere } = await supabase
-          .from('teachers')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle();
-        
-        if (!studentCheck && !isTeacherElsewhere) {
-          console.error('User has no access to discussions for this formation');
-          return [];
-        }
+        console.error('User is not a teacher in this formation');
+        return [];
       }
 
       // Récupérer TOUS les étudiants inscrits dans cette formation (approuvés)
-      const { data: enrolledStudents } = await supabase
+      const { data: enrolledStudents, error: enrollmentError } = await supabase
         .from('enrollment_requests')
         .select('user_id')
         .eq('formation_id', formationId)
         .eq('status', 'approved');
 
+      if (enrollmentError) {
+        console.error('Error fetching enrollments:', enrollmentError);
+        return [];
+      }
+
       if (!enrolledStudents || enrolledStudents.length === 0) {
-        console.log('No enrolled students found');
+        console.log('No enrolled students found for formation:', formationId);
         return [];
       }
 

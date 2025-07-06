@@ -102,7 +102,7 @@ const VideoMessageSwitch: React.FC<VideoMessageSwitchProps> = ({
   };
 
   return (
-    <div className={`relative flex items-center justify-center ${className}`}>
+    <div className={`fixed right-4 top-1/2 transform -translate-y-1/2 z-30 flex items-center justify-center ${className}`}>
       {/* Icônes contextuelles */}
       <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${
         showIcons ? 'opacity-100' : 'opacity-0 pointer-events-none'
