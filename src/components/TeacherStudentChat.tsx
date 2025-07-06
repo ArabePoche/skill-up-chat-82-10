@@ -1,10 +1,11 @@
-
 import React, { useRef, useEffect } from 'react';
 import MessageItem from './chat/MessageItem';
 import TypingIndicator from './chat/TypingIndicator';
 import TeacherChatHeader from './teacher/TeacherChatHeader';
 import ChatInputBar from './chat/ChatInputBar';
 import InterviewToggleButton from './teacher/InterviewToggleButton';
+import VideoMessageSwitch from './video/VideoMessageSwitch';
+import LessonVideoPlayer from './LessonVideoPlayer';
 import { useTeacherStudentMessages } from '@/hooks/useTeacherStudentMessages';
 import { useSendTeacherStudentMessage } from '@/hooks/useSendTeacherStudentMessage';
 import { useValidateExercise } from '@/hooks/useValidateExercise';
@@ -45,6 +46,8 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
   onBack 
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   
   // Hooks pour la gestion des messages
@@ -117,6 +120,15 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
     }
   };
 
+  // Fonctions de scroll pour le switch
+  const scrollToVideo = () => {
+    videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const scrollToMessages = () => {
+    messagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#e5ddd5] flex items-center justify-center">
@@ -139,8 +151,24 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
         onBack={onBack}
       />
 
+      {/* Section Vidéo */}
+      <div ref={videoRef} className="bg-black">
+        <LessonVideoPlayer
+          url={`https://example.com/lesson-${lesson.id}.mp4`}
+          className="w-full aspect-video"
+        />
+      </div>
+
+      {/* Bouton Switch */}
+      <div className="relative -mt-3 -mb-3 z-20 flex justify-center">
+        <VideoMessageSwitch
+          onScrollToVideo={scrollToVideo}
+          onScrollToMessages={scrollToMessages}
+        />
+      </div>
+
       {/* Messages */}
-      <div className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
+      <div ref={messagesRef} className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
         {/* Message système de bienvenue */}
         <div className="text-center">
           <span className="bg-[#dcf8c6] text-gray-700 px-3 py-2 rounded-lg text-sm shadow-sm">
