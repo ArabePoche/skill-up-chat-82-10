@@ -64,19 +64,19 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
       const studentIds = enrolledStudents.map(e => e.user_id);
       console.log('Enrolled student IDs:', studentIds);
 
-      // Récupérer toutes les discussions (messages des étudiants uniquement)
-      // EXCLURE les messages du système
+      // Récupérer TOUTES les discussions dans cette formation impliquant ces étudiants
+      // Inclure tous les messages (étudiants vers système, système vers étudiants, etc.)
       const { data: discussions, error } = await supabase
         .from('lesson_messages')
         .select(`
           sender_id,
+          receiver_id,
           lesson_id,
           created_at,
           content
         `)
         .eq('formation_id', formationId)
-        .neq('sender_id', SYSTEM_USER_ID) // Exclure les messages système
-        .in('sender_id', studentIds) // Inclure seulement les étudiants inscrits
+        .or(`sender_id.in.(${studentIds.join(',')}),receiver_id.in.(${studentIds.join(',')})`)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -111,11 +111,15 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
       }>();
 
       discussions.forEach(msg => {
-        const key = `${msg.sender_id}-${msg.lesson_id}`;
+        // Identifier l'étudiant dans cette discussion (sender ou receiver)
+        const studentId = studentIds.includes(msg.sender_id) ? msg.sender_id : msg.receiver_id;
+        if (!studentId) return;
+
+        const key = `${studentId}-${msg.lesson_id}`;
         if (!discussionMap.has(key)) {
           const lesson = lessonsMap.get(msg.lesson_id);
           discussionMap.set(key, {
-            student_id: msg.sender_id,
+            student_id: studentId,
             lesson_id: msg.lesson_id,
             lesson_title: lesson?.title || 'Leçon inconnue',
             last_message_time: msg.created_at,

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect, useState, useRef } from 'react';
 import { ArrowLeft, Phone, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStudentMessages, useLessonExercises } from '@/hooks/useStudentMessages';
@@ -14,6 +15,7 @@ import ChatInputBar from './chat/ChatInputBar';
 import MessageList from './chat/MessageList';
 import { LessonVideoPlayerWithTimer } from './video/LessonVideoPlayerWithTimer';
 import { SubscriptionUpgradeModal } from './chat/SubscriptionUpgradeModal';
+import VideoMessageSwitch from './video/VideoMessageSwitch';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 
@@ -37,6 +39,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   
   const { data: messages = [], isLoading } = useStudentMessages(
     lesson.id.toString(), 
@@ -71,6 +75,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       // Cette fonction sera appelée par le modal
     }
   );
+
+  // Fonctions de scroll pour le switch
+  const scrollToVideo = () => {
+    videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const scrollToMessages = () => {
+    messagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -183,7 +196,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   };
 
   return (
-    <div className="min-h-screen bg-[#e5ddd5] flex flex-col">
+    <div className="min-h-screen bg-[#e5ddd5] flex flex-col relative">
       {/* Notifications d'appels entrants pour les professeurs */}
       {isTeacher && incomingCalls.map(call => (
         <div key={call.id} className="fixed top-20 right-4 bg-white border rounded-lg shadow-lg p-4 z-50">
@@ -284,7 +297,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 
       {/* Section vidéo avec timer intégré - responsive */}
       {lesson.video_url && (
-        <div className="bg-black">
+        <div ref={videoRef} className="bg-black">
           <LessonVideoPlayerWithTimer
             src={lesson.video_url}
             formationId={formation.id}
@@ -300,8 +313,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         </div>
       )}
 
+      {/* Bouton Switch */}
+      <VideoMessageSwitch
+        onScrollToVideo={scrollToVideo}
+        onScrollToMessages={scrollToMessages}
+      />
+
       {/* Messages - responsive */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0">
         <MessageList
           messages={messages}
           exercises={exercises}
