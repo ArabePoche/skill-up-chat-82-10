@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { X, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ModernImageEditor from './ModernImageEditor';
+import { Edit3 } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import ImageEditor from '@/components/image-editor/ImageEditor';
 
 interface SimpleImageEditorProps {
   fileUrl: string;
   fileName: string;
-  onUpdate: (newUrl: string) => void;
+  onUpdate?: (newUrl: string) => void;
 }
 
 const SimpleImageEditor: React.FC<SimpleImageEditorProps> = ({
@@ -14,37 +15,37 @@ const SimpleImageEditor: React.FC<SimpleImageEditorProps> = ({
   fileName,
   onUpdate
 }) => {
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleSaveEdit = (editedImageUrl: string) => {
-    onUpdate(editedImageUrl);
-    setIsEditorOpen(false);
+  const handleSave = async (editedImageUrl: string) => {
+    if (onUpdate) {
+      onUpdate(editedImageUrl);
+    }
+    setIsOpen(false);
   };
 
   return (
     <>
       <Button
-        variant="outline"
+        variant="secondary"
         size="sm"
-        onClick={() => {
-          console.log('Opening image editor for:', fileUrl);
-          setIsEditorOpen(true);
-        }}
-        className="p-1.5 h-auto"
+        onClick={() => setIsOpen(true)}
+        className="bg-white/90 hover:bg-white shadow-sm p-1 sm:p-2"
         title="Éditer l'image"
       >
-        <Edit3 size={14} />
+        <Edit3 size={14} className="sm:w-4 sm:h-4" />
       </Button>
 
-      {isEditorOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80">
-          <ModernImageEditor
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-[98vw] max-h-[98vh] w-full h-full p-0">
+          <ImageEditor
             imageUrl={fileUrl}
-            onSave={handleSaveEdit}
-            onClose={() => setIsEditorOpen(false)}
+            fileName={fileName}
+            onSave={handleSave}
+            onClose={() => setIsOpen(false)}
           />
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

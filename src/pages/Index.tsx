@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import StatusBar from '@/components/StatusBar';
@@ -11,7 +10,7 @@ import CreateStoryModal from '@/components/CreateStoryModal';
 import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState('following');
+  const [activeTab, setActiveTab] = useState<'videos' | 'posts' | 'search'>('videos');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
   const { user } = useAuth();
@@ -45,14 +44,16 @@ const Index = () => {
       </div>
 
       {/* Stories Section */}
-      <StoriesSection onCreateStory={handleCreateStory} />
+      <StoriesSection />
 
       {/* Main Content */}
       <div className="flex-1">
-        {activeTab === 'following' ? (
+        {activeTab === 'posts' ? (
           <PostsSection />
-        ) : (
+        ) : activeTab === 'videos' ? (
           <TikTokVideosView />
+        ) : (
+          <div className="p-4 text-center text-white">Page de recherche</div>
         )}
       </div>
 
