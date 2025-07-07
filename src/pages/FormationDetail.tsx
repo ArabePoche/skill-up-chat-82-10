@@ -110,7 +110,7 @@ const FormationDetail = () => {
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 md:top-16 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center space-x-3">
             <Button
               variant="ghost"
@@ -125,7 +125,7 @@ const FormationDetail = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
         {/* Formation Hero */}
         <Card className="overflow-hidden">
           <div className="relative">
@@ -201,110 +201,106 @@ const FormationDetail = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Course Content */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BookOpen size={20} />
-                  <span>Contenu de la formation</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {formation.levels?.sort((a, b) => a.order_index - b.order_index).map((level) => (
-                  <div key={level.id} className="border rounded-lg p-4">
-                    <h3 className="font-semibold text-lg mb-2">{level.title}</h3>
-                    {level.description && (
-                      <p className="text-gray-600 mb-3">{level.description}</p>
-                    )}
-                    {level.lessons && level.lessons.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-700">
-                          {level.lessons.length} leçon(s)
-                        </p>
-                        <div className="space-y-1">
-                          {level.lessons
-                            .sort((a, b) => a.order_index - b.order_index)
-                            .slice(0, 3)
-                            .map((lesson) => (
-                              <div key={lesson.id} className="flex items-center space-x-2 text-sm text-gray-600">
-                                <div className="w-1.5 h-1.5 bg-edu-primary rounded-full"></div>
-                                <span>{lesson.title}</span>
-                                {lesson.duration && (
-                                  <span className="text-gray-400">({lesson.duration})</span>
-                                )}
-                              </div>
-                            ))}
-                          {level.lessons.length > 3 && (
-                            <p className="text-sm text-gray-500 italic">
-                              ... et {level.lessons.length - 3} autres leçons
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Pricing Options */}
-            <FormationPricing formationId={formationId || ''} />
-
-            {/* Quick Enrollment */}
-            <Card>
-              <CardContent className="p-4">
-                <Button 
-                  className="w-full bg-edu-primary hover:bg-edu-primary/90"
-                  onClick={handleEnroll}
-                  disabled={!user || isFormationPending(formationId || '')}
-                  size="lg"
-                >
-                  {!user ? 'Connectez-vous pour vous inscrire' : 
-                   isFormationPending(formationId || '') ? 'Inscription en cours...' : 
-                   'S\'inscrire maintenant'}
-                </Button>
-
-                {!user && (
-                  <p className="text-xs text-gray-500 text-center mt-2">
-                    Vous devez être connecté pour vous inscrire à cette formation
-                  </p>
+        {/* Course Content */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <BookOpen size={20} />
+              <span>Contenu de la formation</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {formation.levels?.sort((a, b) => a.order_index - b.order_index).map((level) => (
+              <div key={level.id} className="border rounded-lg p-4">
+                <h3 className="font-semibold text-lg mb-2">{level.title}</h3>
+                {level.description && (
+                  <p className="text-gray-600 mb-3">{level.description}</p>
                 )}
-              </CardContent>
-            </Card>
+                {level.lessons && level.lessons.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      {level.lessons.length} leçon(s)
+                    </p>
+                    <div className="space-y-1">
+                      {level.lessons
+                        .sort((a, b) => a.order_index - b.order_index)
+                        .slice(0, 3)
+                        .map((lesson) => (
+                          <div key={lesson.id} className="flex items-center space-x-2 text-sm text-gray-600">
+                            <div className="w-1.5 h-1.5 bg-edu-primary rounded-full"></div>
+                            <span>{lesson.title}</span>
+                            {lesson.duration && (
+                              <span className="text-gray-400">({lesson.duration})</span>
+                            )}
+                          </div>
+                        ))}
+                      {level.lessons.length > 3 && (
+                        <p className="text-sm text-gray-500 italic">
+                          ... et {level.lessons.length - 3} autres leçons
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Informations</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Niveaux</span>
+        {/* Section Pricing dédiée */}
+        <div className="space-y-4">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Plans d'abonnement</h2>
+            <p className="text-gray-600">Choisissez l'offre qui correspond à vos besoins</p>
+          </div>
+          
+          <FormationPricing formationId={formationId || ''} />
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex justify-center">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6 text-center space-y-4">
+              <h3 className="text-lg font-semibold">Inscription rapide</h3>
+              <Button 
+                className="w-full bg-edu-primary hover:bg-edu-primary/90"
+                onClick={handleEnroll}
+                disabled={!user || isFormationPending(formationId || '')}
+                size="lg"
+              >
+                {!user ? 'Connectez-vous pour vous inscrire' : 
+                 isFormationPending(formationId || '') ? 'Inscription en cours...' : 
+                 'S\'inscrire maintenant (Plan Gratuit)'}
+              </Button>
+
+              {!user && (
+                <p className="text-xs text-gray-500">
+                  Vous devez être connecté pour vous inscrire à cette formation
+                </p>
+              )}
+              
+              <div className="pt-4 border-t space-y-2 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Niveaux:</span>
                   <span className="font-medium">{formation.levels?.length || 0}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Leçons</span>
+                <div className="flex justify-between">
+                  <span>Leçons:</span>
                   <span className="font-medium">{totalLessons}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Étudiants</span>
+                <div className="flex justify-between">
+                  <span>Étudiants:</span>
                   <span className="font-medium">{formation.students_count || 0}</span>
                 </div>
                 {formation.duration && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Durée</span>
+                  <div className="flex justify-between">
+                    <span>Durée:</span>
                     <span className="font-medium">{formation.duration}h</span>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

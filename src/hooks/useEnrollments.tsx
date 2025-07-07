@@ -97,6 +97,95 @@ export const useCreateEnrollment = () => {
   });
 };
 
+// Hook pour les changements de plan avec notifications
+export const useCreatePlanChangeRequest = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      formationId, 
+      planType, 
+      justification 
+    }: { 
+      formationId: string; 
+      planType: string; 
+      justification?: string; 
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non authentifié');
+
+      // Récupérer les informations utilisateur et formation
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, phone')
+        .eq('id', user.id)
+        .single();
+
+      const { data: formation } = await supabase
+        .from('formations')
+        .select('title')
+        .eq('id', formationId)
+        .single();
+
+      const userName = userProfile ? `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() : 'Un élève';
+      const formationTitle = formation?.title || 'une formation';
+      const userPhone = userProfile?.phone || 'Non renseigné';
+
+      // Vérifier s'il existe déjà une demande en attente pour ce changement
+      const { data: existingNotification } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('formation_id', formationId)
+        .eq('type', 'plan_change_request')
+        .eq('is_read', false)
+        .maybeSingle();
+
+      if (existingNotification) {
+        // Mettre à jour la notification existante
+        const { error } = await supabase
+          .from('notifications')
+          .update({
+            requested_plan_type: planType,
+            message: `${userName} a demandé à passer au plan "${planType}" pour la formation "${formationTitle}".${justification ? `\n\nJustification : ${justification}` : ''}\n\nTéléphone : ${userPhone}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingNotification.id);
+
+        if (error) throw error;
+        return { updated: true };
+      } else {
+        // Créer une nouvelle notification pour les admins
+        const { data, error } = await supabase
+          .from('notifications')
+          .insert({
+            user_id: user.id,
+            formation_id: formationId,
+            type: 'plan_change_request',
+            title: 'Demande de changement de plan',
+            message: `${userName} a demandé à passer au plan "${planType}" pour la formation "${formationTitle}".${justification ? `\n\nJustification : ${justification}` : ''}\n\nTéléphone : ${userPhone}`,
+            requested_plan_type: planType,
+            is_for_all_admins: true,
+            is_read: false
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Demande de changement de plan envoyée avec succès !');
+    },
+    onError: (error: any) => {
+      console.error('Erreur lors de la demande de changement:', error);
+      toast.error('Erreur lors de l\'envoi de la demande. Veuillez réessayer.');
+    },
+  });
+};
+
 // Hook personnalisé avec protection contre les clics multiples
 export const useEnrollmentWithProtection = () => {
   const createEnrollment = useCreateEnrollment();

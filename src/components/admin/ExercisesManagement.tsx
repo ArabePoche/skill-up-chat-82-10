@@ -11,7 +11,7 @@ import { Edit, Trash2, Plus, ArrowLeft, FileText, Award, Upload } from 'lucide-r
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import ExerciseFileUploader from './ExerciseFileUploader';
+import MultiFileUploader from './exercise/MultiFileUploader';
 
 interface ExercisesManagementProps {
   lessonId: string;
@@ -366,8 +366,8 @@ const ExercisesManagement: React.FC<ExercisesManagementProps> = ({
                           <Textarea name="content" rows={6} required />
                         </div>
                         <div>
-                          <ExerciseFileUploader
-                            onFilesUploaded={setCreateFiles}
+                          <MultiFileUploader
+                            onFilesChange={setCreateFiles}
                             existingFiles={createFiles}
                             disabled={createExerciseMutation.isPending}
                           />
@@ -488,8 +488,8 @@ const ExercisesManagement: React.FC<ExercisesManagementProps> = ({
                       <Textarea name="content" rows={6} defaultValue={editingExercise.content} required />
                     </div>
                     <div>
-                      <ExerciseFileUploader
-                        onFilesUploaded={setEditingFiles}
+                      <MultiFileUploader
+                        onFilesChange={setEditingFiles}
                         existingFiles={editingFiles}
                         disabled={updateExerciseMutation.isPending}
                       />

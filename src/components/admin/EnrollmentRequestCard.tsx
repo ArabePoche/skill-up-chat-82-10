@@ -4,9 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Clock, User, Eye, Crown, Star } from 'lucide-react';
-import { toast } from 'sonner';
-import EnrollmentApprovalModal from './EnrollmentApprovalModal';
+import { CheckCircle, XCircle, Clock, User, Eye } from 'lucide-react';
 
 interface EnrollmentRequestCardProps {
   enrollment: {
@@ -29,14 +27,7 @@ interface EnrollmentRequestCardProps {
       image_url?: string;
     } | null;
   };
-  onApprove: (params: { 
-    enrollmentId: string; 
-    status: 'approved' | 'rejected'; 
-    rejectedReason?: string; 
-    planType?: 'free' | 'standard' | 'premium'; 
-    userId?: string; 
-    formationId?: string 
-  }) => void;
+  onApprove: (params: { enrollmentId: string; status: 'approved' | 'rejected'; rejectedReason?: string; planType?: 'free' | 'standard' | 'premium'; userId?: string; formationId?: string }) => void;
   isUpdating: boolean;
 }
 
@@ -46,284 +37,234 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
   isUpdating 
 }) => {
   const [rejectionReason, setRejectionReason] = useState('');
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'standard' | 'premium'>('free');
+  const [showRejectionField, setShowRejectionField] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'standard' | 'premium'>(
+    (enrollment.plan_type as 'free' | 'standard' | 'premium') || 'free'
+  );
 
   const getStatusBadge = () => {
     switch (enrollment.status) {
       case 'approved':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">✅ Approuvé</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Approuvé</Badge>;
       case 'rejected':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">❌ Rejeté</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Rejeté</Badge>;
       default:
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">⏳ En attente</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">En attente</Badge>;
     }
   };
 
-  const getPlanInfo = (plan: string) => {
+  const getPlanLabel = (plan: string) => {
     switch (plan) {
       case 'free':
-        return { 
-          label: 'Gratuit', 
-          icon: <User size={16} />, 
-          color: 'bg-gray-100 text-gray-800 border-gray-200' 
-        };
+        return 'Gratuit';
       case 'standard':
-        return { 
-          label: 'Standard', 
-          icon: <Star size={16} />, 
-          color: 'bg-blue-100 text-blue-800 border-blue-200' 
-        };
+        return 'Standard';
       case 'premium':
-        return { 
-          label: 'Premium', 
-          icon: <Crown size={16} />, 
-          color: 'bg-purple-100 text-purple-800 border-purple-200' 
-        };
+        return 'Premium';
       default:
-        return { 
-          label: 'Gratuit', 
-          icon: <User size={16} />, 
-          color: 'bg-gray-100 text-gray-800 border-gray-200' 
-        };
+        return 'Gratuit';
     }
   };
 
-  // Cette fonction ouvre le modal
-  const handleApprovalClick = () => {
-    console.log('Opening approval modal');
-    setShowApprovalModal(true);
+  const getPlanBadgeColor = (plan: string) => {
+    switch (plan) {
+      case 'free':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'standard':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'premium':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
-  // Cette fonction est appelée par le modal avec le plan sélectionné
-  const handleModalApprove = (planType: 'free' | 'standard' | 'premium') => {
-    console.log('Modal approve with plan:', planType);
+  const handleApprove = () => {
     onApprove({
       enrollmentId: enrollment.id,
       status: 'approved',
-      planType: planType,
-      userId: enrollment.user_id,
-      formationId: enrollment.formation_id
-    });
-    setShowApprovalModal(false);
-  };
-
-  const handleReject = () => {
-    if (!rejectionReason.trim()) {
-      toast.error('Veuillez indiquer une raison pour le rejet');
-      return;
-    }
-    
-    onApprove({
-      enrollmentId: enrollment.id,
-      status: 'rejected',
-      rejectedReason: rejectionReason
-    });
-  };
-
-  const handlePlanChange = (value: string) => {
-    if (value === 'free' || value === 'standard' || value === 'premium') {
-      setSelectedPlan(value);
-    }
-  };
-
-  const handleUpdatePlan = () => {
-    onApprove({
-      enrollmentId: enrollment.id,
-      status: 'approved',
+      rejectedReason: undefined,
       planType: selectedPlan,
       userId: enrollment.user_id,
       formationId: enrollment.formation_id
     });
   };
 
-  const requestedPlan = getPlanInfo(enrollment.plan_type || 'free');
-  const selectedPlanInfo = getPlanInfo(selectedPlan);
+  const handleReject = () => {
+    if (rejectionReason.trim()) {
+      onApprove({
+        enrollmentId: enrollment.id,
+        status: 'rejected',
+        rejectedReason: rejectionReason
+      });
+    }
+  };
 
-  // Nom complet de l'étudiant
-  const studentName = enrollment.profiles?.first_name && enrollment.profiles?.last_name
-    ? `${enrollment.profiles.first_name} ${enrollment.profiles.last_name}`
-    : enrollment.profiles?.username || 'Utilisateur inconnu';
+  const handleView = () => {
+    console.log('Voir les détails de la demande:', enrollment.id);
+  };
+
+  const handleRejectClick = () => {
+    setShowRejectionField(true);
+  };
 
   return (
-    <>
-      <Card className="w-full shadow-sm hover:shadow-md transition-shadow bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
-        <CardHeader className="pb-3 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2 text-indigo-800">
-              <Clock size={18} />
-              Demande d'inscription
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              {getStatusBadge()}
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
-              >
-                <Eye size={14} />
-                Voir
-              </Button>
-            </div>
+    <Card className="w-full shadow-sm hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Clock size={18} />
+            Demande d'inscription
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {getStatusBadge()}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleView}
+              className="flex items-center gap-1"
+            >
+              <Eye size={14} />
+              Voir
+            </Button>
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          {/* Informations utilisateur */}
-          <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-indigo-100">
-            <Avatar className="h-12 w-12">
-              <AvatarImage 
-                src={enrollment.profiles?.avatar_url || ''} 
-                alt={enrollment.profiles?.username || 'User'} 
-              />
-              <AvatarFallback>
-                <User size={20} />
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-800">{studentName}</h3>
-              <p className="text-sm text-gray-600">{enrollment.profiles?.email}</p>
-              <p className="text-xs text-gray-500">
-                Demande créée le {new Date(enrollment.created_at).toLocaleDateString('fr-FR')}
-              </p>
-            </div>
-          </div>
-
-          {/* Informations formation */}
-          <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-            <h4 className="font-medium text-indigo-900">Formation demandée</h4>
-            <p className="text-sm text-indigo-700">
-              {enrollment.formations?.title || 'Formation inconnue'}
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {/* Informations utilisateur */}
+        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <Avatar className="h-12 w-12">
+            <AvatarImage 
+              src={enrollment.profiles?.avatar_url || ''} 
+              alt={enrollment.profiles?.username || 'User'} 
+            />
+            <AvatarFallback>
+              <User size={20} />
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h3 className="font-semibold">
+              {enrollment.profiles?.first_name && enrollment.profiles?.last_name
+                ? `${enrollment.profiles.first_name} ${enrollment.profiles.last_name}`
+                : enrollment.profiles?.username || 'Utilisateur inconnu'
+              }
+            </h3>
+            <p className="text-sm text-gray-600">{enrollment.profiles?.email}</p>
+            <p className="text-xs text-gray-500">
+              Demande créée le {new Date(enrollment.created_at).toLocaleDateString('fr-FR')}
             </p>
           </div>
+        </div>
 
-          {/* Plan demandé */}
+        {/* Informations formation */}
+        <div className="p-3 bg-blue-50 rounded-lg">
+          <h4 className="font-medium text-blue-900">Formation demandée</h4>
+          <p className="text-sm text-blue-700">
+            {enrollment.formations?.title || 'Formation inconnue'}
+          </p>
+        </div>
+
+        {/* Section plan avec sélecteur pour admin */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Plan demandé :</span>
-            <Badge className={requestedPlan.color}>
-              <div className="flex items-center gap-1">
-                {requestedPlan.icon}
-                {requestedPlan.label}
-              </div>
+            <span className="text-sm font-medium text-gray-700">
+              Plan demandé par l'étudiant:
+            </span>
+            <Badge className={getPlanBadgeColor(enrollment.plan_type || 'free')}>
+              {getPlanLabel(enrollment.plan_type || 'free')}
             </Badge>
           </div>
-
-          {/* Raison du rejet pour les demandes en attente */}
+          
           {enrollment.status === 'pending' && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Raison du rejet (optionnel) :
+                Plan à approuver (Admin):
               </label>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full p-3 border border-indigo-300 rounded-md text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                rows={3}
-                placeholder="Expliquez pourquoi la demande est rejetée..."
-              />
+              <Select
+                value={selectedPlan}
+                onValueChange={(value: 'free' | 'standard' | 'premium') => setSelectedPlan(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Gratuit</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                </SelectContent>
+              </Select>
+              {selectedPlan !== enrollment.plan_type && (
+                <p className="text-xs text-orange-600">
+                  ⚠️ Vous approuvez un plan différent de celui demandé par l'étudiant
+                </p>
+              )}
             </div>
           )}
+          
+          {enrollment.status === 'approved' && (
+            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-sm text-green-800">
+                <strong>Plan approuvé:</strong> {getPlanLabel(enrollment.plan_type || 'free')}
+              </p>
+            </div>
+          )}
+        </div>
 
-          {/* Actions */}
-          <div className="space-y-3 pt-2">
-            {/* Boutons d'action */}
-            {enrollment.status === 'pending' ? (
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleApprovalClick}
-                  disabled={isUpdating}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
-                >
-                  <CheckCircle size={16} className="mr-2" />
-                  {isUpdating ? 'Approbation...' : 'Approuver'}
-                </Button>
-                <Button
-                  onClick={handleReject}
-                  disabled={isUpdating}
-                  variant="destructive"
-                  className="flex-1"
-                >
-                  <XCircle size={16} className="mr-2" />
-                  {isUpdating ? 'Rejet...' : 'Rejeter'}
-                </Button>
-              </div>
-            ) : enrollment.status === 'approved' && (
-              <>
-                {/* Sélecteur de plan pour modification */}
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-gray-700 min-w-fit">
-                    Modifier le plan :
-                  </label>
-                  <Select value={selectedPlan} onValueChange={handlePlanChange}>
-                    <SelectTrigger className="flex-1 border-indigo-300 focus:ring-indigo-500">
-                      <SelectValue>
-                        <div className="flex items-center gap-2">
-                          {selectedPlanInfo.icon}
-                          {selectedPlanInfo.label}
-                        </div>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="free">
-                        <div className="flex items-center gap-2">
-                          <User size={16} />
-                          Gratuit
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="standard">
-                        <div className="flex items-center gap-2">
-                          <Star size={16} />
-                          Standard
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="premium">
-                        <div className="flex items-center gap-2">
-                          <Crown size={16} />
-                          Premium
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <Button
-                  onClick={handleUpdatePlan}
-                  disabled={isUpdating}
-                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
-                >
-                  <CheckCircle size={16} className="mr-2" />
-                  {isUpdating ? 'Mise à jour...' : `Mettre à jour le plan (${selectedPlanInfo.label})`}
-                </Button>
+        {/* Champ de justification du rejet (visible uniquement si rejet cliqué) */}
+        {showRejectionField && enrollment.status === 'pending' && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Raison du rejet:
+            </label>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-md text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+              placeholder="Expliquez pourquoi la demande est rejetée..."
+              required
+            />
+          </div>
+        )}
 
-                {/* Affichage du plan actuel */}
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-800 flex items-center gap-2">
-                    <CheckCircle size={16} />
-                    <strong>Plan actuel :</strong> 
-                    <Badge className={getPlanInfo(enrollment.plan_type || 'free').color}>
-                      <div className="flex items-center gap-1">
-                        {getPlanInfo(enrollment.plan_type || 'free').icon}
-                        {getPlanInfo(enrollment.plan_type || 'free').label}
-                      </div>
-                    </Badge>
-                  </p>
-                </div>
-              </>
+        {/* Actions */}
+        {enrollment.status === 'pending' && (
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={handleApprove}
+              disabled={isUpdating}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <CheckCircle size={16} className="mr-2" />
+              {isUpdating ? 'Approbation...' : 'Approuver'}
+            </Button>
+            
+            {!showRejectionField ? (
+              <Button
+                onClick={handleRejectClick}
+                disabled={isUpdating}
+                variant="destructive"
+                className="flex-1"
+              >
+                <XCircle size={16} className="mr-2" />
+                Rejeter
+              </Button>
+            ) : (
+              <Button
+                onClick={handleReject}
+                disabled={isUpdating || !rejectionReason.trim()}
+                variant="destructive"
+                className="flex-1"
+              >
+                <XCircle size={16} className="mr-2" />
+                {isUpdating ? 'Rejet...' : 'Confirmer le rejet'}
+              </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Modal d'approbation */}
-      <EnrollmentApprovalModal
-        isOpen={showApprovalModal}
-        onClose={() => setShowApprovalModal(false)}
-        onApprove={handleModalApprove}
-        isUpdating={isUpdating}
-        studentName={studentName}
-        formationTitle={enrollment.formations?.title}
-      />
-    </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

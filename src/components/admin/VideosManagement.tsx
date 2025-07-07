@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useVideos } from '@/hooks/useVideos';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import VideoCreateForm from './video/VideoCreateForm';
+import EnhancedVideoCreateForm from './video/EnhancedVideoCreateForm';
 import VideoEditForm from './video/VideoEditForm';
 
 interface Video {
@@ -81,7 +81,7 @@ const VideosManagement = () => {
             <DialogHeader>
               <DialogTitle>Créer une nouvelle vidéo</DialogTitle>
             </DialogHeader>
-            <VideoCreateForm 
+            <EnhancedVideoCreateForm 
               onSuccess={handleCreateSuccess}
               onCancel={() => setIsCreateOpen(false)}
             />
