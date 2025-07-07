@@ -9,21 +9,42 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
-interface VideoCreateFormProps {
+interface Video {
+  id: string;
+  title: string;
+  description: string;
+  video_url: string;
+  thumbnail_url: string;
+  likes_count: number;
+  comments_count: number;
+  author_id: string;
+  video_type?: string;
+  formation_id?: string;
+  price?: number;
+  profiles?: {
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    avatar_url?: string;
+  };
+}
+
+interface VideoEditFormProps {
+  video: Video;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }) => {
+const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCancel }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    video_url: '',
-    thumbnail_url: '',
-    video_type: 'classic' as 'lesson' | 'promo' | 'classic',
-    formation_id: '',
-    price: '',
+    title: video.title || '',
+    description: video.description || '',
+    video_url: video.video_url || '',
+    thumbnail_url: video.thumbnail_url || '',
+    video_type: (video.video_type as 'lesson' | 'promo' | 'classic') || 'classic',
+    formation_id: video.formation_id || '',
+    price: video.price ? video.price.toString() : '',
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -50,20 +71,20 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
         video_type: formData.video_type,
         formation_id: formData.formation_id.trim() || null,
         price: formData.price ? parseFloat(formData.price) : null,
-        author_id: user?.id,
       };
 
       const { error } = await supabase
         .from('videos')
-        .insert(videoData);
+        .update(videoData)
+        .eq('id', video.id);
 
       if (error) throw error;
       
-      toast.success('Vidéo créée avec succès');
+      toast.success('Vidéo modifiée avec succès');
       onSuccess();
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Erreur lors de la création');
+      toast.error('Erreur lors de la modification');
     }
   };
 
@@ -162,7 +183,7 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
       
       <div className="flex space-x-2">
         <Button type="submit" className="flex-1">
-          Créer
+          Modifier
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           Annuler
@@ -172,4 +193,4 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
   );
 };
 
-export default VideoCreateForm;
+export default VideoEditForm;
