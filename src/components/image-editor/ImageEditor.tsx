@@ -57,6 +57,48 @@ const ImageEditor: React.FC<ImageEditorProps> = ({
     }
   });
 
+  // Fonction pour télécharger l'image
+  const handleDownload = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dataURL = canvas.toDataURL('image/png', 1.0);
+    const link = document.createElement('a');
+    link.download = `edited_${fileName}`;
+    link.href = dataURL;
+    link.click();
+  };
+
+  // Fonction pour sauvegarder et envoyer au chat
+  const handleSaveAndSendToChat = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    try {
+      const dataURL = canvas.toDataURL('image/png', 1.0);
+      
+      // D'abord sauvegarder
+      if (onSave) {
+        await onSave(dataURL);
+      }
+      
+      // Puis proposer d'envoyer au chat (logique à implémenter selon le contexte)
+      // Pour l'instant, on crée un lien de téléchargement avec un nom spécial
+      const response = await fetch(dataURL);
+      const blob = await response.blob();
+      const file = new File([blob], `edited_${fileName}`, { type: 'image/png' });
+      
+      // Ici on pourrait déclencher un événement ou callback pour envoyer au chat
+      console.log('Image prête à être envoyée au chat:', file);
+      
+      // Pour l'instant, on télécharge avec un nom spécial pour indiquer qu'elle doit être envoyée
+      handleDownload();
+      
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde et envoi:', error);
+    }
+  };
+
   const handleMenuChange = (menu: MenuType) => {
     if (isMobile) {
       // Toggle intelligente en mobile
@@ -94,6 +136,9 @@ const ImageEditor: React.FC<ImageEditorProps> = ({
     if (tool.startsWith('rotate-') || tool.startsWith('flip-') || tool.startsWith('zoom-') || tool === 'crop') {
       applyTransform?.(tool);
     }
+    
+    // Mettre à jour l'outil actuel pour le hook
+    setCurrentTool(tool);
   };
 
   const handleCloseDynamicSection = () => {
@@ -104,9 +149,11 @@ const ImageEditor: React.FC<ImageEditorProps> = ({
     <div className="w-screen h-screen overflow-hidden bg-muted flex flex-col">
       <Header 
         onSave={handleSave}
+        onSaveAndSendToChat={handleSaveAndSendToChat}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onClose={onClose}
+        onDownload={handleDownload}
         canUndo={canUndo}
         canRedo={canRedo}
         isSaving={isSaving}

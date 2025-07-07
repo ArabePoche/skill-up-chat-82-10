@@ -1,12 +1,16 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, Undo, Redo, X } from 'lucide-react';
+import { Undo, Redo, X, Download } from 'lucide-react';
+import SaveOptions from './SaveOptions';
 
 interface HeaderProps {
   onSave: () => void;
+  onSaveAndSendToChat?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onClose?: () => void;
+  onDownload?: () => void;
   canUndo: boolean;
   canRedo: boolean;
   isSaving: boolean;
@@ -14,9 +18,11 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({
   onSave,
+  onSaveAndSendToChat,
   onUndo,
   onRedo,
   onClose,
+  onDownload,
   canUndo,
   canRedo,
   isSaving
@@ -46,16 +52,12 @@ const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          variant="default"
-          size="sm"
-          onClick={onSave}
-          disabled={isSaving}
-          title="Sauvegarder"
-        >
-          <Save size={16} />
-          {isSaving && <span className="ml-2">...</span>}
-        </Button>
+        <SaveOptions
+          onSave={onSave}
+          onSaveAndSendToChat={onSaveAndSendToChat}
+          onDownload={onDownload}
+          isSaving={isSaving}
+        />
         
         {onClose && (
           <Button

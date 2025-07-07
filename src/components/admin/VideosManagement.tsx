@@ -1,17 +1,13 @@
-
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Play, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVideos } from '@/hooks/useVideos';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import VideoCreateForm from './video/VideoCreateForm';
+import VideoEditForm from './video/VideoEditForm';
 
 interface Video {
   id: string;
@@ -35,86 +31,21 @@ interface Video {
 
 const VideosManagement = () => {
   const { data: videos = [], refetch } = useVideos();
-  const { user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    video_url: '',
-    thumbnail_url: '',
-    video_type: 'classic' as 'lesson' | 'promo' | 'classic',
-    formation_id: '',
-    price: '',
-  });
 
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      video_url: '',
-      thumbnail_url: '',
-      video_type: 'classic' as 'lesson' | 'promo' | 'classic',
-      formation_id: '',
-      price: '',
-    });
+  const handleCreateSuccess = () => {
+    setIsCreateOpen(false);
+    refetch();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      const videoData = {
-        title: formData.title,
-        description: formData.description,
-        video_url: formData.video_url,
-        thumbnail_url: formData.thumbnail_url,
-        video_type: formData.video_type,
-        formation_id: formData.formation_id || null,
-        price: formData.price ? parseFloat(formData.price) : null,
-        author_id: user?.id,
-      };
-
-      if (editingVideo) {
-        // Modification
-        const { error } = await supabase
-          .from('videos')
-          .update(videoData)
-          .eq('id', editingVideo.id);
-
-        if (error) throw error;
-        toast.success('Vidéo modifiée avec succès');
-        setEditingVideo(null);
-      } else {
-        // Création
-        const { error } = await supabase
-          .from('videos')
-          .insert(videoData);
-
-        if (error) throw error;
-        toast.success('Vidéo créée avec succès');
-        setIsCreateOpen(false);
-      }
-
-      resetForm();
-      refetch();
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Erreur lors de la sauvegarde');
-    }
+  const handleEditSuccess = () => {
+    setEditingVideo(null);
+    refetch();
   };
 
   const handleEdit = (video: Video) => {
     setEditingVideo(video);
-    setFormData({
-      title: video.title,
-      description: video.description,
-      video_url: video.video_url,
-      thumbnail_url: video.thumbnail_url,
-      video_type: (video.video_type as 'lesson' | 'promo' | 'classic') || 'classic',
-      formation_id: video.formation_id || '',
-      price: video.price ? video.price.toString() : '',
-    });
   };
 
   const handleDelete = async (id: string) => {
@@ -135,113 +66,6 @@ const VideosManagement = () => {
     }
   };
 
-  const VideoForm = () => (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="title">Titre</Label>
-        <Input
-          id="title"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          required
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          rows={3}
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="video_url">URL de la vidéo</Label>
-        <Input
-          id="video_url"
-          type="url"
-          value={formData.video_url}
-          onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-          required
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="thumbnail_url">URL de la miniature</Label>
-        <Input
-          id="thumbnail_url"
-          type="url"
-          value={formData.thumbnail_url}
-          onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="video_type">Type de vidéo</Label>
-        <Select
-          value={formData.video_type}
-          onValueChange={(value: 'lesson' | 'promo' | 'classic') => 
-            setFormData({ ...formData, video_type: value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Sélectionner le type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="classic">Classique</SelectItem>
-            <SelectItem value="promo">Promotion</SelectItem>
-            <SelectItem value="lesson">Leçon</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {formData.video_type === 'promo' && (
-        <>
-          <div>
-            <Label htmlFor="formation_id">ID Formation</Label>
-            <Input
-              id="formation_id"
-              value={formData.formation_id}
-              onChange={(e) => setFormData({ ...formData, formation_id: e.target.value })}
-              placeholder="UUID de la formation"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="price">Prix (€/mois)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="29.99"
-            />
-          </div>
-        </>
-      )}
-      
-      <div className="flex space-x-2">
-        <Button type="submit" className="flex-1">
-          {editingVideo ? 'Modifier' : 'Créer'}
-        </Button>
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={() => {
-            resetForm();
-            setIsCreateOpen(false);
-            setEditingVideo(null);
-          }}
-        >
-          Annuler
-        </Button>
-      </div>
-    </form>
-  );
-
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -257,7 +81,10 @@ const VideosManagement = () => {
             <DialogHeader>
               <DialogTitle>Créer une nouvelle vidéo</DialogTitle>
             </DialogHeader>
-            <VideoForm />
+            <VideoCreateForm 
+              onSuccess={handleCreateSuccess}
+              onCancel={() => setIsCreateOpen(false)}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -339,7 +166,11 @@ const VideosManagement = () => {
             <DialogHeader>
               <DialogTitle>Modifier la vidéo</DialogTitle>
             </DialogHeader>
-            <VideoForm />
+            <VideoEditForm 
+              video={editingVideo}
+              onSuccess={handleEditSuccess}
+              onCancel={() => setEditingVideo(null)}
+            />
           </DialogContent>
         </Dialog>
       )}
