@@ -1,9 +1,30 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import MainContent from '@/components/MainContent';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 const Layout: React.FC = () => {
+  const location = useLocation();
+  const { setCurrentView } = useNavigation();
+
+  // Synchroniser la vue actuelle avec la route
+  useEffect(() => {
+    const path = location.pathname;
+    
+    if (path === '/' || path === '/home') {
+      setCurrentView('home');
+    } else if (path === '/shop') {
+      setCurrentView('shop');
+    } else if (path === '/cours') {
+      setCurrentView('cours');
+    } else if (path === '/messages') {
+      setCurrentView('messages');
+    } else if (path === '/profil') {
+      setCurrentView('profil');
+    }
+  }, [location.pathname, setCurrentView]);
+
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden">
       {/* Contenu principal - prend tout l'espace disponible */}
