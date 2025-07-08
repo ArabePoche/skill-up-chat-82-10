@@ -24,12 +24,17 @@ export const useIsTeacherInFormation = (formationId: string | undefined) => {
         return false;
       }
 
-      // Vérifier si l'utilisateur est professeur dans cette formation spécifique
+      // Vérifier si l'utilisateur est professeur dans cette formation spécifique via teacher_formations
       const { data: teacher } = await supabase
         .from('teachers')
-        .select('id')
+        .select(`
+          id,
+          teacher_formations!inner (
+            formation_id
+          )
+        `)
         .eq('user_id', user.id)
-        .eq('formation_id', formationId)
+        .eq('teacher_formations.formation_id', formationId)
         .single();
 
       const isTeacher = !!teacher;

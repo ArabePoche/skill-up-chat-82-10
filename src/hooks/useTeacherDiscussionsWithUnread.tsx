@@ -31,19 +31,16 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
       console.log('Fetching teacher discussions with unread counts for formation:', formationId);
 
       // Vérifier si l'utilisateur est professeur de cette formation via teacher_formations
-      const { data: teacherFormationCheck } = await supabase
-        .from('teacher_formations')
-        .select('teacher_id')
-        .eq('formation_id', formationId)
-        .in('teacher_id', [
-          // Récupérer d'abord l'ID du teacher
-          (await supabase
-            .from('teachers')
-            .select('id')
-            .eq('user_id', user.id)
-            .maybeSingle()
-          ).data?.id
-        ].filter(Boolean))
+      const { data: teacherCheck } = await supabase
+        .from('teachers')
+        .select(`
+          id,
+          teacher_formations!inner (
+            formation_id
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('teacher_formations.formation_id', formationId)
         .maybeSingle();
 
       if (!teacherFormationCheck) {

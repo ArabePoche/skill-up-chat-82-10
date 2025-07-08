@@ -13,16 +13,18 @@ export const useUserRole = (formationId: string | undefined) => {
 
       console.log('Checking user role for:', user.id, 'in formation:', formationId);
 
-      // Vérifier si l'utilisateur est professeur de cette formation spécifique
+      // Vérifier si l'utilisateur est professeur de cette formation spécifique via teacher_formations
       const { data: teacherData, error: teacherError } = await supabase
         .from('teachers')
         .select(`
           id,
           user_id,
-          formation_id
+          teacher_formations!inner (
+            formation_id
+          )
         `)
         .eq('user_id', user.id)
-        .eq('formation_id', formationId)
+        .eq('teacher_formations.formation_id', formationId)
         .single();
 
       if (!teacherError && teacherData) {
@@ -30,7 +32,7 @@ export const useUserRole = (formationId: string | undefined) => {
         return {
           role: 'teacher',
           teacherId: teacherData.id,
-          formationId: teacherData.formation_id
+          formationId: teacherData.teacher_formations[0].formation_id
         };
       }
 

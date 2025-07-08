@@ -11,12 +11,17 @@ export const useUnreadMessagesBadge = (formationId?: string) => {
     queryFn: async () => {
       if (!user?.id || !formationId) return 0;
 
-      // Vérifier si l'utilisateur est professeur
+      // Vérifier si l'utilisateur est professeur via teacher_formations
       const { data: teacherCheck } = await supabase
         .from('teachers')
-        .select('id')
+        .select(`
+          id,
+          teacher_formations!inner (
+            formation_id
+          )
+        `)
         .eq('user_id', user.id)
-        .eq('formation_id', formationId)
+        .eq('teacher_formations.formation_id', formationId)
         .single();
 
       if (!teacherCheck) return 0;

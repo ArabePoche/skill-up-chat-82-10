@@ -88,8 +88,13 @@ export const useStudentMessages = (lessonId: string | undefined, formationId: st
 async function getTeacherIdsInFormation(formationId: string): Promise<string[]> {
   const { data: teachers } = await supabase
     .from('teachers')
-    .select('user_id')
-    .eq('formation_id', formationId);
+    .select(`
+      user_id,
+      teacher_formations!inner (
+        formation_id
+      )
+    `)
+    .eq('teacher_formations.formation_id', formationId);
 
   return teachers?.map(t => t.user_id) || [];
 }

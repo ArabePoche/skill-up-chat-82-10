@@ -20,11 +20,14 @@ export const useConversations = () => {
         supabase
           .from('teachers')
           .select(`
-            formation_id,
-            formations:formation_id (
-              id,
-              title,
-              description
+            id,
+            teacher_formations!inner (
+              formation_id,
+              formations (
+                id,
+                title,
+                description
+              )
             )
           `)
           .eq('user_id', user.id),
@@ -71,18 +74,20 @@ export const useConversations = () => {
       // Ajouter les conversations des formations où l'utilisateur est enseignant
       if (teacherFormations.data) {
         for (const teacher of teacherFormations.data) {
-          if (teacher.formations) {
-            conversations.push({
-              id: `teacher-${teacher.formations.id}`,
-              name: `${teacher.formations.title} - Groupe`,
-              lastMessage: 'Formation dont vous êtes professeur',
-              timestamp: 'Aujourd\'hui',
-              unread: 0,
-              avatar: '👨‍🏫',
-              online: false,
-              type: 'formation_teacher',
-              formationId: teacher.formations.id
-            });
+          for (const tf of teacher.teacher_formations) {
+            if (tf.formations) {
+              conversations.push({
+                id: `teacher-${tf.formations.id}`,
+                name: `${tf.formations.title} - Groupe`,
+                lastMessage: 'Formation dont vous êtes professeur',
+                timestamp: 'Aujourd\'hui',
+                unread: 0,
+                avatar: '👨‍🏫',
+                online: false,
+                type: 'formation_teacher',
+                formationId: tf.formations.id
+              });
+            }
           }
         }
       }
