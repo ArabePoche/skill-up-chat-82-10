@@ -1,34 +1,46 @@
 
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, ShoppingBag, MessageSquare, User, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
 
 const Navbar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { currentView, setCurrentView } = useNavigation();
   const { data: unreadCounts } = useUnreadCounts();
 
   const navItems = [
-    { icon: Home, label: 'Accueil', view: 'home' as NavigationView },
-    { icon: ShoppingBag, label: 'Shop', view: 'shop' as NavigationView },
-    { icon: GraduationCap, label: 'Cours', view: 'cours' as NavigationView, special: true },
-    { icon: MessageSquare, label: 'Messages', view: 'messages' as NavigationView },
-    { icon: User, label: 'Profil', view: 'profil' as NavigationView },
+    { icon: Home, label: 'Accueil', view: 'home' as NavigationView, path: '/' },
+    { icon: ShoppingBag, label: 'Shop', view: 'shop' as NavigationView, path: '/shop' },
+    { icon: GraduationCap, label: 'Cours', view: 'cours' as NavigationView, path: '/cours', special: true },
+    { icon: MessageSquare, label: 'Messages', view: 'messages' as NavigationView, path: '/messages' },
+    { icon: User, label: 'Profil', view: 'profil' as NavigationView, path: '/profil' },
   ];
+
+  const handleNavigation = (item: typeof navItems[0]) => {
+    setCurrentView(item.view);
+    navigate(item.path);
+  };
+
+  const isCurrentRoute = (path: string) => {
+    return location.pathname === path || (path === '/' && location.pathname === '/home');
+  };
 
   return (
     <nav className="bg-white border-t border-gray-200 px-4 py-2">
       <div className="flex justify-around items-center">
         {navItems.map((item) => {
-          const isActive = currentView === item.view;
+          const isActive = isCurrentRoute(item.path);
           const Icon = item.icon;
           const showBadge = item.view === 'messages' && unreadCounts && unreadCounts.total > 0;
           
           return (
             <button
               key={item.view}
-              onClick={() => setCurrentView(item.view)}
+              onClick={() => handleNavigation(item)}
               className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 relative ${
                 isActive
                   ? 'text-edu-primary bg-edu-primary/10'

@@ -8,6 +8,7 @@ import EnhancedVideoPlayer from '@/components/video/EnhancedVideoPlayer';
 import VideoUserProfile from './VideoUserProfile';
 import VideoLike from './VideoLike';
 import VideoFavoris from './VideoFavoris';
+import VideoComment from './VideoComment';
 import VideoCommentsModal from './VideoCommentsModal';
 import { Share } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
