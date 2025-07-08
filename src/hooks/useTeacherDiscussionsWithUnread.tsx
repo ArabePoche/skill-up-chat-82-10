@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,15 +30,23 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
 
       console.log('Fetching teacher discussions with unread counts for formation:', formationId);
 
-      // Vérifier si l'utilisateur est professeur de cette formation
-      const { data: teacherCheck } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('user_id', user.id)
+      // Vérifier si l'utilisateur est professeur de cette formation via teacher_formations
+      const { data: teacherFormationCheck } = await supabase
+        .from('teacher_formations')
+        .select('teacher_id')
         .eq('formation_id', formationId)
+        .in('teacher_id', [
+          // Récupérer d'abord l'ID du teacher
+          (await supabase
+            .from('teachers')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+          ).data?.id
+        ].filter(Boolean))
         .maybeSingle();
 
-      if (!teacherCheck) {
+      if (!teacherFormationCheck) {
         console.error('User is not a teacher in this formation');
         return [];
       }
@@ -173,6 +180,6 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
       return sortedDiscussions;
     },
     enabled: !!formationId && !!user?.id,
-    refetchInterval: 5000, // Actualiser toutes les 5 secondes
+    refetchInterval: 3000, // Actualiser toutes les 5 secondes
   });
 };
