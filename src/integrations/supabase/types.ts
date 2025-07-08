@@ -243,6 +243,7 @@ export type Database = {
       enrollment_requests: {
         Row: {
           created_at: string | null
+          decided_by: string | null
           formation_id: string
           id: string
           plan_type: string | null
@@ -253,6 +254,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          decided_by?: string | null
           formation_id: string
           id?: string
           plan_type?: string | null
@@ -263,6 +265,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          decided_by?: string | null
           formation_id?: string
           id?: string
           plan_type?: string | null
@@ -272,6 +275,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "enrollment_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "enrollment_requests_formation_id_fkey"
             columns: ["formation_id"]
@@ -987,11 +997,15 @@ export type Database = {
         Row: {
           created_at: string
           enrollment_id: string | null
+          formation_id: string | null
           id: string
           is_for_all_admins: boolean
           is_read: boolean
           message: string
           order_id: string | null
+          requested_plan_type: string | null
+          subscription_approved_by: string | null
+          subscription_plan_changed_by: string | null
           title: string
           type: string
           updated_at: string
@@ -1000,11 +1014,15 @@ export type Database = {
         Insert: {
           created_at?: string
           enrollment_id?: string | null
+          formation_id?: string | null
           id?: string
           is_for_all_admins?: boolean
           is_read?: boolean
           message: string
           order_id?: string | null
+          requested_plan_type?: string | null
+          subscription_approved_by?: string | null
+          subscription_plan_changed_by?: string | null
           title: string
           type?: string
           updated_at?: string
@@ -1013,11 +1031,15 @@ export type Database = {
         Update: {
           created_at?: string
           enrollment_id?: string | null
+          formation_id?: string | null
           id?: string
           is_for_all_admins?: boolean
           is_read?: boolean
           message?: string
           order_id?: string | null
+          requested_plan_type?: string | null
+          subscription_approved_by?: string | null
+          subscription_plan_changed_by?: string | null
           title?: string
           type?: string
           updated_at?: string
@@ -1029,6 +1051,13 @@ export type Database = {
             columns: ["enrollment_id"]
             isOneToOne: false
             referencedRelation: "enrollment_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
             referencedColumns: ["id"]
           },
           {
@@ -1642,7 +1671,6 @@ export type Database = {
           created_at: string | null
           email: string
           first_name: string
-          formation_id: string
           id: string
           last_name: string
           user_id: string | null
@@ -1652,7 +1680,6 @@ export type Database = {
           created_at?: string | null
           email: string
           first_name: string
-          formation_id: string
           id?: string
           last_name: string
           user_id?: string | null
@@ -1662,19 +1689,11 @@ export type Database = {
           created_at?: string | null
           email?: string
           first_name?: string
-          formation_id?: string
           id?: string
           last_name?: string
           user_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "teachers_formation_id_fkey"
-            columns: ["formation_id"]
-            isOneToOne: false
-            referencedRelation: "formations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "teachers_user_id_fkey"
             columns: ["user_id"]
@@ -2113,6 +2132,7 @@ export type Database = {
           p_user_id: string
           p_formation_id: string
           p_enrollment_id: string
+          p_decided_by?: string
         }
         Returns: undefined
       }
@@ -2204,6 +2224,7 @@ export type Database = {
           p_formation_id: string
           p_reason: string
           p_enrollment_id: string
+          p_decided_by?: string
         }
         Returns: undefined
       }
