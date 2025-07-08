@@ -456,7 +456,7 @@ const ExercisesManagement: React.FC<ExercisesManagementProps> = ({
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogContent className="max-w-md sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Modifier l'exercice</DialogTitle>
+                <DialogTitle>Modifiez l'exercice</DialogTitle>
               </DialogHeader>
               {editingExercise && (
                 <ScrollArea className="max-h-[70vh] pr-4">
