@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowLeft, Users, Wifi, WifiOff, Video, Phone } from 'lucide-react';
+import { ArrowLeft, Users, Wifi, WifiOff, Video, Phone, MonitorPlay } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ interface TeacherChatHeaderProps {
   isSubscribed: boolean;
   typingUsersCount: number;
   onBack: () => void;
+  onOpenStudio?: () => void;
 }
 
 const TeacherChatHeader: React.FC<TeacherChatHeaderProps> = ({
@@ -38,7 +39,8 @@ const TeacherChatHeader: React.FC<TeacherChatHeaderProps> = ({
   lesson,
   isSubscribed,
   typingUsersCount,
-  onBack
+  onBack,
+  onOpenStudio
 }) => {
   const studentName = student.profiles?.first_name || student.profiles?.username || 'Étudiant';
   const { initiateCall } = useCallFunctionality(formation.id);
@@ -121,8 +123,17 @@ const TeacherChatHeader: React.FC<TeacherChatHeaderProps> = ({
           </div>
         </div>
         
-        {/* Boutons d'appels */}
+        {/* Boutons d'appels et studio */}
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-blue-600 hover:bg-blue-50"
+            onClick={onOpenStudio}
+            title="Studio d'enseignement"
+          >
+            <MonitorPlay size={20} />
+          </Button>
           <Button
             variant="ghost"
             size="sm"

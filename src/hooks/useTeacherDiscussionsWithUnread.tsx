@@ -43,7 +43,7 @@ export const useTeacherDiscussionsWithUnread = (formationId: string) => {
         .eq('teacher_formations.formation_id', formationId)
         .maybeSingle();
 
-      if (!teacherFormationCheck) {
+      if (!teacherCheck) {
         console.error('User is not a teacher in this formation');
         return [];
       }

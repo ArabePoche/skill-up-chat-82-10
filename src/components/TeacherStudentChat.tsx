@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import MessageItem from './chat/MessageItem';
 import TypingIndicator from './chat/TypingIndicator';
 import TeacherChatHeader from './teacher/TeacherChatHeader';
@@ -6,6 +6,7 @@ import ChatInputBar from './chat/ChatInputBar';
 import InterviewToggleButton from './teacher/InterviewToggleButton';
 import VideoMessageSwitch from './video/VideoMessageSwitch';
 import LessonVideoPlayer from './LessonVideoPlayer';
+import TeachingStudio from './live-classroom/TeachingStudio';
 import { useTeacherStudentMessages } from '@/hooks/useTeacherStudentMessages';
 import { useSendTeacherStudentMessage } from '@/hooks/useSendTeacherStudentMessage';
 import { useValidateExercise } from '@/hooks/useValidateExercise';
@@ -49,6 +50,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const [showStudio, setShowStudio] = useState(false);
   
   // Hooks pour la gestion des messages
   const { data: messages = [], isLoading } = useTeacherStudentMessages(
@@ -140,6 +142,17 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
     );
   }
 
+  if (showStudio) {
+    return (
+      <TeachingStudio
+        formationId={formation.id}
+        lessonId={lesson.id}
+        lesson={lesson}
+        onClose={() => setShowStudio(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#e5ddd5] flex flex-col pb-24 md:pb-4 md:pt-16 relative">
       <TeacherChatHeader
@@ -149,6 +162,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
         isSubscribed={isSubscribed}
         typingUsersCount={typingUsers.length}
         onBack={onBack}
+        onOpenStudio={() => setShowStudio(true)}
       />
 
       {/* Section Vidéo */}
