@@ -27,14 +27,14 @@ const Layout: React.FC = () => {
   }, [location.pathname, setCurrentView]);
 
   return (
-    <div className="h-screen w-full flex flex-col">
+    <div className="h-screen w-full flex flex-col overflow-y-auto">
       {/* Contenu principal - prend tout l'espace disponible */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1">
         <MainContent />
       </div>
       
       {/* Navbar fixe en bas - indépendante et toujours visible */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg flex-shrink-0">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
         <Navbar />
       </div>
     </div>

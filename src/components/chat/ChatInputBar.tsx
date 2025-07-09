@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Send, Paperclip, Smile } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +7,7 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
 import EmojiPicker from '@/components/EmojiPicker';
-import ResponsiveVoiceRecorder from './ResponsiveVoiceRecorder';
+import WhatsAppVoiceRecorder from './WhatsAppVoiceRecorder';
 import EnhancedCameraCapture from './EnhancedCameraCapture';
 import { SubscriptionUpgradeModal } from './SubscriptionUpgradeModal';
 import { toast } from 'sonner';
@@ -67,12 +66,14 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       return;
     }
 
+    // Vérifier les permissions au moment de l'envoi
     const permission = checkPermission('message');
     if (!permission.allowed) {
       showRestrictionModal(permission.message || 'Action non autorisée', permission.restrictionType, permission.currentPlan);
       return;
     }
 
+    // Envoyer le message si autorisé
     onSendMessage(message, 'text');
     incrementMessageCount();
     setMessage('');
@@ -96,6 +97,12 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       startTyping();
     }
     setIsEmojiPickerOpen(false);
+  };
+
+  const handleFileUpload = () => {
+    checkAuthAndExecute(() => {
+      fileInputRef.current?.click();
+    });
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,16 +194,14 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   return (
     <>
-      {/* Input bar fixe en bas - responsive */}
       <div className="bg-[#f0f0f0] border-t border-gray-200 p-2 sm:p-3 fixed bottom-16 left-0 right-0 md:relative md:bottom-0 z-50">
         <div className="flex items-end space-x-2 sm:space-x-3 max-w-full">
-          {/* Bouton fichier */}
           <button 
             onClick={() => checkAuthAndExecute(() => fileInputRef.current?.click())}
             disabled={isUploading}
-            className="p-2 text-gray-500 hover:text-[#25d366] transition-colors rounded-full hover:bg-gray-200 disabled:opacity-50 flex-shrink-0"
+            className="p-2 text-gray-500 hover:text-[#25d366] transition-colors rounded-full hover:bg-gray-200 disabled:opacity-50"
           >
-            <Paperclip size={16} className="sm:w-[18px] sm:h-[18px]" />
+            <Paperclip size={18} />
           </button>
           
           <input
@@ -207,15 +212,13 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
             onChange={handleFileSelect}
           />
           
-          {/* Zone de saisie principale - responsive */}
           <div className="flex-1 flex items-end space-x-1 sm:space-x-2 bg-white rounded-3xl px-3 sm:px-4 py-2 shadow-sm min-h-[40px] sm:min-h-[48px]">
-            {/* Emoji picker */}
-            <div className="relative flex-shrink-0">
+            <div className="relative">
               <button
                 onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
                 className="p-1 text-gray-500 hover:text-[#25d366] transition-colors"
               >
-                <Smile size={14} className="sm:w-[16px] sm:h-[16px]" />
+                <Smile size={16} className="sm:w-[18px] sm:h-[18px]" />
               </button>
               
               {isEmojiPickerOpen && (
@@ -229,7 +232,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               )}
             </div>
             
-            {/* Zone de texte responsive */}
             <textarea
               value={message}
               onChange={handleMessageChange}
@@ -251,24 +253,22 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               }}
             />
             
-            {/* Caméra */}
             <EnhancedCameraCapture
               onCapture={handleCameraCapture}
               disabled={false}
             />
           </div>
           
-          {/* Bouton d'envoi ou enregistrement vocal - responsive */}
           {message.trim() ? (
             <Button
               onClick={sendMessage}
-              className="bg-[#25d366] hover:bg-[#20c75a] p-2 sm:p-3 rounded-full shadow-lg min-w-[40px] h-[40px] sm:min-w-[48px] sm:h-[48px] flex-shrink-0"
+              className="bg-[#25d366] hover:bg-[#20c75a] p-2 sm:p-3 rounded-full shadow-lg min-w-[40px] h-[40px] sm:min-w-[48px] sm:h-[48px]"
               size="icon"
             >
-              <Send size={14} className="sm:w-[16px] sm:h-[16px]" />
+              <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
             </Button>
           ) : (
-            <ResponsiveVoiceRecorder
+            <WhatsAppVoiceRecorder
               onRecordingComplete={handleVoiceMessage}
               disabled={isUploading}
             />

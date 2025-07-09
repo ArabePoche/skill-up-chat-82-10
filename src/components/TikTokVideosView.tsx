@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import VideoCard from '@/components/video/VideoCard';
 import { useInfiniteVideos } from '@/hooks/useInfiniteVideos';
@@ -63,6 +62,7 @@ const TikTokVideosView: React.FC = () => {
     setShowConfetti(true);
   };
 
+
   if (!videos.length) {
     return (
       <div className="h-full flex items-center justify-center text-white">
@@ -74,23 +74,16 @@ const TikTokVideosView: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="relative h-screen w-full bg-black overflow-y-auto snap-y snap-mandatory"
+      className="relative h-full w-full bg-black overflow-y-auto snap-y snap-mandatory"
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
-      {/* Style pour masquer la scrollbar sur webkit */}
-      <style>{`
-        .relative::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-      
-      {/* Affichage de toutes les vidéos avec scroll fluide - PLEIN ÉCRAN */}
+      {/* Affichage de toutes les vidéos avec scroll fluide */}
       {videos.map((video, index) => (
         <div
           key={video.id}
           ref={(el) => (videoRefs.current[index] = el)}
           data-video-index={index}
-          className="relative w-full h-screen snap-start snap-always"
+          className="relative h-screen w-full snap-start snap-always"
         >
           <VideoCard
             video={video}

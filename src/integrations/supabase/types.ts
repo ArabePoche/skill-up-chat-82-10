@@ -25,7 +25,6 @@ export type Database = {
           started_at: string | null
           student_id: string
           teacher_id: string
-          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -37,7 +36,6 @@ export type Database = {
           started_at?: string | null
           student_id: string
           teacher_id: string
-          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -49,25 +47,31 @@ export type Database = {
           started_at?: string | null
           student_id?: string
           teacher_id?: string
-          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "active_interviews_formation_id_fkey1"
+            foreignKeyName: "active_interviews_formation_id_fkey"
             columns: ["formation_id"]
             isOneToOne: false
             referencedRelation: "formations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "active_interviews_lesson_id_fkey1"
+            foreignKeyName: "active_interviews_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "active_interviews_teacher_id_fkey2"
+            foreignKeyName: "active_interviews_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "active_interviews_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
@@ -84,7 +88,7 @@ export type Database = {
           formation_id: string
           id: string
           lesson_id: string
-          receiver_id: string | null
+          receiver_id: string
           started_at: string | null
           status: string
           updated_at: string
@@ -97,7 +101,7 @@ export type Database = {
           formation_id: string
           id?: string
           lesson_id: string
-          receiver_id?: string | null
+          receiver_id: string
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -110,7 +114,7 @@ export type Database = {
           formation_id?: string
           id?: string
           lesson_id?: string
-          receiver_id?: string | null
+          receiver_id?: string
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -700,66 +704,83 @@ export type Database = {
       interview_evaluations: {
         Row: {
           created_at: string | null
-          expires_at: string
-          feedback_text: string | null
+          expires_at: string | null
           formation_id: string
           id: string
           interview_session_id: string | null
           is_satisfied: boolean | null
           lesson_id: string
           responded_at: string | null
+          satisfaction_rating: number | null
           student_id: string
           teacher_id: string
-          updated_at: string | null
+          teacher_rating: number | null
+          wants_same_teacher: boolean | null
         }
         Insert: {
           created_at?: string | null
-          expires_at: string
-          feedback_text?: string | null
+          expires_at?: string | null
           formation_id: string
           id?: string
           interview_session_id?: string | null
           is_satisfied?: boolean | null
           lesson_id: string
           responded_at?: string | null
+          satisfaction_rating?: number | null
           student_id: string
           teacher_id: string
-          updated_at?: string | null
+          teacher_rating?: number | null
+          wants_same_teacher?: boolean | null
         }
         Update: {
           created_at?: string | null
-          expires_at?: string
-          feedback_text?: string | null
+          expires_at?: string | null
           formation_id?: string
           id?: string
           interview_session_id?: string | null
           is_satisfied?: boolean | null
           lesson_id?: string
           responded_at?: string | null
+          satisfaction_rating?: number | null
           student_id?: string
           teacher_id?: string
-          updated_at?: string | null
+          teacher_rating?: number | null
+          wants_same_teacher?: boolean | null
         }
         Relationships: [
           {
-            foreignKeyName: "interview_evaluations_formation_id_fkey1"
+            foreignKeyName: "interview_evaluations_formation_id_fkey"
             columns: ["formation_id"]
             isOneToOne: false
             referencedRelation: "formations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "interview_evaluations_interview_session_id_fkey1"
+            foreignKeyName: "interview_evaluations_interview_session_id_fkey"
             columns: ["interview_session_id"]
             isOneToOne: false
             referencedRelation: "active_interviews"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "interview_evaluations_lesson_id_fkey1"
+            foreignKeyName: "interview_evaluations_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_evaluations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_evaluations_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -1487,229 +1508,6 @@ export type Database = {
         }
         Relationships: []
       }
-      student_course_sessions: {
-        Row: {
-          created_at: string | null
-          ended_at: string | null
-          formation_id: string
-          id: string
-          instructor_id: string
-          is_active: boolean | null
-          lesson_id: string
-          started_at: string | null
-          student_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          ended_at?: string | null
-          formation_id: string
-          id?: string
-          instructor_id: string
-          is_active?: boolean | null
-          lesson_id: string
-          started_at?: string | null
-          student_id: string
-        }
-        Update: {
-          created_at?: string | null
-          ended_at?: string | null
-          formation_id?: string
-          id?: string
-          instructor_id?: string
-          is_active?: boolean | null
-          lesson_id?: string
-          started_at?: string | null
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "active_interviews_formation_id_fkey"
-            columns: ["formation_id"]
-            isOneToOne: false
-            referencedRelation: "formations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "active_interviews_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "active_interviews_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "active_interviews_teacher_id_fkey"
-            columns: ["instructor_id"]
-            isOneToOne: false
-            referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      student_course_sessions_media: {
-        Row: {
-          created_at: string | null
-          file_size: number | null
-          id: string
-          is_active: boolean | null
-          media_description: string | null
-          media_name: string | null
-          media_type: string
-          media_url: string
-          mime_type: string | null
-          session_id: string
-          uploaded_at: string | null
-          uploaded_by: string
-        }
-        Insert: {
-          created_at?: string | null
-          file_size?: number | null
-          id?: string
-          is_active?: boolean | null
-          media_description?: string | null
-          media_name?: string | null
-          media_type: string
-          media_url: string
-          mime_type?: string | null
-          session_id: string
-          uploaded_at?: string | null
-          uploaded_by: string
-        }
-        Update: {
-          created_at?: string | null
-          file_size?: number | null
-          id?: string
-          is_active?: boolean | null
-          media_description?: string | null
-          media_name?: string | null
-          media_type?: string
-          media_url?: string
-          mime_type?: string | null
-          session_id?: string
-          uploaded_at?: string | null
-          uploaded_by?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_course_sessions_media_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "student_course_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_course_sessions_media_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "student_sessions_with_details"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_course_sessions_media_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      student_course_sessions_notes: {
-        Row: {
-          created_at: string | null
-          expires_at: string | null
-          formation_id: string
-          id: string
-          instructor_id: string
-          interview_session_id: string | null
-          is_satisfied: boolean | null
-          lesson_id: string
-          responded_at: string | null
-          satisfaction_rating: number | null
-          student_id: string
-          teacher_rating: number | null
-          wants_same_teacher: boolean | null
-        }
-        Insert: {
-          created_at?: string | null
-          expires_at?: string | null
-          formation_id: string
-          id?: string
-          instructor_id: string
-          interview_session_id?: string | null
-          is_satisfied?: boolean | null
-          lesson_id: string
-          responded_at?: string | null
-          satisfaction_rating?: number | null
-          student_id: string
-          teacher_rating?: number | null
-          wants_same_teacher?: boolean | null
-        }
-        Update: {
-          created_at?: string | null
-          expires_at?: string | null
-          formation_id?: string
-          id?: string
-          instructor_id?: string
-          interview_session_id?: string | null
-          is_satisfied?: boolean | null
-          lesson_id?: string
-          responded_at?: string | null
-          satisfaction_rating?: number | null
-          student_id?: string
-          teacher_rating?: number | null
-          wants_same_teacher?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "interview_evaluations_formation_id_fkey"
-            columns: ["formation_id"]
-            isOneToOne: false
-            referencedRelation: "formations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interview_evaluations_interview_session_id_fkey"
-            columns: ["interview_session_id"]
-            isOneToOne: false
-            referencedRelation: "student_course_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interview_evaluations_interview_session_id_fkey"
-            columns: ["interview_session_id"]
-            isOneToOne: false
-            referencedRelation: "student_sessions_with_details"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interview_evaluations_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interview_evaluations_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interview_evaluations_teacher_id_fkey"
-            columns: ["instructor_id"]
-            isOneToOne: false
-            referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       teacher_formations: {
         Row: {
           assigned_at: string | null
@@ -2326,55 +2124,7 @@ export type Database = {
       }
     }
     Views: {
-      student_sessions_with_details: {
-        Row: {
-          created_at: string | null
-          ended_at: string | null
-          formation_id: string | null
-          formation_title: string | null
-          id: string | null
-          instructor_id: string | null
-          instructor_name: string | null
-          is_active: boolean | null
-          lesson_id: string | null
-          lesson_title: string | null
-          media_count: number | null
-          notes_count: number | null
-          started_at: string | null
-          student_id: string | null
-          student_name: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "active_interviews_formation_id_fkey"
-            columns: ["formation_id"]
-            isOneToOne: false
-            referencedRelation: "formations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "active_interviews_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "active_interviews_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "active_interviews_teacher_id_fkey"
-            columns: ["instructor_id"]
-            isOneToOne: false
-            referencedRelation: "teachers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       approve_enrollment: {

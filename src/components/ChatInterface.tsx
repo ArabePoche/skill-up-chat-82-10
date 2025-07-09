@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { ArrowLeft, Phone, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -55,15 +56,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   const { isSubscribed, connectionStatus, reconnectAttempts, maxReconnectAttempts } = useRealtimeMessages(lesson.id.toString(), formation.id);
   const typingUsers = useTypingListener(lesson.id.toString(), formation.id);
 
+  // Fonctionnalités d'appel
   const { initiateCall } = useCallFunctionality(formation.id);
   const { incomingCalls, acceptCall, rejectCall, isTeacher } = useCallNotifications(formation.id);
 
+  // Timer pour le chat (indépendant de la vidéo)
   const chatTimer = useChatTimer({
     formationId: formation.id,
     lessonId: lesson.id.toString(),
     isActive: true
   });
 
+  // Contrôle d'accès centralisé avec modal
   const accessControl = useLessonAccessControl(
     formation.id,
     isVideoPlaying,
@@ -72,6 +76,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     }
   );
 
+  // Fonctions de scroll pour le switch
   const scrollToVideo = () => {
     videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -119,6 +124,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       return;
     }
 
+    // Pour les élèves, initier un appel vers tous les professeurs
     if (userRole?.role === 'student') {
       const success = await initiateCall(type, '', lesson.id.toString());
       if (success) {
@@ -190,7 +196,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   };
 
   return (
-    <div className="h-screen bg-[#e5ddd5] flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#e5ddd5] flex flex-col relative">
       {/* Notifications d'appels entrants pour les professeurs */}
       {isTeacher && incomingCalls.map(call => (
         <div key={call.id} className="fixed top-20 right-4 bg-white border rounded-lg shadow-lg p-4 z-50">
@@ -222,8 +228,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         </div>
       ))}
 
-      {/* Header fixe responsive avec boutons d'appel */}
-      <div className="bg-[#25d366] text-white p-3 sm:p-4 sticky top-0 z-40 flex-shrink-0">
+      {/* Header responsive avec boutons d'appel intégrés */}
+      <div className="bg-[#25d366] text-white p-3 sm:p-4 sticky top-0 md:top-16 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center flex-1 min-w-0">
             <button
@@ -254,7 +260,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
             </div>
           </div>
           
-          {/* Boutons d'appel responsifs */}
+          {/* Boutons d'appel responsifs - uniquement pour les élèves */}
           {userRole?.role === 'student' && (
             <div className="flex items-center space-x-1 flex-shrink-0">
               <Button
@@ -280,7 +286,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         </div>
       </div>
 
-      {/* Modal d'upgrade */}
+      {/* Modal d'upgrade au lieu d'alerte inline */}
       <SubscriptionUpgradeModal
         isOpen={accessControl.showAlert}
         onClose={accessControl.hideAlert}
@@ -289,9 +295,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         variant={accessControl.alertVariant}
       />
 
-      {/* Section vidéo responsive */}
+      {/* Section vidéo avec timer intégré - responsive */}
       {lesson.video_url && (
-        <div ref={videoRef} className="bg-black flex-shrink-0">
+        <div ref={videoRef} className="bg-black">
           <LessonVideoPlayerWithTimer
             src={lesson.video_url}
             formationId={formation.id}
@@ -302,7 +308,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
             sessionTime={chatTimer.sessionTime}
             onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
             onPlayStateChange={setIsVideoPlaying}
-            className="w-full h-48 sm:h-56 md:h-64 lg:h-80"
+            className="w-full"
           />
         </div>
       )}
@@ -313,8 +319,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         onScrollToMessages={scrollToMessages}
       />
 
-      {/* Messages - prend l'espace restant */}
-      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      {/* Messages - responsive */}
+      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0">
         <MessageList
           messages={messages}
           exercises={exercises}
@@ -326,8 +332,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         />
       </div>
 
-      {/* Chat Input fixe en bas */}
-      <div className="flex-shrink-0">
+      {/* Chat Input - responsive - jamais désactivé */}
+      <div className="bg-background border-t p-2 sm:p-4">
         <ChatInputBar
           onSendMessage={handleSendMessage}
           disabled={sendMessageMutation.isPending}
