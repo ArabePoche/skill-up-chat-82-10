@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Download, Eye, Maximize2, X, Edit3, Play, Pause, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import LessonVideoPlayer from '../LessonVideoPlayer';
 import ImageAnnotationModal from './ImageAnnotationModal';
 import SimpleImageEditor from './SimpleImageEditor';
+import ModernAudioPlayer from './ModernAudioPlayer';
 
 interface ModernMediaPreviewProps {
   fileUrl: string;
@@ -35,9 +37,6 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
 }) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
 
   const isImage = fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
   const isVideo = fileType?.startsWith('video/') || /\.(mp4|webm|ogg|avi|mov)$/i.test(fileName);
@@ -62,12 +61,6 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
       return;
     }
     setShowAnnotationModal(true);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (fullscreen) {
@@ -113,7 +106,6 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
             className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg ${className}`}
             loading="lazy"
           />
-          {/* Boutons d'action toujours visibles sur les images */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
             <div className="flex gap-1 sm:gap-2">
               <Button
@@ -126,7 +118,6 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
                 <Maximize2 size={14} className="sm:w-4 sm:h-4" />
               </Button>
               
-              {/* Bouton d'annotation pour les enseignants */}
               {lessonId && formationId && isTeacher && (
                 <Button
                   variant="secondary"
@@ -139,7 +130,6 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
                 </Button>
               )}
               
-              {/* Bouton d'édition simple - TOUJOURS visible quand onUpdate est disponible */}
               {onUpdate && (
                 <SimpleImageEditor
                   fileUrl={fileUrl}
@@ -179,42 +169,11 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
       )}
 
       {isAudio && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border border-green-200">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="bg-green-500 p-1.5 sm:p-2 rounded-full text-white">
-              <Volume2 size={14} className="sm:w-4 sm:h-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="font-medium text-xs sm:text-sm text-gray-800 block truncate">{fileName}</span>
-              <span className="text-xs text-gray-500">Message vocal</span>
-            </div>
-          </div>
-          
-          <div className="space-y-2 sm:space-y-3">
-            <audio 
-              controls 
-              className="w-full h-6 sm:h-8" 
-              style={{ height: '24px' }}
-              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-              onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-            >
-              <source src={fileUrl} type={fileType} />
-              Votre navigateur ne supporte pas l'élément audio.
-            </audio>
-            
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-            
-            <Button variant="outline" size="sm" onClick={handleDownload} className="w-full text-xs sm:text-sm">
-              <Download size={14} className="mr-1" />
-              Télécharger
-            </Button>
-          </div>
-        </div>
+        <ModernAudioPlayer
+          fileUrl={fileUrl}
+          fileName={fileName}
+          className={className}
+        />
       )}
 
       {isPDF && (
