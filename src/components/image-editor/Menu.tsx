@@ -6,6 +6,9 @@ import DrawingTools from './DrawingTools';
 import ShapeTools from './ShapeTools';
 import TextTools from './TextTools';
 import TransformTools from './TransformTools';
+
+// Ajout du type pour la référence du canvas
+import { RefObject } from 'react';
 import { cn } from '@/lib/utils';
 
 interface MenuProps {
@@ -22,6 +25,7 @@ interface MenuProps {
   onBrushSizeChange?: (size: number) => void;
   onBrushColorChange?: (color: string) => void;
   onBrushOpacityChange?: (opacity: number) => void;
+  canvasRef?: RefObject<any>; // Ajout de la référence du canvas
 }
 
 const menuIcons = {
@@ -69,7 +73,8 @@ const Menu: React.FC<MenuProps> = ({
       case 'shapes':
         return <ShapeTools activeTool={activeTool} onToolChange={handleToolSelection} />;
       case 'text':
-        return <TextTools activeTool={activeTool} onToolChange={handleToolSelection} />;
+        // Passage de la référence du canvas à TextTools
+        return <TextTools activeTool={activeTool} onToolChange={handleToolSelection} canvasRef={canvasRef} />;
       case 'transform':
         return <TransformTools activeTool={activeTool} onToolChange={handleToolSelection} />;
       case 'export':
