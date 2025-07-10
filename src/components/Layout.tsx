@@ -27,9 +27,9 @@ const Layout: React.FC = () => {
   }, [location.pathname, setCurrentView]);
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-y-auto">
+    <div className="h-screen w-full flex flex-col overflow-hidden">
       {/* Contenu principal - prend tout l'espace disponible */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <MainContent />
       </div>
       
