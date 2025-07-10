@@ -12,15 +12,22 @@ const firebaseConfig = {
   appId: "1:965625094073:web:f44b6b0b78d6b7b5c49e3b"
 };
 
+console.log('🔧 Firebase Service Worker starting...');
+
 // Initialiser Firebase
-firebase.initializeApp(firebaseConfig);
+try {
+  firebase.initializeApp(firebaseConfig);
+  console.log('✅ Firebase initialized in service worker');
+} catch (error) {
+  console.error('❌ Firebase initialization error:', error);
+}
 
 // Récupérer une instance du service de messagerie
 const messaging = firebase.messaging();
 
 // Gérer les messages en arrière-plan
 messaging.onBackgroundMessage(function(payload) {
-  console.log('Message reçu en arrière-plan:', payload);
+  console.log('📨 Message reçu en arrière-plan:', payload);
 
   const notificationTitle = payload.notification?.title || 'EducTok';
   const notificationOptions = {
@@ -47,12 +54,12 @@ messaging.onBackgroundMessage(function(payload) {
     silent: false
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // Gérer les clics sur les notifications
 self.addEventListener('notificationclick', function(event) {
-  console.log('Clic sur notification:', event);
+  console.log('👆 Clic sur notification:', event);
   
   event.notification.close();
 
@@ -71,7 +78,7 @@ self.addEventListener('notificationclick', function(event) {
       // Vérifier si l'app est déjà ouverte
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
           return client.focus();
         }
       }
@@ -86,12 +93,12 @@ self.addEventListener('notificationclick', function(event) {
 
 // Gérer l'installation du service worker
 self.addEventListener('install', function(event) {
-  console.log('Service Worker installé');
+  console.log('📦 Service Worker installé');
   self.skipWaiting();
 });
 
 // Gérer l'activation du service worker
 self.addEventListener('activate', function(event) {
-  console.log('Service Worker activé');
+  console.log('🚀 Service Worker activé');
   event.waitUntil(self.clients.claim());
 });
