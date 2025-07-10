@@ -27,7 +27,7 @@ const MainContent: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto pb-24">
+    <div className="h-full w-full overflow-y-auto">
       {renderContent()}
     </div>
   );

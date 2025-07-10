@@ -125,6 +125,21 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
 
         {/* Informations vidéo - bas gauche */}
         <div className="absolute bottom-32 left-4 right-20 z-10 max-w-xs sm:max-w-sm">
+          <div className="flex items-center space-x-3 mb-3">
+            <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-white">
+              <AvatarImage src={video.profiles?.avatar_url} />
+              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
+                {video.profiles?.first_name?.[0] || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-white font-semibold text-sm sm:text-base">
+                {video.profiles?.first_name || 'Utilisateur'}
+              </p>
+              <p className="text-white/80 text-xs sm:text-sm">@{video.profiles?.username || 'user'}</p>
+            </div>
+          </div>
+          
           <p className="text-white text-sm sm:text-base mb-2 leading-relaxed line-clamp-3">
             {video.description}
           </p>
