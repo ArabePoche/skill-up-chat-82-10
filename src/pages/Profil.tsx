@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,10 +11,14 @@ import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileProgress from '@/components/profile/ProfileProgress';
 import ProfileMenu from '@/components/profile/ProfileMenu';
 import TeacherWallet from '@/components/profile/TeacherWallet';
+import NotificationPermissionDialog from '@/components/notifications/NotificationPermissionDialog';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const Profil = () => {
   const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+  const { hasPermission, isSupported } = usePushNotifications();
   const { data: enrollments } = useUserEnrollments(user?.id);
   const { data: userStats } = useUserStats(user?.id);
 
@@ -29,7 +33,7 @@ const Profil = () => {
     { icon: Settings, label: 'Paramètres', action: () => navigate('/complete-profile') },
     { icon: BookOpen, label: 'Mes formations', action: () => navigate('/cours') },
     { icon: Award, label: 'Badges et récompenses', action: () => {} },
-    { icon: Bell, label: 'Notifications', action: () => {} },
+    { icon: Bell, label: 'Notifications', action: () => setShowNotificationDialog(true) },
     { icon: HelpCircle, label: 'Aide et support', action: () => {} }
   ];
 
@@ -83,6 +87,34 @@ const Profil = () => {
         <ProfileStats stats={stats} />
         <ProfileProgress enrollments={enrollments} />
         
+        {/* Section Notifications Push */}
+        {isSupported && (
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-4 border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">Notifications Push 🔔</h3>
+                  <p className="text-sm text-gray-600">
+                    {hasPermission ? '✅ Activées - Recevez des rappels motivants !' : '⏰ Activez les rappels d\'étude style Duolingo'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant={hasPermission ? "outline" : "default"}
+                size="sm"
+                onClick={() => setShowNotificationDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                {hasPermission ? 'Gérer' : 'Activer'}
+              </Button>
+            </div>
+          </div>
+        )}
+        
         {/* Afficher le wallet si l'utilisateur est enseignant */}
         {profile?.is_teacher && user?.id && (
           <div className="mt-6">
@@ -104,6 +136,11 @@ const Profil = () => {
           </Button>
         </div>
       </div>
+      
+      <NotificationPermissionDialog
+        open={showNotificationDialog}
+        onOpenChange={setShowNotificationDialog}
+      />
     </div>
   );
 };

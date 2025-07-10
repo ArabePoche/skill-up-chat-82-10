@@ -66,7 +66,7 @@ export const useStudentLessonMessages = (
           `)
           .eq('formation_id', formationId)
           .eq('lesson_id', lessonId)
-          .or(`sender_id.eq.${user.id},is_system_message.eq.true,sender_id.in.(${await getTeacherIdsInFormation(formationId)})`)
+          .or(`sender_id.eq.${user.id},is_system_message.eq.true,sender_id.in.(${(await getTeacherIdsInFormation(formationId)).join(',')})`)
           .order('created_at', { ascending: true });
 
         if (error) {
@@ -84,15 +84,15 @@ export const useStudentLessonMessages = (
 };
 
 // Fonction helper pour récupérer les IDs des professeurs de la formation
-async function getTeacherIdsInFormation(formationId: string): Promise<string> {
-  const { data: teachers } = await supabase
-    .from('teachers')
-    .select('user_id')
-    .eq('formation_id', formationId);
+async function getTeacherIdsInFormation(formationId: string): Promise<string[]> {
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('is_teacher', true);
 
-  if (!teachers || teachers.length === 0) {
-    return 'null'; // Aucun professeur trouvé
+  if (!profiles || profiles.length === 0) {
+    return []; // Aucun professeur trouvé
   }
 
-  return teachers.map(t => t.user_id).join(',');
+  return profiles.map(p => p.id);
 }

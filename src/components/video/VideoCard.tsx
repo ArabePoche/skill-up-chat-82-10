@@ -123,6 +123,45 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
           </Button>
         </div>
 
+        {/* Actions vidéo - droite */}
+        <div className="absolute right-2 sm:right-4 bottom-32 z-20 flex flex-col items-center space-y-4">
+          {/* Avatar avec bouton + */}
+          <VideoUserProfile 
+            profile={video.profiles} 
+            showFollowButton={true}
+          />
+
+          {/* Actions vidéo */}
+          <div className="flex flex-col items-center space-y-4 z-30">
+            <VideoLike 
+              videoId={video.id} 
+              initialLikesCount={video.likes_count}
+              onLikeWithConfetti={onLikeWithConfetti}
+            />
+            
+            <VideoComment 
+              commentsCount={video.comments_count}
+              onCommentClick={handleCommentClick}
+            />
+            
+            <div className="flex flex-col items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleShareClick}
+                className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 flex items-center justify-center border border-white/20"
+              >
+                <Share size={20} />
+              </Button>
+              <span className="text-white text-xs mt-1 font-medium">
+                Partager
+              </span>
+            </div>
+            
+            <VideoFavoris videoId={video.id} />
+          </div>
+        </div>
+
         {/* Informations vidéo - bas gauche */}
         <div className="absolute bottom-32 left-4 right-20 z-10 max-w-xs sm:max-w-sm">
           <p className="text-white text-sm sm:text-base mb-2 leading-relaxed line-clamp-3">
@@ -164,44 +203,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
           )}
         </div>
 
-        {/* Actions vidéo - droite */}
-        <div className="absolute right-2 sm:right-4 bottom-32 z-20 flex flex-col items-center space-y-4">
-          {/* Avatar avec bouton + */}
-          <VideoUserProfile 
-            profile={video.profiles} 
-            showFollowButton={true}
-          />
 
-          {/* Actions vidéo */}
-          <div className="flex flex-col items-center space-y-4 z-30">
-            <VideoLike 
-              videoId={video.id} 
-              initialLikesCount={video.likes_count}
-              onLikeWithConfetti={onLikeWithConfetti}
-            />
-            
-            <VideoComment 
-              commentsCount={video.comments_count}
-              onCommentClick={handleCommentClick}
-            />
-            
-            <div className="flex flex-col items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleShareClick}
-                className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 flex items-center justify-center border border-white/20"
-              >
-                <Share size={20} />
-              </Button>
-              <span className="text-white text-xs mt-1 font-medium">
-                Partager
-              </span>
-            </div>
-            
-            <VideoFavoris videoId={video.id} />
-          </div>
-        </div>
       </div>
 
       {/* Modal des commentaires */}
