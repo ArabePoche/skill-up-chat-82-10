@@ -46,7 +46,7 @@ export const FCMService = {
       const messaging = initializeFirebase();
       
       const token = await getToken(messaging, {
-        vapidKey: 'BK8zJx_6qJM2yQd5-3z-9OcP4x7lM2nW8VfX9Qc-3Yz0R8wP5Xg2Nv-7Z3Qx4Y8Wz1S'
+        vapidKey: 'BPE6_Yc4iHGui2Dj1zix6efPsyRKS-_vvDBYR1z1JOednZXoo5XLQWB0zqRvyK3hlMf2Q8PxLCzG2Yt2ryjxMKQ'
       });
 
       if (!token) {
