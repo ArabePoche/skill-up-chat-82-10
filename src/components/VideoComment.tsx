@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useCommentLikes } from '@/hooks/useCommentLikes';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface VideoCommentProps {
   comment: {
@@ -17,82 +18,29 @@ interface VideoCommentProps {
       username?: string;
       avatar_url?: string;
     };
+    replies?: VideoCommentProps['comment'][];
   };
-  onReply: (commentId: string) => void;
+  onReply: (commentId: string, content: string) => Promise<boolean>;
+  depth?: number;
 }
 
-const VideoComment: React.FC<VideoCommentProps> = ({ comment, onReply }) => {
+const VideoComment: React.FC<VideoCommentProps> = ({ comment, onReply, depth = 0 }) => {
   const { user } = useAuth();
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(comment.likes_count);
-  const [isLiking, setIsLiking] = useState(false);
+  const { isLiked, likesCount, toggleLike, isLoading } = useCommentLikes(comment.id, comment.likes_count);
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyContent, setReplyContent] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
-  // Vérifier si l'utilisateur a déjà liké ce commentaire
-  useEffect(() => {
-    const checkIfLiked = async () => {
-      if (!user) return;
-
-      try {
-        const { data } = await supabase
-          .from('video_comment_likes')
-          .select('id')
-          .eq('comment_id', comment.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        setIsLiked(!!data);
-      } catch (error) {
-        console.error('Error checking like status:', error);
-      }
-    };
-
-    checkIfLiked();
-  }, [user, comment.id]);
-
-  const handleLike = async () => {
-    if (!user) {
-      toast.error('Connectez-vous pour liker ce commentaire');
-      return;
+  const handleReplySubmit = async () => {
+    if (!replyContent.trim()) return;
+    
+    setIsSubmittingReply(true);
+    const success = await onReply(comment.id, replyContent);
+    if (success) {
+      setReplyContent('');
+      setShowReplyForm(false);
     }
-
-    if (isLiking) return;
-    setIsLiking(true);
-
-    try {
-      if (isLiked) {
-        // Unlike
-        const { error } = await supabase
-          .from('video_comment_likes')
-          .delete()
-          .eq('comment_id', comment.id)
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-        
-        setLikesCount(prev => Math.max(0, prev - 1));
-        setIsLiked(false);
-        toast.success('Like retiré');
-      } else {
-        // Like
-        const { error } = await supabase
-          .from('video_comment_likes')
-          .insert({ 
-            comment_id: comment.id, 
-            user_id: user.id 
-          });
-
-        if (error) throw error;
-        
-        setLikesCount(prev => prev + 1);
-        setIsLiked(true);
-        toast.success('Commentaire liké !');
-      }
-    } catch (error) {
-      console.error('Error liking comment:', error);
-      toast.error('Erreur lors du like');
-    } finally {
-      setIsLiking(false);
-    }
+    setIsSubmittingReply(false);
   };
 
   const formatTime = (dateString: string) => {
@@ -106,55 +54,117 @@ const VideoComment: React.FC<VideoCommentProps> = ({ comment, onReply }) => {
   };
 
   return (
-    <div className="flex items-start space-x-3 py-3">
-      {/* Avatar */}
-      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-        {comment.profiles?.avatar_url ? (
-          <img 
-            src={comment.profiles.avatar_url} 
-            alt="Avatar" 
-            className="w-8 h-8 rounded-full object-cover" 
-          />
-        ) : (
-          <span className="text-white text-xs font-bold">
-            {comment.profiles?.first_name?.[0] || comment.profiles?.username?.[0] || 'U'}
-          </span>
-        )}
+    <div className={`flex flex-col space-y-3 ${depth > 0 ? 'ml-8 pl-4 border-l border-gray-600' : ''}`}>
+      <div className="flex items-start space-x-3 py-3">
+        {/* Avatar */}
+        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+          {comment.profiles?.avatar_url ? (
+            <img 
+              src={comment.profiles.avatar_url} 
+              alt="Avatar" 
+              className="w-8 h-8 rounded-full object-cover" 
+            />
+          ) : (
+            <span className="text-white text-xs font-bold">
+              {comment.profiles?.first_name?.[0] || comment.profiles?.username?.[0] || 'U'}
+            </span>
+          )}
+        </div>
+
+        {/* Contenu du commentaire */}
+        <div className="flex-1">
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="text-white font-medium text-sm">
+              {comment.profiles?.first_name || comment.profiles?.username || 'Utilisateur'}
+            </span>
+            <span className="text-gray-400 text-xs">{formatTime(comment.created_at)}</span>
+          </div>
+          
+          <p className="text-white text-sm mb-2">{comment.content}</p>
+          
+          {/* Actions */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleLike}
+              disabled={isLoading}
+              className={`flex items-center space-x-1 transition-colors ${
+                isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+              <span className="text-xs">{likesCount}</span>
+            </button>
+            
+            {depth < 2 && (
+              <button
+                onClick={() => setShowReplyForm(!showReplyForm)}
+                className="flex items-center space-x-1 text-gray-400 hover:text-white transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span className="text-xs">Répondre</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Contenu du commentaire */}
-      <div className="flex-1">
-        <div className="flex items-center space-x-2 mb-1">
-          <span className="text-white font-medium text-sm">
-            {comment.profiles?.first_name || comment.profiles?.username || 'Utilisateur'}
-          </span>
-          <span className="text-gray-400 text-xs">{formatTime(comment.created_at)}</span>
+      {/* Formulaire de réponse */}
+      {showReplyForm && user && (
+        <div className="flex items-start space-x-3 pl-11">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+            <span className="text-white text-xs font-bold">
+              {user.user_metadata?.first_name?.[0] || 'U'}
+            </span>
+          </div>
+          <div className="flex-1 space-y-2">
+            <Textarea
+              value={replyContent}
+              onChange={(e) => setReplyContent(e.target.value)}
+              placeholder="Écrivez votre réponse..."
+              className="min-h-[60px] bg-gray-800 border-gray-600 text-white"
+              maxLength={300}
+            />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-400">{replyContent.length}/300</span>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setShowReplyForm(false);
+                    setReplyContent('');
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleReplySubmit}
+                  disabled={!replyContent.trim() || isSubmittingReply}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSubmittingReply ? 'Envoi...' : 'Répondre'}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <p className="text-white text-sm mb-2">{comment.content}</p>
-        
-        {/* Actions */}
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleLike}
-            disabled={isLiking}
-            className={`flex items-center space-x-1 transition-colors ${
-              isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
-            } ${isLiking ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-            <span className="text-xs">{likesCount}</span>
-          </button>
-          
-          <button
-            onClick={() => onReply(comment.id)}
-            className="flex items-center space-x-1 text-gray-400 hover:text-white transition-colors"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span className="text-xs">Répondre</span>
-          </button>
+      )}
+
+      {/* Réponses */}
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="space-y-2">
+          {comment.replies.map((reply) => (
+            <VideoComment
+              key={reply.id}
+              comment={reply}
+              onReply={onReply}
+              depth={depth + 1}
+            />
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };

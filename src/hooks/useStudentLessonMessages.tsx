@@ -50,7 +50,10 @@ export const useStudentLessonMessages = (
         console.log('Teacher messages found:', messages?.length || 0);
         return messages || [];
       } else {
-        // Si c'est un étudiant, il ne voit que ses messages et ceux des profs
+        // Si c'est un étudiant, il ne voit que :
+        // 1. Ses propres messages (sender_id = user.id)
+        // 2. Les messages qui lui sont adressés (receiver_id = user.id)
+        // 3. Les messages système (is_system_message = true)
         const { data: messages, error } = await supabase
           .from('lesson_messages')
           .select(`
@@ -66,7 +69,7 @@ export const useStudentLessonMessages = (
           `)
           .eq('formation_id', formationId)
           .eq('lesson_id', lessonId)
-          .or(`sender_id.eq.${user.id},is_system_message.eq.true,sender_id.in.(${(await getTeacherIdsInFormation(formationId)).join(',')})`)
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id},is_system_message.eq.true`)
           .order('created_at', { ascending: true });
 
         if (error) {
@@ -82,17 +85,3 @@ export const useStudentLessonMessages = (
     refetchInterval: false,
   });
 };
-
-// Fonction helper pour récupérer les IDs des professeurs de la formation
-async function getTeacherIdsInFormation(formationId: string): Promise<string[]> {
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('is_teacher', true);
-
-  if (!profiles || profiles.length === 0) {
-    return []; // Aucun professeur trouvé
-  }
-
-  return profiles.map(p => p.id);
-}

@@ -42,10 +42,11 @@ export const useStudentMessages = (lessonId: string | undefined, formationId: st
         console.log('Teacher messages found:', messages?.length || 0);
         return messages || [];
       } else {
-        // Si c'est un étudiant, récupérer d'abord les IDs des professeurs
-        const teacherIds = await getTeacherIdsInFormation(formationId);
-        
-        let query = supabase
+        // Si c'est un étudiant, il ne voit que :
+        // 1. Ses propres messages (sender_id = user.id)
+        // 2. Les messages qui lui sont adressés (receiver_id = user.id)
+        // 3. Les messages système (is_system_message = true)
+        const { data: messages, error } = await supabase
           .from('lesson_messages')
           .select(`
             *,
@@ -59,16 +60,9 @@ export const useStudentMessages = (lessonId: string | undefined, formationId: st
             )
           `)
           .eq('lesson_id', lessonId)
-          .eq('formation_id', formationId);
-
-        // Construire la condition OR pour les messages visibles par l'étudiant
-        if (teacherIds.length > 0) {
-          query = query.or(`sender_id.eq.${user.id},is_system_message.eq.true,sender_id.in.(${teacherIds.join(',')})`);
-        } else {
-          query = query.or(`sender_id.eq.${user.id},is_system_message.eq.true`);
-        }
-
-        const { data: messages, error } = await query.order('created_at', { ascending: true });
+          .eq('formation_id', formationId)
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id},is_system_message.eq.true`)
+          .order('created_at', { ascending: true });
 
         if (error) {
           console.error('Error fetching student messages:', error);
@@ -83,21 +77,6 @@ export const useStudentMessages = (lessonId: string | undefined, formationId: st
     refetchInterval: false,
   });
 };
-
-// Fonction helper pour récupérer les IDs des professeurs de la formation
-async function getTeacherIdsInFormation(formationId: string): Promise<string[]> {
-  const { data: teachers } = await supabase
-    .from('teachers')
-    .select(`
-      user_id,
-      teacher_formations!inner (
-        formation_id
-      )
-    `)
-    .eq('teacher_formations.formation_id', formationId);
-
-  return teachers?.map(t => t.user_id) || [];
-}
 
 export const useLessonExercises = (lessonId: string | undefined) => {
   return useQuery({
