@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,9 +34,15 @@ interface VideoCardProps {
   video: Video;
   isActive: boolean;
   onLikeWithConfetti?: () => void;
+  onCommentAdded?: () => void;
 }
 
-const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfetti }) => {
+const VideoCard: React.FC<VideoCardProps> = ({ 
+  video, 
+  isActive, 
+  onLikeWithConfetti,
+  onCommentAdded 
+}) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isMuted } = useGlobalSound();
@@ -140,6 +145,14 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
     if (count < 1000) return count.toString();
     if (count < 1000000) return (count / 1000).toFixed(1) + 'K';
     return (count / 1000000).toFixed(1) + 'M';
+  };
+
+  const handleCommentClose = () => {
+    setShowComments(false);
+    // Notifier le parent qu'un commentaire a été ajouté pour rafraîchir les compteurs
+    if (onCommentAdded) {
+      onCommentAdded();
+    }
   };
 
   return (
@@ -360,8 +373,9 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
       {/* Modaux */}
       <VideoCommentsModal
         isOpen={showComments}
-        onClose={() => setShowComments(false)}
+        onClose={handleCommentClose}
         videoId={video.id}
+        videoTitle={video.title}
       />
 
       <VideoShareModal

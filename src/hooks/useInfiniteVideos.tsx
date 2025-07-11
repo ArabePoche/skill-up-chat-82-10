@@ -1,51 +1,16 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 
-interface Video {
-  id: string;
-  title: string;
-  description: string;
-  video_url: string;
-  thumbnail_url: string;
-  likes_count: number;
-  comments_count: number;
-  author_id: string;
-  video_type?: string;
-  formation_id?: string;
-  price?: number;
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-    avatar_url?: string;
-  };
-}
+const VIDEOS_PER_PAGE = 10;
 
 export const useInfiniteVideos = () => {
-  const { user } = useAuth();
-
-  const query = useInfiniteQuery({
-    queryKey: ['infinite-videos', user?.id],
+  return useInfiniteQuery({
+    queryKey: ['infinite-videos'],
     queryFn: async ({ pageParam = 0 }) => {
-      const pageSize = 3;
-      const from = pageParam * pageSize;
-      const to = from + pageSize - 1;
+      const from = pageParam * VIDEOS_PER_PAGE;
+      const to = from + VIDEOS_PER_PAGE - 1;
 
-      // Récupérer les centres d'intérêt de l'utilisateur
-      let userInterests: string[] = [];
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('interests')
-          .eq('id', user.id)
-          .single();
-        
-        userInterests = profile?.interests || [];
-      }
-
-      // Construire la requête avec filtrage intelligent
-      let query = supabase
+      const { data, error } = await supabase
         .from('videos')
         .select(`
           *,
@@ -57,61 +22,28 @@ export const useInfiniteVideos = () => {
           )
         `)
         .eq('is_active', true)
-        .neq('video_type', 'lesson') // Exclure les vidéos de type 'lesson'
+        .order('created_at', { ascending: false })
         .range(from, to);
-
-      // Algorithme de recommandation dynamique
-      const shouldRecommendByInterests = userInterests.length > 0 && Math.random() < 0.8;
-      
-      if (shouldRecommendByInterests) {
-        // 80% basé sur les intérêts : tri par engagement et pertinence
-        const randomSort = Math.random();
-        if (randomSort < 0.4) {
-          // Contenu populaire dans les centres d'intérêt
-          query = query.order('likes_count', { ascending: false });
-        } else if (randomSort < 0.7) {
-          // Contenu récent dans les centres d'intérêt
-          query = query.order('created_at', { ascending: false });
-        } else {
-          // Contenu avec beaucoup de commentaires (engagement)
-          query = query.order('comments_count', { ascending: false });
-        }
-      } else {
-        // 20% découverte aléatoire pour la diversité
-        const discoveryType = Math.random();
-        if (discoveryType < 0.3) {
-          // Nouveau contenu tendance
-          query = query.order('created_at', { ascending: false });
-        } else if (discoveryType < 0.6) {
-          // Contenu populaire général
-          query = query.order('likes_count', { ascending: false });
-        } else {
-          // Contenu avec engagement élevé
-          query = query.order('comments_count', { ascending: false });
-        }
-      }
-
-      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching videos:', error);
-        return [];
+        throw error;
       }
 
       return data || [];
     },
     getNextPageParam: (lastPage, allPages) => {
-      // Continuer à charger tant qu'on a des résultats
-      return lastPage.length === 3 ? allPages.length : undefined;
+      return lastPage.length === VIDEOS_PER_PAGE ? allPages.length : undefined;
     },
     initialPageParam: 0,
+    select: (data) => {
+      // S'assurer que nous retournons toujours un tableau, même si data est undefined
+      if (!data || !data.pages) {
+        return [];
+      }
+      return data.pages.flat();
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
-
-  // Flatten les pages pour obtenir un array simple
-  const videos = query.data?.pages?.flat() || [];
-
-  return {
-    ...query,
-    data: videos,
-  };
 };

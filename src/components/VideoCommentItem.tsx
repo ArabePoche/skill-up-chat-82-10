@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCommentLikes } from '@/hooks/useCommentLikes';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import VideoCommentReplies from '@/components/video/VideoCommentReplies';
 
 interface VideoCommentItemProps {
   comment: any;
@@ -20,7 +22,6 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isReplying, setIsReplying] = useState(false);
-  const [visibleReplies, setVisibleReplies] = useState(5);
 
   const displayName = comment.profiles?.first_name 
     ? `${comment.profiles.first_name} ${comment.profiles.last_name || ''}`.trim()
@@ -44,19 +45,14 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
     locale: fr
   });
 
-  const hasMoreReplies = comment.replies && comment.replies.length > visibleReplies;
-  const displayedReplies = comment.replies?.slice(0, visibleReplies) || [];
-
-  const loadMoreReplies = () => {
-    setVisibleReplies(prev => prev + 5);
-  };
+  const isTopLevel = level === 0;
 
   return (
-    <div className={`${level > 0 ? 'ml-8 border-l border-gray-700 pl-4' : ''}`}>
+    <div className="space-y-3">
       <div className="flex space-x-3">
         <Avatar className="w-8 h-8 flex-shrink-0">
           <AvatarImage src={comment.profiles?.avatar_url} />
-          <AvatarFallback>
+          <AvatarFallback className="bg-gray-700 text-white">
             <User size={16} />
           </AvatarFallback>
         </Avatar>
@@ -78,10 +74,10 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
               }`}
             >
               <Heart size={14} className={isLiked ? 'fill-current' : ''} />
-              <span>{likesCount}</span>
+              <span>{likesCount > 0 ? likesCount : ''}</span>
             </button>
             
-            {user && level < 2 && (
+            {user && isTopLevel && (
               <button
                 onClick={() => setShowReplyForm(!showReplyForm)}
                 className="flex items-center space-x-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
@@ -97,7 +93,7 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
               <div className="flex space-x-2">
                 <Avatar className="w-6 h-6 flex-shrink-0">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gray-700 text-white">
                     <User size={12} />
                   </AvatarFallback>
                 </Avatar>
@@ -117,7 +113,7 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowReplyForm(false)}
-                        className="text-xs h-7 px-2"
+                        className="text-xs h-7 px-2 text-gray-400 hover:text-white"
                       >
                         Annuler
                       </Button>
@@ -135,32 +131,17 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
               </div>
             </form>
           )}
-
-          {/* Réponses */}
-          {displayedReplies.length > 0 && (
-            <div className="mt-3 space-y-3">
-              {displayedReplies.map((reply) => (
-                <VideoCommentItem
-                  key={reply.id}
-                  comment={reply}
-                  onReply={onReply}
-                  level={level + 1}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Bouton "Afficher plus de réponses" */}
-          {hasMoreReplies && (
-            <button
-              onClick={loadMoreReplies}
-              className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
-            >
-              Afficher {Math.min(5, comment.replies.length - visibleReplies)} réponses
-            </button>
-          )}
         </div>
       </div>
+
+      {/* Affichage des réponses pour les commentaires de niveau supérieur uniquement */}
+      {isTopLevel && comment.replies && comment.replies.length > 0 && (
+        <VideoCommentReplies
+          replies={comment.replies}
+          onReply={onReply}
+          parentCommentId={comment.id}
+        />
+      )}
     </div>
   );
 };

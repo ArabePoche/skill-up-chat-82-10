@@ -26,22 +26,22 @@ interface Video {
   };
 }
 
-// Contexte global pour le contrôle du son
+// Contexte global pour le contrôle du son - SON ACTIVÉ PAR DÉFAUT
 const GlobalSoundContext = createContext<{
   isMuted: boolean;
   toggleMute: () => void;
 }>({
-  isMuted: true,
+  isMuted: false, // Son activé par défaut
   toggleMute: () => {}
 });
 
 export const useGlobalSound = () => useContext(GlobalSoundContext);
 
 const TikTokVideosView: React.FC = () => {
-  const { data: videos, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteVideos();
+  const { data: videos = [], fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteVideos();
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [globalMuted, setGlobalMuted] = useState(true);
+  const [globalMuted, setGlobalMuted] = useState(false); // Son activé par défaut
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -52,6 +52,8 @@ const TikTokVideosView: React.FC = () => {
 
   // Intersection Observer pour la lecture automatique
   useEffect(() => {
+    if (!videos || videos.length === 0) return;
+    
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -69,20 +71,29 @@ const TikTokVideosView: React.FC = () => {
     });
 
     return () => observer.disconnect();
-  }, [videos.length]);
+  }, [videos]);
 
   // Charger plus de vidéos quand on approche de la fin
   useEffect(() => {
+    if (!videos || videos.length === 0) return;
+    
     if (currentVideoIndex >= videos.length - 2 && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [currentVideoIndex, videos.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [currentVideoIndex, videos, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleLikeWithConfetti = () => {
     setShowConfetti(true);
+    // Refetch pour mettre à jour les compteurs
+    setTimeout(() => refetch(), 500);
   };
 
-  if (!videos.length) {
+  const handleCommentAdded = () => {
+    // Refetch pour mettre à jour les compteurs de commentaires
+    setTimeout(() => refetch(), 500);
+  };
+
+  if (!videos || videos.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-white bg-black">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -132,6 +143,7 @@ const TikTokVideosView: React.FC = () => {
               video={video}
               isActive={index === currentVideoIndex}
               onLikeWithConfetti={handleLikeWithConfetti}
+              onCommentAdded={handleCommentAdded}
             />
           </div>
         ))}
