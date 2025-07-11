@@ -69,8 +69,8 @@ const TeacherDiscussionsList: React.FC<TeacherDiscussionsListProps> = ({
 
     if (!activeInterview) return null;
 
-    const teacherName = activeInterview.instructor?.profiles 
-      ? `${activeInterview.instructor.profiles.first_name || ''} ${activeInterview.instructor.profiles.last_name || ''}`.trim() || activeInterview.instructor.profiles.username || 'Professeur'
+    const teacherName = activeInterview.teacher?.profiles 
+      ? `${activeInterview.teacher.profiles.first_name || ''} ${activeInterview.teacher.profiles.last_name || ''}`.trim() || activeInterview.teacher.profiles.username || 'Professeur'
       : 'Professeur';
 
     return (

@@ -24,14 +24,19 @@ export const useCallNotifications = (formationId: string) => {
 
     // Vérifier si l'utilisateur est professeur dans cette formation
     const checkTeacherStatus = async () => {
-      const { data } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('formation_id', formationId)
-        .single();
-      
-      setIsTeacher(!!data);
+      try {
+        const { data } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('formation_id', formationId)
+          .single();
+        
+        setIsTeacher(!!data);
+      } catch (error) {
+        console.error('Error checking teacher status:', error);
+        setIsTeacher(false);
+      }
     };
 
     checkTeacherStatus();
@@ -57,36 +62,40 @@ export const useCallNotifications = (formationId: string) => {
           // Ne pas notifier si c'est notre propre appel
           if (newCall.caller_id === user?.id) return;
 
-          // Récupérer les infos du demandeur
-          const { data: callerProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, username')
-            .eq('id', newCall.caller_id)
-            .single();
+          try {
+            // Récupérer les infos du demandeur
+            const { data: callerProfile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name, username')
+              .eq('id', newCall.caller_id)
+              .single();
 
-          const callerName = callerProfile 
-            ? `${callerProfile.first_name || ''} ${callerProfile.last_name || ''}`.trim() || callerProfile.username || 'Utilisateur'
-            : 'Utilisateur';
+            const callerName = callerProfile 
+              ? `${callerProfile.first_name || ''} ${callerProfile.last_name || ''}`.trim() || callerProfile.username || 'Utilisateur'
+              : 'Utilisateur';
 
-          const callNotification: CallNotification = {
-            id: newCall.id,
-            caller_id: newCall.caller_id,
-            formation_id: newCall.formation_id,
-            lesson_id: newCall.lesson_id,
-            call_type: newCall.call_type,
-            caller_name: callerName,
-            status: 'pending'
-          };
+            const callNotification: CallNotification = {
+              id: newCall.id,
+              caller_id: newCall.caller_id,
+              formation_id: newCall.formation_id,
+              lesson_id: newCall.lesson_id,
+              call_type: newCall.call_type,
+              caller_name: callerName,
+              status: 'pending'
+            };
 
-          setIncomingCalls(prev => [...prev, callNotification]);
-          
-          toast.info(`📞 Appel ${newCall.call_type === 'video' ? 'vidéo' : 'audio'} entrant de ${callerName}`, {
-            duration: 30000,
-            action: {
-              label: 'Répondre',
-              onClick: () => acceptCall(callNotification.id)
-            }
-          });
+            setIncomingCalls(prev => [...prev, callNotification]);
+            
+            toast.info(`📞 Appel ${newCall.call_type === 'video' ? 'vidéo' : 'audio'} entrant de ${callerName}`, {
+              duration: 30000,
+              action: {
+                label: 'Répondre',
+                onClick: () => acceptCall(callNotification.id)
+              }
+            });
+          } catch (error) {
+            console.error('Error handling new call:', error);
+          }
         }
       )
       .on(

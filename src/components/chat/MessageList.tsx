@@ -173,20 +173,30 @@ const MessageList: React.FC<MessageListProps> = ({
       )}
 
       {/* Affichage des évaluations en attente pour les étudiants - APRÈS les messages */}
-      {!isTeacherView && pendingEvaluations.map((evaluation) => (
-        <InterviewEvaluationCard
-          key={evaluation.id}
-          evaluationId={evaluation.id}
-          teacherName={
-            evaluation.teachers?.profiles
-              ? `${evaluation.teachers.profiles.first_name || ''} ${evaluation.teachers.profiles.last_name || ''}`.trim()
-                || evaluation.teachers.profiles.username
-                || 'Professeur'
-              : 'Professeur'
-          }
-          expiresAt={evaluation.expires_at}
-        />
-      ))}
+      {!isTeacherView && pendingEvaluations.map((evaluation) => {
+        // Vérifier si l'évaluation a des données de professeur valides
+        const teacherName = evaluation.teachers && typeof evaluation.teachers === 'object' && 'profiles' in evaluation.teachers
+          ? (() => {
+              const profiles = evaluation.teachers.profiles;
+              if (profiles && typeof profiles === 'object') {
+                const firstName = 'first_name' in profiles ? profiles.first_name || '' : '';
+                const lastName = 'last_name' in profiles ? profiles.last_name || '' : '';
+                const username = 'username' in profiles ? profiles.username || '' : '';
+                return `${firstName} ${lastName}`.trim() || username || 'Professeur';
+              }
+              return 'Professeur';
+            })()
+          : 'Professeur';
+
+        return (
+          <InterviewEvaluationCard
+            key={evaluation.id}
+            evaluationId={evaluation.id}
+            teacherName={teacherName}
+            expiresAt={evaluation.expires_at}
+          />
+        );
+      })}
 
       {/* Indicateurs de frappe */}
       {typingUsers.map(user => (
