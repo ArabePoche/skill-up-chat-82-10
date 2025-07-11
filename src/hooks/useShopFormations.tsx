@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,11 +14,10 @@ export const useShopFormations = (category?: string) => {
             last_name,
             username
           )
-        `)
-        .eq('is_active', true);
+        `);
 
-      // Pour l'instant, on ne filtre pas par catégorie car formations n'a pas de champ category
-      // Si besoin, on peut ajouter une jointure avec une table de catégories
+      // Récupérer toutes les formations (actives et inactives)
+      // Le filtrage se fera côté client dans FormationSections
 
       const { data, error } = await query
         .order('created_at', { ascending: false });
