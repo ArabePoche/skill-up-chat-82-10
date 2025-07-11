@@ -38,17 +38,21 @@ interface Exercise {
 interface MessageListProps {
   messages: Message[];
   exercises: Exercise[];
+  formationId: string;
+  isTeacherView: boolean;
+  isTeacher: boolean;
   onValidateExercise: (messageId: string, isValid: boolean, rejectReason?: string) => void;
-  isTeacher?: boolean;
   evaluations?: any[];
   typingUsers?: any[];
 }
 
-const MessageList: React.FC<MessageListProps> = ({ 
-  messages, 
+const MessageList: React.FC<MessageListProps> = ({
+  messages,
   exercises,
-  onValidateExercise, 
-  isTeacher = false,
+  formationId,
+  isTeacherView,
+  isTeacher,
+  onValidateExercise,
   evaluations = [],
   typingUsers = []
 }) => {
@@ -78,15 +82,8 @@ const MessageList: React.FC<MessageListProps> = ({
         <InterviewEvaluationCard
           key={evaluation.id}
           evaluationId={evaluation.id}
-          studentId={evaluation.student_id}
-          teacherId={evaluation.teacher_id}
-          formationId={evaluation.formation_id}
-          lessonId={evaluation.lesson_id}
-          expiresAt={evaluation.expires_at}
-          respondedAt={evaluation.responded_at}
-          isSatisfied={evaluation.is_satisfied}
-          feedbackText={evaluation.feedback_text}
           teacherName={evaluation.teacher?.first_name || evaluation.teacher?.username || 'Professeur'}
+          expiresAt={evaluation.expires_at}
         />
       ))}
 
@@ -97,8 +94,9 @@ const MessageList: React.FC<MessageListProps> = ({
             <SystemMessage
               key={message.id}
               content={message.content}
-              exerciseId={message.exercise_id}
-              exercises={exercises}
+              exercise={message.exercise_id ? exercises.find(ex => ex.id === message.exercise_id) : undefined}
+              lessonId=""
+              formationId={formationId}
             />
           );
         }
@@ -107,18 +105,21 @@ const MessageList: React.FC<MessageListProps> = ({
           <MessageBubble
             key={message.id}
             message={message}
-            isOwn={message.sender_id === user?.id}
-            exercises={exercises}
-            onValidateExercise={onValidateExercise}
             isTeacher={isTeacher}
           />
         );
       })}
 
       {/* Indicateur de frappe */}
-      {typingUsers && typingUsers.length > 0 && (
-        <TypingIndicator typingUsers={typingUsers} />
-      )}
+      {typingUsers && typingUsers.length > 0 && 
+        typingUsers.map((user: any, index: number) => (
+          <TypingIndicator 
+            key={index}
+            userName={user.name || 'Utilisateur'}
+            isTeacher={user.isTeacher || false}
+          />
+        ))
+      }
 
       <div ref={messagesEndRef} />
     </div>

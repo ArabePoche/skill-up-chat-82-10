@@ -8,11 +8,12 @@ import { fr } from 'date-fns/locale';
 import { MessageCircle, Users } from 'lucide-react';
 
 interface TeacherDiscussionsListProps {
+  formationId: string;
   onSelectDiscussion: (studentId: string, formationId: string, lessonId: string) => void;
 }
 
-const TeacherDiscussionsList: React.FC<TeacherDiscussionsListProps> = ({ onSelectDiscussion }) => {
-  const { data: discussions, isLoading } = useTeacherDiscussionsWithUnread();
+const TeacherDiscussionsList: React.FC<TeacherDiscussionsListProps> = ({ formationId, onSelectDiscussion }) => {
+  const { data: discussions, isLoading } = useTeacherDiscussionsWithUnread(formationId);
 
   if (isLoading) {
     return (
@@ -44,24 +45,24 @@ const TeacherDiscussionsList: React.FC<TeacherDiscussionsListProps> = ({ onSelec
           key={`${discussion.student_id}-${discussion.lesson_id}`}
           onClick={() => onSelectDiscussion(
             discussion.student_id,
-            discussion.formation_id || '',
+            formationId,
             discussion.lesson_id
           )}
           className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <Avatar className="h-12 w-12">
-            <AvatarImage src={discussion.student?.avatar_url} />
+            <AvatarImage src={discussion.student_profile?.avatar_url} />
             <AvatarFallback className="bg-gray-200">
-              {discussion.student?.first_name?.charAt(0) || 
-               discussion.student?.last_name?.charAt(0) || 'E'}
+              {discussion.student_profile?.first_name?.charAt(0) || 
+               discussion.student_profile?.last_name?.charAt(0) || 'E'}
             </AvatarFallback>
           </Avatar>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {`${discussion.student?.first_name || ''} ${discussion.student?.last_name || ''}`.trim() || 
-                 discussion.student?.username || 'Étudiant'}
+                {`${discussion.student_profile?.first_name || ''} ${discussion.student_profile?.last_name || ''}`.trim() || 
+                 discussion.student_profile?.username || 'Étudiant'}
               </p>
               {discussion.unread_count > 0 && (
                 <Badge variant="default" className="ml-2">
@@ -83,7 +84,7 @@ const TeacherDiscussionsList: React.FC<TeacherDiscussionsListProps> = ({ onSelec
           </div>
           
           <div className="text-xs text-gray-400">
-            {discussion.message_count || 0} messages
+            {discussion.lesson_title}
           </div>
         </div>
       ))}

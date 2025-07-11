@@ -28,13 +28,13 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const { data: unreadCount = 0 } = useUnreadMessagesBadge(formation.id);
 
-  const handleSelectDiscussion = (studentId: string, lessonId: string, studentName: string, lessonTitle: string, studentProfile?: any) => {
+  const handleSelectDiscussion = (studentId: string, formationId: string, lessonId: string) => {
     setSelectedDiscussion({
       studentId,
       lessonId,
-      studentName,
-      lessonTitle,
-      studentProfile
+      studentName: 'Étudiant',
+      lessonTitle: 'Leçon',
+      studentProfile: null
     });
   };
 

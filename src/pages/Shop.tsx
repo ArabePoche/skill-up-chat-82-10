@@ -63,8 +63,8 @@ const Shop = () => {
     ? formationsLoading || formationCategoriesLoading
     : productsLoading || productCategoriesLoading;
 
-  // Récupérer les centres d'intérêt de l'utilisateur
-  const userInterests = user?.interests || [];
+  // Récupérer les centres d'intérêt de l'utilisateur depuis le profil
+  const userInterests = user ? (user as any).interests || [] : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">

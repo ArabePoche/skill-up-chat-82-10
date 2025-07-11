@@ -58,7 +58,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 
   // Fonctionnalités d'appel
   const { initiateCall } = useCallFunctionality(formation.id);
-  const { incomingCalls, acceptCall, rejectCall, isTeacher } = useCallNotifications(formation.id);
+  const { incomingCall, dismissCall } = useCallNotifications();
 
   // Timer pour le chat (indépendant de la vidéo)
   const chatTimer = useChatTimer({
@@ -197,22 +197,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 
   return (
     <div className="min-h-screen bg-[#e5ddd5] flex flex-col relative">
-      {/* Notifications d'appels entrants pour les professeurs */}
-      {isTeacher && incomingCalls.map(call => (
-        <div key={call.id} className="fixed top-20 right-4 bg-white border rounded-lg shadow-lg p-4 z-50">
+      {/* Notifications d'appels entrants */}
+      {incomingCall && userRole?.role === 'teacher' && (
+        <div className="fixed top-20 right-4 bg-white border rounded-lg shadow-lg p-4 z-50">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Appel entrant</h3>
             <span className="text-sm text-gray-500">
-              {call.call_type === 'video' ? '📹' : '📞'}
+              {incomingCall.call_type === 'video' ? '📹' : '📞'}
             </span>
           </div>
           <p className="text-sm mb-3">
-            {call.caller_name} vous appelle
+            Vous avez un appel entrant
           </p>
           <div className="flex space-x-2">
             <Button 
               size="sm" 
-              onClick={() => acceptCall(call.id)}
+              onClick={dismissCall}
               className="bg-green-500 hover:bg-green-600"
             >
               Accepter
@@ -220,13 +220,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
             <Button 
               size="sm" 
               variant="outline"
-              onClick={() => rejectCall(call.id)}
+              onClick={dismissCall}
             >
               Rejeter
             </Button>
           </div>
         </div>
-      ))}
+      )}
 
       {/* Header responsive avec boutons d'appel intégrés */}
       <div className="bg-[#25d366] text-white p-3 sm:p-4 sticky top-0 md:top-16 z-40">
@@ -324,7 +324,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         <MessageList
           messages={messages}
           exercises={exercises}
-          lesson={lesson}
           formationId={formation.id.toString()}
           isTeacherView={false}
           isTeacher={userRole?.role === 'teacher'}
