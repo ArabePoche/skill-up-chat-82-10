@@ -173,40 +173,20 @@ const MessageList: React.FC<MessageListProps> = ({
       )}
 
       {/* Affichage des évaluations en attente pour les étudiants - APRÈS les messages */}
-      {!isTeacherView && pendingEvaluations.map((evaluation) => {
-        // Vérifier si l'évaluation et teachers existent et ne sont pas null
-        if (!evaluation.teachers || typeof evaluation.teachers !== 'object') {
-          return (
-            <InterviewEvaluationCard
-              key={evaluation.id}
-              evaluationId={evaluation.id}
-              teacherName="Professeur"
-              expiresAt={evaluation.expires_at}
-            />
-          );
-        }
-
-        // Vérifier si teachers a une propriété profiles
-        const teacherData = evaluation.teachers as { profiles?: { first_name?: string; last_name?: string; username?: string } };
-        const teacherName = teacherData.profiles 
-          ? (() => {
-              const profiles = teacherData.profiles;
-              const firstName = profiles.first_name || '';
-              const lastName = profiles.last_name || '';
-              const username = profiles.username || '';
-              return `${firstName} ${lastName}`.trim() || username || 'Professeur';
-            })()
-          : 'Professeur';
-
-        return (
-          <InterviewEvaluationCard
-            key={evaluation.id}
-            evaluationId={evaluation.id}
-            teacherName={teacherName}
-            expiresAt={evaluation.expires_at}
-          />
-        );
-      })}
+      {!isTeacherView && pendingEvaluations.map((evaluation) => (
+        <InterviewEvaluationCard
+          key={evaluation.id}
+          evaluationId={evaluation.id}
+          teacherName={
+            evaluation.teachers?.profiles
+              ? `${evaluation.teachers.profiles.first_name || ''} ${evaluation.teachers.profiles.last_name || ''}`.trim()
+                || evaluation.teachers.profiles.username
+                || 'Professeur'
+              : 'Professeur'
+          }
+          expiresAt={evaluation.expires_at}
+        />
+      ))}
 
       {/* Indicateurs de frappe */}
       {typingUsers.map(user => (
