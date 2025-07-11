@@ -174,17 +174,27 @@ const MessageList: React.FC<MessageListProps> = ({
 
       {/* Affichage des évaluations en attente pour les étudiants - APRÈS les messages */}
       {!isTeacherView && pendingEvaluations.map((evaluation) => {
-        // Vérifier si l'évaluation a des données de professeur valides
-        const teacherName = evaluation.teachers && typeof evaluation.teachers === 'object' && 'profiles' in evaluation.teachers
+        // Vérifier si l'évaluation et teachers existent et ne sont pas null
+        if (!evaluation.teachers || typeof evaluation.teachers !== 'object') {
+          return (
+            <InterviewEvaluationCard
+              key={evaluation.id}
+              evaluationId={evaluation.id}
+              teacherName="Professeur"
+              expiresAt={evaluation.expires_at}
+            />
+          );
+        }
+
+        // Vérifier si teachers a une propriété profiles
+        const teacherData = evaluation.teachers as { profiles?: { first_name?: string; last_name?: string; username?: string } };
+        const teacherName = teacherData.profiles 
           ? (() => {
-              const profiles = evaluation.teachers.profiles;
-              if (profiles && typeof profiles === 'object') {
-                const firstName = 'first_name' in profiles ? profiles.first_name || '' : '';
-                const lastName = 'last_name' in profiles ? profiles.last_name || '' : '';
-                const username = 'username' in profiles ? profiles.username || '' : '';
-                return `${firstName} ${lastName}`.trim() || username || 'Professeur';
-              }
-              return 'Professeur';
+              const profiles = teacherData.profiles;
+              const firstName = profiles.first_name || '';
+              const lastName = profiles.last_name || '';
+              const username = profiles.username || '';
+              return `${firstName} ${lastName}`.trim() || username || 'Professeur';
             })()
           : 'Professeur';
 

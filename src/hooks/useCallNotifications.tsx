@@ -57,7 +57,7 @@ export const useCallNotifications = (formationId: string) => {
           filter: `formation_id=eq.${formationId}`
         },
         async (payload) => {
-          const newCall = payload.new;
+          const newCall = payload.new as any;
           
           // Ne pas notifier si c'est notre propre appel
           if (newCall.caller_id === user?.id) return;
@@ -107,7 +107,7 @@ export const useCallNotifications = (formationId: string) => {
           filter: `formation_id=eq.${formationId}`
         },
         (payload) => {
-          const updatedCall = payload.new;
+          const updatedCall = payload.new as any;
           
           setIncomingCalls(prev => 
             prev.map(call => 
