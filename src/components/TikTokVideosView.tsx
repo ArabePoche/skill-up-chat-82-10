@@ -77,10 +77,15 @@ const TikTokVideosView: React.FC = () => {
       className="relative h-full w-full bg-black overflow-y-auto snap-y snap-mandatory"
       style={{ 
         scrollbarWidth: 'none', 
-        msOverflowStyle: 'none',
-        WebkitScrollbar: { display: 'none' }
+        msOverflowStyle: 'none'
       }}
     >
+      <style jsx>{`
+        div::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      
       {/* Affichage de toutes les vidéos avec scroll fluide */}
       {videos.map((video, index) => (
         <div

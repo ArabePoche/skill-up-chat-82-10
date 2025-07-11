@@ -1,13 +1,12 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, MessageCircle, Share, Bookmark, Play, Pause } from 'lucide-react';
+import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Volume2, VolumeX, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import VideoCommentsModal from './VideoCommentsModal';
-import ShareModal from '@/components/ShareModal';
+import VideoShareModal from './VideoShareModal';
 import { toast } from 'sonner';
 
 interface Video {
@@ -42,6 +41,8 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -66,29 +67,43 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
     return match ? match[1] : '';
   };
 
-  // Gestion de la lecture/pause pour les vidéos MP4
+  // Gestion de la lecture automatique selon le type de vidéo
   useEffect(() => {
-    if (!videoRef.current || !isMp4) return;
-
-    if (isActive) {
-      videoRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(console.error);
-    } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
+    if (isMp4 && videoRef.current) {
+      if (isActive) {
+        videoRef.current.play().then(() => {
+          setIsPlaying(true);
+        }).catch(console.error);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
     }
   }, [isActive, isMp4]);
 
   const handleVideoClick = () => {
-    if (!videoRef.current || !isMp4) return;
-    
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
+    if (isMp4 && videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    } else if (isYouTube || isVimeo) {
+      // Pour YouTube et Vimeo, on bascule entre play/pause
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleMuteToggle = () => {
+    if (isMp4 && videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
     } else {
-      videoRef.current.play();
-      setIsPlaying(true);
+      // Pour YouTube et Vimeo, on ne peut que simuler le changement d'état
+      setIsMuted(!isMuted);
+      toast.info(isMuted ? 'Son activé' : 'Son désactivé');
     }
   };
 
@@ -102,10 +117,19 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
 
   const handleLike = () => {
     handleActionClick(() => {
+      const wasLiked = isLiked;
       toggleLike();
-      if (onLikeWithConfetti) {
+      // Seulement déclencher les confetti si c'est un nouveau like
+      if (!wasLiked && onLikeWithConfetti) {
         onLikeWithConfetti();
       }
+    });
+  };
+
+  const handleFollow = () => {
+    handleActionClick(() => {
+      setIsFollowing(!isFollowing);
+      toast.success(isFollowing ? 'Désabonné' : 'Abonné !');
     });
   };
 
@@ -124,18 +148,18 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
 
   return (
     <div className="relative w-full h-full bg-black overflow-hidden">
-      {/* Conteneur vidéo avec aspect ratio parfait */}
+      {/* Conteneur vidéo responsive */}
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Vidéos YouTube */}
         {isYouTube && (
           <iframe
             ref={iframeRef}
-            src={`https://www.youtube.com/embed/${getYouTubeId(video.video_url)}?autoplay=${isActive ? 1 : 0}&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=${getYouTubeId(video.video_url)}`}
-            className="w-full h-full object-cover"
+            src={`https://www.youtube.com/embed/${getYouTubeId(video.video_url)}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=${getYouTubeId(video.video_url)}`}
+            className="absolute inset-0 w-full h-full object-cover"
             style={{
-              minWidth: '100%',
-              minHeight: '100%',
-              transform: 'scale(1.1)', // Légère augmentation pour éviter les bandes noires
+              width: '100vw',
+              height: '100vh',
+              objectFit: 'cover'
             }}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -147,12 +171,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
         {/* Vidéos Vimeo */}
         {isVimeo && (
           <iframe
-            src={`https://player.vimeo.com/video/${getVimeoId(video.video_url)}?autoplay=${isActive ? 1 : 0}&loop=1&muted=1&controls=0&background=1`}
-            className="w-full h-full object-cover"
+            src={`https://player.vimeo.com/video/${getVimeoId(video.video_url)}?autoplay=${isActive ? 1 : 0}&loop=1&muted=${isMuted ? 1 : 0}&controls=0&background=1`}
+            className="absolute inset-0 w-full h-full object-cover"
             style={{
-              minWidth: '100%',
-              minHeight: '100%',
-              transform: 'scale(1.1)',
+              width: '100vw',
+              height: '100vh',
+              objectFit: 'cover'
             }}
             frameBorder="0"
             allow="autoplay; fullscreen; picture-in-picture"
@@ -167,12 +191,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
             ref={videoRef}
             src={video.video_url}
             poster={video.thumbnail_url}
-            className="w-full h-full object-cover cursor-pointer"
+            className="absolute inset-0 w-full h-full object-cover cursor-pointer"
             style={{
-              minWidth: '100%',
-              minHeight: '100%',
+              width: '100vw',
+              height: '100vh',
+              objectFit: 'cover'
             }}
-            muted
+            muted={isMuted}
             loop
             playsInline
             onClick={handleVideoClick}
@@ -182,20 +207,20 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
           />
         )}
 
-        {/* Indicateur de chargement */}
+        {/* Overlay de chargement */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
           </div>
         )}
 
-        {/* Bouton play/pause pour MP4 */}
-        {isMp4 && !isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center">
+        {/* Bouton play/pause pour toutes les vidéos */}
+        {!isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <Button
               variant="ghost"
               size="icon"
-              className="w-16 h-16 rounded-full bg-black/30 text-white hover:bg-black/50"
+              className="w-16 h-16 rounded-full bg-black/30 text-white hover:bg-black/50 pointer-events-auto"
               onClick={handleVideoClick}
             >
               <Play size={32} />
@@ -204,9 +229,21 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
         )}
       </div>
 
+      {/* Contrôles vidéo */}
+      <div className="absolute top-4 right-4 z-20">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleMuteToggle}
+          className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
+        >
+          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </Button>
+      </div>
+
       {/* Actions côté droit */}
       <div className="absolute right-3 bottom-20 flex flex-col items-center space-y-4 z-10">
-        {/* Avatar du créateur */}
+        {/* Avatar du créateur avec bouton d'abonnement */}
         <div className="relative">
           <Avatar className="w-12 h-12 border-2 border-white">
             <AvatarImage src={video.profiles?.avatar_url} />
@@ -214,6 +251,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
               {video.profiles?.first_name?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
+          <Button
+            onClick={handleFollow}
+            size="sm"
+            className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-xs font-bold ${
+              isFollowing 
+                ? 'bg-gray-500 text-white' 
+                : 'bg-red-500 text-white hover:bg-red-600'
+            }`}
+          >
+            {isFollowing ? '✓' : <Plus size={12} />}
+          </Button>
         </div>
 
         {/* Bouton Like */}
@@ -303,14 +351,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
         videoId={video.id}
       />
 
-      <ShareModal
+      <VideoShareModal
         isOpen={showShare}
         onClose={() => setShowShare(false)}
-        content={{
-          title: video.title,
-          description: video.description,
-          url: window.location.href
-        }}
+        url={window.location.href}
+        title={video.title}
+        description={video.description}
       />
     </div>
   );
