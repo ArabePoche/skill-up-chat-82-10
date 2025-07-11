@@ -1,32 +1,26 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useIsTeacherInFormation } from '@/hooks/useIsTeacherInFormation';
 import MessageItem from './MessageItem';
-import SystemMessage from './SystemMessage';
-import ExerciseDisplay from './ExerciseDisplay';
-import CelebrationAnimation from './CelebrationAnimation';
 import TypingIndicator from './TypingIndicator';
-import InterviewEvaluationCard from './InterviewEvaluationCard';
-import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
+import SystemMessage from './SystemMessage';
 import { useTypingListener } from '@/hooks/useTypingListener';
-import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
+import InterviewEvaluationCard from './InterviewEvaluationCard';
 
 interface Message {
   id: string;
   content: string;
   sender_id: string;
-  message_type: string;
-  file_url?: string;
-  file_type?: string;
-  file_name?: string;
-  is_exercise_submission?: boolean;
-  is_system_message?: boolean;
-  exercise_status?: string;
-  exercise_id?: string;
   created_at: string;
+  file_url?: string;
+  file_name?: string;
+  file_type?: string;
+  is_system_message?: boolean;
+  message_type?: string;
+  exercise_id?: string;
+  exercise_status?: string;
+  is_exercise_submission?: boolean;
   profiles?: {
-    id?: string;
     first_name?: string;
     last_name?: string;
     username?: string;
@@ -35,167 +29,116 @@ interface Message {
   };
 }
 
-interface Exercise {
+interface InterviewEvaluation {
   id: string;
-  title: string;
-  description?: string;
-  content?: string;
+  student_id: string;
+  teacher_id: string;
+  formation_id: string;
+  lesson_id: string;
+  expires_at: string;
+  responded_at?: string;
+  is_satisfied?: boolean;
+  feedback_text?: string;
+  created_at: string;
+  teachers?: {
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    avatar_url?: string;
+  } | null;
 }
 
 interface MessageListProps {
   messages: Message[];
-  exercises: Exercise[];
-  lesson: { 
-    id: number | string;
-    title: string;
-  };
   formationId: string;
-  isTeacherView?: boolean;
-  studentName?: string;
+  lessonId: string;
   isTeacher?: boolean;
-  onValidateExercise: (messageId: string, isValid: boolean) => void;
+  onUpdateMessage?: (messageId: string, newFileUrl: string) => void;
+  pendingEvaluations?: InterviewEvaluation[];
 }
 
 const MessageList: React.FC<MessageListProps> = ({
   messages,
-  exercises,
-  lesson,
   formationId,
-  isTeacherView = false,
-  studentName,
-  onValidateExercise
+  lessonId,
+  isTeacher = false,
+  onUpdateMessage,
+  pendingEvaluations = []
 }) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const [showCelebration, setShowCelebration] = useState(false);
-  
-  // Vérifier si l'utilisateur est professeur dans cette formation
-  const { data: isTeacherInThisFormation = false } = useIsTeacherInFormation(formationId);
-  
-  // Écouter les indicateurs de frappe
-  const typingUsers = useTypingListener(lesson.id.toString(), formationId);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { typingUsers } = useTypingListener(formationId, lessonId);
 
-  // Activer les mises à jour temps réel
-  useRealtimeMessages(lesson.id.toString(), formationId);
-
-  // Récupérer les évaluations en attente pour les étudiants
-  const { data: pendingEvaluations = [] } = useStudentEvaluations();
-
+  // Scroll vers le bas quand de nouveaux messages arrivent
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, typingUsers]);
+  }, [messages.length]);
 
-  // Vérifier si un exercice a déjà été soumis
-  const isExerciseSubmitted = (exerciseId: string) => {
-    return messages.some(msg => 
-      msg.is_exercise_submission && 
-      msg.sender_id === user?.id &&
-      msg.exercise_id === exerciseId
-    );
-  };
+  // Filtrer les évaluations non expirées et non répondues pour les étudiants
+  const validEvaluations = useMemo(() => {
+    if (isTeacher || !user) return [];
+    
+    return pendingEvaluations.filter(evaluation => {
+      const isExpired = new Date(evaluation.expires_at) < new Date();
+      const isAlreadyResponded = evaluation.responded_at;
+      const isForCurrentUser = evaluation.student_id === user.id;
+      
+      return !isExpired && !isAlreadyResponded && isForCurrentUser;
+    });
+  }, [pendingEvaluations, isTeacher, user]);
 
-  // Récupérer l'exercice par son ID
-  const getExerciseById = (exerciseId: string) => {
-    return exercises.find(ex => ex.id === exerciseId);
-  };
-
-  console.log('MessageList render - messages count:', messages?.length || 0);
-  console.log('Typing users:', typingUsers);
-  console.log('Pending evaluations:', pendingEvaluations);
-  console.log('Is teacher in this formation:', isTeacherInThisFormation);
+  const currentUsersTyping = typingUsers.filter(typingUser => typingUser.user_id !== user?.id);
 
   return (
-    <div className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
-      {/* Animation de célébration */}
-      <CelebrationAnimation 
-        show={showCelebration} 
-        onComplete={() => setShowCelebration(false)}
-      />
-
-      {/* Message système de bienvenue */}
-      <div className="text-center">
-        <span className="bg-[#dcf8c6] text-gray-700 px-3 py-2 rounded-lg text-sm shadow-sm">
-          {isTeacherView 
-            ? `Discussion avec ${studentName}` 
-            : `Bienvenue dans la leçon: ${lesson.title}`
-          }
-        </span>
-      </div>
-
-      {/* Messages avec mises à jour temps réel */}
-      {messages && messages.length > 0 ? (
-        messages.map((msg) => {
-          // Message système avec exercice
-          if (msg.is_system_message && msg.exercise_id) {
-            const exercise = getExerciseById(msg.exercise_id);
-            return (
-              <div key={msg.id} className="message-appear">
-                <SystemMessage
-                  content={msg.content}
-                  exercise={exercise}
-                  lessonId={lesson.id.toString()}
-                  formationId={formationId}
-                  isTeacherView={isTeacherView}
-                />
-              </div>
-            );
-          }
-
-          // Message système simple
-          if (msg.is_system_message) {
-            return (
-              <div key={msg.id} className="message-appear">
-                <SystemMessage
-                  content={msg.content}
-                  lessonId={lesson.id.toString()}
-                  formationId={formationId}
-                  isTeacherView={isTeacherView}
-                />
-              </div>
-            );
-          }
-
-          // Messages normaux (soumissions d'exercices et messages texte)
-          return (
-            <div key={msg.id} className="message-appear">
-              <MessageItem
-                message={msg}
-                isTeacher={isTeacherInThisFormation}
-                onValidateExercise={onValidateExercise}
-              />
-            </div>
-          );
-        })
-      ) : (
-        <div className="text-center text-gray-500 py-8">
-          <p>Aucun message pour le moment</p>
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Affichage des évaluations d'entretien en attente */}
+      {validEvaluations.map((evaluation) => (
+        <div key={evaluation.id} className="mb-4">
+          <InterviewEvaluationCard
+            evaluation={{
+              id: evaluation.id,
+              student_id: evaluation.student_id,
+              teacher_id: evaluation.teacher_id,
+              formation_id: evaluation.formation_id,
+              lesson_id: evaluation.lesson_id,
+              expires_at: evaluation.expires_at,
+              responded_at: evaluation.responded_at,
+              is_satisfied: evaluation.is_satisfied,
+              feedback_text: evaluation.feedback_text,
+              created_at: evaluation.created_at,
+              teacher: {
+                first_name: evaluation.teachers?.first_name || '',
+                last_name: evaluation.teachers?.last_name || '',
+                username: evaluation.teachers?.username || '',
+                avatar_url: evaluation.teachers?.avatar_url || ''
+              }
+            }}
+          />
         </div>
+      ))}
+
+      {/* Messages */}
+      {messages.map((message) => (
+        <div key={message.id}>
+          {message.is_system_message ? (
+            <SystemMessage message={message} />
+          ) : (
+            <MessageItem
+              message={message}
+              isOwn={message.sender_id === user?.id}
+              isTeacher={isTeacher}
+              formationId={formationId}
+              lessonId={lessonId}
+              onUpdate={onUpdateMessage}
+            />
+          )}
+        </div>
+      ))}
+
+      {/* Indicateur de frappe */}
+      {currentUsersTyping.length > 0 && (
+        <TypingIndicator users={currentUsersTyping} />
       )}
-
-      {/* Affichage des évaluations en attente pour les étudiants - APRÈS les messages */}
-      {!isTeacherView && pendingEvaluations.map((evaluation) => (
-        <InterviewEvaluationCard
-          key={evaluation.id}
-          evaluationId={evaluation.id}
-          teacherName={
-            evaluation.teachers?.profiles
-              ? `${evaluation.teachers.profiles.first_name || ''} ${evaluation.teachers.profiles.last_name || ''}`.trim()
-                || evaluation.teachers.profiles.username
-                || 'Professeur'
-              : 'Professeur'
-          }
-          expiresAt={evaluation.expires_at}
-        />
-      ))}
-
-      {/* Indicateurs de frappe */}
-      {typingUsers.map(user => (
-        <TypingIndicator
-          key={user.user_id}
-          userName={user.user_name}
-          isTeacher={user.is_teacher}
-        />
-      ))}
 
       <div ref={messagesEndRef} />
     </div>

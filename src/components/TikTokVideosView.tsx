@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import VideoCard from '@/components/video/VideoCard';
 import { useInfiniteVideos } from '@/hooks/useInfiniteVideos';
@@ -62,10 +63,9 @@ const TikTokVideosView: React.FC = () => {
     setShowConfetti(true);
   };
 
-
   if (!videos.length) {
     return (
-      <div className="h-full flex items-center justify-center text-white">
+      <div className="h-full flex items-center justify-center text-white bg-black">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
       </div>
     );
@@ -75,7 +75,11 @@ const TikTokVideosView: React.FC = () => {
     <div 
       ref={containerRef}
       className="relative h-full w-full bg-black overflow-y-auto snap-y snap-mandatory"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      style={{ 
+        scrollbarWidth: 'none', 
+        msOverflowStyle: 'none',
+        WebkitScrollbar: { display: 'none' }
+      }}
     >
       {/* Affichage de toutes les vidéos avec scroll fluide */}
       {videos.map((video, index) => (
@@ -83,7 +87,7 @@ const TikTokVideosView: React.FC = () => {
           key={video.id}
           ref={(el) => (videoRefs.current[index] = el)}
           data-video-index={index}
-          className="relative h-screen w-full snap-start snap-always"
+          className="relative h-screen w-full snap-start snap-always flex-shrink-0"
         >
           <VideoCard
             video={video}
@@ -96,8 +100,8 @@ const TikTokVideosView: React.FC = () => {
       {/* Chargement des vidéos suivantes */}
       {isFetchingNextPage && (
         <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-black/50 rounded-full p-2 sm:p-3">
-            <div className="animate-spin rounded-full h-4 w-4 sm:h-6 sm:w-6 border-b-2 border-white"></div>
+          <div className="bg-black/50 backdrop-blur-sm rounded-full p-3 border border-white/20">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
           </div>
         </div>
       )}

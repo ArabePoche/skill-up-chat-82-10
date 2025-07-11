@@ -1,92 +1,53 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
-import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CallNotification {
   id: string;
   caller_id: string;
+  receiver_id: string;
   formation_id: string;
   lesson_id: string;
-  call_type: 'audio' | 'video';
-  caller_name?: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  call_type: string;
+  status: string;
+  created_at: string;
 }
 
-export const useCallNotifications = (formationId: string) => {
+export const useCallNotifications = () => {
   const { user } = useAuth();
-  const [incomingCalls, setIncomingCalls] = useState<CallNotification[]>([]);
-  const [isTeacher, setIsTeacher] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<CallNotification | null>(null);
 
   useEffect(() => {
-    if (!user?.id || !formationId) return;
+    if (!user) return;
 
-    // Vérifier si l'utilisateur est professeur dans cette formation
-    const checkTeacherStatus = async () => {
-      const { data } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('formation_id', formationId)
-        .single();
-      
-      setIsTeacher(!!data);
-    };
+    console.log('Setting up call notifications for user:', user.id);
 
-    checkTeacherStatus();
-  }, [user?.id, formationId]);
-
-  useEffect(() => {
-    if (!isTeacher || !formationId) return;
-
-    // Écouter les nouveaux appels entrants
-    const callsChannel = supabase
-      .channel(`calls-${formationId}`)
+    const channel = supabase
+      .channel('call_notifications')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'call_sessions',
-          filter: `formation_id=eq.${formationId}`
+          filter: `receiver_id=eq.${user.id}`,
         },
-        async (payload) => {
-          const newCall = payload.new;
+        (payload: any) => {
+          console.log('New call notification received:', payload);
           
-          // Ne pas notifier si c'est notre propre appel
-          if (newCall.caller_id === user?.id) return;
-
-          // Récupérer les infos du demandeur
-          const { data: callerProfile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, username')
-            .eq('id', newCall.caller_id)
-            .single();
-
-          const callerName = callerProfile 
-            ? `${callerProfile.first_name || ''} ${callerProfile.last_name || ''}`.trim() || callerProfile.username || 'Utilisateur'
-            : 'Utilisateur';
-
-          const callNotification: CallNotification = {
-            id: newCall.id,
-            caller_id: newCall.caller_id,
-            formation_id: newCall.formation_id,
-            lesson_id: newCall.lesson_id,
-            call_type: newCall.call_type,
-            caller_name: callerName,
-            status: 'pending'
-          };
-
-          setIncomingCalls(prev => [...prev, callNotification]);
-          
-          toast.info(`📞 Appel ${newCall.call_type === 'video' ? 'vidéo' : 'audio'} entrant de ${callerName}`, {
-            duration: 30000,
-            action: {
-              label: 'Répondre',
-              onClick: () => acceptCall(callNotification.id)
-            }
-          });
+          if (payload.new && payload.new.status === 'calling') {
+            setIncomingCall({
+              id: payload.new.id,
+              caller_id: payload.new.caller_id,
+              receiver_id: payload.new.receiver_id,
+              formation_id: payload.new.formation_id,
+              lesson_id: payload.new.lesson_id,
+              call_type: payload.new.call_type,
+              status: payload.new.status,
+              created_at: payload.new.created_at,
+            });
+          }
         }
       )
       .on(
@@ -95,89 +56,32 @@ export const useCallNotifications = (formationId: string) => {
           event: 'UPDATE',
           schema: 'public',
           table: 'call_sessions',
-          filter: `formation_id=eq.${formationId}`
+          filter: `receiver_id=eq.${user.id}`,
         },
-        (payload) => {
-          const updatedCall = payload.new;
+        (payload: any) => {
+          console.log('Call status updated:', payload);
           
-          setIncomingCalls(prev => 
-            prev.map(call => 
-              call.id === updatedCall.id 
-                ? { ...call, status: updatedCall.status }
-                : call
-            )
-          );
-
-          // Si l'appel a été accepté par un autre prof, supprimer la notification
-          if (updatedCall.status === 'accepted' && updatedCall.receiver_id !== user?.id) {
-            setIncomingCalls(prev => prev.filter(call => call.id !== updatedCall.id));
-            toast.info('Appel déjà pris par un autre professeur');
+          if (payload.new && (payload.new.status === 'ended' || payload.new.status === 'declined')) {
+            setIncomingCall(null);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Call notifications subscription status:', status);
+      });
 
     return () => {
-      supabase.removeChannel(callsChannel);
+      console.log('Cleaning up call notifications subscription');
+      supabase.removeChannel(channel);
     };
-  }, [isTeacher, formationId, user?.id]);
+  }, [user]);
 
-  const acceptCall = async (callId: string) => {
-    try {
-      const { error } = await supabase
-        .from('call_sessions')
-        .update({ 
-          status: 'accepted',
-          receiver_id: user?.id,
-          started_at: new Date().toISOString()
-        })
-        .eq('id', callId)
-        .eq('status', 'pending'); // S'assurer que l'appel est encore en attente
-
-      if (error) {
-        toast.error('Impossible d\'accepter l\'appel');
-        return;
-      }
-
-      // Supprimer l'appel des notifications locales
-      setIncomingCalls(prev => prev.filter(call => call.id !== callId));
-      
-      toast.success('Appel accepté ! Connexion en cours...');
-      // TODO: Ici, implémenter la logique WebRTC
-      
-    } catch (error) {
-      console.error('Error accepting call:', error);
-      toast.error('Erreur lors de l\'acceptation de l\'appel');
-    }
-  };
-
-  const rejectCall = async (callId: string) => {
-    try {
-      const { error } = await supabase
-        .from('call_sessions')
-        .update({ 
-          status: 'rejected',
-          ended_at: new Date().toISOString()
-        })
-        .eq('id', callId);
-
-      if (error) {
-        toast.error('Erreur lors du rejet de l\'appel');
-        return;
-      }
-
-      setIncomingCalls(prev => prev.filter(call => call.id !== callId));
-      toast.info('Appel rejeté');
-      
-    } catch (error) {
-      console.error('Error rejecting call:', error);
-    }
+  const dismissCall = () => {
+    setIncomingCall(null);
   };
 
   return {
-    incomingCalls: incomingCalls.filter(call => call.status === 'pending'),
-    acceptCall,
-    rejectCall,
-    isTeacher
+    incomingCall,
+    dismissCall,
   };
 };
