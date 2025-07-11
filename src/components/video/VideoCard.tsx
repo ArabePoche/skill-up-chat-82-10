@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Volume2, VolumeX, Plus } from 'lucide-react';
+import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
@@ -7,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import VideoCommentsModal from './VideoCommentsModal';
 import VideoShareModal from './VideoShareModal';
+import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
 
 interface Video {
@@ -38,10 +40,10 @@ interface VideoCardProps {
 const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfetti }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isMuted } = useGlobalSound();
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -70,6 +72,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
   // Gestion de la lecture automatique selon le type de vidéo
   useEffect(() => {
     if (isMp4 && videoRef.current) {
+      videoRef.current.muted = isMuted;
       if (isActive) {
         videoRef.current.play().then(() => {
           setIsPlaying(true);
@@ -79,7 +82,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
         setIsPlaying(false);
       }
     }
-  }, [isActive, isMp4]);
+  }, [isActive, isMp4, isMuted]);
 
   const handleVideoClick = () => {
     if (isMp4 && videoRef.current) {
@@ -91,19 +94,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
         setIsPlaying(true);
       }
     } else if (isYouTube || isVimeo) {
-      // Pour YouTube et Vimeo, on bascule entre play/pause
       setIsPlaying(!isPlaying);
-    }
-  };
-
-  const handleMuteToggle = () => {
-    if (isMp4 && videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    } else {
-      // Pour YouTube et Vimeo, on ne peut que simuler le changement d'état
-      setIsMuted(!isMuted);
-      toast.info(isMuted ? 'Son activé' : 'Son désactivé');
     }
   };
 
@@ -119,7 +110,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
     handleActionClick(() => {
       const wasLiked = isLiked;
       toggleLike();
-      // Seulement déclencher les confetti si c'est un nouveau like
       if (!wasLiked && onLikeWithConfetti) {
         onLikeWithConfetti();
       }
@@ -140,6 +130,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
     });
   };
 
+  const handleFormationRedirect = () => {
+    if (video.formation_id) {
+      navigate(`/formation/${video.formation_id}`);
+    }
+  };
+
   const formatCount = (count: number) => {
     if (count < 1000) return count.toString();
     if (count < 1000000) return (count / 1000).toFixed(1) + 'K';
@@ -155,7 +151,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
           <iframe
             ref={iframeRef}
             src={`https://www.youtube.com/embed/${getYouTubeId(video.video_url)}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=${getYouTubeId(video.video_url)}`}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full"
             style={{
               width: '100vw',
               height: '100vh',
@@ -172,7 +168,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
         {isVimeo && (
           <iframe
             src={`https://player.vimeo.com/video/${getVimeoId(video.video_url)}?autoplay=${isActive ? 1 : 0}&loop=1&muted=${isMuted ? 1 : 0}&controls=0&background=1`}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full"
             style={{
               width: '100vw',
               height: '100vh',
@@ -227,18 +223,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Contrôles vidéo */}
-      <div className="absolute top-4 right-4 z-20">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleMuteToggle}
-          className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
-        >
-          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-        </Button>
       </div>
 
       {/* Actions côté droit */}
@@ -327,6 +311,23 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
             {isSaved ? 'Sauvé' : 'Sauver'}
           </span>
         </div>
+
+        {/* Bouton Formation (pour les vidéos promo) */}
+        {video.video_type === 'promo' && video.formation_id && (
+          <div className="flex flex-col items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleFormationRedirect}
+              className="w-12 h-12 rounded-full bg-edu-primary/80 backdrop-blur-sm text-white hover:bg-edu-primary"
+            >
+              <ShoppingBag size={24} />
+            </Button>
+            <span className="text-white text-xs mt-1 font-medium">
+              Formation
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Informations vidéo en bas à gauche */}
@@ -336,10 +337,22 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLikeWithConfet
             <span className="font-semibold">
               @{video.profiles?.username || video.profiles?.first_name || 'Utilisateur'}
             </span>
+            {video.video_type === 'promo' && (
+              <span className="bg-edu-primary px-2 py-1 rounded-full text-xs font-bold">
+                PROMO
+              </span>
+            )}
           </div>
           <h3 className="font-bold text-lg mb-1 line-clamp-2">{video.title}</h3>
           {video.description && (
             <p className="text-sm opacity-90 line-clamp-3">{video.description}</p>
+          )}
+          {video.price && (
+            <div className="mt-2">
+              <span className="bg-green-500 px-2 py-1 rounded-full text-xs font-bold">
+                {video.price}€
+              </span>
+            </div>
           )}
         </div>
       </div>

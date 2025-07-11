@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import ShopHeader from '@/components/shop/ShopHeader';
 import ShopSidebar from '@/components/shop/ShopSidebar';
 import CategoryFilter from '@/components/shop/CategoryFilter';
-import FormationGrid from '@/components/shop/FormationGrid';
+import FormationSections from '@/components/shop/FormationSections';
 import ProductGrid from '@/components/shop/ProductGrid';
 
 const Shop = () => {
@@ -62,6 +62,9 @@ const Shop = () => {
   const isLoading = activeTab === 'formations' 
     ? formationsLoading || formationCategoriesLoading
     : productsLoading || productCategoriesLoading;
+
+  // Récupérer les centres d'intérêt de l'utilisateur
+  const userInterests = user?.interests || [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
@@ -136,10 +139,10 @@ const Shop = () => {
                 <div className="text-gray-500">Chargement...</div>
               </div>
             ) : activeTab === 'formations' ? (
-              <FormationGrid
+              <FormationSections
                 formations={filteredFormations}
                 onViewDetails={handleViewDetails}
-                user={user}
+                userInterests={userInterests}
               />
             ) : (
               <ProductGrid

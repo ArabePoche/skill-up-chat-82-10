@@ -1,109 +1,91 @@
 
 import React from 'react';
 import { useTeacherDiscussionsWithUnread } from '@/hooks/useTeacherDiscussionsWithUnread';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, Clock, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { MessageCircle, Users } from 'lucide-react';
 
 interface TeacherDiscussionsListProps {
   onSelectDiscussion: (studentId: string, formationId: string, lessonId: string) => void;
 }
 
-const TeacherDiscussionsList: React.FC<TeacherDiscussionsListProps> = ({
-  onSelectDiscussion
-}) => {
-  const { data: discussions, isLoading, error } = useTeacherDiscussionsWithUnread();
+const TeacherDiscussionsList: React.FC<TeacherDiscussionsListProps> = ({ onSelectDiscussion }) => {
+  const { data: discussions, isLoading } = useTeacherDiscussionsWithUnread();
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-500 p-4">
-        Erreur lors du chargement des discussions
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-edu-primary"></div>
       </div>
     );
   }
 
   if (!discussions || discussions.length === 0) {
     return (
-      <div className="text-center text-gray-500 p-8">
-        <MessageCircle className="mx-auto h-12 w-12 mb-4 opacity-50" />
-        <p>Aucune discussion active</p>
+      <div className="text-center p-8 text-gray-500">
+        <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+        <p>Aucune discussion d'étudiant pour le moment</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold mb-4">Discussions actives</h2>
+    <div className="space-y-2">
+      <div className="flex items-center space-x-2 mb-4">
+        <Users size={20} className="text-edu-primary" />
+        <h2 className="text-lg font-semibold">Discussions étudiants</h2>
+        <Badge variant="secondary">{discussions.length}</Badge>
+      </div>
       
       {discussions.map((discussion) => (
-        <Card 
-          key={`${discussion.student_id}-${discussion.formation_id}-${discussion.lesson_id}`}
-          className="cursor-pointer hover:shadow-md transition-shadow"
+        <div
+          key={`${discussion.student_id}-${discussion.lesson_id}`}
           onClick={() => onSelectDiscussion(
-            discussion.student_id, 
-            discussion.formation_id, 
+            discussion.student_id,
+            discussion.formation_id || '',
             discussion.lesson_id
           )}
+          className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
         >
-          <CardHeader className="pb-3">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={discussion.student?.avatar_url} />
+            <AvatarFallback className="bg-gray-200">
+              {discussion.student?.first_name?.charAt(0) || 
+               discussion.student?.last_name?.charAt(0) || 'E'}
+            </AvatarFallback>
+          </Avatar>
+          
+          <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={discussion.teacher?.avatar_url || ''} 
-                    alt={discussion.teacher?.first_name || 'Professeur'} 
-                  />
-                  <AvatarFallback>
-                    <User className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <CardTitle className="text-base">
-                    {discussion.teacher?.first_name} {discussion.teacher?.last_name}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    @{discussion.teacher?.username || discussion.teacher?.first_name}
-                  </p>
-                </div>
-              </div>
-              
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {`${discussion.student?.first_name || ''} ${discussion.student?.last_name || ''}`.trim() || 
+                 discussion.student?.username || 'Étudiant'}
+              </p>
               {discussion.unread_count > 0 && (
-                <Badge variant="destructive" className="ml-2">
+                <Badge variant="default" className="ml-2">
                   {discussion.unread_count}
                 </Badge>
               )}
             </div>
-          </CardHeader>
+            
+            <p className="text-sm text-gray-500 truncate">
+              {discussion.lesson_title || 'Leçon'}
+            </p>
+            
+            <p className="text-xs text-gray-400">
+              {discussion.last_message_time && formatDistanceToNow(
+                new Date(discussion.last_message_time), 
+                { addSuffix: true, locale: fr }
+              )}
+            </p>
+          </div>
           
-          <CardContent className="pt-0">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4" />
-                <span>
-                  {formatDistanceToNow(new Date(discussion.last_message_at), {
-                    addSuffix: true,
-                    locale: fr
-                  })}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <MessageCircle className="h-4 w-4" />
-                <span>{discussion.total_messages} messages</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="text-xs text-gray-400">
+            {discussion.message_count || 0} messages
+          </div>
+        </div>
       ))}
     </div>
   );

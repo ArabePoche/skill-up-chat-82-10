@@ -1,8 +1,10 @@
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, createContext, useContext } from 'react';
 import VideoCard from '@/components/video/VideoCard';
 import { useInfiniteVideos } from '@/hooks/useInfiniteVideos';
 import ConfettiAnimation from '@/components/ConfettiAnimation';
+import { Volume2, VolumeX } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Video {
   id: string;
@@ -24,12 +26,29 @@ interface Video {
   };
 }
 
+// Contexte global pour le contrôle du son
+const GlobalSoundContext = createContext<{
+  isMuted: boolean;
+  toggleMute: () => void;
+}>({
+  isMuted: true,
+  toggleMute: () => {}
+});
+
+export const useGlobalSound = () => useContext(GlobalSoundContext);
+
 const TikTokVideosView: React.FC = () => {
   const { data: videos, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteVideos();
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [globalMuted, setGlobalMuted] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Contrôle global du son
+  const toggleGlobalMute = () => {
+    setGlobalMuted(!globalMuted);
+  };
 
   // Intersection Observer pour la lecture automatique
   useEffect(() => {
@@ -72,51 +91,67 @@ const TikTokVideosView: React.FC = () => {
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className="relative h-full w-full bg-black overflow-y-auto snap-y snap-mandatory"
-      style={{ 
-        scrollbarWidth: 'none', 
-        msOverflowStyle: 'none'
-      }}
-    >
-      <style jsx>{`
-        div::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-      
-      {/* Affichage de toutes les vidéos avec scroll fluide */}
-      {videos.map((video, index) => (
-        <div
-          key={video.id}
-          ref={(el) => (videoRefs.current[index] = el)}
-          data-video-index={index}
-          className="relative h-screen w-full snap-start snap-always flex-shrink-0"
-        >
-          <VideoCard
-            video={video}
-            isActive={index === currentVideoIndex}
-            onLikeWithConfetti={handleLikeWithConfetti}
-          />
+    <GlobalSoundContext.Provider value={{ isMuted: globalMuted, toggleMute: toggleGlobalMute }}>
+      <div 
+        ref={containerRef}
+        className="relative h-full w-full bg-black overflow-y-auto snap-y snap-mandatory"
+        style={{ 
+          scrollbarWidth: 'none', 
+          msOverflowStyle: 'none'
+        }}
+      >
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            div::-webkit-scrollbar {
+              display: none;
+            }
+          `
+        }} />
+        
+        {/* Contrôle global du son */}
+        <div className="fixed top-4 left-4 z-50">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleGlobalMute}
+            className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 border border-white/20"
+          >
+            {globalMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </Button>
         </div>
-      ))}
-
-      {/* Chargement des vidéos suivantes */}
-      {isFetchingNextPage && (
-        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-black/50 backdrop-blur-sm rounded-full p-3 border border-white/20">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+        
+        {/* Affichage de toutes les vidéos avec scroll fluide */}
+        {videos.map((video, index) => (
+          <div
+            key={video.id}
+            ref={(el) => (videoRefs.current[index] = el)}
+            data-video-index={index}
+            className="relative h-screen w-full snap-start snap-always flex-shrink-0"
+          >
+            <VideoCard
+              video={video}
+              isActive={index === currentVideoIndex}
+              onLikeWithConfetti={handleLikeWithConfetti}
+            />
           </div>
-        </div>
-      )}
+        ))}
 
-      {/* Animation confetti */}
-      <ConfettiAnimation
-        isActive={showConfetti}
-        onComplete={() => setShowConfetti(false)}
-      />
-    </div>
+        {/* Chargement des vidéos suivantes */}
+        {isFetchingNextPage && (
+          <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-50">
+            <div className="bg-black/50 backdrop-blur-sm rounded-full p-3 border border-white/20">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            </div>
+          </div>
+        )}
+
+        {/* Animation confetti */}
+        <ConfettiAnimation
+          isActive={showConfetti}
+          onComplete={() => setShowConfetti(false)}
+        />
+      </div>
+    </GlobalSoundContext.Provider>
   );
 };
 
