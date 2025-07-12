@@ -65,7 +65,7 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Ajouter un fichier ou un média
           </label>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -79,20 +79,25 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
+              className="flex-shrink-0"
             >
               <Upload size={16} className="mr-1" />
               Fichier
             </Button>
 
-            <CameraCapture
-              onCapture={handleCameraCapture}
-              disabled={isSubmitting}
-            />
+            <div className="flex-shrink-0">
+              <CameraCapture
+                onCapture={handleCameraCapture}
+                disabled={isSubmitting}
+              />
+            </div>
             
-            <AudioRecorder
-              onRecordingComplete={handleAudioCapture}
-              disabled={isSubmitting}
-            />
+            <div className="flex-1 min-w-0 sm:flex-shrink-0 sm:w-auto">
+              <AudioRecorder
+                onRecordingComplete={handleAudioCapture}
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
           
           {selectedFile && (

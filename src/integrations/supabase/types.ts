@@ -2467,9 +2467,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      delete_video_comment: {
+        Args: { comment_id: string; user_id: string }
+        Returns: boolean
+      }
       get_formation_details_by_id: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: Json
+      }
+      get_formation_unread_count: {
+        Args: { p_formation_id: string; p_teacher_id: string }
+        Returns: number
       }
       get_unread_messages_count: {
         Args: {
@@ -2525,6 +2533,14 @@ export type Database = {
           p_lesson_id: string
           p_student_id: string
           p_teacher_id: string
+        }
+        Returns: undefined
+      }
+      mark_student_messages_as_read: {
+        Args: {
+          p_formation_id: string
+          p_lesson_id: string
+          p_student_id: string
         }
         Returns: undefined
       }

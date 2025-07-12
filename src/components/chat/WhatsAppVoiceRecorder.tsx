@@ -118,18 +118,18 @@ const WhatsAppVoiceRecorder: React.FC<WhatsAppVoiceRecorderProps> = ({
   // Si on a un enregistrement terminé
   if (audioBlob && !isRecording) {
     return (
-      <div className="flex items-center gap-2 bg-green-50 rounded-full px-3 py-2 border border-green-200">
+      <div className="flex items-center gap-1 sm:gap-2 bg-green-50 rounded-full px-2 sm:px-3 py-1 sm:py-2 border border-green-200 max-w-full overflow-hidden">
         <audio
           ref={audioRef}
           src={audioUrl || undefined}
           className="hidden"
         />
         
-        <div className="flex items-center gap-2 flex-1">
-          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-            <Mic size={14} className="text-white" />
+        <div className="flex items-center gap-1 sm:gap-2 flex-1 min-w-0">
+          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Mic size={12} className="text-white sm:w-[14px] sm:h-[14px]" />
           </div>
-          <span className="text-sm font-medium text-green-700">
+          <span className="text-xs sm:text-sm font-medium text-green-700 truncate">
             {formatTime(recordingTime)}
           </span>
         </div>
@@ -138,17 +138,17 @@ const WhatsAppVoiceRecorder: React.FC<WhatsAppVoiceRecorderProps> = ({
           onClick={resetRecording}
           variant="ghost"
           size="sm"
-          className="p-1 h-8 w-8 rounded-full hover:bg-red-100"
+          className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-red-100 flex-shrink-0"
         >
-          <X size={14} className="text-red-500" />
+          <X size={12} className="text-red-500 sm:w-[14px] sm:h-[14px]" />
         </Button>
         
         <Button
           onClick={sendRecording}
-          className="bg-green-500 hover:bg-green-600 p-2 h-8 w-8 rounded-full"
+          className="bg-green-500 hover:bg-green-600 p-1 sm:p-2 h-6 w-6 sm:h-8 sm:w-8 rounded-full flex-shrink-0"
           size="sm"
         >
-          <Send size={14} className="text-white" />
+          <Send size={12} className="text-white sm:w-[14px] sm:h-[14px]" />
         </Button>
       </div>
     );
@@ -156,11 +156,11 @@ const WhatsAppVoiceRecorder: React.FC<WhatsAppVoiceRecorderProps> = ({
 
   // Bouton d'enregistrement
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 sm:gap-2 relative">
       {isRecording && (
-        <div className="flex items-center gap-2 bg-red-50 rounded-full px-3 py-1">
-          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-          <span className="text-sm text-red-600 font-medium">
+        <div className="flex items-center gap-1 sm:gap-2 bg-red-50 rounded-full px-2 sm:px-3 py-1 absolute right-12 sm:right-14 top-1/2 transform -translate-y-1/2 z-10 shadow-md border border-red-200">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full animate-pulse flex-shrink-0"></div>
+          <span className="text-xs sm:text-sm text-red-600 font-medium whitespace-nowrap">
             {formatTime(recordingTime)}
           </span>
         </div>
@@ -173,7 +173,7 @@ const WhatsAppVoiceRecorder: React.FC<WhatsAppVoiceRecorderProps> = ({
         onTouchEnd={stopRecording}
         disabled={disabled}
         className={`
-          rounded-full w-12 h-12 p-0 border-2 transition-all duration-200
+          rounded-full w-10 h-10 sm:w-12 sm:h-12 p-0 border-2 transition-all duration-200 flex-shrink-0
           ${isRecording 
             ? 'bg-red-500 hover:bg-red-600 border-red-300 scale-110 shadow-lg animate-pulse' 
             : 'bg-green-500 hover:bg-green-600 border-green-300 hover:scale-105'
@@ -182,8 +182,8 @@ const WhatsAppVoiceRecorder: React.FC<WhatsAppVoiceRecorderProps> = ({
         title={isRecording ? 'Relâchez pour arrêter' : 'Maintenez pour enregistrer'}
       >
         <Mic 
-          size={20} 
-          className={`text-white ${isRecording ? 'animate-pulse' : ''}`} 
+          size={16} 
+          className={`text-white ${isRecording ? 'animate-pulse' : ''} sm:w-[20px] sm:h-[20px]`} 
         />
       </Button>
     </div>
