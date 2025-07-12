@@ -14,6 +14,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -46,7 +47,14 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         setAudioBlob(blob);
-        setAudioUrl(URL.createObjectURL(blob));
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        
+        // Créer un audio temporaire pour obtenir la durée réelle
+        const tempAudio = new Audio(url);
+        tempAudio.onloadedmetadata = () => {
+          setAudioDuration(tempAudio.duration);
+        };
         
         // Arrêter le stream
         stream.getTracks().forEach(track => track.stop());
@@ -92,10 +100,14 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
   };
 
   const deleteRecording = () => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
     setAudioBlob(null);
     setAudioUrl(null);
     setIsPlaying(false);
     setRecordingTime(0);
+    setAudioDuration(0);
   };
 
   const sendRecording = () => {
@@ -115,43 +127,51 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
   // Si on a un enregistrement, afficher les contrôles de lecture
   if (audioBlob) {
     return (
-      <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
+      <div className="flex items-center justify-between space-x-1 sm:space-x-2 bg-gray-50 rounded-lg p-2 border border-gray-200 w-full max-w-[280px] sm:max-w-xs">
         <audio
           ref={audioRef}
           src={audioUrl || undefined}
           onEnded={() => setIsPlaying(false)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           className="hidden"
         />
         
         <Button
           onClick={playAudio}
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="p-2"
+          className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-green-100 flex-shrink-0"
         >
-          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+          {isPlaying ? (
+            <Pause size={12} className="text-green-600 sm:w-[14px] sm:h-[14px]" />
+          ) : (
+            <Play size={12} className="text-green-600 sm:w-[14px] sm:h-[14px]" />
+          )}
         </Button>
         
-        <span className="text-sm text-gray-600 min-w-[40px]">
-          {formatTime(recordingTime)}
-        </span>
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-xs sm:text-sm text-gray-600 font-mono">
+            {formatTime(Math.floor(audioDuration) || recordingTime)}
+          </span>
+        </div>
         
         <Button
           onClick={deleteRecording}
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="p-2 text-red-500 hover:text-red-700"
+          className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-red-100 flex-shrink-0"
         >
-          <Trash2 size={16} />
+          <Trash2 size={12} className="text-red-500 sm:w-[14px] sm:h-[14px]" />
         </Button>
         
         <Button
           onClick={sendRecording}
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="p-2 text-green-500 hover:text-green-700"
+          className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-green-100 flex-shrink-0"
         >
-          <Send size={16} />
+          <Send size={12} className="text-green-600 sm:w-[14px] sm:h-[14px]" />
         </Button>
       </div>
     );
@@ -159,11 +179,13 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
 
   // Bouton d'enregistrement
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center space-x-1 sm:space-x-2 relative">
       {isRecording && (
-        <span className="text-sm text-red-500 animate-pulse min-w-[40px]">
-          {formatTime(recordingTime)}
-        </span>
+        <div className="absolute right-10 sm:right-12 top-1/2 transform -translate-y-1/2 bg-red-50 rounded-full px-2 py-1 border border-red-200 shadow-sm z-10">
+          <span className="text-xs sm:text-sm text-red-600 animate-pulse font-mono whitespace-nowrap">
+            {formatTime(recordingTime)}
+          </span>
+        </div>
       )}
       
       <Button
@@ -171,10 +193,18 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
         disabled={disabled}
         variant="outline"
         size="sm"
-        className={`p-2 ${isRecording ? 'bg-red-500 text-white hover:bg-red-600' : ''}`}
+        className={`p-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all duration-200 flex-shrink-0 ${
+          isRecording 
+            ? 'bg-red-500 text-white hover:bg-red-600 border-red-300 scale-110 shadow-lg animate-pulse' 
+            : 'hover:bg-gray-100 hover:scale-105'
+        }`}
         title={isRecording ? 'Arrêter l\'enregistrement' : 'Enregistrer un message vocal'}
       >
-        {isRecording ? <Square size={16} /> : <Mic size={16} />}
+        {isRecording ? (
+          <Square size={12} className="sm:w-[14px] sm:h-[14px]" />
+        ) : (
+          <Mic size={12} className="sm:w-[14px] sm:h-[14px]" />
+        )}
       </Button>
     </div>
   );
