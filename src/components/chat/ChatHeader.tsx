@@ -75,7 +75,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   };
 
   return (
-    <div className="bg-[#25d366] text-white p-4 sticky top-0 md:top-16 z-30 shadow-lg">
+    // Header de chat principal, sticky en haut de l'écran pour rester visible lors du scroll
+    <div className="bg-[#25d366] text-white p-4 sticky top-0 md:top-16z-30 shadow-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center flex-1">
           <button

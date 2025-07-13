@@ -70,7 +70,8 @@ const TeacherChatHeader: React.FC<TeacherChatHeaderProps> = ({
   };
 
   return (
-    <div className="bg-white border-b p-4 shadow-sm">
+    // Header du chat enseignant, sticky en haut de l'écran pour rester visible lors du scroll
+    <div className="bg-white border-b p-4 shadow-sm sticky top-0 z-30">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button

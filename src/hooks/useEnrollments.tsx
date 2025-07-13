@@ -18,6 +18,23 @@ export const useCreateEnrollment = () => {
     }) => {
       console.log('Creating enrollment request for:', { formationId, userId, planType });
 
+      // Vérifier d'abord si le profil est complet
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('phone, country, gender')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error checking profile:', profileError);
+        throw new Error('Erreur lors de la vérification du profil');
+      }
+
+      // Vérifier si les champs obligatoires sont remplis
+      if (!profile.phone || !profile.country || !profile.gender) {
+        throw new Error('PROFILE_INCOMPLETE');
+      }
+
       // Vérifier si l'utilisateur n'a pas déjà une demande en cours ou approuvée
       const { data: existingRequest, error: checkError } = await supabase
         .from('enrollment_requests')
@@ -92,6 +109,12 @@ export const useCreateEnrollment = () => {
     },
     onError: (error: any) => {
       console.error('Erreur lors de l\'inscription:', error);
+      if (error.message === 'PROFILE_INCOMPLETE') {
+        toast.error('Veuillez compléter votre profil avant de vous inscrire à une formation');
+        // Rediriger vers la page de profil
+        window.location.href = '/complete-profile';
+        return;
+      }
       toast.error(error.message || 'Erreur lors de l\'inscription. Veuillez réessayer.');
     },
   });
