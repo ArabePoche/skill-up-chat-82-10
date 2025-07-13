@@ -154,7 +154,8 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#e5ddd5] flex flex-col pb-24 md:pb-4 md:pt-16 relative">
+    // Conteneur principal : flex-col pour empiler les sections, padding adapté selon le mode
+    <div className="min-h-screen bg-[#e5ddd5] flex flex-col relative">
       <TeacherChatHeader
         formation={formation}
         student={student}
@@ -181,58 +182,70 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
         />
       </div>
 
-      {/* Messages */}
-      <div ref={messagesRef} className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
-        {/* Message système de bienvenue */}
-        <div className="text-center">
-          <span className="bg-[#dcf8c6] text-gray-700 px-3 py-2 rounded-lg text-sm shadow-sm">
-            Discussion avec {student.profiles?.first_name || 'Étudiant'} - {lesson.title}
-          </span>
+      {/* Zone messages + input séparées pour meilleure responsivité */}
+      <div className="flex-1 flex flex-col">
+        {/* Messages */}
+        <div ref={messagesRef} className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto pb-32">
+          {/* Message système de bienvenue */}
+          <div className="text-center">
+            <span className="bg-[#dcf8c6] text-gray-700 px-3 py-2 rounded-lg text-sm shadow-sm">
+              Discussion avec {student.profiles?.first_name || 'Étudiant'} - {lesson.title}
+            </span>
+          </div>
+
+          {/* Messages */}
+          {messages && messages.length > 0 ? (
+            messages.map((msg) => (
+              <div key={msg.id} className="message-appear">
+                <MessageItem
+                  message={msg}
+                  isTeacher={true}
+                  onValidateExercise={(messageId, isValid) => handleValidateExercise(messageId, isValid)}
+                />
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p>Aucun message pour le moment</p>
+            </div>
+          )}
+
+          {/* Indicateurs de frappe */}
+          {typingUsers.map(user => (
+            <TypingIndicator
+              key={user.user_id}
+              userName={user.user_name}
+              isTeacher={user.is_teacher}
+            />
+          ))}
+
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Messages */}
-        {messages && messages.length > 0 ? (
-          messages.map((msg) => (
-            <div key={msg.id} className="message-appear">
-              <MessageItem
-                message={msg}
-                isTeacher={true}
-                onValidateExercise={(messageId, isValid) => handleValidateExercise(messageId, isValid)}
-              />
-            </div>
-          ))
-        ) : (
-          <div className="text-center text-gray-500 py-8">
-            <p>Aucun message pour le moment</p>
-          </div>
-        )}
-
-        {/* Indicateurs de frappe */}
-        {typingUsers.map(user => (
-          <TypingIndicator
-            key={user.user_id}
-            userName={user.user_name}
-            isTeacher={user.is_teacher}
-          />
-        ))}
-
-        <div ref={messagesEndRef} />
+        {/* Bouton toggle entretien */}
+        <InterviewToggleButton
+          lessonId={lesson.id}
+          formationId={formation.id}
+          studentId={student.user_id}
+          studentName={student.profiles?.first_name || student.profiles?.username || 'Étudiant'}
+        />
       </div>
 
-      {/* Bouton toggle entretien */}
-      <InterviewToggleButton
-        lessonId={lesson.id}
-        formationId={formation.id}
-        studentId={student.user_id}
-        studentName={student.profiles?.first_name || student.profiles?.username || 'Étudiant'}
-      />
-
-      <ChatInputBar
-        onSendMessage={handleSendMessage}
-        disabled={sendMessageMutation.isPending}
-        lessonId={lesson.id}
-        formationId={formation.id}
-      />
+      {/* SECTION : Barre d'entrée de message (ChatInputBar) - Fixée en bas, adaptée mobile/desktop
+          - bottom-0 sur mobile pour être collée en bas
+          - md:bottom-6 sur desktop pour qu'elle soit bien visible sans être trop haute
+          (Ajuster la valeur si besoin selon le rendu visuel)
+      */}
+      <div className="fixed bottom-0 md:bottom-12 left-0 w-full bg-[#e5ddd5] z-30 pt-2 border-t border-gray-300">
+        <div className="max-w-3xl mx-auto">
+          <ChatInputBar
+            onSendMessage={handleSendMessage}
+            disabled={sendMessageMutation.isPending}
+            lessonId={lesson.id}
+            formationId={formation.id}
+          />
+        </div>
+      </div>
     </div>
   );
 };
