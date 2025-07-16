@@ -109,7 +109,7 @@ const FormationDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 md:top-16 z-40">
+      <div className="bg-white border-b fixed top-0 left-0 right-0 z-50  shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center space-x-3">
             <Button

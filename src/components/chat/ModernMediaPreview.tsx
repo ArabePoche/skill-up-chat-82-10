@@ -162,22 +162,6 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
         </div>
       )}
 
-      {(isVideo || isYouTubeVideo) && (
-        <div className="relative group max-w-xs sm:max-w-sm">
-          <LessonVideoPlayer url={fileUrl} className="w-full rounded-lg" />
-          <div className="mt-2 flex flex-col sm:flex-row gap-1 sm:gap-2">
-            <Button variant="outline" size="sm" onClick={handleFullscreen} className="text-xs sm:text-sm">
-              <Eye size={14} className="mr-1" />
-              Plein écran
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownload} className="text-xs sm:text-sm">
-              <Download size={14} className="mr-1" />
-              Télécharger
-            </Button>
-          </div>
-        </div>
-      )}
-
       {isAudio && (
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border border-green-200">
           <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
@@ -185,62 +169,38 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
               <Volume2 size={14} className="sm:w-4 sm:h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-xs sm:text-sm text-gray-800 block truncate">{fileName}</span>
               <span className="text-xs text-gray-500">Message vocal</span>
             </div>
           </div>
-          
+
           <div className="space-y-2 sm:space-y-3">
-            <audio 
-              controls 
-              className="w-full h-6 sm:h-8" 
-              style={{ height: '24px' }}
-              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-              onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-            >
-              <source src={fileUrl} type={fileType} />
-              Votre navigateur ne supporte pas l'élément audio.
-            </audio>
-            
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
+            <div className="flex items-center gap-2">
+              <audio
+                controls
+                className="flex-1 h-6 sm:h-8"
+                style={{ height: '24px' }}
+                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+              >
+                <source src={fileUrl} type={fileType} />
+                Votre navigateur ne supporte pas l'élément audio.
+              </audio>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                className="text-xs sm:text-sm"
+              >
+                <Download size={14} className="mr-1" />
+              </Button>
             </div>
-            
-            <Button variant="outline" size="sm" onClick={handleDownload} className="w-full text-xs sm:text-sm">
-              <Download size={14} className="mr-1" />
-              Télécharger
-            </Button>
           </div>
         </div>
       )}
 
-      {isPDF && (
-        <div className="bg-red-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border border-red-200">
-          <div className="flex items-center gap-2 mb-2 sm:mb-3">
-            <div className="bg-red-500 p-1.5 sm:p-2 rounded-full text-white text-xs font-bold">
-              PDF
-            </div>
-            <span className="font-medium text-xs sm:text-sm truncate">{fileName}</span>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.open(fileUrl, '_blank')}
-              className="flex-1 text-xs sm:text-sm"
-            >
-              <Eye size={14} className="mr-1" />
-              Ouvrir
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownload} className="sm:w-auto">
-              <Download size={14} />
-            </Button>
-          </div>
-        </div>
-      )}
 
       {!isImage && !isVideo && !isYouTubeVideo && !isAudio && !isPDF && (
         <div className="bg-gray-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border">

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import MessageBubble from './MessageBubble';
 import SystemMessage from './SystemMessage';
@@ -39,6 +38,7 @@ interface MessageListProps {
   messages: Message[];
   exercises: Exercise[];
   formationId: string;
+  lessonId: string; // Ajouter lessonId
   isTeacherView: boolean;
   isTeacher: boolean;
   onValidateExercise: (messageId: string, isValid: boolean, rejectReason?: string) => void;
@@ -50,6 +50,7 @@ const MessageList: React.FC<MessageListProps> = ({
   messages,
   exercises,
   formationId,
+  lessonId,
   isTeacherView,
   isTeacher,
   onValidateExercise,
@@ -95,8 +96,9 @@ const MessageList: React.FC<MessageListProps> = ({
               key={message.id}
               content={message.content}
               exercise={message.exercise_id ? exercises.find(ex => ex.id === message.exercise_id) : undefined}
-              lessonId=""
+              lessonId={lessonId}
               formationId={formationId}
+              isTeacherView={isTeacherView}
             />
           );
         }

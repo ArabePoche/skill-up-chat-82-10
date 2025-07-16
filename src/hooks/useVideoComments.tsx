@@ -1,131 +1,127 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
-interface VideoComment {
-  id: string;
-  content: string;
-  likes_count: number;
-  created_at: string;
-  parent_comment_id?: string;
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-    avatar_url?: string;
-  };
-  replies?: VideoComment[];
-}
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
 export const useVideoComments = (videoId: string) => {
   const { user } = useAuth();
-  const [comments, setComments] = useState<VideoComment[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (videoId) {
-      fetchComments();
-    }
-  }, [videoId]);
-
-  const fetchComments = async () => {
-    if (!videoId) return;
-    
-    setIsLoading(true);
-    try {
-      // Récupérer les commentaires principaux et leurs réponses
+  // Query pour récupérer les commentaires
+  const { data: comments = [], isLoading } = useQuery({
+    queryKey: ['video-comments', videoId],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('video_comments')
         .select(`
-          id,
-          content,
-          likes_count,
-          created_at,
-          parent_comment_id,
-          profiles (
+          *,
+          profiles!video_comments_user_id_fkey(
+            id,
+            username,
             first_name,
             last_name,
-            username,
             avatar_url
+          ),
+          replies:video_comments!parent_comment_id(
+            *,
+            profiles!video_comments_user_id_fkey(
+              id,
+              username,
+              first_name,
+              last_name,
+              avatar_url
+            )
           )
         `)
         .eq('video_id', videoId)
+        .is('parent_comment_id', null)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching comments:', error);
+        return [];
+      }
 
-      // Organiser les commentaires avec leurs réponses
-      const mainComments = data?.filter(comment => !comment.parent_comment_id) || [];
-      const replies = data?.filter(comment => comment.parent_comment_id) || [];
+      return data || [];
+    },
+    enabled: !!videoId,
+  });
 
-      const commentsWithReplies = mainComments.map(comment => ({
-        ...comment,
-        replies: replies.filter(reply => reply.parent_comment_id === comment.id)
-      }));
+  // Query pour récupérer le nombre total de commentaires
+  const { data: commentsCount = 0 } = useQuery({
+    queryKey: ['video-comments-count', videoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('comments_count')
+        .eq('id', videoId)
+        .single();
 
-      setComments(commentsWithReplies);
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-      toast.error('Erreur lors du chargement des commentaires');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      if (error) {
+        console.error('Error fetching comments count:', error);
+        return 0;
+      }
+      
+      return data?.comments_count || 0;
+    },
+    enabled: !!videoId,
+  });
 
-  const addComment = async (content: string, parentCommentId?: string) => {
-    if (!user || !content.trim()) return false;
+  // Mutation pour ajouter un commentaire
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ content, parentId }: { content: string; parentId?: string }) => {
+      if (!user?.id) throw new Error('User not authenticated');
 
-    setIsSubmitting(true);
-    try {
       const { data, error } = await supabase
         .from('video_comments')
         .insert({
           video_id: videoId,
           user_id: user.id,
-          content: content.trim(),
-          parent_comment_id: parentCommentId || null
+          content,
+          parent_comment_id: parentId || null,
         })
         .select(`
-          id,
-          content,
-          likes_count,
-          created_at,
-          parent_comment_id,
-          profiles (
+          *,
+          profiles!video_comments_user_id_fkey(
+            id,
+            username,
             first_name,
             last_name,
-            username,
             avatar_url
           )
         `)
         .single();
 
       if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      // Invalider les queries pour mettre à jour les données
+      queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
+      queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+    },
+    onError: (error) => {
+      console.error('Error adding comment:', error);
+    },
+  });
 
-      // Mettre à jour le compteur de commentaires de la vidéo (optionnel)
-      // Note: Le compteur sera recalculé dynamiquement côté front-end
-
-      // Refetch les commentaires pour avoir la structure complète
-      await fetchComments();
-      
-      toast.success(parentCommentId ? 'Réponse ajoutée !' : 'Commentaire ajouté !');
+  // Function to add a comment with proper return type
+  const addComment = async (content: string, parentId?: string): Promise<boolean> => {
+    try {
+      await addCommentMutation.mutateAsync({ content, parentId });
       return true;
     } catch (error) {
-      console.error('Error adding comment:', error);
-      toast.error('Erreur lors de l\'ajout du commentaire');
+      console.error('Failed to add comment:', error);
       return false;
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return {
     comments,
+    commentsCount,
     isLoading,
-    isSubmitting,
     addComment,
-    refreshComments: fetchComments
+    isSubmitting: addCommentMutation.isPending,
   };
 };

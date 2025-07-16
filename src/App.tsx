@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +16,12 @@ import Layout from '@/components/Layout';
 import { AuthProvider } from '@/hooks/useAuth';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import FormationPricingPage from '@/pages/FormationPricing';
+
+// Nouvelles pages cours
+import CoursIndex from '@/pages/cours/CoursIndex';
+import FormationDetailPage from '@/pages/cours/FormationDetail';
+import TeacherInterface from '@/pages/cours/TeacherInterface';
+import LessonChat from '@/pages/cours/LessonChat';
 
 const queryClient = new QueryClient();
 
@@ -36,11 +43,16 @@ function App() {
                 <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/formation/:formationId/pricing" element={<FormationPricingPage />} />
                 
+                {/* Nouvelles routes cours explicites */}
+                <Route path="/cours" element={<CoursIndex />} />
+                <Route path="/cours/formation/:formationId" element={<FormationDetailPage />} />
+                <Route path="/cours/teacher/:formationId" element={<TeacherInterface />} />
+                <Route path="/cours/lesson/:lessonId" element={<LessonChat />} />
+                
                 {/* Route principale avec le nouveau système de navigation */}
                 <Route path="/" element={<Layout />} />
                 <Route path="/home" element={<Layout />} />
                 <Route path="/shop" element={<Layout />} />
-                <Route path="/cours" element={<Layout />} />
                 <Route path="/messages" element={<Layout />} />
                 <Route path="/profil" element={<Layout />} />
                 

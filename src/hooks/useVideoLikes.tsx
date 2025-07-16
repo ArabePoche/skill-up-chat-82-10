@@ -1,49 +1,62 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useAuth } from './useAuth';
 
-export const useVideoLikes = (videoId: string, initialLikesCount: number) => {
+export const useVideoLikes = (videoId: string, initialLikesCount: number = 0) => {
   const { user } = useAuth();
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(initialLikesCount);
-  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (user && videoId) {
-      checkIfLiked();
-    }
-  }, [user, videoId]);
-
-  const checkIfLiked = async () => {
-    if (!user) return;
-
-    try {
-      const { data } = await supabase
+  // Query pour récupérer le statut de like de l'utilisateur
+  const { data: userLike } = useQuery({
+    queryKey: ['video-like', videoId, user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase
         .from('video_likes')
-        .select('id')
+        .select('*')
         .eq('video_id', videoId)
         .eq('user_id', user.id)
         .maybeSingle();
 
-      setIsLiked(!!data);
-    } catch (error) {
-      console.error('Error checking like status:', error);
-    }
-  };
+      if (error) {
+        console.error('Error fetching user like:', error);
+        return null;
+      }
+      
+      return data;
+    },
+    enabled: !!user?.id && !!videoId,
+  });
 
-  const toggleLike = async () => {
-    if (!user) {
-      toast.error('Connectez-vous pour liker cette vidéo');
-      return;
-    }
+  // Query pour récupérer le nombre total de likes
+  const { data: likesCount = initialLikesCount } = useQuery({
+    queryKey: ['video-likes-count', videoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('likes_count')
+        .eq('id', videoId)
+        .single();
 
-    if (isLoading) return;
-    setIsLoading(true);
+      if (error) {
+        console.error('Error fetching likes count:', error);
+        return initialLikesCount;
+      }
+      
+      return data?.likes_count || initialLikesCount;
+    },
+    enabled: !!videoId,
+  });
 
-    try {
-      if (isLiked) {
+  // Mutation pour liker/unliker
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      if (userLike) {
         // Unlike
         const { error } = await supabase
           .from('video_likes')
@@ -52,37 +65,30 @@ export const useVideoLikes = (videoId: string, initialLikesCount: number) => {
           .eq('user_id', user.id);
 
         if (error) throw error;
-        
-        setLikesCount(prev => Math.max(0, prev - 1));
-        setIsLiked(false);
-        toast.success('Like retiré');
       } else {
         // Like
         const { error } = await supabase
           .from('video_likes')
-          .insert({ 
-            video_id: videoId, 
-            user_id: user.id 
-          });
+          .insert({ video_id: videoId, user_id: user.id });
 
         if (error) throw error;
-        
-        setLikesCount(prev => prev + 1);
-        setIsLiked(true);
-        toast.success('Vidéo likée !');
       }
-    } catch (error) {
+    },
+    onSuccess: () => {
+      // Invalider les queries pour mettre à jour les données
+      queryClient.invalidateQueries({ queryKey: ['video-like', videoId, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['video-likes-count', videoId] });
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+    },
+    onError: (error) => {
       console.error('Error toggling like:', error);
-      toast.error('Erreur lors du like');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+  });
 
   return {
-    isLiked,
+    isLiked: !!userLike,
     likesCount,
-    toggleLike,
-    isLoading
+    toggleLike: likeMutation.mutate,
+    isLoading: likeMutation.isPending,
   };
 };

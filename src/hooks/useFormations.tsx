@@ -31,6 +31,53 @@ export const useFormations = () => {
   });
 };
 
+export const useFormationById = (formationId: string | undefined) => {
+  return useQuery({
+    queryKey: ['formation', formationId],
+    queryFn: async () => {
+      if (!formationId) return null;
+
+      console.log('Fetching formation by ID:', formationId);
+
+      const { data, error } = await supabase
+        .from('formations')
+        .select(`
+          *,
+          profiles:author_id (
+            id,
+            first_name,
+            last_name,
+            username
+          ),
+          levels (
+            *,
+            lessons (
+              *,
+              exercises!exercises_lesson_id_fkey (
+                id,
+                title,
+                description,
+                content,
+                type
+              )
+            )
+          )
+        `)
+        .eq('id', formationId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching formation:', error);
+        throw error;
+      }
+
+      console.log('Formation fetched:', data);
+      return data;
+    },
+    enabled: !!formationId,
+  });
+};
+
 export const useUserEnrollments = (userId: string | undefined) => {
   return useQuery({
     queryKey: ['user-enrollments', userId],

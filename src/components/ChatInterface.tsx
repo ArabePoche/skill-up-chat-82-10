@@ -229,7 +229,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       )}
 
       {/* Header responsive avec boutons d'appel intégrés */}
-      <div className="bg-[#25d366] text-white p-3 sm:p-4 sticky top-0 md:top-16 z-40">
+      <div className="bg-[#25d366] text-white p-3 sm:p-4 fixed top-0 left-0 right-0 z-50  border-b shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center flex-1 min-w-0">
             <button
@@ -325,14 +325,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           messages={messages}
           exercises={exercises}
           formationId={formation.id.toString()}
-          isTeacherView={false}
+          lessonId={lesson.id.toString()}
+          isTeacherView={userRole?.role === 'teacher'}
           isTeacher={userRole?.role === 'teacher'}
           onValidateExercise={() => {}}
         />
       </div>
 
       {/* Chat Input - responsive - jamais désactivé */}
-      <div className="bg-background border-t p-2 sm:p-4">
+      <div className="bg-background border-t p-2 sm:p-4 fixed bottom-0 left-0 right-0 z-50 bg-white border-b shadow-sm">
         <ChatInputBar
           onSendMessage={handleSendMessage}
           disabled={sendMessageMutation.isPending}

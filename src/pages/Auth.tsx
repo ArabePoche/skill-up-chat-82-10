@@ -113,7 +113,7 @@ const Auth = () => {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Header */}
           <div className="bg-[#25d366] text-white p-6 text-center">
-            <h1 className="text-2xl font-bold mb-2">EducTok</h1>
+            <h1 className="text-2xl font-bold mb-2">EducaTok</h1>
             <p className="text-white/80">
               {isLogin ? 'Connectez-vous à votre compte' : 'Créez votre compte'}
             </p>
