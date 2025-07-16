@@ -4,6 +4,7 @@ import SystemMessage from './SystemMessage';
 import TypingIndicator from './TypingIndicator';
 import InterviewEvaluationCard from './InterviewEvaluationCard';
 import { useAuth } from '@/hooks/useAuth';
+import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 
 interface Message {
   id: string;
@@ -64,6 +65,8 @@ const MessageList: React.FC<MessageListProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+   // Récupérer les évaluations en attente pour les étudiants
+  const { data: pendingEvaluations = [] } = useStudentEvaluations();
   useEffect(() => {
     scrollToBottom();
   }, [messages, typingUsers]);
@@ -112,6 +115,21 @@ const MessageList: React.FC<MessageListProps> = ({
         );
       })}
 
+      {/* Affichage des évaluations en attente pour les étudiants - APRÈS les messages */}
+      {!isTeacherView && pendingEvaluations.map((evaluation) => (
+        <InterviewEvaluationCard
+          key={evaluation.id}
+          evaluationId={evaluation.id}
+          teacherName={
+            evaluation.teachers?.profiles
+              ? `${evaluation.teachers.profiles.first_name || ''} ${evaluation.teachers.profiles.last_name || ''}`.trim()
+                || evaluation.teachers.profiles.username
+                || 'Professeur'
+              : 'Professeur'
+          }
+          expiresAt={evaluation.expires_at}
+        />
+      ))}
       {/* Indicateur de frappe */}
       {typingUsers && typingUsers.length > 0 && 
         typingUsers.map((user: any, index: number) => (

@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useChatTimer } from '@/hooks/useChatTimer';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
+import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 import { useCallNotifications } from '@/hooks/useCallNotifications';
 import ChatInputBar from './chat/ChatInputBar';
 import MessageList from './chat/MessageList';
@@ -49,6 +50,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   
   const { data: exercises = [] } = useLessonExercises(lesson.id.toString());
   const { data: userRole } = useUserRole(formation.id);
+  const { data: evaluations = [] } = useStudentEvaluations();
   
   const sendMessageMutation = useSendMessage(lesson.id.toString(), formation.id);
   const markAsReadMutation = useMarkMessagesAsRead();
@@ -329,6 +331,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           isTeacherView={userRole?.role === 'teacher'}
           isTeacher={userRole?.role === 'teacher'}
           onValidateExercise={() => {}}
+          evaluations={evaluations}
         />
       </div>
 
