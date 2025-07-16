@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Heart, MessageCircle, Share, Bookmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
+import { useVideoComments } from '@/hooks/useVideoComments';
 import { toast } from 'sonner';
 
 interface Video {
@@ -23,7 +24,18 @@ const VideoActions: React.FC<VideoActionsProps> = ({
   onShareClick
 }) => {
   const [isSaved, setIsSaved] = useState(false);
-  const { isLiked, likesCount, toggleLike, isLoading } = useVideoLikes(video.id, video.likes_count);
+
+  const {
+    isLiked,
+    likesCount,
+    toggleLike,
+    isLoading: isLikeLoading
+  } = useVideoLikes(video.id, video.likes_count);
+
+  const {
+    commentsCount,
+    isLoading: isCommentsLoading
+  } = useVideoComments(video.id); // ✅ Importation du hook commentaire
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -52,7 +64,8 @@ const VideoActions: React.FC<VideoActionsProps> = ({
     return (count / 1000000).toFixed(1) + 'M';
   };
 
-  const actionButtonClass = "w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 flex items-center justify-center border border-white/20";
+  const actionButtonClass =
+    'w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 flex items-center justify-center border border-white/20';
 
   return (
     <div className="flex flex-col items-center space-y-4 z-30">
@@ -62,13 +75,10 @@ const VideoActions: React.FC<VideoActionsProps> = ({
           variant="ghost"
           size="sm"
           onClick={handleLike}
-          disabled={isLoading}
+          disabled={isLikeLoading}
           className={`${actionButtonClass} ${isLiked ? 'text-red-500 bg-red-500/30' : ''}`}
         >
-          <Heart 
-            size={20} 
-            className={`${isLiked ? 'fill-current' : ''}`} 
-          />
+          <Heart size={20} className={isLiked ? 'fill-current' : ''} />
         </Button>
         <span className="text-white text-xs mt-1 font-medium">
           {formatCount(likesCount)}
@@ -86,7 +96,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
           <MessageCircle size={20} />
         </Button>
         <span className="text-white text-xs mt-1 font-medium">
-          {formatCount(video.comments_count)}
+          {isCommentsLoading ? '...' : formatCount(commentsCount)}
         </span>
       </div>
 
@@ -100,9 +110,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
         >
           <Share size={20} />
         </Button>
-        <span className="text-white text-xs mt-1 font-medium">
-          Partager
-        </span>
+        <span className="text-white text-xs mt-1 font-medium">Partager</span>
       </div>
 
       {/* Save */}
@@ -113,10 +121,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
           onClick={handleSave}
           className={`${actionButtonClass} ${isSaved ? 'text-yellow-500 bg-yellow-500/30' : ''}`}
         >
-          <Bookmark 
-            size={20} 
-            className={`${isSaved ? 'fill-current' : ''}`} 
-          />
+          <Bookmark size={20} className={isSaved ? 'fill-current' : ''} />
         </Button>
         <span className="text-white text-xs mt-1 font-medium">
           {isSaved ? 'Sauvé' : 'Sauver'}

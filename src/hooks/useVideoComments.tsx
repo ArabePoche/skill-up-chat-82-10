@@ -1,14 +1,37 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useEffect } from 'react';
+
+// Fonction pour mettre à jour le champ comments_count dans la table `videos` (optionnel mais utile)
+const updateCommentsCount = async (videoId: string) => {
+  const { count, error: countError } = await supabase
+    .from('video_comments')
+    .select('*', { count: 'exact', head: true })
+    .eq('video_id', videoId)
+    .is('parent_comment_id', null); // Ne compte que les commentaires principaux
+
+  if (countError) {
+    console.error('Erreur comptage commentaires :', countError);
+    return;
+  }
+
+  const { error: updateError } = await supabase
+    .from('videos')
+    .update({ comments_count: count })
+    .eq('id', videoId);
+
+  if (updateError) {
+    console.error('Erreur mise à jour comments_count :', updateError);
+  }
+};
 
 export const useVideoComments = (videoId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Query pour récupérer les commentaires
-  const { data: comments = [], isLoading } = useQuery({
+  // 🔁 Récupère tous les commentaires (avec profils et réponses)
+  const { data: comments = [], isLoading: isCommentsLoading } = useQuery({
     queryKey: ['video-comments', videoId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -38,7 +61,7 @@ export const useVideoComments = (videoId: string) => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching comments:', error);
+        console.error('Erreur récupération commentaires :', error);
         return [];
       }
 
@@ -47,30 +70,33 @@ export const useVideoComments = (videoId: string) => {
     enabled: !!videoId,
   });
 
-  // Query pour récupérer le nombre total de commentaires
-  const { data: commentsCount = 0 } = useQuery({
+  // 🔢 Récupère dynamiquement le compteur de commentaires (racines uniquement)
+  const {
+    data: commentsCount = 0,
+    isLoading: isCountLoading,
+  } = useQuery({
     queryKey: ['video-comments-count', videoId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('videos')
-        .select('comments_count')
-        .eq('id', videoId)
-        .single();
+      const { count, error } = await supabase
+        .from('video_comments')
+        .select('*', { count: 'exact' })
+        .eq('video_id', videoId)
+        .is('parent_comment_id', null);
 
       if (error) {
-        console.error('Error fetching comments count:', error);
+        console.error('Erreur comptage commentaires :', error);
         return 0;
       }
-      
-      return data?.comments_count || 0;
+
+      return count ?? 0;
     },
     enabled: !!videoId,
   });
 
-  // Mutation pour ajouter un commentaire
+  // ✍️ Mutation pour ajouter un commentaire
   const addCommentMutation = useMutation({
     mutationFn: async ({ content, parentId }: { content: string; parentId?: string }) => {
-      if (!user?.id) throw new Error('User not authenticated');
+      if (!user?.id) throw new Error('Utilisateur non connecté');
 
       const { data, error } = await supabase
         .from('video_comments')
@@ -93,34 +119,45 @@ export const useVideoComments = (videoId: string) => {
         .single();
 
       if (error) throw error;
+
+      // Met à jour le champ comments_count (si commentaire principal)
+      if (!parentId) {
+        await updateCommentsCount(videoId);
+      }
+
       return data;
     },
     onSuccess: () => {
-      // Invalider les queries pour mettre à jour les données
+      // ✅ Invalide ET refetch manuellement pour affichage immédiat
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
-      queryClient.invalidateQueries({ queryKey: ['videos'] });
+      queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
     },
     onError: (error) => {
-      console.error('Error adding comment:', error);
+      console.error('Erreur ajout commentaire :', error);
     },
   });
 
-  // Function to add a comment with proper return type
+  // Fonction utilisable depuis les composants
   const addComment = async (content: string, parentId?: string): Promise<boolean> => {
     try {
       await addCommentMutation.mutateAsync({ content, parentId });
       return true;
     } catch (error) {
-      console.error('Failed to add comment:', error);
+      console.error('Échec ajout commentaire :', error);
       return false;
     }
   };
 
+  // 👁️ Log de debug facultatif (supprime-le en prod)
+  useEffect(() => {
+    console.log('📊 Nouveau commentsCount =', commentsCount);
+  }, [commentsCount]);
+
   return {
     comments,
     commentsCount,
-    isLoading,
+    isLoading: isCommentsLoading || isCountLoading,
     addComment,
     isSubmitting: addCommentMutation.isPending,
   };

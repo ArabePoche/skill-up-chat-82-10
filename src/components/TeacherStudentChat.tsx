@@ -183,9 +183,9 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
       </div>
 
       {/* Zone messages + input séparées pour meilleure responsivité */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:pb-4 md:pt-16 pb-24">
         {/* Messages */}
-        <div ref={messagesRef} className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto pb-32">
+        <div ref={messagesRef} className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
           {/* Message système de bienvenue */}
           <div className="text-center">
             <span className="bg-[#dcf8c6] text-gray-700 px-3 py-2 rounded-lg text-sm shadow-sm">
@@ -229,15 +229,9 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
           studentId={student.user_id}
           studentName={student.profiles?.first_name || student.profiles?.username || 'Étudiant'}
         />
-      </div>
 
-      {/* SECTION : Barre d'entrée de message (ChatInputBar) - Fixée en bas, adaptée mobile/desktop
-          - bottom-0 sur mobile pour être collée en bas
-          - md:bottom-6 sur desktop pour qu'elle soit bien visible sans être trop haute
-          (Ajuster la valeur si besoin selon le rendu visuel)
-      */}
-      <div className="fixed bottom-0 md:bottom-12 left-0 w-full bg-[#e5ddd5] z-30 pt-2 border-t border-gray-300">
-        <div className="max-w-3xl mx-auto">
+        {/* Barre d'entrée de message : sticky en bas sur mobile, relative sur desktop */}
+        <div className="sticky bottom-5 md:relative md:bottom-14 bg-[#e5ddd5] z-30 pt-8">
           <ChatInputBar
             onSendMessage={handleSendMessage}
             disabled={sendMessageMutation.isPending}
