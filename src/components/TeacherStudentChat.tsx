@@ -36,6 +36,7 @@ interface TeacherStudentChatProps {
   lesson: {
     id: string;
     title: string;
+    video_url: string
   };
   onBack: () => void;
 }

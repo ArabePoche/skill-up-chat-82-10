@@ -322,7 +322,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       />
 
       {/* Messages - responsive */}
-      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0">
+      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 p-24">
         <MessageList
           messages={messages}
           exercises={exercises}

@@ -1,9 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import MessageBubble from './MessageBubble';
 import SystemMessage from './SystemMessage';
 import TypingIndicator from './TypingIndicator';
+import { useIsTeacherInFormation } from '@/hooks/useIsTeacherInFormation';
+import MessageItem from './MessageItem';
 import InterviewEvaluationCard from './InterviewEvaluationCard';
 import { useAuth } from '@/hooks/useAuth';
+import ExerciseDisplay from './ExerciseDisplay';
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
+import { useTypingListener } from '@/hooks/useTypingListener';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 
 interface Message {
@@ -39,8 +44,9 @@ interface MessageListProps {
   messages: Message[];
   exercises: Exercise[];
   formationId: string;
-  lessonId: string; // Ajouter lessonId
+  
   isTeacherView: boolean;
+  lessonId: string;
   isTeacher: boolean;
   onValidateExercise: (messageId: string, isValid: boolean, rejectReason?: string) => void;
   evaluations?: any[];
@@ -50,13 +56,14 @@ interface MessageListProps {
 const MessageList: React.FC<MessageListProps> = ({
   messages,
   exercises,
-  formationId,
   lessonId,
+  formationId,
+  
   isTeacherView,
   isTeacher,
   onValidateExercise,
   evaluations = [],
-  typingUsers = []
+  
 }) => {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -64,6 +71,12 @@ const MessageList: React.FC<MessageListProps> = ({
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Écouter les indicateurs de frappe
+  const typingUsers = useTypingListener(lessonId.toString(), formationId);
+
+  // Activer les mises à jour temps réel
+  useRealtimeMessages(lessonId.toString(), formationId);
 
    // Récupérer les évaluations en attente pour les étudiants
   const { data: pendingEvaluations = [] } = useStudentEvaluations();
