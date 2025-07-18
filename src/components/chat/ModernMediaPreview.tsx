@@ -189,7 +189,7 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
                 <Download size={14} className="mr-1" />
               </Button
           </div>
-          
+          </div>
         </div>
       )}
 
