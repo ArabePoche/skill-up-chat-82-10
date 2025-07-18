@@ -163,15 +163,7 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
       )}
 
       {isAudio && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border border-green-200">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className="bg-green-500 p-1.5 sm:p-2 rounded-full text-white">
-              <Volume2 size={14} className="sm:w-4 sm:h-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-xs text-gray-500">Message vocal</span>
-            </div>
-          </div>
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border border-green-200"
 
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
@@ -195,9 +187,9 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
                 className="text-xs sm:text-sm"
               >
                 <Download size={14} className="mr-1" />
-              </Button>
-            </div>
+              </Button
           </div>
+          
         </div>
       )}
 
