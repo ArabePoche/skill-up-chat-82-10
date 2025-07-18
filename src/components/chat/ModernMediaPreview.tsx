@@ -163,35 +163,34 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
       )}
 
       {isAudio && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border border-green-200">
+  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border border-green-200">
+    <div className="space-y-2 sm:space-y-3">
+      <div className="flex items-center gap-2">
+        <audio
+          controls
+          className="flex-1 h-6 sm:h-8"
+          style={{ height: '24px' }}
+          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+        >
+          <source src={fileUrl} type={fileType} />
+          Votre navigateur ne supporte pas l'élément audio.
+        </audio>
 
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-center gap-2">
-              <audio
-                controls
-                className="flex-1 h-6 sm:h-8"
-                style={{ height: '24px' }}
-                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-              >
-                <source src={fileUrl} type={fileType} />
-                Votre navigateur ne supporte pas l'élément audio.
-              </audio>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                className="text-xs sm:text-sm"
-              >
-                <Download size={14} className="mr-1" />
-              </Button>
-          </div>
-          </div>
-        </div>
-      )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          className="text-xs sm:text-sm"
+        >
+          <Download size={14} className="mr-1" />
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
 
 
       {!isImage && !isVideo && !isYouTubeVideo && !isAudio && !isPDF && (
