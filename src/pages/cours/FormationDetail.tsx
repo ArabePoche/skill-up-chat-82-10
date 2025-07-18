@@ -67,7 +67,7 @@ const FormationDetailPage = () => {
   return (
     <FormationDetail
       formation={{
-        id: formation.id,
+        id: parseInt(formation.id),
         title: formation.title,
         description: formation.description,
         author: formation.profiles ? `${formation.profiles.first_name} ${formation.profiles.last_name}` : '',
@@ -75,7 +75,14 @@ const FormationDetailPage = () => {
         rating: formation.rating,
         students_count: formation.students_count,
         duration_hours: formation.duration_hours,
-        levels: formation.levels || []
+        levels: (formation.levels || []).map(level => ({
+          ...level,
+          id: parseInt(level.id),
+          lessons: (level.lessons || []).map(lesson => ({
+            ...lesson,
+            id: parseInt(lesson.id)
+          }))
+        }))
       }}
       onBack={handleBack}
       onLessonClick={handleLessonClick}

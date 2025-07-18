@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getNames } from 'country-list'; // Importation de la fonction getNames de country-list
 
 const CompleteProfile = () => {
   const [formData, setFormData] = useState({
@@ -28,9 +29,8 @@ const CompleteProfile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const countries = [
-    'France', 'Belgique', 'Suisse', 'Canada', 'Maroc', 'Tunisie', 'Algérie', 'Sénégal', 'Côte d\'Ivoire', 'Autre'
-  ];
+  // Utilisation de la bibliothèque country-list pour obtenir la liste des pays
+  const countries = getNames();
 
   const interestOptions = [
     'Technologie', 'Sciences', 'Littérature', 'Arts', 'Sport', 'Musique', 

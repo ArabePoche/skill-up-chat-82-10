@@ -49,7 +49,8 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
         }}
         lesson={{
           id: selectedDiscussion.lessonId,
-          title: selectedDiscussion.lessonTitle
+          title: selectedDiscussion.lessonTitle,
+          video_url: ""
         }}
         onBack={() => setSelectedDiscussion(null)}
       />
@@ -84,15 +85,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
 
       {/* Actions rapides */}
       <div className="bg-white p-4 border-b border-gray-200">
-        <div className="flex space-x-3">
-          <button
-            onClick={() => setShowVideoPlayer(!showVideoPlayer)}
-            className="flex items-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            <Play size={16} />
-            <span>Aperçu Formation</span>
-          </button>
-        </div>
+        
         
         {showVideoPlayer && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">

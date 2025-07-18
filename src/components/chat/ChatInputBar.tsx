@@ -214,7 +214,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           disabled={isUploading}
         />
       ) : (
-        <div className="bg-[#f0f0f0] border-t border-gray-200 p-2 sm:p-3 fixed bottom-16 left-0 right-0 md:relative md:bottom-0 z-50">
+        <div className="bg-[#f0f0f0] border-t border-gray-200 p-2 sm:p-3 fixed bottom-0 left-0 right-0 z-50">
           <div className="flex items-end space-x-2 sm:space-x-3 max-w-full">
             <button 
               onClick={() => checkAuthAndExecute(() => fileInputRef.current?.click())}

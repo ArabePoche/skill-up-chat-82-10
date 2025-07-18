@@ -26,8 +26,6 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Démarrer l'enregistrement automatiquement à l'ouverture
-    startRecording();
     
     return () => {
       if (timerRef.current) {
