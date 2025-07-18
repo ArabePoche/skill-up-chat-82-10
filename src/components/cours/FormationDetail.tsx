@@ -7,7 +7,7 @@ import FormationPricing from '../FormationPricing';
 import { useUserRole } from '@/hooks/useUserRole';
 
 interface Lesson {
-  id: number;
+  id: number | string;
   title: string;
   completed?: boolean;
   duration: string;
@@ -32,7 +32,7 @@ interface Level {
 }
 
 interface Formation {
-  id: number;
+  id: number | string;
   title: string;
   description?: string;
   author?: string;
@@ -54,7 +54,7 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   onBack, 
   onLessonClick 
 }) => {
-  const { data: userRole } = useUserRole(formation.id.toString());
+  const { data: userRole } = useUserRole(String(formation.id));
 
   // Gérer l'ancrage vers la section pricing
   useEffect(() => {
@@ -72,7 +72,7 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
     return (
       <TeacherView
         formation={{
-          id: formation.id.toString(),
+          id: String(formation.id),
           title: formation.title,
           author: formation.author
         }}
@@ -82,9 +82,9 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
+    <div className="min-h-screen bg-gray-50 pb-16">
       {/* Header style WhatsApp avec couleur verte */}
-      <div className="bg-[#25d366] text-white sticky top-0 md:top-16 z-40 shadow-md">
+      <div className="bg-[#25d366] text-white sticky top-0 z-40 shadow-md">
         <div className="flex items-center p-4">
           <button
             onClick={onBack}
@@ -131,7 +131,7 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
       {/* Lessons List */}
       <LevelsList 
         levels={formation.levels}
-        formationId={formation.id.toString()}
+        formationId={String(formation.id)}
         onLessonClick={onLessonClick}
       />
     </div>

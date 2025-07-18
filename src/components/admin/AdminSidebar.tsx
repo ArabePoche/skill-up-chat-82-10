@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield } from 'lucide-react';
+import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -33,6 +33,11 @@ const menuItems = [
     title: 'Créer Formation',
     value: 'create-formation',
     icon: BookOpen,
+  },
+  {
+    title: 'Professeurs',
+    value: 'teachers',
+    icon: GraduationCap,
   },
   {
     title: 'Produits',

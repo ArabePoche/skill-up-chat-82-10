@@ -30,7 +30,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white border-t border-gray-200 px-4 py-2">
+    <nav className="bg-white border-t border-gray-200 px-4 py-0.5"> {/* ✅ Réduction de py-2 à py-1.5 */}
       <div className="flex justify-around items-center">
         {navItems.map((item) => {
           const isActive = isCurrentRoute(item.path);
@@ -41,24 +41,24 @@ const Navbar = () => {
             <button
               key={item.view}
               onClick={() => handleNavigation(item)}
-              className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 relative ${
+              className={`flex flex-col items-center py-1.5 px-3 rounded-lg transition-all duration-200 relative ${
                 isActive
                   ? 'text-edu-primary bg-edu-primary/10'
                   : 'text-gray-600 hover:text-edu-primary hover:bg-gray-50'
               } ${item.special ? 'scale-110' : ''}`}
             >
               <div className="relative">
-                <Icon size={item.special ? 24 : 20} className={`mb-1 ${isActive ? 'animate-bounce-subtle' : ''} ${item.special ? 'text-[#25d366]' : ''}`} />
+                <Icon size={item.special ? 22 : 18} className={`mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${item.special ? 'text-[#25d366]' : ''}`} /> {/* ✅ Réduction des tailles d'icônes et du margin */}
                 {showBadge && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center p-0 text-xs" /* ✅ Réduction de la taille du badge */
                   >
                     {unreadCounts.total > 99 ? '99+' : unreadCounts.total}
                   </Badge>
                 )}
               </div>
-              <span className={`text-xs font-medium ${item.special ? 'font-bold' : ''}`}>{item.label}</span>
+              <span className={`text-xs font-medium ${item.special ? 'font-bold' : ''}`}>{item.label}</span> {/* ✅ Réduction de text-xs */}
             </button>
           );
         })}

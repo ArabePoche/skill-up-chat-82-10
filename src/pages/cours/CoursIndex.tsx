@@ -105,14 +105,14 @@ const CoursIndex = () => {
   const debugMessage = `User ID: ${user?.id} | Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
 
   return (
-    <div className="bg-gray-50 pt-16 pb-24 md:pb-4 ">
+    <div className="bg-gray-50 min-h-screen pb-24">
       <CoursHeader 
         title="Mes Formations" 
         subtitle="Continuez votre apprentissage" 
         
       />
         
-      <div className="p-4 space-y-6 pt-16">
+      <div className="p-4 space-y-6">
         <FormationSection
           title="Mes cours suivis"
           icon="student"

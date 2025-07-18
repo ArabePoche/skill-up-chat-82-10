@@ -11,6 +11,7 @@ import UsersManagement from '@/components/admin/UsersManagement';
 import DashboardStats from '@/components/admin/DashboardStats';
 import OnlineUsersList from '@/components/admin/OnlineUsersList';
 import VideosManagement from '@/components/admin/VideosManagement';
+import TeachersManagement from '@/components/admin/TeachersManagement';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 
@@ -66,6 +67,8 @@ const AdminDashboard = () => {
         return <OnlineUsersList />;
       case 'create-formation':
         return <FormationsManagement />;
+      case 'teachers':
+        return <TeachersManagement />;
       case 'products':
         return <ProductsManagement />;
       case 'videos':

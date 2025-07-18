@@ -8,7 +8,7 @@ interface CoursHeaderProps {
 
 const CoursHeader: React.FC<CoursHeaderProps> = ({ title, subtitle }) => {
   return (
-    <div className="bg-white shadow-sm sticky top-0 md:top-16 z-30">
+    <div className="bg-white shadow-sm sticky top-0 z-30">
       <div className="p-4">
         <h1 className="text-xl sm:text-2xl font-bold">{title}</h1>
         <p className="text-sm sm:text-base text-gray-600">{subtitle}</p>
