@@ -1,0 +1,129 @@
+/* Styles spécifiques pour l'interface TikTok */
+.snap-y {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+.snap-start {
+  scroll-snap-align: start;
+}
+
+.snap-always {
+  scroll-snap-stop: always;
+}
+
+/* Masquer la scrollbar mais garder la fonctionnalité */
+.overflow-y-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.overflow-y-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animation pour les boutons d'action */
+.action-button {
+  transition: transform 0.2s ease;
+}
+
+.action-button:active {
+  transform: scale(0.9);
+}
+
+/* Effet de pulse pour le bouton like */
+.like-pulse {
+  animation: pulse-like 0.3s ease;
+}
+
+@keyframes pulse-like {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Animation pour l'indicateur d'onglet actif */
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+@keyframes scale-in {
+  0% { transform: translateX(-50%) scale(0); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+/* Animation fade-in pour les nouvelles vidéos */
+.video-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Animation pour les likes améliorée */
+.like-animation {
+  animation: like-bounce 0.6s ease-in-out;
+}
+
+@keyframes like-bounce {
+  0% { transform: scale(1); }
+  15% { transform: scale(1.3); }
+  30% { transform: scale(1.1); }
+  50% { transform: scale(1.25); }
+  80% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Utilitaire pour limiter le nombre de lignes */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Styles pour les boutons hover améliorés */
+.hover-scale {
+  transition: transform 0.2s ease-in-out;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* Animation subtile pour les avatars */
+.avatar-glow {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  animation: glow-pulse 2s infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
+  50% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.6); }
+}
+
+/* Responsive adjustments for video actions */
+@media (max-width: 640px) {
+  .video-actions {
+    right: 8px;
+    bottom: 120px;
+  }
+  
+  .video-actions button {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .video-actions .icon {
+    width: 18px;
+    height: 18px;
+  }
+}
