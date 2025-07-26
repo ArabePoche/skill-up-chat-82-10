@@ -26,6 +26,8 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    console.log('🎤 VoiceBar monté, démarrage automatique de l\'enregistrement');
+    startRecording();
     
     return () => {
       if (timerRef.current) {
@@ -39,6 +41,13 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
 
   const startRecording = async () => {
     try {
+      console.log('🎤 Tentative d\'accès au microphone...');
+      
+      // Vérifier d'abord si l'API est disponible
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('API getUserMedia non supportée');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -47,9 +56,23 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
         }
       });
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      console.log('✅ Accès microphone autorisé, démarrage enregistrement');
+
+      // Vérifier si MediaRecorder est supporté avec le format souhaité
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/mp4';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = '';
+          }
+        }
+      }
+
+      console.log('🎧 Format audio utilisé:', mimeType);
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
 
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -57,11 +80,14 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
+          console.log('📊 Chunk audio reçu:', event.data.size, 'bytes');
         }
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        console.log('⏹️ Enregistrement arrêté, création du blob');
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
+        console.log('💾 Blob créé:', blob.size, 'bytes, type:', blob.type);
         setAudioBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -69,6 +95,7 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
         // Créer un audio temporaire pour obtenir la durée
         const tempAudio = new Audio(url);
         tempAudio.onloadedmetadata = () => {
+          console.log('⏱️ Durée audio:', tempAudio.duration, 'secondes');
           setAudioDuration(tempAudio.duration);
         };
         
@@ -86,7 +113,8 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
       }, 1000);
 
     } catch (error) {
-      console.error('Erreur accès microphone:', error);
+      console.error('❌ Erreur accès microphone:', error);
+      alert('Impossible d\'accéder au microphone. Vérifiez vos permissions dans les paramètres du navigateur.');
       onCancel();
     }
   };

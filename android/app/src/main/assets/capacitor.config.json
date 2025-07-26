@@ -1,9 +1,0 @@
-{
-	"appId": "com.educatok.islahmedia",
-	"appName": "EducaTok",
-	"webDir": "dist",
-	"server": {
-		"url": "https://educatok.netlify.app",
-		"cleartext": true
-	}
-}
