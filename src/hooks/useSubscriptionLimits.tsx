@@ -142,26 +142,42 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
     return { allowed: true, currentPlan };
   }, [userPricing, user?.id, formationId, isCallDayAllowed]);
 
-  // Gestion du timer quotidien
+  // Gestion du timer quotidien - corrigé pour fonctionner
   useEffect(() => {
     if (!userPricing?.time_limit_minutes_per_day || !user?.id) {
       setTimeRemainingToday(null);
       return;
     }
 
-    const storageKey = `timeUsed_${user.id}_${formationId}_${new Date().toDateString()}`;
+    // Utiliser une clé plus simple et consistante
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const storageKey = `timeUsed_${user.id}_${formationId}_${today}`;
+    
+    // Récupérer le temps utilisé depuis localStorage
     const timeUsed = parseInt(localStorage.getItem(storageKey) || '0');
     const remaining = Math.max(0, userPricing.time_limit_minutes_per_day - timeUsed);
+    
+    console.log('Timer debug:', {
+      userPlan: userPricing.plan_type,
+      dailyLimit: userPricing.time_limit_minutes_per_day,
+      timeUsed,
+      remaining,
+      storageKey
+    });
+    
     setTimeRemainingToday(remaining);
   }, [userPricing, subscription?.plan_type, user?.id, formationId]);
 
   const updateTimeUsed = useCallback((minutesUsed: number) => {
     if (!userPricing?.time_limit_minutes_per_day || !user?.id) return;
 
-    const storageKey = `timeUsed_${user.id}_${formationId}_${new Date().toDateString()}`;
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const storageKey = `timeUsed_${user.id}_${formationId}_${today}`;
     const currentUsed = parseInt(localStorage.getItem(storageKey) || '0');
     const newUsed = currentUsed + minutesUsed;
+    
     localStorage.setItem(storageKey, newUsed.toString());
+    console.log('Time updated:', { currentUsed, minutesUsed, newUsed, storageKey });
     
     const remaining = Math.max(0, userPricing.time_limit_minutes_per_day - newUsed);
     setTimeRemainingToday(remaining);
@@ -170,10 +186,12 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
   const incrementMessageCount = useCallback(() => {
     if (!user?.id) return;
     
-    const today = new Date().toDateString();
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
     const messagesKey = `messages_${user.id}_${formationId}_${today}`;
     const messagesSent = parseInt(localStorage.getItem(messagesKey) || '0');
     localStorage.setItem(messagesKey, (messagesSent + 1).toString());
+    
+    console.log('Message count updated:', { messagesSent: messagesSent + 1, messagesKey });
   }, [user?.id, formationId]);
 
   return {

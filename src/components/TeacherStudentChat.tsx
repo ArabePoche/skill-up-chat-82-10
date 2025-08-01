@@ -167,10 +167,10 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
         onOpenStudio={() => setShowStudio(true)}
       />
 
-      {/* Section Vidéo */}
-      <div ref={videoRef} className="bg-black">
+      {/* Section Vidéo - avec marge pour éviter le header fixe */}
+      <div ref={videoRef} className="bg-black pt-16">
         <LessonVideoPlayer
-          url={`https://example.com/lesson-${lesson.id}.mp4`}
+          url={lesson.video_url || `https://example.com/lesson-${lesson.id}.mp4`}
           className="w-full aspect-video"
         />
       </div>

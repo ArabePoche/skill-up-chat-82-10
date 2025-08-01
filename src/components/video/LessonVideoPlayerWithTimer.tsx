@@ -76,9 +76,9 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
 
   return (
     <div className={`relative ${className}`}>
-      {/* Timer en surimpression - amélioré pour être bien visible */}
+      {/* Timer en surimpression - repositionné pour éviter le header */}
       {timeRemainingToday !== null && dailyTimeLimit !== null && (
-        <div className="absolute top-2 left-2 right-2 z-20 pointer-events-none">
+        <div className="absolute top-4 left-2 right-2 z-20 pointer-events-none">
           <div className="bg-black/80 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/10">
             <div className="flex items-center justify-between text-white text-xs">
               <div className="flex items-center gap-2">
