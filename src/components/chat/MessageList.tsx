@@ -133,13 +133,7 @@ const MessageList: React.FC<MessageListProps> = ({
         <InterviewEvaluationCard
           key={evaluation.id}
           evaluationId={evaluation.id}
-          teacherName={
-            evaluation.teachers?.profiles
-              ? `${evaluation.teachers.profiles.first_name || ''} ${evaluation.teachers.profiles.last_name || ''}`.trim()
-                || evaluation.teachers.profiles.username
-                || 'Professeur'
-              : 'Professeur'
-          }
+          teacherName="Professeur"
           expiresAt={evaluation.expires_at}
         />
       ))}

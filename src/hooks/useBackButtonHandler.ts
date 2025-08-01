@@ -9,22 +9,34 @@ export default function useBackButtonHandler() {
   const lastBackPress = useRef<number | null>(null);
 
   useEffect(() => {
-    const handler = CapacitorApp.addListener('backButton', () => {
-      if (location.pathname === '/' || location.pathname === '/home') {
-        const now = Date.now();
-        if (lastBackPress.current && now - lastBackPress.current < 2000) {
-          CapacitorApp.exitApp(); // 🚪 Quitte l'app
-        } else {
-          lastBackPress.current = now;
-          alert('Appuyez encore une fois pour quitter l’application');
-        }
-      } else {
-        navigate(-1); // ⬅️ Retour en arrière
+    let handler: any = null;
+
+    const setupHandler = async () => {
+      try {
+        handler = await CapacitorApp.addListener('backButton', () => {
+          if (location.pathname === '/' || location.pathname === '/home') {
+            const now = Date.now();
+            if (lastBackPress.current && now - lastBackPress.current < 2000) {
+              CapacitorApp.exitApp(); // 🚪 Quitte l'app
+            } else {
+              lastBackPress.current = now;
+              alert('Appuyez encore une fois pour quitter l\'application');
+            }
+          } else {
+            navigate(-1); // ⬅️ Retour en arrière
+          }
+        });
+      } catch (error) {
+        console.log('Capacitor App not available or web environment');
       }
-    });
+    };
+
+    setupHandler();
 
     return () => {
-      handler.remove(); // 💡 Nettoie l'écouteur à la destruction
+      if (handler && handler.remove) {
+        handler.remove(); // 💡 Nettoie l'écouteur à la destruction
+      }
     };
   }, [location, navigate]);
 }

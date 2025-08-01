@@ -1,7 +1,6 @@
 // src/components/PermissionManager.tsx
 import { useEffect } from 'react';
 import { Camera } from '@capacitor/camera';
-import { Permissions } from '@capacitor/permissions';
 
 const PermissionManager = () => {
   useEffect(() => {
@@ -9,12 +8,6 @@ const PermissionManager = () => {
       try {
         // Caméra & galerie
         await Camera.requestPermissions({ permissions: ['camera', 'photos'] });
-
-        // Micro
-        await Permissions.requestPermission({ name: 'microphone' });
-
-        // Contacts (nécessite cordova-plugin-contacts installé + déclaré)
-        await Permissions.requestPermission({ name: 'contacts' });
 
         console.log('Permissions demandées');
       } catch (err) {

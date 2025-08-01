@@ -26,9 +26,6 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    console.log('🎤 VoiceBar monté, démarrage automatique de l\'enregistrement');
-    startRecording();
-    
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -37,7 +34,7 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
         URL.revokeObjectURL(audioUrl);
       }
     };
-  }, []);
+  }, [audioUrl]);
 
   const startRecording = async () => {
     try {
@@ -45,7 +42,7 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
       
       // Vérifier d'abord si l'API est disponible
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('API getUserMedia non supportée');
+        throw new Error('L\'enregistrement audio n\'est pas supporté par votre navigateur');
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -114,7 +111,19 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
 
     } catch (error) {
       console.error('❌ Erreur accès microphone:', error);
-      alert('Impossible d\'accéder au microphone. Vérifiez vos permissions dans les paramètres du navigateur.');
+      
+      let errorMessage = 'Impossible d\'accéder au microphone.';
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'Accès au microphone refusé. Veuillez autoriser l\'accès dans les paramètres de votre navigateur.';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = 'Aucun microphone détecté. Vérifiez qu\'un microphone est connecté.';
+        } else if (error.message.includes('getUserMedia')) {
+          errorMessage = 'Votre navigateur ne supporte pas l\'enregistrement audio.';
+        }
+      }
+      
+      alert(errorMessage);
       onCancel();
     }
   };
@@ -158,54 +167,73 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
   const displayTime = audioBlob ? formatTime(Math.floor(audioDuration)) : formatTime(recordingTime);
 
   return (
-    <div className="bg-[#f0f0f0] border-t border-gray-200 p-2 sm:p-3 fixed bottom-16 left-0 right-0 md:relative md:bottom-0 z-50">
-      <div className="flex items-center justify-between bg-green-50 rounded-full px-3 sm:px-4 py-2 border border-green-200">
+    <div className="bg-background border-t border-border p-3 fixed bottom-16 left-0 right-0 md:relative md:bottom-0 z-50">
+      <div className="flex items-center justify-between bg-muted rounded-full px-4 py-3 border border-border shadow-sm">
         {/* Bouton Annuler */}
         <Button
           onClick={onCancel}
           variant="ghost"
           size="sm"
-          className="p-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-red-100 text-red-500 hover:text-red-600 flex-shrink-0"
+          className="h-10 w-10 rounded-full hover:bg-destructive/10 text-destructive hover:text-destructive flex-shrink-0"
         >
-          <X size={16} className="sm:w-[18px] sm:h-[18px]" />
+          <X size={18} />
         </Button>
 
         {/* Zone centrale avec micro/lecture et timer */}
-        <div className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 mx-2 sm:mx-4">
-          {/* Indicateur d'enregistrement ou bouton lecture */}
-          {isRecording ? (
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full animate-pulse flex-shrink-0"></div>
-              <Mic size={16} className="text-red-500 sm:w-[18px] sm:h-[18px] animate-pulse" />
-            </div>
-          ) : audioBlob ? (
+        <div className="flex-1 flex items-center justify-center space-x-3 mx-4">
+          {/* État initial - bouton pour démarrer */}
+          {!isRecording && !audioBlob && (
             <Button
-              onClick={togglePlayback}
+              onClick={startRecording}
               variant="ghost"
               size="sm"
-              className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-green-200 flex-shrink-0"
+              className="flex items-center space-x-2 hover:bg-primary/10 text-primary"
             >
-              {isPlaying ? (
-                <Pause size={14} className="text-green-600 sm:w-[16px] sm:h-[16px]" />
-              ) : (
-                <Play size={14} className="text-green-600 sm:w-[16px] sm:h-[16px]" />
-              )}
+              <Mic size={18} />
+              <span className="text-sm font-medium">Appuyez pour enregistrer</span>
             </Button>
-          ) : null}
+          )}
 
-          {/* Timer */}
-          <span className="text-sm sm:text-base font-medium text-green-700 font-mono whitespace-nowrap">
-            {displayTime}
-          </span>
+          {/* Indicateur d'enregistrement */}
+          {isRecording && (
+            <div className="flex items-center space-x-3">
+              <div className="w-4 h-4 bg-destructive rounded-full animate-pulse flex-shrink-0"></div>
+              <Mic size={18} className="text-destructive animate-pulse" />
+              <span className="text-base font-medium text-destructive font-mono">
+                {displayTime}
+              </span>
+            </div>
+          )}
+
+          {/* Contrôles de lecture */}
+          {audioBlob && !isRecording && (
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={togglePlayback}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 rounded-full hover:bg-primary/10 flex-shrink-0"
+              >
+                {isPlaying ? (
+                  <Pause size={16} className="text-primary" />
+                ) : (
+                  <Play size={16} className="text-primary" />
+                )}
+              </Button>
+              <span className="text-base font-medium text-foreground font-mono">
+                {displayTime}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Boutons d'action */}
-        <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           {/* Bouton Arrêter l'enregistrement */}
           {isRecording && (
             <Button
               onClick={stopRecording}
-              className="bg-orange-500 hover:bg-orange-600 p-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full text-xs sm:text-sm font-medium"
+              className="bg-orange-500 hover:bg-orange-600 h-10 w-16 rounded-full text-sm font-medium text-white"
               size="sm"
             >
               Stop
@@ -217,10 +245,10 @@ const VoiceBar: React.FC<VoiceBarProps> = ({
             <Button
               onClick={sendRecording}
               disabled={disabled}
-              className="bg-green-500 hover:bg-green-600 p-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full flex-shrink-0"
+              className="bg-primary hover:bg-primary/90 h-10 w-10 rounded-full flex-shrink-0"
               size="sm"
             >
-              <Send size={14} className="text-white sm:w-[16px] sm:h-[16px]" />
+              <Send size={16} className="text-primary-foreground" />
             </Button>
           )}
         </div>
