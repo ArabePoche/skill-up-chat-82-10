@@ -314,6 +314,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           formationId={formation.id}
         />
       </div>
+     
+      
+      
+
+      {/* Modal d'upgrade pour les appels */}
+      <SubscriptionUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        message={upgradeModalData.message}
+        formationId={formation.id}
+        variant="warning"
+        restrictionType={upgradeModalData.restrictionType as any}
+        currentPlan={upgradeModalData.currentPlan}
+      />
+    </div>
     </div>
   );
 };
