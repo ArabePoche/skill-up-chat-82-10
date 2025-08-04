@@ -14,6 +14,8 @@ import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useTypingListener } from '@/hooks/useTypingListener';
 import { useMarkMessagesAsRead } from '@/hooks/useMarkMessagesAsRead';
 import { useAuth } from '@/hooks/useAuth';
+import { useDirectCallModal } from '@/hooks/useDirectCallModal';
+import TeacherCallModal from './live-classroom/TeacherCallModal';
 
 interface Student {
   id: string;
@@ -66,6 +68,12 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
   const sendMessageMutation = useSendTeacherStudentMessage();
   const validateExerciseMutation = useValidateExercise();
   const markAsReadMutation = useMarkMessagesAsRead();
+  
+  // Hook pour les appels directs (quand on est en chat avec l'étudiant)
+  const { directCall, acceptDirectCall, rejectDirectCall } = useDirectCallModal(
+    student.user_id,
+    lesson.id
+  );
 
   // Auto-scroll et marquage des messages comme lus
   useEffect(() => {
@@ -241,6 +249,28 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
           />
         </div>
       </div>
+
+      {/* Modal d'appel direct (quand en chat avec l'étudiant) */}
+      {directCall && (
+        <TeacherCallModal
+          isOpen={true}
+          onAccept={async () => {
+            const success = await acceptDirectCall();
+            if (success) {
+              console.log('Appel direct accepté dans le chat');
+              // TODO: Rediriger vers l'interface d'appel
+            }
+          }}
+          onReject={async () => {
+            await rejectDirectCall();
+          }}
+          studentName={directCall.caller_name}
+          studentAvatar={directCall.caller_avatar}
+          callType={directCall.call_type}
+          formationTitle={formation.title}
+          lessonTitle={lesson.title}
+        />
+      )}
     </div>
   );
 };

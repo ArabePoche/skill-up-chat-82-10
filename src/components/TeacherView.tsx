@@ -1,11 +1,17 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, MessageCircle, BookOpen, Play } from 'lucide-react';
+import { ArrowLeft, MessageCircle, BookOpen, Play, Phone } from 'lucide-react';
 import TeacherDiscussionsList from './TeacherDiscussionsList';
 import TeacherStudentChat from './TeacherStudentChat';
 import LessonVideoPlayer from './LessonVideoPlayer';
 import { useUnreadMessagesBadge } from '@/hooks/useUnreadMessagesBadge';
+import { useIncomingCalls } from '@/hooks/useIncomingCalls';
+import { useDirectCallModal } from '@/hooks/useDirectCallModal';
+import { useTeacherDiscussionsWithUnread } from '@/hooks/useTeacherDiscussionsWithUnread';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import CallsModal from './teacher/CallsModal';
+import TeacherCallModal from './live-classroom/TeacherCallModal';
 
 interface TeacherViewProps {
   formation: {
@@ -26,15 +32,34 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
   } | null>(null);
 
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [showCallsModal, setShowCallsModal] = useState(false);
   const { data: unreadCount = 0 } = useUnreadMessagesBadge(formation.id);
+  const { data: discussions } = useTeacherDiscussionsWithUnread(formation.id);
+  const { incomingCalls } = useIncomingCalls(formation.id);
+  
+  // Pour les appels directs quand on est en chat avec un étudiant
+  const { directCall, acceptDirectCall, rejectDirectCall } = useDirectCallModal(
+    selectedDiscussion?.studentId,
+    selectedDiscussion?.lessonId
+  );
 
   const handleSelectDiscussion = (studentId: string, formationId: string, lessonId: string) => {
+    // Trouver la discussion correspondante
+    const selectedDiscussionData = discussions?.find(
+      discussion => discussion.student_id === studentId && discussion.lesson_id === lessonId
+    );
+    
+    // Construire le nom de l'étudiant à partir du profil
+    const studentName = selectedDiscussionData?.student_profile ? 
+      `${selectedDiscussionData.student_profile.first_name || ''} ${selectedDiscussionData.student_profile.last_name || ''}`.trim() || 
+      selectedDiscussionData.student_profile.username || 'Étudiant' : 'Étudiant';
+    
     setSelectedDiscussion({
       studentId,
       lessonId,
-      studentName: 'Étudiant',
-      lessonTitle: 'Leçon',
-      studentProfile: null
+      studentName,
+      lessonTitle: selectedDiscussionData?.lesson_title || 'Leçon',
+      studentProfile: selectedDiscussionData?.student_profile || null
     });
   };
 
@@ -85,7 +110,27 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
 
       {/* Actions rapides */}
       <div className="bg-white p-4 border-b border-gray-200">
-        
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800">Actions rapides</h3>
+          
+          {/* Bouton Appels avec badge */}
+          <Button
+            onClick={() => setShowCallsModal(true)}
+            variant="outline"
+            className="relative flex items-center space-x-2"
+          >
+            <Phone className="h-4 w-4" />
+            <span>Appels</span>
+            {incomingCalls.length > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs flex items-center justify-center"
+              >
+                {incomingCalls.length}
+              </Badge>
+            )}
+          </Button>
+        </div>
         
         {showVideoPlayer && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
@@ -115,6 +160,35 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
         formationId={formation.id}
         onSelectDiscussion={handleSelectDiscussion}
       />
+      {/* Modal de liste des appels */}
+      <CallsModal
+        isOpen={showCallsModal}
+        onClose={() => setShowCallsModal(false)}
+        formationId={formation.id}
+        incomingCalls={incomingCalls}
+      />
+
+      {/* Modal d'appel direct (quand en chat avec l'étudiant) */}
+      {directCall && (
+        <TeacherCallModal
+          isOpen={true}
+          onAccept={async () => {
+            const success = await acceptDirectCall();
+            if (success) {
+              console.log('Appel direct accepté');
+              // TODO: Rediriger vers l'interface d'appel
+            }
+          }}
+          onReject={async () => {
+            await rejectDirectCall();
+          }}
+          studentName={directCall.caller_name}
+          studentAvatar={directCall.caller_avatar}
+          callType={directCall.call_type}
+          formationTitle={formation.title}
+          lessonTitle={selectedDiscussion?.lessonTitle}
+        />
+      )}
     </div>
   );
 };
