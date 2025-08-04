@@ -9,14 +9,16 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useChatTimer } from '@/hooks/useChatTimer';
-import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
-import { useCallNotifications } from '@/hooks/useCallNotifications';
+import { useRealtimeCallSystem } from '@/hooks/useRealtimeCallSystem';
+import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
 import ChatInputBar from './chat/ChatInputBar';
 import MessageList from './chat/MessageList';
 import { LessonVideoPlayerWithTimer } from './video/LessonVideoPlayerWithTimer';
 import { SubscriptionUpgradeModal } from './chat/SubscriptionUpgradeModal';
 import VideoMessageSwitch from './video/VideoMessageSwitch';
+import StudentCallModal from './live-classroom/StudentCallModal';
+import TeacherCallModal from './live-classroom/TeacherCallModal';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 
@@ -58,9 +60,26 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   const { isSubscribed, connectionStatus, reconnectAttempts, maxReconnectAttempts } = useRealtimeMessages(lesson.id.toString(), formation.id);
   const typingUsers = useTypingListener(lesson.id.toString(), formation.id);
 
-  // Fonctionnalités d'appel
-  const { initiateCall } = useCallFunctionality(formation.id);
-  const { incomingCall, dismissCall } = useCallNotifications();
+  // Système d'appel en temps réel
+  const {
+    currentCall,
+    incomingCall,
+    studentProfile,
+    isStudentCallActive,
+    isTeacherCallModalOpen,
+    initiateCall,
+    endCall,
+    acceptCall,
+    rejectCall
+  } = useRealtimeCallSystem(formation.id, lesson.id.toString());
+  
+  const { checkPermission } = useSubscriptionLimits(formation.id);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeModalData, setUpgradeModalData] = useState<{
+    message: string;
+    restrictionType?: string;
+    currentPlan?: string;
+  }>({ message: '' });
 
   // Timer pour le chat (indépendant de la vidéo)
   const chatTimer = useChatTimer({
@@ -120,18 +139,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     });
   };
 
+  const showRestrictionModal = (message: string, restrictionType?: string, currentPlan?: string) => {
+    setUpgradeModalData({ message, restrictionType, currentPlan });
+    setShowUpgradeModal(true);
+  };
+
   const handleCall = async (type: 'audio' | 'video') => {
     if (!user) {
       navigate('/auth');
       return;
     }
 
+    // Vérifier les permissions
+    const action = type === 'audio' ? 'call' : 'video_call';
+    const permission = checkPermission(action);
+    
+    if (!permission.allowed) {
+      showRestrictionModal(permission.message || 'Appel non autorisé', permission.restrictionType, permission.currentPlan);
+      return;
+    }
+
     // Pour les élèves, initier un appel vers tous les professeurs
     if (userRole?.role === 'student') {
-      const success = await initiateCall(type, '', lesson.id.toString());
-      if (success) {
-        toast.info(`Appel ${type === 'video' ? 'vidéo' : 'audio'} envoyé aux professeurs`);
-      }
+      await initiateCall(type);
     } else {
       toast.info('Fonctionnalité d\'appel disponible pour les élèves');
     }
@@ -199,36 +229,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 
   return (
     <div className="min-h-screen bg-[#e5ddd5] flex flex-col relative">
-      {/* Notifications d'appels entrants */}
-      {incomingCall && userRole?.role === 'teacher' && (
-        <div className="fixed top-20 right-4 bg-white border rounded-lg shadow-lg p-4 z-50">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">Appel entrant</h3>
-            <span className="text-sm text-gray-500">
-              {incomingCall.call_type === 'video' ? '📹' : '📞'}
-            </span>
-          </div>
-          <p className="text-sm mb-3">
-            Vous avez un appel entrant
-          </p>
-          <div className="flex space-x-2">
-            <Button 
-              size="sm" 
-              onClick={dismissCall}
-              className="bg-green-500 hover:bg-green-600"
-            >
-              Accepter
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={dismissCall}
-            >
-              Rejeter
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Header responsive avec boutons d'appel intégrés */}
       <div className="bg-[#25d366] text-white p-3 sm:p-4 fixed top-0 left-0 right-0 z-50  border-b shadow-sm">
@@ -316,7 +316,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       />
 
       {/* Messages - responsive */}
-      <div ref={messagesRef} className="flex-1 flex flex-col p-24 min-h-0 pt-[80px] pb-[80px] px-2 md:px-4">
+      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[80px] pb-[80px] px-2 md:px-4 overflow-hidden">
         <MessageList
           messages={messages}
           exercises={exercises}
@@ -341,6 +341,36 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           lessonTitle={lesson.title}
         />
       </div>
+
+      {/* Modals d'appel */}
+      <StudentCallModal
+        isOpen={isStudentCallActive}
+        onEndCall={endCall}
+        callType={currentCall?.call_type || 'audio'}
+        teacherName={currentCall?.receiver_id ? "Professeur" : undefined}
+      />
+      
+      <TeacherCallModal
+        isOpen={isTeacherCallModalOpen}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+        studentName={studentProfile ? `${studentProfile.first_name} ${studentProfile.last_name}` : 'Étudiant'}
+        studentAvatar={studentProfile?.avatar_url}
+        callType={incomingCall?.call_type || 'audio'}
+        formationTitle={formation.title}
+        lessonTitle={lesson.title}
+      />
+
+      {/* Modal d'upgrade pour les appels */}
+      <SubscriptionUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        message={upgradeModalData.message}
+        formationId={formation.id}
+        variant="warning"
+        restrictionType={upgradeModalData.restrictionType as any}
+        currentPlan={upgradeModalData.currentPlan}
+      />
     </div>
   );
 };
