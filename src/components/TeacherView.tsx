@@ -108,11 +108,6 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
             </Badge>
           )}
         </div>
-        <div className="text-sm text-blue-700 space-y-1">
-          <p>• Les discussions avec messages non lus apparaissent en priorité</p>
-          <p>• Les badges rouges indiquent le nombre de messages non lus</p>
-          <p>• Cliquez sur une discussion pour la marquer comme lue automatiquement</p>
-        </div>
       </div>
 
       {/* Liste des discussions */}
