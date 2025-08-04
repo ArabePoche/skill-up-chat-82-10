@@ -57,7 +57,8 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
         .from('lessons')
         .insert({
           ...lessonData,
-          level_id: levelId
+          level_id: levelId,
+          reference_id: crypto.randomUUID()
         })
         .select()
         .single();

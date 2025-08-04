@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'EducaTok',
   webDir: 'dist',
   server: {
-    url: 'https://educatok.netlify.app'
-    cleartext: true
-  }
+    url: 'https://educatok.netlify.app',
+    cleartext: true,
+  },
 };
 
 export default config;

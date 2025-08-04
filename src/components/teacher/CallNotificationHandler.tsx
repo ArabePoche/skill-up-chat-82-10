@@ -47,13 +47,14 @@ const CallNotificationHandler = () => {
   };
 
   const acceptCall = async () => {
-    if (!incomingCall) return;
+    if (!incomingCall || !user) return;
 
     try {
       const { error } = await supabase
         .from('call_sessions')
         .update({ 
           status: 'accepted',
+          receiver_id: user.id, // Ajout explicite du receiver_id pour identifier le professeur qui répond
           started_at: new Date().toISOString()
         })
         .eq('id', incomingCall.id);
@@ -69,13 +70,14 @@ const CallNotificationHandler = () => {
   };
 
   const rejectCall = async () => {
-    if (!incomingCall) return;
+    if (!incomingCall || !user) return;
 
     try {
       const { error } = await supabase
         .from('call_sessions')
         .update({ 
           status: 'rejected',
+          receiver_id: user.id, // Ajout explicite du receiver_id pour identifier le professeur qui rejette
           ended_at: new Date().toISOString()
         })
         .eq('id', incomingCall.id);
@@ -92,13 +94,14 @@ const CallNotificationHandler = () => {
   };
 
   const endCall = async () => {
-    if (!incomingCall) return;
+    if (!incomingCall || !user) return;
 
     try {
       const { error } = await supabase
         .from('call_sessions')
         .update({ 
           status: 'ended',
+          receiver_id: user.id, // Ajout explicite du receiver_id pour identifier le professeur qui termine l'appel
           ended_at: new Date().toISOString()
         })
         .eq('id', incomingCall.id);

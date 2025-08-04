@@ -5,6 +5,7 @@ import Shop from '@/pages/Shop';
 import Cours from '@/pages/Cours';
 import Messages from '@/pages/Messages';
 import Profil from '@/pages/Profil';
+import Admin from '@/pages/Admin';
 
 const MainContent: React.FC = () => {
   const { currentView } = useNavigation();

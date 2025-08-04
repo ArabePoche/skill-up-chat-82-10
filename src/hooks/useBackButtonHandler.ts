@@ -9,33 +9,35 @@ export default function useBackButtonHandler() {
   const lastBackPress = useRef<number | null>(null);
 
   useEffect(() => {
-    let handler: any = null;
+    let removeListener: (() => void) | null = null;
 
-    const setupHandler = async () => {
+    const setupListener = async () => {
       try {
-        handler = await CapacitorApp.addListener('backButton', () => {
+        const handler = await CapacitorApp.addListener('backButton', () => {
           if (location.pathname === '/' || location.pathname === '/home') {
             const now = Date.now();
             if (lastBackPress.current && now - lastBackPress.current < 2000) {
-              CapacitorApp.exitApp(); // 🚪 Quitte l'app
+              CapacitorApp.exitApp(); // Quitte l'app
             } else {
               lastBackPress.current = now;
               alert('Appuyez encore une fois pour quitter l\'application');
             }
           } else {
-            navigate(-1); // ⬅️ Retour en arrière
+            navigate(-1); // Retour en arriere
           }
         });
+        
+        removeListener = handler.remove;
       } catch (error) {
         console.log('Capacitor App not available or web environment');
       }
     };
 
-    setupHandler();
+    setupListener();
 
     return () => {
-      if (handler && handler.remove) {
-        handler.remove(); // 💡 Nettoie l'écouteur à la destruction
+      if (removeListener) {
+        removeListener();
       }
     };
   }, [location, navigate]);

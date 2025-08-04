@@ -16,7 +16,11 @@ const Home = () => {
           </div>
         );
       case 'posts':
-        return <PostsSection />;
+        return (
+          <div className="h-full overflow-y-auto">
+            <PostsSection />
+          </div>
+        );
       case 'search':
         return <SearchView />;
       default:
@@ -29,7 +33,7 @@ const Home = () => {
   };
 
   return (
-    <div className="relative h-screen w-full bg-black overflow-hidden">
+    <div className="relative h-screen w-full bg-black">
       {/* Onglets flottants en haut */}
       <TikTokTabs activeTab={activeTab} onTabChange={setActiveTab} />
       

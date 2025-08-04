@@ -113,7 +113,8 @@ const FormationsManagement = () => {
                 description: lessonData.description,
                 video_url: lessonData.videoUrl,
                 duration: lessonData.duration,
-                order_index: lessonData.orderIndex
+                order_index: lessonData.orderIndex,
+                reference_id: crypto.randomUUID()
               });
 
             if (lessonError) throw lessonError;
@@ -260,7 +261,8 @@ const FormationsManagement = () => {
                   description: lessonData.description,
                   video_url: lessonData.videoUrl,
                   duration: lessonData.duration,
-                  order_index: lessonData.orderIndex
+                  order_index: lessonData.orderIndex,
+                  reference_id: crypto.randomUUID()
                 });
 
               if (lessonCreateError) throw lessonCreateError;

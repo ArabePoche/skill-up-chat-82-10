@@ -39,7 +39,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
         .from('call_sessions')
         .insert({
           caller_id: user.id,
-          receiver_id: '', // Vide car l'appel va à tous les professeurs
+          receiver_id: null, // null car l'appel va à tous les professeurs
           formation_id: formationId,
           lesson_id: lessonId,
           call_type: type,
@@ -104,13 +104,15 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
   }, [user, checkPermission, formationId]);
 
   const endCall = useCallback(async () => {
-    if (!currentCall) return;
+    if (!currentCall || !user) return;
 
     try {
       await supabase
         .from('call_sessions')
         .update({ 
           status: 'ended',
+          // Si l'appel est terminé par l'appelant, on conserve le receiver_id existant s'il y en a un
+          // Cela permet de savoir quel professeur était en communication
           ended_at: new Date().toISOString()
         })
         .eq('id', currentCall.id);
@@ -121,7 +123,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     } catch (error) {
       console.error('Erreur lors de la fin de l\'appel:', error);
     }
-  }, [currentCall]);
+  }, [currentCall, user]);
 
   return {
     initiateCall,

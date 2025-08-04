@@ -20,7 +20,7 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
   cartItemsCount = 0
 }) => {
   return (
-    <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white sticky top-0 md:top-16 z-40 shadow-lg">
+    <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white sticky top-0 z-40 shadow-lg">
       {/* Header principal */}
       <div className="px-2 sm:px-4 py-2 sm:py-3">
         <div className="flex items-center justify-between mb-2 sm:mb-3">
