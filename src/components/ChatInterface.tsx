@@ -336,6 +336,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           disabled={sendMessageMutation.isPending}
           lessonId={lesson.id.toString()}
           formationId={formation.id}
+          contactName="Professeur"
+          formationTitle={formation.title}
+          lessonTitle={lesson.title}
         />
       </div>
     </div>

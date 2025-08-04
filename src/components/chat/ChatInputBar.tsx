@@ -1,16 +1,19 @@
 import React, { useState, useRef } from 'react';
-import { Send, Paperclip, Smile } from 'lucide-react';
+import { Send, Paperclip, Smile, Phone, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
+import { useRealtimeCallSystem } from '@/hooks/useRealtimeCallSystem';
 import EmojiPicker from '@/components/EmojiPicker';
 import WhatsAppVoiceRecorder from './WhatsAppVoiceRecorder';
 import VoiceBar from './VoiceBar';
 import EnhancedCameraCapture from './EnhancedCameraCapture';
 import { SubscriptionUpgradeModal } from './SubscriptionUpgradeModal';
+import StudentCallModal from '@/components/live-classroom/StudentCallModal';
+import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
 import { toast } from 'sonner';
 
 interface ChatInputBarProps {
@@ -20,6 +23,8 @@ interface ChatInputBarProps {
   formationId?: string;
   contactName?: string;
   contactAvatar?: string;
+  formationTitle?: string;
+  lessonTitle?: string;
 }
 
 const ChatInputBar: React.FC<ChatInputBarProps> = ({ 
@@ -28,7 +33,9 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   lessonId = '',
   formationId = '',
   contactName = 'Contact',
-  contactAvatar
+  contactAvatar,
+  formationTitle,
+  lessonTitle
 }) => {
   const [message, setMessage] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -46,6 +53,19 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const { startTyping, stopTyping } = useTypingIndicator(lessonId, formationId);
   const { uploadFile, isUploading } = useFileUpload();
   const { checkPermission, incrementMessageCount } = useSubscriptionLimits(formationId);
+  
+  // Système d'appel en temps réel
+  const {
+    currentCall,
+    incomingCall,
+    studentProfile,
+    isStudentCallActive,
+    isTeacherCallModalOpen,
+    initiateCall,
+    endCall,
+    acceptCall,
+    rejectCall
+  } = useRealtimeCallSystem(formationId, lessonId);
 
   const checkAuthAndExecute = (action: () => void) => {
     if (!user) {
@@ -205,6 +225,24 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
     setShowVoiceBar(false);
   };
 
+  const handleCall = async (callType: 'audio' | 'video') => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    // Vérifier les permissions
+    const action = callType === 'audio' ? 'call' : 'video_call';
+    const permission = checkPermission(action);
+    
+    if (!permission.allowed) {
+      showRestrictionModal(permission.message || 'Appel non autorisé', permission.restrictionType, permission.currentPlan);
+      return;
+    }
+
+    await initiateCall(callType);
+  };
+
   return (
     <>
       {showVoiceBar ? (
@@ -216,6 +254,25 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       ) : (
         <div className="bg-[#f0f0f0] border-t border-gray-200 p-2 sm:p-3 fixed bottom-0 left-0 right-0 z-50">
           <div className="flex items-end space-x-2 sm:space-x-3 max-w-full">
+            {/* Boutons d'appel */}
+            <button 
+              onClick={() => handleCall('audio')}
+              disabled={isUploading}
+              className="p-2 text-gray-500 hover:text-blue-500 transition-colors rounded-full hover:bg-gray-200 disabled:opacity-50"
+              title="Appel audio"
+            >
+              <Phone size={18} />
+            </button>
+            
+            <button 
+              onClick={() => handleCall('video')}
+              disabled={isUploading}
+              className="p-2 text-gray-500 hover:text-green-500 transition-colors rounded-full hover:bg-gray-200 disabled:opacity-50"
+              title="Appel vidéo"
+            >
+              <Video size={18} />
+            </button>
+            
             <button 
               onClick={() => checkAuthAndExecute(() => fileInputRef.current?.click())}
               disabled={isUploading}
@@ -312,6 +369,25 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
         variant="warning"
         restrictionType={upgradeModalData.restrictionType as any}
         currentPlan={upgradeModalData.currentPlan}
+      />
+
+      {/* Modals d'appel */}
+      <StudentCallModal
+        isOpen={isStudentCallActive}
+        onEndCall={endCall}
+        callType={currentCall?.call_type || 'audio'}
+        teacherName={currentCall?.receiver_id ? contactName : undefined}
+      />
+      
+      <TeacherCallModal
+        isOpen={isTeacherCallModalOpen}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+        studentName={studentProfile ? `${studentProfile.first_name} ${studentProfile.last_name}` : 'Étudiant'}
+        studentAvatar={studentProfile?.avatar_url}
+        callType={incomingCall?.call_type || 'audio'}
+        formationTitle={formationTitle}
+        lessonTitle={lessonTitle}
       />
     </>
   );
