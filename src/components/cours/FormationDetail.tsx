@@ -126,7 +126,27 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
         </div>
       )}
 
-     
+      {/* Accès rapide - Boutons Paiement et Pricing */}
+      <div className="bg-white p-4 mb-2 shadow-sm">
+        <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
+          <BookOpen size={16} className="mr-2" />
+          Accès rapide
+        </h3>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => window.open(`/formation/${formation.id}/pricing`, '_blank')}
+            className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+          >
+            💳 Options d'abonnement
+          </button>
+          <button
+            onClick={() => {/* TODO: Implement payment request */}}
+            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+          >
+            💰 Demander un paiement
+          </button>
+        </div>
+      </div>
 
       {/* Lessons List */}
       <LevelsList 
