@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEnrollmentWithProtection } from '@/hooks/useEnrollments';
 import FormationPricing from '@/components/FormationPricing';
+import PaymentRequestButton from '@/components/payments/PaymentRequestButton';
 import { toast } from 'sonner';
 
 const FormationDetail = () => {
@@ -277,6 +278,13 @@ const FormationDetail = () => {
                 <p className="text-xs text-gray-500">
                   Vous devez être connecté pour vous inscrire à cette formation
                 </p>
+              )}
+
+              {user && (
+                <PaymentRequestButton 
+                  formationId={formationId || ''} 
+                  className="w-full" 
+                />
               )}
               
               <div className="pt-4 border-t space-y-2 text-sm text-gray-600">
