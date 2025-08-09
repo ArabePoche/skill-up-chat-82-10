@@ -4,7 +4,6 @@ import { ArrowLeft, BookOpen, Users, Clock, Star } from 'lucide-react';
 import LevelsList from '../LevelsList';
 import TeacherView from '../TeacherView';
 import FormationPricing from '../FormationPricing';
-import PaymentRequestButton from '../payments/PaymentRequestButton';
 import { useUserRole } from '@/hooks/useUserRole';
 
 interface Lesson {
@@ -140,10 +139,15 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
           >
             💳 Options d'abonnement
           </button>
-          <PaymentRequestButton 
-            formationId={String(formation.id)}
+          <button
+            onClick={() => {
+              // TODO: Implement payment request functionality
+              alert('Fonctionnalité de demande de paiement à implémenter');
+            }}
             className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
-          />
+          >
+            💰 Demander un paiement
+          </button>
         </div>
       </div>
 
