@@ -10,7 +10,7 @@ import { useDirectCallModal } from '@/hooks/useDirectCallModal';
 import { useTeacherDiscussionsWithUnread } from '@/hooks/useTeacherDiscussionsWithUnread';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import CallsModal from './teacher/CallsModal';
+// import CallsModal from './teacher/CallsModal';
 import TeacherCallModal from './live-classroom/TeacherCallModal';
 
 interface TeacherViewProps {
@@ -160,13 +160,21 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
         formationId={formation.id}
         onSelectDiscussion={handleSelectDiscussion}
       />
-      {/* Modal de liste des appels */}
-      <CallsModal
-        isOpen={showCallsModal}
-        onClose={() => setShowCallsModal(false)}
-        formationId={formation.id}
-        incomingCalls={incomingCalls}
-      />
+      {/* Modal de liste des appels - temporairement désactivé */}
+      {showCallsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Appels entrants</h3>
+            <p className="text-gray-600 mb-4">Fonctionnalité temporairement désactivée</p>
+            <button 
+              onClick={() => setShowCallsModal(false)}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal d'appel direct (quand en chat avec l'étudiant) */}
       {directCall && (
