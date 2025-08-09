@@ -87,6 +87,31 @@ export const useNotifications = () => {
             }
           }
 
+          // Pour les notifications de demande de paiement manuel
+          if (notification.type === 'payment_request' && notification.user_id && notification.formation_id) {
+            try {
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('id, first_name, last_name, email, username, phone, avatar_url')
+                .eq('id', notification.user_id)
+                .single();
+
+              const { data: formationData, error: formationError } = await supabase
+                .from('formations')
+                .select('title, image_url')
+                .eq('id', notification.formation_id)
+                .single();
+
+              return {
+                ...notification,
+                user_info: profileError ? null : profileData,
+                formation_info: formationError ? null : formationData
+              };
+            } catch (error) {
+              console.error('Error fetching payment request details:', error);
+            }
+          }
+
           return notification;
         })
       );
@@ -160,3 +185,4 @@ export const useNotifications = () => {
     markAsRead: markAsReadMutation.mutate
   };
 };
+

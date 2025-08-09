@@ -117,6 +117,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "call_sessions_caller_id_fkey1"
+            columns: ["caller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "call_sessions_formation_id_fkey"
             columns: ["formation_id"]
             isOneToOne: false
@@ -128,6 +135,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_sessions_receiver_id_fkey1"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -627,6 +641,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean | null
+          languages: string[] | null
           level_count: number | null
           original_price: number | null
           price: number | null
@@ -651,6 +666,7 @@ export type Database = {
           id: string
           image_url?: string | null
           is_active?: boolean | null
+          languages?: string[] | null
           level_count?: number | null
           original_price?: number | null
           price?: number | null
@@ -675,6 +691,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
+          languages?: string[] | null
           level_count?: number | null
           original_price?: number | null
           price?: number | null
@@ -708,9 +725,12 @@ export type Database = {
           is_satisfied: boolean | null
           lesson_id: string
           responded_at: string | null
+          satisfaction_rating: number | null
           student_id: string
           teacher_id: string
+          teacher_rating: number | null
           updated_at: string | null
+          wants_same_teacher: boolean | null
         }
         Insert: {
           created_at?: string | null
@@ -722,9 +742,12 @@ export type Database = {
           is_satisfied?: boolean | null
           lesson_id: string
           responded_at?: string | null
+          satisfaction_rating?: number | null
           student_id: string
           teacher_id: string
+          teacher_rating?: number | null
           updated_at?: string | null
+          wants_same_teacher?: boolean | null
         }
         Update: {
           created_at?: string | null
@@ -736,9 +759,12 @@ export type Database = {
           is_satisfied?: boolean | null
           lesson_id?: string
           responded_at?: string | null
+          satisfaction_rating?: number | null
           student_id?: string
           teacher_id?: string
+          teacher_rating?: number | null
           updated_at?: string | null
+          wants_same_teacher?: boolean | null
         }
         Relationships: [
           {
@@ -760,6 +786,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_evaluations_teacher_id_fkey1"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -900,8 +933,10 @@ export type Database = {
           duration: string | null
           has_exercise: boolean | null
           id: string
+          language: string | null
           level_id: string | null
           order_index: number
+          reference_id: string
           title: string
           video_url: string | null
         }
@@ -911,8 +946,10 @@ export type Database = {
           duration?: string | null
           has_exercise?: boolean | null
           id?: string
+          language?: string | null
           level_id?: string | null
           order_index: number
+          reference_id: string
           title: string
           video_url?: string | null
         }
@@ -922,8 +959,10 @@ export type Database = {
           duration?: string | null
           has_exercise?: boolean | null
           id?: string
+          language?: string | null
           level_id?: string | null
           order_index?: number
+          reference_id?: string
           title?: string
           video_url?: string | null
         }
@@ -1778,6 +1817,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      student_payment: {
+        Row: {
+          amount: number | null
+          comment: string | null
+          created_at: string | null
+          created_by: string
+          days_added: number | null
+          formation_id: string
+          id: string
+          is_request: boolean | null
+          payment_date: string | null
+          payment_method: string | null
+          reference_number: string | null
+          requested_at: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          comment?: string | null
+          created_at?: string | null
+          created_by: string
+          days_added?: number | null
+          formation_id: string
+          id?: string
+          is_request?: boolean | null
+          payment_date?: string | null
+          payment_method?: string | null
+          reference_number?: string | null
+          requested_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          comment?: string | null
+          created_at?: string | null
+          created_by?: string
+          days_added?: number | null
+          formation_id?: string
+          id?: string
+          is_request?: boolean | null
+          payment_date?: string | null
+          payment_method?: string | null
+          reference_number?: string | null
+          requested_at?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      student_payment_progress: {
+        Row: {
+          created_at: string | null
+          formation_id: string
+          id: string
+          last_payment_date: string | null
+          total_days_remaining: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          formation_id: string
+          id?: string
+          last_payment_date?: string | null
+          total_days_remaining?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          formation_id?: string
+          id?: string
+          last_payment_date?: string | null
+          total_days_remaining?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       teacher_formations: {
         Row: {
