@@ -19,9 +19,9 @@ export const useStudentPaymentProgress = (formationId: string) => {
         .select('*')
         .eq('user_id', user.id)
         .eq('formation_id', formationId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Erreur lors de la récupération du progrès de paiement:', error);
         throw error;
       }
@@ -39,6 +39,10 @@ export const useStudentPaymentProgress = (formationId: string) => {
       return data;
     },
     enabled: !!user?.id && !!formationId,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 };
 
@@ -61,12 +65,16 @@ export const useStudentPaymentHistory = (formationId: string) => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Erreur lors de la récupération de l\'historique des paiements:', error);
+        console.error("Erreur lors de la récupération de l'historique des paiements:", error);
         throw error;
       }
 
       return data || [];
     },
     enabled: !!user?.id && !!formationId,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 };

@@ -7,6 +7,7 @@ import FormationPricing from '../FormationPricing';
 import { useUserRole } from '@/hooks/useUserRole';
 import PaymentRequestButton from '@/components/payments/PaymentRequestButton';
 import PaymentProgressBar from '@/components/payments/PaymentProgressBar';
+import PaymentHistoryList from '@/components/payments/PaymentHistoryList';
 import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
 
 interface Lesson {
@@ -155,6 +156,11 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
             maxDays={30}
           />
         </div>
+      </div>
+
+      {/* Historique des paiements */}
+      <div className="bg-transparent px-4 mb-2">
+        <PaymentHistoryList formationId={String(formation.id)} />
       </div>
 
       {/* Lessons List */}
