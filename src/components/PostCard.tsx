@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info, Megaphone, GraduationCap, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,7 +10,7 @@ interface PostCardProps {
   post: {
     id: string;
     content: string;
-    post_type: 'recruitment' | 'info' | 'general';
+    post_type: 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general';
     author_id: string;
     created_at: string;
     likes_count: number;
@@ -38,6 +37,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         return <Briefcase size={16} className="text-blue-400" />;
       case 'info':
         return <Info size={16} className="text-green-400" />;
+      case 'annonce':
+        return <Megaphone size={16} className="text-yellow-400" />;
+      case 'formation':
+        return <GraduationCap size={16} className="text-purple-400" />;
+      case 'religion':
+        return <Star size={16} className="text-amber-400" />;
       default:
         return <MessageCircle size={16} className="text-gray-400" />;
     }
@@ -49,8 +54,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         return 'Recrutement';
       case 'info':
         return 'Information';
+      case 'annonce':
+        return 'Annonce';
+      case 'formation':
+        return 'Formation';
+      case 'religion':
+        return 'Religion';
       default:
-        return 'Général';
+        return 'Autre';
     }
   };
 
@@ -60,6 +71,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         return 'bg-blue-900/50 text-blue-400 border-blue-700';
       case 'info':
         return 'bg-green-900/50 text-green-400 border-green-700';
+      case 'annonce':
+        return 'bg-yellow-900/50 text-yellow-400 border-yellow-700';
+      case 'formation':
+        return 'bg-purple-900/50 text-purple-400 border-purple-700';
+      case 'religion':
+        return 'bg-amber-900/50 text-amber-400 border-amber-700';
       default:
         return 'bg-gray-900/50 text-gray-400 border-gray-700';
     }

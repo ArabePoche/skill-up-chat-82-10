@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import CreatePostModal from '@/components/CreatePostModal';
 import PostCard from '@/components/PostCard';
 
 const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'general'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { user } = useAuth();
   const { data: posts, isLoading } = usePosts(activeFilter);
@@ -21,9 +20,11 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
 
   const filterButtons = [
     { key: 'all' as const, label: 'Tous', icon: Users },
+    { key: 'info' as const, label: 'Information', icon: Info },
     { key: 'recruitment' as const, label: 'Recrutement', icon: Briefcase },
-    { key: 'info' as const, label: 'Infos', icon: Info },
-    { key: 'general' as const, label: 'Général', icon: MessageCircle },
+    { key: 'annonce' as const, label: 'Annonce', icon: Info },
+    { key: 'formation' as const, label: 'Formation', icon: Info },
+    { key: 'religion' as const, label: 'Religion', icon: Info },
   ];
 
   if (isLoading) {
@@ -52,6 +53,23 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
             </Button>
           )}
         </div>
+
+        {/* Composer "Quoi de neuf ?" */}
+        {user && (
+          <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-4 animate-fade-in">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+                <User size={20} className="text-gray-300" />
+              </div>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex-1 text-left bg-gray-800 hover:bg-gray-700 text-gray-400 px-4 py-2 rounded-full transition-colors"
+              >
+                Quoi de neuf ?
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Filtres */}
         <div className="flex space-x-2 overflow-x-auto pb-2">

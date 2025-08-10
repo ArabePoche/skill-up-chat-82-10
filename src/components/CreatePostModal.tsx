@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { X, Image, Briefcase, Info, MessageCircle } from 'lucide-react';
+import { X, Image, Briefcase, Info, Megaphone, GraduationCap, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePost } from '@/hooks/usePosts';
@@ -13,16 +12,18 @@ interface CreatePostModalProps {
 
 const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) => {
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'recruitment' | 'info' | 'general'>('general');
+  const [postType, setPostType] = useState<'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { user } = useAuth();
   const { mutate: createPost, isPending } = useCreatePost();
 
   const postTypes = [
-    { value: 'general' as const, label: 'Général', icon: MessageCircle, color: 'text-gray-400' },
-    { value: 'recruitment' as const, label: 'Recrutement', icon: Briefcase, color: 'text-blue-400' },
     { value: 'info' as const, label: 'Information', icon: Info, color: 'text-green-400' },
+    { value: 'recruitment' as const, label: 'Recrutement', icon: Briefcase, color: 'text-blue-400' },
+    { value: 'annonce' as const, label: 'Annonce', icon: Megaphone, color: 'text-yellow-400' },
+    { value: 'formation' as const, label: 'Formation', icon: GraduationCap, color: 'text-purple-400' },
+    { value: 'religion' as const, label: 'Religion', icon: Star, color: 'text-amber-400' },
   ];
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +50,12 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
     }
 
     if (!content.trim()) {
-      toast.error('Le contenu du post ne peut pas être vide');
+      toast.error("Le contenu du post ne peut pas être vide");
+      return;
+    }
+
+    if (!postType) {
+      toast.error('Veuillez choisir une catégorie');
       return;
     }
 
@@ -62,7 +68,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
       onSuccess: () => {
         toast.success('Post créé avec succès !');
         setContent('');
-        setPostType('general');
+        setPostType(null);
         setImageFile(null);
         setImagePreview(null);
         onClose();
@@ -97,7 +103,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
           {/* Type de post */}
           <div>
             <label className="text-white text-sm font-medium mb-2 block">
-              Type de publication
+              Catégorie (obligatoire)
             </label>
             <div className="flex space-x-2">
               {postTypes.map((type) => {
@@ -194,7 +200,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!content.trim() || isPending}
+            disabled={!content.trim() || !postType || isPending}
             className="bg-edu-primary hover:bg-edu-primary/90 text-white"
           >
             {isPending ? 'Publication...' : 'Publier'}
