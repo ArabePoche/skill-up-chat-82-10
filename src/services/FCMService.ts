@@ -3,12 +3,12 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDxUjrI7_Ls_xw5rKlPX4cYqhXFzP6QNKA",
+  apiKey: "AIzaSyDY11S6os_Ixb2SLJ4q88gSEXG-BD0T-80",
   authDomain: "eductok-a2a00.firebaseapp.com",
   projectId: "eductok-a2a00",
   storageBucket: "eductok-a2a00.firebasestorage.app",
-  messagingSenderId: "584159055226",
-  appId: "1:584159055226:web:f1234567890abcdef"
+  messagingSenderId: "1010464187969",
+  appId: "1:1010464187969:web:1027389ff1a6bf8be508c0"
 };
 
 let app: any = null;
