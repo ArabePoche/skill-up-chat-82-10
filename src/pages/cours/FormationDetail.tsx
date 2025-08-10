@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FormationDetail from '@/components/cours/FormationDetail';
 import ChatInterface from '@/components/ChatInterface';
 import { useFormationById } from '@/hooks/useFormations';
+import Navbar from '@/components/Navbar';
 
 const FormationDetailPage = () => {
   const { formationId } = useParams();
@@ -13,10 +14,13 @@ const FormationDetailPage = () => {
 
   if (!formationId) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 pb-24 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Formation non trouvée</h1>
           <p className="text-gray-600">L'ID de la formation est manquant.</p>
+        </div>
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
+          <Navbar />
         </div>
       </div>
     );
@@ -24,10 +28,13 @@ const FormationDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 pb-24 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-xl font-bold text-gray-900 mb-4">Chargement...</h1>
           <p className="text-gray-600">Récupération des détails de la formation</p>
+        </div>
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
+          <Navbar />
         </div>
       </div>
     );
@@ -39,9 +46,14 @@ const FormationDetailPage = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Erreur</h1>
           <p className="text-gray-600">Impossible de charger la formation.</p>
-        </div>
       </div>
-    );
+
+      {/* Navbar fixe en bas */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
+        <Navbar />
+      </div>
+    </div>
+  );
   }
 
   const handleBack = () => {
@@ -65,28 +77,33 @@ const FormationDetailPage = () => {
   }
 
   return (
-    <FormationDetail
-      formation={{
-        id: formation.id,
-        title: formation.title,
-        description: formation.description,
-        author: formation.profiles ? `${formation.profiles.first_name} ${formation.profiles.last_name}` : '',
-        image_url: formation.image_url,
-        rating: formation.rating,
-        students_count: formation.students_count,
-        duration_hours: formation.duration_hours,
-        levels: (formation.levels || []).map(level => ({
-          ...level,
-          id: level.id,
-          lessons: (level.lessons || []).map(lesson => ({
-            ...lesson,
-            id: lesson.id
+    <>
+      <FormationDetail
+        formation={{
+          id: formation.id,
+          title: formation.title,
+          description: formation.description,
+          author: formation.profiles ? `${formation.profiles.first_name} ${formation.profiles.last_name}` : '',
+          image_url: formation.image_url,
+          rating: formation.rating,
+          students_count: formation.students_count,
+          duration_hours: formation.duration_hours,
+          levels: (formation.levels || []).map(level => ({
+            ...level,
+            id: level.id,
+            lessons: (level.lessons || []).map(lesson => ({
+              ...lesson,
+              id: lesson.id
+            }))
           }))
-        }))
-      }}
-      onBack={handleBack}
-      onLessonClick={handleLessonClick}
-    />
+        }}
+        onBack={handleBack}
+        onLessonClick={handleLessonClick}
+      />
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
+        <Navbar />
+      </div>
+    </>
   );
 };
 
