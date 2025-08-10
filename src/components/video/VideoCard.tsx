@@ -381,7 +381,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
       <VideoShareModal
         isOpen={showShare}
         onClose={() => setShowShare(false)}
-        url={window.location.href}
+        url={`${window.location.origin}/video/${video.id}`}
         title={video.title}
         description={video.description}
       />

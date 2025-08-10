@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,11 +7,17 @@ import { usePosts } from '@/hooks/usePosts';
 import CreatePostModal from '@/components/CreatePostModal';
 import PostCard from '@/components/PostCard';
 
-const PostsSection = () => {
+const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'general'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { user } = useAuth();
   const { data: posts, isLoading } = usePosts(activeFilter);
+
+  useEffect(() => {
+    if (!targetPostId || !posts) return;
+    const el = document.getElementById(`post-${targetPostId}`);
+    if (el) el.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }, [targetPostId, posts]);
 
   const filterButtons = [
     { key: 'all' as const, label: 'Tous', icon: Users },

@@ -37,7 +37,7 @@ const GlobalSoundContext = createContext<{
 
 export const useGlobalSound = () => useContext(GlobalSoundContext);
 
-const TikTokVideosView: React.FC = () => {
+const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId }) => {
   const { data: videos = [], fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteVideos();
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -81,6 +81,18 @@ const TikTokVideosView: React.FC = () => {
       fetchNextPage();
     }
   }, [currentVideoIndex, videos, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    if (!targetVideoId || !videos || videos.length === 0) return;
+    const index = videos.findIndex((v: any) => v.id === targetVideoId);
+    if (index >= 0) {
+      setCurrentVideoIndex(index);
+      const ref = videoRefs.current[index];
+      if (ref) {
+        ref.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }
+  }, [targetVideoId, videos]);
 
   const handleLikeWithConfetti = () => {
     setShowConfetti(true);

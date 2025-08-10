@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import VideoShareModal from './video/VideoShareModal';
 
 interface PostCardProps {
   post: {
@@ -28,6 +29,7 @@ interface PostCardProps {
 const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count);
+  const [showShare, setShowShare] = useState(false);
   const { user } = useAuth();
 
   const getPostTypeIcon = (type: string) => {
@@ -80,7 +82,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const authorName = `${post.profiles.first_name} ${post.profiles.last_name}`.trim() || post.profiles.username || 'Utilisateur';
 
   return (
-    <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+    <div id={`post-${post.id}`} className="bg-gray-900 rounded-lg p-4 border border-gray-800">
       {/* Header du post */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-3">
@@ -145,12 +147,20 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <span className="text-sm">{post.comments_count}</span>
           </button>
           
-          <button className="flex items-center space-x-2 text-gray-400 hover:text-green-500 transition-colors">
+          <button onClick={() => setShowShare(true)} className="flex items-center space-x-2 text-gray-400 hover:text-green-500 transition-colors">
             <Share size={20} />
             <span className="text-sm">Partager</span>
           </button>
         </div>
       </div>
+
+      <VideoShareModal
+        isOpen={showShare}
+        onClose={() => setShowShare(false)}
+        url={`${window.location.origin}/post/${post.id}`}
+        title={`Post de ${authorName}`}
+        description={post.content.slice(0, 140)}
+      />
     </div>
   );
 };
