@@ -19,12 +19,11 @@ const PaymentProgressBar: React.FC<PaymentProgressBarProps> = ({
   className = ""
 }) => {
   // Calculer le pourcentage et la couleur
-  const percentage = Math.min((totalDaysRemaining / maxDays) * 100, 100);
+  const percentage = Math.max(0, Math.min((totalDaysRemaining / maxDays) * 100, 100));
   
   const getColorClass = () => {
     if (totalDaysRemaining <= 3) return 'bg-red-500';
     if (totalDaysRemaining <= 7) return 'bg-orange-500';
-    if (totalDaysRemaining <= 15) return 'bg-yellow-500';
     return 'bg-green-500';
   };
 
@@ -67,8 +66,9 @@ const PaymentProgressBar: React.FC<PaymentProgressBarProps> = ({
         
         <div className="space-y-2">
           <Progress 
-            value={percentage} 
-            className="h-3 bg-gray-200"
+            value={percentage}
+            className="h-3"
+            indicatorClassName={getColorClass()}
           />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{getStatusText()}</span>

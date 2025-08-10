@@ -1,4 +1,3 @@
-// Importation des dépendances React et utilitaires
 import React, { useState } from 'react';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
-// Définition des props du composant
 interface PaymentRequestButtonProps {
   formationId: string;
   disabled?: boolean;
@@ -20,18 +18,35 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   formationId, 
   disabled = false 
 }) => {
-  // Récupération de l'utilisateur connecté
   const { user } = useAuth();
-  // Gestion de l'état d'envoi
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fonction pour gérer la demande de paiement
   const handlePaymentRequest = async () => {
     if (!user || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      // Création de la demande de paiement dans la table student_payment
+      // Vérifier s'il existe déjà une demande en attente pour cette formation
+      const { data: existingRequest, error: checkError } = await supabase
+        .from('student_payment')
+        .select('id, status, requested_at')
+        .eq('user_id', user.id)
+        .eq('formation_id', formationId)
+        .eq('is_request', true)
+        .order('requested_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Erreur lors de la vérification de la demande existante:', checkError);
+      }
+
+      if (existingRequest && existingRequest.status === 'pending') {
+        toast.info('Vous avez déjà une demande de paiement en attente.');
+        return;
+      }
+
+      // Créer une nouvelle demande de paiement
       const { error: insertError } = await supabase
         .from('student_payment')
         .insert({
@@ -40,42 +55,29 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
           is_request: true,
           status: 'pending',
           requested_at: new Date().toISOString(),
-          created_by: user.id
+          created_by: user.id,
         });
 
       if (insertError) {
+        // Gérer un éventuel doublon (contrainte unique côté DB)
+        const message = (insertError as any)?.code === '23505'
+          ? 'Une demande est déjà en attente pour cette formation.'
+          : "Erreur lors de l'envoi de la demande";
         console.error('Erreur lors de la création de la demande:', insertError);
-        throw insertError;
+        toast.error(message);
+        return;
       }
 
-      // Notifier tous les administrateurs (optionnel, dépend du backend)
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert({
-          title: 'Nouvelle demande de paiement',
-          message: `Un étudiant a fait une demande de paiement pour validation.`,
-          type: 'payment_request',
-          is_for_all_admins: true,
-          user_id: null, // null car c'est pour tous les admins
-          formation_id: formationId
-        });
-
-      if (notificationError) {
-        console.error('Erreur lors de la création de la notification:', notificationError);
-        // On continue même si la notification échoue
-      }
-
+      // La notification aux admins est gérée côté base via un trigger sécurisé
       toast.success('Demande de paiement envoyée avec succès !');
       
     } catch (error) {
       console.error('Erreur lors de la demande de paiement:', error);
-      toast.error('Erreur lors de l\'envoi de la demande');
+      toast.error("Erreur lors de l'envoi de la demande");
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // Rendu du bouton avec loader et icône
   return (
     <Button
       onClick={handlePaymentRequest}
@@ -95,5 +97,4 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   );
 };
 
-// Export du composant
 export default PaymentRequestButton;

@@ -12,6 +12,7 @@ import { useFormations, useUserEnrollments } from '@/hooks/useFormations';
 import { useTeacherFormations } from '@/hooks/useTeacherFormations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import Navbar from '@/components/Navbar';
 
 const CoursIndex = () => {
   const { user, loading } = useAuth();
@@ -132,6 +133,11 @@ const CoursIndex = () => {
             onFormationClick={handleFormationClick}
           />
         )}
+      </div>
+
+      {/* Navbar fixe en bas */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
+        <Navbar />
       </div>
     </div>
   );
