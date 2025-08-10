@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,22 +55,34 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
           )}
         </div>
 
-        {/* Composer "Quoi de neuf ?" */}
-        {user && (
-          <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-4 animate-fade-in">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+        {/* Composer "Quoi de neuf ?" - Toujours visible */}
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-4 animate-fade-in">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+              {user?.avatar_url ? (
+                <img 
+                  src={user.avatar_url} 
+                  alt="Avatar"
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
                 <User size={20} className="text-gray-300" />
-              </div>
+              )}
+            </div>
+            {user ? (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="flex-1 text-left bg-gray-800 hover:bg-gray-700 text-gray-400 px-4 py-2 rounded-full transition-colors"
               >
                 Quoi de neuf ?
               </button>
-            </div>
+            ) : (
+              <div className="flex-1 bg-gray-800 text-gray-500 px-4 py-2 rounded-full cursor-not-allowed">
+                Connectez-vous pour partager quelque chose...
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Filtres */}
         <div className="flex space-x-2 overflow-x-auto pb-2">
@@ -121,7 +134,7 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
       </div>
 
       {/* Modal de création */}
-      {showCreateModal && (
+      {showCreateModal && user && (
         <CreatePostModal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}

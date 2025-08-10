@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -112,6 +113,8 @@ export const useCreatePost = () => {
       imageFile?: File | null;
       authorId: string;
     }) => {
+      console.log('Creating post with data:', { content, postType, authorId });
+      
       let imageUrl = null;
 
       // Upload de l'image si présente
@@ -135,16 +138,22 @@ export const useCreatePost = () => {
         imageUrl = publicUrl;
       }
 
-      // Création du post
+      // Création du post avec tous les champs requis
+      const postData = {
+        content: content.trim(),
+        post_type: postType,
+        author_id: authorId,
+        image_url: imageUrl,
+        is_active: true,
+        likes_count: 0,
+        comments_count: 0
+      };
+
+      console.log('Inserting post data:', postData);
+
       const { data, error } = await supabase
         .from('posts')
-        .insert([{
-          content,
-          post_type: postType,
-          author_id: authorId,
-          image_url: imageUrl,
-          is_active: true
-        }])
+        .insert([postData])
         .select()
         .single();
 
@@ -153,6 +162,7 @@ export const useCreatePost = () => {
         throw error;
       }
 
+      console.log('Post created successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -162,6 +172,73 @@ export const useCreatePost = () => {
     onError: (error) => {
       console.error('Error creating post:', error);
       toast.error('Erreur lors de la création du post');
+    }
+  });
+};
+
+export const useUpdatePost = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      postId, 
+      content, 
+      postType 
+    }: {
+      postId: string;
+      content: string;
+      postType: 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general';
+    }) => {
+      const { data, error } = await supabase
+        .from('posts')
+        .update({
+          content: content.trim(),
+          post_type: postType,
+        })
+        .eq('id', postId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating post:', error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      toast.success('Post modifié avec succès !');
+    },
+    onError: (error) => {
+      console.error('Error updating post:', error);
+      toast.error('Erreur lors de la modification du post');
+    }
+  });
+};
+
+export const useDeletePost = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      const { error } = await supabase
+        .from('posts')
+        .update({ is_active: false })
+        .eq('id', postId);
+
+      if (error) {
+        console.error('Error deleting post:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      toast.success('Post supprimé avec succès !');
+    },
+    onError: (error) => {
+      console.error('Error deleting post:', error);
+      toast.error('Erreur lors de la suppression du post');
     }
   });
 };

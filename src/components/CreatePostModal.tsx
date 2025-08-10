@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Image, Briefcase, Info, Megaphone, GraduationCap, Star } from 'lucide-react';
+import { X, Image, Briefcase, Info, Megaphone, GraduationCap, Star, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePost } from '@/hooks/usePosts';
@@ -13,8 +13,8 @@ interface CreatePostModalProps {
 const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) => {
   const [content, setContent] = useState('');
   const [postType, setPostType] = useState<'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const { user } = useAuth();
   const { mutate: createPost, isPending } = useCreatePost();
 
@@ -27,20 +27,44 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
   ];
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB max
-        toast.error('L\'image ne doit pas dépasser 5MB');
+    const files = Array.from(e.target.files || []);
+    
+    // Vérifier le nombre total de fichiers (max 5)
+    if (imageFiles.length + files.length > 5) {
+      toast.error('Maximum 5 images autorisées');
+      return;
+    }
+    
+    // Vérifier la taille de chaque fichier (5MB max)
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`L'image ${file.name} ne doit pas dépasser 5MB`);
         return;
       }
-      
-      setImageFile(file);
+    }
+    
+    const newFiles = [...imageFiles, ...files];
+    setImageFiles(newFiles);
+    
+    // Créer les aperçus
+    const newPreviews = [...imagePreviews];
+    files.forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
+        newPreviews.push(e.target?.result as string);
+        if (newPreviews.length === newFiles.length) {
+          setImagePreviews(newPreviews);
+        }
       };
       reader.readAsDataURL(file);
-    }
+    });
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    setImageFiles(newFiles);
+    setImagePreviews(newPreviews);
   };
 
   const handleSubmit = () => {
@@ -59,23 +83,22 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
       return;
     }
 
+    console.log('Submitting post with user ID:', user.id);
+
+    // Pour l'instant, on ne prend que la première image
+    // TODO: Implémenter le support multi-images dans le backend
     createPost({
       content: content.trim(),
       postType,
-      imageFile,
+      imageFile: imageFiles[0] || null,
       authorId: user.id
     }, {
       onSuccess: () => {
-        toast.success('Post créé avec succès !');
         setContent('');
         setPostType(null);
-        setImageFile(null);
-        setImagePreview(null);
+        setImageFiles([]);
+        setImagePreviews([]);
         onClose();
-      },
-      onError: (error) => {
-        console.error('Error creating post:', error);
-        toast.error('Erreur lors de la création du post');
       }
     });
   };
@@ -105,7 +128,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
             <label className="text-white text-sm font-medium mb-2 block">
               Catégorie (obligatoire)
             </label>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
               {postTypes.map((type) => {
                 const Icon = type.icon;
                 return (
@@ -143,47 +166,64 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
             </div>
           </div>
 
-          {/* Image */}
+          {/* Images */}
           <div>
             <label className="text-white text-sm font-medium mb-2 block">
-              Image (optionnel)
+              Images (optionnel - max 5)
             </label>
-            <div className="flex items-center space-x-3">
+            
+            {/* Upload button */}
+            <div className="flex items-center space-x-3 mb-3">
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageSelect}
                 className="hidden"
                 id="image-upload"
+                disabled={imageFiles.length >= 5}
               />
               <label
                 htmlFor="image-upload"
-                className="flex items-center space-x-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                  imageFiles.length >= 5 
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
+                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                }`}
               >
                 <Image size={16} className="text-gray-400" />
-                <span className="text-gray-300 text-sm">Ajouter une image</span>
+                <span className="text-sm">
+                  {imageFiles.length >= 5 ? 'Maximum atteint' : 'Ajouter des images'}
+                </span>
               </label>
-              {imageFile && (
-                <span className="text-sm text-gray-400">{imageFile.name}</span>
+              {imageFiles.length > 0 && (
+                <span className="text-sm text-gray-400">
+                  {imageFiles.length}/5 image{imageFiles.length > 1 ? 's' : ''}
+                </span>
               )}
             </div>
             
-            {imagePreview && (
-              <div className="mt-3 relative">
-                <img 
-                  src={imagePreview} 
-                  alt="Aperçu"
-                  className="w-full h-40 object-cover rounded-lg"
-                />
-                <button
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
-                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
-                >
-                  <X size={16} />
-                </button>
+            {/* Aperçus des images */}
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative">
+                    <img 
+                      src={preview} 
+                      alt={`Aperçu ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                      {imageFiles[index]?.name}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
