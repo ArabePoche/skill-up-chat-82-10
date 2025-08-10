@@ -1,4 +1,3 @@
-
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
@@ -35,10 +34,10 @@ export const FCMService = {
       }
 
       // Enregistrer le service worker
+      let registration: ServiceWorkerRegistration | undefined;
       if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         console.log('🔧 Service Worker enregistré:', registration);
-        
         // Attendre que le service worker soit prêt
         await navigator.serviceWorker.ready;
       }
@@ -46,7 +45,8 @@ export const FCMService = {
       const messaging = initializeFirebase();
       
       const token = await getToken(messaging, {
-        vapidKey: 'BPE6_Yc4iHGui2Dj1zix6efPsyRKS-_vvDBYR1z1JOednZXoo5XLQWB0zqRvyK3hlMf2Q8PxLCzG2Yt2ryjxMKQ'
+        vapidKey: 'BPE6_Yc4iHGui2Dj1zix6efPsyRKS-_vvDBYR1z1JOednZXoo5XLQWB0zqRvyK3hlMf2Q8PxLCzG2Yt2ryjxMKQ',
+        serviceWorkerRegistration: typeof registration !== 'undefined' ? registration : undefined
       });
 
       if (!token) {
