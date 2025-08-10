@@ -74,42 +74,7 @@ export const PaymentProcessingCard: React.FC<PaymentProcessingCardProps> = ({
 
       if (updateError) throw updateError;
 
-      // Mettre à jour le solde de l'élève dans student_payment_progress
-      const { data: existingProgress, error: fetchError } = await supabase
-        .from('student_payment_progress')
-        .select('*')
-        .eq('user_id', paymentRequest.user_id)
-        .eq('formation_id', paymentRequest.formation_id)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-
-      if (existingProgress) {
-        // Mise à jour du solde existant
-        const { error: progressError } = await supabase
-          .from('student_payment_progress')
-          .update({
-            total_days_remaining: (existingProgress.total_days_remaining || 0) + calculatedDays,
-            last_payment_date: paymentDate,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingProgress.id);
-
-        if (progressError) throw progressError;
-      } else {
-        // Créer un nouveau progrès de paiement
-        const { error: createError } = await supabase
-          .from('student_payment_progress')
-          .insert({
-            user_id: paymentRequest.user_id,
-            formation_id: paymentRequest.formation_id,
-            total_days_remaining: calculatedDays,
-            last_payment_date: paymentDate
-          });
-
-        if (createError) throw createError;
-      }
-
+      // Les jours restants seront mis à jour automatiquement par le trigger SQL
       return true;
     },
     onSuccess: () => {
