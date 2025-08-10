@@ -1,10 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FCMService } from '@/services/FCMService';
 import { NotificationService } from '@/services/NotificationService';
+import { nativePushService } from '@/services/NativePushService';
 
 export interface NotificationPreferences {
   daily_reminders: boolean;
@@ -27,13 +27,20 @@ export const usePushNotifications = () => {
   });
 
   useEffect(() => {
-    const supported = 'Notification' in window && 'serviceWorker' in navigator;
-    setIsSupported(supported);
-    
-    if (supported) {
-      setPermission(Notification.permission);
-      loadUserPreferences();
-    }
+    const checkSupport = async () => {
+      const supported = nativePushService.isSupported();
+      setIsSupported(supported);
+      
+      if (supported) {
+        const currentPermission = await nativePushService.getPermissionStatus();
+        if (currentPermission !== 'unknown') {
+          setPermission(currentPermission as NotificationPermission);
+        }
+        loadUserPreferences();
+      }
+    };
+
+    checkSupport();
   }, [user]);
 
   const loadUserPreferences = useCallback(async () => {
@@ -49,7 +56,6 @@ export const usePushNotifications = () => {
 
       if (data) {
         if (data.notification_preferences) {
-          // Conversion sécurisée du type Json vers NotificationPreferences
           const prefs = data.notification_preferences as unknown as NotificationPreferences;
           setPreferences(prefs);
         }
@@ -63,25 +69,46 @@ export const usePushNotifications = () => {
   }, [user]);
 
   const requestPermission = useCallback(async () => {
-    if (!isSupported || !user) return false;
+    if (!isSupported || !user) {
+      toast.error('Les notifications ne sont pas supportées sur cet appareil');
+      return false;
+    }
 
     setIsLoading(true);
     try {
-      const result = await FCMService.requestPermission();
-      if (result.success && result.token) {
-        setPermission('granted');
-        setFcmToken(result.token);
-        
-        await NotificationService.saveToken(user.id, result.token);
-        toast.success('Notifications activées avec succès !');
-        return true;
+      console.log('🔔 Demande de permission pour les notifications...');
+      
+      const result = await nativePushService.initialize();
+      
+      if (result.success) {
+        // Pour les notifications web, utiliser FCM pour obtenir le token
+        if (!result.token) {
+          const fcmResult = await FCMService.requestPermission();
+          if (fcmResult.success && fcmResult.token) {
+            result.token = fcmResult.token;
+          }
+        }
+
+        if (result.token) {
+          setPermission('granted');
+          setFcmToken(result.token);
+          
+          await NotificationService.saveToken(user.id, result.token);
+          toast.success('🎉 Notifications activées avec succès !');
+          return true;
+        } else {
+          toast.success('✅ Notifications activées !');
+          setPermission('granted');
+          return true;
+        }
       } else {
-        toast.error(result.error || 'Erreur lors de la configuration des notifications');
+        console.error('Erreur lors de l\'activation:', result.error);
+        toast.error(`❌ ${result.error || 'Erreur lors de la configuration des notifications'}`);
         return false;
       }
     } catch (error) {
-      console.error('Error requesting permission:', error);
-      toast.error('Erreur lors de la configuration des notifications');
+      console.error('Erreur inattendue:', error);
+      toast.error('❌ Erreur inattendue lors de la configuration des notifications');
       return false;
     } finally {
       setIsLoading(false);
@@ -103,10 +130,10 @@ export const usePushNotifications = () => {
         })
         .eq('user_id', user.id);
 
-      toast.success('Préférences mises à jour');
+      toast.success('✅ Préférences mises à jour');
     } catch (error) {
       console.error('Erreur lors de la mise à jour des préférences:', error);
-      toast.error('Erreur lors de la mise à jour des préférences');
+      toast.error('❌ Erreur lors de la mise à jour des préférences');
     }
   }, [user, preferences]);
 
@@ -124,30 +151,30 @@ export const usePushNotifications = () => {
 
       setPermission('default');
       setFcmToken(null);
-      toast.success('Notifications désactivées');
+      toast.success('🔕 Notifications désactivées');
     } catch (error) {
       console.error('Erreur lors de la désactivation:', error);
-      toast.error('Erreur lors de la désactivation des notifications');
+      toast.error('❌ Erreur lors de la désactivation des notifications');
     }
   }, [user]);
 
   const sendTestNotification = useCallback(async () => {
     if (!fcmToken || !user) {
-      toast.error('Token FCM non disponible');
+      toast.error('❌ Token FCM non disponible');
       return;
     }
 
     try {
       await NotificationService.sendTestNotification(user.id, fcmToken);
-      toast.success('Notification de test envoyée !');
+      toast.success('🎯 Notification de test envoyée !');
     } catch (error) {
-      console.error('Error sending test notification:', error);
-      toast.error('Erreur lors de l\'envoi de la notification de test');
+      console.error('Erreur lors de l\'envoi de la notification de test:', error);
+      toast.error('❌ Erreur lors de l\'envoi de la notification de test');
     }
   }, [fcmToken, user]);
 
   // Computed property for hasPermission
-  const hasPermission = permission === 'granted' && fcmToken !== null;
+  const hasPermission = permission === 'granted' && (fcmToken !== null || nativePushService.isSupported());
 
   return {
     isSupported,

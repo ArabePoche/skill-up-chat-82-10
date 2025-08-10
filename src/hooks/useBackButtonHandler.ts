@@ -1,44 +1,23 @@
-// src/hooks/useBackButtonHandler.ts
-import { useEffect, useRef } from 'react';
-import { App as CapacitorApp } from '@capacitor/app';
+
+import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-export default function useBackButtonHandler() {
+const useBackButtonHandler = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const lastBackPress = useRef<number | null>(null);
 
   useEffect(() => {
-    let removeListener: (() => void) | null = null;
-
-    const setupListener = async () => {
-      try {
-        const handler = await CapacitorApp.addListener('backButton', () => {
-          if (location.pathname === '/' || location.pathname === '/home') {
-            const now = Date.now();
-            if (lastBackPress.current && now - lastBackPress.current < 2000) {
-              CapacitorApp.exitApp(); // Quitte l'app
-            } else {
-              lastBackPress.current = now;
-              alert('Appuyez encore une fois pour quitter l\'application');
-            }
-          } else {
-            navigate(-1); // Retour en arriere
-          }
-        });
-        
-        removeListener = handler.remove;
-      } catch (error) {
-        console.log('Capacitor App not available or web environment');
-      }
+    const handlePopState = (event: PopStateEvent) => {
+      // Gérer le bouton retour du navigateur
+      console.log('Back button pressed', event);
     };
 
-    setupListener();
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
-      if (removeListener) {
-        removeListener();
-      }
+      window.removeEventListener('popstate', handlePopState);
     };
-  }, [location, navigate]);
-}
+  }, [navigate, location]);
+};
+
+export default useBackButtonHandler;
