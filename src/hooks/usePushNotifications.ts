@@ -174,7 +174,8 @@ export const usePushNotifications = () => {
   }, [fcmToken, user]);
 
   // Computed property for hasPermission
-  const hasPermission = permission === 'granted' && (fcmToken !== null || nativePushService.isSupported());
+  // Sur le web, on exige un token FCM valide pour activer les actions
+  const hasPermission = permission === 'granted' && !!fcmToken;
 
   return {
     isSupported,

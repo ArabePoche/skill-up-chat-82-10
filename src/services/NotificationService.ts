@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const NotificationService = {
@@ -23,12 +22,13 @@ export const NotificationService = {
   async sendTestNotification(userId: string, token: string): Promise<void> {
     const { error } = await supabase.functions.invoke('send-push-notification', {
       body: {
-        tokens: [token],
+        userIds: [userId],
         title: '🎉 Test de notification !',
-        body: 'Si tu vois ce message, les notifications fonctionnent parfaitement !',
+        message: 'Si tu vois ce message, les notifications fonctionnent parfaitement !',
+        type: 'test',
         data: {
-          type: 'test',
-          url: '/'
+          url: '/',
+          tokenPreview: token?.slice(0, 12)
         }
       }
     });
