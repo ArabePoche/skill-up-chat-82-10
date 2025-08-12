@@ -1,212 +1,192 @@
+
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info, Megaphone, GraduationCap, Star } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import VideoShareModal from './video/VideoShareModal';
-import PostCommentsModal from '../posts/components/PostCommentsModal';
-import PostOptionsModal from './PostOptionsModal';
+import { useAuth } from '@/hooks/useAuth';
+import { useDeletePost } from '@/hooks/usePosts';
+import PostComments from '@/components/PostComments';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface PostCardProps {
-  post: {
-    id: string;
-    content: string;
-    post_type: 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general';
-    author_id: string;
-    created_at: string;
-    likes_count: number;
-    comments_count: number;
-    image_url?: string;
-    profiles: {
-      first_name: string;
-      last_name: string;
-      username: string;
-      avatar_url: string;
-    };
-  };
+  post: any;
+  onEdit?: (post: any) => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post }) => {
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(post.likes_count);
-  const [showShare, setShowShare] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
+const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const { user } = useAuth();
+  const deletePost = useDeletePost();
+  const [localCommentsCount, setLocalCommentsCount] = useState(post.comments_count || 0);
 
-  const getPostTypeIcon = (type: string) => {
-    switch (type) {
-      case 'recruitment':
-        return <Briefcase size={16} className="text-blue-400" />;
-      case 'info':
-        return <Info size={16} className="text-green-400" />;
-      case 'annonce':
-        return <Megaphone size={16} className="text-yellow-400" />;
-      case 'formation':
-        return <GraduationCap size={16} className="text-purple-400" />;
-      case 'religion':
-        return <Star size={16} className="text-amber-400" />;
-      default:
-        return <MessageCircle size={16} className="text-gray-400" />;
+  const isAuthor = user?.id === post.author_id;
+
+  const handleDelete = async () => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce post ?')) {
+      await deletePost.mutateAsync(post.id);
     }
   };
 
-  const getPostTypeLabel = (type: string) => {
-    switch (type) {
-      case 'recruitment':
-        return 'Recrutement';
-      case 'info':
-        return 'Information';
-      case 'annonce':
-        return 'Annonce';
-      case 'formation':
-        return 'Formation';
-      case 'religion':
-        return 'Religion';
-      default:
-        return 'Autre';
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(post);
     }
   };
 
-  const getPostTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'recruitment':
-        return 'bg-blue-900/50 text-blue-400 border-blue-700';
-      case 'info':
-        return 'bg-green-900/50 text-green-400 border-green-700';
-      case 'annonce':
-        return 'bg-yellow-900/50 text-yellow-400 border-yellow-700';
-      case 'formation':
-        return 'bg-purple-900/50 text-purple-400 border-purple-700';
-      case 'religion':
-        return 'bg-amber-900/50 text-amber-400 border-amber-700';
-      default:
-        return 'bg-gray-900/50 text-gray-400 border-gray-700';
-    }
-  };
-
-  const handleLike = () => {
-    if (!user) return;
+  const renderPostType = (type: string) => {
+    const types = {
+      recruitment: { label: 'Recrutement', color: 'bg-blue-600' },
+      info: { label: 'Info', color: 'bg-green-600' },
+      annonce: { label: 'Annonce', color: 'bg-yellow-600' },
+      formation: { label: 'Formation', color: 'bg-purple-600' },
+      religion: { label: 'Religion', color: 'bg-orange-600' },
+      general: { label: 'Général', color: 'bg-gray-600' }
+    };
     
-    setIsLiked(!isLiked);
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+    const typeInfo = types[type as keyof typeof types] || types.general;
     
-    // TODO: Implémenter l'API pour les likes des posts
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${typeInfo.color}`}>
+        {typeInfo.label}
+      </span>
+    );
   };
 
-  const timeAgo = formatDistanceToNow(new Date(post.created_at), {
-    addSuffix: true,
-    locale: fr
-  });
-
-  const authorName = `${post.profiles.first_name} ${post.profiles.last_name}`.trim() || post.profiles.username || 'Utilisateur';
-
-  return (
-    <>
-      <div id={`post-${post.id}`} className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-        {/* Header du post */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
-              {post.profiles.avatar_url ? (
-                <img 
-                  src={post.profiles.avatar_url} 
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User size={20} className="text-gray-400" />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-white font-medium text-sm">{authorName}</span>
-                <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs border ${getPostTypeBadgeColor(post.post_type)}`}>
-                  {getPostTypeIcon(post.post_type)}
-                  <span>{getPostTypeLabel(post.post_type)}</span>
+  const renderMedia = () => {
+    if (post.media && post.media.length > 0) {
+      return (
+        <div className="mt-3 grid gap-2 rounded-lg overflow-hidden">
+          {post.media.length === 1 ? (
+            <img
+              src={post.media[0].file_url}
+              alt="Post media"
+              className="w-full h-auto max-h-96 object-cover"
+            />
+          ) : (
+            <div className={`grid gap-2 ${post.media.length === 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
+              {post.media.slice(0, 4).map((media: any, index: number) => (
+                <div key={media.id} className="relative">
+                  <img
+                    src={media.file_url}
+                    alt={`Media ${index + 1}`}
+                    className="w-full h-32 object-cover"
+                  />
+                  {index === 3 && post.media.length > 4 && (
+                    <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                      <span className="text-white font-semibold">+{post.media.length - 4}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <span className="text-gray-400 text-xs">{timeAgo}</span>
-            </div>
-          </div>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-gray-400 hover:text-white"
-            onClick={() => setShowOptions(true)}
-          >
-            <MoreHorizontal size={16} />
-          </Button>
-        </div>
-
-        {/* Contenu du post */}
-        <div className="mb-3">
-          <p className="text-white leading-relaxed whitespace-pre-wrap">{post.content}</p>
-          
-          {post.image_url && (
-            <div className="mt-3 rounded-lg overflow-hidden">
-              <img 
-                src={post.image_url} 
-                alt="Image du post"
-                className="w-full h-auto object-cover max-h-96"
-              />
+              ))}
             </div>
           )}
         </div>
+      );
+    }
 
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-800">
-          <div className="flex items-center space-x-6">
-            <button 
-              onClick={handleLike}
-              className={`flex items-center space-x-2 transition-colors ${
-                isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
-              }`}
-            >
-              <Heart size={20} className={isLiked ? 'fill-current' : ''} />
-              <span className="text-sm">{likesCount}</span>
-            </button>
-            
-            <button 
-              onClick={() => setShowComments(true)}
-              className="flex items-center space-x-2 text-gray-400 hover:text-blue-500 transition-colors"
-            >
-              <MessageCircle size={20} />
-              <span className="text-sm">{post.comments_count}</span>
-            </button>
-            
-            <button onClick={() => setShowShare(true)} className="flex items-center space-x-2 text-gray-400 hover:text-green-500 transition-colors">
-              <Share size={20} />
-              <span className="text-sm">Partager</span>
-            </button>
+    if (post.image_url) {
+      return (
+        <div className="mt-3">
+          <img
+            src={post.image_url}
+            alt="Post image"
+            className="w-full h-auto max-h-96 object-cover rounded-lg"
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="bg-gray-900 rounded-lg p-4 mb-4 border border-gray-800">
+      {/* En-tête du post */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={post.profiles?.avatar_url} />
+            <AvatarFallback className="bg-gray-700 text-white">
+              <User size={20} />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold text-white">
+                {post.profiles?.first_name || post.profiles?.username || 'Utilisateur'}
+              </span>
+              {renderPostType(post.post_type)}
+            </div>
+            <span className="text-sm text-gray-400">
+              {formatDistanceToNow(new Date(post.created_at), {
+                addSuffix: true,
+                locale: fr
+              })}
+            </span>
           </div>
         </div>
+
+        {/* Menu d'options pour l'auteur */}
+        {isAuthor && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                <MoreHorizontal size={20} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-gray-800 border-gray-700">
+              <DropdownMenuItem onClick={handleEdit} className="text-white hover:bg-gray-700">
+                <Edit size={16} className="mr-2" />
+                Modifier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDelete} className="text-red-400 hover:bg-gray-700">
+                <Trash2 size={16} className="mr-2" />
+                Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      {/* Modals */}
-      <VideoShareModal
-        isOpen={showShare}
-        onClose={() => setShowShare(false)}
-        url={`${window.location.origin}/post/${post.id}`}
-        title={`Post de ${authorName}`}
-        description={post.content.slice(0, 140)}
-      />
+      {/* Contenu du post */}
+      <div className="text-white mb-3">
+        <p className="whitespace-pre-wrap">{post.content}</p>
+      </div>
 
-      <PostCommentsModal
-        isOpen={showComments}
-        onClose={() => setShowComments(false)}
-        postId={post.id}
-        postTitle={`Post de ${authorName}`}
-      />
+      {/* Médias */}
+      {renderMedia()}
 
-      <PostOptionsModal
-        isOpen={showOptions}
-        onClose={() => setShowOptions(false)}
-        post={post}
+      {/* Actions du post */}
+      <div className="flex items-center space-x-6 mt-4 pt-3 border-t border-gray-800">
+        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-400">
+          <Heart size={18} className="mr-2" />
+          {post.likes_count || 0}
+        </Button>
+        
+        <div className="text-gray-400 flex items-center">
+          <MessageCircle size={18} className="mr-2" />
+          {localCommentsCount}
+        </div>
+        
+        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400">
+          <Share size={18} className="mr-2" />
+          Partager
+        </Button>
+      </div>
+
+      {/* Section des commentaires intégrée */}
+      <PostComments 
+        postId={post.id} 
+        commentsCount={localCommentsCount}
+        onCommentsCountChange={setLocalCommentsCount}
       />
-    </>
+    </div>
   );
 };
 

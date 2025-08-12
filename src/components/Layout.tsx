@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -12,8 +11,15 @@ const Layout: React.FC = () => {
   // Synchroniser la vue actuelle avec la route
   useEffect(() => {
     const path = location.pathname;
-    
-    if (path === '/' || path === '/home') {
+
+    // Toutes ces routes affichent la Home (vidéos/posts/search)
+    if (
+      path === '/' ||
+      path === '/home' ||
+      path.startsWith('/video') ||
+      path.startsWith('/post') ||
+      path.startsWith('/search')
+    ) {
       setCurrentView('home');
     } else if (path === '/shop') {
       setCurrentView('shop');

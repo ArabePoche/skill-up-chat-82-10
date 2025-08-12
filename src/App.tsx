@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
@@ -18,13 +17,13 @@ import Layout from '@/components/Layout';
 import { AuthProvider } from '@/hooks/useAuth';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import FormationPricingPage from '@/pages/FormationPricing';
-
+import { TabScrollProvider } from '@/contexts/TabScrollContext';
 // Nouvelles pages cours
 import CoursIndex from '@/pages/cours/CoursIndex';
 import FormationDetailPage from '@/pages/cours/FormationDetail';
 import TeacherInterface from '@/pages/cours/TeacherInterface';
 import LessonChat from '@/pages/cours/LessonChat';
-import VideoPage from '@/pages/Video';
+
 
 // Créer une instance unique du QueryClient
 const queryClient = new QueryClient({
@@ -52,18 +51,21 @@ const AppWithRouter: React.FC = () => {
         <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/formation/:formationId/pricing" element={<FormationPricingPage />} />
         
-        {/* Partage vidéo et post dédiés */}
-        <Route path="/video/:id" element={<Layout />} />
-        <Route path="/post/:id" element={<Layout />} />
-        
         {/* Nouvelles routes cours explicites */}
         <Route path="/cours" element={<CoursIndex />} />
         <Route path="/cours/formation/:formationId" element={<FormationDetailPage />} />
         <Route path="/cours/teacher/:formationId" element={<TeacherInterface />} />
         <Route path="/cours/lesson/:lessonId" element={<LessonChat />} />
         
-        {/* Route principale avec le nouveau système de navigation */}
-        <Route path="/" element={<Layout />} />
+        {/* Partage vidéo et post dédiés + onglets */}
+        <Route path="/video/:id" element={<Layout />} />
+        <Route path="/post/:id" element={<Layout />} />
+        <Route path="/video" element={<Layout />} />
+        <Route path="/post" element={<Layout />} />
+        <Route path="/search" element={<Layout />} />
+        
+        {/* Route principale */}
+        <Route path="/" element={<Navigate to="/video" replace />} />
         <Route path="/home" element={<Layout />} />
         <Route path="/shop" element={<Layout />} />
         <Route path="/messages" element={<Layout />} />
@@ -81,10 +83,12 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <NavigationProvider>
-          <BrowserRouter>
-            <AppWithRouter />
-          </BrowserRouter>
-          <Toaster />
+          <TabScrollProvider>
+            <BrowserRouter>
+              <AppWithRouter />
+            </BrowserRouter>
+            <Toaster />
+          </TabScrollProvider>
         </NavigationProvider>
       </AuthProvider>
     </QueryClientProvider>

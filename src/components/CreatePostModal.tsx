@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Image, Briefcase, Info, Megaphone, GraduationCap, Star, Trash2 } from 'lucide-react';
+import { X, Image, Briefcase, Info, Star, Trash2, Megaphone, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePost } from '@/hooks/usePosts';
@@ -12,7 +12,7 @@ interface CreatePostModalProps {
 
 const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) => {
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | null>(null);
+  const [postType, setPostType] = useState<'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general' | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const { user } = useAuth();
@@ -24,6 +24,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
     { value: 'annonce' as const, label: 'Annonce', icon: Megaphone, color: 'text-yellow-400' },
     { value: 'formation' as const, label: 'Formation', icon: GraduationCap, color: 'text-purple-400' },
     { value: 'religion' as const, label: 'Religion', icon: Star, color: 'text-amber-400' },
+    { value: 'general' as const, label: 'Autre', icon: Star, color: 'text-amber-400' },
   ];
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,10 +88,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
 
     // Pour l'instant, on ne prend que la première image
     // TODO: Implémenter le support multi-images dans le backend
-    createPost({
+createPost({
       content: content.trim(),
       postType,
-      imageFile: imageFiles[0] || null,
+      imageFiles: imageFiles,
       authorId: user.id
     }, {
       onSuccess: () => {

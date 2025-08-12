@@ -51,6 +51,7 @@ interface MessageListProps {
   onValidateExercise: (messageId: string, isValid: boolean, rejectReason?: string) => void;
   evaluations?: any[];
   typingUsers?: any[];
+  onReply?: (message: Message) => void;
 }
 
 const MessageList: React.FC<MessageListProps> = ({
@@ -63,6 +64,7 @@ const MessageList: React.FC<MessageListProps> = ({
   isTeacher,
   onValidateExercise,
   evaluations = [],
+  onReply,
   
 }) => {
   const { user } = useAuth();

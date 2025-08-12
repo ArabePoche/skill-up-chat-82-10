@@ -10,7 +10,7 @@ import PostCard from '@/components/PostCard';
 const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { data: posts, isLoading } = usePosts(activeFilter);
 
   useEffect(() => {
@@ -59,9 +59,9 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
         <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-4 animate-fade-in">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
-              {user?.avatar_url ? (
+              {profile?.avatar_url ? (
                 <img 
-                  src={user.avatar_url} 
+                  src={profile.avatar_url} 
                   alt="Avatar"
                   className="w-full h-full object-cover rounded-full"
                 />

@@ -49,7 +49,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="flex-1">
         {activeTab === 'posts' ? (
-          <PostsSection />
+          <PostsSection filter="all" />
         ) : activeTab === 'videos' ? (
           <TikTokVideosView />
         ) : (
