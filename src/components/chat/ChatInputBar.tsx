@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Send, Paperclip, Smile } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Paperclip, Smile, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +22,13 @@ interface ChatInputBarProps {
   contactAvatar?: string;
   formationTitle?: string;
   lessonTitle?: string;
+  replyingTo?: {
+    id: string;
+    content: string;
+    sender_name: string;
+  } | null;
+  onCancelReply?: () => void;
+  onScrollToMessage?: (messageId: string) => void;
 }
 
 const ChatInputBar: React.FC<ChatInputBarProps> = ({ 
@@ -32,7 +39,10 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   contactName = 'Contact',
   contactAvatar,
   formationTitle,
-  lessonTitle
+  lessonTitle,
+  replyingTo,
+  onCancelReply,
+  onScrollToMessage
 }) => {
   const [message, setMessage] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -79,8 +89,15 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       return;
     }
 
+    // Construire le contenu avec la réponse si nécessaire
+    let content = message;
+    if (replyingTo) {
+      content = `@${replyingTo.sender_name}: "${replyingTo.content}"\n\n${message}`;
+      onCancelReply?.(); // Nettoyer la réponse après envoi
+    }
+
     // Envoyer le message si autorisé
-    onSendMessage(message, 'text');
+    onSendMessage(content, 'text');
     incrementMessageCount();
     setMessage('');
     stopTyping();
@@ -210,6 +227,14 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   };
 
 
+  // Auto-focus sur le textarea quand on répond
+  useEffect(() => {
+    if (replyingTo) {
+      const textarea = document.querySelector('textarea[placeholder="Tapez votre message..."]') as HTMLTextAreaElement;
+      textarea?.focus();
+    }
+  }, [replyingTo]);
+
   return (
     <>
       {showVoiceBar ? (
@@ -220,6 +245,33 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
         />
       ) : (
         <div className="bg-[#f0f0f0] border-t border-gray-200 p-2 sm:p-3 fixed bottom-0 left-0 right-0 z-50">
+          {/* Zone de réponse */}
+          {replyingTo && (
+            <div className="bg-white rounded-lg p-3 mb-2 border-l-4 border-[#25d366] shadow-sm">
+              <div className="flex items-start justify-between">
+                <div 
+                  className="flex-1 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors"
+                  onClick={() => onScrollToMessage?.(replyingTo.id)}
+                >
+                  <div className="text-xs font-semibold mb-1" style={{ color: '#25d366' }}>
+                    Réponse à <span style={{ color: '#0066cc' }}>{replyingTo.sender_name}</span>
+                  </div>
+                  <div className="text-sm line-clamp-2" style={{ color: '#0066cc' }}>
+                    {replyingTo.content.length > 100 
+                      ? `${replyingTo.content.substring(0, 100)}...` 
+                      : replyingTo.content
+                    }
+                  </div>
+                </div>
+                <button
+                  onClick={onCancelReply}
+                  className="ml-2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X size={16} className="text-gray-500" />
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex items-end space-x-2 sm:space-x-3 max-w-full overflow-hidden">
             
             <button 

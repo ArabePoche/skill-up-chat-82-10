@@ -43,32 +43,37 @@ export const useToggleReaction = () => {
   return useMutation({
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
       if (!user) throw new Error('User not authenticated');
-      // Vérifier si réaction existe
-      const { data: existing, error: readError } = await (supabase as any)
+      
+      // D'abord, supprimer toutes les réactions existantes de cet utilisateur sur ce message
+      const { error: deleteError } = await (supabase as any)
+        .from('message_reactions' as any)
+        .delete()
+        .eq('message_id', messageId)
+        .eq('user_id', user.id);
+      
+      if (deleteError) {
+        console.error('Error removing existing reactions', deleteError);
+      }
+
+      // Vérifier si l'utilisateur avait déjà cette réaction spécifique
+      const { data: hadThisReaction, error: checkError } = await (supabase as any)
         .from('message_reactions' as any)
         .select('id')
         .eq('message_id', messageId)
         .eq('user_id', user.id)
         .eq('emoji', emoji)
         .maybeSingle();
-      if (readError) {
-        console.error('Error checking reaction', readError);
-      }
 
-      if (existing) {
-        const { error } = await (supabase as any)
-          .from('message_reactions' as any)
-          .delete()
-          .eq('id', (existing as any).id);
-        if (error) throw error;
-        return { action: 'removed' as const };
-      } else {
+      // Si l'utilisateur n'avait pas cette réaction, l'ajouter
+      if (!hadThisReaction) {
         const { error } = await (supabase as any)
           .from('message_reactions' as any)
           .insert({ message_id: messageId, user_id: user.id, emoji });
         if (error) throw error;
         return { action: 'added' as const };
       }
+      
+      return { action: 'removed' as const };
     },
     onSuccess: (_res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['message-reactions', variables.messageId] });

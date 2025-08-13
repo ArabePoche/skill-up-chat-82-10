@@ -40,6 +40,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    content: string;
+    sender_name: string;
+  } | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   
@@ -143,6 +149,44 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       return;
     }
     console.log('Validate exercise:', messageId, isValid);
+  };
+
+  const handleReply = (message: any) => {
+    const senderName = message.profiles?.username || 
+                      `${message.profiles?.first_name || ''} ${message.profiles?.last_name || ''}`.trim() ||
+                      'Utilisateur';
+    
+    setReplyingTo({
+      id: message.id,
+      content: message.content,
+      sender_name: senderName
+    });
+    
+    // Scroll vers l'input
+    const inputContainer = document.querySelector('.bg-\\[\\#f0f0f0\\]');
+    inputContainer?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleScrollToMessage = (messageId: string) => {
+    console.log('Scrolling to message:', messageId);
+    
+    // Attendre un peu pour que le DOM soit mis à jour
+    setTimeout(() => {
+      const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+      console.log('Found message element:', messageElement);
+      
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Highlight temporaire
+        setHighlightedMessageId(messageId);
+        setTimeout(() => setHighlightedMessageId(null), 3000);
+      }
+    }, 100);
   };
 
   if (authLoading) {
@@ -302,6 +346,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           isTeacher={userRole?.role === 'teacher'}
           onValidateExercise={() => {}}
           evaluations={evaluations}
+          onReply={handleReply}
+          highlightedMessageId={highlightedMessageId}
         />
       </div>
 
@@ -312,6 +358,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           disabled={sendMessageMutation.isPending}
           lessonId={lesson.id.toString()}
           formationId={formation.id}
+          replyingTo={replyingTo}
+          onCancelReply={handleCancelReply}
+          onScrollToMessage={handleScrollToMessage}
         />
       </div>
      

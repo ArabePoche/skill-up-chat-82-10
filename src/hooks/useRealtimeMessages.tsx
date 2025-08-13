@@ -57,7 +57,8 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
             ['teacher-messages', lessonId, formationId],
             ['teacher-discussions-with-unread', formationId],
             ['teacher-student-messages', formationId, payload.new.sender_id, lessonId],
-            ['teacher-student-messages', formationId, payload.new.receiver_id, lessonId]
+            ['teacher-student-messages', formationId, payload.new.receiver_id, lessonId],
+            ['message-reactions', payload.new.id] // Invalider les réactions du nouveau message
           ];
 
           queriesToUpdate.forEach(queryKey => {
@@ -85,12 +86,37 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
             ['teacher-messages', lessonId, formationId],
             ['teacher-discussions-with-unread', formationId],
             ['teacher-student-messages', formationId, payload.new.sender_id, lessonId],
-            ['teacher-student-messages', formationId, payload.new.receiver_id, lessonId]
+            ['teacher-student-messages', formationId, payload.new.receiver_id, lessonId],
+            ['message-reactions', payload.new.id] // Invalider les réactions du message modifié
           ];
 
           queriesToUpdate.forEach(queryKey => {
             queryClient.invalidateQueries({ queryKey });
           });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_reactions'
+        },
+        (payload) => {
+          console.log('😀 New reaction received via realtime:', payload);
+          queryClient.invalidateQueries({ queryKey: ['message-reactions', payload.new.message_id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'message_reactions'
+        },
+        (payload) => {
+          console.log('😔 Reaction removed via realtime:', payload);
+          queryClient.invalidateQueries({ queryKey: ['message-reactions', payload.old.message_id] });
         }
       )
       .subscribe((status) => {

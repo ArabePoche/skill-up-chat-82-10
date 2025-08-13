@@ -52,6 +52,7 @@ interface MessageListProps {
   evaluations?: any[];
   typingUsers?: any[];
   onReply?: (message: Message) => void;
+  highlightedMessageId?: string | null;
 }
 
 const MessageList: React.FC<MessageListProps> = ({
@@ -65,6 +66,7 @@ const MessageList: React.FC<MessageListProps> = ({
   onValidateExercise,
   evaluations = [],
   onReply,
+  highlightedMessageId,
   
 }) => {
   const { user } = useAuth();
@@ -122,11 +124,19 @@ const MessageList: React.FC<MessageListProps> = ({
         }
 
         return (
-          <MessageBubble
+          <div
             key={message.id}
-            message={message}
-            isTeacher={isTeacher}
-          />
+            data-message-id={message.id}
+            className={`transition-all duration-500 ${
+              highlightedMessageId === message.id ? 'bg-yellow-200 border-2 border-yellow-400 rounded-lg p-2 -m-2 shadow-lg' : ''
+            }`}
+          >
+            <MessageBubble
+              message={message}
+              isTeacher={isTeacher}
+              onReply={onReply}
+            />
+          </div>
         );
       })}
 
