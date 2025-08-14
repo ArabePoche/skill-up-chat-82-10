@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -843,8 +843,10 @@ export type Database = {
           is_system_message: boolean | null
           lesson_id: string
           message_type: string
+          promotion_id: string | null
           read_by_teachers: string[] | null
           receiver_id: string | null
+          replied_to_message_id: string | null
           sender_id: string
           updated_at: string
         }
@@ -863,8 +865,10 @@ export type Database = {
           is_system_message?: boolean | null
           lesson_id: string
           message_type?: string
+          promotion_id?: string | null
           read_by_teachers?: string[] | null
           receiver_id?: string | null
+          replied_to_message_id?: string | null
           sender_id: string
           updated_at?: string
         }
@@ -883,8 +887,10 @@ export type Database = {
           is_system_message?: boolean | null
           lesson_id?: string
           message_type?: string
+          promotion_id?: string | null
           read_by_teachers?: string[] | null
           receiver_id?: string | null
+          replied_to_message_id?: string | null
           sender_id?: string
           updated_at?: string
         }
@@ -911,10 +917,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lesson_messages_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lesson_messages_receiver_id_fkey"
             columns: ["receiver_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_messages_replied_to_message_id_fkey"
+            columns: ["replied_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_messages"
             referencedColumns: ["id"]
           },
           {
@@ -1007,6 +1027,38 @@ export type Database = {
             columns: ["formation_id"]
             isOneToOne: false
             referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -1194,6 +1246,86 @@ export type Database = {
           },
         ]
       }
+      post_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          likes_count: number
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          likes_count?: number
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          likes_count?: number
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_media: {
+        Row: {
+          created_at: string
+          file_type: string
+          file_url: string
+          id: string
+          metadata: Json | null
+          order_index: number
+          post_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_type?: string
+          file_url: string
+          id?: string
+          metadata?: Json | null
+          order_index?: number
+          post_id: string
+        }
+        Update: {
+          created_at?: string
+          file_type?: string
+          file_url?: string
+          id?: string
+          metadata?: Json | null
+          order_index?: number
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_media_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           author_id: string
@@ -1373,6 +1505,41 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      promotions: {
+        Row: {
+          created_at: string | null
+          formation_id: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          formation_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          formation_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_tokens: {
         Row: {
@@ -1901,6 +2068,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      student_promotions: {
+        Row: {
+          id: string
+          is_active: boolean | null
+          joined_at: string | null
+          promotion_id: string | null
+          student_id: string
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string | null
+          promotion_id?: string | null
+          student_id: string
+        }
+        Update: {
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string | null
+          promotion_id?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_promotions_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teacher_formations: {
         Row: {
@@ -2571,12 +2770,16 @@ export type Database = {
     Functions: {
       approve_enrollment: {
         Args: {
-          p_user_id: string
-          p_formation_id: string
-          p_enrollment_id: string
           p_decided_by?: string
+          p_enrollment_id: string
+          p_formation_id: string
+          p_user_id: string
         }
         Returns: undefined
+      }
+      can_student_access_lesson: {
+        Args: { p_lesson_id: string; p_student_id: string }
+        Returns: boolean
       }
       check_student_inactivity: {
         Args: Record<PropertyKey, never>
@@ -2588,6 +2791,10 @@ export type Database = {
       }
       cleanup_expired_stories: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      decrement_post_comments: {
+        Args: { post_id: string }
         Returns: undefined
       }
       delete_video_comment: {
@@ -2602,6 +2809,10 @@ export type Database = {
         Args: { p_formation_id: string; p_teacher_id: string }
         Returns: number
       }
+      get_student_promotion: {
+        Args: { p_formation_id: string; p_student_id: string }
+        Returns: string
+      }
       get_unread_messages_count: {
         Args: {
           p_formation_id: string
@@ -2614,28 +2825,32 @@ export type Database = {
       get_user_enrollments: {
         Args: { user_id_param: string }
         Returns: {
-          id: string
-          title: string
-          image_url: string
-          total_lessons: number
           completed_lessons: number
+          id: string
+          image_url: string
+          title: string
+          total_lessons: number
         }[]
       }
       handle_validated_exercise: {
         Args: {
-          p_user_id: string
-          p_lesson_id: string
           p_formation_id: string
+          p_lesson_id: string
+          p_user_id: string
           p_validated_exercise_id: string
         }
         Returns: undefined
       }
       has_role: {
-        Args: { user_id: string; role: string }
+        Args: { role: string; user_id: string }
         Returns: boolean
       }
+      increment_post_comments: {
+        Args: { post_id: string }
+        Returns: undefined
+      }
       initialize_first_lesson: {
-        Args: { p_user_id: string; p_lesson_id: string }
+        Args: { p_lesson_id: string; p_user_id: string }
         Returns: undefined
       }
       is_admin: {
@@ -2669,20 +2884,20 @@ export type Database = {
       }
       notify_enrollment_approved: {
         Args: {
-          p_user_id: string
-          p_formation_id: string
           p_enrollment_id: string
+          p_formation_id: string
           p_formation_title: string
+          p_user_id: string
         }
         Returns: undefined
       }
       notify_enrollment_rejected: {
         Args: {
-          p_user_id: string
+          p_decided_by?: string
+          p_enrollment_id: string
           p_formation_id: string
           p_reason: string
-          p_enrollment_id: string
-          p_decided_by?: string
+          p_user_id: string
         }
         Returns: undefined
       }
@@ -2692,31 +2907,40 @@ export type Database = {
       }
       process_teacher_payment: {
         Args: {
+          p_amount: number
+          p_description?: string
+          p_reference_id?: string
           p_teacher_id: string
           p_transaction_type: string
-          p_amount: number
-          p_reference_id?: string
-          p_description?: string
         }
         Returns: undefined
       }
       send_welcome_message: {
         Args: {
-          p_receiver_id: string
-          p_sender_id: string
-          p_lesson_id: string
+          p_exercise_id?: string
           p_formation_id: string
           p_formation_title: string
-          p_exercise_id?: string
+          p_lesson_id: string
+          p_receiver_id: string
+          p_sender_id: string
         }
         Returns: undefined
       }
       validate_exercise_submission: {
         Args: {
-          p_message_id: string
-          p_user_id: string
           p_is_valid: boolean
+          p_message_id: string
           p_reject_reason?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      validate_exercise_submission_with_promotion: {
+        Args: {
+          p_is_valid: boolean
+          p_message_id: string
+          p_reject_reason?: string
+          p_user_id: string
         }
         Returns: undefined
       }

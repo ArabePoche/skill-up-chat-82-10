@@ -1,6 +1,6 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useStudentPromotion } from './usePromotions';
 
 // ID système fourni
 const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';
@@ -19,7 +19,8 @@ export const useSendLessonMessage = () => {
       fileName,
       isExerciseSubmission = false,
       receiverId,
-      isSystemMessage = false
+      isSystemMessage = false,
+      promotionId
     }: {
       lessonId: string;
       formationId: string;
@@ -31,6 +32,7 @@ export const useSendLessonMessage = () => {
       isExerciseSubmission?: boolean;
       receiverId?: string;
       isSystemMessage?: boolean;
+      promotionId?: string;
     }) => {
       let senderId: string | null = null;
       
@@ -43,13 +45,14 @@ export const useSendLessonMessage = () => {
         senderId = user.id;
       }
 
-      console.log('Sending message:', { lessonId, formationId, content, messageType, receiverId, isSystemMessage });
+      console.log('Sending message with promotion:', { lessonId, formationId, content, messageType, receiverId, isSystemMessage, promotionId });
 
       const { data, error } = await supabase
         .from('lesson_messages')
         .insert({
           lesson_id: lessonId,
-          formation_id: formationId, // Utiliser le formationId passé en paramètre
+          formation_id: formationId,
+          promotion_id: promotionId,
           sender_id: senderId,
           receiver_id: receiverId,
           content,
@@ -73,7 +76,7 @@ export const useSendLessonMessage = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ 
-        queryKey: ['student-messages', data.lesson_id, data.formation_id] 
+        queryKey: ['promotion-messages', data.lesson_id, data.formation_id] 
       });
       queryClient.invalidateQueries({ 
         queryKey: ['teacher-messages', data.lesson_id, data.formation_id] 
