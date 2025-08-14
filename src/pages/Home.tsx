@@ -57,7 +57,7 @@ const Home = () => {
       case 'posts':
         return (
           <div ref={postsRef} className="h-full overflow-y-auto">
-            <PostsSection filter="all" />
+            <PostsSection targetPostId={isPostRoute ? id : undefined} />
           </div>
         );
       case 'search':

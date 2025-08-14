@@ -24,6 +24,17 @@ interface Message {
   exercise_id?: string;
   exercise_status?: string;
   is_exercise_submission?: boolean;
+  replied_to_message_id?: string;
+  replied_to_message?: {
+    id: string;
+    content: string;
+    sender_id: string;
+    profiles?: {
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+    };
+  };
   profiles?: {
     first_name?: string;
     last_name?: string;
@@ -53,6 +64,7 @@ interface MessageListProps {
   typingUsers?: any[];
   onReply?: (message: Message) => void;
   highlightedMessageId?: string | null;
+  onScrollToMessage?: (messageId: string) => void;
 }
 
 const MessageList: React.FC<MessageListProps> = ({
@@ -67,6 +79,7 @@ const MessageList: React.FC<MessageListProps> = ({
   evaluations = [],
   onReply,
   highlightedMessageId,
+  onScrollToMessage,
   
 }) => {
   const { user } = useAuth();
@@ -135,6 +148,7 @@ const MessageList: React.FC<MessageListProps> = ({
               message={message}
               isTeacher={isTeacher}
               onReply={onReply}
+              onScrollToMessage={onScrollToMessage}
             />
           </div>
         );

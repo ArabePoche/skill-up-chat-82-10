@@ -4,6 +4,7 @@ import MediaPreview from './MediaPreview';
 import MessageSender from './MessageSender';
 import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
+import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
 import EmojiPicker from '@/components/EmojiPicker';
 import { MoreVertical, Reply, Edit2, Trash2, Smile } from 'lucide-react';
@@ -30,6 +31,18 @@ interface Message {
   created_at: string;
   lesson_id?: string;
   formation_id?: string;
+  replied_to_message_id?: string;
+  updated_at?: string;
+  replied_to_message?: {
+    id: string;
+    content: string;
+    sender_id: string;
+    profiles?: {
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+    };
+  };
   profiles?: {
     first_name?: string;
     last_name?: string;
@@ -43,9 +56,10 @@ interface MessageBubbleProps {
   message: Message;
   isTeacher: boolean;
   onReply?: (message: Message) => void; // callback pour définir la réponse dans l'input
+  onScrollToMessage?: (messageId: string) => void; // Nouvelle prop pour le scroll
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onReply }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onReply, onScrollToMessage }) => {
   const { user } = useAuth();
   const isOwnMessage = message.sender_id === user?.id;
   const isRealExerciseSubmission = message.is_exercise_submission === true;
@@ -114,6 +128,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
               <MessageSender profile={message.profiles} />
             )}
 
+            {/* Référence au message répondu (persistante) */}
+            {message.replied_to_message && onScrollToMessage && (
+              <ReplyReference
+                repliedToMessage={message.replied_to_message}
+                onScrollToMessage={onScrollToMessage}
+              />
+            )}
+
             {/* File badge */}
             {message.file_url && message.file_name && (
               <div className="mb-2">
@@ -166,8 +188,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
               <ExerciseStatus status={message.exercise_status} />
             )}
 
-            {/* Heure */}
+            {/* Heure et badge modifié */}
             <div className="text-xs text-gray-500 mt-1 flex items-center justify-end gap-2">
+              {/* Badge modifié */}
+              {message.updated_at && new Date(message.updated_at).getTime() > new Date(message.created_at).getTime() + 5000 && (
+                <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full text-xs">
+                  modifié
+                </span>
+              )}
               {/* Bouton actions rapide */}
               <button
                 className="opacity-70 hover:opacity-100 transition"

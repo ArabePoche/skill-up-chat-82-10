@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { ArrowLeft, Phone, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -112,7 +111,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     }
   }, [messages, userRole, lesson.id, formation.id, markAsReadMutation, user]);
 
-  const handleSendMessage = (content: string, messageType = 'text', file?: File) => {
+  const handleSendMessage = (content: string, messageType = 'text', file?: File, repliedToMessageId?: string) => {
     if (!user) {
       navigate('/auth');
       return;
@@ -122,7 +121,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       content,
       messageType,
       file,
-      isExerciseSubmission: messageType === 'file' || messageType === 'image'
+      isExerciseSubmission: messageType === 'file' || messageType === 'image',
+      repliedToMessageId
     });
   };
 
@@ -348,6 +348,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           evaluations={evaluations}
           onReply={handleReply}
           highlightedMessageId={highlightedMessageId}
+          onScrollToMessage={handleScrollToMessage}
         />
       </div>
 

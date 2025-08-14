@@ -14,7 +14,7 @@ import { SubscriptionUpgradeModal } from './SubscriptionUpgradeModal';
 import { toast } from 'sonner';
 
 interface ChatInputBarProps {
-  onSendMessage: (content: string, messageType?: string, file?: File) => void;
+  onSendMessage: (content: string, messageType?: string, file?: File, repliedToMessageId?: string) => void;
   disabled?: boolean;
   lessonId?: string;
   formationId?: string;
@@ -91,13 +91,16 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
     // Construire le contenu avec la réponse si nécessaire
     let content = message;
+    let repliedToMessageId = undefined;
     if (replyingTo) {
-      content = `@${replyingTo.sender_name}: "${replyingTo.content}"\n\n${message}`;
+      // Ne pas modifier le contenu pour les réponses persistantes
+      content = message;
+      repliedToMessageId = replyingTo.id;
       onCancelReply?.(); // Nettoyer la réponse après envoi
     }
 
     // Envoyer le message si autorisé
-    onSendMessage(content, 'text');
+    onSendMessage(content, 'text', undefined, repliedToMessageId);
     incrementMessageCount();
     setMessage('');
     stopTyping();

@@ -12,12 +12,14 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
       content, 
       messageType = 'text',
       file,
-      isExerciseSubmission = false 
+      isExerciseSubmission = false,
+      repliedToMessageId 
     }: {
       content: string;
       messageType?: string;
       file?: File & { uploadUrl?: string };
       isExerciseSubmission?: boolean;
+      repliedToMessageId?: string;
     }) => {
       if (!user?.id) {
         throw new Error('User not authenticated');
@@ -73,7 +75,8 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
           file_url: fileUrl,
           file_name: fileName,
           file_type: fileType,
-          is_exercise_submission: false // Only true for real exercise submissions
+          is_exercise_submission: false, // Only true for real exercise submissions
+          replied_to_message_id: repliedToMessageId || null // Nouveau champ pour les réponses
         })
         .select()
         .single();
