@@ -19,7 +19,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
       clearTimeout(reconnectTimeoutRef.current);
     }
     if (channelRef.current) {
-      console.log('🧹 Cleaning up realtime channel');
+      // console.log('🧹 Cleaning up realtime channel');
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
@@ -29,7 +29,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
 
   const setupChannel = () => {
     if (!lessonId || !formationId || !user) {
-      console.log('❌ Missing required data for realtime messages:', { lessonId, formationId, userId: user?.id });
+      //console.log('❌ Missing required data for realtime messages:', { lessonId, formationId, userId: user?.id });
       return;
     }
 
@@ -37,7 +37,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
     setConnectionStatus('connecting');
 
     const channelName = `lesson-messages-${lessonId}-${formationId}`;
-    console.log('🔄 Setting up realtime subscription for:', channelName);
+    // console.log('🔄 Setting up realtime subscription for:', channelName);
 
     channelRef.current = supabase
       .channel(channelName)
@@ -50,7 +50,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           filter: `lesson_id=eq.${lessonId}`
         },
         (payload) => {
-          console.log('📨 New message received via realtime:', payload);
+          //console.log('📨 New message received via realtime:', payload);
           
           const queriesToUpdate = [
             ['student-messages', lessonId, formationId],
@@ -66,7 +66,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           });
 
           if (payload.new.sender_id !== user.id) {
-            console.log('🔔 New message from another user');
+            //console.log('🔔 New message from another user');
           }
         }
       )
@@ -79,7 +79,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           filter: `lesson_id=eq.${lessonId}`
         },
         (payload) => {
-          console.log('📝 Message updated via realtime:', payload);
+          //console.log('📝 Message updated via realtime:', payload);
           
           const queriesToUpdate = [
             ['student-messages', lessonId, formationId],
@@ -103,7 +103,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           table: 'message_reactions'
         },
         (payload) => {
-          console.log('😀 New reaction received via realtime:', payload);
+          //console.log('😀 New reaction received via realtime:', payload);
           queryClient.invalidateQueries({ queryKey: ['message-reactions', payload.new.message_id] });
         }
       )
@@ -115,36 +115,36 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           table: 'message_reactions'
         },
         (payload) => {
-          console.log('😔 Reaction removed via realtime:', payload);
+          //console.log('😔 Reaction removed via realtime:', payload);
           queryClient.invalidateQueries({ queryKey: ['message-reactions', payload.old.message_id] });
         }
       )
       .subscribe((status) => {
-        console.log('📡 Realtime subscription status:', status, 'for lesson:', lessonId);
+        //console.log('📡 Realtime subscription status:', status, 'for lesson:', lessonId);
         
         switch (status) {
           case 'SUBSCRIBED':
             setIsSubscribed(true);
             setConnectionStatus('connected');
             reconnectAttemptsRef.current = 0;
-            console.log('✅ Realtime connection established for lesson:', lessonId);
+            //console.log('✅ Realtime connection established for lesson:', lessonId);
             break;
           case 'CHANNEL_ERROR':
             setIsSubscribed(false);
             setConnectionStatus('error');
-            console.error('❌ Realtime connection error for lesson:', lessonId);
+            //console.error('❌ Realtime connection error for lesson:', lessonId);
             attemptReconnect();
             break;
           case 'TIMED_OUT':
             setIsSubscribed(false);
             setConnectionStatus('error');
-            console.error('⏰ Realtime connection timed out for lesson:', lessonId);
+            //console.error('⏰ Realtime connection timed out for lesson:', lessonId);
             attemptReconnect();
             break;
           case 'CLOSED':
             setIsSubscribed(false);
             setConnectionStatus('disconnected');
-            console.warn('🔒 Realtime connection closed for lesson:', lessonId);
+            //console.warn('🔒 Realtime connection closed for lesson:', lessonId);
             attemptReconnect();
             break;
           default:
@@ -156,7 +156,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
 
   const attemptReconnect = () => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.error('🚨 Max reconnection attempts reached for realtime');
+      //console.error('🚨 Max reconnection attempts reached for realtime');
       setConnectionStatus('error');
       return;
     }
@@ -164,7 +164,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
     const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000); // Exponential backoff, max 30s
     reconnectAttemptsRef.current++;
     
-    console.log(`🔄 Attempting to reconnect realtime (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
+    //console.log(`🔄 Attempting to reconnect realtime (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay}ms`);
     
     reconnectTimeoutRef.current = setTimeout(() => {
       setupChannel();
@@ -183,7 +183,7 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           event: 'heartbeat',
           payload: { timestamp: Date.now() }
         }).catch((error: any) => {
-          console.error('💓 Heartbeat failed:', error);
+          //console.error('💓 Heartbeat failed:', error);
           if (connectionStatus === 'connected') {
             setConnectionStatus('error');
             attemptReconnect();

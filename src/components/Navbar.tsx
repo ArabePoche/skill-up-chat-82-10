@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, ShoppingBag, MessageSquare, User, GraduationCap } from 'lucide-react';
+import { Home, ShoppingCart, MessageSquare, User, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
@@ -14,7 +14,7 @@ const Navbar = () => {
 
   const navItems = [
     { icon: Home, label: 'Accueil', view: 'home' as NavigationView, path: '/' },
-    { icon: ShoppingBag, label: 'Shop', view: 'shop' as NavigationView, path: '/shop' },
+    { icon: ShoppingCart, label: 'Shop', view: 'shop' as NavigationView, path: '/shop' },
     { icon: GraduationCap, label: 'Cours', view: 'cours' as NavigationView, path: '/cours', special: true },
     { icon: MessageSquare, label: 'Messages', view: 'messages' as NavigationView, path: '/messages' },
     { icon: User, label: 'Profil', view: 'profil' as NavigationView, path: '/profil' },
