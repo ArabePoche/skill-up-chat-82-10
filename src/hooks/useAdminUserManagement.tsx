@@ -98,14 +98,16 @@ export const useAdminUserManagement = () => {
       rejectedReason,
       planType,
       userId,
-      formationId
+      formationId,
+      promotionId
     }: {
       enrollmentId: string;
       status: 'approved' | 'rejected';
       rejectedReason?: string;
-      planType?: 'free' | 'standard' | 'premium';
+      planType?: 'free' | 'standard' | 'premium' | 'groupe';
       userId?: string;
       formationId?: string;
+      promotionId?: string;
     }) => {
       const updateData: any = {
         status,
@@ -138,6 +140,22 @@ export const useAdminUserManagement = () => {
           });
 
         if (subscriptionError) throw subscriptionError;
+
+        // Si c'est un plan groupe et qu'une promotion est sélectionnée, assigner l'étudiant
+        if (planType === 'groupe' && promotionId) {
+          const { error: promotionError } = await supabase
+            .from('student_promotions')
+            .upsert({
+              student_id: userId,
+              promotion_id: promotionId,
+              is_active: true
+            });
+
+          if (promotionError) {
+            console.error('Error assigning student to promotion:', promotionError);
+            throw promotionError;
+          }
+        }
       }
     },
     onSuccess: () => {

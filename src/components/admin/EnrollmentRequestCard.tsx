@@ -46,8 +46,14 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
   const [selectedPromotion, setSelectedPromotion] = useState<string>('');
 
   // Charger les promotions pour cette formation
-  const { data: promotions = [] } = usePromotions(enrollment.formation_id);
+  const { data: promotions = [], isLoading: isLoadingPromotions, error: promotionsError } = usePromotions(enrollment.formation_id);
   const assignToPromotion = useAssignStudentToPromotion();
+  
+  // Debug des promotions
+  console.log('Formation ID:', enrollment.formation_id);
+  console.log('Promotions:', promotions);
+  console.log('Loading promotions:', isLoadingPromotions);
+  console.log('Promotions error:', promotionsError);
 
   const getStatusBadge = () => {
     switch (enrollment.status) {
@@ -163,9 +169,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
               }
             </h3>
             <p className="text-sm text-gray-600">{enrollment.profiles?.email || 'Email non fourni'}</p>
-            {enrollment.profiles?.phone && (
-              <p className="text-sm text-gray-600">📞 {enrollment.profiles.phone}</p>
-            )}
+            <p className="text-sm text-gray-600">📞 {enrollment.profiles?.phone || 'Téléphone non renseigné'}</p>
             <p className="text-xs text-gray-500">
               Demande créée le {new Date(enrollment.created_at).toLocaleDateString('fr-FR')}
             </p>
@@ -227,22 +231,38 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
                   <Select
                     value={selectedPromotion}
                     onValueChange={setSelectedPromotion}
+                    disabled={isLoadingPromotions}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sélectionner une promotion" />
+                      <SelectValue placeholder={
+                        isLoadingPromotions 
+                          ? "Chargement des promotions..." 
+                          : "Sélectionner une promotion"
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      {promotions.map((promotion) => (
-                        <SelectItem key={promotion.id} value={promotion.id}>
-                          {promotion.name}
+                      {promotions.length > 0 ? (
+                        promotions.map((promotion) => (
+                          <SelectItem key={promotion.id} value={promotion.id}>
+                            {promotion.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          Aucune promotion disponible
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                   {promotions.length === 0 && (
-                    <p className="text-xs text-amber-600">
-                      ⚠️ Aucune promotion disponible. Créez une promotion dans la gestion des formations.
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-xs text-amber-600">
+                        ⚠️ Aucune promotion disponible pour cette formation.
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Créez une promotion dans la gestion des formations avant d'assigner un plan groupe.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
