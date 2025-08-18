@@ -14,6 +14,7 @@ import VideosManagement from '@/components/admin/VideosManagement';
 import TeachersManagement from '@/components/admin/TeachersManagement';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
+import { PromotionManagementAdmin } from '@/components/promotions/PromotionManagementAdmin';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -69,6 +70,8 @@ const AdminDashboard = () => {
         return <FormationsManagement />;
       case 'teachers':
         return <TeachersManagement />;
+      case 'promotions':
+        return <PromotionManagementAdmin />;
       case 'products':
         return <ProductsManagement />;
       case 'videos':

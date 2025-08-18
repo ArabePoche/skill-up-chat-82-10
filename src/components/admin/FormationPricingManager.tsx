@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
+import { Users, Plus, X } from 'lucide-react';
+import GroupPlanOptions from './GroupPlanOptions';
 
 interface PricingOption {
   id?: string;
@@ -26,6 +29,12 @@ interface PricingOption {
   time_limit_minutes_per_week?: number;
   lesson_access: string[];
   is_active: boolean;
+  // Nouvelles propriétés pour le plan groupe
+  max_students_per_promotion?: number;
+  auto_create_promotions?: boolean;
+  enable_group_training?: boolean;
+  promotion_naming_pattern?: string;
+  custom_naming_pattern?: string;
 }
 
 interface Lesson {
@@ -65,7 +74,6 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Créer un plan par défaut pour un type donné
   const createDefaultPlan = (planType: 'free' | 'standard' | 'premium' | 'groupe'): PricingOption => {
     const basePlan: PricingOption = {
       formation_id: formationId,
@@ -118,13 +126,18 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
           allowed_call_days: DAYS_OF_WEEK.map(d => d.value),
           allowed_response_days: DAYS_OF_WEEK.map(d => d.value),
           lesson_access: lessons.map(l => l.id),
+          // Options spécifiques au plan groupe
+          max_students_per_promotion: 20,
+          auto_create_promotions: true,
+          enable_group_training: true,
+          promotion_naming_pattern: 'formation_number',
+          custom_naming_pattern: ''
         };
       default:
         return basePlan;
     }
   };
 
-  // S'assurer que tous les plans requis sont présents
   const ensureAllPlansExist = (existingOptions: PricingOption[]): PricingOption[] => {
     const requiredPlans: ('free' | 'standard' | 'premium' | 'groupe')[] = ['free', 'standard', 'premium', 'groupe'];
     const result = [...existingOptions];
@@ -277,7 +290,10 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
           <Card key={`${option.plan_type}-${index}`} className={`${getPlanColor(option.plan_type)} border-2`}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                {getPlanTitle(option.plan_type)}
+                <div className="flex items-center gap-2">
+                  {option.plan_type === 'groupe' && <Users className="h-4 w-4" />}
+                  {getPlanTitle(option.plan_type)}
+                </div>
                 <Switch
                   checked={option.is_active}
                   onCheckedChange={(checked) => updatePricingOption(index, 'is_active', checked)}
@@ -313,6 +329,23 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
                   placeholder="Ex: 50000 (0 pour gratuit)"
                 />
               </div>
+
+              {/* Options spécifiques au plan groupe */}
+              {option.plan_type === 'groupe' && (
+                <GroupPlanOptions
+                  maxStudentsPerPromotion={option.max_students_per_promotion}
+                  autoCreatePromotions={option.auto_create_promotions}
+                  enableGroupTraining={option.enable_group_training}
+                  promotionNamingPattern={option.promotion_naming_pattern}
+                  customNamingPattern={option.custom_naming_pattern}
+                  formationId={formationId}
+                  onMaxStudentsChange={(value) => updatePricingOption(index, 'max_students_per_promotion', value)}
+                  onAutoCreateChange={(value) => updatePricingOption(index, 'auto_create_promotions', value)}
+                  onEnableGroupChange={(value) => updatePricingOption(index, 'enable_group_training', value)}
+                  onNamingPatternChange={(value) => updatePricingOption(index, 'promotion_naming_pattern', value)}
+                  onCustomNamingChange={(value) => updatePricingOption(index, 'custom_naming_pattern', value)}
+                />
+              )}
 
               {/* Accès */}
               <div className="space-y-3">

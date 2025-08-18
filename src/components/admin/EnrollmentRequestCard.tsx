@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, XCircle, Clock, User, Eye } from 'lucide-react';
+import { usePromotions, useAssignStudentToPromotion } from '@/hooks/usePromotion';
 
 interface EnrollmentRequestCardProps {
   enrollment: {
@@ -28,7 +29,7 @@ interface EnrollmentRequestCardProps {
       image_url?: string;
     } | null;
   };
-  onApprove: (params: { enrollmentId: string; status: 'approved' | 'rejected'; rejectedReason?: string; planType?: 'free' | 'standard' | 'premium' | 'groupe'; userId?: string; formationId?: string }) => void;
+  onApprove: (params: { enrollmentId: string; status: 'approved' | 'rejected'; rejectedReason?: string; planType?: 'free' | 'standard' | 'premium' | 'groupe'; userId?: string; formationId?: string; promotionId?: string }) => void;
   isUpdating: boolean;
 }
 
@@ -42,6 +43,11 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'standard' | 'premium' | 'groupe'>(
     (enrollment.plan_type as 'free' | 'standard' | 'premium' | 'groupe') || 'free'
   );
+  const [selectedPromotion, setSelectedPromotion] = useState<string>('');
+
+  // Charger les promotions pour cette formation
+  const { data: promotions = [] } = usePromotions(enrollment.formation_id);
+  const assignToPromotion = useAssignStudentToPromotion();
 
   const getStatusBadge = () => {
     switch (enrollment.status) {
@@ -91,7 +97,8 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
       rejectedReason: undefined,
       planType: selectedPlan,
       userId: enrollment.user_id,
-      formationId: enrollment.formation_id
+      formationId: enrollment.formation_id,
+      promotionId: selectedPlan === 'groupe' && selectedPromotion ? selectedPromotion : undefined
     });
   };
 
@@ -155,7 +162,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
                 : enrollment.profiles?.username || 'Utilisateur inconnu'
               }
             </h3>
-            <p className="text-sm text-gray-600">{enrollment.profiles?.email}</p>
+            <p className="text-sm text-gray-600">{enrollment.profiles?.email || 'Email non fourni'}</p>
             {enrollment.profiles?.phone && (
               <p className="text-sm text-gray-600">📞 {enrollment.profiles.phone}</p>
             )}
@@ -185,28 +192,59 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
           </div>
           
           {enrollment.status === 'pending' && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Plan à approuver (Admin):
-              </label>
-              <Select
-                value={selectedPlan}
-                onValueChange={(value: 'free' | 'standard' | 'premium' | 'groupe') => setSelectedPlan(value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Gratuit</SelectItem>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
-                  <SelectItem value="groupe">Groupe</SelectItem>
-                </SelectContent>
-              </Select>
-              {selectedPlan !== enrollment.plan_type && (
-                <p className="text-xs text-orange-600">
-                  ⚠️ Vous approuvez un plan différent de celui demandé par l'étudiant
-                </p>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Plan à approuver (Admin):
+                </label>
+                <Select
+                  value={selectedPlan}
+                  onValueChange={(value: 'free' | 'standard' | 'premium' | 'groupe') => setSelectedPlan(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Gratuit</SelectItem>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="groupe">Groupe</SelectItem>
+                  </SelectContent>
+                </Select>
+                {selectedPlan !== enrollment.plan_type && (
+                  <p className="text-xs text-orange-600">
+                    ⚠️ Vous approuvez un plan différent de celui demandé par l'étudiant
+                  </p>
+                )}
+              </div>
+
+              {/* Sélecteur de promotion pour plan groupe */}
+              {selectedPlan === 'groupe' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Assigner à une promotion:
+                  </label>
+                  <Select
+                    value={selectedPromotion}
+                    onValueChange={setSelectedPromotion}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionner une promotion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {promotions.map((promotion) => (
+                        <SelectItem key={promotion.id} value={promotion.id}>
+                          {promotion.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {promotions.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      ⚠️ Aucune promotion disponible. Créez une promotion dans la gestion des formations.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -242,7 +280,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
           <div className="flex gap-3 pt-2">
             <Button
               onClick={handleApprove}
-              disabled={isUpdating}
+              disabled={isUpdating || (selectedPlan === 'groupe' && !selectedPromotion)}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             >
               <CheckCircle size={16} className="mr-2" />
