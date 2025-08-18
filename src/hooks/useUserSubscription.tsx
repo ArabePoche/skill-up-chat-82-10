@@ -7,7 +7,7 @@ interface UserSubscription {
   id: string;
   user_id: string;
   formation_id: string;
-  plan_type: 'free' | 'standard' | 'premium';
+  plan_type: 'free' | 'standard' | 'premium' | 'groupe';
   created_at: string;
   updated_at: string;
 }
@@ -39,7 +39,7 @@ export const useUserSubscription = (formationId: string) => {
   });
 
   const createSubscription = useMutation({
-    mutationFn: async ({ planType }: { planType: 'free' | 'standard' | 'premium' }) => {
+    mutationFn: async ({ planType }: { planType: 'free' | 'standard' | 'premium' | 'groupe' }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
       // Vérifier si l'abonnement existe déjà

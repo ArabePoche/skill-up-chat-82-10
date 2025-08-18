@@ -129,7 +129,7 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
 
     // Inscription normale pour un nouveau plan
     try {
-      await enroll(formationId, user.id, option.plan_type as 'free' | 'standard' | 'premium');
+      await enroll(formationId, user.id, option.plan_type as 'free' | 'standard' | 'premium' | 'groupe');
     } catch (error) {
       console.error('Error during subscription:', error);
     }

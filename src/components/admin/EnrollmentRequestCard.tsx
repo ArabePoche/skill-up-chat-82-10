@@ -21,13 +21,14 @@ interface EnrollmentRequestCardProps {
       username?: string;
       avatar_url?: string;
       email?: string;
+      phone?: string;
     } | null;
     formations?: {
       title?: string;
       image_url?: string;
     } | null;
   };
-  onApprove: (params: { enrollmentId: string; status: 'approved' | 'rejected'; rejectedReason?: string; planType?: 'free' | 'standard' | 'premium'; userId?: string; formationId?: string }) => void;
+  onApprove: (params: { enrollmentId: string; status: 'approved' | 'rejected'; rejectedReason?: string; planType?: 'free' | 'standard' | 'premium' | 'groupe'; userId?: string; formationId?: string }) => void;
   isUpdating: boolean;
 }
 
@@ -38,8 +39,8 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
 }) => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionField, setShowRejectionField] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'standard' | 'premium'>(
-    (enrollment.plan_type as 'free' | 'standard' | 'premium') || 'free'
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'standard' | 'premium' | 'groupe'>(
+    (enrollment.plan_type as 'free' | 'standard' | 'premium' | 'groupe') || 'free'
   );
 
   const getStatusBadge = () => {
@@ -61,6 +62,8 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
         return 'Standard';
       case 'premium':
         return 'Premium';
+      case 'groupe':
+        return 'Groupe';
       default:
         return 'Gratuit';
     }
@@ -74,6 +77,8 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'premium':
         return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'groupe':
+        return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -151,6 +156,9 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
               }
             </h3>
             <p className="text-sm text-gray-600">{enrollment.profiles?.email}</p>
+            {enrollment.profiles?.phone && (
+              <p className="text-sm text-gray-600">📞 {enrollment.profiles.phone}</p>
+            )}
             <p className="text-xs text-gray-500">
               Demande créée le {new Date(enrollment.created_at).toLocaleDateString('fr-FR')}
             </p>
@@ -183,7 +191,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
               </label>
               <Select
                 value={selectedPlan}
-                onValueChange={(value: 'free' | 'standard' | 'premium') => setSelectedPlan(value)}
+                onValueChange={(value: 'free' | 'standard' | 'premium' | 'groupe') => setSelectedPlan(value)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -192,6 +200,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
                   <SelectItem value="free">Gratuit</SelectItem>
                   <SelectItem value="standard">Standard</SelectItem>
                   <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="groupe">Groupe</SelectItem>
                 </SelectContent>
               </Select>
               {selectedPlan !== enrollment.plan_type && (

@@ -14,7 +14,7 @@ export const useCreateEnrollment = () => {
     }: { 
       formationId: string; 
       userId: string; 
-      planType?: 'free' | 'standard' | 'premium';
+      planType?: 'free' | 'standard' | 'premium' | 'groupe';
     }) => {
       console.log('Creating enrollment request for:', { formationId, userId, planType });
 
@@ -66,12 +66,15 @@ export const useCreateEnrollment = () => {
 
       if (!existingSubscription) {
         // Créer l'abonnement si il n'existe pas
+        // S'assurer que le plan_type est valide pour la base de données
+        const validPlanType = ['free', 'standard', 'premium', 'groupe'].includes(planType) ? planType : 'free';
+        
         const { error: subscriptionError } = await supabase
           .from('user_subscriptions')
           .insert({
             user_id: userId,
             formation_id: formationId,
-            plan_type: planType
+            plan_type: validPlanType
           });
 
         if (subscriptionError) {
@@ -217,7 +220,7 @@ export const useEnrollmentWithProtection = () => {
   const enroll = useCallback(async (
     formationId: string, 
     userId: string, 
-    planType: 'free' | 'standard' | 'premium' = 'free'
+    planType: 'free' | 'standard' | 'premium' | 'groupe' = 'free'
   ) => {
     if (pendingFormations.has(formationId)) {
       console.log('Inscription déjà en cours pour la formation:', formationId);
