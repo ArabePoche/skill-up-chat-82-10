@@ -65,59 +65,83 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Initialiser les options par défaut
-  const initializeDefaultOptions = () => {
-    const defaultOptions: PricingOption[] = [
-      {
-        formation_id: formationId,
-        plan_type: 'free',
-        allow_discussion: false,
-        allow_exercises: false,
-        allow_calls: false,
-        call_type: 'none',
-        allowed_call_days: [],
-        allowed_response_days: [],
-        lesson_access: [],
-        is_active: true
-      },
-      {
-        formation_id: formationId,
-        plan_type: 'standard',
-        allow_discussion: true,
-        allow_exercises: true,
-        allow_calls: true,
-        call_type: 'both',
-        allowed_call_days: ['tuesday', 'thursday', 'saturday'],
-        allowed_response_days: ['tuesday', 'thursday', 'saturday'],
-        lesson_access: lessons.map(l => l.id),
-        is_active: true
-      },
-      {
-        formation_id: formationId,
-        plan_type: 'premium',
-        allow_discussion: true,
-        allow_exercises: true,
-        allow_calls: true,
-        call_type: 'both',
-        allowed_call_days: DAYS_OF_WEEK.map(d => d.value),
-        allowed_response_days: DAYS_OF_WEEK.map(d => d.value),
-        lesson_access: lessons.map(l => l.id),
-        is_active: true
-      },
-      {
-        formation_id: formationId,
-        plan_type: 'groupe',
-        allow_discussion: true,
-        allow_exercises: true,
-        allow_calls: true,
-        call_type: 'both',
-        allowed_call_days: DAYS_OF_WEEK.map(d => d.value),
-        allowed_response_days: DAYS_OF_WEEK.map(d => d.value),
-        lesson_access: lessons.map(l => l.id),
-        is_active: true
+  // Créer un plan par défaut pour un type donné
+  const createDefaultPlan = (planType: 'free' | 'standard' | 'premium' | 'groupe'): PricingOption => {
+    const basePlan: PricingOption = {
+      formation_id: formationId,
+      plan_type: planType,
+      allow_discussion: false,
+      allow_exercises: false,
+      allow_calls: false,
+      call_type: 'none',
+      allowed_call_days: [],
+      allowed_response_days: [],
+      lesson_access: [],
+      is_active: true
+    };
+
+    switch (planType) {
+      case 'free':
+        return {
+          ...basePlan,
+          lesson_access: lessons.map(l => l.id).slice(0, 3), // Limiter aux 3 premières leçons
+        };
+      case 'standard':
+        return {
+          ...basePlan,
+          allow_discussion: true,
+          allow_exercises: true,
+          allow_calls: true,
+          call_type: 'both',
+          allowed_call_days: ['tuesday', 'thursday', 'saturday'],
+          allowed_response_days: ['tuesday', 'thursday', 'saturday'],
+          lesson_access: lessons.map(l => l.id),
+        };
+      case 'premium':
+        return {
+          ...basePlan,
+          allow_discussion: true,
+          allow_exercises: true,
+          allow_calls: true,
+          call_type: 'both',
+          allowed_call_days: DAYS_OF_WEEK.map(d => d.value),
+          allowed_response_days: DAYS_OF_WEEK.map(d => d.value),
+          lesson_access: lessons.map(l => l.id),
+        };
+      case 'groupe':
+        return {
+          ...basePlan,
+          allow_discussion: true,
+          allow_exercises: true,
+          allow_calls: true,
+          call_type: 'both',
+          allowed_call_days: DAYS_OF_WEEK.map(d => d.value),
+          allowed_response_days: DAYS_OF_WEEK.map(d => d.value),
+          lesson_access: lessons.map(l => l.id),
+        };
+      default:
+        return basePlan;
+    }
+  };
+
+  // S'assurer que tous les plans requis sont présents
+  const ensureAllPlansExist = (existingOptions: PricingOption[]): PricingOption[] => {
+    const requiredPlans: ('free' | 'standard' | 'premium' | 'groupe')[] = ['free', 'standard', 'premium', 'groupe'];
+    const result = [...existingOptions];
+    
+    requiredPlans.forEach(planType => {
+      const exists = result.find(option => option.plan_type === planType);
+      if (!exists) {
+        console.log(`Adding missing plan: ${planType}`);
+        result.push(createDefaultPlan(planType));
       }
-    ];
-    setPricingOptions(defaultOptions);
+    });
+    
+    // Trier dans l'ordre souhaité
+    return result.sort((a, b) => {
+      const order = { free: 0, standard: 1, premium: 2, groupe: 3 };
+      return (order[a.plan_type as keyof typeof order] || 999) - (order[b.plan_type as keyof typeof order] || 999);
+    });
   };
 
   useEffect(() => {
@@ -133,14 +157,18 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        setPricingOptions(data as PricingOption[]);
-      } else {
-        initializeDefaultOptions();
-      }
+      console.log('Fetched pricing options from DB:', data);
+      
+      // Toujours s'assurer que tous les plans existent, même si certains ne sont pas en base
+      const completeOptions = ensureAllPlansExist(data as PricingOption[] || []);
+      console.log('Complete options with all plans:', completeOptions);
+      setPricingOptions(completeOptions);
+      
     } catch (error) {
       console.error('Error fetching pricing options:', error);
-      initializeDefaultOptions();
+      // En cas d'erreur, créer tous les plans par défaut
+      const defaultOptions = ensureAllPlansExist([]);
+      setPricingOptions(defaultOptions);
     }
   };
 
@@ -190,6 +218,8 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
         };
       });
 
+      console.log('Saving pricing options with all plans including groupe:', dataToInsert);
+
       const { error } = await supabase
         .from('formation_pricing_options')
         .insert(dataToInsert);
@@ -226,6 +256,8 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
     }
   };
 
+  console.log('Current pricing options state:', pricingOptions);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -235,7 +267,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
             Annuler
           </Button>
           <Button onClick={savePricingOptions} disabled={loading}>
-            {loading ? 'Save...' : 'Save'}
+            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
           </Button>
         </div>
       </div>
@@ -358,7 +390,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
               )}
 
               {/* Limite de messages */}
-              {option.allow_discussion && option.plan_type !== 'premium' && (
+              {option.allow_discussion && option.plan_type !== 'premium' && option.plan_type !== 'groupe' && (
                 <div className="space-y-2">
                   <Label>Messages par jour</Label>
                   <Input
@@ -371,7 +403,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
               )}
 
               {/* Jours d'appels */}
-              {option.allow_calls && option.plan_type !== 'premium' && (
+              {option.allow_calls && option.plan_type !== 'premium' && option.plan_type !== 'groupe' && (
                 <div className="space-y-2">
                   <Label>Jours d'appels autorisés</Label>
                   <div className="grid grid-cols-2 gap-2">
@@ -389,7 +421,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
               )}
 
               {/* Jours de réponse prof */}
-              {option.allow_discussion && option.plan_type !== 'premium' && (
+              {option.allow_discussion && option.plan_type !== 'premium' && option.plan_type !== 'groupe' && (
                 <div className="space-y-2">
                   <Label>Jours de réponse prof</Label>
                   <div className="grid grid-cols-2 gap-2">
@@ -406,7 +438,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
                 </div>
               )}
 
-              {/* Leçons accessibles par niveau */}
+              {/* Leçons accessibles par niveau - seulement pour le plan gratuit */}
               {option.plan_type === 'free' && (
                 <div className="space-y-4">
                   <Label>Leçons accessibles par niveau</Label>
@@ -458,6 +490,15 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+              
+              {/* Note spéciale pour les plans premium et groupe */}
+              {(option.plan_type === 'premium' || option.plan_type === 'groupe') && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <strong>{option.plan_type === 'premium' ? 'Plan Premium' : 'Plan Groupe'} :</strong> Accès illimité à toutes les fonctionnalités
+                  </p>
                 </div>
               )}
             </CardContent>
