@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useStudentPromotion } from './usePromotions';
+import { useStudentPromotion } from './usePromotion';
 
 export const useSendPromotionMessage = (formationId: string) => {
   const queryClient = useQueryClient();

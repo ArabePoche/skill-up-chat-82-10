@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useStudentPromotion } from './usePromotions';
+import { useStudentPromotion } from './usePromotion';
 
 // ID système fourni
 const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';

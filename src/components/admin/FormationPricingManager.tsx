@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface PricingOption {
   id?: string;
   formation_id: string;
-  plan_type: 'free' | 'standard' | 'premium';
+  plan_type: 'free' | 'standard' | 'premium' | 'groupe';
   price_monthly?: number;
   price_yearly?: number;
   allow_discussion: boolean;
@@ -95,6 +95,18 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
       {
         formation_id: formationId,
         plan_type: 'premium',
+        allow_discussion: true,
+        allow_exercises: true,
+        allow_calls: true,
+        call_type: 'both',
+        allowed_call_days: DAYS_OF_WEEK.map(d => d.value),
+        allowed_response_days: DAYS_OF_WEEK.map(d => d.value),
+        lesson_access: lessons.map(l => l.id),
+        is_active: true
+      },
+      {
+        formation_id: formationId,
+        plan_type: 'groupe',
         allow_discussion: true,
         allow_exercises: true,
         allow_calls: true,
@@ -199,6 +211,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
       case 'free': return 'Offre Gratuite';
       case 'standard': return 'Offre Standard';
       case 'premium': return 'Offre Premium';
+      case 'groupe': return 'Offre Groupe';
       default: return planType;
     }
   };
@@ -208,6 +221,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
       case 'free': return 'border-green-500';
       case 'standard': return 'border-blue-500';
       case 'premium': return 'border-purple-500';
+      case 'groupe': return 'border-orange-500';
       default: return 'border-gray-500';
     }
   };
@@ -226,7 +240,7 @@ const FormationPricingManager: React.FC<FormationPricingManagerProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {pricingOptions.map((option, index) => (
           <Card key={`${option.plan_type}-${index}`} className={`${getPlanColor(option.plan_type)} border-2`}>
             <CardHeader>

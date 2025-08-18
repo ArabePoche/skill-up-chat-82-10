@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 export interface FormationPricingOption {
   id?: string;
   formation_id: string;
-  plan_type: 'free' | 'standard' | 'premium';
+  plan_type: 'free' | 'standard' | 'premium' | 'groupe';
   price_monthly?: number;
   price_yearly?: number;
   allow_discussion: boolean;

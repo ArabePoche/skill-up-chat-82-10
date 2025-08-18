@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Phone, MessageCircle, FileText, Clock, DollarSign, Crown, Star, Gift } from 'lucide-react';
+import { CheckCircle, XCircle, Phone, MessageCircle, FileText, Clock, DollarSign, Crown, Star, Gift, Users } from 'lucide-react';
 import { useFormationPricing } from '@/hooks/useFormationPricing';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
 import { useAuth } from '@/hooks/useAuth';
@@ -61,7 +61,7 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
   const sortedOptions = pricingOptions
     .filter(option => option.is_active)
     .sort((a, b) => {
-      const order = { free: 0, standard: 1, premium: 2 };
+      const order = { free: 0, standard: 1, premium: 2, groupe: 3 };
       return (order[a.plan_type as keyof typeof order] || 999) - (order[b.plan_type as keyof typeof order] || 999);
     });
 
@@ -70,6 +70,7 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
       case 'free': return <Gift className="w-6 h-6 text-green-500" />;
       case 'standard': return <Star className="w-6 h-6 text-blue-500" />;
       case 'premium': return <Crown className="w-6 h-6 text-purple-500" />;
+      case 'groupe': return <Users className="w-6 h-6 text-orange-500" />;
       default: return <DollarSign className="w-6 h-6" />;
     }
   };
@@ -82,6 +83,8 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
         return 'border-blue-200 bg-blue-50 hover:shadow-blue-100 transform hover:scale-105';
       case 'premium': 
         return 'border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-purple-100 transform hover:scale-105 ring-2 ring-purple-200';
+      case 'groupe': 
+        return 'border-orange-200 bg-orange-50 hover:shadow-orange-100 transform hover:scale-105';
       default: 
         return 'border-border bg-background';
     }
@@ -95,6 +98,8 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
         return 'bg-blue-500 hover:bg-blue-600 text-white';
       case 'premium': 
         return 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white';
+      case 'groupe': 
+        return 'bg-orange-500 hover:bg-orange-600 text-white';
       default: 
         return 'bg-primary hover:bg-primary/90 text-primary-foreground';
     }
@@ -189,7 +194,7 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {sortedOptions.map((option) => {
             const isCurrentPlan = subscription?.plan_type === option.plan_type;
             
@@ -219,10 +224,11 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
                     {getPlanIcon(option.plan_type)}
                   </div>
                   
-                  <h3 className="text-xl font-bold mb-2 capitalize">
-                    {option.plan_type === 'free' ? 'Gratuit' : 
-                     option.plan_type === 'standard' ? 'Standard' : 'Premium'}
-                  </h3>
+                   <h3 className="text-xl font-bold mb-2 capitalize">
+                     {option.plan_type === 'free' ? 'Gratuit' : 
+                      option.plan_type === 'standard' ? 'Standard' : 
+                      option.plan_type === 'premium' ? 'Premium' : 'Groupe'}
+                   </h3>
 
                   <div className="mb-4">
                     {option.price_monthly !== null && option.price_monthly !== undefined ? (
