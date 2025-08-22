@@ -23,6 +23,8 @@ interface EnrollmentRequestCardProps {
       avatar_url?: string;
       email?: string;
       phone?: string;
+      country?: string;
+
     } | null;
     formations?: {
       title?: string;
@@ -170,6 +172,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
             </h3>
             <p className="text-sm text-gray-600">{enrollment.profiles?.email || 'Email non fourni'}</p>
             <p className="text-sm text-gray-600">📞 {enrollment.profiles?.phone || 'Téléphone non renseigné'}</p>
+            <p className="text-sm text-gray-600"> {enrollment.profiles?.country}</p>
             <p className="text-xs text-gray-500">
               Demande créée le {new Date(enrollment.created_at).toLocaleDateString('fr-FR')}
             </p>
@@ -226,7 +229,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
               {selectedPlan === 'groupe' && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Assigner à une promotion:
+                    Assigner cet élève à une promotion:
                   </label>
                   <Select
                     value={selectedPromotion}

@@ -113,7 +113,7 @@ export const useCreateEnrollment = () => {
     onError: (error: any) => {
       console.error('Erreur lors de l\'inscription:', error);
       if (error.message === 'PROFILE_INCOMPLETE') {
-        toast.error('Veuillez compléter votre profil avant de vous inscrire à une formation');
+        toast.error('Veuillez compléter votre profil avant de vous inscrire à une formation, le pays, genre et numéro de téléphone sont obligatoire pour s/inscrire');
         // Rediriger vers la page de profil
         window.location.href = '/complete-profile';
         return;

@@ -53,6 +53,8 @@ const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({
       username: notification.user_info.username,
       avatar_url: notification.user_info.avatar_url,
       email: notification.user_info.email,
+      phone: notification.user_info.phone,
+      
     },
     formations: {
       title: notification.formation_info.title,
