@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +25,6 @@ interface EnrollmentRequestCardProps {
       email?: string;
       phone?: string;
       country?: string;
-
     } | null;
     formations?: {
       title?: string;
@@ -172,7 +172,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
             </h3>
             <p className="text-sm text-gray-600">{enrollment.profiles?.email || 'Email non fourni'}</p>
             <p className="text-sm text-gray-600">📞 {enrollment.profiles?.phone || 'Téléphone non renseigné'}</p>
-            <p className="text-sm text-gray-600"> {enrollment.profiles?.country}</p>
+            <p className="text-sm text-gray-600">🌍 {enrollment.profiles?.country || 'Pays non renseigné'}</p>
             <p className="text-xs text-gray-500">
               Demande créée le {new Date(enrollment.created_at).toLocaleDateString('fr-FR')}
             </p>
@@ -225,7 +225,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
                 )}
               </div>
 
-              {/* Sélecteur de promotion pour plan groupe */}
+              {/* Sélecteur de promotion pour plan groupe - Correction du SelectItem vide */}
               {selectedPlan === 'groupe' && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
@@ -244,20 +244,27 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
                       } />
                     </SelectTrigger>
                     <SelectContent>
-                      {promotions.length > 0 ? (
+                      {isLoadingPromotions ? (
+                        <SelectItem value="loading" disabled>
+                          Chargement des promotions...
+                        </SelectItem>
+                      ) : promotions && promotions.length > 0 ? (
                         promotions.map((promotion) => (
-                          <SelectItem key={promotion.id} value={promotion.id}>
+                          <SelectItem 
+                            key={promotion.id} 
+                            value={promotion.id}
+                          >
                             {promotion.name}
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="no-promotions" disabled>
                           Aucune promotion disponible
                         </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
-                  {promotions.length === 0 && (
+                  {!isLoadingPromotions && (!promotions || promotions.length === 0) && (
                     <div className="space-y-2">
                       <p className="text-xs text-amber-600">
                         ⚠️ Aucune promotion disponible pour cette formation.
@@ -303,7 +310,7 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
           <div className="flex gap-3 pt-2">
             <Button
               onClick={handleApprove}
-              disabled={isUpdating || (selectedPlan === 'groupe' && !selectedPromotion)}
+              disabled={isUpdating || (selectedPlan === 'groupe' && (!selectedPromotion || selectedPromotion === 'no-promotions' || selectedPromotion === 'loading'))}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             >
               <CheckCircle size={16} className="mr-2" />
