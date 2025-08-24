@@ -50,9 +50,10 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           filter: `lesson_id=eq.${lessonId}`
         },
         (payload) => {
-          //console.log('📨 New message received via realtime:', payload);
+          console.log('📨 New message received via realtime:', payload);
           
           const queriesToUpdate = [
+            ['lesson-messages', lessonId, formationId], // Hook unifié principal
             ['student-messages', lessonId, formationId],
             ['teacher-messages', lessonId, formationId],
             ['teacher-discussions-with-unread', formationId],
@@ -79,9 +80,10 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           filter: `lesson_id=eq.${lessonId}`
         },
         (payload) => {
-          //console.log('📝 Message updated via realtime:', payload);
+          console.log('📝 Message updated via realtime:', payload);
           
           const queriesToUpdate = [
+            ['lesson-messages', lessonId, formationId], // Hook unifié principal
             ['student-messages', lessonId, formationId],
             ['teacher-messages', lessonId, formationId],
             ['teacher-discussions-with-unread', formationId],

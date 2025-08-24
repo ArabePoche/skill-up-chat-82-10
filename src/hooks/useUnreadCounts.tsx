@@ -44,6 +44,6 @@ export const useUnreadCounts = () => {
       };
     },
     enabled: !!user?.id,
-    refetchInterval: 30000, // Rafraîchir toutes les 30 secondes
+    refetchInterval: 10000, // Rafraîchir toutes les 30 secondes
   });
 };

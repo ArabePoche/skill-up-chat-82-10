@@ -45,7 +45,7 @@ export const useSendLessonMessage = () => {
         senderId = user.id;
       }
 
-      console.log('Sending message with promotion:', { lessonId, formationId, content, messageType, receiverId, isSystemMessage, promotionId });
+      
 
       const { data, error } = await supabase
         .from('lesson_messages')
@@ -71,7 +71,7 @@ export const useSendLessonMessage = () => {
         throw error;
       }
       
-      console.log('Message sent:', data);
+      
       return data;
     },
     onSuccess: (data) => {
@@ -96,7 +96,7 @@ export const useUpdateExerciseStatus = () => {
       messageId: string;
       status: 'approved' | 'rejected';
     }) => {
-      console.log('Updating exercise status:', messageId, status);
+      
 
       const { data, error } = await supabase
         .from('lesson_messages')
@@ -148,7 +148,7 @@ export const useSubmitExercise = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Submitting exercise:', { lessonId, formationId, exerciseId, content });
+      
 
       const { data, error } = await supabase
         .from('lesson_messages')
@@ -172,7 +172,7 @@ export const useSubmitExercise = () => {
         throw error;
       }
       
-      console.log('Exercise submitted:', data);
+      
       return data;
     },
     onSuccess: (data) => {

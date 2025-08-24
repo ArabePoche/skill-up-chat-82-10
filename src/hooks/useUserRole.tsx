@@ -32,7 +32,7 @@ export const useUserRole = (formationId: string | undefined) => {
         return {
           role: 'teacher',
           teacherId: teacherData.id,
-          formationId: teacherData.teacher_formations[0].formation_id
+          formationId: formationId
         };
       }
 

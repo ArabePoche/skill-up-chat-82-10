@@ -2,10 +2,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useStudentPromotion } from '@/hooks/usePromotion';
 
 export const useSendMessage = (lessonId: string, formationId: string) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { data: studentPromotion } = useStudentPromotion(formationId);
 
   return useMutation({
     mutationFn: async ({ 
@@ -62,13 +64,21 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
         console.log('File uploaded successfully to students_exercises_submission_files:', { fileUrl, fileName, fileType });
       }
 
-      console.log('Sending message:', { content, messageType, fileUrl, fileName, fileType });
+      console.log('Sending message with promotion:', { 
+        content, 
+        messageType, 
+        fileUrl, 
+        fileName, 
+        fileType,
+        promotionId: studentPromotion?.promotion_id 
+      });
 
       const { data, error } = await supabase
         .from('lesson_messages')
         .insert({
           lesson_id: lessonId,
           formation_id: formationId,
+          promotion_id: studentPromotion?.promotion_id || null, // Ajout du promotion_id
           sender_id: user.id,
           content,
           message_type: messageType,
@@ -90,6 +100,10 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
       return data;
     },
     onSuccess: () => {
+      // Invalider toutes les queries liées aux messages
+      queryClient.invalidateQueries({ 
+        queryKey: ['lesson-messages', lessonId, formationId] 
+      });
       queryClient.invalidateQueries({ 
         queryKey: ['student-messages', lessonId, formationId] 
       });

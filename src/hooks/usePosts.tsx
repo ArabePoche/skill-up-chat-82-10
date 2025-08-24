@@ -34,7 +34,7 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
   return useQuery({
     queryKey: ['posts', filter],
     queryFn: async () => {
-      console.log('Fetching posts with filter:', filter);
+      
       
       // Récupération des posts sans JOIN direct
       let query = supabase
@@ -54,12 +54,7 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
         return [];
       }
 
-      if (!posts || posts.length === 0) {
-        console.log('No posts found');
-        return [];
-      }
-
-      console.log('Posts fetched:', posts);
+      
 
       // Récupération des profils séparément
       const authorIds = [...new Set(posts.map(post => post.author_id))];
@@ -124,7 +119,7 @@ const postsWithProfilesAndMedia = postsWithProfiles.map((p: any) => ({
   media: mediaByPost[p.id] || []
 }));
 
-console.log('Posts with profiles and media:', postsWithProfilesAndMedia);
+
 return postsWithProfilesAndMedia;
     },
   });
@@ -188,7 +183,7 @@ const firstImageUrl = uploadedUrls[0] || null;
         comments_count: 0
       };
 
-      console.log('Inserting post data:', postData);
+      
 
       const { data, error } = await supabase
         .from('posts')
@@ -200,8 +195,6 @@ const firstImageUrl = uploadedUrls[0] || null;
         console.error('Error creating post:', error);
         throw error;
       }
-
-console.log('Post created successfully:', data);
 
       // Insérer les médias liés si présents
       if (data && uploadedUrls.length > 0) {
@@ -215,7 +208,7 @@ console.log('Post created successfully:', data);
           .from('post_media')
           .insert(rows);
         if (mediaInsertError) {
-          console.error('Error inserting post media:', mediaInsertError);
+          
           // On ne bloque pas la création du post si l'insertion des médias échoue
         }
       }

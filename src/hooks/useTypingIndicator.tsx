@@ -35,24 +35,24 @@ export const useTypingIndicator = (lessonId: string, formationId: string) => {
     cleanup();
 
     const channelName = `typing-${lessonId}-${formationId}`;
-    console.log('🎯 Setting up typing indicator channel:', channelName);
+    
 
     channelRef.current = supabase.channel(channelName);
     
     channelRef.current.subscribe((status: string) => {
-      console.log('⌨️ Typing indicator channel status:', status);
+      
       
       switch (status) {
         case 'SUBSCRIBED':
           isSubscribedRef.current = true;
           reconnectAttemptsRef.current = 0;
-          console.log('✅ Typing indicator channel ready for lesson:', lessonId);
+          
           break;
         case 'CHANNEL_ERROR':
         case 'TIMED_OUT':
         case 'CLOSED':
           isSubscribedRef.current = false;
-          console.error('❌ Typing indicator channel error:', status);
+          
           attemptReconnect();
           break;
       }
@@ -61,14 +61,14 @@ export const useTypingIndicator = (lessonId: string, formationId: string) => {
 
   const attemptReconnect = () => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.error('🚨 Max typing reconnection attempts reached');
+      
       return;
     }
 
     const delay = 1000 * Math.pow(2, reconnectAttemptsRef.current);
     reconnectAttemptsRef.current++;
     
-    console.log(`🔄 Reconnecting typing indicator (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
+    
     
     reconnectTimeoutRef.current = setTimeout(setupChannel, delay);
   };

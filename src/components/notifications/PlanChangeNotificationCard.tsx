@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { User, BookOpen, Phone, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -32,15 +32,40 @@ interface PlanChangeNotificationCardProps {
 
 const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({ notification }) => {
   const [selectedPlan, setSelectedPlan] = useState(notification.requested_plan_type);
+  const [selectedPromotion, setSelectedPromotion] = useState<string>('');
   const [showRejectField, setShowRejectField] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const queryClient = useQueryClient();
 
+  // Hook pour récupérer les promotions si le plan groupe est sélectionné
+  const { data: promotions = [] } = useQuery({
+    queryKey: ['promotions', notification.formation_id],
+    queryFn: async () => {
+      if (!notification.formation_id) return [];
+
+      const { data, error } = await supabase
+        .from('promotions')
+        .select('*')
+        .eq('formation_id', notification.formation_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching promotions:', error);
+        return [];
+      }
+
+      return data || [];
+    },
+    enabled: selectedPlan === 'groupe' && !!notification.formation_id,
+  });
+
   const handlePlanChangeMutation = useMutation({
-    mutationFn: async ({ action, planType, reason }: {
+    mutationFn: async ({ action, planType, reason, promotionId }: {
       action: 'approved' | 'rejected';
       planType?: string;
       reason?: string;
+      promotionId?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
@@ -63,6 +88,22 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
           .eq('formation_id', notification.formation_id);
 
         if (subscriptionError) throw subscriptionError;
+
+        // Si c'est un plan groupe et qu'une promotion est sélectionnée, assigner l'étudiant
+        if (planType === 'groupe' && promotionId) {
+          const { error: promotionError } = await supabase
+            .from('student_promotions')
+            .upsert({
+              student_id: notification.user_id,
+              promotion_id: promotionId,
+              is_active: true
+            });
+
+          if (promotionError) {
+            console.error('Error assigning student to promotion:', promotionError);
+            throw promotionError;
+          }
+        }
 
         // Marquer la notification comme lue et approuvée
         const { error: notificationError } = await supabase
@@ -135,6 +176,7 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
       case 'free': return 'Gratuit';
       case 'standard': return 'Standard';
       case 'premium': return 'Premium';
+      case 'groupe': return 'Groupe';
       default: return plan;
     }
   };
@@ -144,6 +186,7 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
       case 'free': return 'bg-green-100 text-green-800';
       case 'standard': return 'bg-blue-100 text-blue-800';
       case 'premium': return 'bg-purple-100 text-purple-800';
+      case 'groupe': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -209,9 +252,34 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
               <SelectItem value="free">Gratuit</SelectItem>
               <SelectItem value="standard">Standard</SelectItem>
               <SelectItem value="premium">Premium</SelectItem>
+              <SelectItem value="groupe">Groupe</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {/* Sélecteur de promotion pour le plan groupe */}
+        {selectedPlan === 'groupe' && (
+          <div className="space-y-2">
+            <Label htmlFor="promotion-selector">Assigner à la promotion :</Label>
+            <Select value={selectedPromotion} onValueChange={setSelectedPromotion}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une promotion" />
+              </SelectTrigger>
+              <SelectContent>
+                {promotions.map((promotion) => (
+                  <SelectItem key={promotion.id} value={promotion.id}>
+                    {promotion.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {promotions.length === 0 && (
+              <p className="text-sm text-gray-500">
+                Aucune promotion disponible pour cette formation
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Champ de justification du rejet (affiché seulement après avoir cliqué sur rejeter) */}
         {showRejectField && (
@@ -234,9 +302,10 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
               <Button
                 onClick={() => handlePlanChangeMutation.mutate({ 
                   action: 'approved', 
-                  planType: selectedPlan 
+                  planType: selectedPlan,
+                  promotionId: selectedPlan === 'groupe' ? selectedPromotion : undefined
                 })}
-                disabled={handlePlanChangeMutation.isPending}
+                disabled={handlePlanChangeMutation.isPending || (selectedPlan === 'groupe' && !selectedPromotion)}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white"
               >
                 <CheckCircle className="w-4 h-4 mr-2" />

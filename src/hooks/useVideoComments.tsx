@@ -149,10 +149,7 @@ export const useVideoComments = (videoId: string) => {
     }
   };
 
-  // 👁️ Log de debug facultatif (supprime-le en prod)
-  useEffect(() => {
-    console.log('📊 Nouveau commentsCount =', commentsCount);
-  }, [commentsCount]);
+ 
 
   return {
     comments,

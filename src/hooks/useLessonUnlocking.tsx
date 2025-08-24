@@ -39,7 +39,7 @@ export const useLessonUnlocking = (formationId: string) => {
         return [];
       }
 
-      console.log('User lesson progress:', userProgress);
+      
       return userProgress || [];
     },
     enabled: !!user?.id && !!formationId,

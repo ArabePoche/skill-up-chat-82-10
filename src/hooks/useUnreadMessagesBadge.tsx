@@ -26,13 +26,14 @@ export const useUnreadMessagesBadge = (formationId?: string) => {
 
       if (!teacherCheck) return 0;
 
-      // Compter les messages non lus par ce professeur
+      // Compter les messages non lus (où read_by_teacher est null)
       const { data: unreadMessages, error } = await supabase
         .from('lesson_messages')
         .select('id', { count: 'exact' })
         .eq('formation_id', formationId)
-        .not('read_by_teachers', 'cs', `{${user.id}}`) // Messages non lus par ce prof
-        .neq('sender_id', user.id); // Exclure ses propres messages
+        .is('read_by_teacher', null) // Messages non lus par aucun prof
+        .neq('sender_id', user.id) // Exclure ses propres messages
+        .eq('is_system_message', false); // Exclure les messages système
 
       if (error) {
         console.error('Error counting unread messages:', error);

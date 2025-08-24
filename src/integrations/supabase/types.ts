@@ -525,16 +525,21 @@ export type Database = {
           allow_exercises: boolean | null
           allowed_call_days: string[] | null
           allowed_response_days: string[] | null
+          auto_create_promotions: boolean | null
           call_type: string | null
           created_at: string | null
+          custom_naming_pattern: string | null
+          enable_group_training: boolean | null
           formation_id: string | null
           id: string
           is_active: boolean | null
           lesson_access: string[] | null
+          max_students_per_promotion: number | null
           message_limit_per_day: number | null
           plan_type: string
           price_monthly: number | null
           price_yearly: number | null
+          promotion_naming_pattern: string | null
           time_limit_minutes_per_day: number | null
           time_limit_minutes_per_week: number | null
           updated_at: string | null
@@ -545,16 +550,21 @@ export type Database = {
           allow_exercises?: boolean | null
           allowed_call_days?: string[] | null
           allowed_response_days?: string[] | null
+          auto_create_promotions?: boolean | null
           call_type?: string | null
           created_at?: string | null
+          custom_naming_pattern?: string | null
+          enable_group_training?: boolean | null
           formation_id?: string | null
           id?: string
           is_active?: boolean | null
           lesson_access?: string[] | null
+          max_students_per_promotion?: number | null
           message_limit_per_day?: number | null
           plan_type: string
           price_monthly?: number | null
           price_yearly?: number | null
+          promotion_naming_pattern?: string | null
           time_limit_minutes_per_day?: number | null
           time_limit_minutes_per_week?: number | null
           updated_at?: string | null
@@ -565,16 +575,21 @@ export type Database = {
           allow_exercises?: boolean | null
           allowed_call_days?: string[] | null
           allowed_response_days?: string[] | null
+          auto_create_promotions?: boolean | null
           call_type?: string | null
           created_at?: string | null
+          custom_naming_pattern?: string | null
+          enable_group_training?: boolean | null
           formation_id?: string | null
           id?: string
           is_active?: boolean | null
           lesson_access?: string[] | null
+          max_students_per_promotion?: number | null
           message_limit_per_day?: number | null
           plan_type?: string
           price_monthly?: number | null
           price_yearly?: number | null
+          promotion_naming_pattern?: string | null
           time_limit_minutes_per_day?: number | null
           time_limit_minutes_per_week?: number | null
           updated_at?: string | null
@@ -844,7 +859,7 @@ export type Database = {
           lesson_id: string
           message_type: string
           promotion_id: string | null
-          read_by_teachers: string[] | null
+          read_by_teacher: string | null
           receiver_id: string | null
           replied_to_message_id: string | null
           sender_id: string
@@ -866,7 +881,7 @@ export type Database = {
           lesson_id: string
           message_type?: string
           promotion_id?: string | null
-          read_by_teachers?: string[] | null
+          read_by_teacher?: string | null
           receiver_id?: string | null
           replied_to_message_id?: string | null
           sender_id: string
@@ -888,7 +903,7 @@ export type Database = {
           lesson_id?: string
           message_type?: string
           promotion_id?: string | null
-          read_by_teachers?: string[] | null
+          read_by_teacher?: string | null
           receiver_id?: string | null
           replied_to_message_id?: string | null
           sender_id?: string
@@ -2099,6 +2114,13 @@ export type Database = {
             referencedRelation: "promotions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_promotions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       teacher_formations: {
@@ -2133,7 +2155,7 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
-            referencedColumns: ["id"]
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -2290,7 +2312,7 @@ export type Database = {
           {
             foreignKeyName: "teachers_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2781,6 +2803,14 @@ export type Database = {
         Args: { p_lesson_id: string; p_student_id: string }
         Returns: boolean
       }
+      can_user_manage_promotions: {
+        Args: { p_formation_id: string }
+        Returns: boolean
+      }
+      can_user_view_promotion: {
+        Args: { p_promotion_id: string }
+        Returns: boolean
+      }
       check_student_inactivity: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -2832,6 +2862,10 @@ export type Database = {
           total_lessons: number
         }[]
       }
+      get_user_promotion_in_formation: {
+        Args: { p_formation_id: string; p_user_id: string }
+        Returns: string
+      }
       handle_validated_exercise: {
         Args: {
           p_formation_id: string
@@ -2862,6 +2896,15 @@ export type Database = {
           p_formation_id: string
           p_lesson_id: string
           p_student_id: string
+        }
+        Returns: undefined
+      }
+      mark_messages_as_read_by_teacher: {
+        Args: {
+          p_formation_id: string
+          p_lesson_id: string
+          p_student_id: string
+          p_teacher_id: string
         }
         Returns: undefined
       }

@@ -63,7 +63,7 @@ export const useValidateExerciseWithPromotion = () => {
         queryClient.refetchQueries({ queryKey });
       });
       
-      console.log('Queries invalidated and refetched after exercise validation with promotion');
+      
       toast.success(variables.isValid ? 'Exercice validé avec succès !' : 'Exercice rejeté');
     },
     onError: (error: any) => {

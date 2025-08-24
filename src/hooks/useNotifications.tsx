@@ -41,7 +41,7 @@ export const useNotifications = () => {
               if (!enrollmentError && enrollmentData) {
                 const { data: profileData, error: profileError } = await supabase
                   .from('profiles')
-                  .select('id, first_name, last_name, email, username, phone, avatar_url')
+                  .select('id, first_name, last_name, email, username, phone, avatar_url, country')
                   .eq('id', enrollmentData.user_id)
                   .single();
 
@@ -67,7 +67,7 @@ export const useNotifications = () => {
             try {
               const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, first_name, last_name, email, username, phone, avatar_url')
+                .select('id, first_name, last_name, email, username, phone, avatar_url, country')
                 .eq('id', notification.user_id)
                 .single();
 
@@ -92,7 +92,7 @@ export const useNotifications = () => {
             try {
               const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, first_name, last_name, email, username, phone, avatar_url')
+                .select('id, first_name, last_name, email, username, phone, avatar_url, country')
                 .eq('id', notification.user_id)
                 .single();
 
@@ -127,7 +127,7 @@ export const useNotifications = () => {
       action: 'approved' | 'rejected';
       reason?: string;
     }) => {
-      console.log('Handling enrollment:', { enrollmentId, action, reason });
+      
 
       const updateData: any = {
         status: action,

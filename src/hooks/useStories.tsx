@@ -32,7 +32,7 @@ export const useStories = () => {
   return useQuery({
     queryKey: ['stories'],
     queryFn: async () => {
-      console.log('Fetching stories...');
+      
       
       const { data, error } = await supabase
         .from('user_stories')

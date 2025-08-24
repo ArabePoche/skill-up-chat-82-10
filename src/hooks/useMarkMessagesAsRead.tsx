@@ -21,7 +21,8 @@ export const useMarkMessagesAsRead = () => {
 
       console.log('Marking messages as read:', { formationId, lessonId, studentId, teacherId: user.id });
 
-      const { error } = await supabase.rpc('mark_messages_as_read_by_teachers', {
+      // Utiliser la nouvelle fonction qui marque avec un seul ID de professeur
+      const { error } = await supabase.rpc('mark_messages_as_read_by_teacher', {
         p_formation_id: formationId,
         p_lesson_id: lessonId,
         p_student_id: studentId,
@@ -42,6 +43,15 @@ export const useMarkMessagesAsRead = () => {
       });
       queryClient.invalidateQueries({ 
         queryKey: ['teacher-student-messages', variables.formationId, variables.studentId] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['lesson-messages', variables.lessonId, variables.formationId] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['unread-messages-badge', variables.formationId] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['unread-messages-by-level', variables.formationId] 
       });
     },
   });

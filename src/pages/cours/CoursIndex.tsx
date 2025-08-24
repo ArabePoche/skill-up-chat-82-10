@@ -24,28 +24,22 @@ const CoursIndex = () => {
 
   useEffect(() => {
     const testSupabaseConnection = async () => {
-      console.log('=== DEBUG COURS PAGE ===');
-      console.log('User:', user);
-      console.log('User ID:', user?.id);
-      console.log('User enrollments loading:', enrollmentsLoading);
-      console.log('User enrollments data:', userEnrollments);
-      console.log('User enrollments error:', enrollmentsError);
-      console.log('Teacher formations:', teacherFormations);
+      
       
       if (user?.id) {
-        console.log('Testing Supabase connection...');
+        
         try {
           const result = await supabase.from('enrollment_requests')
             .select('*')
             .eq('user_id', user.id)
             .limit(1);
           
-          console.log('Direct Supabase test result:', result);
+          
         } catch (err) {
           console.error('Direct Supabase test error:', err);
         }
       }
-      console.log('========================');
+      
     };
 
     testSupabaseConnection();
@@ -101,7 +95,7 @@ const CoursIndex = () => {
     };
   }).filter(Boolean) || [];
 
-  console.log('Student formations processed:', studentFormations);
+  
 
   const debugMessage = `User ID: ${user?.id} | Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
 

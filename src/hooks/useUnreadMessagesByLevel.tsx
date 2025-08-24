@@ -58,14 +58,15 @@ export const useUnreadMessagesByLevel = (formationId: string) => {
             let lessonUnreadCount = 0;
 
             if (teacherCheck) {
-              // Pour les professeurs : compter les messages non lus des étudiants
+              // Pour les professeurs : compter les messages non lus (où read_by_teacher est null)
               const { count } = await supabase
                 .from('lesson_messages')
                 .select('*', { count: 'exact', head: true })
                 .eq('formation_id', formationId)
                 .eq('lesson_id', lesson.id)
-                .not('read_by_teachers', 'cs', `{${user.id}}`)
-                .neq('sender_id', user.id);
+                .is('read_by_teacher', null) // Non lu par aucun prof
+                .neq('sender_id', user.id)
+                .eq('is_system_message', false); // Exclure les messages système
 
               lessonUnreadCount = count || 0;
             } else if (studentCheck) {

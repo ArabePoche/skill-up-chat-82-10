@@ -3,7 +3,7 @@ import { Send, Paperclip, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePromotionMessages } from '@/hooks/useStudentProgression';
+import { usePromotionMessages } from '@/hooks/lesson-messages/usePromotionMessages';
 import { useSendPromotionMessage } from '@/hooks/useSendPromotionMessage';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,19 +15,21 @@ interface PromotionChatProps {
   lessonId: string;
   formationId: string;
   lessonTitle: string;
+  promotionId: string;
 }
 
 export const PromotionChat: React.FC<PromotionChatProps> = ({
   lessonId,
   formationId,
-  lessonTitle
+  lessonTitle,
+  promotionId
 }) => {
   const { user } = useAuth();
   const [message, setMessage] = useState('');
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { data: messages = [], isLoading } = usePromotionMessages(lessonId, formationId);
+  const { data: messages = [], isLoading } = usePromotionMessages(lessonId, formationId, promotionId);
   const sendMessage = useSendPromotionMessage(formationId);
   const { uploadFile, isUploading } = useFileUpload();
 
@@ -134,8 +136,8 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
         {messages.map((msg, index) => {
           const isOwnMessage = msg.sender_id === user?.id;
           const isSystemMessage = msg.is_system_message;
-          const senderName = msg.sender_profile 
-            ? `${msg.sender_profile.first_name || ''} ${msg.sender_profile.last_name || ''}`.trim()
+          const senderName = msg.profiles 
+            ? `${msg.profiles.first_name || ''} ${msg.profiles.last_name || ''}`.trim()
             : 'Utilisateur';
 
           return (
@@ -144,7 +146,7 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
                 <div className={`flex items-start space-x-2 max-w-[70%] ${isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
                   {!isOwnMessage && !isSystemMessage && (
                     <Avatar className="h-8 w-8 flex-shrink-0">
-                      <AvatarImage src={msg.sender_profile?.avatar_url} />
+                      <AvatarImage src={msg.profiles?.avatar_url} />
                       <AvatarFallback className="bg-secondary text-secondary-foreground text-xs">
                         {senderName.charAt(0).toUpperCase()}
                       </AvatarFallback>

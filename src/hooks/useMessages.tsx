@@ -13,7 +13,7 @@ export const useConversations = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      console.log('Fetching conversations for user:', user.id);
+    
 
       // Récupérer les formations où l'utilisateur est enseignant ou étudiant
       const [teacherFormations, studentEnrollments, storyConversations] = await Promise.all([
@@ -196,7 +196,7 @@ export const useConversations = () => {
         }
       }
 
-      console.log('Fetched conversations:', conversations);
+      
       return conversations;
     },
     enabled: !!user?.id,

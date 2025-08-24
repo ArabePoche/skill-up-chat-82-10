@@ -22,7 +22,7 @@ export const useValidateExercise = () => {
       isValid: boolean;
       rejectReason?: string;
     }) => {
-      console.log('Validating exercise:', { messageId, isValid, rejectReason });
+      
 
       try {
         // Appeler la fonction Supabase validate_exercise_submission avec gestion d'erreur améliorée
@@ -62,7 +62,7 @@ export const useValidateExercise = () => {
         queryClient.refetchQueries({ queryKey });
       });
       
-      console.log('Queries invalidated and refetched after exercise validation');
+      
       toast.success(variables.isValid ? 'Exercice validé avec succès !' : 'Exercice rejeté');
     },
     onError: (error: any) => {
