@@ -67,6 +67,7 @@ export const StudentProgressionView: React.FC<StudentProgressionViewProps> = ({
         lessonId={selectedLessonId}
         formationId={formationId}
         lessonTitle={selectedLessonTitle}
+        promotionId="default-promotion" // TODO: Récupérer la vraie promotion
       />
     );
   }

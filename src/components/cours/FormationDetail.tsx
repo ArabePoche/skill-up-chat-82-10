@@ -1,14 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, BookOpen, Users, Clock, Star } from 'lucide-react';
-import LevelsList from '../LevelsList';
+import PrivateLevelsList from './PrivateLevelsList';
+import GroupLevelsList from './GroupLevelsList';
 import TeacherView from '../TeacherView';
 import FormationPricing from '../FormationPricing';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useUserSubscription } from '@/hooks/useUserSubscription';
 import PaymentRequestButton from '@/components/payments/PaymentRequestButton';
 import PaymentProgressBar from '@/components/payments/PaymentProgressBar';
 import PaymentHistoryList from '@/components/payments/PaymentHistoryList';
 import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
+import { PromotionChat } from '@/components/promotions/PromotionChat';
 
 interface Lesson {
   id: number | string;
@@ -59,6 +62,8 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   onLessonClick 
 }) => {
   const { data: userRole } = useUserRole(String(formation.id));
+  const { subscription } = useUserSubscription(String(formation.id));
+  const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
 
   // Gérer l'ancrage vers la section pricing
   useEffect(() => {
@@ -86,6 +91,24 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
       />
     );
   }
+
+  // Gestion du plan groupe - Chat du level sélectionné
+  if (selectedLevel && subscription?.plan_type === 'groupe') {
+    return (
+      <PromotionChat
+        lessonId={selectedLevel.id.toString()}
+        formationId={String(formation.id)}
+        lessonTitle={selectedLevel.title}
+        promotionId="default-promotion" // TODO: Récupérer la vraie promotion
+      />
+    );
+  }
+
+  const handleLevelClick = (level: Level) => {
+    if (subscription?.plan_type === 'groupe') {
+      setSelectedLevel(level);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
@@ -163,12 +186,20 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
         <PaymentHistoryList formationId={String(formation.id)} />
       </div>
 
-      {/* Lessons List */}
-      <LevelsList 
-        levels={formation.levels}
-        formationId={String(formation.id)}
-        onLessonClick={onLessonClick}
-      />
+      {/* Lessons List - Affichage conditionnel selon le plan */}
+      {subscription?.plan_type === 'groupe' ? (
+        <GroupLevelsList 
+          levels={formation.levels}
+          formationId={String(formation.id)}
+          onLevelClick={handleLevelClick}
+        />
+      ) : (
+        <PrivateLevelsList 
+          levels={formation.levels}
+          formationId={String(formation.id)}
+          onLessonClick={onLessonClick}
+        />
+      )}
     </div>
   );
 };

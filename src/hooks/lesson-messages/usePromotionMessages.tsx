@@ -78,7 +78,7 @@ export const usePromotionMessages = (
       console.log('👥 Sender IDs to check progress for:', senderIds);
 
       // Passer formationId à getUsersProgressMap pour filtrer correctement
-      const userProgressMap = senderIds.length > 0 ? await getUsersProgressMap(senderIds, formationId) : new Map();
+      const userProgressMap = senderIds.length > 0 ? await getUsersProgressMap(senderIds) : new Map();
       console.log('🎯 User progress map:', Object.fromEntries(userProgressMap));
 
       // 4. Filtrer les messages selon les règles de promotion
