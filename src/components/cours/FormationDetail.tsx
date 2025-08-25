@@ -11,7 +11,7 @@ import PaymentRequestButton from '@/components/payments/PaymentRequestButton';
 import PaymentProgressBar from '@/components/payments/PaymentProgressBar';
 import PaymentHistoryList from '@/components/payments/PaymentHistoryList';
 import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
-import { PromotionChat } from '@/components/promotions/PromotionChat';
+import { GroupChatInterface } from '@/components/group-chat/GroupChatInterface';
 
 interface Lesson {
   id: number | string;
@@ -95,11 +95,13 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   // Gestion du plan groupe - Chat du level sélectionné
   if (selectedLevel && subscription?.plan_type === 'groupe') {
     return (
-      <PromotionChat
-        lessonId={selectedLevel.id.toString()}
-        formationId={String(formation.id)}
-        lessonTitle={selectedLevel.title}
-        promotionId="default-promotion" // TODO: Récupérer la vraie promotion
+      <GroupChatInterface
+        level={selectedLevel}
+        formation={{
+          id: String(formation.id),
+          title: formation.title
+        }}
+        onBack={() => setSelectedLevel(null)}
       />
     );
   }
