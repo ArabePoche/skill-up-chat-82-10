@@ -53,7 +53,7 @@ const VideoMessageSwitch: React.FC<VideoMessageSwitchProps> = ({
     setDragPosition(0);
     
     // Masquer les icônes après un délai
-    setTimeout(() => setShowIcons(false), 1000);
+    setTimeout(() => setShowIcons(false), 2000);
   };
 
   // Gestion des événements tactiles
@@ -169,7 +169,7 @@ const VideoMessageSwitch: React.FC<VideoMessageSwitchProps> = ({
               dragPosition > 20 ? 'bg-green-500 text-white' : 
               'bg-gray-500 text-white'}
           `}>
-            {dragPosition < -20 ? '🎥 Vidéo' : 
+            {dragPosition < -20 ? '🎥 Leçon' : 
              dragPosition > 20 ? '💬 Messages' : 
              'Glisser'}
           </div>

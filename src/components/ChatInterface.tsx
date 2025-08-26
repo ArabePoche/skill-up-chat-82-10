@@ -148,7 +148,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       navigate('/auth');
       return;
     }
-    console.log('Validate exercise:', messageId, isValid);
+
   };
 
   const handleReply = (message: any) => {
@@ -177,7 +177,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     // Attendre un peu pour que le DOM soit mis à jour
     setTimeout(() => {
       const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-      console.log('Found message element:', messageElement);
+      
       
       if (messageElement) {
         messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });

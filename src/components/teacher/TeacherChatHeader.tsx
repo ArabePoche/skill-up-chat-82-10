@@ -102,16 +102,7 @@ const TeacherChatHeader: React.FC<TeacherChatHeaderProps> = ({
               <h2 className="font-semibold text-gray-900">{studentName}</h2>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>{lesson.title}</span>
-                <div className="flex items-center gap-1">
-                  {isSubscribed ? (
-                    <Wifi size={14} className="text-green-500" />
-                  ) : (
-                    <WifiOff size={14} className="text-red-500" />
-                  )}
-                  <span className={isSubscribed ? 'text-green-600' : 'text-red-600'}>
-                    {isSubscribed ? 'Connecté' : 'Déconnecté'}
-                  </span>
-                </div>
+                
               </div>
               
               {typingUsersCount > 0 && (

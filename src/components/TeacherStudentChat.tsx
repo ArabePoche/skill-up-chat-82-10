@@ -4,7 +4,6 @@ import TypingIndicator from './chat/TypingIndicator';
 import TeacherChatHeader from './teacher/TeacherChatHeader';
 import ChatInputBar from './chat/ChatInputBar';
 import InterviewToggleButton from './teacher/InterviewToggleButton';
-import VideoMessageSwitch from './video/VideoMessageSwitch';
 import LessonVideoPlayer from './LessonVideoPlayer';
 import TeachingStudio from './live-classroom/TeachingStudio';
 import { useTeacherStudentMessages } from '@/hooks/useTeacherStudentMessages';
@@ -89,17 +88,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
     }
   }, [messages, formation.id, lesson.id, student.user_id]);
 
-  // Debug logs
-  useEffect(() => {
-    console.log('TeacherStudentChat Debug:', {
-      lessonId: lesson.id,
-      formationId: formation.id,
-      studentId: student.user_id,
-      messagesCount: messages.length,
-      isRealtimeSubscribed: isSubscribed,
-      typingUsersCount: typingUsers.length
-    });
-  }, [lesson.id, formation.id, student.user_id, messages.length, isSubscribed, typingUsers.length]);
+  
 
   const handleSendMessage = (content: string, messageType = 'text', fileData?: any) => {
     if (student.user_id && lesson.id) {
@@ -131,14 +120,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
     }
   };
 
-  // Fonctions de scroll pour le switch
-  const scrollToVideo = () => {
-    videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const scrollToMessages = () => {
-    messagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  };
+  
 
   if (isLoading) {
     return (
@@ -183,13 +165,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
         />
       </div>
 
-      {/* Bouton Switch */}
-      <div className="relative -mt-3 -mb-3 z-20 flex justify-center">
-        <VideoMessageSwitch
-          onScrollToVideo={scrollToVideo}
-          onScrollToMessages={scrollToMessages}
-        />
-      </div>
+      
 
       {/* Zone messages + input séparées pour meilleure responsivité */}
       <div className="flex-1 flex flex-col md:pb-4 md:pt-16 pb-24">
@@ -257,7 +233,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
           onAccept={async () => {
             const success = await acceptDirectCall();
             if (success) {
-              console.log('Appel direct accepté dans le chat');
+              
               // TODO: Rediriger vers l'interface d'appel
             }
           }}
