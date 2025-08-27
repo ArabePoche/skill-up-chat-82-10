@@ -135,7 +135,31 @@ export const useGroupChatMessages = (
         console.error('Error fetching lesson progress:', progressError);
       }
 
-      // 5. Récupérer les exercices du currentUser depuis lesson_messages (soumissions)
+      // 5. Récupérer les exercices assignés à l'utilisateur depuis lesson_messages
+      const { data: userAssignedExercises, error: assignedExercisesError } = await supabase
+        .from('lesson_messages')
+        .select(`
+          *,
+          exercises:exercise_id(
+            id,
+            title,
+            description,
+            content,
+            type
+          )
+        `)
+        .eq('receiver_id', user.id)
+        .eq('formation_id', formationId)
+        .eq('is_system_message', true)
+        .not('exercise_id', 'is', null)
+        .in('lesson_id', lessonIds)
+        .order('created_at', { ascending: true });
+
+      if (assignedExercisesError) {
+        console.error('Error fetching user assigned exercises:', assignedExercisesError);
+      }
+
+      // 6. Récupérer les soumissions d'exercices du currentUser depuis lesson_messages
       const { data: userExercises, error: exercisesError } = await supabase
         .from('lesson_messages')
         .select(`
@@ -232,6 +256,19 @@ export const useGroupChatMessages = (
         }
       });
 
+      // Ajouter les exercices assignés à l'utilisateur
+      (userAssignedExercises || []).forEach(exercise => {
+        if (exercise.exercises) {
+          combinedItems.push({
+            ...exercise,
+            item_type: 'exercise' as const,
+            formation_id: formationId,
+            content: exercise.exercises.title || exercise.content,
+            exercise_id: exercise.exercise_id
+          });
+        }
+      });
+
       // Ajouter les exercices du currentUser (soumissions)
       (userExercises || []).forEach(exercise => {
         combinedItems.push({
@@ -251,6 +288,7 @@ export const useGroupChatMessages = (
       console.log(`\n📊 Final combined result:`, {
         messages: filteredMessages.length,
         lessonVideos: (lessonProgress || []).length,
+        assignedExercises: (userAssignedExercises || []).length,
         userExercises: (userExercises || []).length,
         totalItems: sortedItems.length
       });

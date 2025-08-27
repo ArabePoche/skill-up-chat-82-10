@@ -13,6 +13,7 @@ import { useCallNotifications } from '@/hooks/useCallNotifications';
 import { useChatTimer } from '@/hooks/useChatTimer';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { useLessonExercises } from '@/hooks/useLessonExercises';
 
 // Hooks spécifiques au chat de groupe
 import { useChatMode } from '@/hooks/chat/useChatMode';
@@ -89,6 +90,10 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     formation.id,
     promotionId || ''
   );
+  
+  // Les exercices sont maintenant inclus dans les messages via useGroupChatMessages
+  // donc pas besoin de les récupérer séparément
+  const exercises: any[] = [];
   
   const { data: userRole } = useUserRole(formation.id);
   
@@ -392,7 +397,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
 
         <MessageList
           messages={messages}
-          exercises={[]} // Les exercices seront gérés différemment dans le groupe
+          exercises={exercises}
           formationId={formation.id}
           lessonId={level.id.toString()}
           isTeacherView={userRole?.role === 'teacher'}

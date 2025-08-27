@@ -167,6 +167,31 @@ const MessageList: React.FC<MessageListProps> = ({
           );
         }
 
+        // Exercices autonomes (pour le groupe chat)
+        if (message.item_type === 'exercise' && message.exercise_id) {
+          // Dans le groupe chat, l'exercice est dans message.exercises
+          const exercise = (message as any).exercises || exercises.find(ex => ex.id === message.exercise_id);
+          if (exercise) {
+            return (
+              <div
+                key={message.id}
+                data-message-id={message.id}
+                className={`transition-all duration-500 ${
+                  highlightedMessageId === message.id ? 'bg-yellow-200 border-2 border-yellow-400 rounded-lg p-2 -m-2 shadow-lg' : ''
+                }`}
+              >
+                <ExerciseDisplay
+                  exercise={exercise}
+                  lessonId={lessonId}
+                  formationId={formationId}
+                  isTeacherView={isTeacherView}
+                  showSubmissionOptions={!isTeacherView}
+                />
+              </div>
+            );
+          }
+        }
+
         // Messages normaux
         return (
           <div

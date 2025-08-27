@@ -85,13 +85,26 @@ export const useSubmitExercise = () => {
       }
 
       // Mettre à jour le statut de la leçon à 'in_progress'
+      // Récupérer le level_id de la leçon
+      const { data: lessonData, error: lessonError } = await supabase
+        .from('lessons')
+        .select('level_id')
+        .eq('id', lessonId)
+        .single();
+
+      if (lessonError) {
+        console.error('Error fetching lesson level_id:', lessonError);
+      }
+
       const { error: progressError } = await supabase
         .from('user_lesson_progress')
         .upsert({
           user_id: user.id,
           lesson_id: lessonId,
+          level_id: lessonData?.level_id,
           status: 'in_progress',
-          exercise_completed: false
+          exercise_completed: false,
+          create_at: new Date().toISOString()
         });
 
       if (progressError) {
