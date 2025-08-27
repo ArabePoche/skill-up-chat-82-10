@@ -1,3 +1,4 @@
+
 /**
  * Interface de chat groupe qui réutilise les composants de ChatInterface
  * Spécialisée pour la progression par niveau avec logique de promotion
@@ -12,18 +13,20 @@ import { useCallNotifications } from '@/hooks/useCallNotifications';
 import { useChatTimer } from '@/hooks/useChatTimer';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useFileUpload } from '@/hooks/useFileUpload';
-import { useStudentPromotion } from '@/hooks/usePromotion';
 
-// Réutilisation des composants existants
+// Hooks spécifiques au chat de groupe
+import { useChatMode } from '@/hooks/chat/useChatMode';
+import { useGroupChatMessages } from '@/hooks/group-chat/useGroupChatMessages';
+import { useGroupChatOperations } from '@/hooks/group-chat/useGroupChatOperations';
+
+// Réutilisation des composants existants de ChatInterface
 import ChatInputBar from '../chat/ChatInputBar';
 import MessageList from '../chat/MessageList';
 import { SubscriptionUpgradeModal } from '../chat/SubscriptionUpgradeModal';
+import VideoMessageSwitch from '../video/VideoMessageSwitch';
+import { LessonVideoPlayerWithTimer } from '../video/LessonVideoPlayerWithTimer';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
-
-// Hooks spécifiques au chat groupe
-import { usePromotionMessages } from '@/hooks/lesson-messages/usePromotionMessages';
-import { useSendPromotionMessage } from '@/hooks/useSendPromotionMessage';
 
 // Types
 interface Level {
@@ -36,6 +39,8 @@ interface Level {
     title: string;
     description?: string;
     order_index: number;
+    video_url?: string;
+    duration?: string;
     exercises?: { id: string }[];
   }>;
 }
@@ -62,23 +67,33 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     sender_name: string;
   } | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<any>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   
-  // Utilisation de la première leçon du niveau comme référence pour les hooks
-  const firstLessonId = level.lessons?.[0]?.id?.toString() || level.id.toString();
+  // Détection automatique du mode de chat
+  const { mode, isLoading: chatModeLoading, promotionId } = useChatMode(formation.id);
   
-  // Récupérer la promotion de l'étudiant
-  const { data: studentPromotion } = useStudentPromotion(formation.id);
+  // Si ce n'est pas un mode groupe, rediriger vers ChatInterface
+  useEffect(() => {
+    if (!chatModeLoading && mode === 'private') {
+      console.log('🔄 Redirecting to private chat mode');
+      toast.info('Vous êtes en mode formation privée');
+    }
+  }, [mode, chatModeLoading]);
   
-  // Récupération des messages avec logique de promotion
-  const { data: messages = [], isLoading } = usePromotionMessages(
-    firstLessonId,
+  // Récupération des messages avec logique de groupe
+  const { data: messages = [], isLoading } = useGroupChatMessages(
+    level.id.toString(),
     formation.id,
-    studentPromotion?.promotion_id || ''
+    promotionId || ''
   );
   
   const { data: userRole } = useUserRole(formation.id);
-  const sendMessage = useSendPromotionMessage(formation.id);
+  
+  // Opérations de chat de groupe
+  const { sendMessage } = useGroupChatOperations(formation.id, promotionId || '');
   const { uploadFile } = useFileUpload();
 
   // Fonctionnalités d'appel réutilisées
@@ -88,16 +103,25 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   // Timer pour le chat (indépendant de la vidéo)
   const chatTimer = useChatTimer({
     formationId: formation.id,
-    lessonId: firstLessonId,
+    lessonId: level.id.toString(),
     isActive: true
   });
 
   // Contrôle d'accès centralisé avec modal
   const accessControl = useLessonAccessControl(
     formation.id,
-    false, // Pas de vidéo dans le chat groupe
+    isVideoPlaying,
     () => {}
   );
+
+  // Fonctions de scroll pour le switch
+  const scrollToVideo = () => {
+    videoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const scrollToMessages = () => {
+    messagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -123,13 +147,14 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       }
 
       await sendMessage.mutateAsync({
-        lessonId: firstLessonId,
+        levelId: level.id.toString(),
         content,
         messageType,
         fileUrl,
         fileType,
         fileName,
-        isExerciseSubmission: messageType === 'file' || messageType === 'image'
+        isExerciseSubmission: messageType === 'file' || messageType === 'image',
+        repliedToMessageId
       });
     } catch (error) {
       console.error('Error sending group message:', error);
@@ -143,9 +168,8 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       return;
     }
 
-    // Pour les élèves, initier un appel vers tous les professeurs
     if (userRole?.role === 'student') {
-      const success = await initiateCall(type, '', firstLessonId);
+      const success = await initiateCall(type, '', level.id.toString());
       if (success) {
         toast.info(`Appel ${type === 'video' ? 'vidéo' : 'audio'} envoyé aux professeurs`);
       }
@@ -164,10 +188,6 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       content: message.content,
       sender_name: senderName
     });
-    
-    // Scroll vers l'input
-    const inputContainer = document.querySelector('.bg-\\[\\#f0f0f0\\]');
-    inputContainer?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
 
   const handleCancelReply = () => {
@@ -175,28 +195,39 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   };
 
   const handleScrollToMessage = (messageId: string) => {
-    console.log('Scrolling to message:', messageId);
-    
     setTimeout(() => {
       const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-      console.log('Found message element:', messageElement);
-      
       if (messageElement) {
         messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // Highlight temporaire
         setHighlightedMessageId(messageId);
         setTimeout(() => setHighlightedMessageId(null), 3000);
       }
     }, 100);
   };
 
-  if (authLoading) {
+  const handleOpenVideo = (lesson: any) => {
+    setSelectedVideo(lesson);
+  };
+
+  const handleCloseVideo = () => {
+    setSelectedVideo(null);
+  };
+
+  const handleValidateExercise = (messageId: string, isValid: boolean, rejectReason?: string) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    // Logique de validation pour les groupes - à implémenter si nécessaire
+    console.log('Validation exercice groupe:', { messageId, isValid, rejectReason });
+  };
+
+  if (authLoading || chatModeLoading) {
     return (
       <div className="min-h-screen bg-[#e5ddd5] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">Vérification...</div>
-          <p className="text-gray-600">Connexion en cours</p>
+          <div className="text-lg font-semibold mb-2">Chargement...</div>
+          <p className="text-gray-600">Configuration du chat de groupe</p>
         </div>
       </div>
     );
@@ -206,15 +237,15 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     return null;
   }
 
-  if (isLoading || !studentPromotion) {
+  if (isLoading || !promotionId) {
     return (
       <div className="min-h-screen bg-[#e5ddd5] flex items-center justify-center">
         <div className="text-center">
           <div className="text-lg font-semibold mb-2">
-            {!studentPromotion ? 'Configuration en cours...' : 'Chargement...'}
+            {!promotionId ? 'Configuration en cours...' : 'Chargement...'}
           </div>
           <p className="text-gray-600">
-            {!studentPromotion 
+            {!promotionId 
               ? 'Veuillez patienter pendant que nous configurons votre accès au groupe.'
               : 'Récupération des messages du groupe'
             }
@@ -224,18 +255,171 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     );
   }
 
+  // Affichage du lecteur vidéo si une vidéo est sélectionnée
+  if (selectedVideo) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col">
+        <div className="bg-[#25d366] text-white p-3 flex items-center">
+          <button
+            onClick={handleCloseVideo}
+            className="mr-3 p-2 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="font-semibold text-sm">{selectedVideo.title}</h1>
+            <p className="text-xs text-white/80">Niveau: {level.title}</p>
+          </div>
+        </div>
+        
+        <div className="flex-1">
+          <LessonVideoPlayerWithTimer
+            src={selectedVideo.video_url}
+            formationId={formation.id}
+            timeRemainingToday={chatTimer.timeRemainingToday}
+            dailyTimeLimit={chatTimer.dailyTimeLimit}
+            isLimitReached={chatTimer.isLimitReached}
+            canPlay={chatTimer.canContinue}
+            sessionTime={chatTimer.sessionTime}
+            onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
+            onPlayStateChange={() => {}}
+            className="w-full h-full"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#e5ddd5] flex flex-col relative">
-      {/* Messages - responsive - prend tout l'écran */}
-      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 px-2 md:px-4 pt-4 pb-[80px]">
+      {/* Notifications d'appels entrants - réutilisé de ChatInterface */}
+      {incomingCall && userRole?.role === 'teacher' && (
+        <div className="fixed top-20 right-4 bg-white border rounded-lg shadow-lg p-4 z-50">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Appel entrant</h3>
+            <span className="text-sm text-gray-500">
+              {incomingCall.call_type === 'video' ? '📹' : '📞'}
+            </span>
+          </div>
+          <p className="text-sm mb-3">
+            Vous avez un appel entrant
+          </p>
+          <div className="flex space-x-2">
+            <Button 
+              size="sm" 
+              onClick={() => acceptCall(incomingCall.id)}
+              className="bg-green-500 hover:bg-green-600"
+            >
+              Accepter
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => rejectCall(incomingCall.id)}
+            >
+              Rejeter
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Header - réutilise le style de ChatInterface */}
+      <div className="bg-[#25d366] text-white p-3 sm:p-4 fixed top-0 left-0 right-0 z-50 border-b shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center flex-1 min-w-0">
+            <button
+              onClick={onBack}
+              className="mr-2 sm:mr-3 p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
+            >
+              <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
+            </button>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+              <span className="text-white font-bold text-xs sm:text-sm">🎓</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold text-sm sm:text-base md:text-lg truncate">Niveau: {level.title}</h1>
+              <p className="text-xs sm:text-sm text-white/80 truncate">
+                Formation: {formation.title} • Chat de groupe
+              </p>
+            </div>
+          </div>
+          
+          {/* Boutons d'appel - réutilise le style de ChatInterface */}
+          {userRole?.role === 'student' && (
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleCall('video')}
+                className="p-2 hover:bg-white/10 rounded-full text-white"
+                title="Appel vidéo"
+              >
+                <Video size={18} className="sm:w-5 sm:h-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleCall('audio')}
+                className="p-2 hover:bg-white/10 rounded-full text-white"
+                title="Appel audio"
+              >
+                <Phone size={18} className="sm:w-5 sm:h-5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal d'upgrade - réutilisé de ChatInterface */}
+      <SubscriptionUpgradeModal
+        isOpen={accessControl.showAlert}
+        onClose={accessControl.hideAlert}
+        message={accessControl.alertMessage}
+        formationId={formation.id}
+        variant={accessControl.alertVariant}
+      />
+
+      {/* Section vidéo avec timer intégré - réutilisé de ChatInterface */}
+      {level.lessons && level.lessons.length > 0 && level.lessons[0]?.video_url && (
+        <div ref={videoRef} className="bg-black">
+          <LessonVideoPlayerWithTimer
+            src={level.lessons[0].video_url}
+            formationId={formation.id}
+            timeRemainingToday={chatTimer.timeRemainingToday}
+            dailyTimeLimit={chatTimer.dailyTimeLimit}
+            isLimitReached={chatTimer.isLimitReached}
+            canPlay={chatTimer.canContinue}
+            sessionTime={chatTimer.sessionTime}
+            onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
+            onPlayStateChange={setIsVideoPlaying}
+            className="w-full"
+          />
+        </div>
+      )}
+
+      {/* Bouton Switch - réutilisé de ChatInterface */}
+      <VideoMessageSwitch
+        onScrollToVideo={scrollToVideo}
+        onScrollToMessages={scrollToMessages}
+      />
+
+      {/* Messages - réutilise MessageList de ChatInterface */}
+      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[80px] pb-[80px] px-2 md:px-4">
+        {/* Message de bienvenue spécifique au groupe */}
+        <div className="text-center mb-4">
+          <span className="bg-[#dcf8c6] text-gray-700 px-3 py-2 rounded-lg text-sm shadow-sm">
+            Chat de groupe - Niveau: {level.title}
+          </span>
+        </div>
+
         <MessageList
           messages={messages}
-          exercises={[]} // Les exercices sont intégrés dans les messages système pour les groupes
+          exercises={[]} // Les exercices seront gérés différemment dans le groupe
           formationId={formation.id}
-          lessonId={firstLessonId}
+          lessonId={level.id.toString()}
           isTeacherView={userRole?.role === 'teacher'}
           isTeacher={userRole?.role === 'teacher'}
-          onValidateExercise={() => {}}
+          onValidateExercise={handleValidateExercise}
           evaluations={[]}
           onReply={handleReply}
           highlightedMessageId={highlightedMessageId}
@@ -243,12 +427,12 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         />
       </div>
 
-      {/* Chat Input - responsive - réutilisation du composant existant */}
-      <div className="bg-background border-t p-2 sm:p-4 fixed bottom-0 left-0 right-0 z-50 bg-white border-b shadow-sm">
+      {/* Chat Input - réutilisé de ChatInterface */}
+      <div className="bg-background border-t p-2 sm:p-4 fixed bottom-0 left-0 right-0 z-50 bg-white shadow-sm">
         <ChatInputBar
           onSendMessage={handleSendMessage}
           disabled={sendMessage.isPending}
-          lessonId={firstLessonId}
+          lessonId={level.id.toString()}
           formationId={formation.id}
           replyingTo={replyingTo}
           onCancelReply={handleCancelReply}
