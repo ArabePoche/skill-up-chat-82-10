@@ -10,6 +10,7 @@ import ExerciseDisplay from './ExerciseDisplay';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useTypingListener } from '@/hooks/useTypingListener';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
+import LessonVideoPlayer from '../LessonVideoPlayer';
 
 interface Message {
   id: string;
@@ -41,6 +42,12 @@ interface Message {
     username?: string;
     avatar_url?: string;
   };
+  // Propriétés pour les vidéos leçons
+  video_url?: string;
+  lesson_title?: string;
+  lesson_status?: string;
+  // Type d'élément dans le flux
+  item_type?: 'message' | 'lesson_video' | 'exercise';
 }
 
 interface Exercise {
@@ -121,8 +128,9 @@ const MessageList: React.FC<MessageListProps> = ({
         />
       ))}
 
-      {/* Messages */}
+      {/* Messages et contenu du flux */}
       {messages.map((message) => {
+        // Messages système
         if (message.is_system_message) {
           return (
             <SystemMessage
@@ -136,6 +144,30 @@ const MessageList: React.FC<MessageListProps> = ({
           );
         }
 
+        // Vidéos de leçons
+        if (message.item_type === 'lesson_video') {
+          return (
+            <div
+              key={message.id}
+              data-message-id={message.id}
+              className={`transition-all duration-500 ${
+                highlightedMessageId === message.id ? 'bg-yellow-200 border-2 border-yellow-400 rounded-lg p-2 -m-2 shadow-lg' : ''
+              }`}
+            >
+              <div className="mb-2">
+                <div className="text-sm text-gray-600 mb-2">
+                  📹 {message.lesson_title}
+                </div>
+                <LessonVideoPlayer 
+                  url={message.video_url || ''} 
+                  className="max-w-2xl mx-auto"
+                />
+              </div>
+            </div>
+          );
+        }
+
+        // Messages normaux
         return (
           <div
             key={message.id}

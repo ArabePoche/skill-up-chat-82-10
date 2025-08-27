@@ -379,23 +379,6 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         variant={accessControl.alertVariant}
       />
 
-      {/* Section vidéo avec timer intégré - réutilisé de ChatInterface */}
-      {level.lessons && level.lessons.length > 0 && level.lessons[0]?.video_url && (
-        <div ref={videoRef} className="bg-black">
-          <LessonVideoPlayerWithTimer
-            src={level.lessons[0].video_url}
-            formationId={formation.id}
-            timeRemainingToday={chatTimer.timeRemainingToday}
-            dailyTimeLimit={chatTimer.dailyTimeLimit}
-            isLimitReached={chatTimer.isLimitReached}
-            canPlay={chatTimer.canContinue}
-            sessionTime={chatTimer.sessionTime}
-            onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
-            onPlayStateChange={setIsVideoPlaying}
-            className="w-full"
-          />
-        </div>
-      )}
 
       {/* Bouton Switch - réutilisé de ChatInterface */}
       <VideoMessageSwitch
@@ -405,12 +388,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
 
       {/* Messages - réutilise MessageList de ChatInterface */}
       <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[80px] pb-[80px] px-2 md:px-4">
-        {/* Message de bienvenue spécifique au groupe */}
-        <div className="text-center mb-4">
-          <span className="bg-[#dcf8c6] text-gray-700 px-3 py-2 rounded-lg text-sm shadow-sm">
-            Chat de groupe - Niveau: {level.title}
-          </span>
-        </div>
+        
 
         <MessageList
           messages={messages}

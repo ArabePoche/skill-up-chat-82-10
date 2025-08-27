@@ -33,6 +33,12 @@ export interface GroupMessage {
     is_teacher?: boolean;
   };
   replied_to_message?: any;
+  // Propriétés pour les vidéos leçons
+  video_url?: string;
+  lesson_title?: string;
+  lesson_status?: string;
+  // Type d'élément dans le flux
+  item_type: 'message' | 'lesson_video' | 'exercise';
 }
 
 export const useGroupChatMessages = (
@@ -105,106 +111,151 @@ export const useGroupChatMessages = (
         return [];
       }
 
-      if (!allMessages || allMessages.length === 0) {
-        console.log('📭 No messages found for this level');
-        return [];
+      // 4. Récupérer les vidéos leçons depuis user_lesson_progress
+      const { data: lessonProgress, error: progressError } = await supabase
+        .from('user_lesson_progress')
+        .select(`
+          id,
+          lesson_id,
+          level_id,
+          status,
+          create_at,
+          user_id,
+          lessons:lesson_id(
+            id,
+            title,
+            video_url
+          )
+        `)
+        .eq('level_id', levelId)
+        .in('lesson_id', lessonIds)
+        .order('create_at', { ascending: true });
+
+      if (progressError) {
+        console.error('Error fetching lesson progress:', progressError);
       }
 
-      console.log(`📬 Found ${allMessages.length} messages total`);
+      // 5. Récupérer les exercices du currentUser depuis lesson_messages (soumissions)
+      const { data: userExercises, error: exercisesError } = await supabase
+        .from('lesson_messages')
+        .select(`
+          *,
+          exercises:exercise_id(
+            id,
+            title,
+            description
+          )
+        `)
+        .eq('sender_id', user.id)
+        .eq('formation_id', formationId)
+        .eq('is_exercise_submission', true)
+        .not('exercise_id', 'is', null)
+        .in('lesson_id', lessonIds)
+        .order('created_at', { ascending: true });
 
-      // 4. Récupérer les progressions des utilisateurs qui ont envoyé des messages
+      if (exercisesError) {
+        console.error('Error fetching user exercises:', exercisesError);
+      }
+
+      // 7. Récupérer les progressions des utilisateurs qui ont envoyé des messages
       const senderIds = [...new Set(
-        allMessages
+        (allMessages || [])
           .map(m => m.sender_id)
           .filter(Boolean)
-          .filter(id => id !== user.id) // Exclure l'utilisateur actuel
+          .filter(id => id !== user.id)
       )] as string[];
 
-      console.log('👥 Sender IDs to check progress for:', senderIds);
-
       const userProgressMap = senderIds.length > 0 ? await getUsersProgressMap(senderIds) : new Map();
-      console.log('🎯 User progress map:', Object.fromEntries(userProgressMap));
 
-      // 5. Filtrer les messages selon les règles de groupe
-      const filteredMessages = allMessages.filter(message => {
-        console.log(`\n🔍 Analyzing message ${message.id}:`);
-        console.log(`   - Sender: ${message.sender_id}`);
-        console.log(`   - Is system: ${message.is_system_message}`);
-        console.log(`   - Receiver: ${message.receiver_id}`);
-        console.log(`   - Promotion ID: ${message.promotion_id}`);
-        console.log(`   - Is teacher: ${message.profiles?.is_teacher}`);
-
+      // 8. Filtrer les messages selon les règles de groupe
+      const filteredMessages = (allMessages || []).filter(message => {
         // Messages système : toujours visibles
-        if (message.is_system_message) {
-          console.log('✅ System message -> VISIBLE');
-          return true;
-        }
+        if (message.is_system_message) return true;
         
         // Ses propres messages : toujours visibles
-        if (message.sender_id === user.id) {
-          console.log('✅ Own message -> VISIBLE');
-          return true;
-        }
+        if (message.sender_id === user.id) return true;
         
         // Messages qui lui sont adressés : toujours visibles
-        if (message.receiver_id === user.id) {
-          console.log('✅ Message addressed to user -> VISIBLE');
-          return true;
-        }
+        if (message.receiver_id === user.id) return true;
         
         // Messages dans lesquels on lui fait un reply : toujours visibles
         if (message.replied_to_message_id) {
-          const replyTarget = allMessages.find(m => m.id === message.replied_to_message_id);
-          if (replyTarget?.sender_id === user.id) {
-            console.log('✅ Reply to user message -> VISIBLE');
-            return true;
-          }
+          const replyTarget = allMessages?.find(m => m.id === message.replied_to_message_id);
+          if (replyTarget?.sender_id === user.id) return true;
         }
         
         // Messages des professeurs : toujours visibles pour les élèves
-        if (message.profiles?.is_teacher) {
-          console.log('✅ Teacher message -> VISIBLE');
-          return true;
-        }
+        if (message.profiles?.is_teacher) return true;
         
         // Messages des autres élèves de la même promotion
         if (message.promotion_id === promotionId && message.sender_id !== user.id) {
-          console.log(`🎓 Classmate message from promotion ${promotionId}`);
-          
-          // Vérifier la progression de l'expéditeur
           const senderProgress = userProgressMap.get(message.sender_id);
           
-          if (!senderProgress) {
-            console.log('⚠️ No progress found for sender -> Assuming level 0 -> VISIBLE');
-            return true;
-          }
+          if (!senderProgress) return true;
           
-          const isVisible = senderProgress.levelOrder < currentUserProgress.levelOrder || 
+          return senderProgress.levelOrder < currentUserProgress.levelOrder || 
                  (senderProgress.levelOrder === currentUserProgress.levelOrder && 
                   senderProgress.lessonOrder <= currentUserProgress.lessonOrder);
-          
-          console.log(`📈 Progress comparison:`, {
-            senderProgress,
-            currentUserProgress,
-            isVisible: isVisible ? '✅ VISIBLE' : '❌ HIDDEN'
-          });
-          
-          return isVisible;
         }
         
-        console.log('❌ Message filtered out (no matching criteria)');
         return false;
       });
 
-      console.log(`\n📊 Final result:`, {
-        totalMessages: allMessages.length,
-        filteredMessages: filteredMessages.length,
-        currentUserProgress,
-        senderCount: senderIds.length,
-        promotionId
+      // 9. Combiner tous les éléments en un seul flux
+      const combinedItems: GroupMessage[] = [];
+
+      // Ajouter les messages filtrés
+      filteredMessages.forEach(message => {
+        combinedItems.push({
+          ...message,
+          item_type: 'message' as const,
+          formation_id: formationId
+        });
       });
 
-      return filteredMessages as GroupMessage[];
+      // Ajouter les vidéos leçons
+      (lessonProgress || []).forEach(progress => {
+        if (progress.lessons) {
+          combinedItems.push({
+            id: `lesson_${progress.id}`,
+            content: `Vidéo de leçon: ${progress.lessons.title}`,
+            sender_id: progress.user_id || '',
+            created_at: progress.create_at || '',
+            message_type: 'lesson_video',
+            formation_id: formationId,
+            lesson_id: progress.lesson_id || '',
+            video_url: progress.lessons.video_url || '',
+            lesson_title: progress.lessons.title || '',
+            lesson_status: progress.status || '',
+            item_type: 'lesson_video' as const
+          });
+        }
+      });
+
+      // Ajouter les exercices du currentUser (soumissions)
+      (userExercises || []).forEach(exercise => {
+        combinedItems.push({
+          ...exercise,
+          item_type: 'exercise' as const,
+          formation_id: formationId,
+          content: exercise.exercises?.title || exercise.content
+        });
+      });
+
+
+      // 10. Trier par date de création
+      const sortedItems = combinedItems.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+      console.log(`\n📊 Final combined result:`, {
+        messages: filteredMessages.length,
+        lessonVideos: (lessonProgress || []).length,
+        userExercises: (userExercises || []).length,
+        totalItems: sortedItems.length
+      });
+
+      return sortedItems;
     },
     enabled: !!levelId && !!formationId && !!promotionId && !!user?.id,
     refetchInterval: false,
