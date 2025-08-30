@@ -13,7 +13,7 @@ import { useCallNotifications } from '@/hooks/useCallNotifications';
 import { useChatTimer } from '@/hooks/useChatTimer';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useFileUpload } from '@/hooks/useFileUpload';
-import { useLessonExercises } from '@/hooks/useLessonExercises';
+import { useLevelExercises } from '@/hooks/group-chat/useLevelExercises';
 
 // Hooks spécifiques au chat de groupe
 import { useChatMode } from '@/hooks/chat/useChatMode';
@@ -91,9 +91,11 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     promotionId || ''
   );
   
-  // Les exercices sont maintenant inclus dans les messages via useGroupChatMessages
-  // donc pas besoin de les récupérer séparément
-  const exercises: any[] = [];
+  // Récupérer les exercices du niveau avec le hook spécialisé
+  const { data: levelExercises = [] } = useLevelExercises(level.id.toString());
+  
+  // Utiliser les exercices récupérés depuis la base de données
+  const exercises = levelExercises;
   
   const { data: userRole } = useUserRole(formation.id);
   
