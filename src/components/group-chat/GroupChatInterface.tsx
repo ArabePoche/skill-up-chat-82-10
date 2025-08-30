@@ -19,6 +19,7 @@ import { useLevelExercises } from '@/hooks/group-chat/useLevelExercises';
 import { useChatMode } from '@/hooks/chat/useChatMode';
 import { useGroupChatMessages } from '@/hooks/group-chat/useGroupChatMessages';
 import { useGroupChatOperations } from '@/hooks/group-chat/useGroupChatOperations';
+import { useProgressionLogic } from '@/hooks/group-chat/useProgressionLogic';
 
 // Réutilisation des composants existants de ChatInterface
 import ChatInputBar from '../chat/ChatInputBar';
@@ -102,6 +103,9 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   // Opérations de chat de groupe
   const { sendMessage } = useGroupChatOperations(formation.id, promotionId || '');
   const { uploadFile } = useFileUpload();
+  
+  // Logique de progression séquentielle
+  const { validateExercise } = useProgressionLogic(formation.id, level.id.toString());
 
   // Fonctionnalités d'appel réutilisées
   const { initiateCall } = useCallFunctionality(formation.id);
@@ -220,13 +224,36 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     setSelectedVideo(null);
   };
 
-  const handleValidateExercise = (messageId: string, isValid: boolean, rejectReason?: string) => {
+  const handleValidateExercise = async (
+    messageId: string, 
+    isValid: boolean, 
+    rejectReason?: string,
+    exerciseId?: string,
+    lessonId?: string
+  ) => {
     if (!user) {
       navigate('/auth');
       return;
     }
-    // Logique de validation pour les groupes - à implémenter si nécessaire
-    console.log('Validation exercice groupe:', { messageId, isValid, rejectReason });
+    
+    if (!exerciseId || !lessonId) {
+      console.error('Missing exerciseId or lessonId for validation');
+      toast.error('Erreur: informations d\'exercice manquantes');
+      return;
+    }
+
+    try {
+      await validateExercise.mutateAsync({
+        messageId,
+        isValid,
+        rejectReason,
+        exerciseId,
+        lessonId
+      });
+    } catch (error) {
+      console.error('Error validating exercise:', error);
+      toast.error('Erreur lors de la validation');
+    }
   };
 
   if (authLoading || chatModeLoading) {
@@ -409,6 +436,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           onReply={handleReply}
           highlightedMessageId={highlightedMessageId}
           onScrollToMessage={handleScrollToMessage}
+          onOpenVideo={handleOpenVideo}
         />
       </div>
 

@@ -12,6 +12,7 @@ interface ExerciseValidationProps {
     sender_id: string;
     lesson_id?: string;
     formation_id?: string;
+    exercise_id?: string;
   };
 }
 
@@ -39,6 +40,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
         lessonId: message.lesson_id,
         formationId: message.formation_id,
         isValid,
+        exerciseId: message.exercise_id,
         rejectReason: isValid ? undefined : rejectReason
       });
 

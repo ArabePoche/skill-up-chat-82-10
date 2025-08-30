@@ -111,12 +111,21 @@ export const useGroupChatMessages = (
         return [];
       }
 
-      // 4. Récupérer les vidéos leçons depuis user_lesson_progress - simplifié pour éviter erreurs TypeScript
-      const lessonProgress: any[] = [];
-      const progressError = null;
+      // 4. Récupérer les vidéos des leçons du niveau
+      const { data: lessonProgress, error: progressError } = await supabase
+        .from('lessons')
+        .select(`
+          id,
+          title,
+          video_url,
+          order_index,
+          level_id
+        `)
+        .eq('level_id', levelId)
+        .order('order_index', { ascending: true });
 
       if (progressError) {
-        console.error('Error fetching lesson progress:', progressError);
+        console.error('Error fetching lesson videos:', progressError);
       }
 
       // 5. Récupérer les exercices assignés à l'utilisateur depuis lesson_messages
@@ -223,20 +232,21 @@ export const useGroupChatMessages = (
 
       // Ajouter les vidéos leçons
       if (lessonProgress && !progressError) {
-        lessonProgress.forEach(progress => {
-          if (progress.lessons) {
+        lessonProgress.forEach(lesson => {
+          if (lesson.video_url) {
             combinedItems.push({
-              id: `lesson_${progress.id}`,
-              content: `Vidéo de leçon: ${progress.lessons.title}`,
-              sender_id: progress.user_id || '',
-              created_at: progress.create_at || '',
+              id: `lesson_video_${lesson.id}`,
+              content: `📹 Vidéo: ${lesson.title}`,
+              sender_id: 'system',
+              created_at: new Date().toISOString(),
               message_type: 'lesson_video',
               formation_id: formationId,
-              lesson_id: progress.lesson_id || '',
-              video_url: progress.lessons.video_url || '',
-              lesson_title: progress.lessons.title || '',
-              lesson_status: progress.status || '',
-              item_type: 'lesson_video' as const
+              lesson_id: lesson.id,
+              video_url: lesson.video_url,
+              lesson_title: lesson.title,
+              lesson_status: 'available',
+              item_type: 'lesson_video' as const,
+              is_system_message: true
             });
           }
         });

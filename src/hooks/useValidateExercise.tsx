@@ -13,6 +13,7 @@ export const useValidateExercise = () => {
       lessonId, 
       formationId,
       isValid,
+      exerciseId,
       rejectReason
     }: {
       messageId: string;
@@ -20,6 +21,7 @@ export const useValidateExercise = () => {
       lessonId: string;
       formationId: string;
       isValid: boolean;
+      exerciseId?: string;
       rejectReason?: string;
     }) => {
       
