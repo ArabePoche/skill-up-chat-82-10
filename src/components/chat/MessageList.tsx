@@ -156,27 +156,11 @@ const MessageList: React.FC<MessageListProps> = ({
                 highlightedMessageId === message.id ? 'bg-yellow-200 border-2 border-yellow-400 rounded-lg p-2 -m-2 shadow-lg' : ''
               }`}
             >
-              <div className="mb-2 cursor-pointer" onClick={() => onOpenVideo && onOpenVideo({
-                title: message.lesson_title,
-                video_url: message.video_url
-              })}>
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-xl">📹</span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{message.lesson_title}</h3>
-                      <p className="text-sm text-gray-600">Cliquez pour regarder la vidéo</p>
-                    </div>
-                    <div className="text-blue-500">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m6-7a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <LessonVideoPlayer 
+                url={message.video_url || ''}
+                title={message.lesson_title}
+                className="w-full rounded-lg overflow-hidden"
+              />
             </div>
           );
         }
