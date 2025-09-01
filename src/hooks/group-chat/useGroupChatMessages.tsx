@@ -237,14 +237,18 @@ export const useGroupChatMessages = (
 
       // Ajouter les vidéos leçons uniquement pour l'utilisateur actuel
       if (userLessonProgress && !progressError) {
-        userLessonProgress.forEach(progress => {
+        userLessonProgress.forEach((progress, index) => {
           const lesson = progress.lessons;
           if (lesson?.video_url) {
+            // Créer une timestamp basée sur l'ordre des leçons pour un tri correct
+            const lessonTimestamp = new Date();
+            lessonTimestamp.setTime(lessonTimestamp.getTime() - (1000 * 60 * 60 * 24) + (index * 1000)); // Timestamp dans le passé avec ordre
+            
             combinedItems.push({
               id: `lesson_video_${lesson.id}`,
               content: `📹 Vidéo: ${lesson.title}`,
               sender_id: 'system',
-              created_at: new Date().toISOString(),
+              created_at: lessonTimestamp.toISOString(),
               message_type: 'lesson_video',
               formation_id: formationId,
               lesson_id: lesson.id,
