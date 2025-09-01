@@ -859,7 +859,7 @@ export type Database = {
           lesson_id: string
           message_type: string
           promotion_id: string | null
-          read_by_teacher: string | null
+          read_by_teachers: string | null
           receiver_id: string | null
           replied_to_message_id: string | null
           sender_id: string
@@ -881,7 +881,7 @@ export type Database = {
           lesson_id: string
           message_type?: string
           promotion_id?: string | null
-          read_by_teacher?: string | null
+          read_by_teachers?: string | null
           receiver_id?: string | null
           replied_to_message_id?: string | null
           sender_id: string
@@ -903,7 +903,7 @@ export type Database = {
           lesson_id?: string
           message_type?: string
           promotion_id?: string | null
-          read_by_teacher?: string | null
+          read_by_teachers?: string | null
           receiver_id?: string | null
           replied_to_message_id?: string | null
           sender_id?: string
@@ -2357,25 +2357,31 @@ export type Database = {
       user_lesson_progress: {
         Row: {
           completed_at: string | null
+          create_at: string | null
           exercise_completed: boolean | null
           id: string
           lesson_id: string | null
+          level_id: string | null
           status: Database["public"]["Enums"]["lesson_status"]
           user_id: string | null
         }
         Insert: {
           completed_at?: string | null
+          create_at?: string | null
           exercise_completed?: boolean | null
           id?: string
           lesson_id?: string | null
+          level_id?: string | null
           status?: Database["public"]["Enums"]["lesson_status"]
           user_id?: string | null
         }
         Update: {
           completed_at?: string | null
+          create_at?: string | null
           exercise_completed?: boolean | null
           id?: string
           lesson_id?: string | null
+          level_id?: string | null
           status?: Database["public"]["Enums"]["lesson_status"]
           user_id?: string | null
         }
@@ -2385,6 +2391,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_lesson_progress_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
             referencedColumns: ["id"]
           },
           {
