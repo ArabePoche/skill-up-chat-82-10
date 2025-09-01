@@ -111,18 +111,23 @@ export const useGroupChatMessages = (
         return [];
       }
 
-      // 4. Récupérer les vidéos des leçons du niveau
-      const { data: lessonProgress, error: progressError } = await supabase
-        .from('lessons')
+      // 4. Récupérer uniquement les leçons du currentUser basé sur user_lesson_progress
+      const { data: userLessonProgress, error: progressError } = await supabase
+        .from('user_lesson_progress')
         .select(`
-          id,
-          title,
-          video_url,
-          order_index,
-          level_id
+          lessons!inner(
+            id,
+            title,
+            video_url,
+            order_index,
+            level_id
+          ),
+          status,
+          exercise_completed
         `)
-        .eq('level_id', levelId)
-        .order('order_index', { ascending: true });
+        .eq('user_id', user.id)
+        .eq('lessons.level_id', levelId)
+        .order('lessons.order_index', { ascending: true });
 
       if (progressError) {
         console.error('Error fetching lesson videos:', progressError);
@@ -230,10 +235,11 @@ export const useGroupChatMessages = (
         });
       });
 
-      // Ajouter les vidéos leçons
-      if (lessonProgress && !progressError) {
-        lessonProgress.forEach(lesson => {
-          if (lesson.video_url) {
+      // Ajouter les vidéos leçons uniquement pour l'utilisateur actuel
+      if (userLessonProgress && !progressError) {
+        userLessonProgress.forEach(progress => {
+          const lesson = progress.lessons;
+          if (lesson?.video_url) {
             combinedItems.push({
               id: `lesson_video_${lesson.id}`,
               content: `📹 Vidéo: ${lesson.title}`,
@@ -244,7 +250,7 @@ export const useGroupChatMessages = (
               lesson_id: lesson.id,
               video_url: lesson.video_url,
               lesson_title: lesson.title,
-              lesson_status: 'available',
+              lesson_status: progress.status || 'available',
               item_type: 'lesson_video' as const,
               is_system_message: true
             });
@@ -283,7 +289,7 @@ export const useGroupChatMessages = (
 
       console.log(`\n📊 Final combined result:`, {
         messages: filteredMessages.length,
-        lessonVideos: (lessonProgress || []).length,
+        lessonVideos: (userLessonProgress || []).length,
         assignedExercises: (userAssignedExercises || []).length,
         userExercises: (userExercises || []).length,
         totalItems: sortedItems.length
