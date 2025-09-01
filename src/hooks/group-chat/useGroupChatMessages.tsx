@@ -127,7 +127,7 @@ export const useGroupChatMessages = (
         `)
         .eq('user_id', user.id)
         .eq('lessons.level_id', levelId)
-        .order('lessons.order_index', { ascending: true });
+        .order('lessons(order_index)', { ascending: true });
 
       if (progressError) {
         console.error('Error fetching lesson videos:', progressError);
