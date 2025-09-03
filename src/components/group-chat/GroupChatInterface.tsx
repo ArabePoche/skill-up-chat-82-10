@@ -421,7 +421,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       />
 
       {/* Messages - réutilise MessageList de ChatInterface */}
-      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[80px] pb-[80px] px-2 md:px-4">
+      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[100px] pb-[80px] px-2 md:px-4">
         
 
         <MessageList

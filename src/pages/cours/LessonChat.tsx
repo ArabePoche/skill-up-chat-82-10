@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import ChatInterface from '@/components/ChatInterface';
+import { SmartChatInterface } from '@/components/chat/SmartChatInterface';
 
 const LessonChat = () => {
   const { lessonId } = useParams();
@@ -44,7 +44,7 @@ const LessonChat = () => {
     { id: 'unknown', title: "Formation inconnue" };
 
   return (
-    <ChatInterface
+    <SmartChatInterface
       lesson={lesson}
       formation={formation}
       onBack={handleBack}
