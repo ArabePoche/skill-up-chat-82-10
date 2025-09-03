@@ -2993,7 +2993,7 @@ export type Database = {
       }
       validate_exercise_submission_with_promotion: {
         Args: {
-          p_is_valid: boolean
+          p_is_approved: boolean
           p_message_id: string
           p_reject_reason?: string
           p_user_id: string

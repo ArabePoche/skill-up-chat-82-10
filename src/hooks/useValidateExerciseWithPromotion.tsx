@@ -29,7 +29,7 @@ export const useValidateExerciseWithPromotion = () => {
         const { data, error } = await supabase.rpc('validate_exercise_submission_with_promotion', {
           p_message_id: messageId,
           p_user_id: userId,
-          p_is_valid: isValid,
+          p_is_approved: isValid,
           p_reject_reason: rejectReason || null
         });
 
