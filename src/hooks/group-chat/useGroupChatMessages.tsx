@@ -238,11 +238,19 @@ export const useGroupChatMessages = (
 
       // Ajouter les vidéos leçons uniquement pour l'utilisateur actuel
       if (userLessonProgress && !progressError) {
+        console.log('📺 User lesson progress data:', userLessonProgress);
         userLessonProgress.forEach((progress) => {
           const lesson = progress.lessons;
+          console.log('🎬 Processing lesson:', lesson);
           if (lesson?.video_url) {
             // Utiliser le timestamp create_at de user_lesson_progress pour un tri correct
             const lessonTimestamp = progress.create_at || new Date().toISOString();
+            console.log('✅ Adding lesson video:', {
+              lessonId: lesson.id,
+              title: lesson.title,
+              videoUrl: lesson.video_url,
+              timestamp: lessonTimestamp
+            });
             
             combinedItems.push({
               id: `lesson_video_${lesson.id}`,
@@ -258,6 +266,8 @@ export const useGroupChatMessages = (
               item_type: 'lesson_video' as const,
               is_system_message: true
             });
+          } else {
+            console.log('❌ No video URL for lesson:', lesson);
           }
         });
       }

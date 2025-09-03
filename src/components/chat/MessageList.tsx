@@ -148,6 +148,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
         // Vidéos de leçons
         if (message.item_type === 'lesson_video') {
+          console.log('🎥 Rendering lesson video:', message);
           return (
             <div
               key={message.id}
