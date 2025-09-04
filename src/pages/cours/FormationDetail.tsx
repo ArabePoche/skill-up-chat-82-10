@@ -14,13 +14,10 @@ const FormationDetailPage = () => {
 
   if (!formationId) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-24 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Formation non trouvée</h1>
-          <p className="text-gray-600">L'ID de la formation est manquant.</p>
-        </div>
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
-          <Navbar />
+          <h1 className="text-2xl font-bold text-foreground mb-4">Formation non trouvée</h1>
+          <p className="text-muted-foreground">L'ID de la formation est manquant.</p>
         </div>
       </div>
     );
@@ -28,13 +25,10 @@ const FormationDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-24 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-xl font-bold text-gray-900 mb-4">Chargement...</h1>
-          <p className="text-gray-600">Récupération des détails de la formation</p>
-        </div>
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
-          <Navbar />
+          <h1 className="text-xl font-bold text-foreground mb-4">Chargement...</h1>
+          <p className="text-muted-foreground">Récupération des détails de la formation</p>
         </div>
       </div>
     );
@@ -42,18 +36,13 @@ const FormationDetailPage = () => {
 
   if (error || !formation) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Erreur</h1>
-          <p className="text-gray-600">Impossible de charger la formation.</p>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Erreur</h1>
+          <p className="text-muted-foreground">Impossible de charger la formation.</p>
+        </div>
       </div>
-
-      {/* Navbar fixe en bas */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
-        <Navbar />
-      </div>
-    </div>
-  );
+    );
   }
 
   const handleBack = () => {
@@ -77,7 +66,7 @@ const FormationDetailPage = () => {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-background">
       <FormationDetail
         formation={{
           id: formation.id,
@@ -100,10 +89,7 @@ const FormationDetailPage = () => {
         onBack={handleBack}
         onLessonClick={handleLessonClick}
       />
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg">
-        <Navbar />
-      </div>
-    </>
+    </div>
   );
 };
 
