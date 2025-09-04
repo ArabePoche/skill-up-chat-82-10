@@ -1,6 +1,6 @@
 /**
- * Page de chat groupe pour un niveau spécifique
- * Réutilise GroupChatInterface avec les données du niveau
+ * Page de chat groupe pour un niveau spécifique - Page standalone sans navbar
+ * Structure identique à ChatInterface
  */
 import React from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -36,11 +36,13 @@ const GroupLessonChat = () => {
   };
 
   return (
-    <GroupChatInterface
-      level={level}
-      formation={formation}
-      onBack={handleBack}
-    />
+    <div className="min-h-screen bg-background">
+      <GroupChatInterface
+        level={level}
+        formation={formation}
+        onBack={handleBack}
+      />
+    </div>
   );
 };
 
