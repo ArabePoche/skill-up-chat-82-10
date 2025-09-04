@@ -23,6 +23,7 @@ import CoursIndex from '@/pages/cours/CoursIndex';
 import FormationDetailPage from '@/pages/cours/FormationDetail';
 import TeacherInterface from '@/pages/cours/TeacherInterface';
 import LessonChat from '@/pages/cours/LessonChat';
+import GroupLessonChat from '@/pages/cours/GroupLessonChat';
 
 
 // Créer une instance unique du QueryClient
@@ -56,6 +57,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/cours/formation/:formationId" element={<FormationDetailPage />} />
         <Route path="/cours/teacher/:formationId" element={<TeacherInterface />} />
         <Route path="/cours/lesson/:lessonId" element={<LessonChat />} />
+        <Route path="/cours/group-lesson/:levelId" element={<GroupLessonChat />} />
         
         {/* Partage vidéo et post dédiés + onglets */}
         <Route path="/video/:id" element={<Layout />} />
