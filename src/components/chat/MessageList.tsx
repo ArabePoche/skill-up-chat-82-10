@@ -132,6 +132,28 @@ const MessageList: React.FC<MessageListProps> = ({
 
       {/* Messages et contenu du flux */}
       {messages.map((message) => {
+        // Vidéos de leçons (priorité sur les messages système)
+        if (message.item_type === 'lesson_video') {
+          console.log('🎥 Rendering lesson video:', message);
+          return (
+            <div
+              key={message.id}
+              data-message-id={message.id}
+              className={`mb-4 transition-all duration-500 ${
+                highlightedMessageId === message.id ? 'bg-yellow-200 border-2 border-yellow-400 rounded-lg p-2 -m-2 shadow-lg' : ''
+              }`}
+            >
+              <LessonVideoPlayer 
+                url={message.video_url || ''}
+                title={message.lesson_title || 'Vidéo de la leçon'}
+                views="Formation"
+                channelName="Académie"
+                className="w-full rounded-lg overflow-hidden shadow-md"
+              />
+            </div>
+          );
+        }
+
         // Messages système
         if (message.is_system_message) {
           return (
@@ -146,25 +168,6 @@ const MessageList: React.FC<MessageListProps> = ({
           );
         }
 
-        // Vidéos de leçons
-        if (message.item_type === 'lesson_video') {
-          console.log('🎥 Rendering lesson video:', message);
-          return (
-            <div
-              key={message.id}
-              data-message-id={message.id}
-              className={`transition-all duration-500 ${
-                highlightedMessageId === message.id ? 'bg-yellow-200 border-2 border-yellow-400 rounded-lg p-2 -m-2 shadow-lg' : ''
-              }`}
-            >
-              <LessonVideoPlayer 
-                url={message.video_url || ''}
-                title={message.lesson_title}
-                className="w-full rounded-lg overflow-hidden"
-              />
-            </div>
-          );
-        }
 
         // Exercices autonomes (pour le groupe chat)
         if (message.item_type === 'exercise' && message.exercise_id) {
