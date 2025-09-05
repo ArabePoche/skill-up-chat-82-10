@@ -68,10 +68,8 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
   };
 
   const handleSelectGroupDiscussion = (levelId: string, formationId: string) => {
-    // TODO: Implémenter la navigation vers le chat de groupe
-    console.log('Navigate to group chat for level:', levelId, 'formation:', formationId);
-    // Vous pouvez utiliser React Router pour naviguer vers une route de groupe
-    // Par exemple: navigate(`/cours/group-lesson/${levelId}`)
+    // Naviguer vers le chat de groupe
+    window.location.href = `/cours/group-lesson/${levelId}?formationId=${formationId}`;
   };
 
   if (selectedDiscussion) {

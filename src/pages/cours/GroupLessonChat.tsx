@@ -30,8 +30,12 @@ const GroupLessonChat = () => {
     lessons: []
   };
 
+  // Récupérer formationId depuis l'URL ou l'état
+  const urlParams = new URLSearchParams(location.search);
+  const formationIdFromUrl = urlParams.get('formationId');
+  
   const formation = location.state?.formation || {
-    id: location.state?.formationId || 'unknown',
+    id: formationIdFromUrl || location.state?.formationId || 'unknown',
     title: 'Formation inconnue'
   };
 
