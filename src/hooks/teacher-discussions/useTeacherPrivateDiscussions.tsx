@@ -83,7 +83,7 @@ export const useTeacherPrivateDiscussions = (formationId: string) => {
         .eq('formation_id', formationId)
         .is('promotion_id', null) // Messages privés uniquement
         .not('receiver_id', 'is', null) // Discussions privées doivent avoir un receiver_id
-        .or(`sender_id.in.(${studentIds.join(',')}),receiver_id.in.(${studentIds.join(',')})`)
+        .in('sender_id', studentIds) // Messages envoyés par les étudiants
         .order('created_at', { ascending: false });
 
       if (error) {

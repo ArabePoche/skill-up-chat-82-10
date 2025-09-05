@@ -7,7 +7,7 @@ import { Users, MessageSquare } from 'lucide-react';
 
 interface TeacherGroupDiscussionsListProps {
   formationId: string;
-  onSelectGroupDiscussion: (levelId: string, formationId: string) => void;
+  onSelectGroupDiscussion: (levelId: string, formationId: string, levelTitle: string) => void;
 }
 
 /**
@@ -48,7 +48,7 @@ const TeacherGroupDiscussionsList: React.FC<TeacherGroupDiscussionsListProps> = 
       {discussions.map((discussion) => (
         <div
           key={discussion.level_id}
-          onClick={() => onSelectGroupDiscussion(discussion.level_id, formationId)}
+          onClick={() => onSelectGroupDiscussion(discussion.level_id, formationId, discussion.level_title)}
           className="flex items-center space-x-3 p-4 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors border-l-4 border-green-200 bg-green-50/30"
         >
           <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">

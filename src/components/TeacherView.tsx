@@ -4,6 +4,7 @@ import { ArrowLeft, MessageCircle, BookOpen, Play, Phone, User, Users } from 'lu
 import TeacherPrivateDiscussionsList from './teacher-discussions/TeacherPrivateDiscussionsList';
 import TeacherGroupDiscussionsList from './teacher-discussions/TeacherGroupDiscussionsList';
 import TeacherStudentChat from './TeacherStudentChat';
+import TeacherGroupChat from './teacher-discussions/TeacherGroupChat';
 import LessonVideoPlayer from './LessonVideoPlayer';
 import { useUnreadMessagesBadge } from '@/hooks/useUnreadMessagesBadge';
 import { useIncomingCalls } from '@/hooks/useIncomingCalls';
@@ -31,6 +32,12 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
     studentName: string;
     lessonTitle: string;
     studentProfile?: any;
+  } | null>(null);
+
+  const [selectedGroupDiscussion, setSelectedGroupDiscussion] = useState<{
+    levelId: string;
+    formationId: string;
+    levelTitle: string;
   } | null>(null);
 
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
@@ -67,9 +74,13 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
     });
   };
 
-  const handleSelectGroupDiscussion = (levelId: string, formationId: string) => {
-    // Naviguer vers le chat de groupe
-    window.location.href = `/cours/group-lesson/${levelId}?formationId=${formationId}`;
+  const handleSelectGroupDiscussion = (levelId: string, formationId: string, levelTitle: string) => {
+    // Naviguer vers le chat de groupe côté professeur
+    setSelectedGroupDiscussion({
+      levelId,
+      formationId,
+      levelTitle
+    });
   };
 
   if (selectedDiscussion) {
@@ -87,6 +98,20 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
           video_url: ""
         }}
         onBack={() => setSelectedDiscussion(null)}
+      />
+    );
+  }
+
+  if (selectedGroupDiscussion) {
+    return (
+      <TeacherGroupChat
+        level={{
+          id: selectedGroupDiscussion.levelId,
+          title: selectedGroupDiscussion.levelTitle,
+          order_index: 0
+        }}
+        formation={formation}
+        onBack={() => setSelectedGroupDiscussion(null)}
       />
     );
   }
