@@ -1,15 +1,17 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, MessageCircle, BookOpen, Play, Phone } from 'lucide-react';
-import TeacherDiscussionsList from './TeacherDiscussionsList';
+import { ArrowLeft, MessageCircle, BookOpen, Play, Phone, User, Users } from 'lucide-react';
+import TeacherPrivateDiscussionsList from './teacher-discussions/TeacherPrivateDiscussionsList';
+import TeacherGroupDiscussionsList from './teacher-discussions/TeacherGroupDiscussionsList';
 import TeacherStudentChat from './TeacherStudentChat';
 import LessonVideoPlayer from './LessonVideoPlayer';
 import { useUnreadMessagesBadge } from '@/hooks/useUnreadMessagesBadge';
 import { useIncomingCalls } from '@/hooks/useIncomingCalls';
 import { useDirectCallModal } from '@/hooks/useDirectCallModal';
-import { useTeacherDiscussionsWithUnread } from '@/hooks/useTeacherDiscussionsWithUnread';
+import { useTeacherPrivateDiscussions } from '@/hooks/teacher-discussions/useTeacherPrivateDiscussions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // import CallsModal from './teacher/CallsModal';
 import TeacherCallModal from './live-classroom/TeacherCallModal';
 
@@ -33,8 +35,10 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
 
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [showCallsModal, setShowCallsModal] = useState(false);
+  const [discussionTab, setDiscussionTab] = useState('private');
+  
   const { data: unreadCount = 0 } = useUnreadMessagesBadge(formation.id);
-  const { data: discussions } = useTeacherDiscussionsWithUnread(formation.id);
+  const { data: privateDiscussions } = useTeacherPrivateDiscussions(formation.id);
   const { incomingCalls } = useIncomingCalls(formation.id);
   
   // Pour les appels directs quand on est en chat avec un étudiant
@@ -44,8 +48,8 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
   );
 
   const handleSelectDiscussion = (studentId: string, formationId: string, lessonId: string) => {
-    // Trouver la discussion correspondante
-    const selectedDiscussionData = discussions?.find(
+    // Trouver la discussion correspondante dans les discussions privées
+    const selectedDiscussionData = privateDiscussions?.find(
       discussion => discussion.student_id === studentId && discussion.lesson_id === lessonId
     );
     
@@ -61,6 +65,13 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
       lessonTitle: selectedDiscussionData?.lesson_title || 'Leçon',
       studentProfile: selectedDiscussionData?.student_profile || null
     });
+  };
+
+  const handleSelectGroupDiscussion = (levelId: string, formationId: string) => {
+    // TODO: Implémenter la navigation vers le chat de groupe
+    console.log('Navigate to group chat for level:', levelId, 'formation:', formationId);
+    // Vous pouvez utiliser React Router pour naviguer vers une route de groupe
+    // Par exemple: navigate(`/cours/group-lesson/${levelId}`)
   };
 
   if (selectedDiscussion) {
@@ -98,7 +109,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
           </div>
           <div className="flex-1">
             <h1 className="font-semibold text-lg">{formation.title}</h1>
-            <p className="text-sm text-white/80">Vue Professeur • Discussions par leçon</p>
+            <p className="text-sm text-white/80">Vue Professeur • Discussions privées & groupes</p>
           </div>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="ml-2">
@@ -142,24 +153,51 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
         )}
       </div>
 
-      {/* Instructions */}
-      <div className="bg-blue-50 p-4 border-b border-blue-200">
-        <div className="flex items-center space-x-2 mb-2">
-          <MessageCircle size={16} className="text-blue-600" />
-          <h3 className="font-semibold text-blue-800">Discussions organisées par leçon</h3>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              {unreadCount} non lu{unreadCount > 1 ? 's' : ''}
-            </Badge>
-          )}
-        </div>
+      {/* Onglets pour séparer privé et groupe */}
+      <div className="bg-white">
+        <Tabs value={discussionTab} onValueChange={setDiscussionTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="private" className="flex items-center space-x-2">
+              <User size={16} />
+              <span>Discussions privées</span>
+            </TabsTrigger>
+            <TabsTrigger value="group" className="flex items-center space-x-2">
+              <Users size={16} />
+              <span>Discussions de groupe</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="private" className="p-4">
+            <div className="bg-blue-50 p-3 rounded-lg mb-4">
+              <div className="flex items-center space-x-2">
+                <MessageCircle size={16} className="text-blue-600" />
+                <p className="text-sm text-blue-800">
+                  <strong>Discussions privées :</strong> organisées par leçon, conversation 1-à-1 avec chaque étudiant
+                </p>
+              </div>
+            </div>
+            <TeacherPrivateDiscussionsList
+              formationId={formation.id}
+              onSelectDiscussion={handleSelectDiscussion}
+            />
+          </TabsContent>
+          
+          <TabsContent value="group" className="p-4">
+            <div className="bg-green-50 p-3 rounded-lg mb-4">
+              <div className="flex items-center space-x-2">
+                <Users size={16} className="text-green-600" />
+                <p className="text-sm text-green-800">
+                  <strong>Discussions de groupe :</strong> organisées par niveau, tous les étudiants ensemble
+                </p>
+              </div>
+            </div>
+            <TeacherGroupDiscussionsList
+              formationId={formation.id}
+              onSelectGroupDiscussion={handleSelectGroupDiscussion}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Liste des discussions */}
-      <TeacherDiscussionsList
-        formationId={formation.id}
-        onSelectDiscussion={handleSelectDiscussion}
-      />
       {/* Modal de liste des appels - temporairement désactivé */}
       {showCallsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
