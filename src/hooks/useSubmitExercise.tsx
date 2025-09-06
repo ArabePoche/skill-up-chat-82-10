@@ -60,12 +60,38 @@ export const useSubmitExercise = () => {
 
       console.log('Submitting exercise via lesson_messages:', { lessonId, formationId, exerciseId, content });
 
+      // Vérifier que la leçon existe et que l'utilisateur y a accès
+      const { data: lessonExists, error: lessonCheckError } = await supabase
+        .from('user_lesson_progress')
+        .select('lesson_id')
+        .eq('user_id', user.id)
+        .eq('lesson_id', lessonId)
+        .maybeSingle();
+
+      if (lessonCheckError) {
+        console.error('Error checking lesson access:', lessonCheckError);
+        throw new Error('Erreur lors de la vérification de l\'accès à la leçon');
+      }
+
+      if (!lessonExists) {
+        throw new Error('Vous n\'avez pas accès à cette leçon ou elle n\'existe pas');
+      }
+
+      // Récupérer la promotion de l'utilisateur pour cette formation
+      const { data: studentPromotion } = await supabase
+        .from('student_promotions')
+        .select('promotion_id')
+        .eq('student_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+
       // Insérer la soumission d'exercice dans lesson_messages
       const { data, error } = await supabase
         .from('lesson_messages')
         .insert({
           lesson_id: lessonId,
-          formation_id: formationId, // Utiliser le formationId passé en paramètre
+          formation_id: formationId,
           sender_id: user.id,
           content: content,
           message_type: fileUrl ? 'file' : 'text',
@@ -74,7 +100,8 @@ export const useSubmitExercise = () => {
           file_name: fileName,
           is_exercise_submission: true,
           exercise_status: null,
-          exercise_id: exerciseId
+          exercise_id: exerciseId,
+          promotion_id: studentPromotion?.promotion_id
         })
         .select()
         .single();

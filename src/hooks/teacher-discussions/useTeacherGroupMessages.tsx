@@ -46,7 +46,16 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
 
       const lessonIds = lessons.map(l => l.id);
 
-      // Récupérer tous les messages de groupe pour ce niveau (promotion_id NOT NULL)
+      // Récupérer toutes les promotions actives de cette formation
+      const { data: promotions } = await supabase
+        .from('promotions')
+        .select('id')
+        .eq('formation_id', formationId)
+        .eq('is_active', true);
+
+      const promotionIds = promotions?.map(p => p.id) || [];
+
+      // Récupérer tous les messages de groupe pour ce niveau
       const { data: messages, error } = await supabase
         .from('lesson_messages')
         .select(`
@@ -73,7 +82,7 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
         `)
         .eq('formation_id', formationId)
         .in('lesson_id', lessonIds)
-        .not('promotion_id', 'is', null) // Messages de groupe uniquement
+        .in('promotion_id', promotionIds) // Messages de toutes les promotions actives
         .order('created_at', { ascending: true });
 
       if (error) {
