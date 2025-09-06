@@ -35,7 +35,31 @@ export const useSendGroupMessage = () => {
 
       const lessonId = lessons[0].id;
 
-      // Envoyer le message de groupe avec promotion_id = levelId
+      // Récupérer une promotion active pour ce professeur dans cette formation
+      const { data: teacherData } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!teacherData) {
+        throw new Error('Teacher not found');
+      }
+
+      // Récupérer n'importe quelle promotion active dans cette formation pour les groupes
+      const { data: promotions } = await supabase
+        .from('promotions')
+        .select('id')
+        .eq('formation_id', formationId)
+        .eq('is_active', true)
+        .limit(1);
+
+      let promotionId = null;
+      if (promotions && promotions.length > 0) {
+        promotionId = promotions[0].id;
+      }
+
+      // Envoyer le message de groupe avec le promotion_id récupéré
       const { error } = await supabase
         .from('lesson_messages')
         .insert({
@@ -47,7 +71,7 @@ export const useSendGroupMessage = () => {
           file_url: fileUrl,
           file_type: fileType,
           file_name: fileName,
-          promotion_id: levelId, // Utiliser levelId comme promotion_id pour les groupes
+          promotion_id: promotionId, // Utiliser un vrai promotion_id
           is_system_message: false,
           is_exercise_submission: false
         });

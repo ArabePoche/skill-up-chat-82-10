@@ -1,10 +1,12 @@
 /**
  * Chat de groupe pour les professeurs - Vue niveau avec tous les étudiants
  */
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import MessageItem from '../chat/MessageItem';
 import TypingIndicator from '../chat/TypingIndicator';
 import ChatInputBar from '../chat/ChatInputBar';
+import TeacherChatHeader from '../teacher/TeacherChatHeader';
+import TeachingStudio from '../live-classroom/TeachingStudio';
 import { ArrowLeft, Users, User } from 'lucide-react';
 import { useTeacherGroupMessages } from '@/hooks/teacher-discussions/useTeacherGroupMessages';
 import { useSendGroupMessage } from '@/hooks/useSendGroupMessage';
@@ -36,6 +38,7 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const [showStudio, setShowStudio] = useState(false);
 
   // Hooks pour la gestion des messages de groupe
   const { data: messages = [], isLoading } = useTeacherGroupMessages(
@@ -76,28 +79,47 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
     );
   }
 
+  // Afficher le studio si demandé
+  if (showStudio) {
+    return (
+      <TeachingStudio
+        formationId={formation.id}
+        lessonId="" // Pas de leçon spécifique pour les groupes
+        lesson={{ id: "", title: level.title }}
+        onClose={() => setShowStudio(false)}
+      />
+    );
+  }
+
+  // Créer un objet student fictif pour TeacherChatHeader (pour compatibilité)
+  const groupStudent = {
+    id: level.id,
+    user_id: level.id,
+    profiles: {
+      id: level.id,
+      first_name: level.title,
+      last_name: "Groupe",
+      username: level.title,
+      avatar_url: null
+    }
+  };
+
+  const groupLesson = {
+    id: level.id,
+    title: `Discussion de groupe - ${level.title}`
+  };
+
   return (
     <div className="min-h-screen bg-[#e5ddd5] flex flex-col">
-      {/* Header - Style WhatsApp pour groupe */}
-      <div className="bg-[#25d366] text-white sticky top-0 z-40">
-        <div className="flex items-center p-4">
-          <button
-            onClick={onBack}
-            className="mr-3 p-2 hover:bg-white/10 rounded-full transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
-            <Users size={20} />
-          </div>
-          <div className="flex-1">
-            <h1 className="font-semibold text-lg">{level.title}</h1>
-            <p className="text-sm text-white/80">
-              Discussion de groupe • {formation.title}
-            </p>
-          </div>
-        </div>
-      </div>
+      <TeacherChatHeader
+        formation={formation}
+        student={groupStudent}
+        lesson={groupLesson}
+        isSubscribed={isSubscribed}
+        typingUsersCount={typingUsers.length}
+        onBack={onBack}
+        onOpenStudio={() => setShowStudio(true)}
+      />
 
       {/* Zone messages */}
       <div className="flex-1 flex flex-col pb-24 md:pb-4">

@@ -67,7 +67,8 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           sender_profile:profiles!sender_id (
             first_name,
             last_name,
-            username
+            username,
+            avatar_url
           )
         `)
         .eq('formation_id', formationId)
