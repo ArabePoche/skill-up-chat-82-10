@@ -78,7 +78,7 @@ export const useSubmitExercise = () => {
       }
 
       // Récupérer la promotion de l'utilisateur pour cette formation
-      const { data: studentPromotion } = await supabase
+      const { data: studentPromotion, error: promotionError } = await supabase
         .from('student_promotions')
         .select(`
           promotion_id,
@@ -91,6 +91,10 @@ export const useSubmitExercise = () => {
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
+
+      if (promotionError) {
+        console.error('Error fetching student promotion:', promotionError);
+      }
 
       // Récupérer le level_id de la leçon
       const { data: lessonData } = await supabase

@@ -34,6 +34,7 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
       }
 
       // Récupérer TOUS les messages de groupe pour ce niveau (toutes promotions confondues)
+      // EXCLURE les messages système pour les professeurs
       const { data: messages, error } = await supabase
         .from('lesson_messages')
         .select(`
@@ -52,15 +53,17 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           exercise_id,
           exercise_status,
           is_exercise_submission,
-          sender_profile:profiles!sender_id (
+          profiles!sender_id (
             first_name,
             last_name,
             username,
-            avatar_url
+            avatar_url,
+            is_teacher
           )
         `)
         .eq('formation_id', formationId)
         .eq('level_id', levelId) // Filtrer par level_id pour avoir tous les messages du niveau
+        .eq('is_system_message', false) // Exclure les messages système pour les profs
         .order('created_at', { ascending: true });
 
       if (error) {
