@@ -857,6 +857,7 @@ export type Database = {
           is_read: boolean | null
           is_system_message: boolean | null
           lesson_id: string
+          level_id: string | null
           message_type: string
           promotion_id: string | null
           read_by_teachers: string | null
@@ -879,6 +880,7 @@ export type Database = {
           is_read?: boolean | null
           is_system_message?: boolean | null
           lesson_id: string
+          level_id?: string | null
           message_type?: string
           promotion_id?: string | null
           read_by_teachers?: string | null
@@ -901,6 +903,7 @@ export type Database = {
           is_read?: boolean | null
           is_system_message?: boolean | null
           lesson_id?: string
+          level_id?: string | null
           message_type?: string
           promotion_id?: string | null
           read_by_teachers?: string | null
@@ -932,6 +935,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lesson_messages_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lesson_messages_promotion_id_fkey"
             columns: ["promotion_id"]
             isOneToOne: false
@@ -955,6 +965,119 @@ export type Database = {
           {
             foreignKeyName: "lesson_messages_sender_id_fkey"
             columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_video_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          lesson_id: string
+          likes_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          lesson_id: string
+          likes_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          likes_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_video_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_video_likes: {
+        Row: {
+          created_at: string
+          id: string
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_video_likes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_video_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_video_views: {
+        Row: {
+          id: string
+          lesson_id: string
+          user_id: string
+          viewed_at: string
+          watch_duration_seconds: number | null
+        }
+        Insert: {
+          id?: string
+          lesson_id: string
+          user_id: string
+          viewed_at?: string
+          watch_duration_seconds?: number | null
+        }
+        Update: {
+          id?: string
+          lesson_id?: string
+          user_id?: string
+          viewed_at?: string
+          watch_duration_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_video_views_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_video_views_user_id_fkey1"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

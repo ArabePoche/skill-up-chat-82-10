@@ -59,7 +59,7 @@ export const useSendGroupMessage = () => {
         promotionId = promotions[0].id;
       }
 
-      // Envoyer le message de groupe avec le promotion_id récupéré
+      // Envoyer le message de groupe avec le promotion_id récupéré et level_id
       const { error } = await supabase
         .from('lesson_messages')
         .insert({
@@ -72,6 +72,7 @@ export const useSendGroupMessage = () => {
           file_type: fileType,
           file_name: fileName,
           promotion_id: promotionId, // Utiliser un vrai promotion_id
+          level_id: levelId, // Ajouter le level_id directement
           is_system_message: false,
           is_exercise_submission: false
         });

@@ -86,6 +86,13 @@ export const useSubmitExercise = () => {
         .limit(1)
         .maybeSingle();
 
+      // Récupérer le level_id de la leçon
+      const { data: lessonData } = await supabase
+        .from('lessons')
+        .select('level_id')
+        .eq('id', lessonId)
+        .single();
+
       // Insérer la soumission d'exercice dans lesson_messages
       const { data, error } = await supabase
         .from('lesson_messages')
@@ -101,7 +108,8 @@ export const useSubmitExercise = () => {
           is_exercise_submission: true,
           exercise_status: null,
           exercise_id: exerciseId,
-          promotion_id: studentPromotion?.promotion_id
+          promotion_id: studentPromotion?.promotion_id,
+          level_id: lessonData?.level_id
         })
         .select()
         .single();
@@ -111,18 +119,7 @@ export const useSubmitExercise = () => {
         throw error;
       }
 
-      // Mettre à jour le statut de la leçon à 'in_progress'
-      // Récupérer le level_id de la leçon
-      const { data: lessonData, error: lessonError } = await supabase
-        .from('lessons')
-        .select('level_id')
-        .eq('id', lessonId)
-        .single();
-
-      if (lessonError) {
-        console.error('Error fetching lesson level_id:', lessonError);
-      }
-
+      // Mettre à jour le statut de la leçon à 'in_progress' en utilisant le level_id déjà récupéré
       const { error: progressError } = await supabase
         .from('user_lesson_progress')
         .upsert({

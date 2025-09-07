@@ -33,29 +33,7 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
         return [];
       }
 
-      // Récupérer toutes les leçons de ce niveau
-      const { data: lessons } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('level_id', levelId);
-
-      if (!lessons || lessons.length === 0) {
-        console.log('No lessons found for level:', levelId);
-        return [];
-      }
-
-      const lessonIds = lessons.map(l => l.id);
-
-      // Récupérer toutes les promotions actives de cette formation
-      const { data: promotions } = await supabase
-        .from('promotions')
-        .select('id')
-        .eq('formation_id', formationId)
-        .eq('is_active', true);
-
-      const promotionIds = promotions?.map(p => p.id) || [];
-
-      // Récupérer tous les messages de groupe pour ce niveau
+      // Récupérer tous les messages de groupe pour ce niveau en utilisant level_id directement
       const { data: messages, error } = await supabase
         .from('lesson_messages')
         .select(`
@@ -69,6 +47,7 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           sender_id,
           receiver_id,
           promotion_id,
+          level_id,
           is_system_message,
           exercise_id,
           exercise_status,
@@ -81,8 +60,8 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           )
         `)
         .eq('formation_id', formationId)
-        .in('lesson_id', lessonIds)
-        .in('promotion_id', promotionIds) // Messages de toutes les promotions actives
+        .eq('level_id', levelId) // Filtrer directement par level_id
+        .not('promotion_id', 'is', null) // Messages de groupe uniquement (avec promotion_id)
         .order('created_at', { ascending: true });
 
       if (error) {
