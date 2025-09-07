@@ -80,8 +80,14 @@ export const useSubmitExercise = () => {
       // Récupérer la promotion de l'utilisateur pour cette formation
       const { data: studentPromotion } = await supabase
         .from('student_promotions')
-        .select('promotion_id')
+        .select(`
+          promotion_id,
+          promotions!inner (
+            formation_id
+          )
+        `)
         .eq('student_id', user.id)
+        .eq('promotions.formation_id', formationId)
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();

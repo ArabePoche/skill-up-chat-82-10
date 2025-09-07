@@ -33,7 +33,7 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
         return [];
       }
 
-      // Récupérer tous les messages de groupe pour ce niveau en utilisant level_id directement
+      // Récupérer TOUS les messages de groupe pour ce niveau (toutes promotions confondues)
       const { data: messages, error } = await supabase
         .from('lesson_messages')
         .select(`
@@ -60,8 +60,7 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           )
         `)
         .eq('formation_id', formationId)
-        .eq('level_id', levelId) // Filtrer directement par level_id
-        .not('promotion_id', 'is', null) // Messages de groupe uniquement (avec promotion_id)
+        .eq('level_id', levelId) // Filtrer par level_id pour avoir tous les messages du niveau
         .order('created_at', { ascending: true });
 
       if (error) {
