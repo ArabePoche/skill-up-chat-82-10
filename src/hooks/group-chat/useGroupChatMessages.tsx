@@ -295,9 +295,14 @@ export const useGroupChatMessages = (
         });
       });
 
-
-      // 10. Trier par date de création
-      const sortedItems = combinedItems.sort((a, b) => 
+      // 10. Déduplication par ID pour éviter les doublons
+      const uniqueItemsMap = new Map<string, GroupMessage>();
+      combinedItems.forEach(item => {
+        uniqueItemsMap.set(item.id, item);
+      });
+      
+      // 11. Trier par date de création
+      const sortedItems = Array.from(uniqueItemsMap.values()).sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
 
