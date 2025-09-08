@@ -36,8 +36,8 @@ export const getCurrentUserProgress = async (userId: string, formationId: string
     .eq('user_id', userId)
     .eq('lessons.levels.formation_id', formationId)
     .in('status', ['not_started', 'in_progress', 'awaiting_review', 'completed'])
-    .order('lessons.levels.order_index', { ascending: false })
-    .order('lessons.order_index', { ascending: false })
+    .order('lessons!inner.levels!inner.order_index', { ascending: false })
+    .order('lessons!inner.order_index', { ascending: false })
     .limit(1);
 
   if (error) {
