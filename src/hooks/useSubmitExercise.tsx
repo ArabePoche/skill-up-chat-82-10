@@ -60,21 +60,45 @@ export const useSubmitExercise = () => {
 
       console.log('Submitting exercise via lesson_messages:', { lessonId, formationId, exerciseId, content });
 
-      // Vérifier que la leçon existe et que l'utilisateur y a accès
-      const { data: lessonExists, error: lessonCheckError } = await supabase
-        .from('user_lesson_progress')
-        .select('lesson_id')
+      // Vérifier que l'utilisateur est inscrit à la formation
+      const { data: enrollmentCheck, error: enrollmentError } = await supabase
+        .from('enrollment_requests')
+        .select('id')
         .eq('user_id', user.id)
-        .eq('lesson_id', lessonId)
+        .eq('formation_id', formationId)
+        .eq('status', 'approved')
         .maybeSingle();
 
-      if (lessonCheckError) {
-        console.error('Error checking lesson access:', lessonCheckError);
-        throw new Error('Erreur lors de la vérification de l\'accès à la leçon');
+      if (enrollmentError) {
+        console.error('Error checking enrollment:', enrollmentError);
+        throw new Error('Erreur lors de la vérification de l\'inscription à la formation');
       }
 
-      if (!lessonExists) {
-        throw new Error('Vous n\'avez pas accès à cette leçon ou elle n\'existe pas');
+      if (!enrollmentCheck) {
+        throw new Error('Vous n\'êtes pas inscrit à cette formation');
+      }
+
+      // Vérifier que la leçon existe et appartient à cette formation
+      const { data: lessonCheck, error: lessonError } = await supabase
+        .from('lessons')
+        .select(`
+          id,
+          level_id,
+          levels!inner (
+            formation_id
+          )
+        `)
+        .eq('id', lessonId)
+        .eq('levels.formation_id', formationId)
+        .maybeSingle();
+
+      if (lessonError) {
+        console.error('Error checking lesson:', lessonError);
+        throw new Error('Erreur lors de la vérification de la leçon');
+      }
+
+      if (!lessonCheck) {
+        throw new Error('Cette leçon n\'existe pas dans cette formation');
       }
 
       // Récupérer la promotion de l'utilisateur pour cette formation
@@ -96,12 +120,6 @@ export const useSubmitExercise = () => {
         console.error('Error fetching student promotion:', promotionError);
       }
 
-      // Récupérer le level_id de la leçon
-      const { data: lessonData } = await supabase
-        .from('lessons')
-        .select('level_id')
-        .eq('id', lessonId)
-        .single();
 
       // Insérer la soumission d'exercice dans lesson_messages
       const { data, error } = await supabase
@@ -119,7 +137,7 @@ export const useSubmitExercise = () => {
           exercise_status: null,
           exercise_id: exerciseId,
           promotion_id: studentPromotion?.promotion_id,
-          level_id: lessonData?.level_id
+          level_id: lessonCheck?.level_id
         })
         .select()
         .single();
@@ -135,7 +153,7 @@ export const useSubmitExercise = () => {
         .upsert({
           user_id: user.id,
           lesson_id: lessonId,
-          level_id: lessonData?.level_id,
+          level_id: lessonCheck?.level_id,
           status: 'in_progress',
           exercise_completed: false,
           create_at: new Date().toISOString()
