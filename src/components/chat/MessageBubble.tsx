@@ -31,6 +31,8 @@ interface Message {
   created_at: string;
   lesson_id?: string;
   formation_id?: string;
+  exercise_id?: string;
+  level_id?: string; // Pour détecter le chat de groupe
   replied_to_message_id?: string;
   updated_at?: string;
   replied_to_message?: {
