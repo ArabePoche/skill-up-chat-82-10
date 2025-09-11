@@ -285,13 +285,13 @@ export const useGroupChatMessages = (
         }
       });
 
-      // Ajouter les exercices du currentUser (soumissions)
+      // Ajouter les exercices du currentUser (soumissions) - comme des messages normaux
       (userExercises || []).forEach(exercise => {
         combinedItems.push({
           ...exercise,
-          item_type: 'exercise' as const,
-          formation_id: formationId,
-          content: exercise.exercises?.title || exercise.content
+          item_type: 'message' as const,
+          formation_id: formationId
+          // On conserve le content et file_* originaux de la soumission
         });
       });
 

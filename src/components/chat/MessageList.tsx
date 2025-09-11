@@ -155,8 +155,8 @@ const MessageList: React.FC<MessageListProps> = ({
           );
         }
 
-        // Messages système
-        if (message.is_system_message) {
+        // Messages système (exercices envoyés par le système aux élèves)
+        if (message.is_system_message && message.exercise_id) {
           return (
             <SystemMessage
               key={message.id}
@@ -172,8 +172,8 @@ const MessageList: React.FC<MessageListProps> = ({
         }
 
 
-        // Exercices autonomes (pour le groupe chat)
-        if (message.item_type === 'exercise' && message.exercise_id) {
+        // Exercices autonomes (pour le groupe chat) - seulement les exercices système
+        if (message.item_type === 'exercise' && message.exercise_id && message.is_system_message) {
           // Dans le groupe chat, l'exercice est dans message.exercises
           const exercise = (message as any).exercises || exercises.find(ex => ex.id === message.exercise_id);
           if (exercise) {
