@@ -1,4 +1,4 @@
-
+/**
  * Composant de soumission d'exercice spécifique au chat de groupe
  * Utilise useSubmitGroupExercise pour la logique adaptée au niveau
  */
