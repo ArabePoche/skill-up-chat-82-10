@@ -373,7 +373,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
             <div className="flex-1 min-w-0">
               <h1 className="font-semibold text-sm sm:text-base md:text-lg truncate">Niveau: {level.title}</h1>
               <p className="text-xs sm:text-sm text-white/80 truncate">
-                Formation: {formation.title} • Chat de groupe
+                Formation: {formation.title} 
               </p>
             </div>
           </div>

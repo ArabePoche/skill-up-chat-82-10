@@ -13,6 +13,8 @@ interface SystemMessageProps {
   lessonId: string;
   formationId: string;
   isTeacherView?: boolean;
+  isGroupChat?: boolean;
+  levelId?: string;
 }
 
 const SystemMessage: React.FC<SystemMessageProps> = ({
@@ -20,7 +22,9 @@ const SystemMessage: React.FC<SystemMessageProps> = ({
   exercise,
   lessonId,
   formationId,
-  isTeacherView = false
+  isTeacherView = false,
+  isGroupChat = false,
+  levelId
 }) => {
   return (
     <div className="space-y-3">
@@ -39,6 +43,8 @@ const SystemMessage: React.FC<SystemMessageProps> = ({
           formationId={formationId}
           isTeacherView={isTeacherView}
           showSubmissionOptions={!isTeacherView}
+          isGroupChat={isGroupChat}
+          levelId={levelId}
         />
       )}
     </div>

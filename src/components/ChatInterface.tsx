@@ -313,7 +313,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 
       {/* Section vidéo avec timer intégré - responsive */}
       {lesson.video_url && (
-        <div ref={videoRef} className="bg-black">
+        <div ref={videoRef} className="bg-black mt-[60px]">
           <LessonVideoPlayerWithTimer
             src={lesson.video_url}
             formationId={formation.id}

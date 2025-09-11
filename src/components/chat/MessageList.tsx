@@ -25,6 +25,7 @@ interface Message {
   exercise_id?: string;
   exercise_status?: string;
   is_exercise_submission?: boolean;
+  level_id?: string; // Pour identifier les messages du chat de groupe
   replied_to_message_id?: string;
   replied_to_message?: {
     id: string;
@@ -164,6 +165,8 @@ const MessageList: React.FC<MessageListProps> = ({
               lessonId={lessonId}
               formationId={formationId}
               isTeacherView={isTeacherView}
+              isGroupChat={!!message.level_id} // Si level_id est présent, c'est un chat de groupe
+              levelId={message.level_id || lessonId}
             />
           );
         }
@@ -188,6 +191,8 @@ const MessageList: React.FC<MessageListProps> = ({
                   formationId={formationId}
                   isTeacherView={isTeacherView}
                   showSubmissionOptions={!isTeacherView}
+                  isGroupChat={true}
+                  levelId={lessonId} // Dans le contexte groupe, lessonId correspond au levelId
                 />
               </div>
             );

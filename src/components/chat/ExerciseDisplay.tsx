@@ -3,6 +3,7 @@ import React from 'react';
 import { BookOpen, File, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ExerciseSubmission from './ExerciseSubmission';
+import GroupExerciseSubmission from '../group-chat/GroupExerciseSubmission';
 import { useExerciseWithFiles } from '@/hooks/useExerciseWithFiles';
 
 interface Exercise {
@@ -19,6 +20,8 @@ interface ExerciseDisplayProps {
   isSubmitted?: boolean;
   showSubmissionOptions?: boolean;
   isTeacherView?: boolean;
+  isGroupChat?: boolean; // Nouvelle prop pour identifier le type de chat
+  levelId?: string; // Pour le chat de groupe
 }
 
 const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
@@ -27,7 +30,9 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
   formationId,
   isSubmitted = false,
   showSubmissionOptions = true,
-  isTeacherView = false
+  isTeacherView = false,
+  isGroupChat = false,
+  levelId
 }) => {
   const { data: exerciseWithFiles } = useExerciseWithFiles(exercise.id);
 
@@ -102,6 +107,19 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
     ...exercise,
     files: exerciseWithFiles.files
   } : exercise;
+
+  // Utiliser le bon composant selon le type de chat
+  if (isGroupChat && levelId) {
+    return (
+      <GroupExerciseSubmission
+        exercise={enhancedExercise}
+        formationId={formationId}
+        levelId={levelId}
+        isSubmitted={isSubmitted}
+        showSubmissionOptions={showSubmissionOptions}
+      />
+    );
+  }
 
   return (
     <ExerciseSubmission
