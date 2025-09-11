@@ -360,4 +360,7 @@ async function handleLevelCompletion(
         message: `Félicitations ! Vous avez débloqué le niveau "${nextLevel.title}". Vous pouvez maintenant accéder au chat de groupe de ce niveau.`,
         type: 'success',
         formation_id: formationId
+        
       });
+  }
+}
