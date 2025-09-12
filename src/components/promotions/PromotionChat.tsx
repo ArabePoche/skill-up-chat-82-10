@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePromotionMessages } from '@/hooks/lesson-messages/usePromotionMessages';
-import { useSendPromotionMessage } from '@/hooks/useSendPromotionMessage';
+import { useSendPromotionMessage } from '@/hooks/group-chat/useSendPromotionMessage';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useAuth } from '@/hooks/useAuth';
 import ExerciseDisplay from '@/components/chat/ExerciseDisplay';
@@ -50,6 +50,7 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
         content: message.trim(),
         isExerciseSubmission: !!selectedExercise,
         exerciseId: selectedExercise || undefined,
+        promotionId,
       });
 
       setMessage('');
@@ -76,6 +77,7 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
         fileName,
         isExerciseSubmission: !!selectedExercise,
         exerciseId: selectedExercise || undefined,
+        promotionId,
       });
 
       setSelectedExercise(null);

@@ -17,8 +17,8 @@ import { useLevelExercises } from '@/hooks/group-chat/useLevelExercises';
 
 // Hooks spécifiques au chat de groupe
 import { useChatMode } from '@/hooks/chat/useChatMode';
-import { useGroupChatMessages } from '@/hooks/group-chat/useGroupChatMessages';
-import { useGroupChatOperations } from '@/hooks/group-chat/useGroupChatOperations';
+import { usePromotionMessages } from '@/hooks/lesson-messages/usePromotionMessages';
+import { useSendPromotionMessage } from '@/hooks/group-chat/useSendPromotionMessage';
 import { useProgressionLogic } from '@/hooks/group-chat/useProgressionLogic';
 
 // Réutilisation des composants existants de ChatInterface
@@ -86,10 +86,11 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   }, [mode, chatModeLoading]);
   
   // Récupération des messages avec logique de groupe
-  const { data: messages = [], isLoading } = useGroupChatMessages(
+  const { data: messages = [], isLoading } = usePromotionMessages(
     level.id.toString(),
     formation.id,
-    promotionId || ''
+    promotionId || '',
+    'level'
   );
   
   // Récupérer les exercices du niveau avec le hook spécialisé
@@ -101,7 +102,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const { data: userRole } = useUserRole(formation.id);
   
   // Opérations de chat de groupe
-  const { sendMessage } = useGroupChatOperations(formation.id, promotionId || '');
+  const sendMessage = useSendPromotionMessage(formation.id);
   const { uploadFile } = useFileUpload();
   
   // Logique de progression séquentielle
@@ -165,6 +166,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         fileType,
         fileName,
         isExerciseSubmission: messageType === 'file' || messageType === 'image',
+        promotionId: promotionId || '',
         repliedToMessageId
       });
     } catch (error) {

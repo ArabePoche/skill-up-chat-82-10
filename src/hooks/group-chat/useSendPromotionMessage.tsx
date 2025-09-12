@@ -5,8 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 /**
- * Hook pour envoyer des messages dans le contexte de groupe/promotion
- * Intègre la logique de progression automatique des leçons/exercices
+ * Hook unifié pour envoyer des messages dans le contexte de groupe/promotion
+ * Supporte les messages normaux, soumissions d'exercices et messages de niveau
  */
 export const useSendPromotionMessage = (formationId: string) => {
   const queryClient = useQueryClient();
@@ -15,6 +15,7 @@ export const useSendPromotionMessage = (formationId: string) => {
   return useMutation({
     mutationFn: async ({ 
       lessonId, 
+      levelId,
       content, 
       messageType = 'text',
       fileUrl,
@@ -22,9 +23,12 @@ export const useSendPromotionMessage = (formationId: string) => {
       fileName,
       isExerciseSubmission = false,
       exerciseId,
-      promotionId
+      promotionId,
+      receiverId,
+      repliedToMessageId
     }: {
-      lessonId: string;
+      lessonId?: string;
+      levelId?: string;
       content: string;
       messageType?: string;
       fileUrl?: string;
@@ -33,13 +37,40 @@ export const useSendPromotionMessage = (formationId: string) => {
       isExerciseSubmission?: boolean;
       exerciseId?: string;
       promotionId?: string;
+      receiverId?: string;
+      repliedToMessageId?: string;
     }) => {
       if (!user?.id) {
         throw new Error('Utilisateur non authentifié');
       }
 
-      console.log('Sending promotion message:', { 
-        lessonId, 
+      let finalLessonId = lessonId;
+
+      // Si levelId est fourni mais pas lessonId, récupérer la première leçon du niveau
+      if (levelId && !lessonId) {
+        const { data: firstLesson, error: lessonError } = await supabase
+          .from('lessons')
+          .select('id')
+          .eq('level_id', levelId)
+          .order('order_index', { ascending: true })
+          .limit(1)
+          .single();
+
+        if (lessonError || !firstLesson) {
+          console.error('Error fetching first lesson:', lessonError);
+          throw new Error('Could not find lesson for this level');
+        }
+
+        finalLessonId = firstLesson.id;
+      }
+
+      if (!finalLessonId) {
+        throw new Error('Lesson ID is required');
+      }
+
+      console.log('📤 Sending promotion message:', { 
+        lessonId: finalLessonId,
+        levelId,
         formationId, 
         isExerciseSubmission, 
         exerciseId,
@@ -50,10 +81,11 @@ export const useSendPromotionMessage = (formationId: string) => {
       const { data, error } = await supabase
         .from('lesson_messages')
         .insert({
-          lesson_id: lessonId,
+          lesson_id: finalLessonId,
           formation_id: formationId,
           promotion_id: promotionId,
           sender_id: user.id,
+          receiver_id: receiverId,
           content,
           message_type: messageType,
           file_url: fileUrl,
@@ -61,7 +93,8 @@ export const useSendPromotionMessage = (formationId: string) => {
           file_name: fileName,
           is_exercise_submission: isExerciseSubmission,
           exercise_id: exerciseId,
-          exercise_status: isExerciseSubmission ? null : undefined
+          replied_to_message_id: repliedToMessageId,
+          is_system_message: false
         })
         .select()
         .single();
@@ -77,7 +110,7 @@ export const useSendPromotionMessage = (formationId: string) => {
           .from('user_lesson_progress')
           .upsert({
             user_id: user.id,
-            lesson_id: lessonId,
+            lesson_id: finalLessonId,
             status: 'in_progress',
             exercise_completed: false
           });
@@ -87,13 +120,16 @@ export const useSendPromotionMessage = (formationId: string) => {
         }
       }
       
-      console.log('Promotion message sent:', data);
+      console.log('✅ Promotion message sent successfully:', data);
       return data;
     },
     onSuccess: (data) => {
       // Invalider les requêtes pour actualiser les messages et la progression
       queryClient.invalidateQueries({ 
-        queryKey: ['promotion-messages', data.lesson_id, data.formation_id] 
+        queryKey: ['promotion-messages'] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['group-chat-messages'] 
       });
       queryClient.invalidateQueries({ 
         queryKey: ['group-progression'] 
@@ -104,6 +140,8 @@ export const useSendPromotionMessage = (formationId: string) => {
       
       if (data.is_exercise_submission) {
         toast.success('Exercice soumis avec succès !');
+      } else {
+        toast.success('Message envoyé');
       }
     },
     onError: (error) => {
