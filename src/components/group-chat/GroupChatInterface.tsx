@@ -20,6 +20,7 @@ import { useChatMode } from '@/hooks/chat/useChatMode';
 import { usePromotionMessages } from '@/hooks/lesson-messages/usePromotionMessages';
 import { useSendPromotionMessage } from '@/hooks/group-chat/useSendPromotionMessage';
 import { useProgressionLogic } from '@/hooks/group-chat/useProgressionLogic';
+import { useGroupLessonId } from '@/hooks/group-chat/useGroupLessonId';
 
 // Réutilisation des composants existants de ChatInterface
 import ChatInputBar from '../chat/ChatInputBar';
@@ -101,6 +102,15 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   
   const { data: userRole } = useUserRole(formation.id);
   
+  // Déterminer le bon lessonId pour le chat de groupe
+  const { data: groupLessonId, isLoading: isLoadingLessonId } = useGroupLessonId(level.id.toString(), formation.id);
+  
+  console.log('🔍 GroupChatInterface: Group lesson ID determined:', { 
+    levelId: level.id, 
+    groupLessonId, 
+    isLoadingLessonId 
+  });
+  
   // Opérations de chat de groupe
   const sendMessage = useSendPromotionMessage(formation.id);
   const { uploadFile } = useFileUpload();
@@ -158,8 +168,16 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         fileName = uploadResult.fileName;
       }
 
+      console.log('📤 Sending group message with data:', { content, messageType, fileUrl, fileType, fileName, groupLessonId });
+
+      if (!groupLessonId) {
+        console.error('❌ GroupChatInterface: No lesson ID available for sending message');
+        toast.error('Impossible d\'envoyer le message : leçon non déterminée');
+        return;
+      }
+
       await sendMessage.mutateAsync({
-        levelId: level.id.toString(),
+        lessonId: groupLessonId, // Utiliser le lessonId déterminé par useGroupLessonId
         content,
         messageType,
         fileUrl,
@@ -168,6 +186,13 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         isExerciseSubmission: messageType === 'file' || messageType === 'image',
         promotionId: promotionId || '',
         repliedToMessageId
+      });
+      
+      console.log('✅ GroupChatInterface: Message sent successfully with lessonId:', {
+        lessonId: groupLessonId,
+        levelId: level.id.toString(),
+        promotionId: promotionId || '',
+        content: content.substring(0, 50) + '...'
       });
     } catch (error) {
       console.error('Error sending group message:', error);
