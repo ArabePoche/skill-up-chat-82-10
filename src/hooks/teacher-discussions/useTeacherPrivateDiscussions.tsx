@@ -69,7 +69,7 @@ export const useTeacherPrivateDiscussions = (formationId: string) => {
 
       const studentIds = enrolledStudents.map(e => e.user_id);
 
-      // Récupérer les discussions PRIVÉES (receiver_id IS NOT NULL et pas les groupes)
+      // Récupérer les discussions PRIVÉES (exclure les messages de groupe par promotion)
       const { data: discussions, error } = await supabase
         .from('lesson_messages')
         .select(`
@@ -78,11 +78,14 @@ export const useTeacherPrivateDiscussions = (formationId: string) => {
           lesson_id,
           created_at,
           content,
-          promotion_id
+          promotion_id,
+          level_id
         `)
         .eq('formation_id', formationId)
-        .not('receiver_id', 'is', null) // Discussions privées doivent avoir un receiver_id
+        .is('promotion_id', null) // Exclure les messages de groupe
+        
         .or(`sender_id.in.(${studentIds.join(',')}),receiver_id.in.(${studentIds.join(',')})`) // Messages impliquant les étudiants
+        .eq('is_system_message', false) // Exclure les messages sytème
         .order('created_at', { ascending: false });
 
       if (error) {
