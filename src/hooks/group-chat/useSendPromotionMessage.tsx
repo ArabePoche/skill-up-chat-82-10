@@ -83,6 +83,7 @@ export const useSendPromotionMessage = (formationId: string) => {
         .insert({
           lesson_id: finalLessonId,
           formation_id: formationId,
+          level_id: levelId,
           promotion_id: promotionId,
           sender_id: user.id,
           receiver_id: receiverId,

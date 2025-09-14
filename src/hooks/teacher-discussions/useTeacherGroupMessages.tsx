@@ -75,6 +75,6 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
       return messages || [];
     },
     enabled: !!formationId && !!levelId && !!user?.id,
-    refetchInterval: 3000, // Actualisation automatique
+    refetchInterval: 2000, // Actualisation automatique chaque 2 secondes
   });
 };

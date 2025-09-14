@@ -178,6 +178,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
 
       await sendMessage.mutateAsync({
         lessonId: groupLessonId, // Utiliser le lessonId déterminé par useGroupLessonId
+        levelId: level.id.toString(),
         content,
         messageType,
         fileUrl,
