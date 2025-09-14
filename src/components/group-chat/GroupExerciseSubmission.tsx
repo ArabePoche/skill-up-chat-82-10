@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSubmitGroupExercise } from '@/hooks/group-chat/useSubmitGroupExercise';
+import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseCard from '../chat/ExerciseCard';
 import SubmissionForm from '../chat/SubmissionForm';
 import SubmittedExercise from '../chat/SubmittedExercise';
@@ -21,6 +22,7 @@ interface GroupExerciseSubmissionProps {
   isSubmitted?: boolean;
   onSubmissionComplete?: () => void;
   showSubmissionOptions?: boolean;
+  canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
 }
 
 const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({ 
@@ -29,10 +31,15 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
   levelId,
   isSubmitted = false,
   onSubmissionComplete,
-  showSubmissionOptions = true
+  showSubmissionOptions = true,
+  canSubmitExercise
 }) => {
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const submitExerciseMutation = useSubmitGroupExercise();
+  
+  // Utiliser le contrôle d'accès si canSubmitExercise n'est pas fourni
+  const { canSubmitExercise: globalCanSubmit } = useAccessControl(formationId);
+  const canSubmit = canSubmitExercise !== undefined ? canSubmitExercise : globalCanSubmit;
 
   const handleSubmit = async (submissionText: string, selectedFile?: File) => {
     if (!submissionText.trim() && !selectedFile) return;
@@ -68,13 +75,14 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
     <ExerciseCard 
       exercise={exercise}
     >
-      {!showSubmissionForm && (
+      {!showSubmissionForm && showSubmissionOptions && (
         <Button
           onClick={() => setShowSubmissionForm(true)}
           size="sm"
           className="bg-blue-500 hover:bg-blue-600"
+          disabled={!canSubmit}
         >
-          Rendre l'exercice
+          {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
         </Button>
       )}
 

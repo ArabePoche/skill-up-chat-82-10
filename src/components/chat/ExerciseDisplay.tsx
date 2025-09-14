@@ -22,6 +22,7 @@ interface ExerciseDisplayProps {
   isTeacherView?: boolean;
   isGroupChat?: boolean; // Nouvelle prop pour identifier le type de chat
   levelId?: string; // Pour le chat de groupe
+  canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
 }
 
 const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
@@ -32,7 +33,8 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
   showSubmissionOptions = true,
   isTeacherView = false,
   isGroupChat = false,
-  levelId
+  levelId,
+  canSubmitExercise
 }) => {
   const { data: exerciseWithFiles } = useExerciseWithFiles(exercise.id);
 
@@ -117,6 +119,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
         levelId={levelId}
         isSubmitted={isSubmitted}
         showSubmissionOptions={showSubmissionOptions}
+        canSubmitExercise={canSubmitExercise}
       />
     );
   }
@@ -128,6 +131,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
       formationId={formationId}
       isSubmitted={isSubmitted}
       showSubmissionOptions={showSubmissionOptions}
+      canSubmitExercise={canSubmitExercise}
     />
   );
 };

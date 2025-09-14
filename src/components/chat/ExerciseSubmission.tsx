@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSubmitExercise } from '@/hooks/useSubmitExercise';
+import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseCard from './ExerciseCard';
 import SubmissionForm from './SubmissionForm';
 import SubmittedExercise from './SubmittedExercise';
@@ -18,6 +19,7 @@ interface ExerciseSubmissionProps {
   isSubmitted?: boolean;
   onSubmissionComplete?: () => void;
   showSubmissionOptions?: boolean;
+  canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
 }
 
 const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({ 
@@ -26,10 +28,15 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
   formationId, 
   isSubmitted = false,
   onSubmissionComplete,
-  showSubmissionOptions = true
+  showSubmissionOptions = true,
+  canSubmitExercise
 }) => {
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const submitExerciseMutation = useSubmitExercise();
+  
+  // Utiliser le contrôle d'accès si canSubmitExercise n'est pas fourni
+  const { canSubmitExercise: globalCanSubmit } = useAccessControl(formationId);
+  const canSubmit = canSubmitExercise !== undefined ? canSubmitExercise : globalCanSubmit;
 
   const handleSubmit = async (submissionText: string, selectedFile?: File) => {
     if (!submissionText.trim() && !selectedFile) return;
@@ -58,13 +65,14 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
     <ExerciseCard 
       exercise={exercise}
     >
-      {!showSubmissionForm && (
+      {!showSubmissionForm && showSubmissionOptions && (
         <Button
           onClick={() => setShowSubmissionForm(true)}
           size="sm"
           className="bg-blue-500 hover:bg-blue-600"
+          disabled={!canSubmit}
         >
-          Rendre l'exercice
+          {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
         </Button>
       )}
 

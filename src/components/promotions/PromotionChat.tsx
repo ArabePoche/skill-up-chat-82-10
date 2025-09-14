@@ -7,9 +7,11 @@ import { usePromotionMessages } from '@/hooks/lesson-messages/usePromotionMessag
 import { useSendPromotionMessage } from '@/hooks/group-chat/useSendPromotionMessage';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useAuth } from '@/hooks/useAuth';
+import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseDisplay from '@/components/chat/ExerciseDisplay';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { toast } from 'sonner';
+import { SubscriptionAlert } from '@/components/chat/SubscriptionAlert';
 
 interface PromotionChatProps {
   lessonId: string;
@@ -29,6 +31,17 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Contrôle d'accès centralisé
+  const { 
+    canSend, 
+    canSubmitExercise, 
+    message: accessMessage, 
+    actionText,
+    variant,
+    daysRemaining,
+    isOutOfDays 
+  } = useAccessControl(formationId);
+  
   const { data: messages = [], isLoading } = usePromotionMessages(lessonId, formationId, promotionId);
   const sendMessage = useSendPromotionMessage(formationId);
   const { uploadFile, isUploading } = useFileUpload();
@@ -44,11 +57,17 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
   const handleSendMessage = async () => {
     if (!message.trim() && !selectedExercise) return;
 
+    // Vérification d'accès déjà faite par le hook useAccessControl
+    if (!canSend) {
+      console.log('Envoi bloqué par le contrôle d\'accès');
+      return;
+    }
+
     try {
       await sendMessage.mutateAsync({
         lessonId,
         content: message.trim(),
-        isExerciseSubmission: !!selectedExercise,
+        isExerciseSubmission: false, // Les fichiers normaux ne sont plus des soumissions d'exercice
         exerciseId: selectedExercise || undefined,
         promotionId,
       });
@@ -65,6 +84,12 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Vérification d'accès déjà faite par le hook useAccessControl
+    if (!canSend) {
+      console.log('Upload bloqué par le contrôle d\'accès');
+      return;
+    }
+
     try {
       const { fileUrl, fileName, fileType } = await uploadFile(file);
       
@@ -75,8 +100,8 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
         fileUrl,
         fileType,
         fileName,
-        isExerciseSubmission: !!selectedExercise,
-        exerciseId: selectedExercise || undefined,
+        isExerciseSubmission: false, // Les fichiers normaux ne sont plus des soumissions d'exercice
+        exerciseId: undefined,
         promotionId,
       });
 
@@ -119,19 +144,42 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
             <h3 className="font-semibold text-foreground">{lessonTitle}</h3>
             <p className="text-sm text-muted-foreground">
               Chat de promotion • {messages.length} messages
+              {daysRemaining !== null && (
+                <span className={`ml-2 ${daysRemaining <= 3 ? 'text-orange-600' : ''}`}>
+                  • {daysRemaining} jour(s) restant(s)
+                </span>
+              )}
             </p>
           </div>
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button size="sm" variant="ghost">
+          <Button 
+            size="sm" 
+            variant="ghost"
+            disabled={!canSend}
+          >
             <Phone className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost">
+          <Button 
+            size="sm" 
+            variant="ghost"
+            disabled={!canSend}
+          >
             <Video className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {/* Alerte de restriction si nécessaire */}
+      {!canSend && accessMessage && (
+        <div className="p-4 border-b">
+          <SubscriptionAlert
+            message={accessMessage}
+            variant={variant}
+          />
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -178,6 +226,7 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
                           lessonId={lessonId}
                           formationId={formationId}
                           isTeacherView={isSystemMessage}
+                          canSubmitExercise={canSubmitExercise}
                         />
                       )}
                       
@@ -245,14 +294,14 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
             id="file-upload"
             className="hidden"
             onChange={handleFileUpload}
-            disabled={isUploading}
+            disabled={isUploading || !canSend}
           />
           
           <Button
             size="sm"
             variant="ghost"
             onClick={() => document.getElementById('file-upload')?.click()}
-            disabled={isUploading}
+            disabled={isUploading || !canSend}
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -260,15 +309,15 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Tapez votre message..."
+            placeholder={canSend ? "Tapez votre message..." : "Envoi désactivé"}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            disabled={sendMessage.isPending}
+            disabled={sendMessage.isPending || !canSend}
             className="flex-1"
           />
           
           <Button
             onClick={handleSendMessage}
-            disabled={(!message.trim() && !selectedExercise) || sendMessage.isPending}
+            disabled={(!message.trim() && !selectedExercise) || sendMessage.isPending || !canSend}
             size="sm"
           >
             <Send className="h-4 w-4" />
