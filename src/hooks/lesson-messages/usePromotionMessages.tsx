@@ -63,9 +63,79 @@ export const usePromotionMessages = (
         mode 
       });
 
-      // 1. Récupérer la progression actuelle de l'utilisateur
-      const currentUserProgress = await getCurrentUserProgress(user.id, formationId);
-      console.log('📊 Current user progress:', currentUserProgress);
+      // 1. Récupérer la dernière leçon atteinte par l'utilisateur
+      const { data: userProgressData, error: progressError } = await supabase
+        .from('user_lesson_progress')
+        .select(`
+          lesson_id,
+          lessons!inner (
+            id,
+            order_index,
+            levels!inner (
+              order_index,
+              formation_id
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('lessons.levels.formation_id', formationId);
+
+      if (progressError) {
+        console.error('❌ Error fetching user progress:', progressError);
+        return [];
+      }
+
+      // Déterminer la dernière leçon atteinte (ordre le plus élevé)
+      let maxReachedLessonOrder = -1;
+      let maxReachedLevelOrder = -1;
+      let userReachedLessonIds = new Set<string>();
+
+      if (userProgressData && userProgressData.length > 0) {
+        userProgressData.forEach(progress => {
+          userReachedLessonIds.add(progress.lesson_id);
+          const levelOrder = progress.lessons.levels.order_index;
+          const lessonOrder = progress.lessons.order_index;
+          
+          if (levelOrder > maxReachedLevelOrder || 
+              (levelOrder === maxReachedLevelOrder && lessonOrder > maxReachedLessonOrder)) {
+            maxReachedLevelOrder = levelOrder;
+            maxReachedLessonOrder = lessonOrder;
+          }
+        });
+      }
+
+      console.log('📊 User progress:', {
+        maxReachedLevelOrder,
+        maxReachedLessonOrder,
+        totalReachedLessons: userReachedLessonIds.size
+      });
+
+      // Récupérer toutes les leçons de la formation avec leurs ordres pour le filtrage
+      const { data: allLessonsData, error: allLessonsError } = await supabase
+        .from('lessons')
+        .select(`
+          id,
+          order_index,
+          levels!inner (
+            order_index,
+            formation_id
+          )
+        `)
+        .eq('levels.formation_id', formationId);
+
+      if (allLessonsError) {
+        console.error('❌ Error fetching lessons:', allLessonsError);
+        return [];
+      }
+
+      // Créer une map des leçons avec leurs ordres
+      const lessonOrderMap = new Map<string, {levelOrder: number, lessonOrder: number}>();
+      allLessonsData?.forEach(lesson => {
+        lessonOrderMap.set(lesson.id, {
+          levelOrder: lesson.levels.order_index,
+          lessonOrder: lesson.order_index
+        });
+      });
 
       let lessonIds: string[] = [];
 
@@ -242,15 +312,24 @@ export const usePromotionMessages = (
         // Messages des professeurs : toujours visibles pour les élèves
         if (message.profiles?.is_teacher) return true;
         
-        // Messages des autres élèves de la même promotion
+        // Messages des autres élèves de la même promotion - FILTRAGE STRICT PAR LESSON_ID
         if (message.promotion_id === promotionId && message.sender_id !== user.id) {
-          const senderProgress = userProgressMap.get(message.sender_id);
+          // Si l'utilisateur n'a atteint aucune leçon, ne pas montrer les messages des camarades
+          if (userReachedLessonIds.size === 0) {
+            return false;
+          }
           
-          if (!senderProgress) return true;
+          // Vérifier si le message provient d'une leçon que l'utilisateur a atteinte
+          if (!message.lesson_id) return false;
           
-          return senderProgress.levelOrder < currentUserProgress.levelOrder || 
-                 (senderProgress.levelOrder === currentUserProgress.levelOrder && 
-                  senderProgress.lessonOrder <= currentUserProgress.lessonOrder);
+          // Récupérer l'ordre de la leçon du message depuis la map
+          const messageLessonOrder = lessonOrderMap.get(message.lesson_id);
+          if (!messageLessonOrder) return false;
+          
+          // L'utilisateur peut voir les messages des leçons qu'il a atteintes ou dépassées
+          return messageLessonOrder.levelOrder < maxReachedLevelOrder || 
+                 (messageLessonOrder.levelOrder === maxReachedLevelOrder && 
+                  messageLessonOrder.lessonOrder <= maxReachedLessonOrder);
         }
         
         return false;
