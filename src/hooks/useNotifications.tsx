@@ -77,10 +77,25 @@ export const useNotifications = () => {
                 .eq('id', notification.formation_id)
                 .single();
 
+              // Récupérer les infos de l'admin qui a approuvé si applicable
+              let adminData = null;
+              if (notification.subscription_approved_by) {
+                const { data: approvedByData, error: approvedByError } = await supabase
+                  .from('profiles')
+                  .select('first_name, last_name')
+                  .eq('id', notification.subscription_approved_by)
+                  .single();
+                
+                if (!approvedByError && approvedByData) {
+                  adminData = approvedByData;
+                }
+              }
+
               return {
                 ...notification,
                 user_info: profileError ? null : profileData,
-                formation_info: formationError ? null : formationData
+                formation_info: formationError ? null : formationData,
+                subscription_approved_by_admin: adminData
               };
             } catch (error) {
               console.error('Error fetching plan change details:', error);
@@ -102,10 +117,33 @@ export const useNotifications = () => {
                 .eq('id', notification.formation_id)
                 .single();
 
+              // Chercher si la demande de paiement a été traitée et par qui
+              let approvedByAdmin = null;
+              if (notification.order_id) {
+                const { data: paymentData, error: paymentError } = await supabase
+                  .from('student_payment')
+                  .select('created_by, status')
+                  .eq('id', notification.order_id)
+                  .single();
+
+                if (!paymentError && paymentData?.created_by && paymentData?.status === 'processed') {
+                  const { data: adminData, error: adminError } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name')
+                    .eq('id', paymentData.created_by)
+                    .single();
+                  
+                  if (!adminError && adminData) {
+                    approvedByAdmin = adminData;
+                  }
+                }
+              }
+
               return {
                 ...notification,
                 user_info: profileError ? null : profileData,
-                formation_info: formationError ? null : formationData
+                formation_info: formationError ? null : formationData,
+                approved_by_admin: approvedByAdmin
               };
             } catch (error) {
               console.error('Error fetching payment request details:', error);

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, CreditCard, CheckCircle, User, BookOpen } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface PaymentRequestNotificationCardProps {
@@ -25,6 +26,10 @@ interface PaymentRequestNotificationCardProps {
     } | null;
     formation_info?: {
       title?: string;
+    } | null;
+    approved_by_admin?: {
+      first_name: string;
+      last_name: string;
     } | null;
   };
 }
@@ -92,6 +97,7 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
           comment: reference || null,
           days_added: daysAdded,
           status: 'processed',
+          created_by: user.id, // Enregistrer l'admin qui a traité la demande
           updated_at: new Date().toISOString(),
         })
         .eq('id', paymentId);
@@ -124,10 +130,17 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
   return (
     <Card className="border-2 border-blue-200 bg-blue-50">
       <CardHeader>
-        <CardTitle className="text-blue-800 text-lg flex items-center gap-2">
-          <CreditCard className="w-5 h-5" />
-          Demande de paiement à traiter
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            Demande de paiement
+          </CardTitle>
+          {notification.approved_by_admin && (
+            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+              Traité par {notification.approved_by_admin.first_name} {notification.approved_by_admin.last_name}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Contexte */}

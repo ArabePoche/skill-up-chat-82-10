@@ -19,6 +19,11 @@ interface PlanChangeNotificationCardProps {
     message: string;
     requested_plan_type: string;
     created_at: string;
+    subscription_approved_by?: string;
+    subscription_approved_by_admin?: {
+      first_name: string;
+      last_name: string;
+    };
     user_info?: {
       first_name: string;
       last_name: string;
@@ -203,9 +208,16 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
             <MessageSquare className="w-5 h-5" />
             Demande de changement de plan
           </CardTitle>
-          <Badge className={getPlanColor(notification.requested_plan_type)}>
-            {getPlanLabel(notification.requested_plan_type)}
-          </Badge>
+          <div className="flex flex-col gap-2 items-end">
+            <Badge className={getPlanColor(notification.requested_plan_type)}>
+              {getPlanLabel(notification.requested_plan_type)}
+            </Badge>
+            {notification.subscription_approved_by && notification.subscription_approved_by_admin && (
+              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                Approuvé par {notification.subscription_approved_by_admin.first_name} {notification.subscription_approved_by_admin.last_name}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -295,59 +307,61 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
           </div>
         )}
 
-        {/* Boutons d'action */}
-        <div className="flex gap-3 pt-4">
-          {!showRejectField ? (
-            <>
-              <Button
-                onClick={() => handlePlanChangeMutation.mutate({ 
-                  action: 'approved', 
-                  planType: selectedPlan,
-                  promotionId: selectedPlan === 'groupe' ? selectedPromotion : undefined
-                })}
-                disabled={handlePlanChangeMutation.isPending || (selectedPlan === 'groupe' && !selectedPromotion)}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Approuver
-              </Button>
-              
-              <Button
-                onClick={() => setShowRejectField(true)}
-                variant="destructive"
-                className="flex-1"
-              >
-                <XCircle className="w-4 h-4 mr-2" />
-                Rejeter
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                onClick={() => handlePlanChangeMutation.mutate({ 
-                  action: 'rejected', 
-                  reason: rejectionReason 
-                })}
-                disabled={handlePlanChangeMutation.isPending}
-                variant="destructive"
-                className="flex-1"
-              >
-                Confirmer le rejet
-              </Button>
-              
-              <Button
-                onClick={() => {
-                  setShowRejectField(false);
-                  setRejectionReason('');
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                Annuler
-              </Button>
-            </>
-          )}
-        </div>
+        {/* Boutons d'action - Masqués si déjà approuvé */}
+        {!notification.subscription_approved_by && (
+          <div className="flex gap-3 pt-4">
+            {!showRejectField ? (
+              <>
+                <Button
+                  onClick={() => handlePlanChangeMutation.mutate({ 
+                    action: 'approved', 
+                    planType: selectedPlan,
+                    promotionId: selectedPlan === 'groupe' ? selectedPromotion : undefined
+                  })}
+                  disabled={handlePlanChangeMutation.isPending || (selectedPlan === 'groupe' && !selectedPromotion)}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Approuver
+                </Button>
+                
+                <Button
+                  onClick={() => setShowRejectField(true)}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Rejeter
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => handlePlanChangeMutation.mutate({ 
+                    action: 'rejected', 
+                    reason: rejectionReason 
+                  })}
+                  disabled={handlePlanChangeMutation.isPending}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  Confirmer le rejet
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    setShowRejectField(false);
+                    setRejectionReason('');
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Annuler
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

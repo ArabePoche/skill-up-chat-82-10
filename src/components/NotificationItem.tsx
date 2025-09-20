@@ -32,6 +32,14 @@ interface NotificationItemProps {
       title: string;
       image_url?: string;
     } | null;
+    approved_by_admin?: {
+      first_name: string;
+      last_name: string;
+    } | null;
+    subscription_approved_by_admin?: {
+      first_name: string;
+      last_name: string;
+    } | null;
   };
 }
 
@@ -80,6 +88,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
       order_id: notification.order_id,
       user_info: notification.user_info,
       formation_info: notification.formation_info,
+      approved_by_admin: notification.approved_by_admin,
     }} />;
   }
 
