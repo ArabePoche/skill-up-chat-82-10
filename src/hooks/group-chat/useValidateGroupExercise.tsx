@@ -340,6 +340,8 @@ async function handleLevelCompletion(
   formationId: string,
   currentLevelId: string
 ) {
+  const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';
+
   // Récupérer le niveau suivant
   const { data: allLevels } = await supabase
     .from('levels')
@@ -351,7 +353,69 @@ async function handleLevelCompletion(
   const nextLevel = allLevels?.find(l => l.order_index > (currentLevel?.order_index || 0));
 
   if (nextLevel) {
-    // Créer notification pour déblocage du niveau suivant
+    // 1. Récupérer la première leçon du niveau suivant
+    const { data: firstLessonNextLevel } = await supabase
+      .from('lessons')
+      .select('id, title')
+      .eq('level_id', nextLevel.id)
+      .order('order_index', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (firstLessonNextLevel) {
+      // 2. Débloquer la première leçon du niveau suivant
+      await supabase
+        .from('user_lesson_progress')
+        .upsert({
+          user_id: studentId,
+          lesson_id: firstLessonNextLevel.id,
+          level_id: nextLevel.id,
+          status: 'not_started',
+          exercise_completed: false,
+          create_at: new Date().toISOString()
+        });
+
+      // 3. Récupérer le premier exercice de cette leçon
+      const { data: firstExercise } = await supabase
+        .from('exercises')
+        .select('id, title, description, content')
+        .eq('lesson_id', firstLessonNextLevel.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+
+      // 4. Message de bienvenue dans la nouvelle leçon du niveau suivant
+      if (firstExercise) {
+        await supabase
+          .from('lesson_messages')
+          .insert({
+            lesson_id: firstLessonNextLevel.id,
+            formation_id: formationId,
+            level_id: nextLevel.id,
+            receiver_id: studentId,
+            sender_id: SYSTEM_USER_ID,
+            content: `🌟 Félicitations ! Vous avez débloqué le niveau "${nextLevel.title}" !\n\n📚 **Première leçon :** ${firstLessonNextLevel.title}\n\nVoici votre premier exercice : **${firstExercise.title}**\n\n${firstExercise.description || ''}\n\n${firstExercise.content || ''}`,
+            message_type: 'system',
+            is_system_message: true,
+            exercise_id: firstExercise.id
+          });
+      } else {
+        await supabase
+          .from('lesson_messages')
+          .insert({
+            lesson_id: firstLessonNextLevel.id,
+            formation_id: formationId,
+            level_id: nextLevel.id,
+            receiver_id: studentId,
+            sender_id: SYSTEM_USER_ID,
+            content: `🌟 Félicitations ! Vous avez débloqué le niveau "${nextLevel.title}" !\n\n📚 **Première leçon :** ${firstLessonNextLevel.title}`,
+            message_type: 'system',
+            is_system_message: true
+          });
+      }
+    }
+
+    // 5. Créer notification pour déblocage du niveau suivant
     await supabase
       .from('notifications')
       .insert({
