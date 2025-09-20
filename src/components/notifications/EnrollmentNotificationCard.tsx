@@ -4,6 +4,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import EnrollmentRequestCard from '@/components/admin/EnrollmentRequestCard';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EnrollmentNotificationCardProps {
   notification: {
@@ -13,6 +15,7 @@ interface EnrollmentNotificationCardProps {
     type: string;
     is_read: boolean;
     created_at: string;
+    formation_id?: string;
     enrollment_id?: string;
     is_for_all_admins: boolean;
     user_info?: {
@@ -23,6 +26,7 @@ interface EnrollmentNotificationCardProps {
       username: string;
       phone?: string;
       avatar_url?: string;
+      country?: string;
     } | null;
     formation_info?: {
       title: string;
@@ -40,11 +44,33 @@ const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({
     return null;
   }
 
+  // Récupère le formation_id si absent (via enrollment_requests)
+  const { data: enrollmentDetails } = useQuery({
+    queryKey: ['enrollment-by-id', notification.enrollment_id],
+    queryFn: async () => {
+      if (!notification.enrollment_id) return null;
+      const { data, error } = await supabase
+        .from('enrollment_requests')
+        .select('formation_id, plan_type')
+        .eq('id', notification.enrollment_id)
+        .single();
+      if (error) {
+        console.error('Error fetching enrollment details:', error);
+        return null;
+      }
+      return data;
+    },
+    enabled: !!notification.enrollment_id,
+  });
+
+  const formationId = notification.formation_id || enrollmentDetails?.formation_id || '';
+
   const enrollmentData = {
     id: notification.enrollment_id!,
     user_id: notification.user_info.id,
-    formation_id: '',
+    formation_id: formationId,
     status: 'pending' as const,
+    plan_type: (enrollmentDetails?.plan_type as 'free' | 'standard' | 'premium' | 'groupe' | undefined),
     created_at: notification.created_at,
     profiles: {
       id: notification.user_info.id,
@@ -54,7 +80,7 @@ const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({
       avatar_url: notification.user_info.avatar_url,
       email: notification.user_info.email,
       phone: notification.user_info.phone,
-      
+      country: notification.user_info.country,
     },
     formations: {
       title: notification.formation_info.title,

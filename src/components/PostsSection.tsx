@@ -39,7 +39,7 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
   }
 
   return (
-    <div className="p-4 pt-20 pb-20 bg-black min-h-screen">
+    <div className="p-4 pt-20 pb-20 bg-white min-h-screen">
       {/* Header avec filtres */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">

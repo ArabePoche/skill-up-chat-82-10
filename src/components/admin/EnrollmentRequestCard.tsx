@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,10 +45,19 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'standard' | 'premium' | 'groupe'>(
     (enrollment.plan_type as 'free' | 'standard' | 'premium' | 'groupe') || 'free'
   );
+
+  useEffect(() => {
+    if (enrollment.plan_type) {
+      setSelectedPlan(enrollment.plan_type as 'free' | 'standard' | 'premium' | 'groupe');
+    }
+  }, [enrollment.plan_type]);
+
   const [selectedPromotion, setSelectedPromotion] = useState<string>('');
 
-  // Charger les promotions pour cette formation
-  const { data: promotions = [], isLoading: isLoadingPromotions, error: promotionsError } = usePromotions(enrollment.formation_id);
+  // Charger les promotions pour cette formation seulement si plan groupe est sélectionné
+  const { data: promotions = [], isLoading: isLoadingPromotions, error: promotionsError } = usePromotions(
+    selectedPlan === 'groupe' ? enrollment.formation_id : undefined
+  );
   const assignToPromotion = useAssignStudentToPromotion();
   
   // Debug des promotions
