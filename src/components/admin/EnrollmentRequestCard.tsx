@@ -16,6 +16,8 @@ interface EnrollmentRequestCardProps {
     status: string;
     plan_type?: string;
     created_at: string;
+    decided_by?: string;
+    rejected_reason?: string;
     profiles?: {
       id: string;
       first_name?: string;
@@ -29,6 +31,11 @@ interface EnrollmentRequestCardProps {
     formations?: {
       title?: string;
       image_url?: string;
+    } | null;
+    decided_by_admin?: {
+      first_name?: string;
+      last_name?: string;
+      username?: string;
     } | null;
   };
   onApprove: (params: { enrollmentId: string; status: 'approved' | 'rejected'; rejectedReason?: string; planType?: 'free' | 'standard' | 'premium' | 'groupe'; userId?: string; formationId?: string; promotionId?: string }) => void;
@@ -290,9 +297,42 @@ const EnrollmentRequestCard: React.FC<EnrollmentRequestCardProps> = ({
           
           {enrollment.status === 'approved' && (
             <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-sm text-green-800">
-                <strong>Plan approuvé:</strong> {getPlanLabel(enrollment.plan_type || 'free')}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-green-800">
+                  <strong>Plan approuvé:</strong> {getPlanLabel(enrollment.plan_type || 'free')}
+                </p>
+                {enrollment.decided_by_admin && (
+                  <Badge className="bg-green-100 text-green-700 border-green-300">
+                    Approuvé par: {enrollment.decided_by_admin.first_name && enrollment.decided_by_admin.last_name
+                      ? `${enrollment.decided_by_admin.first_name} ${enrollment.decided_by_admin.last_name}`
+                      : enrollment.decided_by_admin.username || 'Admin'
+                    }
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {enrollment.status === 'rejected' && (
+            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <div className="space-y-2">
+                <p className="text-sm text-red-800">
+                  <strong>Inscription rejetée</strong>
+                </p>
+                {enrollment.rejected_reason && (
+                  <p className="text-sm text-red-700">
+                    <strong>Raison:</strong> {enrollment.rejected_reason}
+                  </p>
+                )}
+                {enrollment.decided_by_admin && (
+                  <Badge className="bg-red-100 text-red-700 border-red-300">
+                    Rejeté par: {enrollment.decided_by_admin.first_name && enrollment.decided_by_admin.last_name
+                      ? `${enrollment.decided_by_admin.first_name} ${enrollment.decided_by_admin.last_name}`
+                      : enrollment.decided_by_admin.username || 'Admin'
+                    }
+                  </Badge>
+                )}
+              </div>
             </div>
           )}
         </div>
