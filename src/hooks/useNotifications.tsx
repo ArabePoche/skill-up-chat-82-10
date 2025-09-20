@@ -131,6 +131,7 @@ export const useNotifications = () => {
 
       const updateData: any = {
         status: action,
+        decided_by: user?.id, // Ajouter l'ID de l'admin qui prend la décision
         updated_at: new Date().toISOString()
       };
 

@@ -51,7 +51,14 @@ const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({
       if (!notification.enrollment_id) return null;
       const { data, error } = await supabase
         .from('enrollment_requests')
-        .select('formation_id, plan_type')
+        .select(`
+          formation_id, 
+          plan_type,
+          status,
+          decided_by,
+          rejected_reason,
+          decided_by_admin:profiles!decided_by(first_name, last_name, username)
+        `)
         .eq('id', notification.enrollment_id)
         .single();
       if (error) {
@@ -69,8 +76,10 @@ const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({
     id: notification.enrollment_id!,
     user_id: notification.user_info.id,
     formation_id: formationId,
-    status: 'pending' as const,
+    status: (enrollmentDetails?.status as 'approved' | 'rejected' | 'pending' | undefined) || 'pending',
     plan_type: (enrollmentDetails?.plan_type as 'free' | 'standard' | 'premium' | 'groupe' | undefined),
+    decided_by: enrollmentDetails?.decided_by,
+    rejected_reason: enrollmentDetails?.rejected_reason,
     created_at: notification.created_at,
     profiles: {
       id: notification.user_info.id,
@@ -85,7 +94,8 @@ const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({
     formations: {
       title: notification.formation_info.title,
       image_url: notification.formation_info.image_url,
-    }
+    },
+    decided_by_admin: enrollmentDetails?.decided_by_admin || null
   };
 
   return (

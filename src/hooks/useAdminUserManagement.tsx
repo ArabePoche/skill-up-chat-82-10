@@ -2,9 +2,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from './useAuth';
+
 
 export const useAdminUserManagement = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Récupérer toutes les demandes d'inscription pour les admins avec informations utilisateur complètes
   const { data: enrollmentRequests = [], isLoading: isLoadingEnrollments } = useQuery({
@@ -40,10 +43,22 @@ export const useAdminUserManagement = () => {
               .eq('id', enrollment.formation_id)
               .single();
 
+            // Récupérer l'admin qui a pris la décision (si présent)
+            let decidedByAdmin: { first_name?: string; last_name?: string; username?: string } | null = null;
+            if (enrollment.decided_by) {
+              const { data: adminData } = await supabase
+                .from('profiles')
+                .select('first_name, last_name, username')
+                .eq('id', enrollment.decided_by)
+                .maybeSingle();
+              decidedByAdmin = adminData || null;
+            }
+
             return {
               ...enrollment,
               profiles: profileError ? null : profileData,
-              formations: formationError ? null : formationData
+              formations: formationError ? null : formationData,
+              decided_by_admin: decidedByAdmin,
             };
           } catch (error) {
             console.error('Error enriching enrollment:', error);
@@ -111,6 +126,7 @@ export const useAdminUserManagement = () => {
     }) => {
       const updateData: any = {
         status,
+        decided_by: user?.id,
         updated_at: new Date().toISOString()
       };
 
