@@ -10,6 +10,7 @@ interface SendGroupMessageParams {
   fileUrl?: string;
   fileType?: string;
   fileName?: string;
+  repliedToMessageId?: string;
 }
 
 export const useSendGroupMessage = () => {
@@ -20,7 +21,7 @@ export const useSendGroupMessage = () => {
     mutationFn: async (params: SendGroupMessageParams) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const { formationId, levelId, content, messageType = 'text', fileUrl, fileType, fileName } = params;
+      const { formationId, levelId, content, messageType = 'text', fileUrl, fileType, fileName, repliedToMessageId } = params;
 
       // Récupérer une leçon du niveau pour avoir un lesson_id
       const { data: lessons } = await supabase
@@ -73,6 +74,7 @@ export const useSendGroupMessage = () => {
           file_name: fileName,
           promotion_id: promotionId, // Utiliser un vrai promotion_id
           level_id: levelId, // Ajouter le level_id directement
+          replied_to_message_id: repliedToMessageId,
           is_system_message: false,
           is_exercise_submission: false
         });

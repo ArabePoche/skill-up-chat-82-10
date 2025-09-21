@@ -39,6 +39,11 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [showStudio, setShowStudio] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    content: string;
+    sender_name: string;
+  } | null>(null);
 
   // Hooks pour la gestion des messages de groupe
   const { data: messages = [], isLoading } = useTeacherGroupMessages(
@@ -56,7 +61,7 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (content: string, messageType = 'text', fileData?: any) => {
+  const handleSendMessage = (content: string, messageType = 'text', fileData?: any, repliedToMessageId?: string) => {
     sendMessageMutation.mutate({
       formationId: formation.id,
       levelId: level.id,
@@ -64,8 +69,29 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
       messageType,
       fileUrl: fileData?.fileUrl,
       fileType: fileData?.fileType,
-      fileName: fileData?.fileName
+      fileName: fileData?.fileName,
+      repliedToMessageId
     });
+  };
+
+  const handleReplyToMessage = (message: any) => {
+    const senderName = message.profiles?.first_name || message.profiles?.username || 'Utilisateur';
+    setReplyingTo({
+      id: message.id,
+      content: message.content,
+      sender_name: senderName
+    });
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleScrollToMessage = (messageId: string) => {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   if (isLoading) {
@@ -135,11 +161,14 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
           {messages && messages.length > 0 ? (
             messages.map((msg) => (
               <div key={msg.id} className="message-appear">
-                <MessageItem
-                  message={msg}
-                  isTeacher={true}
-                  onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
-                />
+                <div id={`message-${msg.id}`}>
+                  <MessageItem
+                    message={msg}
+                    isTeacher={true}
+                    onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
+                    onReply={handleReplyToMessage}
+                  />
+                </div>
               </div>
             ))
           ) : (
@@ -167,6 +196,9 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
             disabled={sendMessageMutation.isPending}
             lessonId="" // Pas de leçon spécifique pour les groupes
             formationId={formation.id}
+            replyingTo={replyingTo}
+            onCancelReply={handleCancelReply}
+            onScrollToMessage={handleScrollToMessage}
           />
         </div>
       </div>

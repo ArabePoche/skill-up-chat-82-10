@@ -129,6 +129,45 @@ const ExerciseFilePreview: React.FC<ExerciseFilePreviewProps> = ({
     );
   }
 
+  // Audio preview
+  if (file.file_type.startsWith('audio/')) {
+    return (
+      <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
+        <div className="relative group bg-muted h-32 flex items-center justify-center">
+          <div className="text-center">
+            <Music size={40} className="text-purple-500 mb-2 mx-auto" />
+            <p className="text-sm font-medium text-foreground">Fichier Audio</p>
+            <p className="text-xs text-muted-foreground truncate max-w-[120px]">{fileName}</p>
+          </div>
+        </div>
+        <div className="p-3">
+          <audio 
+            src={file.file_url} 
+            controls
+            preload="metadata"
+            className="w-full mb-3"
+          />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 flex-1 min-w-0">
+              {getFileIcon(file.file_type)}
+              <span className="text-sm font-medium text-foreground truncate">{fileName}</span>
+            </div>
+            {showDownload && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleFileDownload(file.file_url)}
+                className="p-1 h-7 w-7 flex-shrink-0"
+              >
+                <Download size={14} />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // PDF preview
   if (file.file_type === 'application/pdf') {
     return (

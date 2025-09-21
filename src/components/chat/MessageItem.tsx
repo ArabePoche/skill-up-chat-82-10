@@ -27,9 +27,10 @@ interface MessageItemProps {
   message: Message;
   isTeacher: boolean;
   onValidateExercise?: (messageId: string, isValid: boolean) => void;
+  onReply?: (message: Message) => void;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, isTeacher }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message, isTeacher, onReply }) => {
   if (message.message_type === 'system') {
     return (
       <div className="text-center">
@@ -40,7 +41,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isTeacher }) => {
     );
   }
 
-  return <MessageBubble message={message} isTeacher={isTeacher} />;
+  return <MessageBubble message={message} isTeacher={isTeacher} onReply={onReply} />;
 };
 
 export default MessageItem;
