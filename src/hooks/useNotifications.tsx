@@ -160,35 +160,68 @@ export const useNotifications = () => {
   });
 
   const handleEnrollmentMutation = useMutation({
-    mutationFn: async ({ enrollmentId, action, reason }: {
+    mutationFn: async ({ 
+      enrollmentId, 
+      action, 
+      reason, 
+      planType, 
+      promotionId 
+    }: {
       enrollmentId: string;
       action: 'approved' | 'rejected';
       reason?: string;
+      planType?: 'free' | 'standard' | 'premium' | 'groupe';
+      promotionId?: string;
     }) => {
       
+      if (action === 'approved') {
+        // Utiliser la nouvelle fonction d'approbation avec promotion
+        const { data, error } = await supabase
+          .rpc('approve_enrollment_with_promotion', {
+            p_enrollment_id: enrollmentId,
+            p_admin_id: user?.id,
+            p_plan_type: planType || 'free',
+            p_promotion_id: promotionId || null
+          });
 
-      const updateData: any = {
-        status: action,
-        decided_by: user?.id, // Ajouter l'ID de l'admin qui prend la décision
-        updated_at: new Date().toISOString()
-      };
+        if (error) {
+          console.error('Error approving enrollment:', error);
+          throw error;
+        }
 
-      if (action === 'rejected' && reason) {
-        updateData.rejected_reason = reason;
+        const result = data as { success: boolean; error?: string; enrollment_id?: string; user_id?: string; formation_id?: string; promotion_id?: string; first_lesson_id?: string };
+        
+        if (!result?.success) {
+          throw new Error(result?.error || 'Erreur lors de l\'approbation');
+        }
+
+        console.log('Enrollment approved successfully:', result);
+        return result;
+      } else {
+        // Pour les rejets, utiliser l'ancienne méthode
+        const updateData: any = {
+          status: action,
+          decided_by: user?.id,
+          updated_at: new Date().toISOString()
+        };
+
+        if (reason) {
+          updateData.rejected_reason = reason;
+        }
+
+        const { error } = await supabase
+          .from('enrollment_requests')
+          .update(updateData)
+          .eq('id', enrollmentId);
+
+        if (error) {
+          console.error('Error updating enrollment:', error);
+          throw error;
+        }
+
+        console.log('Enrollment rejected successfully');
+        return { success: true };
       }
-
-      const { error } = await supabase
-        .from('enrollment_requests')
-        .update(updateData)
-        .eq('id', enrollmentId);
-
-      if (error) {
-        console.error('Error updating enrollment:', error);
-        throw error;
-      }
-
-      console.log('Enrollment updated successfully');
-      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -219,9 +252,14 @@ export const useNotifications = () => {
   return {
     notifications,
     isLoading,
-    handleEnrollment: handleEnrollmentMutation.mutate,
+    handleEnrollment: (params: { 
+      enrollmentId: string; 
+      action: 'approved' | 'rejected'; 
+      reason?: string;
+      planType?: 'free' | 'standard' | 'premium' | 'groupe';
+      promotionId?: string;
+    }) => handleEnrollmentMutation.mutate(params),
     isHandlingEnrollment: handleEnrollmentMutation.isPending,
     markAsRead: markAsReadMutation.mutate
   };
 };
-

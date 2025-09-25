@@ -2127,6 +2127,7 @@ export type Database = {
         Row: {
           amount: number | null
           comment: string | null
+          confirmed_by: string | null
           created_at: string | null
           created_by: string
           days_added: number | null
@@ -2144,6 +2145,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           comment?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           created_by: string
           days_added?: number | null
@@ -2161,6 +2163,7 @@ export type Database = {
         Update: {
           amount?: number | null
           comment?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           created_by?: string
           days_added?: number | null
@@ -2175,7 +2178,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "student_payment_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_payment_progress: {
         Row: {
@@ -2411,6 +2422,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          specialization: string | null
           user_id: string | null
         }
         Insert: {
@@ -2420,6 +2432,7 @@ export type Database = {
           first_name: string
           id?: string
           last_name: string
+          specialization?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2429,6 +2442,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string
+          specialization?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -2935,6 +2949,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      approve_enrollment_with_promotion: {
+        Args: {
+          p_admin_id: string
+          p_enrollment_id: string
+          p_plan_type?: string
+          p_promotion_id?: string
+        }
+        Returns: Json
+      }
       can_student_access_lesson: {
         Args: { p_lesson_id: string; p_student_id: string }
         Returns: boolean
@@ -2975,9 +2998,17 @@ export type Database = {
         Args: { p_formation_id: string; p_teacher_id: string }
         Returns: number
       }
+      get_server_date: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_student_promotion: {
         Args: { p_formation_id: string; p_student_id: string }
         Returns: string
+      }
+      get_teacher_formations: {
+        Args: { p_user_id: string }
+        Returns: string[]
       }
       get_unread_messages_count: {
         Args: {
@@ -3025,6 +3056,14 @@ export type Database = {
       }
       is_admin: {
         Args: { user_id: string }
+        Returns: boolean
+      }
+      is_student_enrolled: {
+        Args: { p_formation_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_teacher_of_formation: {
+        Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
       }
       mark_lesson_messages_as_read: {

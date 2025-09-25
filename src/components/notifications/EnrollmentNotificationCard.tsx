@@ -102,11 +102,13 @@ const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({
     <div className="relative mb-4">
       <EnrollmentRequestCard
         enrollment={enrollmentData}
-        onApprove={({ enrollmentId, status, rejectedReason }) => {
+        onApprove={({ enrollmentId, status, rejectedReason, planType, userId, formationId, promotionId }) => {
           handleEnrollment({
             enrollmentId,
             action: status,
-            reason: rejectedReason
+            reason: rejectedReason,
+            planType,
+            promotionId
           });
         }}
         isUpdating={isHandlingEnrollment}
