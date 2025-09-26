@@ -29,14 +29,19 @@ export const usePushNotifications = () => {
   useEffect(() => {
     const checkSupport = async () => {
       const supported = nativePushService.isSupported();
+      console.log('📱 Notifications supportées:', supported);
+      console.log('🖥️ Plateforme:', navigator.userAgent);
       setIsSupported(supported);
       
       if (supported) {
         const currentPermission = await nativePushService.getPermissionStatus();
+        console.log('🔐 Permission actuelle:', currentPermission);
         if (currentPermission !== 'unknown') {
           setPermission(currentPermission as NotificationPermission);
         }
         loadUserPreferences();
+      } else {
+        console.warn('⚠️ Notifications non supportées sur cet appareil');
       }
     };
 
@@ -159,14 +164,30 @@ export const usePushNotifications = () => {
   }, [user]);
 
   const sendTestNotification = useCallback(async () => {
-    if (!fcmToken || !user) {
-      toast.error('❌ Token FCM non disponible');
+    if (!user) {
+      toast.error('❌ Utilisateur non connecté');
       return;
     }
 
     try {
-      await NotificationService.sendTestNotification(user.id, fcmToken);
-      toast.success('🎯 Notification de test envoyée !');
+      // Afficher d'abord une notification locale immédiate
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const localNotif = new Notification('🎯 Test immédiat', {
+          body: 'Notification locale fonctionnelle !',
+          icon: '/icon-192.png',
+          badge: '/badge-72.png'
+        });
+        
+        setTimeout(() => localNotif.close(), 3000);
+      }
+
+      // Ensuite envoyer via FCM si le token est disponible
+      if (fcmToken) {
+        await NotificationService.sendTestNotification(user.id, fcmToken);
+        toast.success('🎯 Notifications de test envoyées !');
+      } else {
+        toast.warning('⚠️ Token FCM non disponible, notification locale uniquement');
+      }
     } catch (error) {
       console.error('Erreur lors de l\'envoi de la notification de test:', error);
       toast.error('❌ Erreur lors de l\'envoi de la notification de test');

@@ -28,52 +28,90 @@ export const FCMService = {
       console.log('🔔 Demande de permission pour les notifications...');
       
       const permission = await Notification.requestPermission();
-      console.log('📋 Permission accordée:', permission);
+      console.log('📋 Permission:', permission);
       
       if (permission !== 'granted') {
+        console.warn('⚠️ Permission refusée');
         return { success: false, error: 'Permission refusée par l\'utilisateur' };
       }
 
       // Enregistrer le service worker
       let registration: ServiceWorkerRegistration | undefined;
       if ('serviceWorker' in navigator) {
-        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('🔧 Service Worker enregistré:', registration);
-        // Attendre que le service worker soit prêt
-        await navigator.serviceWorker.ready;
+        try {
+          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          console.log('🔧 Service Worker enregistré:', registration);
+          // Attendre que le service worker soit prêt
+          await navigator.serviceWorker.ready;
+          console.log('✅ Service Worker prêt');
+        } catch (swError) {
+          console.error('❌ Erreur Service Worker:', swError);
+        }
       }
 
       const messaging = initializeFirebase();
+      console.log('🔥 Firebase initialisé');
       
       // Obtenir le token FCM
-      const token = await getToken(messaging, {
-        vapidKey: 'BBMhY-FjyO2yC2ZHEoqOuWJSxOAe--IFH8VftzM0Pj1Ly3NljfJnxt1LAk-ddwPx0SIdndNGAs_fXQJCpHbsveI',
-        serviceWorkerRegistration: typeof registration !== 'undefined' ? registration : undefined
-      });
+      try {
+        const token = await getToken(messaging, {
+          vapidKey: 'BBMhY-FjyO2yC2ZHEoqOuWJSxOAe--IFH8VftzM0Pj1Ly3NljfJnxt1LAk-ddwPx0SIdndNGAs_fXQJCpHbsveI',
+          serviceWorkerRegistration: registration
+        });
 
-      if (!token) {
-        return { success: false, error: 'Impossible d\'obtenir le token FCM' };
-      }
-
-      console.log('🎯 Token FCM obtenu:', token.substring(0, 20) + '...');
-
-      // Écouter les messages en foreground
-      onMessage(messaging, (payload) => {
-        console.log('📨 Message reçu en foreground:', payload);
-        
-        if (payload.notification) {
-          new Notification(payload.notification.title || 'Nouvelle notification', {
-            body: payload.notification.body,
-            icon: '/icon-192x192.png',
-            badge: '/icon-192x192.png'
-          });
+        if (!token) {
+          console.error('❌ Aucun token FCM obtenu');
+          return { success: false, error: 'Impossible d\'obtenir le token FCM' };
         }
+
+        console.log('🎯 Token FCM obtenu:', token.substring(0, 20) + '...');
+
+        // Écouter les messages en foreground
+        onMessage(messaging, (payload) => {
+          console.log('📨 Message reçu en foreground:', payload);
+          
+          // Afficher une notification même en foreground
+          if (payload.notification) {
+            const notification = new Notification(payload.notification.title || 'Nouvelle notification', {
+              body: payload.notification.body,
+              icon: '/icon-192.png',
+              badge: '/badge-72.png'
+            });
+            
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
+          }
+        });
+
+        return { success: true, token };
+      } catch (tokenError) {
+        console.error('❌ Erreur obtention token:', tokenError);
+        return { success: false, error: 'Erreur obtention token: ' + tokenError };
+      }
+    } catch (error) {
+      console.error('❌ Erreur FCM générale:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+    }
+  },
+
+  // Fonction pour afficher une notification de test locale
+  showTestNotification(): void {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const notification = new Notification('🎯 Test de notification', {
+        body: 'Si vous voyez ceci, les notifications locales fonctionnent !',
+        icon: '/icon-192.png',
+        badge: '/badge-72.png',
+        requireInteraction: false
       });
 
-      return { success: true, token };
-    } catch (error) {
-      console.error('❌ Erreur FCM:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      setTimeout(() => notification.close(), 5000);
     }
   }
 };
