@@ -2132,6 +2132,7 @@ export type Database = {
           created_by: string
           days_added: number | null
           formation_id: string
+          hours_added: number | null
           id: string
           is_request: boolean | null
           payment_date: string | null
@@ -2150,6 +2151,7 @@ export type Database = {
           created_by: string
           days_added?: number | null
           formation_id: string
+          hours_added?: number | null
           id?: string
           is_request?: boolean | null
           payment_date?: string | null
@@ -2168,6 +2170,7 @@ export type Database = {
           created_by?: string
           days_added?: number | null
           formation_id?: string
+          hours_added?: number | null
           id?: string
           is_request?: boolean | null
           payment_date?: string | null
@@ -2192,6 +2195,7 @@ export type Database = {
         Row: {
           created_at: string | null
           formation_id: string
+          hours_remaining: number | null
           id: string
           last_payment_date: string | null
           total_days_remaining: number
@@ -2201,6 +2205,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           formation_id: string
+          hours_remaining?: number | null
           id?: string
           last_payment_date?: string | null
           total_days_remaining?: number
@@ -2210,6 +2215,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           formation_id?: string
+          hours_remaining?: number | null
           id?: string
           last_payment_date?: string | null
           total_days_remaining?: number

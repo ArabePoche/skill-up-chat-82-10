@@ -2,37 +2,59 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Clock, Calendar } from 'lucide-react';
+import { Clock, Calendar, Euro } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useFormationPricing } from '@/hooks/useFormationPricing';
+import { useUserSubscription } from '@/hooks/useUserSubscription';
 
 interface StudentPaymentDisplayProps {
   formationId: string;
+  studentId?: string; // ID de l'élève spécifique (optionnel)
 }
 
 export const StudentPaymentDisplay: React.FC<StudentPaymentDisplayProps> = ({
-  formationId
+  formationId,
+  studentId
 }) => {
   const { user } = useAuth();
+  const { pricingOptions } = useFormationPricing(formationId);
+  const { subscription } = useUserSubscription(formationId, studentId);
 
   const { data: paymentProgress, isLoading } = useQuery({
-    queryKey: ['student-payment-progress', user?.id, formationId],
+    queryKey: ['student-payment-progress', studentId || user?.id, formationId],
     queryFn: async () => {
-      if (!user?.id) return null;
+      const targetUserId = studentId || user?.id;
+      if (!targetUserId) return null;
 
       const { data, error } = await supabase
         .from('student_payment_progress')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .eq('formation_id', formationId)
         .maybeSingle();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id
+    enabled: !!(studentId || user?.id)
   });
+
+  // Calcul du prix par jour basé sur l'abonnement de l'utilisateur
+  const getUserPricePerDay = () => {
+    if (!subscription || !pricingOptions) return 0;
+    
+    const userPlan = pricingOptions.find(
+      option => option.plan_type === subscription.plan_type && option.is_active
+    );
+    
+    if (!userPlan || !userPlan.price_monthly) return 0;
+    return userPlan.price_monthly / 30;
+  };
+
+  const pricePerDay = getUserPricePerDay();
+  const currentPlanName = subscription?.plan_type || 'free';
 
   if (isLoading) {
     return (
@@ -48,6 +70,7 @@ export const StudentPaymentDisplay: React.FC<StudentPaymentDisplayProps> = ({
   }
 
   const totalDaysRemaining = paymentProgress?.total_days_remaining || 0;
+  const totalHoursRemaining = paymentProgress?.hours_remaining || 0;
   const lastPaymentDate = paymentProgress?.last_payment_date;
 
   // Calcul de la couleur de la barre selon les jours restants
@@ -73,18 +96,27 @@ export const StudentPaymentDisplay: React.FC<StudentPaymentDisplayProps> = ({
         <div className="flex items-center justify-between">
           <span className="text-2xl font-bold text-gray-900">
             {totalDaysRemaining} jour{totalDaysRemaining > 1 ? 's' : ''}
+            {totalHoursRemaining > 0 && (
+              <span className="text-xl text-gray-700 ml-2">
+                + {totalHoursRemaining}h
+              </span>
+            )}
           </span>
-          {totalDaysRemaining <= 5 && totalDaysRemaining > 0 && (
+          {(totalDaysRemaining <= 5 && totalDaysRemaining > 0) || (totalDaysRemaining === 0 && totalHoursRemaining <= 120) ? (
             <span className="text-sm text-red-600 font-medium">
               ⚠️ Bientôt épuisé
             </span>
-          )}
+          ) : null}
         </div>
 
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-gray-600">
             <span>Solde disponible</span>
-            <span>{totalDaysRemaining}/{maxDisplayDays}j</span>
+            <span>
+              {totalDaysRemaining}j
+              {totalHoursRemaining > 0 && ` + ${totalHoursRemaining}h`}
+              /{Math.max(30, totalDaysRemaining)}j
+            </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
@@ -101,7 +133,43 @@ export const StudentPaymentDisplay: React.FC<StudentPaymentDisplayProps> = ({
           </div>
         )}
 
-        {totalDaysRemaining === 0 && (
+        {/* Informations de tarification */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">Plan actuel:</span>
+            <span className="font-medium capitalize text-blue-600">
+              {currentPlanName === 'free' ? 'Gratuit' : 
+               currentPlanName === 'standard' ? 'Standard' :
+               currentPlanName === 'premium' ? 'Premium' :
+               currentPlanName === 'groupe' ? 'Groupe' : currentPlanName}
+            </span>
+          </div>
+          {pricePerDay > 0 && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600 flex items-center">
+                <Euro className="w-3 h-3 mr-1" />
+                Prix par jour:
+              </span>
+              <span className="font-medium text-green-600">
+                {pricePerDay.toFixed(2)} €/jour
+              </span>
+            </div>
+          )}
+          {totalDaysRemaining > 0 && pricePerDay > 0 && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Valeur restante:</span>
+              <span className="font-medium text-blue-600">
+                {(() => {
+                  // Convertir les heures en fraction de jour pour le calcul
+                  const totalDaysValue = totalDaysRemaining + (totalHoursRemaining / 24);
+                  return (totalDaysValue * pricePerDay).toFixed(2);
+                })()}€
+              </span>
+            </div>
+          )}
+        </div>
+
+        {totalDaysRemaining === 0 && totalHoursRemaining === 0 && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
             <p className="text-orange-800 text-sm">
               Votre solde est épuisé. Effectuez un paiement pour continuer à accéder à la formation.

@@ -4,12 +4,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 
 // Configuration Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDY11S6os_Ixb2SLJ4q88gSEXG-BD0T-80",
-  authDomain: "eductok-a2a00.firebaseapp.com",
-  projectId: "eductok-a2a00",
-  storageBucket: "eductok-a2a00.firebasestorage.app",
-  messagingSenderId: "1010464187969",
-  appId: "1:1010464187969:web:1027389ff1a6bf8be508c0"
+  apiKey: "AIzaSyDa4NhETpsY6DzzujBdlKctwCCG9aiy9GQ",
+  authDomain: "push-notifications-727ff.firebaseapp.com",
+  projectId: "push-notifications-727ff",
+  storageBucket: "push-notifications-727ff.firebasestorage.app",
+  messagingSenderId: "848401036339",
+  appId: "1:848401036339:web:7c8ab4b7bf2d430d9cdf46"
 };
 
 console.log('🔧 Firebase Service Worker starting...');

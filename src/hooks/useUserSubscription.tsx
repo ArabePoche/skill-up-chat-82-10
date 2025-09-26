@@ -12,19 +12,22 @@ interface UserSubscription {
   updated_at: string;
 }
 
-export const useUserSubscription = (formationId: string) => {
+export const useUserSubscription = (formationId: string, userId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Utiliser l'userId fourni ou celui de l'utilisateur connecté
+  const targetUserId = userId || user?.id;
 
   const { data: subscription, isLoading } = useQuery({
-    queryKey: ['user-subscription', user?.id, formationId],
+    queryKey: ['user-subscription', targetUserId, formationId],
     queryFn: async (): Promise<UserSubscription | null> => {
-      if (!user?.id || !formationId) return null;
+      if (!targetUserId || !formationId) return null;
 
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .eq('formation_id', formationId)
         .maybeSingle();
 
@@ -35,7 +38,7 @@ export const useUserSubscription = (formationId: string) => {
 
       return data as UserSubscription;
     },
-    enabled: !!user?.id && !!formationId,
+    enabled: !!targetUserId && !!formationId,
   });
 
   const createSubscription = useMutation({

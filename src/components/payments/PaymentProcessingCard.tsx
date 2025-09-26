@@ -38,13 +38,19 @@ export const PaymentProcessingCard: React.FC<PaymentProcessingCardProps> = ({
   const [paymentDate, setPaymentDate] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [calculatedDays, setCalculatedDays] = useState(0);
+  const [calculatedHours, setCalculatedHours] = useState(0);
   const queryClient = useQueryClient();
 
-  // Calcul automatique des jours selon le montant (30 000 F = 30 jours)
-  const calculateDays = (amountValue: string) => {
+  // Calcul automatique des jours et heures selon le montant (30 000 F = 30 jours)
+  const calculateDaysAndHours = (amountValue: string) => {
     const numAmount = parseFloat(amountValue) || 0;
-    const daysPerAmount = numAmount / 1000; // 1000 F = 1 jour
-    setCalculatedDays(Math.floor(daysPerAmount));
+    const totalDays = numAmount / 1000; // 1000 F = 1 jour
+    const wholeDays = Math.floor(totalDays);
+    const fractionalDay = totalDays - wholeDays;
+    const hoursToAdd = Math.round(fractionalDay * 24);
+    
+    setCalculatedDays(wholeDays);
+    setCalculatedHours(hoursToAdd);
   };
 
   const processPaymentMutation = useMutation({
@@ -64,6 +70,7 @@ export const PaymentProcessingCard: React.FC<PaymentProcessingCardProps> = ({
         .update({
           amount: amountNum,
           days_added: calculatedDays,
+          hours_added: calculatedHours,
           payment_method: paymentMethod,
           payment_date: paymentDate,
           reference_number: referenceNumber || null,
@@ -118,14 +125,15 @@ export const PaymentProcessingCard: React.FC<PaymentProcessingCardProps> = ({
               value={amount}
               onChange={(e) => {
                 setAmount(e.target.value);
-                calculateDays(e.target.value);
+                calculateDaysAndHours(e.target.value);
               }}
               placeholder="ex: 15000"
               required
             />
-            {calculatedDays > 0 && (
+            {(calculatedDays > 0 || calculatedHours > 0) && (
               <p className="text-sm text-green-600 mt-1">
                 = {calculatedDays} jour{calculatedDays > 1 ? 's' : ''}
+                {calculatedHours > 0 && ` + ${calculatedHours} heure${calculatedHours > 1 ? 's' : ''}`}
               </p>
             )}
           </div>

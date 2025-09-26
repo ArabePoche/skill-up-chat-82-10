@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar, CreditCard, CheckCircle, User, BookOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useUserSubscription } from '@/hooks/useUserSubscription';
+import { useFormationPricing } from '@/hooks/useFormationPricing';
 
 interface PaymentRequestNotificationCardProps {
   notification: {
@@ -41,28 +43,52 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState<string>('');
 
-  // Charger le prix de la formation pour calculer les jours
+  // Récupérer l'abonnement réel de l'élève et les options de tarification
+  const { subscription } = useUserSubscription(notification.formation_id, notification.user_id);
+  const { pricingOptions } = useFormationPricing(notification.formation_id);
+
+  // Charger le titre de la formation
   const { data: formation } = useQuery({
     queryKey: ['formation-price', notification.formation_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('formations')
-        .select('id, price, title')
+        .select('id, title')
         .eq('id', notification.formation_id)
         .single();
       if (error) throw error;
-      return data as { id: string; price: number | null; title?: string };
+      return data as { id: string; title?: string };
     },
     enabled: !!notification.formation_id,
   });
 
-  const daysAdded = useMemo(() => {
-    const price = Number(formation?.price || 0);
+  // Calculer le prix par jour basé sur l'abonnement réel de l'élève
+  const pricePerDay = useMemo(() => {
+    if (!subscription || !pricingOptions) return 1; // Fallback à 1F par jour
+    
+    // Trouver le plan de tarification correspondant à l'abonnement de l'élève
+    const userPlan = pricingOptions.find(
+      option => option.plan_type === subscription.plan_type && option.is_active
+    );
+    
+    if (userPlan?.price_monthly) {
+      return userPlan.price_monthly / 30;
+    }
+    
+    return 1; // Fallback à 1F par jour
+  }, [subscription, pricingOptions]);
+
+  const { daysAdded, hoursAdded } = useMemo(() => {
     const amt = Number(amount || 0);
-    if (!price || !amt) return 0;
-    const perDay = price / 30; // tarif/jour
-    return Math.floor(amt / perDay);
-  }, [formation?.price, amount]);
+    if (!amt || pricePerDay <= 0) return { daysAdded: 0, hoursAdded: 0 };
+    
+    const totalDays = amt / pricePerDay;
+    const wholeDays = Math.floor(totalDays);
+    const fractionalDay = totalDays - wholeDays;
+    const hoursToAdd = Math.round(fractionalDay * 24);
+    
+    return { daysAdded: wholeDays, hoursAdded: hoursToAdd };
+  }, [pricePerDay, amount]);
 
   const processMutation = useMutation({
     mutationFn: async () => {
@@ -96,6 +122,7 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
           payment_date: paymentDate,
           comment: reference || null,
           days_added: daysAdded,
+          hours_added: hoursAdded,
           status: 'processed',
           created_by: user.id, // Enregistrer l'admin qui a traité la demande
           updated_at: new Date().toISOString(),
@@ -202,16 +229,21 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
         {/* Calcul automatique */}
         <div className="p-4 bg-white rounded-lg text-sm text-gray-700">
           <p>
-            Tarif mensuel: <span className="font-medium">{formation?.price ? `${formation.price} F` : 'N/A'}</span> →
-            <span className="ml-2">1 jour = {formation?.price ? `${Math.round((formation.price / 30))} F` : 'N/A'}</span>
+            Plan de l'élève: <span className="font-medium">{subscription?.plan_type || 'Non défini'}</span>
           </p>
-          <p className="mt-1">Jours ajoutés: <span className="font-semibold">{daysAdded} jour(s)</span></p>
+          <p>
+            Tarif par jour: <span className="font-medium">{pricePerDay.toFixed(0)} F</span>
+          </p>
+          <p className="mt-1">
+            Crédité: <span className="font-semibold">{daysAdded} jour(s)</span>
+            {hoursAdded > 0 && <span className="font-semibold"> + {hoursAdded} heure(s)</span>}
+          </p>
         </div>
 
         <div className="flex gap-3">
           <Button 
             onClick={() => processMutation.mutate()} 
-            disabled={processMutation.isPending || !amount || daysAdded <= 0}
+            disabled={processMutation.isPending || !amount || (daysAdded <= 0 && hoursAdded <= 0)}
             className="bg-green-600 hover:bg-green-700 text-white flex-1"
           >
             <CheckCircle className="w-4 h-4 mr-2" />

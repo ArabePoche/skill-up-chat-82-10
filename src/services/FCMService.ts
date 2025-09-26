@@ -1,13 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
+// Configuration Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDY11S6os_Ixb2SLJ4q88gSEXG-BD0T-80",
-  authDomain: "eductok-a2a00.firebaseapp.com",
-  projectId: "eductok-a2a00",
-  storageBucket: "eductok-a2a00.firebasestorage.app",
-  messagingSenderId: "1010464187969",
-  appId: "1:1010464187969:web:1027389ff1a6bf8be508c0"
+  apiKey: "AIzaSyDa4NhETpsY6DzzujBdlKctwCCG9aiy9GQ",
+  authDomain: "push-notifications-727ff.firebaseapp.com", 
+  projectId: "push-notifications-727ff",
+  storageBucket: "push-notifications-727ff.firebasestorage.app",
+  messagingSenderId: "848401036339",
+  appId: "1:848401036339:web:7c8ab4b7bf2d430d9cdf46"
 };
 
 let app: any = null;
@@ -44,8 +45,9 @@ export const FCMService = {
 
       const messaging = initializeFirebase();
       
+      // Obtenir le token FCM
       const token = await getToken(messaging, {
-        vapidKey: 'BPE6_Yc4iHGui2Dj1zix6efPsyRKS-_vvDBYR1z1JOednZXoo5XLQWB0zqRvyK3hlMf2Q8PxLCzG2Yt2ryjxMKQ',
+        vapidKey: 'BBMhY-FjyO2yC2ZHEoqOuWJSxOAe--IFH8VftzM0Pj1Ly3NljfJnxt1LAk-ddwPx0SIdndNGAs_fXQJCpHbsveI',
         serviceWorkerRegistration: typeof registration !== 'undefined' ? registration : undefined
       });
 
