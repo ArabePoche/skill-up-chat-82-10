@@ -2263,6 +2263,125 @@ export type Database = {
           },
         ]
       }
+      teacher_application_files: {
+        Row: {
+          application_id: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          uploaded_at: string
+        }
+        Insert: {
+          application_id: string
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          uploaded_at?: string
+        }
+        Update: {
+          application_id?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_application_files_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_application_formations: {
+        Row: {
+          application_id: string
+          created_at: string
+          formation_id: string
+          id: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          formation_id: string
+          id?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          formation_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_application_formations_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_application_formations_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_applications: {
+        Row: {
+          availability: string | null
+          created_at: string
+          education_level: string | null
+          experience_years: number | null
+          id: string
+          motivation_message: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          specialties: string[] | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          availability?: string | null
+          created_at?: string
+          education_level?: string | null
+          experience_years?: number | null
+          id?: string
+          motivation_message?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          specialties?: string[] | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          availability?: string | null
+          created_at?: string
+          education_level?: string | null
+          experience_years?: number | null
+          id?: string
+          motivation_message?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          specialties?: string[] | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teacher_formations: {
         Row: {
           assigned_at: string | null
@@ -2295,7 +2414,7 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
-            referencedColumns: ["user_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2343,6 +2462,41 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_reviews: {
+        Row: {
+          application_id: string
+          comment: string | null
+          created_at: string
+          decision: string
+          id: string
+          reviewer_id: string
+        }
+        Insert: {
+          application_id: string
+          comment?: string | null
+          created_at?: string
+          decision: string
+          id?: string
+          reviewer_id: string
+        }
+        Update: {
+          application_id?: string
+          comment?: string | null
+          created_at?: string
+          decision?: string
+          id?: string
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_reviews_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_applications"
             referencedColumns: ["id"]
           },
         ]
@@ -2964,6 +3118,14 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_teacher_application: {
+        Args: {
+          p_application_id: string
+          p_comment?: string
+          p_reviewer_id: string
+        }
+        Returns: undefined
+      }
       can_student_access_lesson: {
         Args: { p_lesson_id: string; p_student_id: string }
         Returns: boolean
@@ -3136,6 +3298,14 @@ export type Database = {
           p_reference_id?: string
           p_teacher_id: string
           p_transaction_type: string
+        }
+        Returns: undefined
+      }
+      reject_teacher_application: {
+        Args: {
+          p_application_id: string
+          p_comment: string
+          p_reviewer_id: string
         }
         Returns: undefined
       }

@@ -49,7 +49,7 @@ export const useTeacherFormations = (userId: string | undefined) => {
       
 
       // Récupérer les formations assignées avec toutes les données nécessaires
-      // Maintenant on utilise directement userId car la relation pointe vers teachers.user_id
+      // On utilise l'ID du teacher, pas l'userId directement
       const { data: assignedFormations, error: formationsError } = await supabase
         .from('teacher_formations')
         .select(`
@@ -71,7 +71,7 @@ export const useTeacherFormations = (userId: string | undefined) => {
             badge
           )
         `)
-        .eq('teacher_id', userId);
+        .eq('teacher_id', teacherData.id);
 
       if (formationsError) {
         console.error('❌ Error fetching teacher formations:', formationsError);

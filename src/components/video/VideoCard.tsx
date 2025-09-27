@@ -149,10 +149,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
 
   const handleCommentClose = () => {
     setShowComments(false);
-    // Notifier le parent qu'un commentaire a été ajouté pour rafraîchir les compteurs
-    if (onCommentAdded) {
-      onCommentAdded();
-    }
+    // Ne pas notifier le parent pour éviter le refetch qui perturbe la position
   };
 
   return (

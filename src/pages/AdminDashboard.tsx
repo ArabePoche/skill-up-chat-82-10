@@ -15,6 +15,7 @@ import TeachersManagement from '@/components/admin/TeachersManagement';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PromotionManagementAdmin } from '@/components/promotions/PromotionManagementAdmin';
+import { TeacherApplicationsList } from '@/teacher-application/components/TeacherApplicationsList';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -70,6 +71,8 @@ const AdminDashboard = () => {
         return <FormationsManagement />;
       case 'teachers':
         return <TeachersManagement />;
+      case 'teacher-applications':
+        return <TeacherApplicationsList />;
       case 'promotions':
         return <PromotionManagementAdmin />;
       case 'products':

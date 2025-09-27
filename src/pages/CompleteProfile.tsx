@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getNames } from 'country-list'; // Importation de la fonction getNames de country-list
+import { TeacherApplicationForm } from '@/teacher-application/components/TeacherApplicationForm';
 
 const CompleteProfile = () => {
   const [formData, setFormData] = useState({
@@ -323,6 +324,21 @@ const CompleteProfile = () => {
                 />
                 <Label htmlFor="instructor">Je souhaite devenir encadreur</Label>
               </div>
+
+              {/* Formulaire de candidature d'encadreur */}
+              {formData.wantToBeInstructor && user && (
+                <div className="mt-6">
+                  <TeacherApplicationForm 
+                    userId={user.id}
+                    onSuccess={() => {
+                      toast({
+                        title: "Candidature soumise !",
+                        description: "Votre candidature a été envoyée avec succès.",
+                      });
+                    }}
+                  />
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="language">Langue</Label>

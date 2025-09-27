@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUserSubscription } from './useUserSubscription';
 import { useFormationPricing } from './useFormationPricing';
 import { useAuth } from './useAuth';
+import { useUserRole } from './useUserRole';
 
 interface SubscriptionLimits {
   canSendMessages: boolean;
@@ -25,6 +26,7 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
   const { user } = useAuth();
   const { subscription } = useUserSubscription(formationId);
   const { pricingOptions } = useFormationPricing(formationId);
+  const { data: userRole } = useUserRole(formationId);
   const [timeRemainingToday, setTimeRemainingToday] = useState<number | null>(null);
 
   // Trouver les options de pricing pour le plan actuel de l'utilisateur
@@ -57,6 +59,14 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
   }, [userPricing]);
 
   const checkPermission = useCallback((action: 'message' | 'call' | 'video_call') => {
+    // Les professeurs peuvent tout faire sans restriction
+    if (userRole?.role === 'teacher') {
+      return { 
+        allowed: true,
+        currentPlan: 'teacher'
+      };
+    }
+
     if (!userPricing) {
       return { 
         allowed: false, 
@@ -140,7 +150,7 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
     }
 
     return { allowed: true, currentPlan };
-  }, [userPricing, user?.id, formationId, isCallDayAllowed]);
+  }, [userPricing, user?.id, formationId, isCallDayAllowed, userRole]);
 
   // Gestion du timer quotidien - sécurisé côté serveur
   useEffect(() => {

@@ -96,13 +96,12 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
 
   const handleLikeWithConfetti = () => {
     setShowConfetti(true);
-    // Refetch pour mettre à jour les compteurs
-    setTimeout(() => refetch(), 500);
+    // Ne pas refetch pour éviter de perdre la position
   };
 
   const handleCommentAdded = () => {
-    // Refetch pour mettre à jour les compteurs de commentaires
-    setTimeout(() => refetch(), 500);
+    // Ne pas refetch pour éviter de perdre la position
+    // Les compteurs de commentaires seront mis à jour localement par le hook
   };
 
   if (!videos || videos.length === 0) {

@@ -4,6 +4,7 @@ import { useFormationPricing } from './useFormationPricing';
 import { useSubscriptionLimits } from './useSubscriptionLimits';
 import { useVideoTimer } from './useVideoTimer';
 import { useAuth } from './useAuth';
+import { useUserRole } from './useUserRole';
 
 interface LessonAccessControl {
   // Subscription info
@@ -40,6 +41,7 @@ export const useLessonAccessControl = (
   const { user } = useAuth();
   const { subscription } = useUserSubscription(formationId);
   const { pricingOptions } = useFormationPricing(formationId);
+  const { data: userRole } = useUserRole(formationId);
   
   const {
     timeRemainingToday,
@@ -71,6 +73,11 @@ export const useLessonAccessControl = (
   const handleSendMessage = useCallback((message: string) => {
     if (!message.trim()) return { allowed: false };
 
+    // Les professeurs peuvent toujours envoyer des messages
+    if (userRole?.role === 'teacher') {
+      return { allowed: true };
+    }
+
     const permission = checkPermission('message');
     if (!permission.allowed) {
       showSubscriptionAlert(permission.message || 'Action non autorisée');
@@ -89,9 +96,14 @@ export const useLessonAccessControl = (
     incrementMessageCount();
 
     return { allowed: true };
-  }, [checkPermission, isLimitReached, showSubscriptionAlert, formationId]);
+  }, [checkPermission, isLimitReached, showSubscriptionAlert, formationId, userRole]);
 
   const handleCall = useCallback((type: 'audio' | 'video') => {
+    // Les professeurs peuvent toujours passer des appels
+    if (userRole?.role === 'teacher') {
+      return { allowed: true };
+    }
+
     const action = type === 'audio' ? 'call' : 'video_call';
     const permission = checkPermission(action);
     
@@ -109,7 +121,7 @@ export const useLessonAccessControl = (
     }
 
     return { allowed: true };
-  }, [checkPermission, isLimitReached, showSubscriptionAlert]);
+  }, [checkPermission, isLimitReached, showSubscriptionAlert, userRole]);
 
   return {
     subscription,
