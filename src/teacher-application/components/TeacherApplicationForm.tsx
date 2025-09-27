@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Upload, FileText, X } from 'lucide-react';
 import { useFormations } from '../hooks/useFormations';
 import { useTeacherApplication, TeacherApplicationData } from '../hooks/useTeacherApplication';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TeacherApplicationFormProps {
   userId: string;
@@ -46,6 +48,7 @@ export const TeacherApplicationForm: React.FC<TeacherApplicationFormProps> = ({
 }) => {
   const { data: formations, isLoading: formationsLoading } = useFormations();
   const { submitApplication, isSubmitting } = useTeacherApplication();
+  const { toast } = useToast();
 
   const [formData, setFormData] = useState<TeacherApplicationData>({
     motivationMessage: '',
@@ -92,17 +95,64 @@ export const TeacherApplicationForm: React.FC<TeacherApplicationFormProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    console.log('📋 Données du formulaire avant soumission:', formData);
 
     if (formData.selectedFormations.length === 0) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner au moins une formation à encadrer.",
+        variant: "destructive",
+      });
       return;
     }
 
+    if (!formData.motivationMessage.trim()) {
+      toast({
+        title: "Erreur", 
+        description: "Le message de motivation est requis.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Vérifier s'il y a déjà une candidature en cours pour cet utilisateur
     try {
+      const { data: existingApplications } = await supabase
+        .from('teacher_applications')
+        .select('id, status')
+        .eq('user_id', userId)
+        .in('status', ['pending', 'approved']);
+
+      if (existingApplications && existingApplications.length > 0) {
+        const pendingApp = existingApplications.find(app => app.status === 'pending');
+        const approvedApp = existingApplications.find(app => app.status === 'approved');
+        
+        if (approvedApp) {
+          toast({
+            title: "Candidature déjà approuvée",
+            description: "Vous êtes déjà un encadreur approuvé. Vous ne pouvez pas soumettre une nouvelle candidature.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (pendingApp) {
+          toast({
+            title: "Candidature déjà en cours",
+            description: "Vous avez déjà une candidature en cours d'examen. Veuillez attendre la réponse avant de soumettre une nouvelle candidature.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      console.log('🚀 Appel submitApplication avec userId:', userId);
       await submitApplication(userId, formData);
+      console.log('✅ Candidature soumise avec succès');
       onSuccess?.();
     } catch (error) {
+      console.log('❌ Erreur dans handleSubmit:', error);
       // L'erreur est déjà gérée dans le hook
     }
   };
@@ -137,8 +187,8 @@ export const TeacherApplicationForm: React.FC<TeacherApplicationFormProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Message de motivation */}
+          <div className="space-y-6">
+            {/* Message de motivation */}
           <div className="space-y-2">
             <Label htmlFor="motivation">Message de motivation *</Label>
             <Textarea
@@ -294,14 +344,15 @@ export const TeacherApplicationForm: React.FC<TeacherApplicationFormProps> = ({
           {/* Bouton de soumission */}
           <div className="flex justify-end">
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={isSubmitting || formData.selectedFormations.length === 0 || !formData.motivationMessage.trim()}
               className="bg-primary hover:bg-primary/90"
             >
               {isSubmitting ? 'Soumission...' : 'Soumettre la candidature'}
             </Button>
           </div>
-        </form>
+        </div>
       </CardContent>
     </Card>
   );

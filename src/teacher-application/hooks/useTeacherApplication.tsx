@@ -19,6 +19,7 @@ export const useTeacherApplication = () => {
   const submitApplication = async (userId: string, data: TeacherApplicationData) => {
     try {
       setIsSubmitting(true);
+      console.log('🔍 Début soumission candidature:', { userId, data });
 
       // Créer la candidature
       const { data: applicationData, error: applicationError } = await supabase
@@ -33,6 +34,8 @@ export const useTeacherApplication = () => {
         })
         .select()
         .single();
+
+      console.log('📝 Résultat insertion teacher_applications:', { applicationData, applicationError });
 
       if (applicationError) throw applicationError;
 
