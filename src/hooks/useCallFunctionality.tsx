@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { useSubscriptionLimits } from './useSubscriptionLimits';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ interface CallFunctionality {
 
 export const useCallFunctionality = (formationId: string): CallFunctionality => {
   const { user } = useAuth();
-  const { checkPermission } = useSubscriptionLimits(formationId);
+  const { canMakeCall } = usePlanLimits({ formationId, context: 'call' });
   const [isCallActive, setIsCallActive] = useState(false);
   const [currentCall, setCurrentCall] = useState(null);
 
@@ -25,11 +25,10 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     }
 
     // Vérifier les permissions d'abonnement
-    const action = type === 'audio' ? 'call' : 'video_call';
-    const permission = checkPermission(action);
+    const permission = canMakeCall(type);
     
     if (!permission.allowed) {
-      toast.error(permission.message || 'Appel non autorisé');
+      toast.error(permission.reason || 'Appel non autorisé');
       return false;
     }
 
@@ -101,7 +100,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
       toast.error('Erreur lors de l\'appel');
       return false;
     }
-  }, [user, checkPermission, formationId]);
+  }, [user, canMakeCall, formationId]);
 
   const endCall = useCallback(async () => {
     if (!currentCall || !user) return;

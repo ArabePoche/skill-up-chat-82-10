@@ -3,10 +3,10 @@ import React, { useState, useCallback } from 'react';
 import { MessageCircle, Phone, Video, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { SubscriptionUpgradeModal } from './SubscriptionUpgradeModal';
-import { SubscriptionTimer } from '@/components/ui/subscription-timer';
+import { PlanLimitTimer } from '@/plan-limits/components/PlanLimitTimer';
 import { toast } from 'sonner';
 
 interface EnhancedChatInterfaceProps {
@@ -37,10 +37,16 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   const {
     timeRemainingToday,
     dailyTimeLimit,
-    isLimitReached,
-    checkPermission,
-    incrementMessageCount
-  } = useSubscriptionLimits(formationId);
+    isTimeReached,
+    isMessageLimitReached,
+    canSendMessage,
+    canMakeCall,
+    useMessage,
+    sessionTime
+  } = usePlanLimits({ 
+    formationId, 
+    context: 'chat' 
+  });
 
   const { initiateCall } = useCallFunctionality(formationId);
 
@@ -49,27 +55,27 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
     setShowUpgradeModal(true);
   }, []);
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = useCallback(async () => {
     if (!message.trim()) return;
 
-    const permission = checkPermission('message');
-    if (!permission.allowed) {
-      showRestrictionModal(permission.message || 'Action non autorisée', permission.restrictionType, permission.currentPlan);
+    const messagePermission = canSendMessage();
+    if (!messagePermission.allowed) {
+      showRestrictionModal(messagePermission.reason || 'Action non autorisée', 'message');
       return;
     }
 
-    if (isLimitReached) {
+    if (isTimeReached || isMessageLimitReached) {
       showRestrictionModal(
-        '⏱️ Temps de visionnage quotidien épuisé.\n\nRevenez demain ou passez à un plan supérieur pour continuer.',
-        'time_limit'
+        '⏱️ Limites quotidiennes atteintes.\n\nRevenez demain ou passez à un plan supérieur pour continuer.',
+        'time'
       );
       return;
     }
 
     onSendMessage?.(message);
-    incrementMessageCount();
+    await useMessage();
     setMessage('');
-  }, [message, checkPermission, isLimitReached, onSendMessage, incrementMessageCount, showRestrictionModal]);
+  }, [message, canSendMessage, isTimeReached, isMessageLimitReached, onSendMessage, useMessage, showRestrictionModal]);
 
   const handleCall = useCallback(async (type: 'audio' | 'video') => {
     if (!receiverId) {
@@ -77,18 +83,16 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       return;
     }
 
-    const action = type === 'audio' ? 'call' : 'video_call';
-    const permission = checkPermission(action);
-    
-    if (!permission.allowed) {
-      showRestrictionModal(permission.message || 'Appel non autorisé', permission.restrictionType, permission.currentPlan);
+    const callPermission = canMakeCall(type);
+    if (!callPermission.allowed) {
+      showRestrictionModal(callPermission.reason || 'Appel non autorisé', 'call');
       return;
     }
 
-    if (isLimitReached) {
+    if (isTimeReached) {
       showRestrictionModal(
-        '⏱️ Temps de visionnage quotidien épuisé.\n\nRevenez demain ou passez à un plan supérieur pour continuer.',
-        'time_limit'
+        '⏱️ Temps quotidien épuisé.\n\nRevenez demain ou passez à un plan supérieur pour continuer.',
+        'time'
       );
       return;
     }
@@ -97,7 +101,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
     if (callInitiated) {
       toast.success(`Appel ${type === 'audio' ? 'audio' : 'vidéo'} en cours...`);
     }
-  }, [receiverId, checkPermission, isLimitReached, initiateCall, lessonId, showRestrictionModal]);
+  }, [receiverId, canMakeCall, isTimeReached, initiateCall, lessonId, showRestrictionModal]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -108,12 +112,13 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Timer d'abonnement */}
+      {/* Timer de limites de plan */}
       {timeRemainingToday !== null && dailyTimeLimit !== null && (
         <div className="p-4 border-b">
-          <SubscriptionTimer
-            timeRemaining={timeRemainingToday}
-            dailyLimit={dailyTimeLimit}
+          <PlanLimitTimer
+            timeRemainingToday={timeRemainingToday}
+            dailyTimeLimit={dailyTimeLimit}
+            sessionTime={sessionTime}
           />
         </div>
       )}
@@ -133,7 +138,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             onClick={() => handleCall('audio')}
             className="flex-shrink-0"
             title="Appel audio"
-            disabled={isLimitReached}
+            disabled={isTimeReached}
           >
             <Phone size={16} />
           </Button>
@@ -144,7 +149,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             onClick={() => handleCall('video')}
             className="flex-shrink-0"
             title="Appel vidéo"
-            disabled={isLimitReached}
+            disabled={isTimeReached}
           >
             <Video size={16} />
           </Button>
@@ -154,15 +159,15 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isLimitReached ? "Limite de temps atteinte" : "Tapez votre message..."}
-            disabled={isLimitReached}
+            placeholder={isTimeReached ? "Limite de temps atteinte" : "Tapez votre message..."}
+            disabled={isTimeReached || isMessageLimitReached}
             className="flex-1"
           />
 
           {/* Bouton d'envoi */}
           <Button
             onClick={handleSendMessage}
-            disabled={!message.trim() || isLimitReached}
+            disabled={!message.trim() || isTimeReached || isMessageLimitReached}
             size="sm"
             className="flex-shrink-0"
           >
@@ -171,7 +176,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         </div>
 
         {/* Message d'aide */}
-        {isLimitReached && (
+        {(isTimeReached || isMessageLimitReached) && (
           <p className="text-xs text-muted-foreground mt-2 text-center">
             Limite de temps quotidienne atteinte. 
             {onUpgrade && (

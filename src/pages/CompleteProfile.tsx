@@ -35,7 +35,7 @@ const CompleteProfile = () => {
 
   const interestOptions = [
     'Technologie', 'Sciences', 'Littérature', 'Arts', 'Sport', 'Musique', 
-    'Cinéma', 'Voyage', 'Cuisine', 'Photographie', 'Mode', 'Business'
+     'Voyage', 'Cuisine', 'Photographie', 'Mode', 'Business', 'Boulangerie'
   ];
 
   useEffect(() => {

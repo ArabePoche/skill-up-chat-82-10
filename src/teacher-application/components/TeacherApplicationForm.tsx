@@ -308,7 +308,7 @@ export const TeacherApplicationForm: React.FC<TeacherApplicationFormProps> = ({
                     className="hidden"
                   />
                   <p className="mt-2 text-sm text-muted-foreground">
-                    CV, diplômes, certificats, etc. (PDF, DOC, JPG, PNG)
+                    CV, diplômes, extrait acte de naissance, certificat de nationalité, carte d'identité ou autre pièce d'identité officielle. (PDF, DOC, JPG, PNG)
                   </p>
                 </div>
               </div>

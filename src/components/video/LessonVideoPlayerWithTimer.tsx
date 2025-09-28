@@ -3,18 +3,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SubscriptionAlert } from '@/components/chat/SubscriptionAlert';
-import { SubscriptionTimer } from '@/components/ui/subscription-timer';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
+import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 import LessonVideoPlayer from '@/components/LessonVideoPlayer';
 
 interface LessonVideoPlayerWithTimerProps {
   src: string;
   formationId: string;
-  timeRemainingToday: number | null;
-  dailyTimeLimit: number | null;
-  isLimitReached: boolean;
-  canPlay: boolean;
-  sessionTime: string;
   onUpgrade?: () => void;
   onPlayStateChange?: (isPlaying: boolean) => void;
   className?: string;
@@ -23,11 +18,6 @@ interface LessonVideoPlayerWithTimerProps {
 export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProps> = ({
   src,
   formationId,
-  timeRemainingToday,
-  dailyTimeLimit,
-  isLimitReached,
-  canPlay,
-  sessionTime,
   onUpgrade,
   onPlayStateChange,
   className = ''
@@ -35,6 +25,24 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
   const navigate = useNavigate();
   const [isPlaying, setIsPlaying] = useState(false);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
+
+  const {
+    timeRemainingToday,
+    dailyTimeLimit,
+    isTimeReached,
+    canUseTime,
+    sessionTime,
+    isTimerActive,
+    startTimer,
+    stopTimer
+  } = usePlanLimits({ 
+    formationId, 
+    context: 'video', 
+    isActive: isPlaying 
+  });
+
+  const timeCheck = canUseTime();
+  const canPlay = timeCheck.allowed;
 
   // Gérer les changements d'état de lecture
   const handlePlayStateChange = (playing: boolean) => {
@@ -45,17 +53,25 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
     
     setIsPlaying(playing);
     onPlayStateChange?.(playing);
+
+    // Gérer le timer
+    if (playing) {
+      startTimer();
+    } else {
+      stopTimer();
+    }
   };
 
   // Arrêter la vidéo si la limite est atteinte
   useEffect(() => {
-    if (isLimitReached && isPlaying) {
+    if (isTimeReached && isPlaying) {
       setIsPlaying(false);
       onPlayStateChange?.(false);
+      stopTimer();
     }
-  }, [isLimitReached, isPlaying, onPlayStateChange]);
+  }, [isTimeReached, isPlaying, onPlayStateChange, stopTimer]);
 
-  if (isLimitReached) {
+  if (isTimeReached) {
     return (
       <div className={`relative bg-black ${className}`}>
         <div className="aspect-video flex flex-col items-center justify-center text-white p-8">
@@ -64,9 +80,10 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
           <p className="text-sm opacity-80 text-center mb-4">
             Vous avez utilisé tout votre temps quotidien pour cette formation.
           </p>
-          <SubscriptionAlert
+          <PlanLimitAlert
             message="Revenez demain ou passez à un plan supérieur pour continuer."
             onUpgrade={() => navigate(`/formation/${formationId}/pricing`)}
+            restrictionType="time"
             variant="warning"
           />
         </div>
@@ -122,19 +139,14 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
       {/* Alerte de limitation */}
       {showLimitAlert && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-30">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
-            <SubscriptionAlert
+          <div className="bg-card rounded-lg p-6 max-w-md mx-4">
+            <PlanLimitAlert
               message="Vous avez atteint votre limite de temps quotidienne."
               onUpgrade={onUpgrade}
+              onClose={() => setShowLimitAlert(false)}
+              restrictionType="time"
               variant="error"
             />
-            <Button
-              variant="ghost"
-              onClick={() => setShowLimitAlert(false)}
-              className="mt-4 w-full"
-            >
-              Fermer
-            </Button>
           </div>
         </div>
       )}
@@ -143,6 +155,7 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
       <LessonVideoPlayer 
         url={src}
         className="w-full"
+        onPlayStateChange={handlePlayStateChange}
       />
     </div>
   );

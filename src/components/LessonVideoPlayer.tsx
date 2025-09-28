@@ -9,6 +9,7 @@ interface LessonVideoPlayerProps {
   title?: string;
   views?: string;
   channelName?: string;
+  onPlayStateChange?: (isPlaying: boolean) => void;
 }
 
 const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({ 
@@ -16,7 +17,8 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
   className = "",
   title = "Vidéo de la leçon",
   views = "12 345 vues",
-  channelName = "Formation Academy"
+  channelName = "Formation Academy",
+  onPlayStateChange
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -114,14 +116,33 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
     const updateTime = () => setCurrentTime(video.currentTime);
     const updateDuration = () => setDuration(video.duration);
     
+    const handlePlay = () => {
+      setIsPlaying(true);
+      onPlayStateChange?.(true);
+    };
+    
+    const handlePause = () => {
+      setIsPlaying(false);
+      onPlayStateChange?.(false);
+    };
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+      onPlayStateChange?.(false);
+    };
+
     video.addEventListener('timeupdate', updateTime);
     video.addEventListener('loadedmetadata', updateDuration);
-    video.addEventListener('ended', () => setIsPlaying(false));
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('ended', handleEnded);
 
     return () => {
       video.removeEventListener('timeupdate', updateTime);
       video.removeEventListener('loadedmetadata', updateDuration);
-      video.removeEventListener('ended', () => setIsPlaying(false));
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('ended', handleEnded);
     };
   }, []);
 
@@ -129,12 +150,14 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
 
-    if (isPlaying) {
-      video.pause();
-    } else {
+    const newPlayingState = !isPlaying;
+    if (newPlayingState) {
       video.play();
+    } else {
+      video.pause();
     }
-    setIsPlaying(!isPlaying);
+    setIsPlaying(newPlayingState);
+    onPlayStateChange?.(newPlayingState);
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {

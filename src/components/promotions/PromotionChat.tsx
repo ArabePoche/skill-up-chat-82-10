@@ -11,7 +11,7 @@ import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseDisplay from '@/components/chat/ExerciseDisplay';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { toast } from 'sonner';
-import { SubscriptionAlert } from '@/components/chat/SubscriptionAlert';
+import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 
 interface PromotionChatProps {
   lessonId: string;
@@ -174,7 +174,7 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
       {/* Alerte de restriction si nécessaire */}
       {!canSend && accessMessage && (
         <div className="p-4 border-b">
-          <SubscriptionAlert
+          <PlanLimitAlert
             message={accessMessage}
             variant={variant}
           />

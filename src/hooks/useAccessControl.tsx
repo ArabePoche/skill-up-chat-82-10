@@ -1,6 +1,6 @@
 import { useUserSubscription } from './useUserSubscription';
 import { useStudentPaymentProgress } from './useStudentPaymentProgress';
-import { useSubscriptionLimits } from './useSubscriptionLimits';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 
 /**
  * Hook centralisé pour le contrôle d'accès
@@ -12,9 +12,9 @@ export const useAccessControl = (formationId: string) => {
   const { 
     timeRemainingToday, 
     dailyTimeLimit,
-    isLimitReached: isTimeLimit,
-    checkPermission 
-  } = useSubscriptionLimits(formationId);
+    isTimeReached: isTimeLimit,
+    canSendMessage 
+  } = usePlanLimits({ formationId, context: 'general' });
 
   // Vérification principale : jours restants
   const daysRemaining = paymentProgress?.total_days_remaining ?? null;
@@ -47,13 +47,13 @@ export const useAccessControl = (formationId: string) => {
     }
 
     // Priorité 3 : Vérifications d'abonnement spécifiques
-    const messagePermission = checkPermission('message');
+    const messagePermission = canSendMessage();
     if (!messagePermission.allowed) {
       return {
         canSend: false,
         canSubmitExercise: true, // Les exercices peuvent être autorisés même si les messages ne le sont pas
-        reason: messagePermission.restrictionType || 'subscription_limit',
-        message: messagePermission.message || 'Action non autorisée avec votre plan actuel.',
+        reason: 'subscription_limit',
+        message: messagePermission.reason || 'Action non autorisée avec votre plan actuel.',
         actionText: 'Améliorer mon plan',
         variant: 'warning' as const
       };
@@ -88,7 +88,7 @@ export const useAccessControl = (formationId: string) => {
     isTimeLimit,
     
     // Fonctions utilitaires
-    checkPermission,
+    canSendMessage,
     
     // Pour la compatibilité avec les composants existants
     isLimitReached: !accessStatus.canSend

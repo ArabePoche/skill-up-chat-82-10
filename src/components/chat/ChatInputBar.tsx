@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useFileUpload } from '@/hooks/useFileUpload';
-import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
+import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 import EmojiPicker from '@/components/EmojiPicker';
 import WhatsAppVoiceRecorder from './WhatsAppVoiceRecorder';
 import VoiceBar from './VoiceBar';
@@ -59,7 +60,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const { user } = useAuth();
   const { startTyping, stopTyping } = useTypingIndicator(lessonId, formationId);
   const { uploadFile, isUploading } = useFileUpload();
-  const { checkPermission, incrementMessageCount } = useSubscriptionLimits(formationId);
+  const planLimits = usePlanLimits({ formationId, context: 'chat' });
 
   const checkAuthAndExecute = (action: () => void) => {
     if (!user) {
@@ -82,10 +83,10 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       return;
     }
 
-    // Vérifier les permissions au moment de l'envoi
-    const permission = checkPermission('message');
-    if (!permission.allowed) {
-      showRestrictionModal(permission.message || 'Action non autorisée', permission.restrictionType, permission.currentPlan);
+    // Vérifier les permissions avec le nouveau système
+    const messageCheck = planLimits.canSendMessage();
+    if (!messageCheck.allowed) {
+      showRestrictionModal(messageCheck.reason || 'Action non autorisée');
       return;
     }
 
@@ -101,7 +102,8 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
     // Envoyer le message si autorisé
     onSendMessage(content, 'text', undefined, repliedToMessageId);
-    incrementMessageCount();
+    // Consommer le message avec le nouveau système
+    planLimits.useMessage().catch(console.error);
     setMessage('');
     stopTyping();
   };

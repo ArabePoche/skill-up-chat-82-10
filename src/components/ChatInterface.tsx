@@ -7,7 +7,7 @@ import { useMarkMessagesAsRead } from '@/hooks/useMarkMessagesAsRead';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
-import { useChatTimer } from '@/hooks/useChatTimer';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 import { useCallNotifications } from '@/hooks/useCallNotifications';
@@ -19,8 +19,6 @@ import VideoMessageSwitch from './video/VideoMessageSwitch';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 
-import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
-import { useTypingListener } from '@/hooks/useTypingListener';
 
 interface ChatInterfaceProps {
   lesson: {
@@ -60,17 +58,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   const sendMessageMutation = useSendMessage(lesson.id.toString(), formation.id);
   const markAsReadMutation = useMarkMessagesAsRead();
 
-  const { isSubscribed, connectionStatus, reconnectAttempts, maxReconnectAttempts } = useRealtimeMessages(lesson.id.toString(), formation.id);
-  const typingUsers = useTypingListener(lesson.id.toString(), formation.id);
+// realtime hooks handled in MessageList to avoid duplicate subscriptions
 
   // Fonctionnalités d'appel
   const { initiateCall } = useCallFunctionality(formation.id);
   const { incomingCall, dismissCall, acceptCall, rejectCall } = useCallNotifications();
 
-  // Timer pour le chat (indépendant de la vidéo)
-  const chatTimer = useChatTimer({
+  // Nouveau système de limites centralisé
+  const planLimits = usePlanLimits({
     formationId: formation.id,
-    lessonId: lesson.id.toString(),
+    context: 'chat',
     isActive: true
   });
 
@@ -269,9 +266,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
                 Formation: {formation.title}
               </p>
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs text-white/60">
-                {typingUsers.length > 0 && (
-                  <span>• {typingUsers.length} en train d'écrire</span>
-                )}
+              {/* Indicateur de frappe en-tête supprimé (géré en liste) */}
               </div>
             </div>
           </div>
@@ -317,11 +312,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           <LessonVideoPlayerWithTimer
             src={lesson.video_url}
             formationId={formation.id}
-            timeRemainingToday={chatTimer.timeRemainingToday}
-            dailyTimeLimit={chatTimer.dailyTimeLimit}
-            isLimitReached={chatTimer.isLimitReached}
-            canPlay={chatTimer.canContinue}
-            sessionTime={chatTimer.sessionTime}
             onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
             onPlayStateChange={setIsVideoPlaying}
             className="w-full"

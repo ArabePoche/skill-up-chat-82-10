@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { useCallNotifications } from '@/hooks/useCallNotifications';
-import { useChatTimer } from '@/hooks/useChatTimer';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useLevelExercises } from '@/hooks/group-chat/useLevelExercises';
@@ -122,10 +122,10 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const { initiateCall } = useCallFunctionality(formation.id);
   const { incomingCall, dismissCall, acceptCall, rejectCall } = useCallNotifications();
 
-  // Timer pour le chat (indépendant de la vidéo)
-  const chatTimer = useChatTimer({
+  // Nouveau système de limites centralisé
+  const planLimits = usePlanLimits({
     formationId: formation.id,
-    lessonId: level.id.toString(),
+    context: 'chat',
     isActive: true
   });
 
@@ -338,11 +338,6 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           <LessonVideoPlayerWithTimer
             src={selectedVideo.video_url}
             formationId={formation.id}
-            timeRemainingToday={chatTimer.timeRemainingToday}
-            dailyTimeLimit={chatTimer.dailyTimeLimit}
-            isLimitReached={chatTimer.isLimitReached}
-            canPlay={chatTimer.canContinue}
-            sessionTime={chatTimer.sessionTime}
             onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
             onPlayStateChange={() => {}}
             className="w-full h-full"

@@ -1,9 +1,7 @@
 
 import React from 'react';
 import { ArrowLeft, Video, Phone, MoreVertical } from 'lucide-react';
-import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
-import { SubscriptionAlert } from './SubscriptionAlert';
-import { SubscriptionTimer } from '@/components/ui/subscription-timer';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { toast } from 'sonner';
 
@@ -33,13 +31,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   isTeacher = false,
   onUpgrade
 }) => {
-  const { checkPermission } = useSubscriptionLimits(formation?.id || '');
+  const { canMakeCall } = usePlanLimits({ formationId: formation?.id || '', context: 'call' });
   const { initiateCall } = useCallFunctionality(formation?.id || '');
 
   const handleVoiceCall = async () => {
-    const permission = checkPermission('call');
-    if (!permission.allowed && permission.message) {
-      toast.error(permission.message);
+    const permission = canMakeCall('audio');
+    if (!permission.allowed) {
+      toast.error(permission.reason || 'Appel non autorisé');
       onUpgrade?.();
       return;
     }
@@ -56,9 +54,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   };
 
   const handleVideoCall = async () => {
-    const permission = checkPermission('video_call');
-    if (!permission.allowed && permission.message) {
-      toast.error(permission.message);
+    const permission = canMakeCall('video');
+    if (!permission.allowed) {
+      toast.error(permission.reason || 'Appel vidéo non autorisé');
       onUpgrade?.();
       return;
     }

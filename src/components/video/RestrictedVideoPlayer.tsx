@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Lock, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useVideoTimer } from '@/hooks/useVideoTimer';
-import { SubscriptionAlert } from '@/components/chat/SubscriptionAlert';
+import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
+import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 import LessonVideoPlayer from '@/components/LessonVideoPlayer';
 
 interface RestrictedVideoPlayerProps {
@@ -30,9 +30,18 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
     sessionTime,
     timeRemainingToday,
     dailyTimeLimit,
-    isLimitReached,
-    canPlay
-  } = useVideoTimer({ formationId, isPlaying });
+    isTimeReached,
+    canUseTime,
+    startTimer,
+    stopTimer
+  } = usePlanLimits({ 
+    formationId, 
+    context: 'video', 
+    isActive: isPlaying 
+  });
+
+  const timeCheck = canUseTime();
+  const canPlay = timeCheck.allowed;
 
   const handlePlayPause = () => {
     if (!canPlay) {
@@ -45,9 +54,11 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
     if (isPlaying) {
       video.pause();
       setIsPlaying(false);
+      stopTimer();
     } else {
       video.play();
       setIsPlaying(true);
+      startTimer();
     }
   };
 
@@ -67,14 +78,15 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
 
   // Arrêter la vidéo quand la limite est atteinte
   useEffect(() => {
-    if (isLimitReached && isPlaying) {
+    if (isTimeReached && isPlaying) {
       const video = videoRef.current;
       if (video) {
         video.pause();
         setIsPlaying(false);
+        stopTimer();
       }
     }
-  }, [isLimitReached, isPlaying]);
+  }, [isTimeReached, isPlaying, stopTimer]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -84,7 +96,7 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-  if (isLimitReached) {
+  if (isTimeReached) {
     return (
       <Card className={className}>
         <CardContent className="flex flex-col items-center justify-center p-8 text-center">
@@ -93,9 +105,10 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
           <p className="text-muted-foreground mb-4">
             Vous avez utilisé tout votre temps quotidien pour cette formation.
           </p>
-          <SubscriptionAlert
+          <PlanLimitAlert
             message="Revenez demain ou passez à un plan supérieur pour continuer à regarder les vidéos."
             onUpgrade={onUpgrade}
+            restrictionType="time"
             variant="warning"
           />
         </CardContent>
@@ -160,9 +173,10 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
       {/* Alerte de temps faible */}
       {timeRemainingToday !== null && timeRemainingToday <= 5 && timeRemainingToday > 0 && (
         <div className="absolute top-4 left-4 right-4">
-          <SubscriptionAlert
+          <PlanLimitAlert
             message={`Plus que ${timeRemainingToday} minute${timeRemainingToday > 1 ? 's' : ''} restante${timeRemainingToday > 1 ? 's' : ''} aujourd'hui !`}
             onUpgrade={onUpgrade}
+            restrictionType="time"
             variant="warning"
           />
         </div>
