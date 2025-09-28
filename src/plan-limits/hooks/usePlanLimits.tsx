@@ -74,12 +74,16 @@ export const usePlanLimits = ({
   const { data: userRole } = useUserRole(formationId);
   const queryClient = useQueryClient();
   
-  // État du timer de session
-  const [sessionSeconds, setSessionSeconds] = useState(0);
+  // État du timer de session avec persistance
+  const sessionStorageKey = `session-time-${formationId}-${user?.id}`;
+  const [sessionSeconds, setSessionSeconds] = useState(() => {
+    const saved = sessionStorage.getItem(sessionStorageKey);
+    return saved ? parseFloat(saved) : 0;
+  });
   const [isTimerActive, setIsTimerActive] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<number>(Date.now());
-  const lastMinuteSavedRef = useRef<number>(0);
+  const lastMinuteSavedRef = useRef<number>(Math.floor(sessionSeconds / 60));
 
   // Récupération des limites du plan et de l'usage actuel
   const { data: limits, isLoading } = useQuery({
@@ -208,18 +212,27 @@ export const usePlanLimits = ({
 
   // Gestion du timer de session
   useEffect(() => {
-    if (isTimerActive && context === 'video') {
+    console.log('Timer effect - isTimerActive:', isTimerActive, 'context:', context);
+    
+    if (isTimerActive && (context === 'video' || context === 'chat')) {
+      console.log('Starting timer interval for', context);
       intervalRef.current = setInterval(() => {
         const now = Date.now();
         const elapsed = (now - lastUpdateRef.current) / 1000;
         
         setSessionSeconds(prev => {
           const newTotal = prev + elapsed;
+          console.log('Timer tick - elapsed:', elapsed, 'newTotal:', newTotal, 'minutes:', Math.floor(newTotal / 60));
+          
+          // Sauvegarder en temps réel dans sessionStorage
+          sessionStorage.setItem(sessionStorageKey, newTotal.toString());
+          
           const currentMinutes = Math.floor(newTotal / 60);
           
           // Sauvegarder chaque minute complète
           if (currentMinutes > lastMinuteSavedRef.current && currentMinutes > 0) {
             const minutesToSave = currentMinutes - lastMinuteSavedRef.current;
+            console.log('Saving', minutesToSave, 'minutes to database');
             useTimeMutation.mutate(minutesToSave);
             lastMinuteSavedRef.current = currentMinutes;
           }
@@ -229,18 +242,19 @@ export const usePlanLimits = ({
         
         lastUpdateRef.current = now;
       }, 1000);
+      
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
     } else if (intervalRef.current) {
+      console.log('Clearing timer interval');
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isTimerActive, context, useTimeMutation]);
+  }, [isTimerActive, context, useTimeMutation, sessionStorageKey]);
 
   // Fonctions de vérification
   const canSendMessage = useCallback(() => {
@@ -332,15 +346,22 @@ export const usePlanLimits = ({
   }, []);
 
   const startTimer = useCallback(() => {
-    if (canUseTime().allowed && isActive) {
+    console.log('🎯 StartTimer called - context:', context, 'isActive:', isActive);
+    // Toujours démarrer le timer pour mesurer le temps, même pour les plans gratuits
+    // Le canUseTime().allowed sera vérifié dans le composant pour empêcher la lecture
+    if (isActive) {
       setIsTimerActive(true);
       lastUpdateRef.current = Date.now();
+      console.log('✅ Timer started for context:', context);
+    } else {
+      console.log('❌ Timer NOT started - isActive:', isActive);
     }
-  }, [canUseTime, isActive]);
+  }, [context, isActive]);
 
   const stopTimer = useCallback(() => {
+    console.log('⏹️ StopTimer called for context:', context);
     setIsTimerActive(false);
-  }, []);
+  }, [context]);
 
   // Formatage du temps de session
   const formatSessionTime = (seconds: number) => {

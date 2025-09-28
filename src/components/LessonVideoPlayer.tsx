@@ -57,11 +57,30 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
     }
     
     if (videoId) {
-      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+      // Utiliser l'API enablejsapi pour pouvoir détecter les événements
+      const embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+      
+      // Simuler le démarrage de lecture quand l'utilisateur clique sur l'iframe
+      const handleIframeClick = () => {
+        if (!isPlaying) {
+          setIsPlaying(true);
+          onPlayStateChange?.(true);
+        }
+      };
       
       return (
         <div className={`w-full ${className}`}>
-          <div className="w-full aspect-video rounded-t-lg overflow-hidden">
+          <div 
+            className="w-full aspect-video rounded-t-lg overflow-hidden relative"
+            onClick={handleIframeClick}
+          >
+            {/* Overlay transparent pour détecter le premier clic */}
+            {!isPlaying && (
+              <div 
+                className="absolute inset-0 z-10 cursor-pointer"
+                style={{ pointerEvents: 'auto' }}
+              />
+            )}
             <iframe
               src={embedUrl}
               title="Vidéo de la leçon"
@@ -69,6 +88,7 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="w-full h-full"
+              style={{ pointerEvents: isPlaying ? 'auto' : 'none' }}
             />
           </div>
           <div className="p-4 bg-background border-x border-b rounded-b-lg">
@@ -156,8 +176,7 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
     } else {
       video.pause();
     }
-    setIsPlaying(newPlayingState);
-    onPlayStateChange?.(newPlayingState);
+    // Ne pas appeler onPlayStateChange ici car les événements natifs le font déjà
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {

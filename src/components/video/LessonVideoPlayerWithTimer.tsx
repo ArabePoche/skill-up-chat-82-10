@@ -38,7 +38,7 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
   } = usePlanLimits({ 
     formationId, 
     context: 'video', 
-    isActive: isPlaying 
+    isActive: true // Toujours actif pour la mesure du temps
   });
 
   const timeCheck = canUseTime();
@@ -46,7 +46,10 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
 
   // Gérer les changements d'état de lecture
   const handlePlayStateChange = (playing: boolean) => {
+    console.log('🎥 Play state change:', playing, 'canPlay:', canPlay, 'isTimerActive:', isTimerActive);
+    
     if (!canPlay && playing) {
+      console.log('❌ Cannot play - showing limit alert');
       setShowLimitAlert(true);
       return;
     }
@@ -54,13 +57,25 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
     setIsPlaying(playing);
     onPlayStateChange?.(playing);
 
-    // Gérer le timer
+    // Démarrer/arrêter le timer selon l'état de lecture
+    // Forcer l'arrêt/démarrage même si l'état semble déjà correct
     if (playing) {
+      console.log('▶️ Starting timer...');
       startTimer();
     } else {
+      console.log('⏸️ Stopping timer...');
       stopTimer();
     }
   };
+
+  // Arrêter automatiquement le timer si on quitte la page
+  useEffect(() => {
+    return () => {
+      if (isTimerActive) {
+        stopTimer();
+      }
+    };
+  }, [isTimerActive, stopTimer]);
 
   // Arrêter la vidéo si la limite est atteinte
   useEffect(() => {
@@ -93,43 +108,48 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
 
   return (
     <div className={`relative ${className}`}>
-      {/* Timer en surimpression - repositionné pour éviter le header */}
+      {/* Lecteur vidéo */}
+      <LessonVideoPlayer 
+        url={src}
+        className="w-full"
+        onPlayStateChange={handlePlayStateChange}
+      />
+
+      {/* Timer en bas de la vidéo */}
       {timeRemainingToday !== null && dailyTimeLimit !== null && (
-        <div className="absolute top-4 left-2 right-2 z-20 pointer-events-none">
-          <div className="bg-black/80 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/10">
-            <div className="flex items-center justify-between text-white text-xs">
+        <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+          <div className="bg-gradient-to-t from-black/90 via-black/80 to-transparent backdrop-blur-sm p-3 pb-4 shadow-lg">
+            <div className="flex items-center justify-between text-white text-sm mb-2">
               <div className="flex items-center gap-2">
-                <Clock className="w-3 h-3 text-blue-400" />
+                <Clock className="w-4 h-4 text-blue-400" />
                 <span className="font-medium">
-                  Temps restant: <span className="text-blue-300">{timeRemainingToday}min</span>
+                  Temps restant: <span className="text-blue-300 font-bold">{timeRemainingToday}min</span>
                 </span>
               </div>
-              <div className="text-white/70">
+              <div className="text-white/80">
                 Session: {sessionTime}
               </div>
             </div>
             
             {/* Barre de progression du temps */}
-            <div className="mt-1">
-              <div className="w-full bg-white/20 rounded-full h-1">
-                <div 
-                  className={`h-1 rounded-full transition-all duration-300 ${
-                    timeRemainingToday <= 5 ? 'bg-red-400' : 
-                    timeRemainingToday <= 15 ? 'bg-orange-400' : 
-                    'bg-blue-400'
-                  }`}
-                  style={{ 
-                    width: `${Math.max(0, (timeRemainingToday / dailyTimeLimit) * 100)}%` 
-                  }}
-                />
-              </div>
+            <div className="w-full bg-white/20 rounded-full h-1.5">
+              <div 
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  timeRemainingToday <= 5 ? 'bg-red-400 animate-pulse' : 
+                  timeRemainingToday <= 15 ? 'bg-orange-400' : 
+                  'bg-blue-400'
+                }`}
+                style={{ 
+                  width: `${Math.max(0, (timeRemainingToday / dailyTimeLimit) * 100)}%` 
+                }}
+              />
             </div>
 
             {/* Alerte de temps faible */}
             {timeRemainingToday <= 5 && timeRemainingToday > 0 && (
-              <div className="flex items-center gap-1 mt-1 text-orange-300 text-xs animate-pulse">
+              <div className="flex items-center justify-center gap-1 mt-2 text-orange-300 text-xs animate-pulse">
                 <span>⚠️</span>
-                <span className="font-medium">Plus que {timeRemainingToday}min !</span>
+                <span className="font-medium">Attention ! Plus que {timeRemainingToday} minute{timeRemainingToday > 1 ? 's' : ''} !</span>
               </div>
             )}
           </div>
@@ -150,13 +170,6 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
           </div>
         </div>
       )}
-
-      {/* Lecteur vidéo */}
-      <LessonVideoPlayer 
-        url={src}
-        className="w-full"
-        onPlayStateChange={handlePlayStateChange}
-      />
     </div>
   );
 };

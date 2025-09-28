@@ -112,17 +112,6 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Timer de limites de plan */}
-      {timeRemainingToday !== null && dailyTimeLimit !== null && (
-        <div className="p-4 border-b">
-          <PlanLimitTimer
-            timeRemainingToday={timeRemainingToday}
-            dailyTimeLimit={dailyTimeLimit}
-            sessionTime={sessionTime}
-          />
-        </div>
-      )}
-
       {/* Contenu principal du chat */}
       <div className="flex-1 overflow-hidden">
         {children}
