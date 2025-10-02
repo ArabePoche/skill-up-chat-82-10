@@ -10,13 +10,14 @@ export const useConversations = () => {
 
   return useQuery({
     queryKey: ['conversations', user?.id],
+    refetchInterval: 3000, // Rafraîchir toutes les 3 secondes
     queryFn: async () => {
       if (!user?.id) return [];
 
     
 
       // Récupérer les formations où l'utilisateur est enseignant ou étudiant
-      const [teacherFormations, studentEnrollments, storyConversations] = await Promise.all([
+      const [teacherFormations, studentEnrollments] = await Promise.all([
         supabase
           .from('teachers')
           .select(`
@@ -48,25 +49,7 @@ export const useConversations = () => {
             )
           `)
           .eq('user_id', user.id)
-          .eq('status', 'approved'),
-
-        // Récupérer les conversations de stories avec des relations explicites
-        supabase
-          .from('story_conversations')
-          .select(`
-            id,
-            story_id,
-            participant1_id,
-            participant2_id,
-            last_message_at,
-            user_stories:story_id (
-              content_text,
-              media_url,
-              content_type
-            )
-          `)
-          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-          .order('last_message_at', { ascending: false })
+          .eq('status', 'approved')
       ]);
 
       const conversations = [];
@@ -115,83 +98,94 @@ export const useConversations = () => {
         }
       }
 
-      // Ajouter les conversations de stories (exclure le système)
-      if (storyConversations.data) {
-        // Récupérer les profils des participants séparément pour éviter l'ambiguïté
-        const participantIds = storyConversations.data.flatMap(conv => [conv.participant1_id, conv.participant2_id]);
-        const uniqueParticipantIds = [...new Set(participantIds)];
+      // Récupérer les conversations de stories via story_messages
+      const { data: storyMessages } = await supabase
+        .from('story_messages')
+        .select(`
+          id,
+          story_id,
+          sender_id,
+          receiver_id,
+          content,
+          created_at,
+          user_stories:story_id (
+            content_text,
+            media_url,
+            content_type,
+            user_id
+          )
+        `)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: true });
+
+      if (storyMessages) {
+        // Grouper les messages par story et par interlocuteur
+        const storyConversationsMap = new Map();
         
-        const { data: participantProfiles } = await supabase
+        for (const msg of storyMessages) {
+          const otherUserId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
+          
+          // Exclure le système
+          if (otherUserId === SYSTEM_USER_ID) continue;
+          
+          const key = `${msg.story_id}-${otherUserId}`;
+          
+          if (!storyConversationsMap.has(key)) {
+            storyConversationsMap.set(key, {
+              storyId: msg.story_id,
+              otherUserId,
+              messages: [],
+              story: msg.user_stories
+            });
+          }
+          
+          storyConversationsMap.get(key).messages.push(msg);
+        }
+
+        // Récupérer les profils des interlocuteurs
+        const userIds = Array.from(new Set(storyMessages.map(msg => 
+          msg.sender_id === user.id ? msg.receiver_id : msg.sender_id
+        ))).filter(id => id !== SYSTEM_USER_ID);
+
+        const { data: profiles } = await supabase
           .from('profiles')
           .select('id, first_name, last_name, username, avatar_url')
-          .in('id', uniqueParticipantIds);
+          .in('id', userIds);
 
         const profilesMap = new Map();
-        if (participantProfiles) {
-          participantProfiles.forEach(profile => {
+        if (profiles) {
+          profiles.forEach(profile => {
             profilesMap.set(profile.id, profile);
           });
         }
 
-        // Récupérer les messages pour chaque conversation
-        const conversationIds = storyConversations.data.map(conv => conv.id);
-        const { data: storyMessages } = await supabase
-          .from('story_messages')
-          .select('conversation_id, content, created_at')
-          .in('conversation_id', conversationIds)
-          .order('created_at', { ascending: false });
-
-        const messagesMap = new Map();
-        if (storyMessages) {
-          storyMessages.forEach(msg => {
-            if (!messagesMap.has(msg.conversation_id)) {
-              messagesMap.set(msg.conversation_id, []);
-            }
-            messagesMap.get(msg.conversation_id).push(msg);
-          });
-        }
-
-        for (const conv of storyConversations.data) {
-          // Identifier l'autre participant (pas soi-même et pas le système)
-          const otherParticipantId = conv.participant1_id === user.id 
-            ? conv.participant2_id 
-            : conv.participant1_id;
-
-          // Exclure les conversations avec le système
-          if (otherParticipantId === SYSTEM_USER_ID) {
-            continue;
-          }
-
-          const otherParticipant = profilesMap.get(otherParticipantId);
-          const otherName = otherParticipant 
-            ? `${otherParticipant.first_name || ''} ${otherParticipant.last_name || ''}`.trim() || otherParticipant.username || 'Utilisateur'
+        // Créer les conversations pour l'interface
+        for (const [key, convData] of storyConversationsMap) {
+          const profile = profilesMap.get(convData.otherUserId);
+          const lastMsg = convData.messages[convData.messages.length - 1];
+          
+          const otherName = profile 
+            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'Utilisateur'
             : 'Utilisateur';
 
-          // Dernier message ou extrait de story
-          let lastMessage = 'Réponse à une story';
-          const convMessages = messagesMap.get(conv.id);
-          if (convMessages && convMessages.length > 0) {
-            const lastMsg = convMessages[0]; // Déjà trié par created_at desc
-            lastMessage = lastMsg.content.substring(0, 50) + (lastMsg.content.length > 50 ? '...' : '');
-          } else if (conv.user_stories) {
-            const story = conv.user_stories;
-            if (story.content_type === 'text' && story.content_text) {
-              lastMessage = `Story: ${story.content_text.substring(0, 30)}...`;
-            } else {
-              lastMessage = 'Story partagée';
-            }
-          }
+          let lastMessage = lastMsg.content.substring(0, 50);
+          if (lastMsg.content.length > 50) lastMessage += '...';
+
+          const createdAt = new Date(lastMsg.created_at);
+          const timeLabel = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
           conversations.push({
-            id: `story-${conv.id}`,
+            id: `story-${convData.storyId}-${convData.otherUserId}`,
             name: otherName,
             lastMessage,
-            timestamp: new Date(conv.last_message_at).toLocaleDateString(),
+            timestamp: timeLabel,
+            created_at: lastMsg.created_at,
             unread: 0,
-            avatar: otherParticipant?.avatar_url || '💬',
+            avatar: profile?.avatar_url || '💬',
             online: false,
-            type: 'story_conversation',
-            conversationId: conv.id
+            type: 'story_message',
+            storyId: convData.storyId,
+            otherUserId: convData.otherUserId
           });
         }
       }

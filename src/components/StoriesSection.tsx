@@ -75,6 +75,11 @@ const StoriesSection = () => {
     }
   };
 
+  // Fonction pour ouvrir le modal de création (bouton +)
+  const handleAddStory = () => {
+    setShowCreateModal(true);
+  };
+
   const handleNext = () => {
     if (currentStoryIndex < selectedStories.length - 1) {
       setCurrentStoryIndex(currentStoryIndex + 1);
@@ -167,14 +172,19 @@ const StoriesSection = () => {
                 )}
               </div>
             </div>
-            {myStories.length === 0 && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-[#25d366] rounded-full flex items-center justify-center border-2 border-white">
-                <Plus size={10} className="text-white" />
-              </div>
-            )}
+            {/* Bouton + toujours visible */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddStory();
+              }}
+              className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-[#25d366] rounded-full flex items-center justify-center border-2 border-white hover:bg-[#20ba5a] transition-colors"
+            >
+              <Plus size={10} className="text-white" />
+            </button>
           </button>
           <p className="text-xs mt-1 text-center text-gray-600 max-w-[56px] truncate">
-            {myStories.length > 0 ? 'Mon statut' : 'Ajouter'}
+            Mon statut
           </p>
         </div>
 

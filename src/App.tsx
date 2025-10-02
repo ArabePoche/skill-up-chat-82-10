@@ -24,6 +24,7 @@ import FormationDetailPage from '@/pages/cours/FormationDetail';
 import TeacherInterface from '@/pages/cours/TeacherInterface';
 import LessonChat from '@/pages/cours/LessonChat';
 import GroupLessonChat from '@/pages/cours/GroupLessonChat';
+import Conversations from '@/pages/Conversations';
 
 
 // Créer une instance unique du QueryClient
@@ -59,6 +60,9 @@ const AppWithRouter: React.FC = () => {
         <Route path="/cours/lesson/:lessonId" element={<LessonChat />} />
         <Route path="/cours/group-lesson/:levelId" element={<GroupLessonChat />} />
         
+        {/* Route pour conversations (réponses stories et discussions) */}
+        <Route path="/story-chat/:storyId/:otherUserId" element={<Conversations />} />
+        
         {/* Partage vidéo et post dédiés + onglets */}
         <Route path="/video/:id" element={<Layout />} />
         <Route path="/post/:id" element={<Layout />} />
@@ -83,16 +87,16 @@ const AppWithRouter: React.FC = () => {
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <NavigationProvider>
-          <TabScrollProvider>
-            <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <NavigationProvider>
+            <TabScrollProvider>
               <AppWithRouter />
-            </BrowserRouter>
-            <Toaster />
-          </TabScrollProvider>
-        </NavigationProvider>
-      </AuthProvider>
+              <Toaster />
+            </TabScrollProvider>
+          </NavigationProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };

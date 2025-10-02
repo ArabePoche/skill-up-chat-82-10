@@ -52,7 +52,7 @@ export const useStories = () => {
         `)
         .eq('is_active', true)
         .gte('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching stories:', error);

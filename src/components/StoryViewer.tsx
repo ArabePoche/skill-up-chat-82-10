@@ -90,63 +90,19 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
     setIsReplying(true);
     try {
-      // 1. Créer ou récupérer la conversation
-      const { data: existingConv } = await supabase
-        .from('story_conversations')
-        .select('id')
-        .eq('story_id', story.id)
-        .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${story.user_id}),and(participant1_id.eq.${story.user_id},participant2_id.eq.${user.id})`)
-        .maybeSingle();
-
-      let conversationId = existingConv?.id;
-
-      if (!conversationId) {
-        const { data: newConv, error: convError } = await supabase
-          .from('story_conversations')
-          .insert({
-            story_id: story.id,
-            participant1_id: user.id,
-            participant2_id: story.user_id,
-            last_message_at: new Date().toISOString()
-          })
-          .select('id')
-          .single();
-
-        if (convError) {
-          throw convError;
-        }
-        conversationId = newConv.id;
-      }
-
-      // 2. Préparer l'extrait de story
-      let storyReference = '';
-      if (story.content_type === 'text' && story.content_text) {
-        storyReference = story.content_text.substring(0, 100);
-      } else if (story.content_type === 'image') {
-        storyReference = '📸 Photo partagée';
-      } else if (story.content_type === 'video') {
-        storyReference = '🎥 Vidéo partagée';
-      }
-
-      // 3. Envoyer le message
+      // Envoyer directement le message lié à la story
       const { error: messageError } = await supabase
         .from('story_messages')
         .insert({
-          conversation_id: conversationId,
+          story_id: story.id,
           sender_id: user.id,
-          content: replyText,
-          story_reference: storyReference
+          receiver_id: story.user_id,
+          content: replyText
         });
 
       if (messageError) {
         throw messageError;
       }
-
-      // 4. Mettre à jour last_message_at
-      await supabase
-        .from('story_conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversationId);
 
       toast.success('Réponse envoyée!');
       setReplyText('');
@@ -167,7 +123,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col">
       {/* Progress bars */}
       <div className="absolute top-4 left-4 right-4 flex space-x-1 z-20">
         {stories.map((_, index) => (
@@ -213,20 +169,20 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
       {/* Navigation zones */}
       <div 
-        className="absolute left-0 top-0 w-1/3 h-full cursor-pointer z-10"
+        className="absolute left-0 top-0 w-1/3 h-[calc(100%-120px)] cursor-pointer z-10"
         onClick={handlePrevious}
       />
       <div 
-        className="absolute right-0 top-0 w-1/3 h-full cursor-pointer z-10"
+        className="absolute right-0 top-0 w-1/3 h-[calc(100%-120px)] cursor-pointer z-10"
         onClick={handleNext}
       />
       <div 
-        className="absolute left-1/3 top-0 w-1/3 h-full cursor-pointer z-10"
+        className="absolute left-1/3 top-0 w-1/3 h-[calc(100%-120px)] cursor-pointer z-10"
         onMouseDown={handleStoryPress}
       />
 
-      {/* Story content */}
-      <div className="w-full h-full flex items-center justify-center">
+      {/* Story content - hauteur réduite pour laisser place au champ de saisie */}
+      <div className="flex-1 flex items-center justify-center pb-32">
         {story.content_type === 'text' && (
           <div 
             className="max-w-xs mx-auto p-6 rounded-2xl text-center shadow-lg"
@@ -258,7 +214,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       </div>
 
       {/* Reply section - AMÉLIORÉ POUR MOBILE */}
-      <div className="absolute bottom-4 sm:bottom-6 left-4 right-4 z-30">
+      <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-30">
         {showReplyInput ? (
           <div className="flex items-center space-x-2 sm:space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 sm:py-3">
             <Input

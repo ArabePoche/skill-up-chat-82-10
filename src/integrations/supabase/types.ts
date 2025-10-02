@@ -1741,89 +1741,43 @@ export type Database = {
           },
         ]
       }
-      story_conversations: {
-        Row: {
-          created_at: string | null
-          id: string
-          last_message_at: string | null
-          participant1_id: string
-          participant2_id: string
-          story_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          last_message_at?: string | null
-          participant1_id: string
-          participant2_id: string
-          story_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          last_message_at?: string | null
-          participant1_id?: string
-          participant2_id?: string
-          story_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_conversations_participant1_id_fkey"
-            columns: ["participant1_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "story_conversations_participant2_id_fkey"
-            columns: ["participant2_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "story_conversations_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "user_stories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       story_messages: {
         Row: {
           content: string
-          conversation_id: string
           created_at: string | null
           id: string
           is_read: boolean | null
+          receiver_id: string | null
           sender_id: string
+          story_id: string | null
           story_reference: string | null
         }
         Insert: {
           content: string
-          conversation_id: string
           created_at?: string | null
           id?: string
           is_read?: boolean | null
+          receiver_id?: string | null
           sender_id: string
+          story_id?: string | null
           story_reference?: string | null
         }
         Update: {
           content?: string
-          conversation_id?: string
           created_at?: string | null
           id?: string
           is_read?: boolean | null
+          receiver_id?: string | null
           sender_id?: string
+          story_id?: string | null
           story_reference?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "story_messages_conversation_id_fkey"
-            columns: ["conversation_id"]
+            foreignKeyName: "story_messages_receiver_id_fkey"
+            columns: ["receiver_id"]
             isOneToOne: false
-            referencedRelation: "story_conversations"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1831,6 +1785,13 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_messages_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "user_stories"
             referencedColumns: ["id"]
           },
         ]
@@ -2706,6 +2667,63 @@ export type Database = {
           },
         ]
       }
+      user_plan_limits_usage: {
+        Row: {
+          calls_made_today: number
+          created_at: string
+          date: string
+          formation_id: string
+          id: string
+          messages_sent_today: number
+          time_used_this_week: number
+          time_used_today: number
+          updated_at: string
+          user_id: string
+          week_start_date: string
+        }
+        Insert: {
+          calls_made_today?: number
+          created_at?: string
+          date?: string
+          formation_id: string
+          id?: string
+          messages_sent_today?: number
+          time_used_this_week?: number
+          time_used_today?: number
+          updated_at?: string
+          user_id: string
+          week_start_date?: string
+        }
+        Update: {
+          calls_made_today?: number
+          created_at?: string
+          date?: string
+          formation_id?: string
+          id?: string
+          messages_sent_today?: number
+          time_used_this_week?: number
+          time_used_today?: number
+          updated_at?: string
+          user_id?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plan_limits_usage_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plan_limits_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_sessions: {
         Row: {
           created_at: string
@@ -3100,6 +3118,17 @@ export type Database = {
       }
     }
     Functions: {
+      add_time_used: {
+        Args:
+          | {
+              p_date?: string
+              p_formation_id: string
+              p_minutes: number
+              p_user_id: string
+            }
+          | { p_formation_id: string; p_minutes: number; p_user_id: string }
+        Returns: Record<string, unknown>
+      }
       approve_enrollment: {
         Args: {
           p_decided_by?: string
@@ -3124,6 +3153,10 @@ export type Database = {
           p_comment?: string
           p_reviewer_id: string
         }
+        Returns: undefined
+      }
+      auto_unlock_next_lesson_on_week_reset: {
+        Args: { p_formation_id: string; p_user_id: string }
         Returns: undefined
       }
       can_student_access_lesson: {
@@ -3166,6 +3199,10 @@ export type Database = {
         Args: { p_formation_id: string; p_teacher_id: string }
         Returns: number
       }
+      get_or_create_usage_record: {
+        Args: { p_date?: string; p_formation_id: string; p_user_id: string }
+        Returns: string
+      }
       get_server_date: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -3201,6 +3238,15 @@ export type Database = {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: string
       }
+      get_user_usage: {
+        Args: { p_formation_id: string; p_user_id: string }
+        Returns: {
+          calls_made_today: number
+          messages_sent_today: number
+          time_used_this_week: number
+          time_used_today: number
+        }[]
+      }
       handle_validated_exercise: {
         Args: {
           p_formation_id: string
@@ -3213,6 +3259,10 @@ export type Database = {
       has_role: {
         Args: { role: string; user_id: string }
         Returns: boolean
+      }
+      increment_messages_sent: {
+        Args: { p_date?: string; p_formation_id: string; p_user_id: string }
+        Returns: number
       }
       increment_post_comments: {
         Args: { post_id: string }
