@@ -57,7 +57,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
   const editMessage = useEditConversationMessage();
 
   const aggregatedReactions = useMemo(() => {
-    return Object.entries(reactions).map(([emoji, info]) => ({ emoji, ...info }));
+    return Object.entries(reactions || {}).map(([emoji, info]) => ({ emoji, ...info }));
   }, [reactions]);
 
   const onSelectEmoji = async (emoji: string) => {
