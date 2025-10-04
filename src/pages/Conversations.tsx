@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ChatInputBar from '@/components/chat/ChatInputBar';
-import ConversationMessageBubble from '@/components/conversations/ConversationMessageBubble';
+import ConversationMessageBubble from '@/components/conversation/ConversationMessageBubble';
 
 const Conversations = () => {
   const { storyId, otherUserId } = useParams();
