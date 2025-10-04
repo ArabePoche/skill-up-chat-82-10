@@ -209,6 +209,147 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_media: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          file_name: string | null
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          message_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          message_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_media_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          is_story_reply: boolean | null
+          receiver_id: string | null
+          replied_to_message_id: string | null
+          sender_id: string
+          story_id: string | null
+          story_reference: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          is_story_reply?: boolean | null
+          receiver_id?: string | null
+          replied_to_message_id?: string | null
+          sender_id: string
+          story_id?: string | null
+          story_reference?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          is_story_reply?: boolean | null
+          receiver_id?: string | null
+          replied_to_message_id?: string | null
+          sender_id?: string
+          story_id?: string | null
+          story_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_replied_to_message_id_fkey"
+            columns: ["replied_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_messages_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "user_stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_usage: {
         Row: {
           created_at: string | null
@@ -1737,61 +1878,6 @@ export type Database = {
             columns: ["video_id"]
             isOneToOne: false
             referencedRelation: "videos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      story_messages: {
-        Row: {
-          content: string
-          created_at: string | null
-          id: string
-          is_read: boolean | null
-          receiver_id: string | null
-          sender_id: string
-          story_id: string | null
-          story_reference: string | null
-        }
-        Insert: {
-          content: string
-          created_at?: string | null
-          id?: string
-          is_read?: boolean | null
-          receiver_id?: string | null
-          sender_id: string
-          story_id?: string | null
-          story_reference?: string | null
-        }
-        Update: {
-          content?: string
-          created_at?: string | null
-          id?: string
-          is_read?: boolean | null
-          receiver_id?: string | null
-          sender_id?: string
-          story_id?: string | null
-          story_reference?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_messages_receiver_id_fkey"
-            columns: ["receiver_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "story_messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "story_messages_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "user_stories"
             referencedColumns: ["id"]
           },
         ]

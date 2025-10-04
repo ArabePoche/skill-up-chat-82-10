@@ -74,6 +74,7 @@ interface MessageListProps {
   highlightedMessageId?: string | null;
   onScrollToMessage?: (messageId: string) => void;
   onOpenVideo?: (lesson: any) => void;
+  isGroupChat?: boolean; // Ajout: contexte explicite de chat de groupe
 }
 
 const MessageList: React.FC<MessageListProps> = ({
@@ -90,6 +91,7 @@ const MessageList: React.FC<MessageListProps> = ({
   highlightedMessageId,
   onScrollToMessage,
   onOpenVideo,
+  isGroupChat = false,
   
 }) => {
   const { user } = useAuth();
@@ -157,16 +159,31 @@ const MessageList: React.FC<MessageListProps> = ({
 
         // Messages système (exercices envoyés par le système aux élèves)
         if (message.is_system_message && message.exercise_id) {
+          const exercise = exercises.find(ex => ex.id === message.exercise_id);
+          // Détecter le contexte groupe à partir de la prop globale OU du message
+          const isGroupChatContext = isGroupChat || !!message.level_id;
+          // Dans le groupe, lessonId transporté par le parent est un levelId
+          const effectiveLevelId = isGroupChatContext ? lessonId : (message.level_id || lessonId);
+          
+          console.log('🎯 SystemMessage exercise detected:', {
+            exerciseId: message.exercise_id,
+            exerciseTitle: exercise?.title,
+            messageLevelId: message.level_id,
+            lessonId,
+            effectiveLevelId,
+            isGroupChatContext
+          });
+          
           return (
             <SystemMessage
               key={message.id}
               content={message.content}
-              exercise={message.exercise_id ? exercises.find(ex => ex.id === message.exercise_id) : undefined}
+              exercise={exercise}
               lessonId={lessonId}
               formationId={formationId}
               isTeacherView={isTeacherView}
-              isGroupChat={!!message.level_id} // Si level_id est présent, c'est un chat de groupe
-              levelId={message.level_id || lessonId}
+              isGroupChat={isGroupChatContext}
+              levelId={effectiveLevelId}
             />
           );
         }

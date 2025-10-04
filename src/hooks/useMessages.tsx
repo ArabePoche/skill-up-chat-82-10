@@ -98,9 +98,9 @@ export const useConversations = () => {
         }
       }
 
-      // Récupérer les conversations de stories via story_messages
+      // Récupérer les conversations de stories via conversation_messages
       const { data: storyMessages } = await supabase
-        .from('story_messages')
+        .from('conversation_messages')
         .select(`
           id,
           story_id,

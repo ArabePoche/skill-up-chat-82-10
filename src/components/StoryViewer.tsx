@@ -92,12 +92,13 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     try {
       // Envoyer directement le message lié à la story
       const { error: messageError } = await supabase
-        .from('story_messages')
+        .from('conversation_messages')
         .insert({
           story_id: story.id,
           sender_id: user.id,
           receiver_id: story.user_id,
-          content: replyText
+          content: replyText,
+          is_story_reply: true
         });
 
       if (messageError) {

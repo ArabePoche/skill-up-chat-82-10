@@ -190,6 +190,7 @@ serve(async (req) => {
 
       } catch (error) {
         console.error('Erreur lors de l\'envoi pour le token:', tokenData.token, error);
+        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
         
         // Enregistrer l'erreur
         await supabaseClient
@@ -200,13 +201,13 @@ serve(async (req) => {
             message: message,
             notification_type: type,
             status: 'failed',
-            fcm_response: { error: error.message }
+            fcm_response: { error: errorMessage }
           });
 
         results.push({ 
           token: tokenData.token.slice(0, 20) + '...', 
           success: false, 
-          error: error.message,
+          error: errorMessage,
           userId: tokenData.user_id 
         });
       }
@@ -232,8 +233,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Erreur dans send-push-notification:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

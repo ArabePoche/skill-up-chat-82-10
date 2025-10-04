@@ -117,7 +117,7 @@ export const useTeacherGroupDiscussions = (formationId: string) => {
             .eq('formation_id', formationId)
             .eq('lesson_id', lesson.id)
             .not('promotion_id', 'is', null) // Messages de groupe
-            .is('read_by_teacher', null) // Non lu par aucun prof
+            .is('read_by_teachers', null) // Non lu par aucun prof
             .neq('sender_id', user.id) // Pas ses propres messages
             .eq('is_system_message', false);
 

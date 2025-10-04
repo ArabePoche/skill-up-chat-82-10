@@ -110,13 +110,25 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
     files: exerciseWithFiles.files
   } : exercise;
 
-  // Utiliser le bon composant selon le type de chat
-  if (isGroupChat && levelId) {
+  // DISTINCTION STRICTE entre chat individuel et chat de groupe
+  // Chat de groupe : utilise useSubmitGroupExercise (besoin de levelId)
+  // Chat individuel : utilise useSubmitExercise (besoin de lessonId)
+  
+  if (isGroupChat) {
+    // Dans le contexte du chat de groupe, lessonId contient en fait le levelId de la route
+    const effectiveLevelId = levelId || lessonId;
+    
+    console.log('🎯 GroupExercise context:', { 
+      effectiveLevelId,
+      exerciseId: exercise.id,
+      formationId
+    });
+    
     return (
       <GroupExerciseSubmission
         exercise={enhancedExercise}
         formationId={formationId}
-        levelId={levelId}
+        levelId={effectiveLevelId}
         isSubmitted={isSubmitted}
         showSubmissionOptions={showSubmissionOptions}
         canSubmitExercise={canSubmitExercise}
@@ -124,6 +136,13 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
     );
   }
 
+  // Chat individuel : lessonId est bien un vrai lessonId
+  console.log('📝 IndividualExercise context:', { 
+    lessonId,
+    exerciseId: exercise.id,
+    formationId
+  });
+  
   return (
     <ExerciseSubmission
       exercise={enhancedExercise}

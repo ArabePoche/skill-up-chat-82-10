@@ -460,6 +460,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           highlightedMessageId={highlightedMessageId}
           onScrollToMessage={handleScrollToMessage}
           onOpenVideo={handleOpenVideo}
+          isGroupChat={true}
         />
       </div>
 

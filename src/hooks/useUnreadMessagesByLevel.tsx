@@ -64,7 +64,7 @@ export const useUnreadMessagesByLevel = (formationId: string) => {
                 .select('*', { count: 'exact', head: true })
                 .eq('formation_id', formationId)
                 .eq('lesson_id', lesson.id)
-                .is('read_by_teacher', null) // Non lu par aucun prof
+                .is('read_by_teachers', null) // Non lu par aucun prof
                 .neq('sender_id', user.id)
                 .eq('is_system_message', false); // Exclure les messages système
 
