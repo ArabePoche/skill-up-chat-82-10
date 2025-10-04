@@ -5,13 +5,10 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useFileUpload } from '@/hooks/useFileUpload';
-import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
-import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 import EmojiPicker from '@/components/EmojiPicker';
 import WhatsAppVoiceRecorder from './WhatsAppVoiceRecorder';
 import VoiceBar from './VoiceBar';
 import EnhancedCameraCapture from './EnhancedCameraCapture';
-import { SubscriptionUpgradeModal } from './SubscriptionUpgradeModal';
 import { toast } from 'sonner';
 
 interface ChatInputBarProps {
@@ -47,20 +44,13 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showVoiceBar, setShowVoiceBar] = useState(false);
-  const [upgradeModalData, setUpgradeModalData] = useState<{
-    message: string;
-    restrictionType?: string;
-    currentPlan?: string;
-  }>({ message: '' });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { startTyping, stopTyping } = useTypingIndicator(lessonId, formationId);
   const { uploadFile, isUploading } = useFileUpload();
-  const planLimits = usePlanLimits({ formationId, context: 'chat' });
 
   const checkAuthAndExecute = (action: () => void) => {
     if (!user) {
@@ -68,11 +58,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       return;
     }
     action();
-  };
-
-  const showRestrictionModal = (message: string, restrictionType?: string, currentPlan?: string) => {
-    setUpgradeModalData({ message, restrictionType, currentPlan });
-    setShowUpgradeModal(true);
   };
 
   const sendMessage = () => {
@@ -83,27 +68,17 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       return;
     }
 
-    // Vérifier les permissions avec le nouveau système
-    const messageCheck = planLimits.canSendMessage();
-    if (!messageCheck.allowed) {
-      showRestrictionModal(messageCheck.reason || 'Action non autorisée');
-      return;
-    }
-
     // Construire le contenu avec la réponse si nécessaire
     let content = message;
     let repliedToMessageId = undefined;
     if (replyingTo) {
-      // Ne pas modifier le contenu pour les réponses persistantes
       content = message;
       repliedToMessageId = replyingTo.id;
-      onCancelReply?.(); // Nettoyer la réponse après envoi
+      onCancelReply?.();
     }
 
-    // Envoyer le message si autorisé
+    // Envoyer le message sans restriction
     onSendMessage(content, 'text', undefined, repliedToMessageId);
-    // Consommer le message avec le nouveau système
-    planLimits.useMessage().catch(console.error);
     setMessage('');
     stopTyping();
   };
@@ -368,17 +343,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
         </div>
       )}
-
-      <SubscriptionUpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        message={upgradeModalData.message}
-        formationId={formationId}
-        variant="warning"
-        restrictionType={upgradeModalData.restrictionType as any}
-        currentPlan={upgradeModalData.currentPlan}
-      />
-
     </>
   );
 };
