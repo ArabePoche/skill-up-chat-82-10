@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -74,23 +74,42 @@ const Conversations = () => {
     refetchInterval: 3000,
   });
 
-  // Envoyer un message
+  // Envoyer un message (JAMAIS marqué comme story_reply dans Conversations)
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, file, fileUrl }: { content: string; file?: File; fileUrl?: string }) => {
       if (!user?.id) throw new Error('Non authentifié');
 
-      const { error } = await supabase
+      // Insérer le message - NE PAS marquer comme story_reply
+      // Les story_reply sont uniquement créés depuis le StoryViewer
+      const { data: messageData, error: messageError } = await supabase
         .from('conversation_messages')
         .insert({
-          story_id: storyId,
+          story_id: storyId || null,
           sender_id: user.id,
           receiver_id: otherUserId,
           content,
-          is_story_reply: !!storyId,
+          is_story_reply: false, // Toujours false dans Conversations
           replied_to_message_id: replyingTo?.id || null,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (messageError) throw messageError;
+
+      // Si un fichier est présent, insérer dans conversation_media
+      if (file && fileUrl && messageData) {
+        const { error: mediaError } = await supabase
+          .from('conversation_media')
+          .insert({
+            message_id: messageData.id,
+            file_url: fileUrl,
+            file_type: file.type,
+            file_name: file.name,
+            file_size: file.size,
+          });
+
+        if (mediaError) throw mediaError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversation-messages', storyId, otherUserId] });
@@ -130,7 +149,7 @@ const Conversations = () => {
           </div>
           <div>
             <h2 className="font-semibold">{otherUserName}</h2>
-            
+            <p className="text-xs text-white/80">Conversation Story</p>
           </div>
         </button>
       </div>
@@ -146,18 +165,11 @@ const Conversations = () => {
           </div>
         ) : (
           messages.map((msg: any) => (
-            <div key={msg.id} className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'} mb-4`}>
-              {msg.is_story_reply && (
-                <div className={`flex items-center gap-1 mb-1 ${msg.sender_id === user?.id ? 'text-white/80 ml-auto' : 'text-[#25d366]'}`}>
-                  <ImageIcon size={12} />
-                  <span className="text-[10px] font-medium uppercase tracking-wide">Réponse Story</span>
-                </div>
-              )}
-              <ConversationMessageBubble 
-                message={msg} 
-                onReply={(message) => setReplyingTo(message)}
-              />
-            </div>
+            <ConversationMessageBubble 
+              key={msg.id}
+              message={msg} 
+              onReply={(message) => setReplyingTo(message)}
+            />
           ))
         )}
         <div ref={messagesEndRef} />
@@ -180,9 +192,15 @@ const Conversations = () => {
           </div>
         )}
         <ChatInputBar
-          onSendMessage={(content) => {
-            if (content.trim()) {
-              sendMessageMutation.mutate(content);
+          onSendMessage={(content, messageType, file) => {
+            if (content.trim() || file) {
+              // Récupérer l'URL uploadée depuis le fichier si disponible
+              const fileUrl = file && (file as any).uploadUrl;
+              sendMessageMutation.mutate({ 
+                content, 
+                file, 
+                fileUrl 
+              });
             }
           }}
           disabled={sendMessageMutation.isPending}

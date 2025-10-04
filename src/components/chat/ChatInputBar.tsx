@@ -203,16 +203,18 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
         
         const uploadResult = await uploadFile(file);
         
+        // Créer un fichier avec l'URL uploadée en propriété
         const uploadedFile = new File([new Blob()], uploadResult.fileName, { type: file.type });
         Object.defineProperty(uploadedFile, 'uploadUrl', { value: uploadResult.fileUrl });
 
+        toast.dismiss();
         onSendMessage(
-          'Message vocal',
+          '🎤 Message vocal',
           'audio',
           uploadedFile
         );
         
-        setShowVoiceBar(false); // Fermer la VoiceBar après envoi
+        setShowVoiceBar(false);
         toast.success('Message vocal envoyé');
       } catch (error) {
         console.error('Upload error:', error);
