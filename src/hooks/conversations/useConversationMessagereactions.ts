@@ -65,7 +65,7 @@ export const useToggleConversationReaction = () => {
         if (error) throw error;
         return { action: 'removed' as const };
       } else {
-        // Ajouter la réaction
+        // Ajouter la réaction au message
         const { error } = await supabase
           .from('conversation_message_reactions')
           .insert({ message_id: messageId, user_id: user.id, emoji });
