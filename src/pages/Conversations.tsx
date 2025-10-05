@@ -15,6 +15,9 @@ const Conversations = () => {
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  
+  // storyId peut être undefined pour les conversations directes
+  const isDirectChat = !storyId;
 
   // Récupérer les infos de l'autre utilisateur
   const { data: otherUserProfile } = useQuery({
@@ -38,7 +41,7 @@ const Conversations = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('conversation_messages')
         .select(`
           id,
@@ -62,15 +65,23 @@ const Conversations = () => {
             file_size,
             duration_seconds
           )
-        `)
-        .eq('story_id', storyId)
+        `);
+
+      // Si c'est une conversation directe, filtrer par story_id null
+      if (isDirectChat) {
+        query = query.is('story_id', null);
+      } else {
+        query = query.eq('story_id', storyId);
+      }
+
+      const { data, error } = await query
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id && !!storyId && !!otherUserId,
+    enabled: !!user?.id && !!otherUserId,
     refetchInterval: 3000,
   });
 
@@ -149,7 +160,7 @@ const Conversations = () => {
           </div>
           <div>
             <h2 className="font-semibold">{otherUserName}</h2>
-            <p className="text-xs text-white/80">Conversation Story</p>
+            <p className="text-xs text-white/80">{isDirectChat ? 'Conversation' : 'Conversation Story'}</p>
           </div>
         </button>
       </div>
