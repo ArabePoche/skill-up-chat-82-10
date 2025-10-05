@@ -7,14 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getNames } from 'country-list'; // Importation de la fonction getNames de country-list
+import { getNames } from 'country-list';
 import { TeacherApplicationForm } from '@/teacher-application/components/TeacherApplicationForm';
+import { getPhoneCodeByCountry } from '@/utils/countryPhoneCodes';
 
 const CompleteProfile = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     phone: '',
+    phoneCountryCode: '',
     country: '',
     gender: '',
     age: '',
@@ -79,6 +81,7 @@ const CompleteProfile = () => {
           firstName: profile.first_name || '',
           lastName: profile.last_name || '',
           phone: profile.phone || '',
+          phoneCountryCode: profile.phone_country_code || '',
           country: profile.country || '',
           gender: profile.gender || '',
           age: profile.age ? profile.age.toString() : '',
@@ -116,6 +119,28 @@ const CompleteProfile = () => {
     setIsLoading(true);
 
     try {
+      // Vérifier l'unicité du numéro de téléphone si renseigné
+      if (formData.phone && formData.phoneCountryCode) {
+        const { data: existingProfiles, error: checkError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('phone_country_code', formData.phoneCountryCode)
+          .eq('phone', formData.phone)
+          .neq('id', user.id);
+
+        if (checkError) throw checkError;
+
+        if (existingProfiles && existingProfiles.length > 0) {
+          toast({
+            title: "Numéro déjà utilisé",
+            description: "Ce numéro de téléphone est déjà enregistré. Veuillez en utiliser un autre.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Mettre à jour le profil
       const { error: profileError } = await supabase
         .from('profiles')
@@ -124,6 +149,7 @@ const CompleteProfile = () => {
           first_name: formData.firstName,
           last_name: formData.lastName,
           phone: formData.phone,
+          phone_country_code: formData.phoneCountryCode,
           country: formData.country,
           gender: formData.gender,
           age: formData.age ? parseInt(formData.age) : null,
@@ -133,7 +159,19 @@ const CompleteProfile = () => {
           profile_completed: true
         });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        // Vérifier si c'est une erreur de contrainte unique sur le numéro de téléphone
+        if (profileError.code === '23505' && profileError.message?.includes('unique_phone_per_country')) {
+          toast({
+            title: "Numéro déjà utilisé",
+            description: "Ce numéro de téléphone est déjà associé à un autre compte.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        throw profileError;
+      }
 
       // Changer le mot de passe si fourni
       if (formData.newPassword) {
@@ -219,10 +257,41 @@ const CompleteProfile = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="phone">Téléphone</Label>
-                  <div className="relative">
+              <div>
+                <Label htmlFor="country">Pays</Label>
+                <select
+                  id="country"
+                  value={formData.country}
+                  onChange={(e) => {
+                    const selectedCountry = e.target.value;
+                    const phoneCode = getPhoneCodeByCountry(selectedCountry);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      country: selectedCountry,
+                      phoneCountryCode: phoneCode
+                    }));
+                  }}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                >
+                  <option value="">Sélectionnez un pays</option>
+                  {countries.map(country => (
+                    <option key={country} value={country}>{country}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Numéro de téléphone</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="phoneCode"
+                    type="text"
+                    value={formData.phoneCountryCode}
+                    readOnly
+                    className="bg-muted w-20 text-center"
+                    placeholder="+XX"
+                  />
+                  <div className="relative flex-1">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                     <Input
                       id="phone"
@@ -230,22 +299,9 @@ const CompleteProfile = () => {
                       value={formData.phone}
                       onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                       className="pl-10"
+                      placeholder="Numéro de téléphone"
                     />
                   </div>
-                </div>
-                <div>
-                  <Label htmlFor="country">Pays</Label>
-                  <select
-                    id="country"
-                    value={formData.country}
-                    onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                  >
-                    <option value="">Sélectionnez un pays</option>
-                    {countries.map(country => (
-                      <option key={country} value={country}>{country}</option>
-                    ))}
-                  </select>
                 </div>
               </div>
 
