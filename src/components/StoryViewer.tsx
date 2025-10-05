@@ -37,7 +37,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     if (story?.id) {
       markAsViewed.mutate(story.id);
     }
-  }, [story?.id, markAsViewed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [story?.id]);
 
   useEffect(() => {
     if (isPaused) return;
