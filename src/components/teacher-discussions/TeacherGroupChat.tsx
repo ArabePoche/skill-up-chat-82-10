@@ -166,6 +166,7 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
         promotionId={promotionId || null}
         isOpen={showGroupInfo}
         onClose={() => setShowGroupInfo(false)}
+        isTeacher={true}
       />
 
       {/* Zone messages - avec padding-top pour compenser le header fixe */}
