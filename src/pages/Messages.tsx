@@ -154,7 +154,7 @@ const Messages = () => {
               ) : (
                 <div className="text-center py-12">
                   <div className="text-gray-500 mb-2">Aucune conversation</div>
-                  <p className="text-sm text-gray-400">Inscrivez-vous à une formation ou créez-en une pour commencer à échanger</p>
+                  <p className="text-sm text-gray-400">Cliquez sur le bouton démarrer une discussion pour échanger avec vos contacts</p>
                 </div>
               )}
             </div>

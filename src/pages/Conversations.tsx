@@ -160,7 +160,7 @@ const Conversations = () => {
           </div>
           <div>
             <h2 className="font-semibold">{otherUserName}</h2>
-            <p className="text-xs text-white/80">{isDirectChat ? 'Conversation' : 'Conversation Story'}</p>
+            
           </div>
         </button>
       </div>

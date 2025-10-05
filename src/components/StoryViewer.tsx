@@ -124,7 +124,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-[100] flex flex-col">
       {/* Progress bars */}
       <div className="absolute top-4 left-4 right-4 flex space-x-1 z-20">
         {stories.map((_, index) => (
