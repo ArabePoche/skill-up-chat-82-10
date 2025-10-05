@@ -134,7 +134,7 @@ export const useConversations = () => {
         .order('created_at', { ascending: true });
 
       if (storyMessages) {
-        // Grouper les messages par story et par interlocuteur
+        // Grouper les messages uniquement par interlocuteur (pas par story)
         const storyConversationsMap = new Map();
         
         for (const msg of storyMessages) {
@@ -143,14 +143,13 @@ export const useConversations = () => {
           // Exclure le système
           if (otherUserId === SYSTEM_USER_ID) continue;
           
-          const key = `${msg.story_id}-${otherUserId}`;
+          // Une seule conversation par paire d'utilisateurs
+          const key = otherUserId;
           
           if (!storyConversationsMap.has(key)) {
             storyConversationsMap.set(key, {
-              storyId: msg.story_id,
               otherUserId,
               messages: [],
-              story: msg.user_stories
             });
           }
           
@@ -190,7 +189,7 @@ export const useConversations = () => {
           const timeLabel = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
           conversations.push({
-            id: `story-${convData.storyId}-${convData.otherUserId}`,
+            id: `user-${convData.otherUserId}`,
             name: otherName,
             lastMessage,
             timestamp: timeLabel,
@@ -198,8 +197,7 @@ export const useConversations = () => {
             unread: 0,
             avatar: profile?.avatar_url || '💬',
             online: false,
-            type: 'story_message',
-            storyId: convData.storyId,
+            type: 'direct_message',
             otherUserId: convData.otherUserId
           });
         }
