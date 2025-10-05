@@ -8,6 +8,7 @@ import { fr } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeletePost } from '@/hooks/usePosts';
 import PostComments from '@/components/PostComments';
+import PostImageModal from '@/components/PostImageModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +25,27 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const { user } = useAuth();
   const deletePost = useDeletePost();
   const [localCommentsCount, setLocalCommentsCount] = useState(post.comments_count || 0);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const isAuthor = user?.id === post.author_id;
+
+  // Récupérer toutes les images du post
+  const allImages = React.useMemo(() => {
+    const images = [];
+    if (post.media && post.media.length > 0) {
+      images.push(...post.media.map((m: any) => m.file_url));
+    }
+    if (post.image_url) {
+      images.push(post.image_url);
+    }
+    return images;
+  }, [post.media, post.image_url]);
+
+  const openImageViewer = (index: number) => {
+    setSelectedImageIndex(index);
+    setImageViewerOpen(true);
+  };
 
   const handleDelete = async () => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce post ?')) {
@@ -66,7 +86,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             <img
               src={post.media[0].file_url}
               alt="Post media"
-              className="w-full h-auto max-h-96 object-cover"
+              className="w-full h-auto max-h-96 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => openImageViewer(0)}
             />
           ) : (
             <div className={`grid gap-2 ${post.media.length === 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
@@ -75,10 +96,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
                   <img
                     src={media.file_url}
                     alt={`Media ${index + 1}`}
-                    className="w-full h-32 object-cover"
+                    className="w-full h-32 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => openImageViewer(index)}
                   />
                   {index === 3 && post.media.length > 4 && (
-                    <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                    <div 
+                      className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center cursor-pointer"
+                      onClick={() => openImageViewer(3)}
+                    >
                       <span className="text-white font-semibold">+{post.media.length - 4}</span>
                     </div>
                   )}
@@ -91,12 +116,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
     }
 
     if (post.image_url) {
+      const imageIndex = post.media && post.media.length > 0 ? post.media.length : 0;
       return (
         <div className="mt-3">
           <img
             src={post.image_url}
             alt="Post image"
-            className="w-full h-auto max-h-96 object-cover rounded-lg"
+            className="w-full h-auto max-h-96 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => openImageViewer(imageIndex)}
           />
         </div>
       );
@@ -185,6 +212,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         postId={post.id} 
         commentsCount={localCommentsCount}
         onCommentsCountChange={setLocalCommentsCount}
+      />
+
+      {/* Modal de prévisualisation d'images */}
+      <PostImageModal
+        images={allImages}
+        isOpen={imageViewerOpen}
+        onClose={() => setImageViewerOpen(false)}
+        initialIndex={selectedImageIndex}
       />
     </div>
   );
