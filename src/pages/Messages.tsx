@@ -22,10 +22,11 @@ const Messages = () => {
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
 
   const handleConversationClick = (conversation: any) => {
-    if (conversation.type === 'story_message') {
-      navigate(`/story-chat/${conversation.storyId}/${conversation.otherUserId}`);
-    } else {
-      navigate(`/formation/${conversation.formationId}`);
+    // Navigation selon le type de conversation
+    if (conversation.type === 'direct_message') {
+      navigate(`/conversation/${conversation.otherUserId}`);
+    } else if (conversation.type === 'formation_teacher' || conversation.type === 'formation_student') {
+      navigate(`/cours/formation/${conversation.formationId}`);
     }
   };
 
