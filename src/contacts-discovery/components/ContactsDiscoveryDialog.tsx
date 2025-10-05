@@ -41,8 +41,8 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
   };
 
   const handleStartConversation = (userId: string) => {
-    // Rediriger vers la page de conversation avec cet utilisateur
-    navigate(`/conversations?userId=${userId}`);
+    // Rediriger vers la page de conversation directe avec cet utilisateur
+    navigate(`/chat/${userId}`);
     onOpenChange(false);
     toast({
       title: "Conversation démarrée",
