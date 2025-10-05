@@ -121,6 +121,16 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
               </div>
             ) : (
               <>
+                {/* Indicateur de réponse à une story */}
+                {message.is_story_reply && (
+                  <div className={`text-xs mb-2 pb-2 border-b flex items-center gap-1 ${
+                    isOwnMessage ? 'border-white/20 text-white/80' : 'border-gray-200 text-gray-500'
+                  }`}>
+                    <span className="text-base">📖</span>
+                    <span>Réponse à une story</span>
+                  </div>
+                )}
+                
                 {message.content && <p className="text-sm break-words">{message.content}</p>}
                 
                 {/* Prévisualisation des médias */}
@@ -215,4 +225,4 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
   );
 };
 
-export default ConversationMessageBubble;
+export default ConversationMessageBubble; 
