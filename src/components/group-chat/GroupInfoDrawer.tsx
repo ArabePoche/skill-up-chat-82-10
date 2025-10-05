@@ -7,6 +7,7 @@ import { X, Users, Calendar, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePromotionMembers } from '@/hooks/group-chat/usePromotionMembers';
+import { useAllFormationMembers } from '@/hooks/group-chat/useAllFormationMembers';
 
 interface Level {
   id: string;
@@ -26,6 +27,7 @@ interface GroupInfoDrawerProps {
   promotionId: string | null;
   isOpen: boolean;
   onClose: () => void;
+  isTeacher?: boolean;
 }
 
 export const GroupInfoDrawer: React.FC<GroupInfoDrawerProps> = ({
@@ -33,9 +35,16 @@ export const GroupInfoDrawer: React.FC<GroupInfoDrawerProps> = ({
   formation,
   promotionId,
   isOpen,
-  onClose
+  onClose,
+  isTeacher = false
 }) => {
-  const { data: members = [], isLoading } = usePromotionMembers(formation.id, promotionId);
+  // Côté professeur : tous les élèves de la formation
+  // Côté élève : uniquement les membres de la même promotion
+  const { data: allMembers = [], isLoading: isLoadingAll } = useAllFormationMembers(formation.id);
+  const { data: promotionMembers = [], isLoading: isLoadingPromotion } = usePromotionMembers(formation.id, promotionId);
+  
+  const members = isTeacher ? allMembers : promotionMembers;
+  const isLoading = isTeacher ? isLoadingAll : isLoadingPromotion;
 
   if (!isOpen) return null;
 
