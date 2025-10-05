@@ -20,7 +20,7 @@ const StoryViewersModal: React.FC<StoryViewersModalProps> = ({ isOpen, onClose, 
         .select(`
           viewer_id,
           viewed_at,
-          profiles!story_views_viewer_id_fkey (
+          profiles:viewer_id (
             id,
             first_name,
             last_name,
