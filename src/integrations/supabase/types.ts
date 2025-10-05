@@ -1735,6 +1735,7 @@ export type Database = {
           language: string | null
           last_name: string | null
           phone: string | null
+          phone_country_code: string | null
           profile_completed: boolean | null
           role: Database["public"]["Enums"]["user_role"] | null
           subscribers_count: number | null
@@ -1756,6 +1757,7 @@ export type Database = {
           language?: string | null
           last_name?: string | null
           phone?: string | null
+          phone_country_code?: string | null
           profile_completed?: boolean | null
           role?: Database["public"]["Enums"]["user_role"] | null
           subscribers_count?: number | null
@@ -1777,6 +1779,7 @@ export type Database = {
           language?: string | null
           last_name?: string | null
           phone?: string | null
+          phone_country_code?: string | null
           profile_completed?: boolean | null
           role?: Database["public"]["Enums"]["user_role"] | null
           subscribers_count?: number | null
