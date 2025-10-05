@@ -9,15 +9,12 @@ import ChatInputBar from '@/components/chat/ChatInputBar';
 import ConversationMessageBubble from '@/components/conversation/ConversationMessageBubble';
 
 const Conversations = () => {
-  const { storyId, otherUserId } = useParams();
+  const { otherUserId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  
-  // storyId peut être undefined pour les conversations directes
-  const isDirectChat = !storyId;
 
   // Récupérer les infos de l'autre utilisateur
   const { data: otherUserProfile } = useQuery({
@@ -37,11 +34,12 @@ const Conversations = () => {
 
   // Récupérer les messages de cette conversation
   const { data: messages = [], isLoading } = useQuery({
-    queryKey: ['conversation-messages', storyId, otherUserId],
+    queryKey: ['conversation-messages', otherUserId],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      let query = supabase
+      // Récupérer TOUS les messages entre les deux utilisateurs (stories et directs)
+      const { data, error } = await supabase
         .from('conversation_messages')
         .select(`
           id,
@@ -65,16 +63,7 @@ const Conversations = () => {
             file_size,
             duration_seconds
           )
-        `);
-
-      // Si c'est une conversation directe, filtrer par story_id null
-      if (isDirectChat) {
-        query = query.is('story_id', null);
-      } else {
-        query = query.eq('story_id', storyId);
-      }
-
-      const { data, error } = await query
+        `)
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
@@ -85,21 +74,20 @@ const Conversations = () => {
     refetchInterval: 3000,
   });
 
-  // Envoyer un message (JAMAIS marqué comme story_reply dans Conversations)
+  // Envoyer un message
   const sendMessageMutation = useMutation({
     mutationFn: async ({ content, file, fileUrl }: { content: string; file?: File; fileUrl?: string }) => {
       if (!user?.id) throw new Error('Non authentifié');
 
-      // Insérer le message - NE PAS marquer comme story_reply
-      // Les story_reply sont uniquement créés depuis le StoryViewer
+      // Insérer le message sans story_id (conversation directe)
       const { data: messageData, error: messageError } = await supabase
         .from('conversation_messages')
         .insert({
-          story_id: storyId || null,
+          story_id: null,
           sender_id: user.id,
           receiver_id: otherUserId,
           content,
-          is_story_reply: false, // Toujours false dans Conversations
+          is_story_reply: false,
           replied_to_message_id: replyingTo?.id || null,
         })
         .select('id')
@@ -123,7 +111,7 @@ const Conversations = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages', storyId, otherUserId] });
+      queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
       setReplyingTo(null);
     },
     onError: (error) => {
