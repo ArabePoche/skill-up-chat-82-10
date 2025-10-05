@@ -5,6 +5,7 @@ import { useStories, useCreateStory, type Story } from '@/hooks/useStories';
 import { useAuth } from '@/hooks/useAuth';
 import StoryViewer from './StoryViewer';
 import CreateStoryModal from './CreateStoryModal';
+import StoryViewersModal from './stories/StoryViewersModal';
 
 interface GroupedStories {
   user: {
@@ -24,6 +25,8 @@ const StoriesSection = () => {
   const [selectedStories, setSelectedStories] = useState<Story[]>([]);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showViewersModal, setShowViewersModal] = useState(false);
+  const [selectedStoryForViews, setSelectedStoryForViews] = useState<string | null>(null);
 
   // Grouper les stories par utilisateur
   const groupedStories = React.useMemo(() => {
@@ -42,11 +45,14 @@ const StoriesSection = () => {
       }
       
       groups[userId].stories.push(story);
-      
-      // Vérifier si l'utilisateur a vu au moins une story de cet utilisateur
-      if (story.story_views?.some(view => view.viewer_id === user?.id)) {
-        groups[userId].hasViewed = true;
-      }
+    });
+    
+    // Vérifier si l'utilisateur a vu TOUTES les stories de chaque utilisateur
+    Object.values(groups).forEach((group) => {
+      const allViewed = group.stories.every((story) => 
+        story.story_views?.some(view => view.viewer_id === user?.id)
+      );
+      group.hasViewed = allViewed;
     });
     
     return Object.values(groups);
@@ -54,6 +60,13 @@ const StoriesSection = () => {
 
   // Stories de l'utilisateur connecté
   const myStories = stories.filter(story => story.user_id === user?.id);
+  
+  // Nombre total de vues de mes stories
+  const totalViews = React.useMemo(() => {
+    return myStories.reduce((acc, story) => {
+      return acc + (story.story_views?.length || 0);
+    }, 0);
+  }, [myStories]);
 
   const formatUserName = (userProfile: any) => {
     if (!userProfile) return 'Utilisateur';
@@ -72,6 +85,14 @@ const StoriesSection = () => {
       handleStoryClick(myStories);
     } else {
       setShowCreateModal(true);
+    }
+  };
+
+  const handleShowViewers = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (myStories.length > 0) {
+      setSelectedStoryForViews(myStories[0].id);
+      setShowViewersModal(true);
     }
   };
 
@@ -186,6 +207,15 @@ const StoriesSection = () => {
           <p className="text-xs mt-1 text-center text-gray-600 max-w-[56px] truncate">
             Mon statut
           </p>
+          {myStories.length > 0 && (
+            <button
+              onClick={handleShowViewers}
+              className="flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors mx-auto mt-1"
+            >
+              <Eye size={12} />
+              <span>{totalViews}</span>
+            </button>
+          )}
         </div>
 
         {/* Stories des autres utilisateurs - Style WhatsApp */}
@@ -238,6 +268,17 @@ const StoriesSection = () => {
         <CreateStoryModal 
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)} 
+        />
+      )}
+
+      {showViewersModal && selectedStoryForViews && (
+        <StoryViewersModal
+          isOpen={showViewersModal}
+          onClose={() => {
+            setShowViewersModal(false);
+            setSelectedStoryForViews(null);
+          }}
+          storyId={selectedStoryForViews}
         />
       )}
     </>
