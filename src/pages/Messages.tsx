@@ -190,14 +190,16 @@ const Messages = () => {
         </Tabs>
       </div>
 
-      {/* Bouton flottant pour démarrer une discussion */}
-      <Button
-        onClick={() => setIsDiscoveryOpen(true)}
-        className="fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full bg-edu-whatsapp-green hover:bg-edu-whatsapp-green/90 shadow-lg z-50 p-0 flex items-center justify-center"
-        aria-label="Démarrer une discussion"
-      >
-        <UserPlus size={24} className="text-white" />
-      </Button>
+      {/* Bouton flottant pour démarrer une discussion - visible uniquement dans l'onglet Conversations */}
+      {activeTab === 'conversations' && (
+        <Button
+          onClick={() => setIsDiscoveryOpen(true)}
+          className="fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full bg-edu-whatsapp-green hover:bg-edu-whatsapp-green/90 shadow-lg z-50 p-0 flex items-center justify-center"
+          aria-label="Démarrer une discussion"
+        >
+          <UserPlus size={24} className="text-white" />
+        </Button>
+      )}
 
       {/* Dialog de découverte de contacts */}
       <ContactsDiscoveryDialog
