@@ -64,6 +64,7 @@ export const useConversations = () => {
                 name: `${tf.formations.title} - Groupe`,
                 lastMessage: 'Formation dont vous êtes professeur',
                 timestamp: 'Aujourd\'hui',
+                created_at: new Date().toISOString(),
                 unread: 0,
                 avatar: '👨‍🏫',
                 online: false,
@@ -77,17 +78,31 @@ export const useConversations = () => {
 
       // Ajouter les conversations des formations où l'utilisateur est étudiant
       if (studentEnrollments.data) {
+        // Récupérer les dates d'inscription
+        const { data: enrollmentDates } = await supabase
+          .from('enrollment_requests')
+          .select('formation_id, created_at')
+          .eq('user_id', user.id)
+          .eq('status', 'approved');
+
+        const enrollmentDatesMap = new Map(
+          enrollmentDates?.map(e => [e.formation_id, e.created_at]) || []
+        );
+
         for (const enrollment of studentEnrollments.data) {
           if (enrollment.formations) {
             const authorName = enrollment.formations.profiles 
               ? `${enrollment.formations.profiles.first_name || ''} ${enrollment.formations.profiles.last_name || ''}`.trim() || enrollment.formations.profiles.username
               : 'Professeur';
             
+            const enrollmentDate = enrollmentDatesMap.get(enrollment.formations.id);
+            
             conversations.push({
               id: `student-${enrollment.formations.id}`,
               name: `${enrollment.formations.title}`,
               lastMessage: `Formation avec ${authorName}`,
               timestamp: 'Aujourd\'hui',
+              created_at: enrollmentDate || new Date().toISOString(),
               unread: 0,
               avatar: '📚',
               online: false,
@@ -190,8 +205,12 @@ export const useConversations = () => {
         }
       }
 
-      
-      return conversations;
+      // Trier les conversations du plus récent au plus ancien
+      return conversations.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
     },
     enabled: !!user?.id,
   });
