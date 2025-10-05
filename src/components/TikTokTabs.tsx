@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Search, Video, FileText } from 'lucide-react';
 
@@ -14,20 +13,31 @@ const TikTokTabs: React.FC<TikTokTabsProps> = ({ activeTab, onTabChange }) => {
     { id: 'search' as const, label: 'Recherche', icon: Search },
   ];
 
+  const isPostsActive = activeTab === 'posts';
+  
   return (
     <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
-      <div className="flex items-center bg-transparent backdrop-blur-md rounded-full p-1">
+      <div className={`flex items-center rounded-full p-1 transition-all duration-200 ${
+        isPostsActive 
+          ? 'bg-background/80 backdrop-blur-md border border-border' 
+          : 'bg-transparent backdrop-blur-md'
+      }`}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={`
                 flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
-                ${activeTab === tab.id 
-                  ? 'bg-white/30 text-white shadow-lg backdrop-blur-sm' 
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
+                ${isPostsActive
+                  ? isActive
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                  : isActive
+                    ? 'bg-white/30 text-white shadow-lg backdrop-blur-sm'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                 }
               `}
             >
