@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Eye } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,7 @@ const StoryViewersModal: React.FC<StoryViewersModalProps> = ({ isOpen, onClose, 
         .select(`
           viewer_id,
           viewed_at,
-          profiles:viewer_id (
+          profiles!story_views_viewer_id_fkey (
             id,
             first_name,
             last_name,
@@ -31,7 +31,11 @@ const StoryViewersModal: React.FC<StoryViewersModalProps> = ({ isOpen, onClose, 
         .eq('story_id', storyId)
         .order('viewed_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching viewers:', error);
+        throw error;
+      }
+      console.log('Viewers data:', data);
       return data || [];
     },
     enabled: isOpen && !!storyId,
@@ -61,7 +65,7 @@ const StoryViewersModal: React.FC<StoryViewersModalProps> = ({ isOpen, onClose, 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md z-[200]">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
@@ -75,6 +79,9 @@ const StoryViewersModal: React.FC<StoryViewersModalProps> = ({ isOpen, onClose, 
               <X className="h-4 w-4" />
             </button>
           </div>
+          <DialogDescription className="sr-only">
+            Liste des personnes qui ont vu cette story
+          </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4">
