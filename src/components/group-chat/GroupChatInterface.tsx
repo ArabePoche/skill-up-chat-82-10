@@ -445,6 +445,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         promotionId={promotionId || null}
         isOpen={showGroupInfo}
         onClose={() => setShowGroupInfo(false)}
+        isTeacher={false}
       />
 
       {/* Modal d'upgrade - réutilisé de ChatInterface */}
