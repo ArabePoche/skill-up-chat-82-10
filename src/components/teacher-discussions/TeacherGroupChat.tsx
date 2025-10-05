@@ -67,9 +67,9 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
       levelId: level.id,
       content,
       messageType,
-      fileUrl: fileData?.fileUrl,
-      fileType: fileData?.fileType,
-      fileName: fileData?.fileName,
+      fileUrl: fileData?.uploadUrl || fileData?.fileUrl,
+      fileType: fileData?.type || fileData?.fileType,
+      fileName: fileData?.name || fileData?.fileName,
       repliedToMessageId
     });
   };
