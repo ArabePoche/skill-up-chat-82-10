@@ -60,8 +60,9 @@ const AppWithRouter: React.FC = () => {
         <Route path="/cours/lesson/:lessonId" element={<LessonChat />} />
         <Route path="/cours/group-lesson/:levelId" element={<GroupLessonChat />} />
         
-        {/* Route pour conversations (réponses stories et discussions) */}
+        {/* Routes pour conversations */}
         <Route path="/story-chat/:storyId/:otherUserId" element={<Conversations />} />
+        <Route path="/chat/:otherUserId" element={<Conversations />} />
         
         {/* Partage vidéo et post dédiés + onglets */}
         <Route path="/video/:id" element={<Layout />} />
