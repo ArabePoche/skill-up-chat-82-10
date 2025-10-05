@@ -29,6 +29,7 @@ import { SubscriptionUpgradeModal } from '../chat/SubscriptionUpgradeModal';
 import VideoMessageSwitch from '../video/VideoMessageSwitch';
 import { LessonVideoPlayerWithTimer } from '../video/LessonVideoPlayerWithTimer';
 import { Button } from '../ui/button';
+import { GroupInfoDrawer } from './GroupInfoDrawer';
 import { toast } from 'sonner';
 
 // Types
@@ -72,6 +73,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   
@@ -380,12 +382,18 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         </div>
       )}
 
-      {/* Header - réutilise le style de ChatInterface */}
+      {/* Header cliquable pour ouvrir les infos du groupe */}
       <div className="bg-[#25d366] text-white p-3 sm:p-4 fixed top-0 left-0 right-0 z-50 border-b shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center flex-1 min-w-0">
+          <div 
+            className="flex items-center flex-1 min-w-0 cursor-pointer hover:bg-white/5 rounded-lg transition-colors p-1 -ml-1"
+            onClick={() => setShowGroupInfo(true)}
+          >
             <button
-              onClick={onBack}
+              onClick={(e) => {
+                e.stopPropagation();
+                onBack();
+              }}
               className="mr-2 sm:mr-3 p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
             >
               <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
@@ -426,6 +434,18 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           )}
         </div>
       </div>
+
+      {/* Drawer d'informations du groupe */}
+      <GroupInfoDrawer
+        level={{
+          ...level,
+          id: level.id.toString()
+        }}
+        formation={formation}
+        promotionId={promotionId || null}
+        isOpen={showGroupInfo}
+        onClose={() => setShowGroupInfo(false)}
+      />
 
       {/* Modal d'upgrade - réutilisé de ChatInterface */}
       <SubscriptionUpgradeModal
