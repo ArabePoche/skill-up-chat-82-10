@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Send, Eye } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { useMarkStoryAsViewed } from '@/hooks/useStories';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import StoryViewersModal from '@/components/stories/StoryViewersModal';
 
 interface StoryViewerProps {
   stories: any[];
@@ -29,9 +30,14 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [replyText, setReplyText] = useState('');
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
+  const [showViewersModal, setShowViewersModal] = useState(false);
   const markAsViewed = useMarkStoryAsViewed();
   const { user } = useAuth();
   const story = stories[currentStoryIndex];
+  
+  // Vérifier si c'est ma story
+  const isMyStory = story?.user_id === user?.id;
+  const viewsCount = story?.story_views?.length || 0;
 
   useEffect(() => {
     if (story?.id) {
@@ -86,6 +92,32 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     setTimeout(() => setIsPaused(false), 200);
   };
 
+  const handleOpenViewers = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('Opening viewers modal for story:', story.id);
+    console.log('isMyStory:', isMyStory);
+    console.log('viewsCount:', viewsCount);
+    setIsPaused(true);
+    setShowViewersModal(true);
+    console.log('showViewersModal set to true');
+  };
+
+  const handleCloseViewers = () => {
+    setShowViewersModal(false);
+    setIsPaused(false);
+  };
+
+  const handleOpenReply = () => {
+    setIsPaused(true);
+    setShowReplyInput(true);
+  };
+
+  const handleCloseReply = () => {
+    setShowReplyInput(false);
+    setReplyText('');
+    setIsPaused(false);
+  };
+
   const handleReply = async () => {
     if (!replyText.trim() || !user?.id || !story?.id || isReplying) return;
 
@@ -114,6 +146,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       toast.error('Erreur lors de l\'envoi de la réponse');
     } finally {
       setIsReplying(false);
+      handleCloseReply();
     }
   };
 
@@ -142,7 +175,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       </div>
 
       {/* Header */}
-      <div className="absolute top-12 left-4 right-4 flex items-center justify-between text-white z-20">
+      <div className="absolute top-12 left-4 right-4 flex items-center justify-between text-white z-30">
         <div className="flex items-center space-x-3">
           <Avatar className="w-8 h-8 border-2 border-white">
             <AvatarImage src={story.profiles?.avatar_url} />
@@ -159,27 +192,40 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             </p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="text-white hover:bg-white/20 w-8 h-8"
-        >
-          <X size={20} />
-        </Button>
+        <div className="flex items-center gap-2">
+          {isMyStory && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenViewers}
+              className="text-white hover:bg-white/20 flex items-center gap-1 h-8 px-2"
+            >
+              <Eye size={16} />
+              <span className="text-sm">{viewsCount}</span>
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-white hover:bg-white/20 w-8 h-8"
+          >
+            <X size={20} />
+          </Button>
+        </div>
       </div>
 
       {/* Navigation zones */}
       <div 
-        className="absolute left-0 top-0 w-1/3 h-[calc(100%-120px)] cursor-pointer z-10"
+        className="absolute left-0 top-20 w-1/3 h-[calc(100%-200px)] cursor-pointer z-10"
         onClick={handlePrevious}
       />
       <div 
-        className="absolute right-0 top-0 w-1/3 h-[calc(100%-120px)] cursor-pointer z-10"
+        className="absolute right-0 top-20 w-1/3 h-[calc(100%-200px)] cursor-pointer z-10"
         onClick={handleNext}
       />
       <div 
-        className="absolute left-1/3 top-0 w-1/3 h-[calc(100%-120px)] cursor-pointer z-10"
+        className="absolute left-1/3 top-20 w-1/3 h-[calc(100%-200px)] cursor-pointer z-10"
         onMouseDown={handleStoryPress}
       />
 
@@ -216,9 +262,17 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       </div>
 
       {/* Reply section - AMÉLIORÉ POUR MOBILE */}
-      <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-30">
+      <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-40">
         {showReplyInput ? (
           <div className="flex items-center space-x-2 sm:space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 sm:py-3">
+            <Button
+              onClick={handleCloseReply}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/20 px-2"
+            >
+              <X size={16} />
+            </Button>
             <Input
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
@@ -244,7 +298,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           </div>
         ) : (
           <Button
-            onClick={() => setShowReplyInput(true)}
+            onClick={handleOpenReply}
             variant="ghost"
             className="w-full text-white border border-white/30 hover:bg-white/10 rounded-full py-2 sm:py-3 text-sm sm:text-base"
           >
@@ -274,6 +328,15 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         >
           <ChevronRight size={24} />
         </Button>
+      )}
+
+      {/* Modal des vues */}
+      {isMyStory && showViewersModal && (
+        <StoryViewersModal
+          isOpen={showViewersModal}
+          onClose={handleCloseViewers}
+          storyId={story.id}
+        />
       )}
     </div>
   );
