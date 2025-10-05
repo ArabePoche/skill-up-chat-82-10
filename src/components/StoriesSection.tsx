@@ -60,13 +60,6 @@ const StoriesSection = () => {
 
   // Stories de l'utilisateur connecté
   const myStories = stories.filter(story => story.user_id === user?.id);
-  
-  // Nombre total de vues de mes stories
-  const totalViews = React.useMemo(() => {
-    return myStories.reduce((acc, story) => {
-      return acc + (story.story_views?.length || 0);
-    }, 0);
-  }, [myStories]);
 
   const formatUserName = (userProfile: any) => {
     if (!userProfile) return 'Utilisateur';
@@ -88,12 +81,9 @@ const StoriesSection = () => {
     }
   };
 
-  const handleShowViewers = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (myStories.length > 0) {
-      setSelectedStoryForViews(myStories[0].id);
-      setShowViewersModal(true);
-    }
+  const handleShowViewers = (storyId: string) => {
+    setSelectedStoryForViews(storyId);
+    setShowViewersModal(true);
   };
 
   // Fonction pour ouvrir le modal de création (bouton +)
@@ -207,15 +197,6 @@ const StoriesSection = () => {
           <p className="text-xs mt-1 text-center text-gray-600 max-w-[56px] truncate">
             Mon statut
           </p>
-          {myStories.length > 0 && (
-            <button
-              onClick={handleShowViewers}
-              className="flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors mx-auto mt-1"
-            >
-              <Eye size={12} />
-              <span>{totalViews}</span>
-            </button>
-          )}
         </div>
 
         {/* Stories des autres utilisateurs - Style WhatsApp */}
