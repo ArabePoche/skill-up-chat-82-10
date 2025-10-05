@@ -13,6 +13,8 @@ import { useSendGroupMessage } from '@/hooks/useSendGroupMessage';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useTypingListener } from '@/hooks/useTypingListener';
 import { useAuth } from '@/hooks/useAuth';
+import { useChatMode } from '@/hooks/chat/useChatMode';
+import { GroupInfoDrawer } from '@/components/group-chat/GroupInfoDrawer';
 
 interface Level {
   id: string;
@@ -39,11 +41,15 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [showStudio, setShowStudio] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{
     id: string;
     content: string;
     sender_name: string;
   } | null>(null);
+
+  // Récupérer le promotionId pour afficher les membres
+  const { promotionId } = useChatMode(formation.id);
 
   // Hooks pour la gestion des messages de groupe
   const { data: messages = [], isLoading } = useTeacherGroupMessages(
@@ -137,18 +143,33 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
 
   return (
     <div className="min-h-screen bg-[#e5ddd5] flex flex-col">
-      <TeacherChatHeader
+      {/* Header cliquable pour ouvrir les infos du groupe - FIXE */}
+      <div 
+        onClick={() => setShowGroupInfo(true)}
+        className="cursor-pointer fixed top-0 left-0 right-0 z-50"
+      >
+        <TeacherChatHeader
+          formation={formation}
+          student={groupStudent}
+          lesson={groupLesson}
+          isSubscribed={isSubscribed}
+          typingUsersCount={typingUsers.length}
+          onBack={onBack}
+          onOpenStudio={() => setShowStudio(true)}
+        />
+      </div>
+
+      {/* Drawer d'informations du groupe */}
+      <GroupInfoDrawer
+        level={level}
         formation={formation}
-        student={groupStudent}
-        lesson={groupLesson}
-        isSubscribed={isSubscribed}
-        typingUsersCount={typingUsers.length}
-        onBack={onBack}
-        onOpenStudio={() => setShowStudio(true)}
+        promotionId={promotionId || null}
+        isOpen={showGroupInfo}
+        onClose={() => setShowGroupInfo(false)}
       />
 
-      {/* Zone messages */}
-      <div className="flex-1 flex flex-col pb-24 md:pb-4">
+      {/* Zone messages - avec padding-top pour compenser le header fixe */}
+      <div className="flex-1 flex flex-col pb-24 md:pb-4 pt-16">
         <div className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
           {/* Message système de bienvenue */}
           <div className="text-center">
