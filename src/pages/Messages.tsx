@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, MoreVertical, Bell } from 'lucide-react';
+import { Search, MoreVertical, Bell, UserPlus } from 'lucide-react';
 import { useConversations } from '@/hooks/useMessages';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import NotificationItem from '@/components/NotificationItem';
 import StoriesSection from '@/components/StoriesSection';
 import { useAuth } from '@/hooks/useAuth';
 import { groupMessagesByDate, formatMessageTime } from '@/utils/dateUtils';
+import { ContactsDiscoveryDialog } from '@/contacts-discovery/components/ContactsDiscoveryDialog';
 
 const Messages = () => {
   const { data: conversations = [], isLoading: conversationsLoading, error: conversationsError } = useConversations();
@@ -18,6 +19,7 @@ const Messages = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('conversations');
+  const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
 
   const handleConversationClick = (conversation: any) => {
     if (conversation.type === 'story_message') {
@@ -187,6 +189,21 @@ const Messages = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Bouton flottant pour démarrer une discussion */}
+      <Button
+        onClick={() => setIsDiscoveryOpen(true)}
+        className="fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full bg-edu-whatsapp-green hover:bg-edu-whatsapp-green/90 shadow-lg z-50 p-0 flex items-center justify-center"
+        aria-label="Démarrer une discussion"
+      >
+        <UserPlus size={24} className="text-white" />
+      </Button>
+
+      {/* Dialog de découverte de contacts */}
+      <ContactsDiscoveryDialog
+        open={isDiscoveryOpen}
+        onOpenChange={setIsDiscoveryOpen}
+      />
     </div>
   );
 };
