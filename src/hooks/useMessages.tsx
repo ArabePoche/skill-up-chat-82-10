@@ -27,7 +27,8 @@ export const useConversations = () => {
               formations (
                 id,
                 title,
-                description
+                description,
+                created_at
               )
             )
           `)
@@ -64,7 +65,7 @@ export const useConversations = () => {
                 name: `${tf.formations.title} - Groupe`,
                 lastMessage: 'Formation dont vous êtes professeur',
                 timestamp: 'Aujourd\'hui',
-                created_at: new Date().toISOString(),
+                created_at: tf.formations.created_at || new Date().toISOString(),
                 unread: 0,
                 avatar: '👨‍🏫',
                 online: false,
