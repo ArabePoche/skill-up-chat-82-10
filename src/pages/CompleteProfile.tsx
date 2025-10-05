@@ -29,6 +29,7 @@ const CompleteProfile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [phoneError, setPhoneError] = useState<string>('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -119,6 +120,9 @@ const CompleteProfile = () => {
     setIsLoading(true);
 
     try {
+      // Réinitialiser l'erreur de téléphone
+      setPhoneError('');
+
       // Vérifier l'unicité du numéro de téléphone si renseigné
       if (formData.phone && formData.phoneCountryCode) {
         const { data: existingProfiles, error: checkError } = await supabase
@@ -128,12 +132,23 @@ const CompleteProfile = () => {
           .eq('phone', formData.phone)
           .neq('id', user.id);
 
-        if (checkError) throw checkError;
+        if (checkError) {
+          console.error('Erreur vérification téléphone:', checkError);
+          setPhoneError("Impossible de vérifier le numéro de téléphone. Veuillez réessayer.");
+          toast({
+            title: "Erreur de vérification",
+            description: "Impossible de vérifier le numéro de téléphone. Veuillez réessayer.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
 
         if (existingProfiles && existingProfiles.length > 0) {
+          setPhoneError("Ce numéro de téléphone est déjà associé à un autre compte. Veuillez en utiliser un autre.");
           toast({
             title: "Numéro déjà utilisé",
-            description: "Ce numéro de téléphone est déjà enregistré. Veuillez en utiliser un autre.",
+            description: "Ce numéro de téléphone est déjà associé à un autre compte. Veuillez en utiliser un autre.",
             variant: "destructive",
           });
           setIsLoading(false);
@@ -160,8 +175,9 @@ const CompleteProfile = () => {
         });
 
       if (profileError) {
-        // Vérifier si c'est une erreur de contrainte unique sur le numéro de téléphone
+      // Vérifier si c'est une erreur de contrainte unique sur le numéro de téléphone
         if (profileError.code === '23505' && profileError.message?.includes('unique_phone_per_country')) {
+          setPhoneError("Ce numéro de téléphone est déjà associé à un autre compte.");
           toast({
             title: "Numéro déjà utilisé",
             description: "Ce numéro de téléphone est déjà associé à un autre compte.",
@@ -297,12 +313,21 @@ const CompleteProfile = () => {
                       id="phone"
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      className="pl-10"
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, phone: e.target.value }));
+                        setPhoneError(''); // Réinitialiser l'erreur quand l'utilisateur modifie
+                      }}
+                      className={`pl-10 ${phoneError ? 'border-red-500 focus:ring-red-500' : ''}`}
                       placeholder="Numéro de téléphone"
                     />
                   </div>
                 </div>
+                {phoneError && (
+                  <p className="text-red-600 text-sm mt-2 flex items-start gap-1">
+                    <span className="font-semibold">⚠</span>
+                    <span>{phoneError}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
