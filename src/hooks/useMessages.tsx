@@ -10,7 +10,7 @@ export const useConversations = () => {
 
   return useQuery({
     queryKey: ['conversations', user?.id],
-    refetchInterval: 3000, // Rafraîchir toutes les 3 secondes
+    refetchInterval: 5000, // Rafraîchir toutes les 5 secondes
     queryFn: async () => {
       if (!user?.id) return [];
 
