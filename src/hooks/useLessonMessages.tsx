@@ -203,6 +203,6 @@ export const useLessonMessages = (lessonId: string | undefined, formationId: str
       return filteredMessages;
     },
     enabled: !!lessonId && !!formationId && !!user?.id,
-    refetchInterval: false,
+    refetchInterval: 5000, // Rafraîchir toutes les 5 secondes
   });
 };
