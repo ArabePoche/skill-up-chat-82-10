@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import MessageBubble from './MessageBubble';
 import SystemMessage from './SystemMessage';
 import TypingIndicator from './TypingIndicator';
+import DateSeparator from './DateSeparator';
 import { useIsTeacherInFormation } from '@/hooks/useIsTeacherInFormation';
 import MessageItem from './MessageItem';
 import InterviewEvaluationCard from './InterviewEvaluationCard';
@@ -11,6 +12,7 @@ import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useTypingListener } from '@/hooks/useTypingListener';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 import LessonVideoPlayer from '../LessonVideoPlayer';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 
 interface Message {
   id: string;
@@ -121,6 +123,9 @@ const MessageList: React.FC<MessageListProps> = ({
     );
   }
 
+  // Grouper les messages par date
+  const groupedMessages = groupMessagesByDate(messages);
+
   return (
     <div className="flex-1 p-4 space-y-4 overflow-y-auto">
       {/* Évaluations d'entretien */}
@@ -133,8 +138,12 @@ const MessageList: React.FC<MessageListProps> = ({
         />
       ))}
 
-      {/* Messages et contenu du flux */}
-      {messages.map((message) => {
+      {/* Messages groupés par date */}
+      {Object.entries(groupedMessages).map(([dateLabel, messagesInGroup]) => (
+        <React.Fragment key={dateLabel}>
+          <DateSeparator date={dateLabel} />
+          
+          {messagesInGroup.map((message) => {
         // Vidéos de leçons (priorité sur les messages système)
         if (message.item_type === 'lesson_video') {
           console.log('🎥 Rendering lesson video:', message);
@@ -233,7 +242,9 @@ const MessageList: React.FC<MessageListProps> = ({
             />
           </div>
         );
-      })}
+          })}
+        </React.Fragment>
+      ))}
 
       {/* Affichage des évaluations en attente pour les étudiants - APRÈS les messages */}
       {!isTeacherView && pendingEvaluations.map((evaluation) => (
