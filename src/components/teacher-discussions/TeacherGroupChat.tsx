@@ -170,7 +170,7 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
       />
 
       {/* Zone messages - avec padding-top pour compenser le header fixe */}
-      <div className="flex-1 flex flex-col pb-24 md:pb-4 pt-16">
+      <div className="flex-1 flex flex-col pb-24 md:pb-4 pt-20">
         <div className="flex-1 p-4 space-y-4 custom-scrollbar overflow-y-auto">
           {/* Message système de bienvenue */}
           <div className="text-center">
