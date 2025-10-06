@@ -1,3 +1,4 @@
+
 /**
  * Drawer d'informations de groupe - Style WhatsApp
  * Affiche les infos du niveau et la liste des membres de la promotion
@@ -182,7 +183,7 @@ export const GroupInfoDrawer: React.FC<GroupInfoDrawerProps> = ({
                           </p>
                           {currentLevel?.order_index !== undefined && (
                             <div className="flex items-center gap-0.5 shrink-0">
-                              {Array.from({ length: currentLevel.order_index + 1 }).map((_, i) => (
+                              {Array.from({ length: currentLevel.order_index }).map((_, i) => (
                                 <Award key={i} size={14} className="text-primary fill-primary" />
                               ))}
                             </div>
