@@ -3,11 +3,14 @@
  * Affiche les infos du niveau et la liste des membres de la promotion
  */
 import React from 'react';
-import { X, Users, Calendar, User } from 'lucide-react';
+import { X, Users, Calendar, User, Award } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePromotionMembers } from '@/hooks/group-chat/usePromotionMembers';
-import { useAllFormationMembers } from '@/hooks/group-chat/useAllFormationMembers';
+import { useLevelMembers } from '@/hooks/group-chat/useLevelMembers';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 
 interface Level {
   id: string;
@@ -38,13 +41,32 @@ export const GroupInfoDrawer: React.FC<GroupInfoDrawerProps> = ({
   onClose,
   isTeacher = false
 }) => {
-  // Côté professeur : tous les élèves de la formation
-  // Côté élève : uniquement les membres de la même promotion
-  const { data: allMembers = [], isLoading: isLoadingAll } = useAllFormationMembers(formation.id);
-  const { data: promotionMembers = [], isLoading: isLoadingPromotion } = usePromotionMembers(formation.id, promotionId);
+  // Récupérer les infos de la promotion
+  const { data: promotionData } = useQuery({
+    queryKey: ['promotion-info', promotionId],
+    queryFn: async () => {
+      if (!promotionId) return null;
+      const { data } = await supabase
+        .from('promotions')
+        .select('name')
+        .eq('id', promotionId)
+        .single();
+      return data;
+    },
+    enabled: !!promotionId && !isTeacher,
+  });
+
+  // Côté professeur : élèves ayant accès au niveau spécifique
+  // Côté élève : uniquement les membres de la même promotion filtrés par niveau
+  const { data: levelMembers = [], isLoading: isLoadingLevel } = useLevelMembers(formation.id, level.id);
+  const { data: promotionMembers = [], isLoading: isLoadingPromotion } = usePromotionMembers(
+    formation.id, 
+    promotionId,
+    level.id // Passer le niveau actuel pour filtrer les membres
+  );
   
-  const members = isTeacher ? allMembers : promotionMembers;
-  const isLoading = isTeacher ? isLoadingAll : isLoadingPromotion;
+  const members = isTeacher ? levelMembers : promotionMembers;
+  const isLoading = isTeacher ? isLoadingLevel : isLoadingPromotion;
 
   if (!isOpen) return null;
 
@@ -99,6 +121,11 @@ export const GroupInfoDrawer: React.FC<GroupInfoDrawerProps> = ({
               </div>
               <h3 className="text-xl font-bold text-gray-900">{level.title}</h3>
               <p className="text-sm text-gray-500 mt-1">{formation.title}</p>
+              {!isTeacher && promotionData?.name && (
+                <Badge variant="secondary" className="mt-2">
+                  {promotionData.name}
+                </Badge>
+              )}
             </div>
 
             {level.description && (
@@ -134,6 +161,8 @@ export const GroupInfoDrawer: React.FC<GroupInfoDrawerProps> = ({
               <div className="space-y-1">
                 {members.map((member) => {
                   const profile = member.profiles;
+                  const currentLevel = (member as any).current_level;
+                  
                   return (
                     <div
                       key={member.student_id}
@@ -147,11 +176,20 @@ export const GroupInfoDrawer: React.FC<GroupInfoDrawerProps> = ({
                       </Avatar>
 
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {getMemberName(member)}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {getMemberName(member)}
+                          </p>
+                          {currentLevel?.order_index !== undefined && (
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              {Array.from({ length: currentLevel.order_index + 1 }).map((_, i) => (
+                                <Award key={i} size={14} className="text-primary fill-primary" />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         {member.joined_at && (
-                          <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                             <Calendar size={12} />
                             Membre depuis {new Date(member.joined_at).toLocaleDateString('fr-FR')}
                           </p>
