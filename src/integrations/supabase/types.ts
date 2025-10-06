@@ -1912,6 +1912,13 @@ export type Database = {
             referencedRelation: "user_stories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "story_views_viewer_id_fkey1"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_activity_tracking: {
@@ -3367,6 +3374,10 @@ export type Database = {
       }
       is_student_enrolled: {
         Args: { p_formation_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_student_in_same_promotion: {
+        Args: { _promotion_id: string; _user_id: string }
         Returns: boolean
       }
       is_teacher_of_formation: {
