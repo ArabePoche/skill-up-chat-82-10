@@ -167,9 +167,12 @@ export const useSubmitGroupExercise = () => {
       return data;
     },
     onSuccess: (data) => {
-      // Invalider les requêtes spécifiques au chat de groupe
+      // Invalider toutes les clés possibles pour les messages de groupe
       queryClient.invalidateQueries({ 
         queryKey: ['group-chat-messages', data.formation_id, data.level_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['promotion-messages', data.level_id, data.formation_id] 
       });
       queryClient.invalidateQueries({ 
         queryKey: ['level-exercises', data.level_id] 
