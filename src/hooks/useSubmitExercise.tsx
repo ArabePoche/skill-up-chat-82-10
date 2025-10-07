@@ -167,11 +167,21 @@ export const useSubmitExercise = () => {
       return data;
     },
     onSuccess: (data) => {
+      // Invalider toutes les clés possibles pour les messages
       queryClient.invalidateQueries({ 
         queryKey: ['student-messages', data.lesson_id, data.formation_id] 
       });
       queryClient.invalidateQueries({ 
         queryKey: ['teacher-messages', data.lesson_id, data.formation_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['lesson-messages', data.lesson_id, data.formation_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['individual-messages', data.lesson_id, data.formation_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['promotion-messages', data.lesson_id, data.formation_id] 
       });
       queryClient.invalidateQueries({ 
         queryKey: ['lesson-unlocking'] 
