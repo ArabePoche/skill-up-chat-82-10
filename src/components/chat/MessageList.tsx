@@ -115,6 +115,13 @@ const MessageList: React.FC<MessageListProps> = ({
     scrollToBottom();
   }, [messages, typingUsers]);
 
+  // Exposer scrollToBottom pour l'utiliser depuis l'extérieur
+  useEffect(() => {
+    if (window) {
+      (window as any).__scrollToBottom = scrollToBottom;
+    }
+  }, []);
+
   if (!messages) {
     return (
       <div className="flex-1 flex items-center justify-center">
