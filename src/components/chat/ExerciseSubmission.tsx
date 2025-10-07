@@ -52,6 +52,13 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
 
       setShowSubmissionForm(false);
       onSubmissionComplete?.();
+      
+      // Scroll automatique vers le bas après soumission
+      setTimeout(() => {
+        if ((window as any).__scrollToBottom) {
+          (window as any).__scrollToBottom();
+        }
+      }, 100);
     } catch (error) {
       console.error('Error submitting exercise:', error);
     }
