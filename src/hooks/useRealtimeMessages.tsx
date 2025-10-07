@@ -100,6 +100,32 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
       .on(
         'postgres_changes',
         {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'lesson_messages',
+          filter: `lesson_id=eq.${lessonId}`
+        },
+        (payload) => {
+          console.log('🗑️ Message deleted via realtime:', payload);
+
+          const queriesToUpdate = [
+            ['lesson-messages', lessonId, formationId],
+            ['student-messages', lessonId, formationId],
+            ['teacher-messages', lessonId, formationId],
+            ['teacher-discussions-with-unread', formationId],
+            ['teacher-student-messages', formationId, payload.old.sender_id, lessonId],
+            ['teacher-student-messages', formationId, payload.old.receiver_id, lessonId],
+            ['message-reactions', payload.old.id]
+          ];
+
+          queriesToUpdate.forEach(queryKey => {
+            queryClient.invalidateQueries({ queryKey });
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'INSERT',
           schema: 'public',
           table: 'message_reactions'
