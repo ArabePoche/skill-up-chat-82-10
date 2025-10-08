@@ -1,6 +1,6 @@
 /**
  * Hook pour accéder aux contacts du téléphone de l'utilisateur
- * Utilise Capacitor Contacts plugin
+ * Utilise Capacitor Contacts plugin pour mobile natif
  */
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -37,8 +37,55 @@ export const usePhoneContacts = () => {
         setContacts(demoContacts);
         return demoContacts;
       }
+
+      // Vérifier si Capacitor est disponible (mobile natif)
+      if ((window as any).Capacitor) {
+        try {
+          const Capacitor = (window as any).Capacitor;
+          const isNativePlatform = Capacitor.isNativePlatform();
+          
+          if (isNativePlatform) {
+            // Vérifier si le plugin Contacts est disponible
+            const Contacts = (window as any).Capacitor?.Plugins?.Contacts;
+            
+            if (Contacts) {
+              // Demander la permission d'accès aux contacts
+              const permission = await Contacts.requestPermissions();
+              
+              if (permission.contacts === 'granted') {
+                // Récupérer tous les contacts
+                const result = await Contacts.getContacts({
+                  projection: {
+                    name: true,
+                    phones: true,
+                  }
+                });
+                
+                const formattedContacts: PhoneContact[] = result.contacts
+                  .filter((contact: any) => contact.phones && contact.phones.length > 0)
+                  .map((contact: any) => ({
+                    name: contact.name?.display || 'Sans nom',
+                    phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/\s+/g, '') || '') || []
+                  }));
+                
+                setContacts(formattedContacts);
+                return formattedContacts;
+              } else {
+                toast({
+                  title: "Permission refusée",
+                  description: "Vous devez autoriser l'accès aux contacts pour utiliser cette fonctionnalité",
+                  variant: "destructive",
+                });
+                return [];
+              }
+            }
+          }
+        } catch (capacitorError) {
+          console.log('Erreur Capacitor, tentative avec API web:', capacitorError);
+        }
+      }
       
-      // Vérifier si on est sur mobile avec l'API Contacts
+      // Vérifier si on est sur le web avec l'API Contacts Navigator (expérimental)
       if ('contacts' in navigator && 'select' in (navigator as any).contacts) {
         const props = ['name', 'tel'];
         const opts = { multiple: true };
