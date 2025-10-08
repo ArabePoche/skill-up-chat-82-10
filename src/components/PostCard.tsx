@@ -7,8 +7,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeletePost } from '@/hooks/usePosts';
+import { usePostLikes } from '@/hooks/usePostLikes';
 import PostComments from '@/components/PostComments';
 import PostImageModal from '@/components/PostImageModal';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +27,36 @@ interface PostCardProps {
 const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const { user } = useAuth();
   const deletePost = useDeletePost();
-  const [localCommentsCount, setLocalCommentsCount] = useState(post.comments_count || 0);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const isAuthor = user?.id === post.author_id;
+
+  // Hook pour les likes
+  const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = usePostLikes(
+    post.id,
+    post.likes_count || 0
+  );
+
+  // Compteur de commentaires dynamique
+  const { data: commentsCount = post.comments_count || 0 } = useQuery({
+    queryKey: ['post-comments-count', post.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('post_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post.id);
+
+      if (error) {
+        console.error('Erreur comptage commentaires post:', error);
+        return post.comments_count || 0;
+      }
+
+      return count ?? (post.comments_count || 0);
+    },
+    enabled: !!post.id,
+    refetchInterval: 3000,
+  });
 
   // Récupérer toutes les images du post
   const allImages = React.useMemo(() => {
@@ -96,7 +124,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
                   <img
                     src={media.file_url}
                     alt={`Media ${index + 1}`}
-                    className="w-full h-32 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity rounded-lg"
                     onClick={() => openImageViewer(index)}
                   />
                   {index === 3 && post.media.length > 4 && (
@@ -191,14 +219,20 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
       {/* Actions du post */}
       <div className="flex items-center space-x-6 mt-4 pt-3 border-t border-gray-800">
-        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-400">
-          <Heart size={18} className="mr-2" />
-          {post.likes_count || 0}
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className={`${isLiked ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
+          onClick={() => toggleLike()}
+          disabled={isLikeLoading || !user}
+        >
+          <Heart size={18} className={`mr-2 ${isLiked ? 'fill-current' : ''}`} />
+          {likesCount}
         </Button>
         
         <div className="text-gray-400 flex items-center">
           <MessageCircle size={18} className="mr-2" />
-          {localCommentsCount}
+          {commentsCount}
         </div>
         
         <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400">
@@ -210,8 +244,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
       {/* Section des commentaires intégrée */}
       <PostComments 
         postId={post.id} 
-        commentsCount={localCommentsCount}
-        onCommentsCountChange={setLocalCommentsCount}
+        commentsCount={commentsCount}
       />
 
       {/* Modal de prévisualisation d'images */}
