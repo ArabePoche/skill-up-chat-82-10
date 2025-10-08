@@ -229,36 +229,38 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         onMouseDown={handleStoryPress}
       />
 
-      {/* Story content - hauteur réduite pour laisser place au champ de saisie */}
-      <div className="flex-1 flex items-center justify-center pb-32">
-        {story.content_type === 'text' && (
-          <div 
-            className="max-w-xs mx-auto p-6 rounded-2xl text-center shadow-lg"
-            style={{ backgroundColor: story.background_color || '#25d366' }}
-          >
-            <p className="text-white text-lg font-medium leading-relaxed">
-              {story.content_text}
-            </p>
-          </div>
-        )}
+      {/* Story content - zone contrainte entre header et reply */}
+      <div className="absolute left-0 right-0 flex items-center justify-center" style={{ top: '140px', bottom: '180px' }}>
+        <div className="w-full h-full flex items-center justify-center px-4">
+          {story.content_type === 'text' && (
+            <div 
+              className="max-w-xs w-full p-6 rounded-2xl text-center shadow-lg"
+              style={{ backgroundColor: story.background_color || '#25d366' }}
+            >
+              <p className="text-white text-lg font-medium leading-relaxed">
+                {story.content_text}
+              </p>
+            </div>
+          )}
 
-        {story.content_type === 'image' && (
-          <img 
-            src={story.media_url} 
-            alt="Story content"
-            className="max-w-full max-h-full object-contain rounded-lg"
-          />
-        )}
+          {story.content_type === 'image' && (
+            <img 
+              src={story.media_url} 
+              alt="Story content"
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+          )}
 
-        {story.content_type === 'video' && (
-          <video 
-            src={story.media_url}
-            className="max-w-full max-h-full object-contain rounded-lg"
-            autoPlay
-            muted
-            loop
-          />
-        )}
+          {story.content_type === 'video' && (
+            <video 
+              src={story.media_url}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              autoPlay
+              muted
+              loop
+            />
+          )}
+        </div>
       </div>
 
       {/* Reply section - AMÉLIORÉ POUR MOBILE */}
