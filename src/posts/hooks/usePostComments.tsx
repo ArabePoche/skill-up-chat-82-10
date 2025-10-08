@@ -94,10 +94,53 @@ export const usePostComments = (postId: string) => {
     }
   };
 
+  // Supprimer un commentaire
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase
+        .from('post_comments')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      // Décrémenter le compteur
+      const { error: rpcError } = await supabase.rpc('decrement_post_comments', {
+        post_id: postId
+      });
+      
+      if (rpcError) {
+        console.error('Erreur mise à jour compteur commentaires:', rpcError);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['post-comments', postId] });
+      queryClient.invalidateQueries({ queryKey: ['post-comments-count', postId] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      toast.success('Commentaire supprimé');
+    },
+    onError: (error) => {
+      console.error('Erreur suppression commentaire:', error);
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+
+  const deleteComment = async (commentId: string): Promise<boolean> => {
+    try {
+      await deleteCommentMutation.mutateAsync(commentId);
+      return true;
+    } catch (error) {
+      console.error('Échec suppression commentaire:', error);
+      return false;
+    }
+  };
+
   return {
     comments,
     isLoading,
     addComment,
+    deleteComment,
     isSubmitting: addCommentMutation.isPending,
+    isDeleting: deleteCommentMutation.isPending,
   };
 };
