@@ -9,6 +9,8 @@ import VideoCommentsModal from './VideoCommentsModal';
 import VideoShareModal from './VideoShareModal';
 import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Video {
   id: string;
@@ -56,6 +58,27 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
+
+  // Récupération dynamique du compteur de commentaires
+  const { data: commentsCount = video.comments_count } = useQuery({
+    queryKey: ['video-comments-count', video.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('video_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('video_id', video.id)
+        .is('parent_comment_id', null);
+
+      if (error) {
+        console.error('Erreur comptage commentaires :', error);
+        return video.comments_count;
+      }
+
+      return count ?? video.comments_count;
+    },
+    enabled: !!video.id,
+    refetchInterval: 5000, // Rafraîchissement toutes les 5 secondes
+  });
 
   // Détection du type de vidéo
   const isYouTube = video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be');
@@ -286,7 +309,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
             <MessageCircle size={24} />
           </Button>
           <span className="text-white text-xs mt-1 font-medium">
-            {formatCount(video.comments_count)}
+            {formatCount(commentsCount)}
           </span>
         </div>
 
