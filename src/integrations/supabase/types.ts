@@ -1567,6 +1567,35 @@ export type Database = {
           },
         ]
       }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_media: {
         Row: {
           created_at: string
@@ -1644,9 +1673,142 @@ export type Database = {
         }
         Relationships: []
       }
+      product_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          label: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          label: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          label?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      product_category_types: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          id: string
+          type_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          id?: string
+          type_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          id?: string
+          type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_category_types_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_category_types_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "product_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_images: {
+        Row: {
+          created_at: string | null
+          display_order: number
+          id: string
+          image_url: string
+          is_primary: boolean | null
+          product_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          image_url: string
+          is_primary?: boolean | null
+          product_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string
+          is_primary?: boolean | null
+          product_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_types: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          label: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          label: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          label?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
+          availability: boolean | null
           badge: string | null
+          barcode: string | null
           category_id: string | null
           created_at: string | null
           description: string | null
@@ -1655,17 +1817,27 @@ export type Database = {
           image_url: string | null
           instructor_id: string | null
           is_active: boolean | null
+          min_stock_level: number | null
           original_price: number | null
           price: number
+          product_category_id: string | null
           product_type: Database["public"]["Enums"]["product_type"]
+          product_type_id: string | null
           promo_video_url: string | null
+          purchase_price: number | null
+          quantity: number | null
           rating: number | null
+          selling_price: number | null
+          sku: string | null
           students_count: number | null
           title: string
+          unit: string | null
           updated_at: string | null
         }
         Insert: {
+          availability?: boolean | null
           badge?: string | null
+          barcode?: string | null
           category_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -1674,17 +1846,27 @@ export type Database = {
           image_url?: string | null
           instructor_id?: string | null
           is_active?: boolean | null
+          min_stock_level?: number | null
           original_price?: number | null
           price: number
+          product_category_id?: string | null
           product_type: Database["public"]["Enums"]["product_type"]
+          product_type_id?: string | null
           promo_video_url?: string | null
+          purchase_price?: number | null
+          quantity?: number | null
           rating?: number | null
+          selling_price?: number | null
+          sku?: string | null
           students_count?: number | null
           title: string
+          unit?: string | null
           updated_at?: string | null
         }
         Update: {
+          availability?: boolean | null
           badge?: string | null
+          barcode?: string | null
           category_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -1693,13 +1875,21 @@ export type Database = {
           image_url?: string | null
           instructor_id?: string | null
           is_active?: boolean | null
+          min_stock_level?: number | null
           original_price?: number | null
           price?: number
+          product_category_id?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
+          product_type_id?: string | null
           promo_video_url?: string | null
+          purchase_price?: number | null
+          quantity?: number | null
           rating?: number | null
+          selling_price?: number | null
+          sku?: string | null
           students_count?: number | null
           title?: string
+          unit?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1715,6 +1905,20 @@ export type Database = {
             columns: ["instructor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_product_category_id_fkey"
+            columns: ["product_category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_product_type_id_fkey"
+            columns: ["product_type_id"]
+            isOneToOne: false
+            referencedRelation: "product_types"
             referencedColumns: ["id"]
           },
         ]
