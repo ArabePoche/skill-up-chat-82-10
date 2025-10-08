@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Send, User, Smile, MessageCircle } from 'lucide-react';
+import { Send, User, Smile, MessageCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,13 +13,11 @@ import EmojiPicker from '@/components/EmojiPicker';
 interface PostCommentsProps {
   postId: string;
   commentsCount: number;
-  onCommentsCountChange?: (count: number) => void;
 }
 
 const PostComments: React.FC<PostCommentsProps> = ({
   postId,
   commentsCount,
-  onCommentsCountChange
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [newComment, setNewComment] = useState('');
@@ -27,7 +25,7 @@ const PostComments: React.FC<PostCommentsProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const { user } = useAuth();
-  const { comments, isLoading, addComment, isSubmitting } = usePostComments(postId);
+  const { comments, isLoading, addComment, deleteComment, isSubmitting } = usePostComments(postId);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +35,12 @@ const PostComments: React.FC<PostCommentsProps> = ({
     if (success) {
       setNewComment('');
       setShowEmojiPicker(false);
-      // Mettre à jour le compteur dans le composant parent
-      if (onCommentsCountChange) {
-        onCommentsCountChange(comments.length + 1);
-      }
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (window.confirm('Supprimer ce commentaire ?')) {
+      await deleteComment(commentId);
     }
   };
 
@@ -88,7 +88,7 @@ const PostComments: React.FC<PostCommentsProps> = ({
               <div className="text-center text-gray-400 py-4">Aucun commentaire pour le moment</div>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} className="flex space-x-3">
+                <div key={comment.id} className="flex space-x-3 group">
                   <Avatar className="w-8 h-8 flex-shrink-0">
                     <AvatarImage src={comment.profiles?.avatar_url} />
                     <AvatarFallback className="bg-gray-700 text-white">
@@ -97,17 +97,29 @@ const PostComments: React.FC<PostCommentsProps> = ({
                   </Avatar>
                   
                   <div className="flex-1">
-                    <div className="bg-gray-800 rounded-lg p-3">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium text-white text-sm">
-                          {comment.profiles?.first_name || comment.profiles?.username || 'Utilisateur'}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {formatDistanceToNow(new Date(comment.created_at), {
-                            addSuffix: true,
-                            locale: fr
-                          })}
-                        </span>
+                    <div className="bg-gray-800 rounded-lg p-3 relative">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-white text-sm">
+                            {comment.profiles?.first_name || comment.profiles?.username || 'Utilisateur'}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {formatDistanceToNow(new Date(comment.created_at), {
+                              addSuffix: true,
+                              locale: fr
+                            })}
+                          </span>
+                        </div>
+                        {user?.id === comment.user_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        )}
                       </div>
                       <p className="text-white text-sm">{comment.content}</p>
                     </div>
