@@ -1,7 +1,11 @@
 import React from 'react';
 import { Video } from 'lucide-react';
 
-const VideosTab: React.FC = () => {
+interface VideosTabProps {
+  userId?: string;
+}
+
+const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
