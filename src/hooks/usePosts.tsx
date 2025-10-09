@@ -30,9 +30,9 @@ interface Post {
   };
 }
 
-export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' = 'all') => {
+export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' = 'all', userId?: string) => {
   return useQuery({
-    queryKey: ['posts', filter],
+    queryKey: ['posts', filter, userId],
     queryFn: async () => {
       
       
@@ -45,6 +45,10 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
 
       if (filter !== 'all') {
         query = query.eq('post_type', filter);
+      }
+
+      if (userId) {
+        query = query.eq('author_id', userId);
       }
 
       const { data: posts, error: postsError } = await query;
