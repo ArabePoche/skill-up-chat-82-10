@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, Smile, MessageCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,11 +13,13 @@ import EmojiPicker from '@/components/EmojiPicker';
 interface PostCommentsProps {
   postId: string;
   commentsCount: number;
+  openTrigger?: number;
 }
 
 const PostComments: React.FC<PostCommentsProps> = ({
   postId,
   commentsCount,
+  openTrigger,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [newComment, setNewComment] = useState('');
@@ -26,6 +28,14 @@ const PostComments: React.FC<PostCommentsProps> = ({
   
   const { user } = useAuth();
   const { comments, isLoading, addComment, deleteComment, isSubmitting } = usePostComments(postId);
+
+  // Ouvre la section quand un déclencheur externe change (clic sur "Commenter")
+  useEffect(() => {
+    if (openTrigger && openTrigger > 0) {
+      setIsExpanded(true);
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    }
+  }, [openTrigger]);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
