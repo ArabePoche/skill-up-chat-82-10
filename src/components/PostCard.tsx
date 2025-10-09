@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2, UserPlus, UserCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
@@ -8,6 +8,7 @@ import { fr } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeletePost } from '@/hooks/usePosts';
 import { usePostLikes } from '@/hooks/usePostLikes';
+import { useFollow } from '@/hooks/useFollow';
 import PostComments from '@/components/PostComments';
 import PostImageModal from '@/components/PostImageModal';
 import PostLikesModal from '@/components/PostLikesModal';
@@ -36,6 +37,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const commentsRef = React.useRef<HTMLDivElement>(null);
 
   const isAuthor = user?.id === post.author_id;
+  
+  // Hook pour le système de suivi
+  const { isFollowing, toggleFollow, isLoading: isFollowLoading } = useFollow(post.author_id);
 
   // Hook pour les likes
   const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = usePostLikes(
@@ -191,14 +195,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
     <div className="bg-gray-900 rounded-lg p-4 mb-4 border border-gray-800">
       {/* En-tête du post */}
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 flex-1">
           <Avatar className="w-10 h-10">
             <AvatarImage src={post.profiles?.avatar_url} />
             <AvatarFallback className="bg-gray-700 text-white">
               <User size={20} />
             </AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1">
             <div className="flex items-center space-x-2">
               <span className="font-semibold text-white">
                 {post.profiles?.first_name || post.profiles?.username || 'Utilisateur'}
@@ -212,6 +216,27 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
               })}
             </span>
           </div>
+          
+          {/* Bouton suivre */}
+          {!isAuthor && user && (
+            <Button
+              onClick={() => toggleFollow()}
+              disabled={isFollowLoading}
+              size="sm"
+              variant="ghost"
+              className={`${
+                isFollowing 
+                  ? 'text-gray-400 hover:text-gray-300' 
+                  : 'text-blue-400 hover:text-blue-300'
+              }`}
+            >
+              {isFollowing ? (
+                <UserCheck size={18} />
+              ) : (
+                <UserPlus size={18} />
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Menu d'options pour l'auteur */}
