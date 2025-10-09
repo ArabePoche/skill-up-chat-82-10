@@ -1,206 +1,73 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Smile, MessageCircle, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import React from 'react';
+import { User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/hooks/useAuth';
-import { usePostComments } from '../posts/hooks/usePostComments';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import EmojiPicker from '@/components/EmojiPicker';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { usePostLikesDetails } from '@/hooks/usePostLikesDetails';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface PostCommentsProps {
+interface PostLikesModalProps {
   postId: string;
-  commentsCount: number;
-  openTrigger?: number;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-const PostComments: React.FC<PostCommentsProps> = ({
-  postId,
-  commentsCount,
-  openTrigger,
-}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [newComment, setNewComment] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  const { user } = useAuth();
-  const { comments, isLoading, addComment, deleteComment, isSubmitting } = usePostComments(postId);
-
-  // Ouvre la section quand un déclencheur externe change (clic sur "Commenter")
-  useEffect(() => {
-    if (openTrigger && openTrigger > 0) {
-      setIsExpanded(true);
-      setTimeout(() => textareaRef.current?.focus(), 0);
-    }
-  }, [openTrigger]);
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    const success = await addComment(newComment);
-    if (success) {
-      setNewComment('');
-      setShowEmojiPicker(false);
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    if (window.confirm('Supprimer ce commentaire ?')) {
-      await deleteComment(commentId);
-    }
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newText = newComment.slice(0, start) + emoji + newComment.slice(end);
-      setNewComment(newText);
-      
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + emoji.length, start + emoji.length);
-      }, 0);
-    } else {
-      setNewComment(prev => prev + emoji);
-    }
-  };
+/**
+ * Modal affichant la liste des utilisateurs qui ont aimé un post
+ */
+const PostLikesModal: React.FC<PostLikesModalProps> = ({ postId, isOpen, onClose }) => {
+  const { data: likes, isLoading } = usePostLikesDetails(postId);
 
   return (
-    <div className="border-t border-gray-800 mt-4">
-      {/* Bouton pour afficher/masquer les commentaires */}
-      <Button
-        variant="ghost"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full text-gray-400 hover:text-white py-3 justify-start"
-      >
-        <MessageCircle size={16} className="mr-2" />
-        {commentsCount > 0 ? (
-          isExpanded ? 'Masquer les commentaires' : `Voir les ${commentsCount} commentaires`
-        ) : (
-          'Commenter'
-        )}
-      </Button>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            J'aime ({likes?.length || 0})
+          </DialogTitle>
+        </DialogHeader>
 
-      {/* Section des commentaires dépliable */}
-      {isExpanded && (
-        <div className="px-4 pb-4">
-          {/* Liste des commentaires */}
-          <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-            {isLoading ? (
-              <div className="text-center text-gray-400 py-4">Chargement...</div>
-            ) : !Array.isArray(comments) || comments.length === 0 ? (
-              <div className="text-center text-gray-400 py-4">Aucun commentaire pour le moment</div>
-            ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className="flex space-x-3 group">
-                  <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarImage src={comment.profiles?.avatar_url} />
-                    <AvatarFallback className="bg-gray-700 text-white">
-                      <User size={14} />
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="bg-gray-800 rounded-lg p-3 relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium text-white text-sm">
-                            {comment.profiles?.first_name || comment.profiles?.username || 'Utilisateur'}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {formatDistanceToNow(new Date(comment.created_at), {
-                              addSuffix: true,
-                              locale: fr
-                            })}
-                          </span>
-                        </div>
-                        {user?.id === comment.user_id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteComment(comment.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto text-red-400 hover:text-red-300"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        )}
-                      </div>
-                      <p className="text-white text-sm">{comment.content}</p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Formulaire d'ajout de commentaire */}
-          {user && (
-            <form onSubmit={handleAddComment} className="mt-4">
-              <div className="flex space-x-3">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarImage src={user.user_metadata?.avatar_url} />
+        <div className="max-h-96 overflow-y-auto space-y-3">
+          {isLoading ? (
+            // Skeleton loading
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center space-x-3">
+                <Skeleton className="w-10 h-10 rounded-full bg-gray-700" />
+                <Skeleton className="h-4 w-32 bg-gray-700" />
+              </div>
+            ))
+          ) : likes && likes.length > 0 ? (
+            likes.map((like: any) => (
+              <div
+                key={like.id}
+                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={like.profiles?.avatar_url} />
                   <AvatarFallback className="bg-gray-700 text-white">
-                    <User size={14} />
+                    <User size={20} />
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 relative">
-                  <Textarea
-                    ref={textareaRef}
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Écrivez un commentaire..."
-                    className="min-h-[60px] bg-gray-800 border-gray-600 text-white resize-none text-sm"
-                    maxLength={500}
-                  />
-                  
-                  {/* EmojiPicker */}
-                  {showEmojiPicker && (
-                    <div className="absolute bottom-full left-0 mb-2 z-10">
-                      <EmojiPicker
-                        onEmojiSelect={handleEmojiSelect}
-                        isOpen={showEmojiPicker}
-                        onToggle={() => setShowEmojiPicker(!showEmojiPicker)}
-                      />
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between items-center mt-2">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="text-gray-400 hover:text-white p-1"
-                      >
-                        <Smile size={16} />
-                      </Button>
-                      <span className="text-xs text-gray-400">{newComment.length}/500</span>
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={!newComment.trim() || isSubmitting}
-                      size="sm"
-                      className="bg-edu-primary hover:bg-edu-primary/90"
-                    >
-                      <Send size={14} className="mr-1" />
-                      {isSubmitting ? 'Envoi...' : 'Publier'}
-                    </Button>
-                  </div>
+                <div className="flex-1">
+                  <p className="font-medium text-white">
+                    {like.profiles?.first_name || like.profiles?.username || 'Utilisateur'}
+                  </p>
                 </div>
               </div>
-            </form>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-400">
+              Aucun j'aime pour le moment
+            </div>
           )}
         </div>
-      )}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default PostComments;
+export default PostLikesModal;
