@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Heart, Video, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserLikedPosts } from '@/profile/hooks/useUserLikedPosts';
-import { useUserLikedVideos } from '@/profile/hooks/useUserLikedVideos';
+import { useUserLikedVideos } from '@/hooks/useUserLikedVideos';
 import PostCard from '@/components/PostCard';
 import { useNavigate } from 'react-router-dom';
 
@@ -41,20 +41,20 @@ const LikesTab: React.FC = () => {
 
       return (
         <div className="grid grid-cols-2 gap-2 p-4">
-          {likedVideos.map((lesson: any) => (
+          {likedVideos.map((video: any) => (
             <div
-              key={lesson.id}
-              onClick={() => navigate(`/formations/${lesson.levels.formation_id}/lessons/${lesson.id}`)}
+              key={video.id}
+              onClick={() => navigate(`/video/${video.id}`)}
               className="relative aspect-video rounded-lg overflow-hidden cursor-pointer group"
             >
               <img
-                src={lesson.levels.formations.thumbnail_url || '/placeholder.svg'}
-                alt={lesson.title}
+                src={video.thumbnail_url || '/placeholder.svg'}
+                alt={video.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-2">
                 <div className="text-white text-xs font-medium line-clamp-2">
-                  {lesson.title}
+                  {video.title}
                 </div>
               </div>
             </div>
