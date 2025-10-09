@@ -7,7 +7,7 @@ import useBackButtonHandler from '@/hooks/useBackButtonHandler';
 
 import Formation from '@/pages/Formation';
 import FormationDetail from '@/pages/FormationDetail';
-import Profile from '@/pages/Profile';
+import Profil from '@/pages/Profil';
 import Lesson from '@/pages/Lesson';
 import Auth from '@/pages/Auth';
 import Admin from '@/pages/Admin';
@@ -46,7 +46,8 @@ const AppWithRouter: React.FC = () => {
       <Routes>
         {/* Routes spéciales qui gardent le système de routage classique */}
         <Route path="/formation/:formationId" element={<FormationDetail />} />
-        <Route path="/profile/:profileId" element={<Profile />} />
+        <Route path="/profil/:profileId" element={<Profil />} />
+        <Route path="/profile/:profileId" element={<Profil />} />
         <Route path="/lesson/:lessonId" element={<Lesson />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/admin" element={<Admin />} />
