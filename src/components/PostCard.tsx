@@ -12,6 +12,7 @@ import PostComments from '@/components/PostComments';
 import PostImageModal from '@/components/PostImageModal';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const deletePost = useDeletePost();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [openCommentsTick, setOpenCommentsTick] = useState(0);
+  const commentsRef = React.useRef<HTMLDivElement>(null);
 
   const isAuthor = user?.id === post.author_id;
 
@@ -84,6 +87,28 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const handleEdit = () => {
     if (onEdit) {
       onEdit(post);
+    }
+  };
+
+  const handleComment = () => {
+    setOpenCommentsTick((t) => t + 1);
+    commentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handleShare = async () => {
+    const postUrl = `${window.location.origin}/post/${post.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Partager ce post',
+          url: postUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        toast.success('Lien copié dans le presse-papier');
+      }
+    } catch (error) {
+      console.error('Erreur lors du partage:', error);
     }
   };
 
@@ -217,35 +242,66 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
       {/* Médias */}
       {renderMedia()}
 
-      {/* Actions du post */}
-      <div className="flex items-center space-x-6 mt-4 pt-3 border-t border-gray-800">
+      {/* Compteurs des actions */}
+      <div className="flex items-center space-x-6 mt-4 pt-3 border-t border-gray-800 text-sm text-gray-400">
+        <div className="flex items-center">
+          <Heart size={16} className={`mr-1.5 ${isLiked ? 'text-red-500 fill-current' : ''}`} />
+          <span>{likesCount}</span>
+        </div>
+        
+        <div className="flex items-center">
+          <MessageCircle size={16} className="mr-1.5" />
+          <span>{commentsCount}</span>
+        </div>
+        
+        <div className="flex items-center">
+          <Share size={16} className="mr-1.5" />
+          <span>0</span>
+        </div>
+      </div>
+
+      {/* Boutons d'action */}
+      <div className="flex items-center space-x-2 mt-3">
         <Button 
           variant="ghost" 
           size="sm" 
-          className={`${isLiked ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
+          className={`flex-1 ${isLiked ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
           onClick={() => toggleLike()}
           disabled={isLikeLoading || !user}
         >
           <Heart size={18} className={`mr-2 ${isLiked ? 'fill-current' : ''}`} />
-          {likesCount}
+          J'aime
         </Button>
         
-        <div className="text-gray-400 flex items-center">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="flex-1 text-gray-400 hover:text-blue-400"
+          onClick={handleComment}
+        >
           <MessageCircle size={18} className="mr-2" />
-          {commentsCount}
-        </div>
+          Commenter
+        </Button>
         
-        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-400">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="flex-1 text-gray-400 hover:text-green-400"
+          onClick={handleShare}
+        >
           <Share size={18} className="mr-2" />
           Partager
         </Button>
       </div>
 
       {/* Section des commentaires intégrée */}
-      <PostComments 
-        postId={post.id} 
-        commentsCount={commentsCount}
-      />
+      <div ref={commentsRef}>
+        <PostComments 
+          postId={post.id} 
+          commentsCount={commentsCount}
+          openTrigger={openCommentsTick}
+        />
+      </div>
 
       {/* Modal de prévisualisation d'images */}
       <PostImageModal
