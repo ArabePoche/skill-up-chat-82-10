@@ -4,6 +4,7 @@ import EnrollmentNotificationCard from '@/components/notifications/EnrollmentNot
 import StandardNotificationCard from '@/components/notifications/StandardNotificationCard';
 import PlanChangeNotificationCard from '@/components/notifications/PlanChangeNotificationCard';
 import PaymentRequestNotificationCard from '@/components/notifications/PaymentRequestNotificationCard';
+import FriendRequestNotificationCard from '@/components/notifications/FriendRequestNotificationCard';
 
 interface NotificationItemProps {
   notification: {
@@ -62,6 +63,13 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
     notification.user_id &&
     notification.formation_id &&
     isAdmin;
+
+  const isFriendRequest = notification.type === 'friend_request';
+
+  // Si c'est une notification de demande d'amitié
+  if (isFriendRequest) {
+    return <FriendRequestNotificationCard notification={notification} />;
+  }
 
   // Si c'est une notification de demande de changement de plan pour les admins
   if (isPlanChangeNotification && notification.user_info && notification.formation_info) {
