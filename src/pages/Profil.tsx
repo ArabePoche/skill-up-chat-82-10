@@ -69,11 +69,18 @@ const Profil = () => {
     <div className="min-h-screen bg-background pb-16 md:pt-16 md:pb-0">
       {/* Header avec avatar et menu hamburger */}
       <div className="sticky top-0 z-30 bg-background border-b border-border">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
+        <div className="relative p-4">
+          <button 
+            onClick={() => setShowMenuDrawer(true)}
+            className="absolute right-4 top-4 p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <Menu size={24} />
+          </button>
+          
+          <div className="flex flex-col items-center gap-2 pt-8">
             <div className="relative">
               <div 
-                className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
+                className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
                 onClick={() => setShowAvatarModal(true)}
               >
                 {profile?.avatar_url ? (
@@ -83,27 +90,21 @@ const Profil = () => {
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
-                  <span className="text-white text-lg font-bold">{getInitials()}</span>
+                  <span className="text-white text-2xl font-bold">{getInitials()}</span>
                 )}
               </div>
               <button 
                 onClick={() => setShowAvatarModal(true)}
-                className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-1 rounded-full hover:opacity-80 transition-opacity"
+                className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-2 rounded-full hover:opacity-80 transition-opacity"
               >
-                <Edit size={10} />
+                <Edit size={14} />
               </button>
             </div>
-            <div>
-              <h1 className="text-lg font-bold">{getDisplayName()}</h1>
-              <p className="text-xs text-muted-foreground">@{profile?.username || 'utilisateur'}</p>
+            <div className="text-center">
+              <h1 className="text-xl font-bold">{getDisplayName()}</h1>
+              <p className="text-sm text-muted-foreground">@{profile?.username || 'utilisateur'}</p>
             </div>
           </div>
-          <button 
-            onClick={() => setShowMenuDrawer(true)}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <Menu size={24} />
-          </button>
         </div>
 
         {/* Compteurs */}
