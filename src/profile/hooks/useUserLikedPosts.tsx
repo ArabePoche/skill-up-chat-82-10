@@ -12,24 +12,33 @@ export const useUserLikedPosts = (userId: string | undefined) => {
 
       const { data, error } = await supabase
         .from('post_likes')
-        .select(`
-          post_id,
-          posts (
-            *,
-            profiles (
-              id,
-              username,
-              avatar_url,
-              first_name,
-              last_name
-            )
-          )
-        `)
+        .select('post_id')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data?.map(like => like.posts).filter(Boolean) || [];
+      
+      if (!data || data.length === 0) return [];
+      
+      const postIds = data.map(like => like.post_id);
+      
+      // Récupérer les posts avec leurs profils
+      const { data: posts, error: postsError } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles (
+            id,
+            username,
+            avatar_url,
+            first_name,
+            last_name
+          )
+        `)
+        .in('id', postIds);
+      
+      if (postsError) throw postsError;
+      return posts || [];
     },
     enabled: !!userId,
   });
