@@ -3,16 +3,16 @@ import { Menu, Edit } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEnrollments } from '@/hooks/useFormations';
 import { useNavigate } from 'react-router-dom';
-import ProfileCounters from '@/components/profile/ProfileCounters';
-import ProfileTabs from '@/components/profile/ProfileTabs';
+import ProfileCounters from '@/profile/components/ProfileCounters';
+import ProfileTabs from '@/profile/components/ProfileTabs';
 import ProfileMenuDrawer from '@/components/profile/ProfileMenuDrawer';
 import NotificationPermissionDialog from '@/components/notifications/NotificationPermissionDialog';
 import AvatarUploadModal from '@/components/profile/AvatarUploadModal';
-import VideosTab from '@/components/profile/tabs/VideosTab';
-import PostsTab from '@/components/profile/tabs/PostsTab';
-import ExercisesTab from '@/components/profile/tabs/ExercisesTab';
-import LikesTab from '@/components/profile/tabs/LikesTab';
-import FavoritesTab from '@/components/profile/tabs/FavoritesTab';
+import VideosTab from '@/profile/components/tabs/VideosTab';
+import PostsTab from '@/profile/components/tabs/PostsTab';
+import ExercisesTab from '@/profile/components/tabs/ExercisesTab';
+import LikesTab from '@/profile/components/tabs/LikesTab';
+import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
 
 type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
 

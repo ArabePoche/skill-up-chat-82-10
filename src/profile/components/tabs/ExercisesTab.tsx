@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckCircle } from 'lucide-react';
-import { useUserStats } from '@/hooks/useProfileData';
+import { useUserStats } from '@/profile/hooks/useProfileData';
 import { useAuth } from '@/hooks/useAuth';
 
 const ExercisesTab: React.FC = () => {

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAvatarUpload } from '@/hooks/useAvatarUpload';
+import { useAvatarUpload } from '@/profile/hooks/useAvatarUpload';
 import { toast } from 'sonner';
 
 interface AvatarUploadModalProps {

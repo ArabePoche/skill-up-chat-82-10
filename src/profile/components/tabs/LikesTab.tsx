@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Heart, Video, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserLikedPosts } from '@/hooks/useUserLikedPosts';
-import { useUserLikedVideos } from '@/hooks/useUserLikedVideos';
+import { useUserLikedPosts } from '@/profile/hooks/useUserLikedPosts';
+import { useUserLikedVideos } from '@/profile/hooks/useUserLikedVideos';
 import PostCard from '@/components/PostCard';
 import { useNavigate } from 'react-router-dom';
 
