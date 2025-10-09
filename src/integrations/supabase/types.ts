@@ -870,6 +870,33 @@ export type Database = {
           },
         ]
       }
+      friend_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          receiver_id: string
+          sender_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          receiver_id: string
+          sender_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          receiver_id?: string
+          sender_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       interview_evaluations: {
         Row: {
           created_at: string | null
@@ -2909,6 +2936,27 @@ export type Database = {
           media_id?: string
           receiver_id?: string | null
           sender_id?: string
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string | null
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          follower_id?: string
+          following_id?: string
+          id?: string
         }
         Relationships: []
       }
