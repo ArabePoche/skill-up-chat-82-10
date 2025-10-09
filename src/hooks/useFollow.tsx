@@ -4,101 +4,203 @@ import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 /**
- * Hook pour gérer le système de suivi (follow/unfollow)
+ * Hook pour gérer le système d'amitié avec demandes
  */
 export const useFollow = (targetUserId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Vérifier si l'utilisateur suit déjà cette personne
-  const { data: isFollowing = false } = useQuery({
-    queryKey: ['is-following', user?.id, targetUserId],
+  // Vérifier le statut de la relation avec l'utilisateur
+  const { data: friendshipStatus } = useQuery({
+    queryKey: ['friendship-status', user?.id, targetUserId],
     queryFn: async () => {
-      if (!user?.id || !targetUserId) return false;
+      if (!user?.id || !targetUserId) return { status: 'none', requestId: null };
 
-      const { data, error } = await supabase
-        .from('user_follows')
-        .select('id')
-        .eq('follower_id', user.id)
-        .eq('following_id', targetUserId)
+      // Vérifier si une demande existe (envoyée ou reçue)
+      const { data: sentRequest } = await supabase
+        .from('friend_requests')
+        .select('id, status')
+        .eq('sender_id', user.id)
+        .eq('receiver_id', targetUserId)
         .maybeSingle();
 
-      if (error) {
-        console.error('Erreur vérification follow:', error);
-        return false;
+      if (sentRequest) {
+        return { 
+          status: sentRequest.status === 'accepted' ? 'friends' : 'pending_sent',
+          requestId: sentRequest.id 
+        };
       }
 
-      return !!data;
+      const { data: receivedRequest } = await supabase
+        .from('friend_requests')
+        .select('id, status')
+        .eq('sender_id', targetUserId)
+        .eq('receiver_id', user.id)
+        .maybeSingle();
+
+      if (receivedRequest) {
+        return { 
+          status: receivedRequest.status === 'accepted' ? 'friends' : 'pending_received',
+          requestId: receivedRequest.id 
+        };
+      }
+
+      return { status: 'none', requestId: null };
     },
     enabled: !!user?.id && !!targetUserId && user.id !== targetUserId,
   });
 
-  // Toggle follow/unfollow
-  const toggleFollow = useMutation({
+  // Envoyer une demande d'amitié
+  const sendRequest = useMutation({
     mutationFn: async () => {
       if (!user?.id || !targetUserId) {
         throw new Error('Utilisateur non connecté ou cible invalide');
       }
 
-      if (user.id === targetUserId) {
-        throw new Error('Vous ne pouvez pas vous suivre vous-même');
-      }
+      // Récupérer les infos de l'utilisateur qui envoie la demande
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('username, first_name, last_name')
+        .eq('id', user.id)
+        .single();
 
-      if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from('user_follows')
-          .delete()
-          .eq('follower_id', user.id)
-          .eq('following_id', targetUserId);
+      const senderName = senderProfile?.first_name && senderProfile?.last_name
+        ? `${senderProfile.first_name} ${senderProfile.last_name}`
+        : senderProfile?.username || 'Un utilisateur';
 
-        if (error) throw error;
-      } else {
-        // Follow
-        const { error } = await supabase
-          .from('user_follows')
-          .insert({
-            follower_id: user.id,
-            following_id: targetUserId,
-          });
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: targetUserId,
+          status: 'pending'
+        });
 
-        if (error) throw error;
+      if (error) throw error;
+
+      // Créer une notification pour le destinataire
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: targetUserId,
+          title: 'Nouvelle demande d\'amitié',
+          message: `${senderName} vous a envoyé une demande d'amitié`,
+          type: 'friend_request',
+          is_read: false
+        });
+
+      if (notifError) {
+        console.error('Erreur création notification:', notifError);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['is-following', user?.id, targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ['followers-count', targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ['following-count', user?.id] });
-      
-      toast.success(isFollowing ? 'Vous ne suivez plus cette personne' : 'Vous suivez maintenant cette personne');
+      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-requests', user?.id] });
+      toast.success('Demande d\'amitié envoyée');
     },
     onError: (error: any) => {
-      console.error('Erreur toggle follow:', error);
-      toast.error('Erreur lors de l\'opération');
+      console.error('Erreur envoi demande:', error);
+      toast.error('Erreur lors de l\'envoi de la demande');
+    },
+  });
+
+  // Accepter une demande d'amitié
+  const acceptRequest = useMutation({
+    mutationFn: async () => {
+      if (!friendshipStatus?.requestId) throw new Error('Aucune demande à accepter');
+
+      const { error } = await supabase
+        .from('friend_requests')
+        .update({ status: 'accepted' })
+        .eq('id', friendshipStatus.requestId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-requests', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['friends-count', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['friends-count', targetUserId] });
+      toast.success('Demande d\'amitié acceptée');
+    },
+    onError: (error: any) => {
+      console.error('Erreur acceptation demande:', error);
+      toast.error('Erreur lors de l\'acceptation');
+    },
+  });
+
+  // Annuler/Refuser une demande
+  const cancelRequest = useMutation({
+    mutationFn: async () => {
+      if (!friendshipStatus?.requestId) throw new Error('Aucune demande à annuler');
+
+      const { error } = await supabase
+        .from('friend_requests')
+        .delete()
+        .eq('id', friendshipStatus.requestId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-requests', user?.id] });
+      toast.success('Demande annulée');
+    },
+    onError: (error: any) => {
+      console.error('Erreur annulation demande:', error);
+      toast.error('Erreur lors de l\'annulation');
+    },
+  });
+
+  // Supprimer un ami
+  const removeFriend = useMutation({
+    mutationFn: async () => {
+      if (!friendshipStatus?.requestId) throw new Error('Aucun ami à supprimer');
+
+      const { error } = await supabase
+        .from('friend_requests')
+        .delete()
+        .eq('id', friendshipStatus.requestId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ['friends-count', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['friends-count', targetUserId] });
+      toast.success('Ami retiré');
+    },
+    onError: (error: any) => {
+      console.error('Erreur suppression ami:', error);
+      toast.error('Erreur lors de la suppression');
     },
   });
 
   return {
-    isFollowing,
-    toggleFollow: toggleFollow.mutate,
-    isLoading: toggleFollow.isPending,
+    friendshipStatus: friendshipStatus?.status || 'none',
+    sendRequest: sendRequest.mutate,
+    acceptRequest: acceptRequest.mutate,
+    cancelRequest: cancelRequest.mutate,
+    removeFriend: removeFriend.mutate,
+    isLoading: sendRequest.isPending || acceptRequest.isPending || cancelRequest.isPending || removeFriend.isPending,
   };
 };
 
-// Hook pour obtenir le nombre de followers
+// Hook pour obtenir le nombre d'amis
 export const useFollowersCount = (userId?: string) => {
   return useQuery({
-    queryKey: ['followers-count', userId],
+    queryKey: ['friends-count', userId],
     queryFn: async () => {
       if (!userId) return 0;
 
       const { count, error } = await supabase
-        .from('user_follows')
+        .from('friend_requests')
         .select('*', { count: 'exact', head: true })
-        .eq('following_id', userId);
+        .eq('status', 'accepted')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
 
       if (error) {
-        console.error('Erreur comptage followers:', error);
+        console.error('Erreur comptage amis:', error);
         return 0;
       }
 
@@ -108,25 +210,35 @@ export const useFollowersCount = (userId?: string) => {
   });
 };
 
-// Hook pour obtenir le nombre de following
-export const useFollowingCount = (userId?: string) => {
+// Hook pour obtenir les demandes d'amitié en attente
+export const usePendingRequests = () => {
+  const { user } = useAuth();
+  
   return useQuery({
-    queryKey: ['following-count', userId],
+    queryKey: ['pending-requests', user?.id],
     queryFn: async () => {
-      if (!userId) return 0;
+      if (!user?.id) return [];
 
-      const { count, error } = await supabase
-        .from('user_follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId);
+      const { data, error } = await supabase
+        .from('friend_requests')
+        .select(`
+          *,
+          sender:profiles!friend_requests_sender_id_fkey(id, username, first_name, last_name, avatar_url)
+        `)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Erreur comptage following:', error);
-        return 0;
+        console.error('Erreur récupération demandes:', error);
+        return [];
       }
 
-      return count || 0;
+      return data || [];
     },
-    enabled: !!userId,
+    enabled: !!user?.id,
   });
 };
+
+// Alias pour compatibilité
+export const useFollowingCount = useFollowersCount;
