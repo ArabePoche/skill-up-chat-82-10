@@ -30,6 +30,13 @@ const Profil = () => {
   const [showNotificationDialog, setShowNotificationDialog] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   
+  // Rediriger vers la page de connexion si non connecté et qu'on consulte son propre profil
+  React.useEffect(() => {
+    if (!profileId && !user) {
+      navigate('/auth');
+    }
+  }, [user, profileId, navigate]);
+  
   // Si profileId existe, c'est le profil d'un autre utilisateur, sinon c'est le profil de l'utilisateur connecté
   const viewedUserId = profileId || user?.id;
   const isOwnProfile = !profileId || profileId === user?.id;
