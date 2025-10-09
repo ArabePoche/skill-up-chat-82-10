@@ -1,11 +1,13 @@
 import React from 'react';
 import { CheckCircle } from 'lucide-react';
 import { useUserStats } from '@/profile/hooks/useProfileData';
-import { useAuth } from '@/hooks/useAuth';
 
-const ExercisesTab: React.FC = () => {
-  const { user } = useAuth();
-  const { data: userStats } = useUserStats(user?.id);
+interface ExercisesTabProps {
+  userId?: string;
+}
+
+const ExercisesTab: React.FC<ExercisesTabProps> = ({ userId }) => {
+  const { data: userStats } = useUserStats(userId);
 
   return (
     <div className="p-4">
