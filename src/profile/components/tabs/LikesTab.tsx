@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Heart, Video, FileText } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { useUserLikedPosts } from '@/profile/hooks/useUserLikedPosts';
 import { useUserLikedVideos } from '@/hooks/useUserLikedVideos';
 import PostCard from '@/components/PostCard';
@@ -8,12 +7,15 @@ import { useNavigate } from 'react-router-dom';
 
 type LikeType = 'videos' | 'posts';
 
-const LikesTab: React.FC = () => {
+interface LikesTabProps {
+  userId?: string;
+}
+
+const LikesTab: React.FC<LikesTabProps> = ({ userId }) => {
   const [likeType, setLikeType] = useState<LikeType>('posts');
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: likedPosts, isLoading: isLoadingPosts } = useUserLikedPosts(user?.id);
-  const { data: likedVideos, isLoading: isLoadingVideos } = useUserLikedVideos(user?.id);
+  const { data: likedPosts, isLoading: isLoadingPosts } = useUserLikedPosts(userId);
+  const { data: likedVideos, isLoading: isLoadingVideos } = useUserLikedVideos(userId);
 
   const renderContent = () => {
     if (likeType === 'videos') {
