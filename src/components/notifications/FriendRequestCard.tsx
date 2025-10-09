@@ -5,6 +5,7 @@ import { Plus, Check } from 'lucide-react';
 import { useFollow } from '@/hooks/useFollow';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface FriendRequestCardProps {
   notification: {
@@ -15,6 +16,7 @@ interface FriendRequestCardProps {
 
 const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [senderProfile, setSenderProfile] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -64,6 +66,10 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
     ? `${senderProfile.first_name} ${senderProfile.last_name}`
     : senderProfile.username || 'Utilisateur';
 
+  const handleProfileClick = () => {
+    navigate(`/profile/${senderProfile.id}`);
+  };
+
   const getButtonContent = () => {
     if (friendshipStatus === 'friends') {
       return (
@@ -83,7 +89,10 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
 
   return (
     <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
-      <Avatar className="w-12 h-12">
+      <Avatar 
+        className="w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity" 
+        onClick={handleProfileClick}
+      >
         <AvatarImage src={senderProfile.avatar_url} />
         <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
           {displayName[0]?.toUpperCase()}
@@ -91,7 +100,12 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
       </Avatar>
 
       <div className="flex-1">
-        <p className="font-medium text-foreground">{displayName}</p>
+        <p 
+          className="font-medium text-foreground cursor-pointer hover:underline" 
+          onClick={handleProfileClick}
+        >
+          {displayName}
+        </p>
         <p className="text-sm text-muted-foreground">Demande d'abonnement</p>
       </div>
 
