@@ -2,15 +2,22 @@ import React, { useState } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useSearch } from '@/search/hooks/useSearch';
+import SearchResultsVideos from '@/search/components/SearchResultsVideos';
+import SearchResultsPosts from '@/search/components/SearchResultsPosts';
+import SearchResultsUsers from '@/search/components/SearchResultsUsers';
 
 const SearchView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'videos' | 'posts'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'videos' | 'posts' | 'users'>('all');
+  
+  const { data: results, isLoading } = useSearch(searchQuery, activeFilter);
 
   const filters = [
     { key: 'all' as const, label: 'Tout' },
     { key: 'videos' as const, label: 'Vidéos' },
     { key: 'posts' as const, label: 'Posts' },
+    { key: 'users' as const, label: 'Utilisateurs' },
   ];
 
   return (
@@ -47,19 +54,64 @@ const SearchView: React.FC = () => {
       </div>
 
       {/* Résultats de recherche */}
-      <div className="flex-1">
+      <div className="flex-1 pb-20">
         {searchQuery ? (
-          <div className="text-center py-12">
-            <p className="text-gray-400">
-              Recherche pour "{searchQuery}" en cours...
-            </p>
-            {/* TODO: Implémenter la recherche réelle */}
-          </div>
+          isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400">Recherche en cours...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Résultats Tout */}
+              {activeFilter === 'all' && results && (
+                <>
+                  {results.users.length > 0 && (
+                    <div>
+                      <h3 className="text-white font-semibold mb-3">Utilisateurs</h3>
+                      <SearchResultsUsers users={results.users.slice(0, 3)} />
+                    </div>
+                  )}
+                  {results.videos.length > 0 && (
+                    <div>
+                      <h3 className="text-white font-semibold mb-3">Vidéos</h3>
+                      <SearchResultsVideos videos={results.videos.slice(0, 4)} />
+                    </div>
+                  )}
+                  {results.posts.length > 0 && (
+                    <div>
+                      <h3 className="text-white font-semibold mb-3">Posts</h3>
+                      <SearchResultsPosts posts={results.posts.slice(0, 3)} />
+                    </div>
+                  )}
+                  {results.users.length === 0 && results.videos.length === 0 && results.posts.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-gray-400">Aucun résultat trouvé</p>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {/* Résultats Vidéos */}
+              {activeFilter === 'videos' && results && (
+                <SearchResultsVideos videos={results.videos} />
+              )}
+              
+              {/* Résultats Posts */}
+              {activeFilter === 'posts' && results && (
+                <SearchResultsPosts posts={results.posts} />
+              )}
+              
+              {/* Résultats Utilisateurs */}
+              {activeFilter === 'users' && results && (
+                <SearchResultsUsers users={results.users} />
+              )}
+            </div>
+          )
         ) : (
           <div className="text-center py-12">
             <Search className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-400 text-lg">
-              Recherchez des vidéos et posts
+              Recherchez des vidéos, posts et utilisateurs
             </p>
             <p className="text-gray-500 text-sm mt-2">
               Découvrez du contenu selon vos centres d'intérêt
