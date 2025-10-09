@@ -1,12 +1,14 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
 import PostCard from '@/components/PostCard';
 
-const PostsTab: React.FC = () => {
-  const { user } = useAuth();
-  const { data: posts, isLoading } = usePosts('all', user?.id);
+interface PostsTabProps {
+  userId?: string;
+}
+
+const PostsTab: React.FC<PostsTabProps> = ({ userId }) => {
+  const { data: posts, isLoading } = usePosts('all', userId);
 
   if (isLoading) {
     return (
