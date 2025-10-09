@@ -77,7 +77,7 @@ const PostComments: React.FC<PostCommentsProps> = ({
       <Button
         variant="ghost"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full text-gray-400 hover:text-white py-3 justify-start"
+        className="w-full text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700 py-3 justify-start"
       >
         <MessageCircle size={16} className="mr-2" />
         {commentsCount > 0 ? (
