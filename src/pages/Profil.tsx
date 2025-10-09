@@ -1,55 +1,29 @@
-
 import React, { useState } from 'react';
-import { Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Menu, Edit } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEnrollments } from '@/hooks/useFormations';
-import { useUserStats } from '@/hooks/useProfileData';
 import { useNavigate } from 'react-router-dom';
-import ProfileHeader from '@/components/profile/ProfileHeader';
-import ProfileStats from '@/components/profile/ProfileStats';
-import ProfileProgress from '@/components/profile/ProfileProgress';
-import ProfileMenu from '@/components/profile/ProfileMenu';
-import TeacherWallet from '@/components/profile/TeacherWallet';
+import ProfileCounters from '@/components/profile/ProfileCounters';
+import ProfileTabs from '@/components/profile/ProfileTabs';
+import ProfileMenuDrawer from '@/components/profile/ProfileMenuDrawer';
 import NotificationPermissionDialog from '@/components/notifications/NotificationPermissionDialog';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
+import AvatarUploadModal from '@/components/profile/AvatarUploadModal';
+import VideosTab from '@/components/profile/tabs/VideosTab';
+import PostsTab from '@/components/profile/tabs/PostsTab';
+import ExercisesTab from '@/components/profile/tabs/ExercisesTab';
+import LikesTab from '@/components/profile/tabs/LikesTab';
+import FavoritesTab from '@/components/profile/tabs/FavoritesTab';
+
+type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
 
 const Profil = () => {
-  const { user, profile, logout } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabType>('videos');
+  const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [showNotificationDialog, setShowNotificationDialog] = useState(false);
-  const { hasPermission, isSupported } = usePushNotifications();
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const { data: enrollments } = useUserEnrollments(user?.id);
-  const { data: userStats } = useUserStats(user?.id);
-
-  const stats = [
-    { label: 'Formations complétées', value: userStats?.completedFormations || 0 },
-    { label: 'Heures d\'apprentissage', value: userStats?.learningHours || 0 },
-    { label: 'Exercices validés', value: userStats?.validatedExercises || 0 },
-    { label: 'Badges obtenus', value: userStats?.badges || 0 }
-  ];
-
-  const menuItems = [
-    { icon: Settings, label: 'Paramètres', action: () => navigate('/complete-profile') },
-    { icon: BookOpen, label: 'Mes formations', action: () => navigate('/cours') },
-    { icon: Award, label: 'Badges et récompenses', action: () => {} },
-    { icon: Bell, label: 'Notifications', action: () => setShowNotificationDialog(true) },
-    { icon: HelpCircle, label: 'Aide et support', action: () => {} }
-  ];
-
-  // Ajouter le menu admin si l'utilisateur est admin
-  if (profile?.role === 'admin') {
-    menuItems.push({
-      icon: Shield,
-      label: 'Administration',
-      action: () => navigate('/admin')
-    });
-  }
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/auth');
-  };
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -74,69 +48,95 @@ const Profil = () => {
     return user?.email || 'Utilisateur';
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
-      <ProfileHeader 
-        profile={profile}
-        user={user}
-        getInitials={getInitials}
-        getDisplayName={getDisplayName}
-      />
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'videos':
+        return <VideosTab />;
+      case 'posts':
+        return <PostsTab />;
+      case 'exercises':
+        return <ExercisesTab />;
+      case 'likes':
+        return <LikesTab />;
+      case 'favorites':
+        return <FavoritesTab />;
+      default:
+        return <VideosTab />;
+    }
+  };
 
-      <div className="p-4">
-        <ProfileStats stats={stats} />
-        <ProfileProgress enrollments={enrollments} />
-        
-        {/* Section Notifications Push */}
-        {isSupported && (
-          <div className="bg-white rounded-lg shadow-sm p-4 mb-4 border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Notifications Push 🔔</h3>
-                  <p className="text-sm text-gray-600">
-                    {hasPermission ? '✅ Activées - Recevez des rappels motivants !' : '⏰ Activez les rappels d\'étude style Duolingo'}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant={hasPermission ? "outline" : "default"}
-                size="sm"
-                onClick={() => setShowNotificationDialog(true)}
-                className="flex items-center gap-2"
+  return (
+    <div className="min-h-screen bg-background pb-16 md:pt-16 md:pb-0">
+      {/* Header avec avatar et menu hamburger */}
+      <div className="sticky top-0 z-30 bg-background border-b border-border">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div 
+                className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
+                onClick={() => setShowAvatarModal(true)}
               >
-                <Settings className="w-4 h-4" />
-                {hasPermission ? 'Gérer' : 'Activer'}
-              </Button>
+                {profile?.avatar_url ? (
+                  <img 
+                    src={profile.avatar_url} 
+                    alt="Avatar" 
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="text-white text-lg font-bold">{getInitials()}</span>
+                )}
+              </div>
+              <button 
+                onClick={() => setShowAvatarModal(true)}
+                className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-1 rounded-full hover:opacity-80 transition-opacity"
+              >
+                <Edit size={10} />
+              </button>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold">{getDisplayName()}</h1>
+              <p className="text-xs text-muted-foreground">@{profile?.username || 'utilisateur'}</p>
             </div>
           </div>
-        )}
-        
-        {/* Afficher le wallet si l'utilisateur est enseignant */}
-        {profile?.is_teacher && user?.id && (
-          <div className="mt-6">
-            <TeacherWallet teacherId={user.id} />
-          </div>
-        )}
-        
-        <ProfileMenu menuItems={menuItems} />
-
-        {/* Logout */}
-        <div className="mt-6">
-          <Button
-            onClick={handleLogout}
-            variant="outline"
-            className="w-full border-red-200 text-red-600 hover:bg-red-50"
+          <button 
+            onClick={() => setShowMenuDrawer(true)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
           >
-            <LogOut size={16} className="mr-2" />
-            Se déconnecter
-          </Button>
+            <Menu size={24} />
+          </button>
         </div>
+
+        {/* Compteurs */}
+        <ProfileCounters 
+          followingCount={0}
+          friendsCount={0}
+          formationsCount={enrollments?.length || 0}
+        />
       </div>
-      
+
+      {/* Onglets */}
+      <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Contenu de l'onglet actif */}
+      <div className="pb-4">
+        {renderTabContent()}
+      </div>
+
+      {/* Menu Drawer */}
+      <ProfileMenuDrawer 
+        isOpen={showMenuDrawer}
+        onClose={() => setShowMenuDrawer(false)}
+        onShowNotificationDialog={() => setShowNotificationDialog(true)}
+      />
+
+      {/* Avatar Modal */}
+      <AvatarUploadModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        currentAvatarUrl={profile?.avatar_url}
+      />
+
+      {/* Notification Dialog */}
       <NotificationPermissionDialog
         open={showNotificationDialog}
         onOpenChange={setShowNotificationDialog}
