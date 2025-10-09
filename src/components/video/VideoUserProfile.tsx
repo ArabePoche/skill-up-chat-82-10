@@ -1,10 +1,12 @@
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
+import { Plus, Check } from 'lucide-react';
+import { useFollow } from '@/hooks/useFollow';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UserProfileData {
+  id?: string;
   first_name?: string;
   last_name?: string;
   username?: string;
@@ -22,12 +24,52 @@ const VideoUserProfile: React.FC<VideoUserProfileProps> = ({
   showFollowButton = false,
   className = ""
 }) => {
-  const [isFollowing, setIsFollowing] = React.useState(false);
+  const { user } = useAuth();
+  const isOwnProfile = user?.id === profile?.id;
+  
+  const { 
+    friendshipStatus, 
+    sendRequest, 
+    acceptRequest, 
+    cancelRequest, 
+    removeFriend, 
+    isLoading 
+  } = useFollow(profile?.id);
 
-  const handleFollow = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsFollowing(!isFollowing);
-    toast.success(isFollowing ? 'Désabonné' : 'Abonné !');
+    
+    if (friendshipStatus === 'friends') {
+      removeFriend();
+    } else if (friendshipStatus === 'pending_sent') {
+      cancelRequest();
+    } else if (friendshipStatus === 'pending_received') {
+      acceptRequest();
+    } else {
+      sendRequest();
+    }
+  };
+
+  const getButtonContent = () => {
+    if (friendshipStatus === 'friends') {
+      return <Check size={12} />;
+    } else if (friendshipStatus === 'pending_sent') {
+      return '...';
+    } else if (friendshipStatus === 'pending_received') {
+      return '✓';
+    } else {
+      return <Plus size={12} />;
+    }
+  };
+
+  const getButtonColor = () => {
+    if (friendshipStatus === 'friends') {
+      return 'bg-green-500 text-white';
+    } else if (friendshipStatus === 'pending_sent') {
+      return 'bg-yellow-500 text-white';
+    } else {
+      return 'bg-red-500 text-white hover:bg-red-600';
+    }
   };
 
   return (
@@ -39,17 +81,14 @@ const VideoUserProfile: React.FC<VideoUserProfileProps> = ({
             {profile?.first_name?.[0] || 'U'}
           </AvatarFallback>
         </Avatar>
-        {showFollowButton && (
+        {showFollowButton && !isOwnProfile && (
           <Button
-            onClick={handleFollow}
+            onClick={handleClick}
+            disabled={isLoading}
             size="sm"
-            className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-xs font-bold ${
-              isFollowing 
-                ? 'bg-gray-500 text-white' 
-                : 'bg-red-500 text-white hover:bg-red-600'
-            }`}
+            className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-xs font-bold ${getButtonColor()}`}
           >
-            {isFollowing ? '✓' : <Plus size={12} />}
+            {getButtonContent()}
           </Button>
         )}
       </div>
