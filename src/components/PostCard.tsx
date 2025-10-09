@@ -38,8 +38,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
   const isAuthor = user?.id === post.author_id;
   
-  // Hook pour le système de suivi
-  const { isFollowing, toggleFollow, isLoading: isFollowLoading } = useFollow(post.author_id);
+  // Hook pour le système d'amitié
+  const { friendshipStatus, sendRequest, acceptRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(post.author_id);
 
   // Hook pour les likes
   const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = usePostLikes(
@@ -217,21 +217,37 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             </span>
           </div>
           
-          {/* Bouton suivre */}
+          {/* Bouton demande d'amitié */}
           {!isAuthor && user && (
             <Button
-              onClick={() => toggleFollow()}
+              onClick={() => {
+                if (friendshipStatus === 'friends') {
+                  removeFriend();
+                } else if (friendshipStatus === 'pending_sent') {
+                  cancelRequest();
+                } else if (friendshipStatus === 'pending_received') {
+                  acceptRequest();
+                } else {
+                  sendRequest();
+                }
+              }}
               disabled={isFollowLoading}
               size="sm"
               variant="ghost"
               className={`${
-                isFollowing 
-                  ? 'text-gray-400 hover:text-gray-300' 
+                friendshipStatus === 'friends'
+                  ? 'text-green-400 hover:text-green-300' 
+                  : friendshipStatus === 'pending_sent'
+                  ? 'text-yellow-400 hover:text-yellow-300'
                   : 'text-blue-400 hover:text-blue-300'
               }`}
             >
-              {isFollowing ? (
+              {friendshipStatus === 'friends' ? (
                 <UserCheck size={18} />
+              ) : friendshipStatus === 'pending_sent' ? (
+                <span className="text-xs">En attente</span>
+              ) : friendshipStatus === 'pending_received' ? (
+                <span className="text-xs">Accepter</span>
               ) : (
                 <UserPlus size={18} />
               )}
