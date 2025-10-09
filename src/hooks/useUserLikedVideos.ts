@@ -9,8 +9,8 @@ export const useUserLikedVideos = (userId?: string) => {
 
       // Récupérer les vidéos likées par l'utilisateur
       const { data: likes, error: likesError } = await supabase
-        .from('lesson_video_likes')
-        .select('lesson_id')
+        .from('video_likes')
+        .select('video_id')
         .eq('user_id', userId);
 
       if (likesError) {
@@ -20,32 +20,20 @@ export const useUserLikedVideos = (userId?: string) => {
 
       if (!likes || likes.length === 0) return [];
 
-      const lessonIds = likes.map(like => like.lesson_id);
+      const videoIds = likes.map(like => like.video_id);
 
-      // Récupérer les leçons
-      const { data: lessons, error: lessonsError } = await supabase
-        .from('lessons')
-        .select(`
-          *,
-          levels!inner(
-            id,
-            title,
-            formation_id,
-            formations!inner(
-              id,
-              title,
-              thumbnail_url
-            )
-          )
-        `)
-        .in('id', lessonIds);
+      // Récupérer les vidéos
+      const { data: videos, error: videosError } = await supabase
+        .from('videos')
+        .select('*')
+        .in('id', videoIds);
 
-      if (lessonsError) {
-        console.error('Error fetching lessons:', lessonsError);
+      if (videosError) {
+        console.error('Error fetching videos:', videosError);
         return [];
       }
 
-      return lessons || [];
+      return videos || [];
     },
     enabled: !!userId,
   });
