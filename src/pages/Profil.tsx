@@ -12,6 +12,7 @@ import ProfileTabs from '@/profile/components/ProfileTabs';
 import ProfileMenuDrawer from '@/components/profile/ProfileMenuDrawer';
 import NotificationPermissionDialog from '@/components/notifications/NotificationPermissionDialog';
 import AvatarUploadModal from '@/components/profile/AvatarUploadModal';
+import FriendRequestsPanel from '@/components/FriendRequestsPanel';
 import VideosTab from '@/profile/components/tabs/VideosTab';
 import PostsTab from '@/profile/components/tabs/PostsTab';
 import ExercisesTab from '@/profile/components/tabs/ExercisesTab';
@@ -52,10 +53,9 @@ const Profil = () => {
   const profile = isOwnProfile ? currentUserProfile : viewedProfile;
   const { data: enrollments } = useUserEnrollments(viewedUserId);
   
-  // Hooks pour le système de suivi
-  const { isFollowing, toggleFollow, isLoading: isFollowLoading } = useFollow(viewedUserId);
-  const { data: followersCount = 0 } = useFollowersCount(viewedUserId);
-  const { data: followingCount = 0 } = useFollowingCount(viewedUserId);
+  // Hooks pour le système d'amitié
+  const { friendshipStatus, sendRequest, acceptRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(viewedUserId);
+  const { data: friendsCount = 0 } = useFollowersCount(viewedUserId);
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -151,43 +151,73 @@ const Profil = () => {
           </div>
         </div>
 
-        {/* Bouton suivre pour les autres profils */}
+        {/* Bouton demande d'amitié pour les autres profils */}
         {!isOwnProfile && (
           <div className="px-4 pb-4">
-            <Button
-              onClick={() => toggleFollow()}
-              disabled={isFollowLoading}
-              className={`w-full ${
-                isFollowing 
-                  ? 'bg-gray-500 hover:bg-gray-600' 
-                  : 'bg-primary hover:bg-primary/90'
-              }`}
-            >
-              {isFollowing ? (
-                <>
-                  <UserCheck size={18} className="mr-2" />
-                  Abonné
-                </>
-              ) : (
-                <>
-                  <UserPlus size={18} className="mr-2" />
-                  Suivre
-                </>
-              )}
-            </Button>
+            {friendshipStatus === 'friends' ? (
+              <Button
+                onClick={() => removeFriend()}
+                disabled={isFollowLoading}
+                className="w-full bg-green-500 hover:bg-green-600"
+              >
+                <UserCheck size={18} className="mr-2" />
+                Amis
+              </Button>
+            ) : friendshipStatus === 'pending_sent' ? (
+              <Button
+                onClick={() => cancelRequest()}
+                disabled={isFollowLoading}
+                className="w-full bg-yellow-500 hover:bg-yellow-600"
+              >
+                Demande envoyée
+              </Button>
+            ) : friendshipStatus === 'pending_received' ? (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => acceptRequest()}
+                  disabled={isFollowLoading}
+                  className="flex-1 bg-green-500 hover:bg-green-600"
+                >
+                  Accepter
+                </Button>
+                <Button
+                  onClick={() => cancelRequest()}
+                  disabled={isFollowLoading}
+                  className="flex-1 bg-red-500 hover:bg-red-600"
+                >
+                  Refuser
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={() => sendRequest()}
+                disabled={isFollowLoading}
+                className="w-full bg-primary hover:bg-primary/90"
+              >
+                <UserPlus size={18} className="mr-2" />
+                Envoyer une demande
+              </Button>
+            )}
           </div>
         )}
 
         {/* Compteurs */}
         <ProfileCounters 
-          followingCount={followingCount}
-          friendsCount={followersCount}
+          followingCount={0}
+          friendsCount={friendsCount}
           formationsCount={enrollments?.length || 0}
         />
       </div>
 
       {/* Onglets */}
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Demandes d'amitié en attente - uniquement pour son propre profil */}
+      {isOwnProfile && (
+        <div className="px-4 pt-4">
+          <FriendRequestsPanel />
+        </div>
+      )}
 
       {/* Contenu de l'onglet actif */}
       <div className="pb-4">
