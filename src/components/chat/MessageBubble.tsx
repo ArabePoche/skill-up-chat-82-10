@@ -7,7 +7,10 @@ import ExerciseStatus from './ExerciseStatus';
 import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
 import EmojiPicker from '@/components/EmojiPicker';
-import { MoreVertical, Reply, Edit2, Trash2, Smile } from 'lucide-react';
+import { MoreVertical, Reply, Edit2, Trash2, Smile, Share2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useCreateStory } from '@/hooks/useStories';
+import { toast } from 'sonner';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -76,6 +79,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
   const toggleReaction = useToggleReaction();
   const editMessage = useEditLessonMessage();
   const deleteMessage = useDeleteLessonMessage();
+  const createStory = useCreateStory();
 
   const formatTime = (date: string | Date) => {
     return new Date(date).toLocaleTimeString('fr-FR', {
@@ -114,6 +118,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
     editMessage.mutate({ messageId: message.id, content: editContent }, {
       onSuccess: () => setIsEditing(false)
     });
+  };
+
+  const handlePublishToStory = async () => {
+    try {
+      await createStory.mutateAsync({
+        content_type: 'text',
+        content_text: `✅ Exercice validé !\n\n${message.content}`,
+        background_color: '#22c55e' // Vert pour exercice validé
+      });
+      toast.success('Exercice publié en story !');
+    } catch (error) {
+      console.error('Error publishing to story:', error);
+      toast.error('Erreur lors de la publication en story');
+    }
   };
 
   return (
@@ -187,7 +205,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
             )}
 
             {isRealExerciseSubmission && message.exercise_status && (
-              <ExerciseStatus status={message.exercise_status} />
+              <div className="space-y-2">
+                <ExerciseStatus status={message.exercise_status} />
+                {message.exercise_status === 'approved' && isOwnMessage && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-xs"
+                    onClick={handlePublishToStory}
+                    disabled={createStory.isPending}
+                  >
+                    <Share2 className="h-3 w-3 mr-1" />
+                    Publier en story
+                  </Button>
+                )}
+              </div>
             )}
 
             {/* Heure et badge modifié */}
