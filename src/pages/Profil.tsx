@@ -5,7 +5,7 @@ import { useUserEnrollments } from '@/hooks/useFormations';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useFollow, useFollowersCount, useFollowingCount } from '@/hooks/useFollow';
+import { useFollow, useFollowersCount, useFollowingCount, usePendingSentRequests } from '@/hooks/useFollow';
 import { Button } from '@/components/ui/button';
 import ProfileCounters from '@/profile/components/ProfileCounters';
 import ProfileTabs from '@/profile/components/ProfileTabs';
@@ -63,6 +63,7 @@ const Profil = () => {
   // Hooks pour le système d'amitié
   const { friendshipStatus, sendRequest, acceptRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(viewedUserId);
   const { data: friendsCount = 0 } = useFollowersCount(viewedUserId);
+  const { data: pendingSentCount = 0 } = usePendingSentRequests(viewedUserId);
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -210,9 +211,10 @@ const Profil = () => {
 
         {/* Compteurs */}
         <ProfileCounters 
-          followingCount={0}
+          followingCount={pendingSentCount}
           friendsCount={friendsCount}
           formationsCount={enrollments?.length || 0}
+          userId={viewedUserId}
         />
       </div>
 
