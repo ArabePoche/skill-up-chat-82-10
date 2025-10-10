@@ -83,6 +83,7 @@ export const useFollow = (targetUserId?: string) => {
         .from('notifications')
         .insert({
           user_id: targetUserId,
+          sender_id: user.id,
           title: 'Nouvelle demande d\'amitié',
           message: `${senderName} vous a envoyé une demande d'amitié`,
           type: 'friend_request',
@@ -237,6 +238,30 @@ export const usePendingRequests = () => {
       return data || [];
     },
     enabled: !!user?.id,
+  });
+};
+
+// Hook pour obtenir le nombre de demandes envoyées (pending + accepted)
+export const usePendingSentRequests = (userId?: string) => {
+  return useQuery({
+    queryKey: ['pending-sent-requests', userId],
+    queryFn: async () => {
+      if (!userId) return 0;
+
+      const { count, error } = await supabase
+        .from('friend_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('sender_id', userId)
+        .in('status', ['pending', 'accepted']);
+
+      if (error) {
+        console.error('Erreur comptage demandes envoyées:', error);
+        return 0;
+      }
+
+      return count || 0;
+    },
+    enabled: !!userId,
   });
 };
 
