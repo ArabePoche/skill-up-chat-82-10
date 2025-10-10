@@ -22,25 +22,32 @@ const FollowingList: React.FC<FollowingListProps> = ({ userId }) => {
     queryFn: async () => {
       if (!userId) return [];
 
-      const { data, error } = await supabase
+      // Récupérer d'abord les demandes envoyées
+      const { data: requests, error: requestsError } = await supabase
         .from('friend_requests')
-        .select(`
-          id,
-          status,
-          receiver:profiles!friend_requests_receiver_id_fkey(
-            id,
-            username,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
+        .select('id, status, receiver_id, created_at')
         .eq('sender_id', userId)
         .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data || [];
+      if (requestsError) throw requestsError;
+      if (!requests || requests.length === 0) return [];
+
+      // Récupérer les profils des receivers
+      const receiverIds = requests.map(r => r.receiver_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, first_name, last_name, avatar_url')
+        .in('id', receiverIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combiner les données
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      return requests.map(req => ({
+        ...req,
+        receiver: profilesMap.get(req.receiver_id)
+      }));
     },
     enabled: !!userId,
   });
