@@ -69,6 +69,7 @@ export const useSearch = (query: string, filter: SearchFilter) => {
           .from('profiles')
           .select('*')
           .or(`username.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+          .neq('username', 'eductok')
           .limit(20);
         
         results.users = users || [];
