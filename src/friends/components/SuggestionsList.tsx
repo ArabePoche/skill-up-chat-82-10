@@ -1,0 +1,124 @@
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+
+/**
+ * Liste de suggestions aléatoires d'utilisateurs
+ */
+const SuggestionsList: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const { data: suggestions = [], isLoading, refetch } = useQuery({
+    queryKey: ['user-suggestions', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      // Récupérer les utilisateurs avec qui on n'a pas de relation
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, first_name, last_name, avatar_url')
+        .neq('id', user.id)
+        .neq('username', 'eductok')
+        .limit(20);
+
+      if (error) throw error;
+
+      // Filtrer ceux avec qui on n'a pas déjà de demande
+      const { data: existingRequests } = await supabase
+        .from('friend_requests')
+        .select('sender_id, receiver_id')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+      const existingIds = new Set(
+        existingRequests?.flatMap(r => [r.sender_id, r.receiver_id]) || []
+      );
+
+      const filtered = data?.filter(u => !existingIds.has(u.id)) || [];
+      
+      // Mélanger et prendre 10 aléatoires
+      return filtered.sort(() => Math.random() - 0.5).slice(0, 10);
+    },
+    enabled: !!user?.id,
+  });
+
+  const handleSendRequest = async (targetUserId: string) => {
+    if (!user?.id) return;
+
+    const { error } = await supabase
+      .from('friend_requests')
+      .insert({
+        sender_id: user.id,
+        receiver_id: targetUserId,
+        status: 'pending'
+      });
+
+    if (error) {
+      toast.error('Erreur lors de l\'envoi');
+      return;
+    }
+
+    toast.success('Demande envoyée');
+    refetch();
+  };
+
+  if (isLoading) {
+    return <div className="text-center text-muted-foreground py-8">Chargement...</div>;
+  }
+
+  if (suggestions.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        Aucune suggestion disponible
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {suggestions.map((user) => {
+        const displayName = user.first_name && user.last_name
+          ? `${user.first_name} ${user.last_name}`
+          : user.username || 'Utilisateur';
+
+        return (
+          <div key={user.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+            <Avatar 
+              className="cursor-pointer"
+              onClick={() => navigate(`/profil/${user.id}`)}
+            >
+              <AvatarImage src={user.avatar_url} />
+              <AvatarFallback>
+                {displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+
+            <div 
+              className="flex-1 cursor-pointer"
+              onClick={() => navigate(`/profil/${user.id}`)}
+            >
+              <p className="font-medium">{displayName}</p>
+              <p className="text-xs text-muted-foreground">@{user.username}</p>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={() => handleSendRequest(user.id)}
+            >
+              <UserPlus size={16} className="mr-2" />
+              Ajouter
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default SuggestionsList;
