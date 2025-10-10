@@ -39,13 +39,13 @@ const SearchView: React.FC = () => {
         {filters.map((filter) => (
           <Button
             key={filter.key}
-            variant={activeFilter === filter.key ? "default" : "outline"}
+            variant={activeFilter === filter.key ? "default" : "secondary"}
             size="sm"
             onClick={() => setActiveFilter(filter.key)}
             className={
               activeFilter === filter.key
-                ? "bg-white text-black"
-                : "border-gray-600 text-gray-300 hover:bg-gray-800"
+                ? "bg-white text-black hover:bg-white/90"
+                : "bg-secondary/80 text-secondary-foreground hover:bg-secondary"
             }
           >
             {filter.label}
