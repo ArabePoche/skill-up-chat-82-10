@@ -15,17 +15,19 @@ const SuggestionsList: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const [sentRequests, setSentRequests] = React.useState<Set<string>>(new Set());
+
   const { data: suggestions = [], isLoading, refetch } = useQuery({
     queryKey: ['user-suggestions', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      // Récupérer les utilisateurs avec qui on n'a pas de relation
+      // Récupérer les utilisateurs avec qui on n'a pas de relation (exclure le compte système par ID)
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, first_name, last_name, avatar_url')
         .neq('id', user.id)
-        .neq('username', 'eductok')
+        .neq('id', '4c32c988-3b19-4eca-87cb-0e0595fd7fbb')
         .limit(20);
 
       if (error) throw error;
@@ -51,6 +53,17 @@ const SuggestionsList: React.FC = () => {
   const handleSendRequest = async (targetUserId: string) => {
     if (!user?.id) return;
 
+    // Récupérer les infos de l'utilisateur qui envoie la demande
+    const { data: senderProfile } = await supabase
+      .from('profiles')
+      .select('username, first_name, last_name')
+      .eq('id', user.id)
+      .single();
+
+    const senderName = senderProfile?.first_name && senderProfile?.last_name
+      ? `${senderProfile.first_name} ${senderProfile.last_name}`
+      : senderProfile?.username || 'Un utilisateur';
+
     const { error } = await supabase
       .from('friend_requests')
       .insert({
@@ -60,12 +73,29 @@ const SuggestionsList: React.FC = () => {
       });
 
     if (error) {
+      console.error('Erreur envoi demande:', error);
       toast.error('Erreur lors de l\'envoi');
       return;
     }
 
+    // Créer une notification pour le destinataire
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: targetUserId,
+        sender_id: user.id,
+        title: 'Nouvelle demande d\'amitié',
+        message: `${senderName} vous a envoyé une demande d'amitié`,
+        type: 'friend_request',
+        is_read: false
+      });
+
+    if (notifError) {
+      console.error('Erreur création notification:', notifError);
+    }
+
     toast.success('Demande envoyée');
-    refetch();
+    setSentRequests(prev => new Set(prev).add(targetUserId));
   };
 
   if (isLoading) {
@@ -110,9 +140,11 @@ const SuggestionsList: React.FC = () => {
             <Button
               size="sm"
               onClick={() => handleSendRequest(user.id)}
+              disabled={sentRequests.has(user.id)}
+              variant={sentRequests.has(user.id) ? "secondary" : "default"}
             >
               <UserPlus size={16} className="mr-2" />
-              Ajouter
+              {sentRequests.has(user.id) ? 'Envoyée' : 'Ajouter'}
             </Button>
           </div>
         );
