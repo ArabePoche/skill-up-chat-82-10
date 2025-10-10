@@ -63,13 +63,13 @@ export const useSearch = (query: string, filter: SearchFilter) => {
         }
       }
 
-      // Recherche d'utilisateurs
+      // Recherche d'utilisateurs (exclure le compte système par ID)
       if (filter === 'all' || filter === 'users') {
         const { data: users } = await supabase
           .from('profiles')
           .select('*')
           .or(`username.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
-          .neq('username', 'eductok')
+          .neq('id', '4c32c988-3b19-4eca-87cb-0e0595fd7fbb')
           .limit(20);
         
         results.users = users || [];
