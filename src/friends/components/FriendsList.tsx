@@ -1,0 +1,126 @@
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { UserX } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
+/**
+ * Liste des amis (demandes acceptées)
+ */
+interface FriendsListProps {
+  userId?: string;
+}
+
+const FriendsList: React.FC<FriendsListProps> = ({ userId }) => {
+  const navigate = useNavigate();
+
+  const { data: friends = [], isLoading, refetch } = useQuery({
+    queryKey: ['friends-list', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+
+      const { data, error } = await supabase
+        .from('friend_requests')
+        .select(`
+          id,
+          sender_id,
+          receiver_id,
+          sender:profiles!friend_requests_sender_id_fkey(
+            id,
+            username,
+            first_name,
+            last_name,
+            avatar_url
+          ),
+          receiver:profiles!friend_requests_receiver_id_fkey(
+            id,
+            username,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('status', 'accepted')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userId,
+  });
+
+  const handleRemove = async (requestId: string) => {
+    const { error } = await supabase
+      .from('friend_requests')
+      .delete()
+      .eq('id', requestId);
+
+    if (error) {
+      toast.error('Erreur lors de la suppression');
+      return;
+    }
+
+    toast.success('Ami retiré');
+    refetch();
+  };
+
+  if (isLoading) {
+    return <div className="text-center text-muted-foreground py-8">Chargement...</div>;
+  }
+
+  if (friends.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        Aucun ami pour le moment
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {friends.map((item) => {
+        const friend = item.sender_id === userId ? item.receiver : item.sender;
+        const friendData = friend as any;
+        const displayName = friendData?.first_name && friendData?.last_name
+          ? `${friendData.first_name} ${friendData.last_name}`
+          : friendData?.username || 'Utilisateur';
+
+        return (
+          <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+            <Avatar 
+              className="cursor-pointer"
+              onClick={() => navigate(`/profil/${friendData?.id}`)}
+            >
+              <AvatarImage src={friendData?.avatar_url} />
+              <AvatarFallback>
+                {displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+
+            <div 
+              className="flex-1 cursor-pointer"
+              onClick={() => navigate(`/profil/${friendData?.id}`)}
+            >
+              <p className="font-medium">{displayName}</p>
+              <p className="text-xs text-muted-foreground">@{friendData?.username}</p>
+            </div>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleRemove(item.id)}
+            >
+              <UserX size={16} />
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default FriendsList;
