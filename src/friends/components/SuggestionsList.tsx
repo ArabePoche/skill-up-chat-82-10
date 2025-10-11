@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 const SuggestionsList: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [sentRequests, setSentRequests] = React.useState<Set<string>>(new Set());
 
@@ -92,6 +93,10 @@ const SuggestionsList: React.FC = () => {
     if (notifError) {
       console.error('Erreur création notification:', notifError);
     }
+
+    // Invalider les requêtes pour mettre à jour les compteurs
+    queryClient.invalidateQueries({ queryKey: ['pending-sent-requests', user.id] });
+    queryClient.invalidateQueries({ queryKey: ['friends-count', user.id] });
 
     toast.success('Demande envoyée');
     setSentRequests(prev => new Set(prev).add(targetUserId));
