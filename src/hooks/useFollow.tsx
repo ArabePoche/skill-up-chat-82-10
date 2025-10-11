@@ -220,12 +220,9 @@ export const usePendingRequests = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data, error } = await supabase
+      const { data: requests, error } = await supabase
         .from('friend_requests')
-        .select(`
-          *,
-          sender:profiles!friend_requests_sender_id_fkey(id, username, first_name, last_name, avatar_url)
-        `)
+        .select('*')
         .eq('receiver_id', user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
@@ -235,7 +232,26 @@ export const usePendingRequests = () => {
         return [];
       }
 
-      return data || [];
+      if (!requests || requests.length === 0) return [];
+
+      // Récupérer les profils des expéditeurs séparément
+      const senderIds = requests.map(r => r.sender_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, first_name, last_name, avatar_url')
+        .in('id', senderIds);
+
+      if (profilesError) {
+        console.error('Erreur récupération profils:', profilesError);
+        return requests;
+      }
+
+      // Combiner les données
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      return requests.map(req => ({
+        ...req,
+        sender: profilesMap.get(req.sender_id)
+      }));
     },
     enabled: !!user?.id,
   });
