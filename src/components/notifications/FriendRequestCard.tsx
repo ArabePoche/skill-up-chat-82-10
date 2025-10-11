@@ -6,11 +6,14 @@ import { useFollow } from '@/hooks/useFollow';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface FriendRequestCardProps {
   notification: {
     id: string;
     sender_id?: string;
+    created_at: string;
   };
 }
 
@@ -107,14 +110,16 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
           {displayName}
         </p>
         <p className="text-sm text-muted-foreground">Demande d'abonnement</p>
+        <p className="text-xs text-muted-foreground">
+          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: fr })}
+        </p>
       </div>
 
       <Button
         onClick={handleFollowBack}
         disabled={isLoading || friendshipStatus === 'friends'}
-        variant={friendshipStatus === 'friends' ? 'outline' : 'default'}
         size="sm"
-        className="gap-2"
+        className={`gap-2 ${friendshipStatus === 'friends' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
       >
         {getButtonContent()}
       </Button>
