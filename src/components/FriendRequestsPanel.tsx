@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Check, X, User } from 'lucide-react';
 import { useFollow } from '@/hooks/useFollow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 /**
  * Composant pour afficher et gérer les demandes d'amitié en attente
@@ -50,6 +52,9 @@ const FriendRequestItem: React.FC<{ request: any }> = ({ request }) => {
           </p>
           <p className="text-xs text-muted-foreground">
             {request.sender?.username ? `@${request.sender.username}` : ''}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: fr })}
           </p>
         </div>
       </div>
