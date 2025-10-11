@@ -93,10 +93,6 @@ const FormationCard: React.FC<FormationCardProps> = ({
           <span className="text-sm font-medium">{formation.rating || 0}</span>
           <span className="text-sm text-gray-500">({formation.students_count || 0})</span>
         </div>
-
-        <div className="flex items-center space-x-2 mb-3">
-          <span className="text-2xl font-bold text-edu-primary">{formation.price || 0}€</span>
-        </div>
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
