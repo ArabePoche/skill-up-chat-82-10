@@ -1,12 +1,13 @@
 
-import React, { useState } from 'react';
-import { Search, MoreVertical, Bell, UserPlus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, MoreVertical, Bell, UserPlus, Users, BookOpen, CreditCard } from 'lucide-react';
 import { useConversations } from '@/hooks/useMessages';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import NotificationItem from '@/components/NotificationItem';
 import StoriesSection from '@/components/StoriesSection';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,7 +17,7 @@ import { ContactsDiscoveryDialog } from '@/contacts-discovery/components/Contact
 const Messages = () => {
   const { data: conversations = [], isLoading: conversationsLoading, error: conversationsError } = useConversations();
   const { notifications = [], isLoading: notificationsLoading } = useNotifications();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('conversations');
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
@@ -35,6 +36,65 @@ const Messages = () => {
 
   // Grouper les conversations par date
   const groupedConversations = groupMessagesByDate(conversations);
+
+  // Grouper les notifications par catégorie
+  const groupedNotifications = useMemo(() => {
+    const groups = {
+      friend_requests: [] as typeof notifications,
+      enrollment_requests: [] as typeof notifications,
+      plan_changes: [] as typeof notifications,
+      payment_requests: [] as typeof notifications,
+      others: [] as typeof notifications,
+    };
+
+    notifications.forEach((notification) => {
+      if (notification.type === 'friend_request' || notification.sender_id) {
+        groups.friend_requests.push(notification);
+      } else if (notification.type === 'enrollment_request' && notification.enrollment_id) {
+        groups.enrollment_requests.push(notification);
+      } else if (notification.type === 'plan_change_request') {
+        groups.plan_changes.push(notification);
+      } else if (notification.type === 'payment_request') {
+        groups.payment_requests.push(notification);
+      } else {
+        groups.others.push(notification);
+      }
+    });
+
+    return groups;
+  }, [notifications]);
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'friend_requests':
+        return <UserPlus className="w-5 h-5" />;
+      case 'enrollment_requests':
+        return <Users className="w-5 h-5" />;
+      case 'plan_changes':
+        return <BookOpen className="w-5 h-5" />;
+      case 'payment_requests':
+        return <CreditCard className="w-5 h-5" />;
+      default:
+        return <Bell className="w-5 h-5" />;
+    }
+  };
+
+  const getCategoryTitle = (category: string) => {
+    switch (category) {
+      case 'friend_requests':
+        return 'Demandes d\'amitié';
+      case 'enrollment_requests':
+        return 'Demandes d\'inscription';
+      case 'plan_changes':
+        return 'Changements de plan';
+      case 'payment_requests':
+        return 'Demandes de paiement';
+      default:
+        return 'Autres notifications';
+    }
+  };
+
+  const isAdmin = profile?.role === 'admin';
 
   if (conversationsLoading || notificationsLoading) {
     return (
@@ -177,14 +237,47 @@ const Messages = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {notifications.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                    />
-                  ))}
-                </div>
+                <Accordion type="multiple" defaultValue={['friend_requests', 'enrollment_requests', 'plan_changes', 'payment_requests', 'others']} className="space-y-4">
+                  {Object.entries(groupedNotifications).map(([category, items]) => {
+                    // Ne pas afficher les catégories vides
+                    if (items.length === 0) return null;
+                    
+                    // Ne montrer enrollment_requests, plan_changes et payment_requests qu'aux admins
+                    if ((category === 'enrollment_requests' || category === 'plan_changes' || category === 'payment_requests') && !isAdmin) {
+                      return null;
+                    }
+
+                    return (
+                      <AccordionItem key={category} value={category} className="bg-white rounded-lg border">
+                        <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                          <div className="flex items-center gap-3">
+                            <div className="text-primary">
+                              {getCategoryIcon(category)}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-900">
+                                {getCategoryTitle(category)}
+                              </span>
+                              <span className="bg-primary/10 text-primary text-sm font-medium px-2.5 py-0.5 rounded-full">
+                                {items.length}
+                              </span>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6 pb-4">
+                          <div className="space-y-3 pt-2">
+                            {items.map((notification) => (
+                              <NotificationItem
+                                key={notification.id}
+                                notification={notification}
+                              />
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
               )}
             </div>
           </TabsContent>
