@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 export interface Story {
   id: string;
   user_id: string;
-  content_type: 'text' | 'image' | 'video';
+  content_type: 'text' | 'image' | 'video' | 'audio';
   content_text?: string;
   media_url?: string;
   background_color?: string;
@@ -82,7 +82,7 @@ export const useCreateStory = () => {
       media_url,
       background_color = '#25d366'
     }: {
-      content_type: 'text' | 'image' | 'video';
+      content_type: 'text' | 'image' | 'video' | 'audio';
       content_text?: string;
       media_url?: string;
       background_color?: string;
