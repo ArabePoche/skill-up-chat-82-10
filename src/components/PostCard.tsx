@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2, UserPlus, UserCheck } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
@@ -233,24 +233,22 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
               }}
               disabled={isFollowLoading}
               size="sm"
-              variant="ghost"
-              className={`${
+              className={`px-4 text-xs font-medium text-white ${
                 friendshipStatus === 'friends'
-                  ? 'text-green-400 hover:text-green-300' 
+                  ? 'bg-green-500 hover:bg-green-600' 
                   : friendshipStatus === 'pending_sent'
-                  ? 'text-yellow-400 hover:text-yellow-300'
-                  : 'text-blue-400 hover:text-blue-300'
+                  ? 'bg-yellow-500 hover:bg-yellow-600'
+                  : 'bg-red-500 hover:bg-red-600'
               }`}
             >
-              {friendshipStatus === 'friends' ? (
-                <UserCheck size={18} />
-              ) : friendshipStatus === 'pending_sent' ? (
-                <span className="text-xs">En attente</span>
-              ) : friendshipStatus === 'pending_received' ? (
-                <span className="text-xs">Accepter</span>
-              ) : (
-                <UserPlus size={18} />
-              )}
+              {friendshipStatus === 'friends' 
+                ? 'Abonné'
+                : friendshipStatus === 'pending_sent' 
+                ? 'En attente'
+                : friendshipStatus === 'pending_received' 
+                ? 'Suivre'
+                : 'Suivre'
+              }
             </Button>
           )}
         </div>
