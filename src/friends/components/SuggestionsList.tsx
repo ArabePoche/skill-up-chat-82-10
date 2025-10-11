@@ -141,7 +141,8 @@ const SuggestionsList: React.FC = () => {
               size="sm"
               onClick={() => handleSendRequest(user.id)}
               disabled={sentRequests.has(user.id)}
-              variant={sentRequests.has(user.id) ? "secondary" : "default"}
+              className={sentRequests.has(user.id) ? '' : 'bg-red-500 hover:bg-red-600 text-white'}
+              variant={sentRequests.has(user.id) ? "secondary" : undefined}
             >
               <UserPlus size={16} className="mr-2" />
               {sentRequests.has(user.id) ? 'Envoyée' : 'Ajouter'}
