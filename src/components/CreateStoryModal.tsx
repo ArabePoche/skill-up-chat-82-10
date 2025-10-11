@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
-import { X, Camera, Type, Palette } from 'lucide-react';
+import { X, Camera, Type, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateStory } from '@/hooks/useStories';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import AudioRecorder from '@/components/chat/AudioRecorder';
 
 interface CreateStoryModalProps {
   isOpen: boolean;
@@ -14,14 +15,35 @@ interface CreateStoryModalProps {
 }
 
 const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) => {
-  const [contentType, setContentType] = useState<'text' | 'image' | 'video'>('text');
+  const [contentType, setContentType] = useState<'text' | 'image' | 'video' | 'audio'>('text');
   const [textContent, setTextContent] = useState('');
   const [backgroundColor, setBackgroundColor] = useState('#25d366');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   
   const { user } = useAuth();
   const createStory = useCreateStory();
+
+  const handleFileChange = (file: File | null) => {
+    setMediaFile(file);
+    
+    // Générer la prévisualisation
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMediaPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setMediaPreview(null);
+    }
+  };
+
+  const handleAudioCapture = (file: File) => {
+    setContentType('audio');
+    handleFileChange(file);
+  };
 
   const backgroundColors = [
     '#25d366', '#128C7E', '#075E54', '#34B7F1', '#9C27B0',
@@ -66,6 +88,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
       onClose();
       setTextContent('');
       setMediaFile(null);
+      setMediaPreview(null);
       setContentType('text');
     } catch (error) {
       console.error('Error creating story:', error);
@@ -111,6 +134,14 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
           >
             <Camera size={16} className="mr-1" />
             Vidéo
+          </Button>
+          <Button
+            variant={contentType === 'audio' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setContentType('audio')}
+          >
+            <Mic size={16} className="mr-1" />
+            Vocal
           </Button>
         </div>
 
@@ -160,12 +191,44 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
             <Input
               type="file"
               accept={contentType === 'image' ? 'image/*' : 'video/*'}
-              onChange={(e) => setMediaFile(e.target.files?.[0] || null)}
+              onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
               className="mb-2"
             />
+            
+            {/* Prévisualisation */}
+            {mediaPreview && (
+              <div className="mt-3 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                {contentType === 'image' ? (
+                  <img 
+                    src={mediaPreview} 
+                    alt="Aperçu" 
+                    className="w-full h-48 object-contain"
+                  />
+                ) : (
+                  <video 
+                    src={mediaPreview} 
+                    controls
+                    className="w-full h-48 object-contain"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Enregistrement audio */}
+        {contentType === 'audio' && (
+          <div className="mb-4">
+            <p className="text-sm font-medium mb-3">Enregistrer un message vocal :</p>
+            <div className="flex justify-center">
+              <AudioRecorder
+                onRecordingComplete={handleAudioCapture}
+                disabled={uploading}
+              />
+            </div>
             {mediaFile && (
-              <p className="text-sm text-gray-600">
-                Fichier sélectionné : {mediaFile.name}
+              <p className="text-sm text-gray-600 text-center mt-2">
+                Message vocal prêt à être publié
               </p>
             )}
           </div>
@@ -179,7 +242,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
           <Button 
             onClick={handleSubmit} 
             className="flex-1"
-            disabled={uploading || (contentType === 'text' && !textContent) || ((contentType === 'image' || contentType === 'video') && !mediaFile)}
+            disabled={uploading || (contentType === 'text' && !textContent) || ((contentType === 'image' || contentType === 'video' || contentType === 'audio') && !mediaFile)}
           >
             {uploading ? 'Publication...' : 'Publier'}
           </Button>
