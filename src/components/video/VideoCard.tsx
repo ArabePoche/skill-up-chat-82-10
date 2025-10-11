@@ -11,6 +11,7 @@ import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useFollow } from '@/hooks/useFollow';
 
 interface Video {
   id: string;
@@ -51,13 +52,13 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
+  const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id);
 
   // Récupération dynamique du compteur de commentaires
   const { data: commentsCount = video.comments_count } = useQuery({
@@ -146,8 +147,13 @@ const VideoCard: React.FC<VideoCardProps> = ({
 
   const handleFollow = () => {
     handleActionClick(() => {
-      setIsFollowing(!isFollowing);
-      toast.success(isFollowing ? 'Désabonné' : 'Abonné !');
+      if (friendshipStatus === 'friends') {
+        removeFriend();
+      } else if (friendshipStatus === 'pending_sent') {
+        cancelRequest();
+      } else {
+        sendRequest();
+      }
     });
   };
 
@@ -268,17 +274,16 @@ const VideoCard: React.FC<VideoCardProps> = ({
               {video.profiles?.first_name?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
-          <Button
-            onClick={handleFollow}
-            size="sm"
-            className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-xs font-bold ${
-              isFollowing 
-                ? 'bg-gray-500 text-white' 
-                : 'bg-red-500 text-white hover:bg-red-600'
-            }`}
-          >
-            {isFollowing ? '✓' : <Plus size={12} />}
-          </Button>
+          {friendshipStatus === 'none' && (
+            <Button
+              onClick={handleFollow}
+              disabled={isFollowLoading}
+              size="sm"
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600"
+            >
+              <Plus size={12} />
+            </Button>
+          )}
         </div>
 
         {/* Bouton Like */}
