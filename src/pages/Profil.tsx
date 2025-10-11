@@ -221,13 +221,6 @@ const Profil = () => {
       {/* Onglets */}
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Demandes d'amitié en attente - uniquement pour son propre profil */}
-      {isOwnProfile && (
-        <div className="px-4 pt-4">
-          <FriendRequestsPanel />
-        </div>
-      )}
-
       {/* Contenu de l'onglet actif */}
       <div className="pb-4">
         {renderTabContent()}
