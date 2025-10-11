@@ -34,31 +34,134 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
   return useQuery({
     queryKey: ['posts', filter, userId],
     queryFn: async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      
-      // Récupération des posts sans JOIN direct
-      let query = supabase
+      // Si on affiche les posts d'un utilisateur spécifique, on garde l'ancienne logique
+      if (userId) {
+        let query = supabase
+          .from('posts')
+          .select('*')
+          .eq('is_active', true)
+          .eq('author_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (filter !== 'all') {
+          query = query.eq('post_type', filter);
+        }
+
+        const { data: posts, error: postsError } = await query;
+
+        if (postsError) {
+          console.error('Error fetching posts:', postsError);
+          return [];
+        }
+
+        const authorIds = [...new Set(posts.map(post => post.author_id))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, username, avatar_url')
+          .in('id', authorIds);
+
+        const postsWithProfiles = posts.map(post => {
+          const profile = profiles?.find(p => p.id === post.author_id);
+          return {
+            ...post,
+            profiles: profile ? {
+              first_name: profile.first_name || '',
+              last_name: profile.last_name || '',
+              username: profile.username || '',
+              avatar_url: profile.avatar_url || ''
+            } : {
+              first_name: 'Utilisateur',
+              last_name: '',
+              username: 'user',
+              avatar_url: ''
+            }
+          };
+        });
+
+        const postIds = posts.map(p => p.id);
+        const { data: media } = await supabase
+          .from('post_media')
+          .select('id, post_id, file_url, file_type, order_index, created_at')
+          .in('post_id', postIds)
+          .order('order_index', { ascending: true });
+
+        const mediaByPost = (media || []).reduce((acc: Record<string, PostMedia[]>, m) => {
+          (acc[m.post_id] ||= []).push(m as PostMedia);
+          return acc;
+        }, {} as Record<string, PostMedia[]>);
+
+        return postsWithProfiles.map((p: any) => ({
+          ...p,
+          media: mediaByPost[p.id] || []
+        }));
+      }
+
+      // Récupérer les IDs des amis/suivis (demandes acceptées)
+      let friendIds: string[] = [];
+      if (currentUser) {
+        const { data: friendRequests } = await supabase
+          .from('friend_requests')
+          .select('sender_id, receiver_id')
+          .eq('status', 'accepted')
+          .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+
+        if (friendRequests) {
+          friendIds = friendRequests.map(fr => 
+            fr.sender_id === currentUser.id ? fr.receiver_id : fr.sender_id
+          );
+        }
+      }
+
+      // Récupérer les posts des amis (limite à 100 posts récents)
+      let friendsPostsQuery = supabase
         .from('posts')
         .select('*')
         .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .in('author_id', friendIds.length > 0 ? friendIds : ['00000000-0000-0000-0000-000000000000'])
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (filter !== 'all') {
-        query = query.eq('post_type', filter);
+        friendsPostsQuery = friendsPostsQuery.eq('post_type', filter);
       }
 
-      if (userId) {
-        query = query.eq('author_id', userId);
+      const { data: friendsPosts = [] } = await friendsPostsQuery;
+
+      // Récupérer les autres posts (limite à 30 posts récents)
+      let otherPostsQuery = supabase
+        .from('posts')
+        .select('*')
+        .eq('is_active', true)
+        .not('author_id', 'in', `(${friendIds.length > 0 ? friendIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (filter !== 'all') {
+        otherPostsQuery = otherPostsQuery.eq('post_type', filter);
       }
 
-      const { data: posts, error: postsError } = await query;
+      const { data: otherPosts = [] } = await otherPostsQuery;
 
-      if (postsError) {
-        console.error('Error fetching posts:', postsError);
-        return [];
+      // Mélanger avec ratio 80/20
+      const mixedPosts: any[] = [];
+      let friendsIndex = 0;
+      let othersIndex = 0;
+
+      // Pour chaque groupe de 10 posts, on prend 8 des amis et 2 des autres
+      while (friendsIndex < friendsPosts.length || othersIndex < otherPosts.length) {
+        // Ajouter 8 posts d'amis
+        for (let i = 0; i < 8 && friendsIndex < friendsPosts.length; i++) {
+          mixedPosts.push(friendsPosts[friendsIndex++]);
+        }
+        // Ajouter 2 autres posts
+        for (let i = 0; i < 2 && othersIndex < otherPosts.length; i++) {
+          mixedPosts.push(otherPosts[othersIndex++]);
+        }
       }
 
-      
+      const posts = mixedPosts;
 
       // Récupération des profils séparément
       const authorIds = [...new Set(posts.map(post => post.author_id))];
@@ -70,7 +173,6 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
-        // Retourner les posts sans les données de profil
         return posts.map(post => ({
           ...post,
           profiles: {
