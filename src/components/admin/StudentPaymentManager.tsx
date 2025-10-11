@@ -41,7 +41,7 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
   
   // Calculer le prix par jour basé sur l'abonnement réel de l'étudiant
   const getUserPricePerDay = () => {
-    if (!subscription || !pricingOptions) return 1; // Fallback à 1€ par jour si pas de données
+    if (!subscription || !pricingOptions) return 500; // Fallback à 500 FCFA par jour si pas de données
     
     // Utiliser le vrai plan de l'étudiant
     const userPlan = pricingOptions.find(
@@ -52,7 +52,7 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
       return userPlan.price_monthly / 30;
     }
     
-    return 1; // Fallback à 1€ par jour
+    return 500; // Fallback à 500 FCFA par jour
   };
 
   const pricePerDay = getUserPricePerDay();
@@ -216,15 +216,15 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Montant (€)</Label>
+                  <Label htmlFor="amount">Montant (FCFA)</Label>
                   <Input
                     id="amount"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="1"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="50.00"
+                    placeholder="25000"
                   />
                    {amount && !isNaN(parseFloat(amount)) && pricePerDay > 0 && (
                      <p className="text-xs text-gray-600">
@@ -232,7 +232,7 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
                          const totalDays = parseFloat(amount) / pricePerDay;
                          const days = Math.floor(totalDays);
                          const hours = Math.round((totalDays - days) * 24);
-                         return `= ${days} jour${days > 1 ? 's' : ''} ${hours > 0 ? `+ ${hours}h` : ''} (à ${pricePerDay.toFixed(2)}€/jour)`;
+                         return `= ${days} jour${days > 1 ? 's' : ''} ${hours > 0 ? `+ ${hours}h` : ''} (à ${pricePerDay.toLocaleString('fr-FR')} FCFA/jour)`;
                        })()}
                      </p>
                    )}
@@ -295,7 +295,7 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
                     <div key={payment.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium">{payment.amount}€</span>
+                          <span className="font-medium">{payment.amount.toLocaleString('fr-FR')} FCFA</span>
                           <span className="text-sm text-gray-500">
                             {new Date(payment.created_at).toLocaleDateString('fr-FR')}
                           </span>
