@@ -80,9 +80,12 @@ const PaymentHistoryList: React.FC<PaymentHistoryListProps> = ({ formationId, cl
                 {formatDate(item.payment_date || item.created_at)}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold">
-                {item.days_added ? `+${item.days_added} jour${item.days_added > 1 ? 's' : ''}` : '—'}
+            <div className="text-right space-y-0.5">
+              <p className="text-sm font-semibold text-green-600">
+                {(item as any).amount ? `${(item as any).amount.toLocaleString('fr-FR')} FCFA` : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {item.days_added ? `+${item.days_added} jour${item.days_added > 1 ? 's' : ''}` : ''}
               </p>
               <p className="text-xs text-muted-foreground">{statusLabel(item.status)}</p>
             </div>
