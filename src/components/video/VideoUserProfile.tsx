@@ -52,21 +52,23 @@ const VideoUserProfile: React.FC<VideoUserProfileProps> = ({
 
   const getButtonContent = () => {
     if (friendshipStatus === 'friends') {
-      return <Check size={12} />;
+      return 'Abonné';
     } else if (friendshipStatus === 'pending_sent') {
-      return '...';
+      return 'En attente';
     } else if (friendshipStatus === 'pending_received') {
-      return '✓';
+      return 'Suivre';
     } else {
-      return <Plus size={12} />;
+      return 'Suivre';
     }
   };
 
   const getButtonColor = () => {
     if (friendshipStatus === 'friends') {
-      return 'bg-green-500 text-white';
+      return 'bg-green-500 text-white hover:bg-green-600';
     } else if (friendshipStatus === 'pending_sent') {
-      return 'bg-yellow-500 text-white';
+      return 'bg-yellow-500 text-white hover:bg-yellow-600';
+    } else if (friendshipStatus === 'pending_received') {
+      return 'bg-red-500 text-white hover:bg-red-600';
     } else {
       return 'bg-red-500 text-white hover:bg-red-600';
     }
@@ -86,7 +88,7 @@ const VideoUserProfile: React.FC<VideoUserProfileProps> = ({
             onClick={handleClick}
             disabled={isLoading}
             size="sm"
-            className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-xs font-bold ${getButtonColor()}`}
+            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 h-auto rounded-md text-xs font-medium ${getButtonColor()}`}
           >
             {getButtonContent()}
           </Button>
