@@ -22,33 +22,37 @@ const FriendsList: React.FC<FriendsListProps> = ({ userId }) => {
     queryFn: async () => {
       if (!userId) return [];
 
-      const { data, error } = await supabase
+      // Récupérer les demandes acceptées
+      const { data: requests, error } = await supabase
         .from('friend_requests')
-        .select(`
-          id,
-          sender_id,
-          receiver_id,
-          sender:profiles!friend_requests_sender_id_fkey(
-            id,
-            username,
-            first_name,
-            last_name,
-            avatar_url
-          ),
-          receiver:profiles!friend_requests_receiver_id_fkey(
-            id,
-            username,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
+        .select('id, sender_id, receiver_id, created_at')
         .eq('status', 'accepted')
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      if (!requests || requests.length === 0) return [];
+
+      // Récupérer les IDs des amis (l'autre personne dans chaque relation)
+      const friendIds = requests.map(req => 
+        req.sender_id === userId ? req.receiver_id : req.sender_id
+      );
+
+      // Récupérer les profils des amis
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, first_name, last_name, avatar_url')
+        .in('id', friendIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combiner les données
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      return requests.map(req => ({
+        ...req,
+        sender: req.sender_id === userId ? null : profilesMap.get(req.sender_id),
+        receiver: req.receiver_id === userId ? null : profilesMap.get(req.receiver_id)
+      }));
     },
     enabled: !!userId,
   });
