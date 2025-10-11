@@ -22,17 +22,7 @@ const SuggestionsList: React.FC = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      // Récupérer les utilisateurs avec qui on n'a pas de relation (exclure le compte système par ID)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
-        .neq('id', user.id)
-        .neq('id', '4c32c988-3b19-4eca-87cb-0e0595fd7fbb')
-        .limit(20);
-
-      if (error) throw error;
-
-      // Filtrer ceux avec qui on n'a pas déjà de demande
+      // D'abord récupérer tous les IDs avec qui on a déjà une relation
       const { data: existingRequests } = await supabase
         .from('friend_requests')
         .select('sender_id, receiver_id')
@@ -41,11 +31,20 @@ const SuggestionsList: React.FC = () => {
       const existingIds = new Set(
         existingRequests?.flatMap(r => [r.sender_id, r.receiver_id]) || []
       );
+      existingIds.add(user.id); // Exclure soi-même
+      existingIds.add('4c32c988-3b19-4eca-87cb-0e0595fd7fbb'); // Exclure le compte système
 
-      const filtered = data?.filter(u => !existingIds.has(u.id)) || [];
+      // Récupérer tous les utilisateurs sauf ceux avec une relation existante
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, first_name, last_name, avatar_url')
+        .not('id', 'in', `(${Array.from(existingIds).join(',')})`)
+        .limit(50); // Augmenter pour avoir plus de choix
+
+      if (error) throw error;
       
       // Mélanger et prendre 10 aléatoires
-      return filtered.sort(() => Math.random() - 0.5).slice(0, 10);
+      return (data || []).sort(() => Math.random() - 0.5).slice(0, 10);
     },
     enabled: !!user?.id,
   });
