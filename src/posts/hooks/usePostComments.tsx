@@ -22,7 +22,7 @@ export const usePostComments = (postId: string) => {
             last_name,
             avatar_url
           ),
-          replied_to_profile:profiles!post_comments_replied_to_user_id_fkey(
+          replied_to_profile:profiles!post_comments_replied_to_user_id_fkey1(
             id,
             username,
             first_name,
@@ -31,7 +31,7 @@ export const usePostComments = (postId: string) => {
           )
         `)
         .eq('post_id', postId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Erreur récupération commentaires post:', error);
@@ -49,6 +49,8 @@ export const usePostComments = (postId: string) => {
       return normalizedData;
     },
     enabled: !!postId,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   // Ajouter un commentaire ou une réponse
