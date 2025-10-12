@@ -136,7 +136,7 @@ const Messages = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-gray-50">
             <TabsTrigger value="conversations" className="flex items-center space-x-2">
-              <span>Conversations</span>
+              <span>Discussions</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center space-x-2">
               <Bell size={16} />
