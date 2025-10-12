@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
 import useBackButtonHandler from '@/hooks/useBackButtonHandler';
-import { useUserPresence } from '@/hooks/useUserPresence';
 
 import Formation from '@/pages/Formation';
 import FormationDetail from '@/pages/FormationDetail';
@@ -19,6 +18,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { NavigationProvider } from '@/contexts/NavigationContext';
 import FormationPricingPage from '@/pages/FormationPricing';
 import { TabScrollProvider } from '@/contexts/TabScrollContext';
+import { PresenceProvider } from '@/contexts/PresenceContext';
 // Nouvelles pages cours
 import CoursIndex from '@/pages/cours/CoursIndex';
 import FormationDetailPage from '@/pages/cours/FormationDetail';
@@ -40,7 +40,6 @@ const queryClient = new QueryClient({
 
 const AppWithRouter: React.FC = () => {
   useBackButtonHandler();
-  useUserPresence(); // Mettre à jour la présence de l'utilisateur
   
   return (
     <div className="App">
@@ -92,12 +91,14 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <NavigationProvider>
-            <TabScrollProvider>
-              <AppWithRouter />
-              <Toaster />
-            </TabScrollProvider>
-          </NavigationProvider>
+          <PresenceProvider>
+            <NavigationProvider>
+              <TabScrollProvider>
+                <AppWithRouter />
+                <Toaster />
+              </TabScrollProvider>
+            </NavigationProvider>
+          </PresenceProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
