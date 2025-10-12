@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
 import useBackButtonHandler from '@/hooks/useBackButtonHandler';
+import { useUserPresence } from '@/hooks/useUserPresence';
 
 import Formation from '@/pages/Formation';
 import FormationDetail from '@/pages/FormationDetail';
@@ -39,6 +40,7 @@ const queryClient = new QueryClient({
 
 const AppWithRouter: React.FC = () => {
   useBackButtonHandler();
+  useUserPresence(); // Mettre à jour la présence de l'utilisateur
   
   return (
     <div className="App">
