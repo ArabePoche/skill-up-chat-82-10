@@ -1407,6 +1407,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          confirmed_by: string | null
           created_at: string
           enrollment_id: string | null
           formation_id: string | null
@@ -1425,6 +1426,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          confirmed_by?: string | null
           created_at?: string
           enrollment_id?: string | null
           formation_id?: string | null
@@ -1443,6 +1445,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          confirmed_by?: string | null
           created_at?: string
           enrollment_id?: string | null
           formation_id?: string | null
@@ -1638,6 +1641,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_replied_to_user_id_fkey1"
+            columns: ["replied_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2020,6 +2030,7 @@ export type Database = {
           is_teacher: boolean | null
           language: string | null
           last_name: string | null
+          last_seen: string | null
           phone: string | null
           phone_country_code: string | null
           profile_completed: boolean | null
@@ -2042,6 +2053,7 @@ export type Database = {
           is_teacher?: boolean | null
           language?: string | null
           last_name?: string | null
+          last_seen?: string | null
           phone?: string | null
           phone_country_code?: string | null
           profile_completed?: boolean | null
@@ -2064,6 +2076,7 @@ export type Database = {
           is_teacher?: boolean | null
           language?: string | null
           last_name?: string | null
+          last_seen?: string | null
           phone?: string | null
           phone_country_code?: string | null
           profile_completed?: boolean | null
