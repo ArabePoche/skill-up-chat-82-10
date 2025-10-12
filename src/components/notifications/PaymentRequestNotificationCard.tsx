@@ -21,6 +21,7 @@ interface PaymentRequestNotificationCardProps {
     formation_id: string;
     created_at: string;
     order_id?: string; // Id de la demande dans student_payment (stocké dans notifications.order_id)
+    confirmed_by?: string; // Id de l'admin qui a traité la demande
     user_info?: {
       first_name?: string;
       last_name?: string;
@@ -131,10 +132,13 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
 
       if (updErr) throw updErr;
 
-      // Marquer la notif comme lue
+      // Marquer la notification comme lue ET enregistrer l'admin qui a confirmé
       const { error: notifErr } = await supabase
         .from('notifications')
-        .update({ is_read: true })
+        .update({ 
+          is_read: true,
+          confirmed_by: user.id // Enregistrer l'admin qui a traité
+        })
         .eq('id', notification.id);
       if (notifErr) throw notifErr;
 
@@ -154,17 +158,35 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
   const userName = `${notification.user_info?.first_name || ''} ${notification.user_info?.last_name || ''}`.trim() || 'Élève';
   const formationTitle = notification.formation_info?.title || formation?.title || 'Formation';
 
+  // Charger les infos de l'admin qui a confirmé (si traité)
+  const { data: confirmedByAdmin } = useQuery({
+    queryKey: ['admin-profile', notification.confirmed_by],
+    queryFn: async () => {
+      if (!notification.confirmed_by) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', notification.confirmed_by)
+        .single();
+      return data;
+    },
+    enabled: !!notification.confirmed_by,
+  });
+
+  // Vérifier si la demande a été traitée
+  const isProcessed = !!notification.confirmed_by;
+
   return (
-    <Card className="border-2 border-blue-200 bg-blue-50">
+    <Card className={`border-2 ${isProcessed ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+          <CardTitle className={`text-lg font-semibold flex items-center gap-2 ${isProcessed ? 'text-green-800' : 'text-blue-800'}`}>
             <CreditCard className="w-5 h-5" />
-            Demande de paiement
+            {isProcessed ? 'Paiement traité' : 'Demande de paiement'}
           </CardTitle>
-          {notification.approved_by_admin && (
-            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-              Traité par {notification.approved_by_admin.first_name} {notification.approved_by_admin.last_name}
+          {confirmedByAdmin && (
+            <Badge className="bg-green-100 text-green-700 border-green-300">
+              Effectué par {confirmedByAdmin.first_name} {confirmedByAdmin.last_name}
             </Badge>
           )}
         </div>
@@ -190,66 +212,81 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
           </div>
         </div>
 
-        {/* Formulaire de traitement */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg">
-          <div className="space-y-2">
-            <Label htmlFor="amount">Montant payé</Label>
-            <Input id="amount" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ex: 10000" />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="payment_date">Date du paiement</Label>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <Input id="payment_date" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+        {/* Si traité, afficher un message de confirmation au lieu du formulaire */}
+        {isProcessed ? (
+          <div className="p-4 bg-white rounded-lg">
+            <div className="flex items-center gap-2 text-green-700 mb-2">
+              <CheckCircle className="w-5 h-5" />
+              <p className="font-medium">Cette demande a été traitée avec succès</p>
             </div>
+            <p className="text-sm text-gray-600">
+              Le paiement a été enregistré et les jours ont été crédités sur le compte de l'élève.
+            </p>
           </div>
+        ) : (
+          <>
+            {/* Formulaire de traitement */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Montant payé</Label>
+                <Input id="amount" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Ex: 10000" />
+              </div>
 
-          <div className="space-y-2">
-            <Label>Méthode de paiement</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir une méthode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cash">Espèces</SelectItem>
-                <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                <SelectItem value="bank_transfer">Virement</SelectItem>
-                <SelectItem value="other">Autre</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="payment_date">Date du paiement</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <Input id="payment_date" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <Label>Référence / justificatif (facultatif)</Label>
-            <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="N° référence ou note" />
-          </div>
-        </div>
+              <div className="space-y-2">
+                <Label>Méthode de paiement</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir une méthode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Espèces</SelectItem>
+                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    <SelectItem value="bank_transfer">Virement</SelectItem>
+                    <SelectItem value="other">Autre</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-        {/* Calcul automatique */}
-        <div className="p-4 bg-white rounded-lg text-sm text-gray-700">
-          <p>
-            Plan de l'élève: <span className="font-medium">{subscription?.plan_type || 'Non défini'}</span>
-          </p>
-          <p>
-            Tarif par jour: <span className="font-medium">{pricePerDay.toFixed(0)} F</span>
-          </p>
-          <p className="mt-1">
-            Crédité: <span className="font-semibold">{daysAdded} jour(s)</span>
-            {hoursAdded > 0 && <span className="font-semibold"> + {hoursAdded} heure(s)</span>}
-          </p>
-        </div>
+              <div className="space-y-2">
+                <Label>Référence / justificatif (facultatif)</Label>
+                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="N° référence ou note" />
+              </div>
+            </div>
 
-        <div className="flex gap-3">
-          <Button 
-            onClick={() => processMutation.mutate()} 
-            disabled={processMutation.isPending || !amount || (daysAdded <= 0 && hoursAdded <= 0)}
-            className="bg-green-600 hover:bg-green-700 text-white flex-1"
-          >
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Valider le paiement
-          </Button>
-        </div>
+            {/* Calcul automatique */}
+            <div className="p-4 bg-white rounded-lg text-sm text-gray-700">
+              <p>
+                Plan de l'élève: <span className="font-medium">{subscription?.plan_type || 'Non défini'}</span>
+              </p>
+              <p>
+                Tarif par jour: <span className="font-medium">{pricePerDay.toFixed(0)} F</span>
+              </p>
+              <p className="mt-1">
+                Crédité: <span className="font-semibold">{daysAdded} jour(s)</span>
+                {hoursAdded > 0 && <span className="font-semibold"> + {hoursAdded} heure(s)</span>}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => processMutation.mutate()} 
+                disabled={processMutation.isPending || !amount || (daysAdded <= 0 && hoursAdded <= 0)}
+                className="bg-green-600 hover:bg-green-700 text-white flex-1"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Valider le paiement
+              </Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
