@@ -1,14 +1,13 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Smile, MessageCircle, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Send, User, Smile, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostComments } from '../posts/hooks/usePostComments';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import EmojiPicker from '@/components/EmojiPicker';
+import PostCommentItem from '../posts/components/PostCommentItem';
 
 interface PostCommentsProps {
   postId: string;
@@ -37,6 +36,33 @@ const PostComments: React.FC<PostCommentsProps> = ({
     }
   }, [openTrigger]);
 
+  // Organiser les commentaires hiérarchiquement de manière récursive
+  const organizedComments = useMemo(() => {
+    if (!Array.isArray(comments)) return [];
+    
+    const repliesMap = new Map<string, any[]>();
+    
+    // Grouper tous les commentaires par parent_comment_id
+    comments.forEach(comment => {
+      if (comment.parent_comment_id) {
+        if (!repliesMap.has(comment.parent_comment_id)) {
+          repliesMap.set(comment.parent_comment_id, []);
+        }
+        repliesMap.get(comment.parent_comment_id)?.push(comment);
+      }
+    });
+    
+    // Fonction récursive pour attacher les réponses
+    const attachReplies = (comment: any): any => ({
+      ...comment,
+      replies: (repliesMap.get(comment.id) || []).map(attachReplies)
+    });
+    
+    // Récupérer les commentaires de premier niveau et attacher récursivement leurs réponses
+    const topLevelComments = comments.filter(c => !c.parent_comment_id);
+    return topLevelComments.map(attachReplies);
+  }, [comments]);
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -46,6 +72,10 @@ const PostComments: React.FC<PostCommentsProps> = ({
       setNewComment('');
       setShowEmojiPicker(false);
     }
+  };
+
+  const handleReply = async (content: string, parentCommentId: string): Promise<boolean> => {
+    return await addComment(content, parentCommentId);
   };
 
   const handleDeleteComment = async (commentId: string) => {
@@ -91,50 +121,21 @@ const PostComments: React.FC<PostCommentsProps> = ({
       {isExpanded && (
         <div className="px-4 pb-4">
           {/* Liste des commentaires */}
-          <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+          <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
             {isLoading ? (
               <div className="text-center text-gray-400 py-4">Chargement...</div>
-            ) : !Array.isArray(comments) || comments.length === 0 ? (
+            ) : organizedComments.length === 0 ? (
               <div className="text-center text-gray-400 py-4">Aucun commentaire pour le moment</div>
             ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className="flex space-x-3 group">
-                  <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarImage src={comment.profiles?.avatar_url} />
-                    <AvatarFallback className="bg-gray-700 text-white">
-                      <User size={14} />
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="bg-gray-800 rounded-lg p-3 relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium text-white text-sm">
-                            {comment.profiles?.first_name || comment.profiles?.username || 'Utilisateur'}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {formatDistanceToNow(new Date(comment.created_at), {
-                              addSuffix: true,
-                              locale: fr
-                            })}
-                          </span>
-                        </div>
-                        {user?.id === comment.user_id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteComment(comment.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto text-red-400 hover:text-red-300"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        )}
-                      </div>
-                      <p className="text-white text-sm">{comment.content}</p>
-                    </div>
-                  </div>
-                </div>
+              organizedComments.map((comment) => (
+                <PostCommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user?.id}
+                  onDelete={handleDeleteComment}
+                  onReply={handleReply}
+                  replies={comment.replies}
+                />
               ))
             )}
           </div>
