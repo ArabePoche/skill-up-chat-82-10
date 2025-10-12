@@ -21,6 +21,13 @@ export const usePostComments = (postId: string) => {
             first_name,
             last_name,
             avatar_url
+          ),
+          replied_to_profile:profiles!post_comments_replied_to_user_id_fkey(
+            id,
+            username,
+            first_name,
+            last_name,
+            avatar_url
           )
         `)
         .eq('post_id', postId)
@@ -38,7 +45,15 @@ export const usePostComments = (postId: string) => {
 
   // Ajouter un commentaire ou une réponse
   const addCommentMutation = useMutation({
-    mutationFn: async ({ content, parentCommentId }: { content: string; parentCommentId?: string }) => {
+    mutationFn: async ({ 
+      content, 
+      parentCommentId, 
+      repliedToUserId 
+    }: { 
+      content: string; 
+      parentCommentId?: string;
+      repliedToUserId?: string;
+    }) => {
       if (!user?.id) throw new Error('Utilisateur non connecté');
 
       const { data, error } = await supabase
@@ -48,6 +63,7 @@ export const usePostComments = (postId: string) => {
           user_id: user.id,
           content,
           parent_comment_id: parentCommentId || null,
+          replied_to_user_id: repliedToUserId || null,
         })
         .select(`
           *,
@@ -85,9 +101,13 @@ export const usePostComments = (postId: string) => {
     },
   });
 
-  const addComment = async (content: string, parentCommentId?: string): Promise<boolean> => {
+  const addComment = async (
+    content: string, 
+    parentCommentId?: string,
+    repliedToUserId?: string
+  ): Promise<boolean> => {
     try {
-      await addCommentMutation.mutateAsync({ content, parentCommentId });
+      await addCommentMutation.mutateAsync({ content, parentCommentId, repliedToUserId });
       return true;
     } catch (error) {
       console.error('Échec ajout commentaire:', error);
