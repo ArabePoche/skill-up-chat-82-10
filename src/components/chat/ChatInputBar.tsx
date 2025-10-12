@@ -183,10 +183,19 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
         Object.defineProperty(uploadedFile, 'uploadUrl', { value: uploadResult.fileUrl });
 
         toast.dismiss();
+        
+        // Inclure repliedToMessageId si on répond à un message
+        let repliedToMessageId = undefined;
+        if (replyingTo) {
+          repliedToMessageId = replyingTo.id;
+          onCancelReply?.();
+        }
+        
         onSendMessage(
           '🎤 Message vocal',
           'audio',
-          uploadedFile
+          uploadedFile,
+          repliedToMessageId
         );
         
         setShowVoiceBar(false);
