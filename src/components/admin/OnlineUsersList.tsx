@@ -31,16 +31,22 @@ const OnlineUsersList = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('last_seen', { ascending: false, nullsFirst: false });
 
       if (error) throw error;
 
-      // Simuler le statut en ligne basé sur la dernière activité
-      return data.map(user => ({
-        ...user,
-        last_seen: new Date().toISOString(),
-        status: Math.random() > 0.3 ? 'online' : 'offline'
-      })) as OnlineUser[];
+      // Calculer le statut en fonction de last_seen (en ligne si actif dans les 5 dernières minutes)
+      const now = new Date();
+      return data.map(user => {
+        const lastSeen = user.last_seen ? new Date(user.last_seen) : null;
+        const minutesSinceLastSeen = lastSeen ? (now.getTime() - lastSeen.getTime()) / (1000 * 60) : Infinity;
+        
+        return {
+          ...user,
+          last_seen: user.last_seen || new Date().toISOString(),
+          status: minutesSinceLastSeen <= 5 ? 'online' : 'offline'
+        };
+      }) as OnlineUser[];
     },
     refetchInterval: 30000 // Actualiser toutes les 30 secondes
   });
@@ -132,7 +138,19 @@ const OnlineUsersList = () => {
                   </div>
                   <div className="text-sm text-gray-500 flex items-center gap-1">
                     <Clock size={12} />
-                    {user.status === 'online' ? 'En ligne maintenant' : 'Vu il y a 2h'}
+                    {user.status === 'online' ? 'En ligne maintenant' : 
+                      (() => {
+                        const lastSeen = new Date(user.last_seen);
+                        const now = new Date();
+                        const minutesAgo = Math.floor((now.getTime() - lastSeen.getTime()) / (1000 * 60));
+                        const hoursAgo = Math.floor(minutesAgo / 60);
+                        const daysAgo = Math.floor(hoursAgo / 24);
+                        
+                        if (daysAgo > 0) return `Vu il y a ${daysAgo}j`;
+                        if (hoursAgo > 0) return `Vu il y a ${hoursAgo}h`;
+                        return `Vu il y a ${minutesAgo}min`;
+                      })()
+                    }
                   </div>
                 </div>
               </div>
