@@ -124,7 +124,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
             size="sm"
             onClick={() => setContentType('image')}
           >
-            <Video size={16} className="sm:mr-1" />
+            <Camera size={16} className="sm:mr-1" />
             <span className="hidden sm:inline">Image</span>
           </Button>
           <Button
