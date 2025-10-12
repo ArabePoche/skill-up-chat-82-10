@@ -38,7 +38,15 @@ export const usePostComments = (postId: string) => {
         return [];
       }
 
-      return data || [];
+      // Normaliser replied_to_profile (tableau vers objet unique)
+      const normalizedData = (data || []).map(comment => ({
+        ...comment,
+        replied_to_profile: Array.isArray(comment.replied_to_profile) 
+          ? comment.replied_to_profile[0] 
+          : comment.replied_to_profile
+      }));
+
+      return normalizedData;
     },
     enabled: !!postId,
   });
