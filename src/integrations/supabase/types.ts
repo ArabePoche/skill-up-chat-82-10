@@ -1562,6 +1562,35 @@ export type Database = {
           },
         ]
       }
+      post_comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comments: {
         Row: {
           content: string
@@ -1570,6 +1599,7 @@ export type Database = {
           likes_count: number
           parent_comment_id: string | null
           post_id: string
+          replied_to_user_id: string | null
           replies_count: number
           user_id: string
         }
@@ -1580,6 +1610,7 @@ export type Database = {
           likes_count?: number
           parent_comment_id?: string | null
           post_id: string
+          replied_to_user_id?: string | null
           replies_count?: number
           user_id: string
         }
@@ -1590,6 +1621,7 @@ export type Database = {
           likes_count?: number
           parent_comment_id?: string | null
           post_id?: string
+          replied_to_user_id?: string | null
           replies_count?: number
           user_id?: string
         }
