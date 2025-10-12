@@ -36,9 +36,9 @@ export const usePostComments = (postId: string) => {
     enabled: !!postId,
   });
 
-  // Ajouter un commentaire
+  // Ajouter un commentaire ou une réponse
   const addCommentMutation = useMutation({
-    mutationFn: async ({ content }: { content: string }) => {
+    mutationFn: async ({ content, parentCommentId }: { content: string; parentCommentId?: string }) => {
       if (!user?.id) throw new Error('Utilisateur non connecté');
 
       const { data, error } = await supabase
@@ -47,6 +47,7 @@ export const usePostComments = (postId: string) => {
           post_id: postId,
           user_id: user.id,
           content,
+          parent_comment_id: parentCommentId || null,
         })
         .select(`
           *,
@@ -84,9 +85,9 @@ export const usePostComments = (postId: string) => {
     },
   });
 
-  const addComment = async (content: string): Promise<boolean> => {
+  const addComment = async (content: string, parentCommentId?: string): Promise<boolean> => {
     try {
-      await addCommentMutation.mutateAsync({ content });
+      await addCommentMutation.mutateAsync({ content, parentCommentId });
       return true;
     } catch (error) {
       console.error('Échec ajout commentaire:', error);
