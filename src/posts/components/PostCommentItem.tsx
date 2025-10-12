@@ -55,10 +55,10 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
     if (!replyContent.trim()) return;
 
     setIsSubmitting(true);
-    // Si on est au niveau 0 (commentaire principal), on répond au commentaire
-    // Si on est au niveau 1 (réponse), on répond au commentaire principal mais en mentionnant l'auteur de cette réponse
-    const targetParentId = level === 0 ? comment.id : mainCommentId || comment.id;
-    const repliedToUserId = level === 0 ? undefined : comment.user_id;
+    // Toutes les réponses ont pour parent le commentaire principal
+    const targetParentId = mainCommentId || comment.id;
+    // On indique à qui on répond pour l'affichage
+    const repliedToUserId = comment.user_id;
     
     const success = await onReply(replyContent, targetParentId, repliedToUserId);
     if (success) {
@@ -120,7 +120,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
 
         {/* Actions */}
         <div className="flex items-center space-x-4 mt-1 ml-2">
-          {level < 1 && currentUserId && (
+          {currentUserId && (
             <Button
               variant="ghost"
               size="sm"
@@ -131,7 +131,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
               Répondre
             </Button>
           )}
-          {replies.length > 0 && (
+          {level === 0 && replies.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -179,7 +179,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
           </form>
         )}
 
-        {/* Réponses imbriquées - seulement niveau 1 */}
+        {/* Réponses - toutes au même niveau sous le commentaire principal */}
         {level === 0 && showReplies && replies.length > 0 && (
           <div className="mt-3 space-y-3">
             {replies.map((reply) => (
