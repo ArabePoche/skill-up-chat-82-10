@@ -121,7 +121,7 @@ const Messages = () => {
       {/* Header */}
       <div className="bg-edu-whatsapp-green text-white p-4 sticky top-0 md:top-16">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Messages & Notifications</h1>
+          <h1 className="text-xl font-semibold">Discussions & Notifications</h1>
           <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
             <MoreVertical size={20} />
           </button>
