@@ -74,8 +74,12 @@ const PostComments: React.FC<PostCommentsProps> = ({
     }
   };
 
-  const handleReply = async (content: string, parentCommentId: string): Promise<boolean> => {
-    return await addComment(content, parentCommentId);
+  const handleReply = async (
+    content: string, 
+    parentCommentId: string,
+    repliedToUserId?: string
+  ): Promise<boolean> => {
+    return await addComment(content, parentCommentId, repliedToUserId);
   };
 
   const handleDeleteComment = async (commentId: string) => {
