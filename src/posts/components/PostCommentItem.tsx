@@ -22,15 +22,18 @@ interface Comment {
   replies_count?: number;
   profiles?: CommentProfile;
   replies?: Comment[];
+  replied_to_user_id?: string;
+  replied_to_profile?: CommentProfile;
 }
 
 interface PostCommentItemProps {
   comment: Comment;
   currentUserId?: string;
   onDelete: (commentId: string) => void;
-  onReply: (content: string, parentCommentId: string) => Promise<boolean>;
+  onReply: (content: string, parentCommentId: string, repliedToUserId?: string) => Promise<boolean>;
   replies?: Comment[];
   level?: number;
+  mainCommentId?: string;
 }
 
 const PostCommentItem: React.FC<PostCommentItemProps> = ({
@@ -40,6 +43,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
   onReply,
   replies = [],
   level = 0,
+  mainCommentId,
 }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
@@ -51,7 +55,12 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
     if (!replyContent.trim()) return;
 
     setIsSubmitting(true);
-    const success = await onReply(replyContent, comment.id);
+    // Si on est au niveau 0 (commentaire principal), on répond au commentaire
+    // Si on est au niveau 1 (réponse), on répond au commentaire principal mais en mentionnant l'auteur de cette réponse
+    const targetParentId = level === 0 ? comment.id : mainCommentId || comment.id;
+    const repliedToUserId = level === 0 ? undefined : comment.user_id;
+    
+    const success = await onReply(replyContent, targetParentId, repliedToUserId);
     if (success) {
       setReplyContent('');
       setShowReplyForm(false);
@@ -60,7 +69,9 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
     setIsSubmitting(false);
   };
 
-  const maxLevel = 3; // Limite la profondeur des réponses
+  const getUserDisplayName = (profile?: CommentProfile) => {
+    return profile?.first_name || profile?.username || 'Utilisateur';
+  };
 
   return (
     <div className={`flex space-x-3 group ${level > 0 ? 'ml-8 mt-3' : ''}`}>
@@ -76,7 +87,15 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center space-x-2">
               <span className="font-medium text-white text-sm">
-                {comment.profiles?.first_name || comment.profiles?.username || 'Utilisateur'}
+                {getUserDisplayName(comment.profiles)}
+                {comment.replied_to_user_id && comment.replied_to_profile && (
+                  <>
+                    <span className="mx-1 text-gray-400">🔁</span>
+                    <span className="text-gray-400">
+                      {getUserDisplayName(comment.replied_to_profile)}
+                    </span>
+                  </>
+                )}
               </span>
               <span className="text-xs text-gray-400">
                 {formatDistanceToNow(new Date(comment.created_at), {
@@ -101,7 +120,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
 
         {/* Actions */}
         <div className="flex items-center space-x-4 mt-1 ml-2">
-          {level < maxLevel && currentUserId && (
+          {level < 1 && currentUserId && (
             <Button
               variant="ghost"
               size="sm"
@@ -160,8 +179,8 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
           </form>
         )}
 
-        {/* Réponses imbriquées */}
-        {showReplies && replies.length > 0 && (
+        {/* Réponses imbriquées - seulement niveau 1 */}
+        {level === 0 && showReplies && replies.length > 0 && (
           <div className="mt-3 space-y-3">
             {replies.map((reply) => (
               <PostCommentItem
@@ -170,8 +189,9 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
                 currentUserId={currentUserId}
                 onDelete={onDelete}
                 onReply={onReply}
-                replies={reply.replies || []}
-                level={level + 1}
+                replies={[]}
+                level={1}
+                mainCommentId={comment.id}
               />
             ))}
           </div>
