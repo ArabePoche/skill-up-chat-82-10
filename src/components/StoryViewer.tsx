@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Send, Eye } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Send, Eye, Mic } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [showViewersModal, setShowViewersModal] = useState(false);
+  const [mediaDuration, setMediaDuration] = useState<number>(10); // Durée par défaut de 10s pour texte/image
   const markAsViewed = useMarkStoryAsViewed();
   const { user } = useAuth();
   const story = stories[currentStoryIndex];
@@ -50,6 +51,14 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     if (isPaused) return;
     
     setProgress(0);
+    // Réinitialiser la durée par défaut pour les nouvelles stories
+    if (story.content_type === 'text' || story.content_type === 'image') {
+      setMediaDuration(10);
+    }
+    
+    // Calculer l'intervalle basé sur la durée du média
+    const intervalTime = (mediaDuration * 1000) / 100; // Diviser la durée totale en 100 étapes
+    
     const timer = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
@@ -58,10 +67,10 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         }
         return prev + 1;
       });
-    }, 100);
+    }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [currentStoryIndex, onNext, isPaused]);
+  }, [currentStoryIndex, onNext, isPaused, mediaDuration, story.content_type]);
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date();
@@ -256,9 +265,30 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
               src={story.media_url}
               className="max-w-full max-h-full object-contain rounded-lg"
               autoPlay
-              muted
-              loop
+              playsInline
+              onLoadedMetadata={(e) => {
+                const duration = e.currentTarget.duration;
+                setMediaDuration(duration);
+              }}
             />
+          )}
+
+          {story.content_type === 'audio' && (
+            <div className="w-full max-w-xs p-8 bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl shadow-lg flex flex-col items-center justify-center space-y-6">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                <Mic size={40} className="text-primary" />
+              </div>
+              <audio
+                src={story.media_url}
+                autoPlay
+                onLoadedMetadata={(e) => {
+                  const duration = e.currentTarget.duration;
+                  setMediaDuration(duration);
+                }}
+                className="w-full"
+              />
+              <p className="text-white/70 text-sm text-center">Message vocal</p>
+            </div>
           )}
         </div>
       </div>
