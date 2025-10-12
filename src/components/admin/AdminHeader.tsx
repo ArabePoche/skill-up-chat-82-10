@@ -14,11 +14,13 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
   const { data: stats } = useQuery({
     queryKey: ['admin-header-stats'],
     queryFn: async () => {
+      // Calculer les utilisateurs en ligne (actifs dans les 5 dernières minutes)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      
       const [usersResult, countriesResult, onlineUsersResult, studentsResult] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact' }),
         supabase.from('profiles').select('country').not('country', 'is', null),
-        // Simuler les utilisateurs en ligne - à remplacer par une vraie logique de présence
-        supabase.from('profiles').select('id', { count: 'exact' }).limit(89),
+        supabase.from('profiles').select('id', { count: 'exact' }).gte('last_seen', fiveMinutesAgo),
         supabase.from('enrollment_requests').select('id', { count: 'exact' }).eq('status', 'approved')
       ]);
 
@@ -30,7 +32,7 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
       return {
         users: usersResult.count || 0,
         countries: uniqueCountries.size,
-        onlineUsers: 89, // Nombre simulé d'utilisateurs en ligne
+        onlineUsers: onlineUsersResult.count || 0, // Nombre réel d'utilisateurs en ligne
         students: studentsResult.count || 0
       };
     },
