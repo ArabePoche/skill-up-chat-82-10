@@ -1416,6 +1416,7 @@ export type Database = {
           message: string
           order_id: string | null
           requested_plan_type: string | null
+          sender_id: string | null
           subscription_approved_by: string | null
           subscription_plan_changed_by: string | null
           title: string
@@ -1433,6 +1434,7 @@ export type Database = {
           message: string
           order_id?: string | null
           requested_plan_type?: string | null
+          sender_id?: string | null
           subscription_approved_by?: string | null
           subscription_plan_changed_by?: string | null
           title: string
@@ -1450,6 +1452,7 @@ export type Database = {
           message?: string
           order_id?: string | null
           requested_plan_type?: string | null
+          sender_id?: string | null
           subscription_approved_by?: string | null
           subscription_plan_changed_by?: string | null
           title?: string
@@ -1477,6 +1480,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1558,7 +1568,9 @@ export type Database = {
           created_at: string
           id: string
           likes_count: number
+          parent_comment_id: string | null
           post_id: string
+          replies_count: number
           user_id: string
         }
         Insert: {
@@ -1566,7 +1578,9 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          parent_comment_id?: string | null
           post_id: string
+          replies_count?: number
           user_id: string
         }
         Update: {
@@ -1574,10 +1588,19 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          parent_comment_id?: string | null
           post_id?: string
+          replies_count?: number
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "post_comments_post_id_fkey"
             columns: ["post_id"]
