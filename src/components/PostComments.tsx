@@ -36,31 +36,18 @@ const PostComments: React.FC<PostCommentsProps> = ({
     }
   }, [openTrigger]);
 
-  // Organiser les commentaires hiérarchiquement de manière récursive
+  // Organiser les commentaires : commentaires principaux avec toutes leurs réponses au même niveau
   const organizedComments = useMemo(() => {
     if (!Array.isArray(comments)) return [];
     
-    const repliesMap = new Map<string, any[]>();
-    
-    // Grouper tous les commentaires par parent_comment_id
-    comments.forEach(comment => {
-      if (comment.parent_comment_id) {
-        if (!repliesMap.has(comment.parent_comment_id)) {
-          repliesMap.set(comment.parent_comment_id, []);
-        }
-        repliesMap.get(comment.parent_comment_id)?.push(comment);
-      }
-    });
-    
-    // Fonction récursive pour attacher les réponses
-    const attachReplies = (comment: any): any => ({
-      ...comment,
-      replies: (repliesMap.get(comment.id) || []).map(attachReplies)
-    });
-    
-    // Récupérer les commentaires de premier niveau et attacher récursivement leurs réponses
+    // Récupérer les commentaires de premier niveau
     const topLevelComments = comments.filter(c => !c.parent_comment_id);
-    return topLevelComments.map(attachReplies);
+    
+    // Pour chaque commentaire principal, attacher toutes ses réponses (sans imbrication)
+    return topLevelComments.map(comment => ({
+      ...comment,
+      replies: comments.filter(c => c.parent_comment_id === comment.id)
+    }));
   }, [comments]);
 
   const handleAddComment = async (e: React.FormEvent) => {
