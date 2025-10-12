@@ -47,8 +47,13 @@ const StoriesSection = () => {
       groups[userId].stories.push(story);
     });
     
-    // Vérifier si l'utilisateur a vu TOUTES les stories de chaque utilisateur
+    // Trier les stories de chaque groupe par date (plus récente en dernier)
     Object.values(groups).forEach((group) => {
+      group.stories.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      
+      // Vérifier si l'utilisateur a vu TOUTES les stories de chaque utilisateur
       const allViewed = group.stories.every((story) => 
         story.story_views?.some(view => view.viewer_id === user?.id)
       );
@@ -58,8 +63,12 @@ const StoriesSection = () => {
     return Object.values(groups);
   }, [stories, user?.id]);
 
-  // Stories de l'utilisateur connecté
-  const myStories = stories.filter(story => story.user_id === user?.id);
+  // Stories de l'utilisateur connecté (triées par date)
+  const myStories = React.useMemo(() => {
+    return stories
+      .filter(story => story.user_id === user?.id)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }, [stories, user?.id]);
 
   const formatUserName = (userProfile: any) => {
     if (!userProfile) return 'Utilisateur';
