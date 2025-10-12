@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Camera, Type, Mic } from 'lucide-react';
+import { X, Camera, Type, Mic, Video} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -116,32 +116,32 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
             size="sm"
             onClick={() => setContentType('text')}
           >
-            <Type size={16} className="mr-1" />
-            Texte
+            <Type size={16} className="sm:mr-1" />
+            <span className="hidden sm:inline">Texte</span>
           </Button>
           <Button
             variant={contentType === 'image' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setContentType('image')}
           >
-            <Camera size={16} className="mr-1" />
-            Image
+            <Video size={16} className="sm:mr-1" />
+            <span className="hidden sm:inline">Image</span>
           </Button>
           <Button
             variant={contentType === 'video' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setContentType('video')}
           >
-            <Camera size={16} className="mr-1" />
-            Vidéo
+            <Video size={16} className="sm:mr-1" />
+            <span className="hidden sm:inline">Vidéo</span>
           </Button>
           <Button
             variant={contentType === 'audio' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setContentType('audio')}
           >
-            <Mic size={16} className="mr-1" />
-            Vocal
+            <Mic size={16} className="sm:mr-1" />
+            <span className="hidden sm:inline">Vocal</span>
           </Button>
         </div>
 
