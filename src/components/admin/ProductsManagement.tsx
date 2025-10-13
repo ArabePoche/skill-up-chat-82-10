@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -7,13 +6,49 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import ProductImageUpload from './ProductImageUpload';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 const ProductsManagement = () => {
   const queryClient = useQueryClient();
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [productImages, setProductImages] = useState<File[]>([]);
+  const { uploadFile, isUploading } = useFileUpload();
+  
+  // Récupérer les catégories
+  const { data: categories, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_categories')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Récupérer les types filtrés par catégorie
+  const { data: productTypes, isLoading: typesLoading } = useQuery({
+    queryKey: ['product-types', selectedCategory],
+    queryFn: async () => {
+      if (!selectedCategory) return [];
+      const { data, error } = await supabase
+        .from('product_types')
+        .select('*')
+        .eq('category_id', selectedCategory)
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedCategory,
+  });
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -34,22 +69,62 @@ const ProductsManagement = () => {
       description: string;
       price: number;
       category_id: string;
-      image_url: string;
       is_active: boolean;
       product_type: 'formation' | 'article' | 'service';
+      characteristics?: string;
+      stock?: number;
+      condition?: 'new' | 'used';
+      size?: string;
+      color?: string;
+      delivery_available?: boolean;
+      images?: File[];
     }) => {
-      const { data, error } = await supabase
+      // Créer le produit
+      const { data: product, error: productError } = await supabase
         .from('products')
-        .insert(productData)
+        .insert({
+          title: productData.title,
+          description: productData.description,
+          price: productData.price,
+          category_id: productData.category_id,
+          is_active: productData.is_active,
+          product_type: productData.product_type,
+          characteristics: productData.characteristics,
+          stock: productData.stock,
+          condition: productData.condition,
+          size: productData.size,
+          color: productData.color,
+          delivery_available: productData.delivery_available,
+        })
         .select()
         .single();
 
-      if (error) throw error;
-      return { id: data.id, data };
+      if (productError) throw productError;
+
+      // Upload des images si présentes
+      if (productData.images && productData.images.length > 0) {
+        const uploadPromises = productData.images.map(async (file, index) => {
+          const uploadResult = await uploadFile(file, 'product-images');
+          
+          return supabase
+            .from('product_media')
+            .insert({
+              product_id: product.id,
+              media_url: uploadResult.fileUrl,
+              media_type: 'image',
+              display_order: index,
+            });
+        });
+
+        await Promise.all(uploadPromises);
+      }
+
+      return { id: product.id, data: product };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast.success('Produit créé avec succès');
+      setProductImages([]);
     },
     onError: (error) => {
       toast.error('Erreur lors de la création du produit');
@@ -106,31 +181,56 @@ const ProductsManagement = () => {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>, isEdit = false, productId?: string) => {
     event.preventDefault();
+    
+    if (!selectedCategory) {
+      toast.error('Veuillez sélectionner une catégorie');
+      return;
+    }
+    
+    if (!selectedType) {
+      toast.error('Veuillez sélectionner un type de produit');
+      return;
+    }
+    
     const formData = new FormData(event.currentTarget);
     
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const price = parseFloat(formData.get('price') as string) || 0;
-    const category_id = formData.get('category') as string;
-    const image_url = formData.get('image_url') as string;
-    const is_active = formData.get('is_active') === 'true';
-    const product_type = formData.get('product_type') as 'formation' | 'article' | 'service';
+    const is_active = formData.get('is_active') === 'on';
+    const characteristics = formData.get('characteristics') as string;
+    const stock = parseInt(formData.get('stock') as string) || 0;
+    const condition = formData.get('condition') as 'new' | 'used';
+    const size = formData.get('size') as string;
+    const color = formData.get('color') as string;
+    const delivery_available = formData.get('delivery_available') === 'on';
 
     const productData = {
       title,
       description,
       price,
-      category_id,
-      image_url,
+      category_id: selectedCategory,
       is_active,
-      product_type
+      product_type: selectedType as 'formation' | 'article' | 'service',
+      characteristics,
+      stock,
+      condition,
+      size,
+      color,
+      delivery_available,
+      images: productImages,
     };
 
     if (isEdit && productId) {
-      updateProductMutation.mutate({ id: productId, data: productData });
+      updateProductMutation.mutate({ id: productId, data: productData as any });
     } else {
       createProductMutation.mutate(productData);
     }
+    
+    // Reset après soumission
+    setSelectedCategory('');
+    setSelectedType('');
+    setProductImages([]);
   };
 
   const handleDelete = (id: string) => {
@@ -158,7 +258,7 @@ const ProductsManagement = () => {
             <DialogHeader>
               <DialogTitle>Créer un nouveau produit</DialogTitle>
             </DialogHeader>
-            <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
+            <form onSubmit={(e) => handleSubmit(e)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
               <div>
                 <label className="block text-sm font-medium mb-1">Nom</label>
                 <Input name="title" required />
@@ -167,32 +267,135 @@ const ProductsManagement = () => {
                 <label className="block text-sm font-medium mb-1">Description</label>
                 <Textarea name="description" required />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Prix (€)</label>
-                <Input name="price" type="number" min="0" step="0.01" required />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Prix (€)</label>
+                  <Input name="price" type="number" min="0" step="0.01" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Stock</label>
+                  <Input name="stock" type="number" min="0" defaultValue="0" />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Catégorie</label>
-                <Input name="category" required />
+                <label className="block text-sm font-medium mb-2">Catégorie</label>
+                <Select 
+                  value={selectedCategory} 
+                  onValueChange={(value) => {
+                    setSelectedCategory(value);
+                    setSelectedType(''); // Reset type quand catégorie change
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoriesLoading ? (
+                      <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                    ) : categories && categories.length > 0 ? (
+                      categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="empty" disabled>Aucune catégorie disponible</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
+              
               <div>
-                <label className="block text-sm font-medium mb-1">URL de l'image</label>
-                <Input name="image_url" type="url" />
+                <label className="block text-sm font-medium mb-2">Type de produit</label>
+                <Select 
+                  value={selectedType} 
+                  onValueChange={setSelectedType}
+                  disabled={!selectedCategory}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !selectedCategory 
+                        ? "Sélectionnez d'abord une catégorie" 
+                        : "Sélectionner un type"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typesLoading ? (
+                      <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                    ) : productTypes && productTypes.length > 0 ? (
+                      productTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.name}>
+                          {type.label || type.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="empty" disabled>Aucun type disponible pour cette catégorie</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Taille</label>
+                  <Input name="size" placeholder="Ex: M, L, XL" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Couleur</label>
+                  <Input name="color" placeholder="Ex: Bleu, Rouge" />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">Type de produit</label>
-                <select name="product_type" className="w-full border border-gray-300 rounded px-3 py-2" required>
-                  <option value="formation">Formation</option>
-                  <option value="article">Article</option>
-                  <option value="service">Service</option>
-                </select>
+                <label className="block text-sm font-medium mb-2">État</label>
+                <Select name="condition" defaultValue="new">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">Neuf</SelectItem>
+                    <SelectItem value="used">Seconde main</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" name="is_active" id="is_active" defaultChecked />
-                <label htmlFor="is_active" className="text-sm font-medium">Produit actif</label>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Caractéristiques</label>
+                <Textarea 
+                  name="characteristics" 
+                  placeholder="Décrivez les caractéristiques du produit..."
+                  rows={3}
+                />
               </div>
-              <Button type="submit" className="w-full">
-                Créer le produit
+
+              <ProductImageUpload
+                images={productImages}
+                onImagesChange={setProductImages}
+                maxImages={5}
+              />
+
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" name="delivery_available" id="delivery_available" />
+                  <label htmlFor="delivery_available" className="text-sm font-medium">
+                    Livraison disponible
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" name="is_active" id="is_active" defaultChecked />
+                  <label htmlFor="is_active" className="text-sm font-medium">
+                    Produit actif
+                  </label>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isUploading}
+              >
+                {isUploading ? 'Upload en cours...' : 'Créer le produit'}
               </Button>
             </form>
           </DialogContent>
