@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { UserX } from 'lucide-react';
+import { UserX, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /**
  * Liste des amis (demandes acceptées)
@@ -16,6 +26,7 @@ interface FriendsListProps {
 
 const FriendsList: React.FC<FriendsListProps> = ({ userId }) => {
   const navigate = useNavigate();
+  const [friendToRemove, setFriendToRemove] = useState<{ id: string; name: string } | null>(null);
 
   const { data: friends = [], isLoading, refetch } = useQuery({
     queryKey: ['friends-list', userId],
@@ -113,16 +124,56 @@ const FriendsList: React.FC<FriendsListProps> = ({ userId }) => {
               <p className="text-xs text-muted-foreground">@{friendData?.username}</p>
             </div>
 
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleRemove(item.id)}
-            >
-              <UserX size={16} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate(`/conversations/${friendData?.id}`)}
+                className="text-blue-500 hover:text-blue-600"
+              >
+                <MessageCircle size={16} />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setFriendToRemove({ 
+                  id: item.id, 
+                  name: `${friendData?.first_name || ''} ${friendData?.last_name || ''}`.trim() || friendData?.username || 'Cet ami'
+                })}
+              >
+                <UserX size={16} />
+              </Button>
+            </div>
           </div>
         );
       })}
+
+      {/* Dialog de confirmation de retrait d'ami */}
+      <AlertDialog open={!!friendToRemove} onOpenChange={(open) => !open && setFriendToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retirer cet ami ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir retirer {friendToRemove?.name} de votre liste d'amis ?
+              Vous devrez envoyer une nouvelle demande pour redevenir amis.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (friendToRemove) {
+                  handleRemove(friendToRemove.id);
+                  setFriendToRemove(null);
+                }
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Retirer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
