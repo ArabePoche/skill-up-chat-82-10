@@ -1795,42 +1795,6 @@ export type Database = {
         }
         Relationships: []
       }
-      product_category_types: {
-        Row: {
-          category_id: string
-          created_at: string | null
-          id: string
-          type_id: string
-        }
-        Insert: {
-          category_id: string
-          created_at?: string | null
-          id?: string
-          type_id: string
-        }
-        Update: {
-          category_id?: string
-          created_at?: string | null
-          id?: string
-          type_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_category_types_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "product_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_category_types_type_id_fkey"
-            columns: ["type_id"]
-            isOneToOne: false
-            referencedRelation: "product_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       product_images: {
         Row: {
           created_at: string | null
@@ -1869,8 +1833,44 @@ export type Database = {
           },
         ]
       }
+      product_media: {
+        Row: {
+          created_at: string | null
+          display_order: number | null
+          id: string
+          media_type: string | null
+          media_url: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          media_type?: string | null
+          media_url: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          media_type?: string | null
+          media_url?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_media_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_types: {
         Row: {
+          category_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -1879,6 +1879,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1887,6 +1888,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1894,7 +1896,15 @@ export type Database = {
           name?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_types_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -1902,7 +1912,11 @@ export type Database = {
           badge: string | null
           barcode: string | null
           category_id: string | null
+          characteristics: string | null
+          color: string | null
+          condition: string | null
           created_at: string | null
+          delivery_available: boolean | null
           description: string | null
           discount_percentage: number | null
           id: string
@@ -1920,7 +1934,9 @@ export type Database = {
           quantity: number | null
           rating: number | null
           selling_price: number | null
+          size: string | null
           sku: string | null
+          stock: number | null
           students_count: number | null
           title: string
           unit: string | null
@@ -1931,7 +1947,11 @@ export type Database = {
           badge?: string | null
           barcode?: string | null
           category_id?: string | null
+          characteristics?: string | null
+          color?: string | null
+          condition?: string | null
           created_at?: string | null
+          delivery_available?: boolean | null
           description?: string | null
           discount_percentage?: number | null
           id?: string
@@ -1949,7 +1969,9 @@ export type Database = {
           quantity?: number | null
           rating?: number | null
           selling_price?: number | null
+          size?: string | null
           sku?: string | null
+          stock?: number | null
           students_count?: number | null
           title: string
           unit?: string | null
@@ -1960,7 +1982,11 @@ export type Database = {
           badge?: string | null
           barcode?: string | null
           category_id?: string | null
+          characteristics?: string | null
+          color?: string | null
+          condition?: string | null
           created_at?: string | null
+          delivery_available?: boolean | null
           description?: string | null
           discount_percentage?: number | null
           id?: string
@@ -1978,7 +2004,9 @@ export type Database = {
           quantity?: number | null
           rating?: number | null
           selling_price?: number | null
+          size?: string | null
           sku?: string | null
+          stock?: number | null
           students_count?: number | null
           title?: string
           unit?: string | null
