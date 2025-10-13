@@ -1,0 +1,9 @@
+-- Ajouter la colonne category_id à product_types pour établir la relation
+ALTER TABLE public.product_types 
+ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES public.product_categories(id) ON DELETE CASCADE;
+
+-- Créer un index pour optimiser les requêtes filtrées par catégorie
+CREATE INDEX IF NOT EXISTS idx_product_types_category_id ON public.product_types(category_id);
+
+-- Mettre à jour les politiques RLS si nécessaire
+-- Les politiques existantes devraient continuer à fonctionner
