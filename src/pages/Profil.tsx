@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { Menu, Edit, ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
+import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserEnrollments } from '@/hooks/useFormations';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -64,6 +74,7 @@ const Profil = () => {
   const { friendshipStatus, sendRequest, acceptRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(viewedUserId);
   const { data: friendsCount = 0 } = useFollowersCount(viewedUserId);
   const { data: pendingSentCount = 0 } = usePendingSentRequests(viewedUserId);
+  const [showRemoveFriendDialog, setShowRemoveFriendDialog] = useState(false);
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -163,14 +174,23 @@ const Profil = () => {
         {!isOwnProfile && (
           <div className="px-4 pb-4">
             {friendshipStatus === 'friends' ? (
-              <Button
-                onClick={() => removeFriend()}
-                disabled={isFollowLoading}
-                className="w-full bg-green-500 hover:bg-green-600"
-              >
-                <UserCheck size={18} className="mr-2" />
-                Amis
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => navigate(`/conversations/${viewedUserId}`)}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600"
+                >
+                  <MessageCircle size={18} className="mr-2" />
+                  Discuter
+                </Button>
+                <Button
+                  onClick={() => setShowRemoveFriendDialog(true)}
+                  disabled={isFollowLoading}
+                  className="flex-1 bg-green-500 hover:bg-green-600"
+                >
+                  <UserCheck size={18} className="mr-2" />
+                  Amis
+                </Button>
+              </div>
             ) : friendshipStatus === 'pending_sent' ? (
               <Button
                 onClick={() => cancelRequest()}
@@ -249,6 +269,31 @@ const Profil = () => {
           />
         </>
       )}
+
+      {/* Dialog de confirmation de retrait d'ami */}
+      <AlertDialog open={showRemoveFriendDialog} onOpenChange={setShowRemoveFriendDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retirer cet ami ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir retirer {profile?.first_name} {profile?.last_name} de votre liste d'amis ?
+              Vous devrez envoyer une nouvelle demande pour redevenir amis.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                removeFriend();
+                setShowRemoveFriendDialog(false);
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Retirer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
