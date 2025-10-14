@@ -21,7 +21,6 @@ interface PaymentRequestNotificationCardProps {
     formation_id: string;
     created_at: string;
     order_id?: string; // Id de la demande dans student_payment (stocké dans notifications.order_id)
-    confirmed_by?: string; // Id de l'admin qui a traité la demande
     user_info?: {
       first_name?: string;
       last_name?: string;
@@ -61,6 +60,22 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
       return data as { id: string; title?: string };
     },
     enabled: !!notification.formation_id,
+  });
+
+  // Charger les détails du paiement si traité
+  const { data: paymentDetails } = useQuery({
+    queryKey: ['payment-details', notification.order_id],
+    queryFn: async () => {
+      if (!notification.order_id) return null;
+      const { data, error } = await supabase
+        .from('student_payment')
+        .select('amount, payment_method, payment_date, comment, days_added, hours_added')
+        .eq('id', notification.order_id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!notification.order_id && !!notification.approved_by_admin,
   });
 
   // Calculer le prix par jour basé sur l'abonnement réel de l'élève
@@ -158,23 +173,9 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
   const userName = `${notification.user_info?.first_name || ''} ${notification.user_info?.last_name || ''}`.trim() || 'Élève';
   const formationTitle = notification.formation_info?.title || formation?.title || 'Formation';
 
-  // Charger les infos de l'admin qui a confirmé (si traité)
-  const { data: confirmedByAdmin } = useQuery({
-    queryKey: ['admin-profile', notification.confirmed_by],
-    queryFn: async () => {
-      if (!notification.confirmed_by) return null;
-      const { data } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', notification.confirmed_by)
-        .single();
-      return data;
-    },
-    enabled: !!notification.confirmed_by,
-  });
-
-  // Vérifier si la demande a été traitée
-  const isProcessed = !!notification.confirmed_by;
+  // Vérifier si la demande a été traitée (utiliser approved_by_admin directement)
+  const isProcessed = !!notification.approved_by_admin;
+  const confirmedByAdmin = notification.approved_by_admin;
 
   return (
     <Card className={`border-2 ${isProcessed ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
@@ -186,7 +187,7 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
           </CardTitle>
           {confirmedByAdmin && (
             <Badge className="bg-green-100 text-green-700 border-green-300">
-              Effectué par {confirmedByAdmin.first_name} {confirmedByAdmin.last_name}
+              Traité par {confirmedByAdmin.first_name} {confirmedByAdmin.last_name}
             </Badge>
           )}
         </div>
@@ -212,16 +213,52 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
           </div>
         </div>
 
-        {/* Si traité, afficher un message de confirmation au lieu du formulaire */}
+        {/* Si traité, afficher les détails du paiement au lieu du formulaire */}
         {isProcessed ? (
-          <div className="p-4 bg-white rounded-lg">
-            <div className="flex items-center gap-2 text-green-700 mb-2">
-              <CheckCircle className="w-5 h-5" />
-              <p className="font-medium">Cette demande a été traitée avec succès</p>
+          <div className="space-y-4">
+            <div className="p-4 bg-white rounded-lg">
+              <div className="flex items-center gap-2 text-green-700 mb-3">
+                <CheckCircle className="w-5 h-5" />
+                <p className="font-medium">Cette demande a été traitée avec succès</p>
+              </div>
+              
+              {paymentDetails && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Montant payé</p>
+                    <p className="font-semibold text-lg">{paymentDetails.amount?.toLocaleString()} F</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Crédité</p>
+                    <p className="font-semibold text-lg">
+                      {paymentDetails.days_added} jour(s)
+                      {paymentDetails.hours_added > 0 && ` + ${paymentDetails.hours_added}h`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Méthode de paiement</p>
+                    <p className="font-medium">
+                      {paymentDetails.payment_method === 'cash' && 'Espèces'}
+                      {paymentDetails.payment_method === 'mobile_money' && 'Mobile Money'}
+                      {paymentDetails.payment_method === 'bank_transfer' && 'Virement'}
+                      {paymentDetails.payment_method === 'other' && 'Autre'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Date du paiement</p>
+                    <p className="font-medium">
+                      {paymentDetails.payment_date && new Date(paymentDetails.payment_date).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                  {paymentDetails.comment && (
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-gray-500">Référence / Note</p>
+                      <p className="font-medium">{paymentDetails.comment}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <p className="text-sm text-gray-600">
-              Le paiement a été enregistré et les jours ont été crédités sur le compte de l'élève.
-            </p>
           </div>
         ) : (
           <>
