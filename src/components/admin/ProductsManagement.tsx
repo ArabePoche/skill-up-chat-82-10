@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ProductImageUpload from './ProductImageUpload';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { useUserRole } from '@/hooks/useAuth';
 
 const ProductsManagement = () => {
   const queryClient = useQueryClient();
@@ -20,6 +21,7 @@ const ProductsManagement = () => {
   const [selectedType, setSelectedType] = useState<string>('');
   const [productImages, setProductImages] = useState<File[]>([]);
   const { uploadFile, isUploading } = useFileUpload();
+  const { data: userRole, isLoading: isLoadingRole } = useUserRole();
   
   // Récupérer les catégories
   const { data: categories, isLoading: categoriesLoading } = useQuery({
@@ -68,7 +70,8 @@ const ProductsManagement = () => {
       title: string;
       description: string;
       price: number;
-      category_id: string;
+      product_category_id: string;
+      product_type_id: string;
       is_active: boolean;
       product_type: 'formation' | 'article' | 'service';
       characteristics?: string;
@@ -86,7 +89,8 @@ const ProductsManagement = () => {
           title: productData.title,
           description: productData.description,
           price: productData.price,
-          category_id: productData.category_id,
+          product_category_id: productData.product_category_id,
+          product_type_id: productData.product_type_id,
           is_active: productData.is_active,
           product_type: productData.product_type,
           characteristics: productData.characteristics,
@@ -205,13 +209,19 @@ const ProductsManagement = () => {
     const color = formData.get('color') as string;
     const delivery_available = formData.get('delivery_available') === 'on';
 
+    // Déterminer le product_type basé sur le type sélectionné
+    const productType: 'formation' | 'article' | 'service' = 
+      selectedType.toLowerCase().includes('formation') ? 'formation' :
+      selectedType.toLowerCase().includes('service') ? 'service' : 'article';
+
     const productData = {
       title,
       description,
       price,
-      category_id: selectedCategory,
+      product_category_id: selectedCategory,
+      product_type_id: selectedType,
       is_active,
-      product_type: selectedType as 'formation' | 'article' | 'service',
+      product_type: productType,
       characteristics,
       stock,
       condition,
@@ -239,7 +249,7 @@ const ProductsManagement = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingRole) {
     return <div className="text-center py-8">Chargement des produits...</div>;
   }
 
@@ -247,13 +257,14 @@ const ProductsManagement = () => {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Gestion des produits</CardTitle>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-[#25d366] hover:bg-[#25d366]/90">
-              <Plus size={16} className="mr-2" />
-              Nouveau produit
-            </Button>
-          </DialogTrigger>
+        {userRole?.isAdmin && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-[#25d366] hover:bg-[#25d366]/90">
+                <Plus size={16} className="mr-2" />
+                Nouveau produit
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Créer un nouveau produit</DialogTitle>
@@ -325,7 +336,7 @@ const ProductsManagement = () => {
                       <SelectItem value="loading" disabled>Chargement...</SelectItem>
                     ) : productTypes && productTypes.length > 0 ? (
                       productTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.name}>
+                        <SelectItem key={type.id} value={type.id}>
                           {type.label || type.name}
                         </SelectItem>
                       ))
@@ -400,6 +411,7 @@ const ProductsManagement = () => {
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </CardHeader>
       <CardContent>
         <Table>
