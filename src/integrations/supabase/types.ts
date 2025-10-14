@@ -1482,7 +1482,7 @@ export type Database = {
             foreignKeyName: "notifications_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
-            referencedRelation: "orders"
+            referencedRelation: "student_payment"
             referencedColumns: ["id"]
           },
           {
