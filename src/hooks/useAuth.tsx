@@ -139,3 +139,35 @@ export const useAuth = () => {
   }
   return context;
 };
+
+/**
+ * Hook pour vérifier le rôle de l'utilisateur authentifié
+ */
+export const useUserRole = () => {
+  return useQuery({
+    queryKey: ['user-role'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return { role: null, isAdmin: false };
+      }
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user role:', error);
+        return { role: null, isAdmin: false };
+      }
+
+      return {
+        role: profile?.role,
+        isAdmin: profile?.role === 'admin'
+      };
+    },
+  });
+};
