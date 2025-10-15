@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useCallback, useEffect, createContext, useContext } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import VideoCard from '@/components/video/VideoCard';
 import { useInfiniteVideos } from '@/hooks/useInfiniteVideos';
 import ConfettiAnimation from '@/components/ConfettiAnimation';
@@ -38,17 +39,44 @@ const GlobalSoundContext = createContext<{
 export const useGlobalSound = () => useContext(GlobalSoundContext);
 
 const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { data: videos = [], fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteVideos();
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [globalMuted, setGlobalMuted] = useState(false); // Son activé par défaut
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const hasScrolledRef = useRef(false);
 
   // Contrôle global du son
   const toggleGlobalMute = () => {
     setGlobalMuted(!globalMuted);
   };
+
+  // Détecter le scroll pour changer l'URL de /video/:id vers /video
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      // Si on est sur /video/:id et qu'on commence à scroller
+      if (location.pathname.startsWith('/video/') && !hasScrolledRef.current) {
+        hasScrolledRef.current = true;
+        navigate('/video', { replace: true });
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [location.pathname, navigate]);
+
+  // Réinitialiser le flag de scroll quand on arrive sur une nouvelle vidéo via lien
+  useEffect(() => {
+    if (location.pathname.startsWith('/video/')) {
+      hasScrolledRef.current = false;
+    }
+  }, [location.pathname]);
 
   // Intersection Observer pour la lecture automatique
   useEffect(() => {
