@@ -1415,9 +1415,10 @@ export type Database = {
           is_for_all_admins: boolean
           is_read: boolean
           message: string
-          order_id: string | null
+          payment_id: string | null
           requested_plan_type: string | null
           sender_id: string | null
+          shop_order_id: string | null
           subscription_approved_by: string | null
           subscription_plan_changed_by: string | null
           title: string
@@ -1434,9 +1435,10 @@ export type Database = {
           is_for_all_admins?: boolean
           is_read?: boolean
           message: string
-          order_id?: string | null
+          payment_id?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
+          shop_order_id?: string | null
           subscription_approved_by?: string | null
           subscription_plan_changed_by?: string | null
           title: string
@@ -1453,9 +1455,10 @@ export type Database = {
           is_for_all_admins?: boolean
           is_read?: boolean
           message?: string
-          order_id?: string | null
+          payment_id?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
+          shop_order_id?: string | null
           subscription_approved_by?: string | null
           subscription_plan_changed_by?: string | null
           title?: string
@@ -1480,7 +1483,14 @@ export type Database = {
           },
           {
             foreignKeyName: "notifications_order_id_fkey"
-            columns: ["order_id"]
+            columns: ["shop_order_id"]
+            isOneToOne: false
+            referencedRelation: "student_payment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_payment_id_fkey"
+            columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "student_payment"
             referencedColumns: ["id"]
@@ -1501,6 +1511,9 @@ export type Database = {
           price: number
           product_id: string | null
           quantity: number
+          selected_color: string | null
+          selected_size: string | null
+          unit_price: number | null
         }
         Insert: {
           id?: string
@@ -1508,6 +1521,9 @@ export type Database = {
           price: number
           product_id?: string | null
           quantity: number
+          selected_color?: string | null
+          selected_size?: string | null
+          unit_price?: number | null
         }
         Update: {
           id?: string
@@ -1515,6 +1531,9 @@ export type Database = {
           price?: number
           product_id?: string | null
           quantity?: number
+          selected_color?: string | null
+          selected_size?: string | null
+          unit_price?: number | null
         }
         Relationships: [
           {
@@ -1533,32 +1552,112 @@ export type Database = {
           },
         ]
       }
-      orders: {
+      order_notifications: {
         Row: {
           created_at: string | null
           id: string
-          status: string | null
-          total_amount: number
-          user_id: string | null
+          is_read: boolean | null
+          order_id: string | null
+          seller_id: string | null
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
-          status?: string | null
-          total_amount: number
-          user_id?: string | null
+          is_read?: boolean | null
+          order_id?: string | null
+          seller_id?: string | null
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
-          status?: string | null
-          total_amount?: number
-          user_id?: string | null
+          is_read?: boolean | null
+          order_id?: string | null
+          seller_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "order_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notifications_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          buyer_notes: string | null
+          created_at: string | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_phone: string | null
+          delivery_postal_code: string | null
+          id: string
+          seller_id: string | null
+          status: string | null
+          total_amount: number
+          user_id: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          buyer_notes?: string | null
+          created_at?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_phone?: string | null
+          delivery_postal_code?: string | null
+          id?: string
+          seller_id?: string | null
+          status?: string | null
+          total_amount: number
+          user_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          buyer_notes?: string | null
+          created_at?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_phone?: string | null
+          delivery_postal_code?: string | null
+          id?: string
+          seller_id?: string | null
+          status?: string | null
+          total_amount?: number
+          user_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_validated_by_fkey"
+            columns: ["validated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1921,7 +2020,6 @@ export type Database = {
           discount_percentage: number | null
           id: string
           image_url: string | null
-          instructor_id: string | null
           is_active: boolean | null
           min_stock_level: number | null
           original_price: number | null
@@ -1933,6 +2031,7 @@ export type Database = {
           purchase_price: number | null
           quantity: number | null
           rating: number | null
+          seller_id: string | null
           selling_price: number | null
           size: string | null
           sku: string | null
@@ -1956,7 +2055,6 @@ export type Database = {
           discount_percentage?: number | null
           id?: string
           image_url?: string | null
-          instructor_id?: string | null
           is_active?: boolean | null
           min_stock_level?: number | null
           original_price?: number | null
@@ -1968,6 +2066,7 @@ export type Database = {
           purchase_price?: number | null
           quantity?: number | null
           rating?: number | null
+          seller_id?: string | null
           selling_price?: number | null
           size?: string | null
           sku?: string | null
@@ -1991,7 +2090,6 @@ export type Database = {
           discount_percentage?: number | null
           id?: string
           image_url?: string | null
-          instructor_id?: string | null
           is_active?: boolean | null
           min_stock_level?: number | null
           original_price?: number | null
@@ -2003,6 +2101,7 @@ export type Database = {
           purchase_price?: number | null
           quantity?: number | null
           rating?: number | null
+          seller_id?: string | null
           selling_price?: number | null
           size?: string | null
           sku?: string | null
@@ -2022,7 +2121,7 @@ export type Database = {
           },
           {
             foreignKeyName: "products_instructor_id_fkey"
-            columns: ["instructor_id"]
+            columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
