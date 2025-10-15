@@ -119,11 +119,11 @@ export const useNotifications = () => {
 
               // Chercher si la demande de paiement a été traitée et par qui
               let approvedByAdmin = null;
-              if (notification.order_id) {
+              if (notification.payment_id) {
                 const { data: paymentData, error: paymentError } = await supabase
                   .from('student_payment')
                   .select('created_by, status')
-                  .eq('id', notification.order_id)
+                  .eq('id', notification.payment_id)
                   .single();
 
                 if (!paymentError && paymentData?.created_by && paymentData?.status === 'processed') {
