@@ -10,14 +10,16 @@ export const useProducts = (category?: string) => {
         .from('products')
         .select(`
           *,
-          profiles:instructor_id (
-            first_name,
-            last_name,
-            username
-          ),
           categories (
             name,
             label
+          ),
+          profiles:seller_id (
+            id,
+            first_name,
+            last_name,
+            username,
+            avatar_url
           )
         `)
         .eq('is_active', true)
