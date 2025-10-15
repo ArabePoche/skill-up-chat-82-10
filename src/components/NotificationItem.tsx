@@ -20,7 +20,7 @@ interface NotificationItemProps {
     sender_id?: string;
     formation_id?: string;
     requested_plan_type?: string;
-    order_id?: string;
+    payment_id?: string;
     user_info?: {
       id: string;
       first_name: string;
@@ -69,7 +69,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
     !!notification.sender_id &&
     !notification.enrollment_id &&
     !notification.formation_id &&
-    !notification.order_id
+    !notification.payment_id
   );
 
   // Si c'est une notification de demande d'amitié
@@ -99,7 +99,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
       user_id: notification.user_id!,
       formation_id: notification.formation_id!,
       created_at: notification.created_at,
-      order_id: notification.order_id,
+      payment_id: notification.payment_id,
       user_info: notification.user_info,
       formation_info: notification.formation_info,
       approved_by_admin: notification.approved_by_admin,
