@@ -20,7 +20,7 @@ interface PaymentRequestNotificationCardProps {
     user_id: string;
     formation_id: string;
     created_at: string;
-    order_id?: string; // Id de la demande dans student_payment (stocké dans notifications.order_id)
+    payment_id?: string; // Id de la demande dans student_payment
     user_info?: {
       first_name?: string;
       last_name?: string;
@@ -64,18 +64,18 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
 
   // Charger les détails du paiement si traité
   const { data: paymentDetails } = useQuery({
-    queryKey: ['payment-details', notification.order_id],
+    queryKey: ['payment-details', notification.payment_id],
     queryFn: async () => {
-      if (!notification.order_id) return null;
+      if (!notification.payment_id) return null;
       const { data, error } = await supabase
         .from('student_payment')
         .select('amount, payment_method, payment_date, comment, days_added, hours_added')
-        .eq('id', notification.order_id)
+        .eq('id', notification.payment_id)
         .single();
       if (error) throw error;
       return data;
     },
-    enabled: !!notification.order_id && !!notification.approved_by_admin,
+    enabled: !!notification.payment_id && !!notification.approved_by_admin,
   });
 
   // Calculer le prix par jour basé sur l'abonnement réel de l'élève
@@ -109,7 +109,7 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
   const processMutation = useMutation({
     mutationFn: async () => {
       // Trouver l'id de la demande de paiement si non fourni
-      let paymentId = notification.order_id;
+      let paymentId = notification.payment_id;
       if (!paymentId) {
         const { data: paymentRow, error: findErr } = await supabase
           .from('student_payment')
