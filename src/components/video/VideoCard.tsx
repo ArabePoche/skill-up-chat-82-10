@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag } from 'lucide-react';
+import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
@@ -7,11 +7,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import VideoCommentsModal from './VideoCommentsModal';
 import VideoShareModal from './VideoShareModal';
+import SeriesEpisodesModal from './SeriesEpisodesModal';
 import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
+import { useVideoSeries } from '@/hooks/useVideoSeries';
 
 interface Video {
   id: string;
@@ -54,11 +56,13 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showSeries, setShowSeries] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
   const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id);
+  const { data: seriesData } = useVideoSeries(video.id);
 
   // Récupération dynamique du compteur de commentaires
   const { data: commentsCount = video.comments_count } = useQuery({
@@ -350,6 +354,23 @@ const VideoCard: React.FC<VideoCardProps> = ({
           </span>
         </div>
 
+        {/* Bouton Série (pour les vidéos qui appartiennent à une série) */}
+        {seriesData && (
+          <div className="flex flex-col items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSeries(true)}
+              className="w-12 h-12 rounded-full bg-primary/80 backdrop-blur-sm text-white hover:bg-primary"
+            >
+              <List size={24} />
+            </Button>
+            <span className="text-white text-xs mt-1 font-medium">
+              Série
+            </span>
+          </div>
+        )}
+
         {/* Bouton Formation (pour les vidéos promo) */}
         {video.video_type === 'promo' && video.formation_id && (
           <div className="flex flex-col items-center">
@@ -410,6 +431,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
         title={video.title}
         description={video.description}
       />
+
+      {/* Modal des épisodes de série */}
+      {seriesData && (
+        <SeriesEpisodesModal
+          isOpen={showSeries}
+          onClose={() => setShowSeries(false)}
+          seriesTitle={seriesData.series.title}
+          episodes={seriesData.episodes}
+          currentVideoId={video.id}
+        />
+      )}
     </div>
   );
 };
