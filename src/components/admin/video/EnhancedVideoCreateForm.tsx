@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { useFormations } from '@/hooks/useFormations';
 import { Upload, Link as LinkIcon } from 'lucide-react';
 
 interface EnhancedVideoCreateFormProps {
@@ -19,6 +20,7 @@ interface EnhancedVideoCreateFormProps {
 const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuccess, onCancel }) => {
   const { user } = useAuth();
   const { uploadFile, isUploading } = useFileUpload();
+  const { data: formations = [] } = useFormations();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -27,7 +29,6 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
     thumbnail_url: '',
     video_type: 'classic' as 'lesson' | 'promo' | 'classic',
     formation_id: '',
-    price: '',
   });
   
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
@@ -129,7 +130,6 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
         thumbnail_url: thumbnailUrl || null,
         video_type: formData.video_type,
         formation_id: formData.formation_id.trim() || null,
-        price: formData.price ? parseFloat(formData.price) : null,
         author_id: user?.id,
       };
 
@@ -267,32 +267,27 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
         </Select>
       </div>
 
-      {formData.video_type === 'promo' && (
-        <>
-          <div>
-            <Label htmlFor="formation_id">ID Formation</Label>
-            <Input
-              id="formation_id"
-              value={formData.formation_id}
-              onChange={(e) => handleInputChange('formation_id', e.target.value)}
-              placeholder="UUID de la formation"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="price">Prix (€/mois)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.price}
-              onChange={(e) => handleInputChange('price', e.target.value)}
-              placeholder="29.99"
-            />
-          </div>
-        </>
+      {(formData.video_type === 'promo' || formData.video_type === 'lesson') && (
+        <div>
+          <Label htmlFor="formation_id">Formation associée</Label>
+          <Select
+            value={formData.formation_id}
+            onValueChange={(value) => handleInputChange('formation_id', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner une formation" />
+            </SelectTrigger>
+            <SelectContent>
+              {formations.map((formation) => (
+                <SelectItem key={formation.id} value={formation.id}>
+                  {formation.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
+
       
       <div className="flex space-x-2">
         <Button type="submit" className="flex-1" disabled={isUploading}>
