@@ -167,7 +167,7 @@ const SuggestionsList: React.FC = () => {
             onClick={() => setDisplayCount(prev => prev + 10)}
             className="w-full"
           >
-            Voir plus
+            Afficher plus
           </Button>
         </div>
       )}
