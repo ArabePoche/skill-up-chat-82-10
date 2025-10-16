@@ -17,8 +17,9 @@ const SuggestionsList: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [sentRequests, setSentRequests] = React.useState<Set<string>>(new Set());
+  const [displayCount, setDisplayCount] = React.useState(10);
 
-  const { data: suggestions = [], isLoading, refetch } = useQuery({
+  const { data: allSuggestions = [], isLoading, refetch } = useQuery({
     queryKey: ['user-suggestions', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -40,15 +41,19 @@ const SuggestionsList: React.FC = () => {
         .from('profiles')
         .select('id, username, first_name, last_name, avatar_url')
         .not('id', 'in', `(${Array.from(existingIds).join(',')})`)
-        .limit(50); // Augmenter pour avoir plus de choix
+        .limit(100); // Récupérer plus d'utilisateurs pour la pagination
 
       if (error) throw error;
       
-      // Mélanger et prendre 10 aléatoires
-      return (data || []).sort(() => Math.random() - 0.5).slice(0, 10);
+      // Mélanger les résultats
+      return (data || []).sort(() => Math.random() - 0.5);
     },
     enabled: !!user?.id,
   });
+
+  // Utilisateurs à afficher selon displayCount
+  const suggestions = allSuggestions.slice(0, displayCount);
+  const hasMore = displayCount < allSuggestions.length;
 
   const handleSendRequest = async (targetUserId: string) => {
     if (!user?.id) return;
@@ -154,6 +159,18 @@ const SuggestionsList: React.FC = () => {
           </div>
         );
       })}
+      
+      {hasMore && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => setDisplayCount(prev => prev + 10)}
+            className="w-full"
+          >
+            Voir plus
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
