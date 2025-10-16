@@ -25,7 +25,7 @@ const Messages = () => {
   const handleConversationClick = (conversation: any) => {
     // Navigation selon le type de conversation
     if (conversation.type === 'direct_message') {
-      navigate(`/conversation/${conversation.otherUserId}`);
+      navigate(`/conversations/${conversation.otherUserId}`);
     } else if (conversation.type === 'formation_teacher' || conversation.type === 'formation_student') {
       navigate(`/cours/formation/${conversation.formationId}`);
     }
