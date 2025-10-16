@@ -76,7 +76,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
         </div>
         <h3 className="text-lg font-semibold mb-2">Aucune vidéo</h3>
         <p className="text-sm text-muted-foreground">
-          Les vidéos partagées apparaîtront ici
+          Vos vidéos créées apparaîtront ici
         </p>
       </div>
     );
