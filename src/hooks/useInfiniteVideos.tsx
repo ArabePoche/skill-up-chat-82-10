@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useRef } from 'react';
 
 interface Video {
   id: string;
@@ -24,13 +25,13 @@ interface Video {
 
 export const useInfiniteVideos = () => {
   const { user } = useAuth();
+  // Set pour tracker les vidéos déjà affichées dans cette session
+  const displayedVideosRef = useRef<Set<string>>(new Set());
 
   const query = useInfiniteQuery({
     queryKey: ['infinite-videos', user?.id],
     queryFn: async ({ pageParam = 0 }) => {
       const pageSize = 3;
-      const from = pageParam * pageSize;
-      const to = from + pageSize - 1;
 
       // Récupérer les centres d'intérêt de l'utilisateur
       let userInterests: string[] = [];
@@ -44,6 +45,9 @@ export const useInfiniteVideos = () => {
         userInterests = profile?.interests || [];
       }
 
+      // Exclure les vidéos déjà affichées dans cette session
+      const displayedIds = Array.from(displayedVideosRef.current);
+      
       // Construire la requête avec filtrage intelligent
       let query = supabase
         .from('videos')
@@ -57,8 +61,15 @@ export const useInfiniteVideos = () => {
           )
         `)
         .eq('is_active', true)
-        .neq('video_type', 'lesson') // Exclure les vidéos de type 'lesson'
-        .range(from, to);
+        .neq('video_type', 'lesson'); // Exclure les vidéos de type 'lesson'
+      
+      // Exclure les vidéos déjà vues
+      if (displayedIds.length > 0) {
+        query = query.not('id', 'in', `(${displayedIds.join(',')})`);
+      }
+      
+      // Récupérer plus de vidéos que nécessaire pour compenser le filtrage
+      query = query.limit(pageSize);
 
       // Algorithme de recommandation dynamique
       const shouldRecommendByInterests = userInterests.length > 0 && Math.random() < 0.8;
@@ -98,10 +109,18 @@ export const useInfiniteVideos = () => {
         return [];
       }
 
+      // Ajouter les nouvelles vidéos au Set des vidéos affichées
+      if (data && data.length > 0) {
+        data.forEach((video: Video) => {
+          displayedVideosRef.current.add(video.id);
+        });
+      }
+
       return data || [];
     },
     getNextPageParam: (lastPage, allPages) => {
-      // Continuer à charger tant qu'on a des résultats
+      // Continuer à charger si on a reçu le nombre complet de vidéos demandé
+      // Cela signifie qu'il y a potentiellement plus de vidéos disponibles
       return lastPage.length === 3 ? allPages.length : undefined;
     },
     initialPageParam: 0,
