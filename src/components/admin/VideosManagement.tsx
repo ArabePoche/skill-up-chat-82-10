@@ -56,12 +56,17 @@ const VideosManagement = () => {
           .delete()
           .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Delete error:', error);
+          toast.error(`Erreur lors de la suppression: ${error.message}`);
+          return;
+        }
+        
         toast.success('Vidéo supprimée avec succès');
         refetch();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error:', error);
-        toast.error('Erreur lors de la suppression');
+        toast.error(`Erreur lors de la suppression: ${error.message || 'Erreur inconnue'}`);
       }
     }
   };
