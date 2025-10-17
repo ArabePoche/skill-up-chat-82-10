@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface FriendRequestCardProps {
   notification: {
@@ -20,6 +21,7 @@ interface FriendRequestCardProps {
 const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [senderProfile, setSenderProfile] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -47,6 +49,22 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
     loadSenderProfile();
   }, [notification.sender_id]);
 
+  // Marquer automatiquement comme lue à l'affichage
+  React.useEffect(() => {
+    const markAsRead = async () => {
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notification.id);
+      
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+    };
+
+    const timer = setTimeout(markAsRead, 500);
+    return () => clearTimeout(timer);
+  }, [notification.id, queryClient]);
+
   const handleFollowBack = async () => {
     if (friendshipStatus === 'pending_received') {
       acceptRequest();
@@ -59,6 +77,9 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
       .from('notifications')
       .update({ is_read: true })
       .eq('id', notification.id);
+    
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
   };
 
   if (loading || !senderProfile) {
