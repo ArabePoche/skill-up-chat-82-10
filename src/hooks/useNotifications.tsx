@@ -225,6 +225,7 @@ export const useNotifications = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       queryClient.invalidateQueries({ queryKey: ['enrollment-requests'] });
       queryClient.invalidateQueries({ queryKey: ['admin-enrollment-requests'] });
       toast.success('Demande d\'inscription traitée avec succès');
@@ -246,6 +247,7 @@ export const useNotifications = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
     }
   });
 
