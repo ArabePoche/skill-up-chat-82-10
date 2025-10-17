@@ -99,6 +99,26 @@ const MessageList: React.FC<MessageListProps> = ({
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Fonction utilitaire pour obtenir le statut d'un exercice pour l'utilisateur actuel
+  const getExerciseStatus = (exerciseId: string): string | undefined => {
+    if (!user?.id) return undefined;
+    
+    // Trouver toutes les soumissions de cet exercice par l'utilisateur
+    const submissions = messages.filter(msg => 
+      msg.exercise_id === exerciseId && 
+      msg.sender_id === user.id &&
+      msg.is_exercise_submission === true
+    );
+
+    // Trier par date décroissante pour avoir la plus récente
+    const sortedSubmissions = submissions.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    // Retourner le statut de la soumission la plus récente
+    return sortedSubmissions.length > 0 ? sortedSubmissions[0].exercise_status : undefined;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -181,9 +201,13 @@ const MessageList: React.FC<MessageListProps> = ({
           // Dans le groupe, lessonId transporté par le parent est un levelId
           const effectiveLevelId = isGroupChatContext ? lessonId : (message.level_id || lessonId);
           
+          // Obtenir le statut de l'exercice pour l'utilisateur actuel
+          const exerciseStatus = message.exercise_id ? getExerciseStatus(message.exercise_id) : undefined;
+          
           console.log('🎯 SystemMessage exercise detected:', {
             exerciseId: message.exercise_id,
             exerciseTitle: exercise?.title,
+            exerciseStatus,
             messageLevelId: message.level_id,
             lessonId,
             effectiveLevelId,
@@ -197,6 +221,7 @@ const MessageList: React.FC<MessageListProps> = ({
               exercise={exercise}
               lessonId={lessonId}
               formationId={formationId}
+              exerciseStatus={exerciseStatus}
               isTeacherView={isTeacherView}
               isGroupChat={isGroupChatContext}
               levelId={effectiveLevelId}
@@ -210,6 +235,9 @@ const MessageList: React.FC<MessageListProps> = ({
           // Dans le groupe chat, l'exercice est dans message.exercises
           const exercise = (message as any).exercises || exercises.find(ex => ex.id === message.exercise_id);
           if (exercise) {
+            // Obtenir le statut de l'exercice pour l'utilisateur actuel
+            const exerciseStatus = message.exercise_id ? getExerciseStatus(message.exercise_id) : undefined;
+            
             return (
               <div
                 key={message.id}
@@ -222,6 +250,7 @@ const MessageList: React.FC<MessageListProps> = ({
                   exercise={exercise}
                   lessonId={lessonId}
                   formationId={formationId}
+                  exerciseStatus={exerciseStatus}
                   isTeacherView={isTeacherView}
                   showSubmissionOptions={!isTeacherView}
                   isGroupChat={true}
