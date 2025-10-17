@@ -75,14 +75,31 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-2">
           <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-2 right-2 z-10 bg-black/50 text-white hover:bg-black/70"
-              onClick={onClose}
-            >
-              <X size={16} />
-            </Button>
+            <div className="absolute top-2 right-2 z-10 flex gap-2">
+              {isImage && onUpdate && (
+                <SimpleImageEditor
+                  fileUrl={fileUrl}
+                  fileName={fileName}
+                  onUpdate={onUpdate}
+                />
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownload}
+                className="bg-black/50 text-white hover:bg-black/70"
+              >
+                <Download size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-black/50 text-white hover:bg-black/70"
+                onClick={onClose}
+              >
+                <X size={16} />
+              </Button>
+            </div>
             
             {isImage && (
               <img
@@ -106,59 +123,20 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
   const content = (
     <>
       {isImage && (
-        <div className="relative group">
+        <div className="relative">
           <img
             src={fileUrl}
             alt={fileName}
-            className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg ${className}`}
+            className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg cursor-pointer ${className}`}
             loading="lazy"
+            onClick={() => {
+              if (lessonId && formationId && isTeacher) {
+                handleAnnotate();
+              } else {
+                handleFullscreen();
+              }
+            }}
           />
-          {/* Boutons d'action toujours visibles sur les images */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <div className="flex gap-1 sm:gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleFullscreen}
-                className="bg-white/90 hover:bg-white shadow-sm p-1 sm:p-2"
-                title="Voir en plein écran"
-              >
-                <Maximize2 size={14} className="sm:w-4 sm:h-4" />
-              </Button>
-              
-              {/* Bouton d'annotation pour les enseignants */}
-              {lessonId && formationId && isTeacher && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleAnnotate}
-                  className="bg-white/90 hover:bg-white shadow-sm p-1 sm:p-2"
-                  title="Annoter l'image"
-                >
-                  <Edit3 size={14} className="sm:w-4 sm:h-4" />
-                </Button>
-              )}
-              
-              {/* Bouton d'édition simple - TOUJOURS visible quand onUpdate est disponible */}
-              {onUpdate && (
-                <SimpleImageEditor
-                  fileUrl={fileUrl}
-                  fileName={fileName}
-                  onUpdate={onUpdate}
-                />
-              )}
-              
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleDownload}
-                className="bg-white/90 hover:bg-white shadow-sm p-1 sm:p-2"
-                title="Télécharger"
-              >
-                <Download size={14} className="sm:w-4 sm:h-4" />
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 
