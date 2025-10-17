@@ -9,13 +9,19 @@ interface VideoCommentRepliesProps {
   replies: any[];
   onReply: (parentCommentId: string, content: string) => Promise<boolean>;
   parentCommentId: string;
+  rootCommentId: string; // ID du commentaire racine pour les réponses imbriquées
 }
 
 const VideoCommentReplies: React.FC<VideoCommentRepliesProps> = ({
   replies,
   onReply,
-  parentCommentId
+  parentCommentId,
+  rootCommentId
 }) => {
+  // Fonction wrapper pour toujours utiliser le commentaire racine comme parent
+  const handleReply = async (commentId: string, content: string) => {
+    return await onReply(rootCommentId, content);
+  };
   const [isOpen, setIsOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(5);
 
@@ -69,7 +75,7 @@ const VideoCommentReplies: React.FC<VideoCommentRepliesProps> = ({
             <div key={reply.id} className="ml-4 border-l border-gray-700 pl-4">
               <VideoCommentItem
                 comment={reply}
-                onReply={onReply}
+                onReply={handleReply}
                 level={1}
               />
             </div>
