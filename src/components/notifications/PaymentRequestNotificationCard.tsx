@@ -1,6 +1,6 @@
 // Carte de notification pour traiter une demande de paiement manuel
 // Affichée pour les administrateurs dans la page Notifications
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +42,24 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState<string>('');
+
+  // Marquer automatiquement comme lue à l'affichage (seulement si non traitée)
+  useEffect(() => {
+    if (!notification.approved_by_admin) {
+      const markAsRead = async () => {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notification.id);
+        
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      };
+
+      const timer = setTimeout(markAsRead, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.id, notification.approved_by_admin, queryClient]);
 
   // Récupérer l'abonnement réel de l'élève et les options de tarification
   const { subscription } = useUserSubscription(notification.formation_id, notification.user_id);
@@ -161,6 +179,7 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       queryClient.invalidateQueries({ queryKey: ['student-payment-progress'] });
       toast.success('Paiement traité et jours ajoutés');
     },
