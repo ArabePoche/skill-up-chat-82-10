@@ -20,6 +20,7 @@ interface GroupExerciseSubmissionProps {
   formationId: string;
   levelId: string;
   isSubmitted?: boolean;
+  exerciseStatus?: string; // Nouveau prop pour le statut (approved, rejected, pending)
   onSubmissionComplete?: () => void;
   showSubmissionOptions?: boolean;
   canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
@@ -30,6 +31,7 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
   formationId,
   levelId,
   isSubmitted = false,
+  exerciseStatus,
   onSubmissionComplete,
   showSubmissionOptions = true,
   canSubmitExercise
@@ -73,6 +75,11 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
       console.error('Error submitting group exercise:', error);
     }
   };
+
+  // Si l'exercice est approuvé, ne plus afficher de bouton de soumission
+  if (exerciseStatus === 'approved') {
+    return null; // L'exercice est validé, pas besoin d'afficher quoi que ce soit
+  }
 
   if (isSubmitted) {
     return <SubmittedExercise exerciseTitle={exercise.title} />;
