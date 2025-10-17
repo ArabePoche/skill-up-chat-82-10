@@ -17,6 +17,7 @@ interface ExerciseSubmissionProps {
   lessonId: string;
   formationId: string;
   isSubmitted?: boolean;
+  exerciseStatus?: string; // Nouveau prop pour le statut (approved, rejected, pending)
   onSubmissionComplete?: () => void;
   showSubmissionOptions?: boolean;
   canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
@@ -27,6 +28,7 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
   lessonId, 
   formationId, 
   isSubmitted = false,
+  exerciseStatus,
   onSubmissionComplete,
   showSubmissionOptions = true,
   canSubmitExercise
@@ -63,6 +65,11 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
       console.error('Error submitting exercise:', error);
     }
   };
+
+  // Si l'exercice est approuvé, ne plus afficher de bouton de soumission
+  if (exerciseStatus === 'approved') {
+    return null; // L'exercice est validé, pas besoin d'afficher quoi que ce soit
+  }
 
   if (isSubmitted) {
     return <SubmittedExercise exerciseTitle={exercise.title} />;
