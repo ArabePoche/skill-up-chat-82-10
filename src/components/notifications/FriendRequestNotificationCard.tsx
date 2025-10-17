@@ -26,6 +26,24 @@ const FriendRequestNotificationCard: React.FC<FriendRequestNotificationCardProps
   const [loading, setLoading] = React.useState(false);
   const [requestData, setRequestData] = React.useState<any>(null);
 
+  // Marquer automatiquement comme lue à l'affichage
+  React.useEffect(() => {
+    if (!notification.is_read) {
+      const markAsRead = async () => {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notification.id);
+        
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      };
+
+      const timer = setTimeout(markAsRead, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.id, notification.is_read, queryClient]);
+
   React.useEffect(() => {
     const loadRequestData = async () => {
       if (!notification.user_id) return;
@@ -70,6 +88,7 @@ const FriendRequestNotificationCard: React.FC<FriendRequestNotificationCardProps
         .eq('id', notification.id);
 
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       queryClient.invalidateQueries({ queryKey: ['pending-requests'] });
       queryClient.invalidateQueries({ queryKey: ['friends-count'] });
     } catch (error) {
@@ -96,6 +115,7 @@ const FriendRequestNotificationCard: React.FC<FriendRequestNotificationCardProps
         .eq('id', notification.id);
 
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       queryClient.invalidateQueries({ queryKey: ['pending-requests'] });
     } catch (error) {
       console.error('Erreur rejet:', error);
