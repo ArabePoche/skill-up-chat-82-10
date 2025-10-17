@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,24 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
   const [showRejectField, setShowRejectField] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const queryClient = useQueryClient();
+
+  // Marquer automatiquement comme lue à l'affichage (seulement si non approuvée)
+  useEffect(() => {
+    if (!notification.subscription_approved_by) {
+      const markAsRead = async () => {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notification.id);
+        
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      };
+
+      const timer = setTimeout(markAsRead, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.id, notification.subscription_approved_by, queryClient]);
 
   // Hook pour récupérer les promotions si le plan groupe est sélectionné
   const { data: promotions = [] } = useQuery({
@@ -167,6 +185,7 @@ const PlanChangeNotificationCard: React.FC<PlanChangeNotificationCardProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       queryClient.invalidateQueries({ queryKey: ['user-subscription'] });
       toast.success('Demande de changement traitée avec succès');
     },
