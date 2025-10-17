@@ -12,6 +12,7 @@ interface SystemMessageProps {
   };
   lessonId: string;
   formationId: string;
+  exerciseStatus?: string; // Nouveau prop pour le statut de l'exercice
   isTeacherView?: boolean;
   isGroupChat?: boolean;
   levelId?: string;
@@ -22,6 +23,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({
   exercise,
   lessonId,
   formationId,
+  exerciseStatus,
   isTeacherView = false,
   isGroupChat = false,
   levelId
@@ -41,6 +43,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({
           exercise={exercise}
           lessonId={lessonId}
           formationId={formationId}
+          exerciseStatus={exerciseStatus}
           isTeacherView={isTeacherView}
           showSubmissionOptions={!isTeacherView}
           isGroupChat={isGroupChat}
