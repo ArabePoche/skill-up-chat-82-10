@@ -18,6 +18,7 @@ interface ExerciseDisplayProps {
   lessonId: string;
   formationId: string;
   isSubmitted?: boolean;
+  exerciseStatus?: string; // Nouveau prop pour le statut (approved, rejected, pending)
   showSubmissionOptions?: boolean;
   isTeacherView?: boolean;
   isGroupChat?: boolean; // Nouvelle prop pour identifier le type de chat
@@ -30,6 +31,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
   lessonId,
   formationId,
   isSubmitted = false,
+  exerciseStatus,
   showSubmissionOptions = true,
   isTeacherView = false,
   isGroupChat = false,
@@ -130,6 +132,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
         formationId={formationId}
         levelId={effectiveLevelId}
         isSubmitted={isSubmitted}
+        exerciseStatus={exerciseStatus}
         showSubmissionOptions={showSubmissionOptions}
         canSubmitExercise={canSubmitExercise}
       />
@@ -149,6 +152,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
       lessonId={lessonId}
       formationId={formationId}
       isSubmitted={isSubmitted}
+      exerciseStatus={exerciseStatus}
       showSubmissionOptions={showSubmissionOptions}
       canSubmitExercise={canSubmitExercise}
     />
