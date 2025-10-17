@@ -46,6 +46,26 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
   const sendMessage = useSendPromotionMessage(formationId);
   const { uploadFile, isUploading } = useFileUpload();
 
+  // Fonction utilitaire pour obtenir le statut d'un exercice pour l'utilisateur actuel
+  const getExerciseStatus = (exerciseId: string): string | undefined => {
+    if (!user?.id) return undefined;
+    
+    // Trouver toutes les soumissions de cet exercice par l'utilisateur
+    const submissions = messages.filter((msg: any) => 
+      msg.exercise_id === exerciseId && 
+      msg.sender_id === user.id &&
+      msg.is_exercise_submission === true
+    );
+
+    // Trier par date décroissante pour avoir la plus récente
+    const sortedSubmissions = submissions.sort((a: any, b: any) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    // Retourner le statut de la soumission la plus récente
+    return sortedSubmissions.length > 0 ? sortedSubmissions[0].exercise_status : undefined;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -225,6 +245,7 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
                           }}
                           lessonId={lessonId}
                           formationId={formationId}
+                          exerciseStatus={getExerciseStatus(msg.exercise_id)}
                           isTeacherView={isSystemMessage}
                           canSubmitExercise={canSubmitExercise}
                         />
