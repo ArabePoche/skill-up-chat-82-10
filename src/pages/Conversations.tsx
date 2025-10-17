@@ -120,6 +120,26 @@ const Conversations = () => {
     },
   });
 
+  // Marquer les messages comme lus à l'ouverture
+  useEffect(() => {
+    const markAsRead = async () => {
+      if (!user?.id || !otherUserId) return;
+
+      await supabase
+        .from('conversation_messages')
+        .update({ is_read: true })
+        .eq('sender_id', otherUserId)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+
+      // Invalider les queries pour mettre à jour le compteur
+      queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts', user.id] });
+    };
+
+    markAsRead();
+  }, [user?.id, otherUserId, queryClient]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
