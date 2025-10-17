@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Bell, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface StandardNotificationCardProps {
   notification: {
@@ -17,6 +19,28 @@ interface StandardNotificationCardProps {
 const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({ 
   notification 
 }) => {
+  const queryClient = useQueryClient();
+
+  // Marquer automatiquement comme lue à l'affichage
+  useEffect(() => {
+    if (!notification.is_read) {
+      const markAsRead = async () => {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('id', notification.id);
+        
+        // Invalider les compteurs pour mise à jour
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      };
+      
+      // Délai léger pour éviter trop de requêtes
+      const timer = setTimeout(markAsRead, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.id, notification.is_read, queryClient]);
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'enrollment_request':
