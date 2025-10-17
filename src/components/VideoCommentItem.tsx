@@ -77,7 +77,7 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
               <span>{likesCount > 0 ? likesCount : ''}</span>
             </button>
             
-            {user && isTopLevel && (
+            {user && (
               <button
                 onClick={() => setShowReplyForm(!showReplyForm)}
                 className="flex items-center space-x-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
@@ -140,6 +140,7 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
           replies={comment.replies}
           onReply={onReply}
           parentCommentId={comment.id}
+          rootCommentId={comment.id}
         />
       )}
     </div>
