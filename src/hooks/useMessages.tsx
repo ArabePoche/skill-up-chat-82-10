@@ -14,8 +14,6 @@ export const useConversations = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-    
-
       // Récupérer les formations où l'utilisateur est enseignant ou étudiant
       const [teacherFormations, studentEnrollments] = await Promise.all([
         supabase
@@ -60,13 +58,22 @@ export const useConversations = () => {
         for (const teacher of teacherFormations.data) {
           for (const tf of teacher.teacher_formations) {
             if (tf.formations) {
+              // Compter les messages non lus pour les profs
+              const { data: unreadMessages } = await supabase
+                .from('lesson_messages')
+                .select('id', { count: 'exact' })
+                .eq('formation_id', tf.formations.id)
+                .is('read_by_teachers', null)
+                .neq('sender_id', user.id)
+                .eq('is_system_message', false);
+
               conversations.push({
                 id: `teacher-${tf.formations.id}`,
                 name: `${tf.formations.title} - Groupe`,
                 lastMessage: 'Formation dont vous êtes professeur',
                 timestamp: 'Aujourd\'hui',
                 created_at: tf.formations.created_at || new Date().toISOString(),
-                unread: 0,
+                unread: unreadMessages?.length || 0,
                 avatar: '👨‍🏫',
                 online: false,
                 type: 'formation_teacher',
@@ -98,13 +105,21 @@ export const useConversations = () => {
             
             const enrollmentDate = enrollmentDatesMap.get(enrollment.formations.id);
             
+            // Compter les messages non lus pour les étudiants
+            const { data: unreadMessages } = await supabase
+              .from('lesson_messages')
+              .select('id', { count: 'exact' })
+              .eq('formation_id', enrollment.formations.id)
+              .eq('receiver_id', user.id)
+              .eq('is_read', false);
+
             conversations.push({
               id: `student-${enrollment.formations.id}`,
               name: `${enrollment.formations.title}`,
               lastMessage: `Formation avec ${authorName}`,
               timestamp: 'Aujourd\'hui',
               created_at: enrollmentDate || new Date().toISOString(),
-              unread: 0,
+              unread: unreadMessages?.length || 0,
               avatar: '📚',
               online: false,
               type: 'formation_student',
@@ -189,13 +204,21 @@ export const useConversations = () => {
           const createdAt = new Date(lastMsg.created_at);
           const timeLabel = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+          // Compter les messages non lus pour cette conversation directe
+          const { data: unreadDirectMessages } = await supabase
+            .from('conversation_messages')
+            .select('id', { count: 'exact' })
+            .eq('sender_id', convData.otherUserId)
+            .eq('receiver_id', user.id)
+            .eq('is_read', false);
+
           conversations.push({
             id: `user-${convData.otherUserId}`,
             name: otherName,
             lastMessage,
             timestamp: timeLabel,
             created_at: lastMsg.created_at,
-            unread: 0,
+            unread: unreadDirectMessages?.length || 0,
             avatar: profile?.avatar_url || '💬',
             online: false,
             type: 'direct_message',
