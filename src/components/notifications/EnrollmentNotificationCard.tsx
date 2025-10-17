@@ -38,7 +38,15 @@ interface EnrollmentNotificationCardProps {
 const EnrollmentNotificationCard: React.FC<EnrollmentNotificationCardProps> = ({ 
   notification 
 }) => {
-  const { handleEnrollment, isHandlingEnrollment } = useNotifications();
+  const { handleEnrollment, isHandlingEnrollment, markAsRead } = useNotifications();
+
+  // Marquer comme lue à l'affichage
+  React.useEffect(() => {
+    if (!notification.is_read) {
+      const timer = setTimeout(() => markAsRead(notification.id), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.id, notification.is_read, markAsRead]);
 
   if (!notification.user_info || !notification.formation_info) {
     return null;
