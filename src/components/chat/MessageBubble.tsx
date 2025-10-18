@@ -6,6 +6,7 @@ import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
 import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
+import { ValidatedByTeacherBadge } from './ValidatedByTeacherBadge';
 import EmojiPicker from '@/components/EmojiPicker';
 import { MoreVertical, Reply, Edit2, Trash2, Smile, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,36 +26,41 @@ interface Message {
   id: string;
   content: string;
   sender_id: string;
-  message_type: string;
+  receiver_id?: string;
+  created_at: string;
+  updated_at?: string;
+  message_type?: string;
   file_url?: string;
   file_type?: string;
   file_name?: string;
   is_exercise_submission?: boolean;
   exercise_status?: string;
-  created_at: string;
+  exercise_id?: string;
   lesson_id?: string;
   formation_id?: string;
-  exercise_id?: string;
-  level_id?: string; // Pour détecter le chat de groupe
+  is_read?: boolean;
+  profiles?: {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    avatar_url?: string;
+    is_teacher?: boolean;
+  };
   replied_to_message_id?: string;
-  updated_at?: string;
   replied_to_message?: {
     id: string;
     content: string;
     sender_id: string;
     profiles?: {
+      id: string;
       first_name?: string;
       last_name?: string;
       username?: string;
     };
   };
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-    is_teacher?: boolean;
-  };
   is_system_message?: boolean;
+  validated_by_teacher_id?: string;
 }
 
 interface MessageBubbleProps {
@@ -207,6 +213,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
             {isRealExerciseSubmission && message.exercise_status && (
               <div className="space-y-2">
                 <ExerciseStatus status={message.exercise_status} />
+                {/* Afficher le badge du professeur qui a validé/rejeté */}
+                {message.validated_by_teacher_id && (
+                  <ValidatedByTeacherBadge 
+                    teacherId={message.validated_by_teacher_id}
+                    status={message.exercise_status as 'approved' | 'rejected'}
+                  />
+                )}
                 {message.exercise_status === 'approved' && isOwnMessage && (
                   <Button
                     size="sm"
