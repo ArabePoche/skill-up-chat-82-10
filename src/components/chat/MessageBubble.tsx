@@ -4,6 +4,7 @@ import MediaPreview from './MediaPreview';
 import MessageSender from './MessageSender';
 import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
+import ExerciseRejectionDetails from './ExerciseRejectionDetails';
 import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
 import { ValidatedByTeacherBadge } from './ValidatedByTeacherBadge';
@@ -39,6 +40,9 @@ interface Message {
   lesson_id?: string;
   formation_id?: string;
   is_read?: boolean;
+  reject_audio_url?: string;
+  reject_audio_duration?: number;
+  reject_files_urls?: string[];
   profiles?: {
     id: string;
     first_name?: string;
@@ -218,6 +222,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
                   <ValidatedByTeacherBadge 
                     teacherId={message.validated_by_teacher_id}
                     status={message.exercise_status as 'approved' | 'rejected'}
+                  />
+                )}
+                {/* Afficher les détails du rejet si présents */}
+                {message.exercise_status === 'rejected' && (
+                  <ExerciseRejectionDetails
+                    rejectReason={message.content}
+                    rejectAudioUrl={message.reject_audio_url}
+                    rejectAudioDuration={message.reject_audio_duration}
+                    rejectFilesUrls={message.reject_files_urls}
                   />
                 )}
                 {message.exercise_status === 'approved' && isOwnMessage && (
