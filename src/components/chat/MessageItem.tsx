@@ -6,21 +6,28 @@ interface Message {
   id: string;
   content: string;
   sender_id: string;
-  message_type: string;
+  receiver_id?: string;
+  created_at: string;
+  updated_at?: string;
+  message_type?: string;
   file_url?: string;
   file_type?: string;
   file_name?: string;
   is_exercise_submission?: boolean;
   exercise_status?: string;
-  created_at: string;
+  exercise_id?: string;
   lesson_id?: string;
   formation_id?: string;
+  is_read?: boolean;
   profiles?: {
+    id: string;
     first_name?: string;
     last_name?: string;
     username?: string;
+    avatar_url?: string;
     is_teacher?: boolean;
   };
+  validated_by_teacher_id?: string;
 }
 
 interface MessageItemProps {
