@@ -35,17 +35,21 @@ export const useValidateExerciseWithPromotion = () => {
       console.log('Validating exercise with promotion:', { messageId, isValid, rejectReason, teacherId: user.id });
 
       try {
-        // Mettre à jour le message avec les infos de rejet
+        // Mettre à jour le message avec les infos de rejet et l'ID du professeur
+        const updateData: any = {
+          validated_by_teacher_id: user.id
+        };
+        
         if (!isValid && (rejectAudioUrl || rejectFilesUrls?.length)) {
-          await supabase
-            .from('lesson_messages')
-            .update({
-              reject_audio_url: rejectAudioUrl,
-              reject_audio_duration: rejectAudioDuration,
-              reject_files_urls: rejectFilesUrls
-            })
-            .eq('id', messageId);
+          updateData.reject_audio_url = rejectAudioUrl;
+          updateData.reject_audio_duration = rejectAudioDuration;
+          updateData.reject_files_urls = rejectFilesUrls;
         }
+        
+        await supabase
+          .from('lesson_messages')
+          .update(updateData)
+          .eq('id', messageId);
 
         // Appeler la nouvelle fonction avec support des promotions et l'ID du professeur
         const { data, error } = await supabase.rpc('validate_exercise_submission_with_promotion', {
