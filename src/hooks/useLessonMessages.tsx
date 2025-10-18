@@ -21,33 +21,33 @@ export const useLessonMessages = (lessonId: string | undefined, formationId: str
 
       // Les professeurs voient tous les messages
       if (isTeacher) {
-        const { data: messages, error } = await supabase
-          .from('lesson_messages')
-          .select(`
-            *,
+      const { data: messages, error } = await supabase
+        .from('lesson_messages')
+        .select(`
+          *,
+          profiles!sender_id(
+            id,
+            first_name,
+            last_name,
+            username,
+            avatar_url,
+            is_teacher
+          ),
+          replied_to_message:replied_to_message_id(
+            id,
+            content,
+            sender_id,
             profiles!sender_id(
               id,
               first_name,
               last_name,
-              username,
-              avatar_url,
-              is_teacher
-            ),
-            replied_to_message:replied_to_message_id(
-              id,
-              content,
-              sender_id,
-              profiles!sender_id(
-                id,
-                first_name,
-                last_name,
-                username
-              )
+              username
             )
-          `)
-          .eq('lesson_id', lessonId)
-          .eq('formation_id', formationId)
-          .order('created_at', { ascending: true });
+          )
+        `)
+        .eq('lesson_id', lessonId)
+        .eq('formation_id', formationId)
+        .order('created_at', { ascending: true });
 
         if (error) {
           console.error('Error fetching teacher messages:', error);
