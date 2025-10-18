@@ -66,64 +66,7 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
       });
 
       try {
-        // 1. Mettre à jour le statut de l'exercice et les fichiers de rejet si présents
-        const updateData: any = {
-          exercise_status: isValid ? 'approved' : 'rejected',
-          validated_by_teacher_id: user.id
-        };
-
-        if (!isValid) {
-          if (rejectReason) {
-            updateData.content = `❌ Exercice rejeté. Raison : ${rejectReason}`;
-          }
-          if (rejectAudioUrl) {
-            updateData.reject_audio_url = rejectAudioUrl;
-            updateData.reject_audio_duration = rejectAudioDuration;
-          }
-          if (rejectFilesUrls && rejectFilesUrls.length > 0) {
-            updateData.reject_files_urls = rejectFilesUrls;
-          }
-        }
-
-        const { error: updateError } = await supabase
-          .from('lesson_messages')
-          .update(updateData)
-          .eq('id', messageId);
-
-        if (updateError) {
-          console.error('Error updating exercise status:', updateError);
-          throw updateError;
-        }
-
-        if (!isValid) {
-          console.log('❌ Exercise rejected, no progression');
-          
-          // Récupérer l'utilisateur qui a soumis l'exercice pour réinitialiser son progrès
-          const { data: exerciseMessage, error: messageError } = await supabase
-            .from('lesson_messages')
-            .select('sender_id')
-            .eq('id', messageId)
-            .single();
-
-          if (exerciseMessage) {
-            // Réinitialiser la leçon à 'in_progress'
-            await supabase
-              .from('user_lesson_progress')
-              .update({
-                status: 'in_progress',
-                exercise_completed: false
-              })
-              .eq('user_id', exerciseMessage.sender_id)
-              .eq('lesson_id', lessonId);
-          }
-
-          return { progressionUpdate: null };
-        }
-
-        // 2. Si approuvé, utiliser la logique de progression existante
-        console.log('✅ Exercise approved, checking progression...');
-
-        // Récupérer l'utilisateur qui a soumis l'exercice
+        // 1. Récupérer l'utilisateur qui a soumis l'exercice
         const { data: exerciseMessage, error: messageError } = await supabase
           .from('lesson_messages')
           .select('sender_id')
@@ -136,7 +79,72 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
 
         const studentId = exerciseMessage.sender_id;
 
-        // 3. Récupérer tous les exercices de la leçon
+        // 2. Mettre à jour les fichiers de rejet si rejet
+        if (!isValid) {
+          const updateData: any = {};
+          
+          if (rejectReason) {
+            updateData.content = `❌ Exercice rejeté. Raison : ${rejectReason}`;
+          }
+          if (rejectAudioUrl) {
+            updateData.reject_audio_url = rejectAudioUrl;
+            updateData.reject_audio_duration = rejectAudioDuration;
+          }
+          if (rejectFilesUrls && rejectFilesUrls.length > 0) {
+            updateData.reject_files_urls = rejectFilesUrls;
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await supabase
+              .from('lesson_messages')
+              .update(updateData)
+              .eq('id', messageId);
+          }
+        }
+
+        // 3. Utiliser la fonction globale de validation
+        const { data: validationResult, error: validationError } = await supabase.rpc(
+          'validate_exercise_submission_global',
+          {
+            p_message_id: messageId,
+            p_user_id: studentId,
+            p_is_approved: isValid,
+            p_reject_reason: rejectReason || null,
+            p_teacher_id: user.id
+          }
+        );
+
+        if (validationError) {
+          console.error('Error in global validation:', validationError);
+          throw validationError;
+        }
+
+        console.log('🔄 Global validation result:', validationResult);
+
+        // Si rejeté ou si l'exercice global n'est pas encore approved, pas de progression
+        const result = validationResult as any;
+        if (!isValid || result?.exercise_global_status !== 'approved') {
+          console.log('⏸️ Exercise not fully approved yet, no progression');
+          
+          // Réinitialiser la leçon à 'in_progress' si rejet
+          if (!isValid) {
+            await supabase
+              .from('user_lesson_progress')
+              .update({
+                status: 'in_progress',
+                exercise_completed: false
+              })
+              .eq('user_id', studentId)
+              .eq('lesson_id', lessonId);
+          }
+
+          return { progressionUpdate: null };
+        }
+
+        // 4. Si l'exercice est complètement validé, gérer la progression
+        console.log('✅ Exercise fully approved, checking progression...');
+
+        // Récupérer tous les exercices de la leçon
         const { data: allLessonExercises, error: exercisesError } = await supabase
           .from('exercises')
           .select('id')
@@ -147,27 +155,26 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
           throw exercisesError;
         }
 
-        // 4. Vérifier combien d'exercices de cette leçon sont déjà validés
-        const { data: approvedExercises, error: approvedError } = await supabase
-          .from('lesson_messages')
-          .select('exercise_id')
-          .eq('sender_id', studentId)
-          .eq('lesson_id', lessonId)
-          .eq('exercise_status', 'approved')
-          .eq('is_exercise_submission', true);
-
-        if (approvedError) {
-          throw approvedError;
+        // Vérifier les exercices globalement approuvés (toutes soumissions validées)
+        const approvedExerciseIds = new Set<string>();
+        
+        for (const exercise of allLessonExercises || []) {
+          const { data: exerciseStatus } = await supabase.rpc('get_exercise_global_status', {
+            p_exercise_id: exercise.id,
+            p_user_id: studentId,
+            p_lesson_id: lessonId
+          });
+          
+          if (exerciseStatus === 'approved') {
+            approvedExerciseIds.add(exercise.id);
+          }
         }
-
-        const approvedExerciseIds = new Set(approvedExercises?.map(e => e.exercise_id) || []);
-        approvedExerciseIds.add(exerciseId); // Ajouter l'exercice qu'on vient d'approuver
 
         console.log('📊 Group progression check:', {
           totalExercises: allLessonExercises?.length || 0,
           approvedExercises: approvedExerciseIds.size,
-          levelId,
-          formationId
+          levelId: effectiveLevelId,
+          formationId: effectiveFormationId
         });
 
         // 5. Vérifier s'il y a un prochain exercice à présenter
@@ -176,8 +183,8 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
         if (nextExercise) {
           console.log('📝 Next exercise found for group:', nextExercise.id);
           
-        // Présenter le prochain exercice via message système
-        await presentNextExerciseToStudent(studentId, nextExercise.id, lessonId, effectiveFormationId, effectiveLevelId);
+          // Présenter le prochain exercice via message système
+          await presentNextExerciseToStudent(studentId, nextExercise.id, lessonId, effectiveFormationId, effectiveLevelId);
           
           return { 
             progressionUpdate: 'next_exercise',
