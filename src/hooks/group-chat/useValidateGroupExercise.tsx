@@ -69,6 +69,7 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
         // 1. Mettre à jour le statut de l'exercice et les fichiers de rejet si présents
         const updateData: any = {
           exercise_status: isValid ? 'approved' : 'rejected',
+          validated_by_teacher_id: user.id
         };
 
         if (!isValid) {
