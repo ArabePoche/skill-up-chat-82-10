@@ -27,11 +27,11 @@ export const useValidateExercise = () => {
       
 
       try {
-        // Appeler la fonction Supabase validate_exercise_submission avec gestion d'erreur améliorée
-        const { data, error } = await supabase.rpc('validate_exercise_submission', {
+        // Appeler la nouvelle fonction globale validate_exercise_submission_global
+        const { data, error } = await supabase.rpc('validate_exercise_submission_global', {
           p_message_id: messageId,
           p_user_id: userId,
-          p_is_valid: isValid,
+          p_is_approved: isValid,
           p_reject_reason: rejectReason || null
         });
 
@@ -40,7 +40,7 @@ export const useValidateExercise = () => {
           throw new Error(`Erreur de validation: ${error.message}`);
         }
 
-        console.log('Exercise validation completed successfully');
+        console.log('✅ Global exercise validation:', data);
         return data;
       } catch (error) {
         console.error('Error in validation mutation:', error);
