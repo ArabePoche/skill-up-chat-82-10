@@ -18,47 +18,50 @@ interface Message {
   id: string;
   content: string;
   sender_id: string;
+  receiver_id?: string;
   created_at: string;
-  message_type: string;
+  updated_at?: string;
+  message_type?: string;
   file_url?: string;
   file_type?: string;
   file_name?: string;
-  is_system_message?: boolean;
-  exercise_id?: string;
-  exercise_status?: string;
   is_exercise_submission?: boolean;
-  level_id?: string; // Pour identifier les messages du chat de groupe
+  exercise_status?: string;
+  exercise_id?: string;
+  lesson_id?: string;
+  formation_id?: string;
+  is_read?: boolean;
+  profiles?: {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    avatar_url?: string;
+    is_teacher?: boolean;
+  };
   replied_to_message_id?: string;
   replied_to_message?: {
     id: string;
     content: string;
     sender_id: string;
     profiles?: {
+      id: string;
       first_name?: string;
       last_name?: string;
       username?: string;
     };
   };
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-    avatar_url?: string;
-  };
-  // Propriétés pour les vidéos leçons
-  video_url?: string;
-  lesson_title?: string;
-  lesson_status?: string;
-  // Type d'élément dans le flux
-  item_type?: 'message' | 'lesson_video' | 'exercise';
+  is_system_message?: boolean;
+  validated_by_teacher_id?: string;
+  type?: string;
 }
 
 interface Exercise {
   id: string;
   title: string;
   description?: string;
-  content?: string;
   type?: string;
+  content?: string;
 }
 
 interface MessageListProps {
