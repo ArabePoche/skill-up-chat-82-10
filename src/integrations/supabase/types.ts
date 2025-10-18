@@ -1033,6 +1033,7 @@ export type Database = {
           replied_to_message_id: string | null
           sender_id: string
           updated_at: string
+          validated_by_teacher_id: string | null
         }
         Insert: {
           content: string
@@ -1056,6 +1057,7 @@ export type Database = {
           replied_to_message_id?: string | null
           sender_id: string
           updated_at?: string
+          validated_by_teacher_id?: string | null
         }
         Update: {
           content?: string
@@ -1079,6 +1081,7 @@ export type Database = {
           replied_to_message_id?: string | null
           sender_id?: string
           updated_at?: string
+          validated_by_teacher_id?: string | null
         }
         Relationships: [
           {
@@ -1133,6 +1136,13 @@ export type Database = {
           {
             foreignKeyName: "lesson_messages_sender_id_fkey"
             columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_messages_validated_by_teacher_id_fkey"
+            columns: ["validated_by_teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -3987,21 +3997,37 @@ export type Database = {
         Returns: undefined
       }
       validate_exercise_submission: {
-        Args: {
-          p_is_valid: boolean
-          p_message_id: string
-          p_reject_reason?: string
-          p_user_id: string
-        }
+        Args:
+          | {
+              p_is_valid: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_teacher_id?: string
+              p_user_id: string
+            }
+          | {
+              p_is_valid: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
         Returns: undefined
       }
       validate_exercise_submission_with_promotion: {
-        Args: {
-          p_is_approved: boolean
-          p_message_id: string
-          p_reject_reason?: string
-          p_user_id: string
-        }
+        Args:
+          | {
+              p_is_approved: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_teacher_id?: string
+              p_user_id: string
+            }
+          | {
+              p_is_approved: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
         Returns: undefined
       }
     }
