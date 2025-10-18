@@ -1030,6 +1030,9 @@ export type Database = {
           promotion_id: string | null
           read_by_teachers: string | null
           receiver_id: string | null
+          reject_audio_duration: number | null
+          reject_audio_url: string | null
+          reject_files_urls: string[] | null
           replied_to_message_id: string | null
           sender_id: string
           updated_at: string
@@ -1054,6 +1057,9 @@ export type Database = {
           promotion_id?: string | null
           read_by_teachers?: string | null
           receiver_id?: string | null
+          reject_audio_duration?: number | null
+          reject_audio_url?: string | null
+          reject_files_urls?: string[] | null
           replied_to_message_id?: string | null
           sender_id: string
           updated_at?: string
@@ -1078,6 +1084,9 @@ export type Database = {
           promotion_id?: string | null
           read_by_teachers?: string | null
           receiver_id?: string | null
+          reject_audio_duration?: number | null
+          reject_audio_url?: string | null
+          reject_files_urls?: string[] | null
           replied_to_message_id?: string | null
           sender_id?: string
           updated_at?: string
