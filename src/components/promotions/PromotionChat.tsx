@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseDisplay from '@/components/chat/ExerciseDisplay';
 import { MessageReactions } from '@/components/chat/MessageReactions';
+import { ValidatedByTeacherBadge } from '@/components/chat/ValidatedByTeacherBadge';
 import { toast } from 'sonner';
 import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 
@@ -267,19 +268,28 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
                       )}
                       
                       {msg.is_exercise_submission && (
-                        <div className={`mt-2 text-xs px-2 py-1 rounded ${
-                          msg.exercise_status === 'approved' 
-                            ? 'bg-green-100 text-green-800'
-                            : msg.exercise_status === 'rejected'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {msg.exercise_status === 'approved' 
-                            ? '✅ Exercice validé'
-                            : msg.exercise_status === 'rejected'
-                              ? '❌ Exercice rejeté'
-                              : '⏳ En attente de validation'
-                          }
+                        <div className="mt-2 space-y-1.5">
+                          <div className={`text-xs px-2 py-1 rounded ${
+                            msg.exercise_status === 'approved' 
+                              ? 'bg-green-100 text-green-800'
+                              : msg.exercise_status === 'rejected'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {msg.exercise_status === 'approved' 
+                              ? '✅ Exercice validé'
+                              : msg.exercise_status === 'rejected'
+                                ? '❌ Exercice rejeté'
+                                : '⏳ En attente de validation'
+                            }
+                          </div>
+                          {/* Afficher le badge du professeur qui a validé/rejeté */}
+                          {msg.validated_by_teacher_id && msg.exercise_status && (
+                            <ValidatedByTeacherBadge 
+                              teacherId={msg.validated_by_teacher_id}
+                              status={msg.exercise_status as 'approved' | 'rejected'}
+                            />
+                          )}
                         </div>
                       )}
                     </div>
