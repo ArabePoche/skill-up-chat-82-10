@@ -96,11 +96,15 @@ export const useUpdateExerciseStatus = () => {
       messageId: string;
       status: 'approved' | 'rejected';
     }) => {
-      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
         .from('lesson_messages')
-        .update({ exercise_status: status })
+        .update({ 
+          exercise_status: status,
+          validated_by_teacher_id: user.id
+        })
         .eq('id', messageId)
         .select()
         .single();
