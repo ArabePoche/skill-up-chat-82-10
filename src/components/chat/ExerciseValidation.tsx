@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Paperclip } from 'lucide-react';
 import { useValidateExercise } from '@/hooks/useValidateExercise';
 import { useValidateExerciseWithPromotion } from '@/hooks/useValidateExerciseWithPromotion';
 import { useValidateGroupExercise } from '@/hooks/group-chat/useValidateGroupExercise';
@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import AudioRecorder from './AudioRecorder';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 interface ExerciseValidationProps {
   message: {
@@ -36,6 +38,26 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
   
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectAudioFile, setRejectAudioFile] = useState<File | null>(null);
+  const [rejectFiles, setRejectFiles] = useState<File[]>([]);
+  const { uploadFile, isUploading } = useFileUpload();
+
+  const handleAudioRecording = (file: File) => {
+    setRejectAudioFile(file);
+    toast.success('Message vocal enregistré');
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setRejectFiles(prev => [...prev, ...newFiles]);
+      toast.success(`${newFiles.length} fichier(s) ajouté(s)`);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setRejectFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleValidateExercise = async (isValid: boolean) => {
     console.log('🔍 Validating exercise with message data:', { 
@@ -72,12 +94,45 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
       }
     }
 
-    if (!isValid && !rejectReason.trim()) {
+    if (!isValid && !rejectReason.trim() && !rejectAudioFile && rejectFiles.length === 0) {
       setShowRejectForm(true);
       return;
     }
 
     try {
+      let audioUrl: string | null = null;
+      let audioDuration: number | null = null;
+      let filesUrls: string[] = [];
+
+      // Upload audio si présent
+      if (!isValid && rejectAudioFile) {
+        const audioResult = await uploadFile(rejectAudioFile, 'exercise_rejection_files');
+        audioUrl = audioResult.fileUrl;
+        
+        // Calculer la durée audio
+        const audio = new Audio();
+        const audioBlob = await rejectAudioFile.arrayBuffer();
+        const blob = new Blob([audioBlob], { type: rejectAudioFile.type });
+        const url = URL.createObjectURL(blob);
+        audio.src = url;
+        
+        await new Promise((resolve) => {
+          audio.onloadedmetadata = () => {
+            audioDuration = Math.floor(audio.duration);
+            URL.revokeObjectURL(url);
+            resolve(null);
+          };
+        });
+      }
+
+      // Upload fichiers si présents
+      if (!isValid && rejectFiles.length > 0) {
+        const uploadPromises = rejectFiles.map(file => 
+          uploadFile(file, 'exercise_rejection_files')
+        );
+        const results = await Promise.all(uploadPromises);
+        filesUrls = results.map(r => r.fileUrl);
+      }
       if (isGroupChat) {
         // Logique spécifique pour le chat de groupe
         console.log('🎯 Using group exercise validation:', {
@@ -106,7 +161,10 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           exerciseId: message.exercise_id!,
           lessonId: exerciseData.lesson_id,
           targetLevelId: message.level_id,
-          targetFormationId: undefined // Sera récupéré automatiquement
+          targetFormationId: undefined, // Sera récupéré automatiquement
+          rejectAudioUrl: audioUrl,
+          rejectAudioDuration: audioDuration,
+          rejectFilesUrls: filesUrls
         });
       } else {
         // Logique pour le chat privé avec promotions
@@ -116,13 +174,18 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           lessonId: message.lesson_id,
           formationId: message.formation_id,
           isValid,
-          rejectReason: isValid ? undefined : rejectReason
+          rejectReason: isValid ? undefined : rejectReason,
+          rejectAudioUrl: audioUrl,
+          rejectAudioDuration: audioDuration,
+          rejectFilesUrls: filesUrls
         });
       }
 
       if (!isValid) {
         setShowRejectForm(false);
         setRejectReason('');
+        setRejectAudioFile(null);
+        setRejectFiles([]);
       }
     } catch (error) {
       console.error('Error validating exercise:', error);
@@ -153,30 +216,95 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Textarea
-            placeholder="Raison du rejet..."
+            placeholder="Expliquez pourquoi l'exercice est rejeté (optionnel si vous ajoutez un vocal ou des fichiers)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             className="text-xs"
-            rows={2}
+            rows={3}
           />
+          
+          {/* Enregistreur audio */}
+          <div className="flex flex-col space-y-2">
+            <label className="text-xs font-medium text-gray-600">Message vocal (optionnel)</label>
+            <AudioRecorder 
+              onRecordingComplete={handleAudioRecording}
+              disabled={isUploading || validateExerciseMutation.isPending}
+            />
+            {rejectAudioFile && (
+              <span className="text-xs text-green-600">✓ Message vocal enregistré</span>
+            )}
+          </div>
+
+          {/* Upload de fichiers */}
+          <div className="flex flex-col space-y-2">
+            <label className="text-xs font-medium text-gray-600">Fichiers d'aide (optionnel)</label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                disabled={isUploading || validateExerciseMutation.isPending}
+                className="hidden"
+                id="reject-files-input"
+                accept="image/*,video/*,.pdf,.doc,.docx"
+              />
+              <Button
+                onClick={() => document.getElementById('reject-files-input')?.click()}
+                variant="outline"
+                size="sm"
+                disabled={isUploading || validateExerciseMutation.isPending}
+              >
+                <Paperclip size={14} className="mr-1" />
+                Joindre fichiers
+              </Button>
+              {rejectFiles.length > 0 && (
+                <span className="text-xs text-gray-600">{rejectFiles.length} fichier(s)</span>
+              )}
+            </div>
+            {rejectFiles.length > 0 && (
+              <div className="space-y-1">
+                {rejectFiles.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                    <span className="truncate flex-1">{file.name}</span>
+                    <Button
+                      onClick={() => handleRemoveFile(index)}
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                    >
+                      <XCircle size={14} className="text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex space-x-2">
             <Button
               onClick={() => handleValidateExercise(false)}
-              disabled={validateExerciseMutation.isPending || !rejectReason.trim()}
+              disabled={
+                validateExerciseMutation.isPending || 
+                isUploading ||
+                (!rejectReason.trim() && !rejectAudioFile && rejectFiles.length === 0)
+              }
               size="sm"
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              {validateExerciseMutation.isPending ? 'Rejet...' : 'Confirmer rejet'}
+              {validateExerciseMutation.isPending || isUploading ? 'Envoi...' : 'Confirmer rejet'}
             </Button>
             <Button
               onClick={() => {
                 setShowRejectForm(false);
                 setRejectReason('');
+                setRejectAudioFile(null);
+                setRejectFiles([]);
               }}
               variant="outline"
               size="sm"
+              disabled={validateExerciseMutation.isPending || isUploading}
             >
               Annuler
             </Button>
