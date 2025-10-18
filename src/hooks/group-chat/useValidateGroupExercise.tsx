@@ -19,7 +19,10 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
       exerciseId,
       lessonId,
       targetLevelId,
-      targetFormationId
+      targetFormationId,
+      rejectAudioUrl,
+      rejectAudioDuration,
+      rejectFilesUrls
     }: {
       messageId: string;
       isValid: boolean;
@@ -28,6 +31,9 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
       lessonId: string;
       targetLevelId?: string;
       targetFormationId?: string;
+      rejectAudioUrl?: string | null;
+      rejectAudioDuration?: number | null;
+      rejectFilesUrls?: string[];
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
@@ -60,13 +66,27 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
       });
 
       try {
-        // 1. Mettre à jour le statut de l'exercice directement
+        // 1. Mettre à jour le statut de l'exercice et les fichiers de rejet si présents
+        const updateData: any = {
+          exercise_status: isValid ? 'approved' : 'rejected',
+        };
+
+        if (!isValid) {
+          if (rejectReason) {
+            updateData.content = `❌ Exercice rejeté. Raison : ${rejectReason}`;
+          }
+          if (rejectAudioUrl) {
+            updateData.reject_audio_url = rejectAudioUrl;
+            updateData.reject_audio_duration = rejectAudioDuration;
+          }
+          if (rejectFilesUrls && rejectFilesUrls.length > 0) {
+            updateData.reject_files_urls = rejectFilesUrls;
+          }
+        }
+
         const { error: updateError } = await supabase
           .from('lesson_messages')
-          .update({
-            exercise_status: isValid ? 'approved' : 'rejected',
-            content: rejectReason && !isValid ? `❌ Exercice rejeté. Raison : ${rejectReason}` : undefined
-          })
+          .update(updateData)
           .eq('id', messageId);
 
         if (updateError) {
