@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Paperclip } from 'lucide-react';
+import { CheckCircle, XCircle, Paperclip, BookOpen, ChevronDown, ChevronUp, File, Download } from 'lucide-react';
 import { useValidateExercise } from '@/hooks/useValidateExercise';
 import { useValidateExerciseWithPromotion } from '@/hooks/useValidateExerciseWithPromotion';
 import { useValidateGroupExercise } from '@/hooks/group-chat/useValidateGroupExercise';
+import { useExerciseWithFiles } from '@/hooks/useExerciseWithFiles';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,13 +19,13 @@ interface ExerciseValidationProps {
     lesson_id?: string;
     formation_id?: string;
     exercise_id?: string;
-    level_id?: string; // Pour détecter le chat de groupe
+    level_id?: string; // Pour dÃ©tecter le chat de groupe
     promotion_id?: string; // Pour le contexte groupe
   };
 }
 
 const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
-  // Utiliser le bon hook selon le contexte (chat privé vs groupe)
+  // Utiliser le bon hook selon le contexte (chat privÃ© vs groupe)
   const isGroupChat = !!message.level_id;
   const validateExerciseMutationPrivate = useValidateExercise();
   const validateExerciseMutationWithPromotion = useValidateExerciseWithPromotion();
@@ -33,25 +34,29 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
     message.level_id || ''
   );
   
-  // Sélectionner le bon hook selon le contexte
+  // SÃ©lectionner le bon hook selon le contexte
   const validateExerciseMutation = isGroupChat ? validateGroupExerciseMutation : validateExerciseMutationWithPromotion;
   
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [showExerciseDetails, setShowExerciseDetails] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectAudioFile, setRejectAudioFile] = useState<File | null>(null);
   const [rejectFiles, setRejectFiles] = useState<File[]>([]);
   const { uploadFile, isUploading } = useFileUpload();
+  
+  // RÃ©cupÃ©rer l'exercice avec ses fichiers
+  const { data: exerciseWithFiles } = useExerciseWithFiles(message.exercise_id);
 
   const handleAudioRecording = (file: File) => {
     setRejectAudioFile(file);
-    toast.success('Message vocal enregistré');
+    toast.success('Message vocal enregistrÃ©');
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       setRejectFiles(prev => [...prev, ...newFiles]);
-      toast.success(`${newFiles.length} fichier(s) ajouté(s)`);
+      toast.success(`${newFiles.length} fichier(s) ajoutÃ©(s)`);
     }
   };
 
@@ -60,7 +65,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
   };
 
   const handleValidateExercise = async (isValid: boolean) => {
-    console.log('🔍 Validating exercise with message data:', { 
+    console.log('ðŸ” Validating exercise with message data:', { 
       messageId: message.id,
       lesson_id: message.lesson_id, 
       formation_id: message.formation_id,
@@ -71,7 +76,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
     });
     
     // Pour le chat de groupe, on a besoin de level_id et exercise_id
-    // Pour le chat privé, on a besoin de lesson_id et formation_id
+    // Pour le chat privÃ©, on a besoin de lesson_id et formation_id
     if (isGroupChat) {
       if (!message.level_id || !message.exercise_id) {
         console.error('Missing level_id or exercise_id for group chat', {
@@ -104,12 +109,12 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
       let audioDuration: number | null = null;
       let filesUrls: string[] = [];
 
-      // Upload audio si présent
+      // Upload audio si prÃ©sent
       if (!isValid && rejectAudioFile) {
         const audioResult = await uploadFile(rejectAudioFile, 'exercise_rejection_files');
         audioUrl = audioResult.fileUrl;
         
-        // Calculer la durée audio
+        // Calculer la durÃ©e audio
         const audio = new Audio();
         const audioBlob = await rejectAudioFile.arrayBuffer();
         const blob = new Blob([audioBlob], { type: rejectAudioFile.type });
@@ -125,7 +130,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
         });
       }
 
-      // Upload fichiers si présents
+      // Upload fichiers si prÃ©sents
       if (!isValid && rejectFiles.length > 0) {
         const uploadPromises = rejectFiles.map(file => 
           uploadFile(file, 'exercise_rejection_files')
@@ -134,15 +139,15 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
         filesUrls = results.map(r => r.fileUrl);
       }
       if (isGroupChat) {
-        // Logique spécifique pour le chat de groupe
-        console.log('🎯 Using group exercise validation:', {
+        // Logique spÃ©cifique pour le chat de groupe
+        console.log('ðŸŽ¯ Using group exercise validation:', {
           messageId: message.id,
           isValid,
           exerciseId: message.exercise_id,
           levelId: message.level_id
         });
         
-        // Récupérer le lesson_id depuis l'exercise_id pour la validation
+        // RÃ©cupÃ©rer le lesson_id depuis l'exercise_id pour la validation
         const { data: exerciseData } = await supabase
           .from('exercises')
           .select('lesson_id')
@@ -150,7 +155,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           .single();
 
         if (!exerciseData?.lesson_id) {
-          toast.error('Impossible de trouver la leçon associée à cet exercice');
+          toast.error('Impossible de trouver la leÃ§on associÃ©e Ã  cet exercice');
           return;
         }
         
@@ -161,13 +166,13 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           exerciseId: message.exercise_id!,
           lessonId: exerciseData.lesson_id,
           targetLevelId: message.level_id,
-          targetFormationId: undefined, // Sera récupéré automatiquement
+          targetFormationId: undefined, // Sera rÃ©cupÃ©rÃ© automatiquement
           rejectAudioUrl: audioUrl,
           rejectAudioDuration: audioDuration,
           rejectFilesUrls: filesUrls
         });
       } else {
-        // Logique pour le chat privé avec promotions
+        // Logique pour le chat privÃ© avec promotions
         await validateExerciseMutationWithPromotion.mutateAsync({
           messageId: message.id,
           userId: message.sender_id,
@@ -192,8 +197,190 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
     }
   };
 
+  const handleFileDownload = (fileUrl: string, fileName?: string) => {
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileName || 'fichier';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-2 mt-2">
+      {/* Bouton pour voir l'exercice */}
+      {message.exercise_id && (
+        <Button
+          onClick={() => setShowExerciseDetails(!showExerciseDetails)}
+          variant="outline"
+          size="sm"
+          className="w-full"
+        >
+          <BookOpen size={14} className="mr-2" />
+          {showExerciseDetails ? 'Masquer l\'exercice' : 'Voir l\'exercice'}
+          {showExerciseDetails ? <ChevronUp size={14} className="ml-2" /> : <ChevronDown size={14} className="ml-2" />}
+        </Button>
+      )}
+      
+      {/* DÃ©tails de l'exercice */}
+      {showExerciseDetails && exerciseWithFiles && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-500 rounded-full text-white text-sm flex items-center justify-center">
+              <BookOpen size={16} />
+            </div>
+            <h4 className="font-semibold text-gray-800">{exerciseWithFiles.title}</h4>
+          </div>
+          
+          {exerciseWithFiles.description && (
+            <p className="text-sm text-gray-600">{exerciseWithFiles.description}</p>
+          )}
+          
+          {exerciseWithFiles.content && (
+            <div className="bg-white p-3 rounded border">
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{exerciseWithFiles.content}</p>
+            </div>
+          )}
+          
+          {exerciseWithFiles.files && exerciseWithFiles.files.length > 0 && (
+            <div className="space-y-2">
+              <h5 className="text-sm font-medium text-gray-700">Fichiers joints :</h5>
+              {exerciseWithFiles.files.map((file, index) => {
+                const fileName = file.file_url.split('/').pop() || 'Fichier';
+                const fileType = file.file_type?.toLowerCase() || '';
+                const fileUrl = file.file_url || '';
+                
+                // DÃ©tection amÃ©liorÃ©e des types de fichiers
+                const isImage = fileType.includes('image') || /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(fileUrl);
+                const isVideo = fileType.includes('video') || /\.(mp4|webm|ogg|mov|avi|mkv)$/i.test(fileUrl);
+                const isAudio = fileType.includes('audio') || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(fileUrl);
+                const isPdf = fileType.includes('pdf') || /\.pdf$/i.test(fileUrl);
+
+                return (
+                  <div key={file.id || index} className="bg-white rounded border overflow-hidden">
+                    {/* PrÃ©visualisation Image */}
+                    {isImage && (
+                      <div className="relative">
+                        <img 
+                          src={file.file_url} 
+                          alt={fileName}
+                          className="w-full h-auto max-h-96 object-contain bg-gray-50"
+                          loading="lazy"
+                        />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleFileDownload(file.file_url, fileName)}
+                          className="absolute top-2 right-2"
+                        >
+                          <Download size={14} />
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* PrÃ©visualisation VidÃ©o */}
+                    {isVideo && (
+                      <div className="p-2">
+                        <video 
+                          controls 
+                          className="w-full h-auto max-h-96 rounded"
+                          preload="metadata"
+                        >
+                          <source src={file.file_url} type={file.file_type || 'video/mp4'} />
+                          Votre navigateur ne supporte pas la lecture de vidÃ©os.
+                        </video>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-gray-600">{fileName}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleFileDownload(file.file_url, fileName)}
+                          >
+                            <Download size={14} className="mr-1" />
+                            TÃ©lÃ©charger
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* PrÃ©visualisation Audio */}
+                    {isAudio && (
+                      <div className="p-3">
+                        <audio 
+                          controls 
+                          className="w-full"
+                          preload="metadata"
+                        >
+                          <source src={file.file_url} type={file.file_type || 'audio/mpeg'} />
+                          Votre navigateur ne supporte pas la lecture audio.
+                        </audio>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-gray-600">{fileName}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleFileDownload(file.file_url, fileName)}
+                          >
+                            <Download size={14} className="mr-1" />
+                            TÃ©lÃ©charger
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* PrÃ©visualisation PDF */}
+                    {isPdf && (
+                      <div className="p-2">
+                        <iframe
+                          src={file.file_url}
+                          className="w-full h-96 border-0 rounded"
+                          title={fileName}
+                        />
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-gray-600">{fileName}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleFileDownload(file.file_url, fileName)}
+                          >
+                            <Download size={14} className="mr-1" />
+                            TÃ©lÃ©charger
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Fichier gÃ©nÃ©rique */}
+                    {!isImage && !isVideo && !isAudio && !isPdf && (
+                      <div className="flex items-center space-x-2 p-2">
+                        <File size={14} className="text-gray-500" />
+                        <a 
+                          href={file.file_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline flex-1 truncate"
+                        >
+                          {fileName}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleFileDownload(file.file_url, fileName)}
+                          className="p-1 h-6 w-6"
+                        >
+                          <Download size={12} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      
       {!showRejectForm ? (
         <div className="flex space-x-2">
           <Button
@@ -218,7 +405,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
       ) : (
         <div className="space-y-3">
           <Textarea
-            placeholder="Expliquez pourquoi l'exercice est rejeté (optionnel si vous ajoutez un vocal ou des fichiers)..."
+            placeholder="Expliquez pourquoi l'exercice est rejetÃ© (optionnel si vous ajoutez un vocal ou des fichiers)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             className="text-xs"
@@ -233,7 +420,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
               disabled={isUploading || validateExerciseMutation.isPending}
             />
             {rejectAudioFile && (
-              <span className="text-xs text-green-600">✓ Message vocal enregistré</span>
+              <span className="text-xs text-green-600">âœ“ Message vocal enregistrÃ©</span>
             )}
           </div>
 
