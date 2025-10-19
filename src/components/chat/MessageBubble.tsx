@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/context-menu';
 import { useMessageReactions, useToggleReaction } from '@/hooks/useMessageReactions';
 import { useEditLessonMessage, useDeleteLessonMessage } from '@/hooks/useLessonOperations.messages';
+import { LinkifiedText } from '@/utils/linkify';
 
 interface Message {
   id: string;
@@ -193,7 +194,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-800 mb-2 whitespace-pre-wrap">{message.content}</p>
+              <p className="text-sm text-gray-800 mb-2 whitespace-pre-wrap">
+                <LinkifiedText text={message.content} />
+              </p>
             )}
 
             {message.file_url && message.file_name && (
