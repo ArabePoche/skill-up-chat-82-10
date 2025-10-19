@@ -17,6 +17,7 @@ interface CreateStoryModalProps {
 const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) => {
   const [contentType, setContentType] = useState<'text' | 'image' | 'video' | 'audio'>('text');
   const [textContent, setTextContent] = useState('');
+  const [mediaDescription, setMediaDescription] = useState('');
   const [backgroundColor, setBackgroundColor] = useState('#25d366');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
@@ -82,11 +83,13 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
         content_type: contentType,
         content_text: contentType === 'text' ? textContent : undefined,
         media_url: mediaUrl,
-        background_color: contentType === 'text' ? backgroundColor : undefined
+        background_color: contentType === 'text' ? backgroundColor : undefined,
+        description: (contentType === 'image' || contentType === 'video') ? mediaDescription : undefined
       });
 
       onClose();
       setTextContent('');
+      setMediaDescription('');
       setMediaFile(null);
       setMediaPreview(null);
       setContentType('text');
@@ -213,6 +216,15 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
                 )}
               </div>
             )}
+
+            {/* Champ de description */}
+            <Textarea
+              placeholder="Ajoutez une description (optionnelle)..."
+              value={mediaDescription}
+              onChange={(e) => setMediaDescription(e.target.value)}
+              className="mt-3"
+              rows={2}
+            />
           </div>
         )}
 
