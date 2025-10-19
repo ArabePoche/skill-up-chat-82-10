@@ -10,6 +10,7 @@ export interface Story {
   content_text?: string;
   media_url?: string;
   background_color?: string;
+  description?: string;
   created_at: string;
   expires_at: string;
   is_active: boolean;
@@ -80,12 +81,14 @@ export const useCreateStory = () => {
       content_type,
       content_text,
       media_url,
-      background_color = '#25d366'
+      background_color = '#25d366',
+      description
     }: {
       content_type: 'text' | 'image' | 'video' | 'audio';
       content_text?: string;
       media_url?: string;
       background_color?: string;
+      description?: string;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
@@ -96,7 +99,8 @@ export const useCreateStory = () => {
           content_type,
           content_text,
           media_url,
-          background_color
+          background_color,
+          description
         })
         .select()
         .single();
