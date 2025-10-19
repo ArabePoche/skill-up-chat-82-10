@@ -135,13 +135,20 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
 
       console.log('Création vidéo avec données:', videoData);
 
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('videos')
-        .insert(videoData);
+        .insert(videoData)
+        .select()
+        .maybeSingle();
 
       if (error) {
         console.error('Erreur création vidéo:', error);
         throw error;
+      }
+
+      if (!created) {
+        toast.error("Création non appliquée (pas d'autorisation ou données invalides)");
+        return;
       }
       
       toast.success('Vidéo créée avec succès');
