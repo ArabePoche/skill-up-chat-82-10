@@ -3402,6 +3402,7 @@ export type Database = {
           content_text: string | null
           content_type: string
           created_at: string
+          description: string | null
           expires_at: string
           id: string
           is_active: boolean
@@ -3413,6 +3414,7 @@ export type Database = {
           content_text?: string | null
           content_type: string
           created_at?: string
+          description?: string | null
           expires_at?: string
           id?: string
           is_active?: boolean
@@ -3424,6 +3426,7 @@ export type Database = {
           content_text?: string | null
           content_type?: string
           created_at?: string
+          description?: string | null
           expires_at?: string
           id?: string
           is_active?: boolean
@@ -3802,6 +3805,10 @@ export type Database = {
         Args: { p_promotion_id: string }
         Returns: boolean
       }
+      check_all_exercise_submissions_approved: {
+        Args: { p_exercise_id: string; p_user_id: string }
+        Returns: boolean
+      }
       check_student_inactivity: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -3821,6 +3828,10 @@ export type Database = {
       delete_video_comment: {
         Args: { comment_id: string; user_id: string }
         Returns: boolean
+      }
+      get_exercise_global_status: {
+        Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
+        Returns: string
       }
       get_formation_details_by_id: {
         Args: { p_formation_id: string; p_user_id: string }
@@ -4021,6 +4032,23 @@ export type Database = {
               p_user_id: string
             }
         Returns: undefined
+      }
+      validate_exercise_submission_global: {
+        Args:
+          | {
+              p_is_approved: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_teacher_id?: string
+              p_user_id: string
+            }
+          | {
+              p_is_approved: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
+        Returns: Json
       }
       validate_exercise_submission_with_promotion: {
         Args:
