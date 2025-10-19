@@ -240,7 +240,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
       {/* Story content - zone contrainte entre header et reply */}
       <div className="absolute left-0 right-0 flex items-center justify-center" style={{ top: '140px', bottom: '180px' }}>
-        <div className="w-full h-full flex items-center justify-center px-4">
+        <div className="w-full h-full flex flex-col items-center justify-center px-4">
           {story.content_type === 'text' && (
             <div 
               className="max-w-xs w-full p-6 rounded-2xl text-center shadow-lg"
@@ -253,24 +253,38 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           )}
 
           {story.content_type === 'image' && (
-            <img 
-              src={story.media_url} 
-              alt="Story content"
-              className="max-w-full max-h-full object-contain rounded-lg"
-            />
+            <div className="flex flex-col items-center max-w-full">
+              <img 
+                src={story.media_url} 
+                alt="Story content"
+                className="max-w-full max-h-[calc(100vh-400px)] object-contain rounded-lg"
+              />
+              {story.description && (
+                <p className="text-white text-sm mt-4 px-4 text-center max-w-md">
+                  {story.description}
+                </p>
+              )}
+            </div>
           )}
 
           {story.content_type === 'video' && (
-            <video 
-              src={story.media_url}
-              className="max-w-full max-h-full object-contain rounded-lg"
-              autoPlay
-              playsInline
-              onLoadedMetadata={(e) => {
-                const duration = e.currentTarget.duration;
-                setMediaDuration(duration);
-              }}
-            />
+            <div className="flex flex-col items-center max-w-full">
+              <video 
+                src={story.media_url}
+                className="max-w-full max-h-[calc(100vh-400px)] object-contain rounded-lg"
+                autoPlay
+                playsInline
+                onLoadedMetadata={(e) => {
+                  const duration = e.currentTarget.duration;
+                  setMediaDuration(duration);
+                }}
+              />
+              {story.description && (
+                <p className="text-white text-sm mt-4 px-4 text-center max-w-md">
+                  {story.description}
+                </p>
+              )}
+            </div>
           )}
 
           {story.content_type === 'audio' && (
