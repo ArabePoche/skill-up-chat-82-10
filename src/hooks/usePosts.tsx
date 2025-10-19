@@ -235,7 +235,7 @@ export const useCreatePost = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-mutationFn: async ({ 
+    mutationFn: async ({ 
       content, 
       postType, 
       imageFiles, 
@@ -246,80 +246,86 @@ mutationFn: async ({
       imageFiles?: File[] | null;
       authorId: string;
     }) => {
-      console.log('Creating post with data:', { content, postType, authorId });
-      
-const uploadedUrls: string[] = [];
-const uploadedTypes: string[] = [];
+      try {
+        console.log('Creating post with data:', { content, postType, authorId });
+        
+        const uploadedUrls: string[] = [];
+        const uploadedTypes: string[] = [];
 
-// Upload des images si présentes (multi-fichiers)
-if (imageFiles && imageFiles.length > 0) {
-  for (let i = 0; i < imageFiles.length; i++) {
-    const file = imageFiles[i];
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${authorId}/${Date.now()}-${i}.${fileExt}`;
+        // Upload des images si présentes (multi-fichiers)
+        if (imageFiles && imageFiles.length > 0) {
+          for (let i = 0; i < imageFiles.length; i++) {
+            const file = imageFiles[i];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${authorId}/${Date.now()}-${i}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('post-images')
-      .upload(fileName, file);
+            const { error: uploadError } = await supabase.storage
+              .from('post-images')
+              .upload(fileName, file);
 
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError);
-      throw new Error("Erreur lors de l'upload d'une image");
-    }
+            if (uploadError) {
+              console.error('Error uploading image:', uploadError);
+              throw new Error(`Erreur lors de l'upload d'une image: ${uploadError.message}`);
+            }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('post-images')
-      .getPublicUrl(fileName);
+            const { data: { publicUrl } } = supabase.storage
+              .from('post-images')
+              .getPublicUrl(fileName);
 
-    uploadedUrls.push(publicUrl);
-    uploadedTypes.push(file.type || 'image');
-  }
-}
+            uploadedUrls.push(publicUrl);
+            uploadedTypes.push(file.type || 'image');
+          }
+        }
 
-const firstImageUrl = uploadedUrls[0] || null;
+        const firstImageUrl = uploadedUrls[0] || null;
 
-// Création du post avec tous les champs requis
-      const postData = {
-        content: content.trim(),
-        post_type: postType,
-        author_id: authorId,
-        image_url: firstImageUrl,
-        is_active: true,
-        likes_count: 0,
-        comments_count: 0
-      };
+        // Création du post avec tous les champs requis
+        const postData = {
+          content: content.trim(),
+          post_type: postType,
+          author_id: authorId,
+          image_url: firstImageUrl,
+          is_active: true,
+          likes_count: 0,
+          comments_count: 0
+        };
 
-      
+        console.log('Inserting post data:', postData);
 
-      const { data, error } = await supabase
-        .from('posts')
-        .insert([postData])
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from('posts')
+          .insert([postData])
+          .select()
+          .single();
 
-      if (error) {
-        console.error('Error creating post:', error);
+        if (error) {
+          console.error('Error creating post:', error);
+          throw new Error(`Erreur lors de la création du post: ${error.message}`);
+        }
+
+        // Insérer les médias liés si présents
+        if (data && uploadedUrls.length > 0) {
+          const rows = uploadedUrls.map((url, idx) => ({
+            post_id: data.id,
+            file_url: url,
+            file_type: uploadedTypes[idx] || 'image',
+            order_index: idx
+          }));
+          const { error: mediaInsertError } = await supabase
+            .from('post_media')
+            .insert(rows);
+          if (mediaInsertError) {
+            console.error('Error inserting post media:', mediaInsertError);
+            // On ne bloque pas la création du post si l'insertion des médias échoue
+          }
+        }
+
+        console.log('Post created successfully:', data);
+        return data;
+      } catch (error: any) {
+        console.error('Create post error:', error);
         throw error;
       }
-
-      // Insérer les médias liés si présents
-      if (data && uploadedUrls.length > 0) {
-        const rows = uploadedUrls.map((url, idx) => ({
-          post_id: data.id,
-          file_url: url,
-          file_type: uploadedTypes[idx] || 'image',
-          order_index: idx
-        }));
-        const { error: mediaInsertError } = await supabase
-          .from('post_media')
-          .insert(rows);
-        if (mediaInsertError) {
-          
-          // On ne bloque pas la création du post si l'insertion des médias échoue
-        }
-      }
-
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
