@@ -464,8 +464,8 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           <Unlock size={14} className="mr-2" />
           {isLocking ? 'Déverrouillage...' : '🔒 Déverrouiller pour traiter'}
         </Button>
-      ) : isLockedByMe && !showRejectForm ? (
-        /* Boutons Valider/Rejeter une fois déverrouillé par moi */
+      ) : isLockedByMe && !isProcessed && !showRejectForm ? (
+        /* Boutons Valider/Rejeter uniquement si verrouillé par moi et pas encore traité */
         <div className="flex space-x-2">
           <Button
             onClick={() => handleValidateExercise(true)}
@@ -489,7 +489,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
       ) : null}
 
       {/* Formulaire de rejet */}
-      {showRejectForm && isLockedByMe && (
+      {showRejectForm && isLockedByMe && !isProcessed && (
         <div className="space-y-3">
           <Textarea
             placeholder="Expliquez pourquoi l'exercice est rejeté (optionnel si vous ajoutez un vocal ou des fichiers)..."
