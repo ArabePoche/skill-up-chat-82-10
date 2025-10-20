@@ -53,6 +53,8 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           exercise_id,
           exercise_status,
           is_exercise_submission,
+          locked_by_teacher_id,
+          locked_at,
           validated_by_teacher_id,
           profiles!sender_id (
             id,
