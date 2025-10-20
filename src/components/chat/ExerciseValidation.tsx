@@ -26,6 +26,7 @@ interface ExerciseValidationProps {
     exercise_status?: string;
     locked_by_teacher_id?: string | null;
     locked_at?: string | null;
+    validated_by_teacher_id?: string | null;
   };
 }
 
@@ -63,6 +64,12 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
   
   // Déterminer si la soumission est déjà traitée
   const isProcessed = message.exercise_status === 'approved' || message.exercise_status === 'rejected';
+  
+  // Déterminer si c'est ce professeur qui a validé/rejeté
+  const isValidatedByMe = message.validated_by_teacher_id === user?.id;
+  
+  // État pour permettre la modification de la décision
+  const [isEditingDecision, setIsEditingDecision] = useState(false);
 
   // Récupérer le nom du professeur qui a verrouillé (si ce n'est pas moi)
   React.useEffect(() => {
@@ -233,6 +240,9 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
       if (isLockedByMe) {
         unlockSubmission(message.id);
       }
+      
+      // Réinitialiser l'état d'édition
+      setIsEditingDecision(false);
     } catch (error) {
       console.error('Error validating exercise:', error);
     }
@@ -254,6 +264,33 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleResetDecision = async () => {
+    try {
+      // Réinitialiser le statut et permettre une nouvelle validation
+      const { error } = await supabase
+        .from('lesson_messages')
+        .update({ 
+          exercise_status: null,
+          validated_by_teacher_id: null,
+          reject_audio_url: null,
+          reject_audio_duration: null,
+          reject_files_urls: null
+        })
+        .eq('id', message.id);
+
+      if (error) throw error;
+
+      // Verrouiller la soumission pour le prof qui modifie
+      await lockSubmission(message.id);
+      
+      setIsEditingDecision(true);
+      toast.success('Vous pouvez maintenant modifier votre décision');
+    } catch (error) {
+      console.error('Error resetting decision:', error);
+      toast.error('Erreur lors de la réinitialisation de la décision');
+    }
   };
 
   return (
@@ -431,16 +468,16 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
       )}
       
       {/* Si la soumission est déjà traitée, afficher un bouton "Modifier la décision" */}
-      {isProcessed && isLockedByMe ? (
+      {isProcessed && isValidatedByMe && !isEditingDecision ? (
         <Button
-          onClick={handleUnlockForEdit}
-          disabled={isUnlocking}
+          onClick={handleResetDecision}
+          disabled={isLocking}
           size="sm"
           variant="outline"
           className="w-full"
         >
           <Edit size={14} className="mr-2" />
-          {isUnlocking ? 'Déverrouillage...' : 'Modifier la décision'}
+          {isLocking ? 'Chargement...' : '✏️ Modifier la décision'}
         </Button>
       ) : isLockedByOther ? (
         /* Si verrouillée par un autre professeur */
@@ -464,8 +501,8 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           <Unlock size={14} className="mr-2" />
           {isLocking ? 'Déverrouillage...' : '🔒 Déverrouiller pour traiter'}
         </Button>
-      ) : isLockedByMe && !isProcessed && !showRejectForm ? (
-        /* Boutons Valider/Rejeter uniquement si verrouillé par moi et pas encore traité */
+      ) : (isLockedByMe && !isProcessed && !showRejectForm) || (isEditingDecision && !showRejectForm) ? (
+        /* Boutons Valider/Rejeter si verrouillé par moi et pas encore traité OU en mode édition */
         <div className="flex space-x-2">
           <Button
             onClick={() => handleValidateExercise(true)}
@@ -489,7 +526,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
       ) : null}
 
       {/* Formulaire de rejet */}
-      {showRejectForm && isLockedByMe && !isProcessed && (
+      {showRejectForm && (isLockedByMe || isEditingDecision) && (
         <div className="space-y-3">
           <Textarea
             placeholder="Expliquez pourquoi l'exercice est rejeté (optionnel si vous ajoutez un vocal ou des fichiers)..."
