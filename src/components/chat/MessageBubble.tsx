@@ -40,6 +40,7 @@ interface Message {
   exercise_id?: string;
   lesson_id?: string;
   formation_id?: string;
+  level_id?: string;
   is_read?: boolean;
   reject_audio_url?: string;
   reject_audio_duration?: number;
@@ -66,6 +67,7 @@ interface Message {
   };
   is_system_message?: boolean;
   validated_by_teacher_id?: string;
+  promotion_id?: string;
 }
 
 interface MessageBubbleProps {
@@ -213,10 +215,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
               </div>
             )}
 
-            {isTeacher && isRealExerciseSubmission && !message.exercise_status && (
+            {/* Afficher ExerciseValidation pour les profs (toujours, même si déjà traité) */}
+            {isTeacher && isRealExerciseSubmission && (
               <ExerciseValidation message={message} />
             )}
 
+            {/* Afficher le statut et les détails pour tous */}
             {isRealExerciseSubmission && message.exercise_status && (
               <div className="space-y-2">
                 <ExerciseStatus status={message.exercise_status} />
