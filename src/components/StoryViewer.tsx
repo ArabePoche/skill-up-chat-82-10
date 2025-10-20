@@ -96,9 +96,12 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   };
 
-  const handleStoryPress = () => {
+  const handleStoryPressStart = () => {
     setIsPaused(true);
-    setTimeout(() => setIsPaused(false), 200);
+  };
+
+  const handleStoryPressEnd = () => {
+    setIsPaused(false);
   };
 
   const handleOpenViewers = (e: React.MouseEvent) => {
@@ -235,7 +238,12 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       />
       <div 
         className="absolute left-1/3 top-20 w-1/3 h-[calc(100%-200px)] cursor-pointer z-10"
-        onMouseDown={handleStoryPress}
+        onMouseDown={handleStoryPressStart}
+        onMouseUp={handleStoryPressEnd}
+        onMouseLeave={handleStoryPressEnd}
+        onTouchStart={handleStoryPressStart}
+        onTouchEnd={handleStoryPressEnd}
+        onTouchCancel={handleStoryPressEnd}
       />
 
       {/* Story content - zone contrainte entre header et reply */}
