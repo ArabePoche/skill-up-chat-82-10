@@ -36,14 +36,15 @@ export const useSubmissionLock = () => {
 
       return result;
     },
-    onSuccess: (data, messageId) => {
-      toast.success('Soumission déverrouillée pour traitement');
-      
-      // Invalider les queries de messages pour rafraîchir l'UI
-      queryClient.invalidateQueries({ queryKey: ['teacher-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['lesson-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['group-chat-messages'] });
-    },
+      onSuccess: (data, messageId) => {
+        toast.success('Soumission verrouillée pour traitement');
+        
+        // Invalider les queries de messages pour rafraîchir l'UI (tous contextes)
+        queryClient.invalidateQueries({ queryKey: ['teacher-messages'] });
+        queryClient.invalidateQueries({ queryKey: ['lesson-messages'] });
+        queryClient.invalidateQueries({ queryKey: ['group-chat-messages'] });
+        queryClient.invalidateQueries({ queryKey: ['teacher-group-messages'] });
+      },
     onError: (error: any) => {
       console.error('Error locking submission:', error);
       toast.error(error.message || 'Impossible de verrouiller la soumission');
@@ -76,6 +77,7 @@ export const useSubmissionLock = () => {
       queryClient.invalidateQueries({ queryKey: ['teacher-messages'] });
       queryClient.invalidateQueries({ queryKey: ['lesson-messages'] });
       queryClient.invalidateQueries({ queryKey: ['group-chat-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-group-messages'] });
     },
     onError: (error: any) => {
       console.error('Error unlocking submission:', error);
