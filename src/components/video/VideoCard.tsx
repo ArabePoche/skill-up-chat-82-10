@@ -174,6 +174,12 @@ const VideoCard: React.FC<VideoCardProps> = ({
     }
   };
 
+  const handleProfileClick = () => {
+    if (video.author_id) {
+      navigate(`/profile/${video.author_id}`);
+    }
+  };
+
   const formatCount = (count: number) => {
     if (count < 1000) return count.toString();
     if (count < 1000000) return (count / 1000).toFixed(1) + 'K';
@@ -272,7 +278,10 @@ const VideoCard: React.FC<VideoCardProps> = ({
       <div className="absolute right-3 bottom-20 flex flex-col items-center space-y-4 z-10">
         {/* Avatar du créateur avec bouton d'abonnement */}
         <div className="relative">
-          <Avatar className="w-12 h-12 border-2 border-white">
+          <Avatar 
+            className="w-12 h-12 border-2 border-white cursor-pointer"
+            onClick={handleProfileClick}
+          >
             <AvatarImage src={video.profiles?.avatar_url} />
             <AvatarFallback className="bg-gray-600 text-white text-sm">
               {video.profiles?.first_name?.charAt(0) || 'U'}
@@ -393,7 +402,10 @@ const VideoCard: React.FC<VideoCardProps> = ({
       <div className="absolute left-4 bottom-20 right-20 z-10">
         <div className="text-white">
           <div className="flex items-center space-x-2 mb-2">
-            <span className="font-semibold">
+            <span 
+              className="font-semibold cursor-pointer hover:underline"
+              onClick={handleProfileClick}
+            >
               @{video.profiles?.username || video.profiles?.first_name || 'Utilisateur'}
             </span>
             {video.video_type === 'promo' && (
