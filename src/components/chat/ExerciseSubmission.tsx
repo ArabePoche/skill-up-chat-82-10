@@ -81,7 +81,16 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
     >
       {!showSubmissionForm && showSubmissionOptions && (
         <Button
-          onClick={() => setShowSubmissionForm(true)}
+          onClick={() => {
+            setShowSubmissionForm(true);
+            // Scroll fluide vers la zone de soumission après un court délai
+            setTimeout(() => {
+              const element = document.querySelector('[data-submission-form="true"]');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+          }}
           size="sm"
           className="bg-blue-500 hover:bg-blue-600"
           disabled={!canSubmit}
@@ -91,13 +100,15 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
       )}
 
       {showSubmissionForm && (
-        <SubmissionForm
-          onSubmit={handleSubmit}
-          onCancel={() => setShowSubmissionForm(false)}
-          isSubmitting={submitExerciseMutation.isPending}
-          exerciseTitle={exercise.title}
-          showSubmissionOptions={showSubmissionOptions}
-        />
+        <div data-submission-form="true">
+          <SubmissionForm
+            onSubmit={handleSubmit}
+            onCancel={() => setShowSubmissionForm(false)}
+            isSubmitting={submitExerciseMutation.isPending}
+            exerciseTitle={exercise.title}
+            showSubmissionOptions={showSubmissionOptions}
+          />
+        </div>
       )}
     </ExerciseCard>
   );
