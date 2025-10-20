@@ -30,6 +30,8 @@ interface Message {
   exercise_id?: string;
   lesson_id?: string;
   formation_id?: string;
+  level_id?: string;
+  promotion_id?: string;
   is_read?: boolean;
   profiles?: {
     id: string;
