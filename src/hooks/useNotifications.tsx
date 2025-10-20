@@ -9,6 +9,8 @@ export const useNotifications = () => {
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications', user?.id],
+    staleTime: 30000, // Données considérées fraîches pendant 30 secondes
+    refetchInterval: 60000, // Rafraîchir toutes les 60 secondes
     queryFn: async () => {
       if (!user?.id) return [];
 
