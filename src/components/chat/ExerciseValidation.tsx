@@ -477,7 +477,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           className="w-full"
         >
           <Edit size={14} className="mr-2" />
-          {isLocking ? 'Chargement...' : '✏️ Modifier la décision'}
+          {isLocking ? 'Chargement...' : '✏️ Modifier ta décision'}
         </Button>
       ) : isLockedByOther ? (
         /* Si verrouillée par un autre professeur */
@@ -499,7 +499,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
           className="w-full"
         >
           <Unlock size={14} className="mr-2" />
-          {isLocking ? 'Déverrouillage...' : '🔒 Déverrouiller pour traiter'}
+          {isLocking ? 'Déverrouillage...' : '🔒 Déverrouiller pour corriger'}
         </Button>
       ) : (isLockedByMe && !isProcessed && !showRejectForm) || (isEditingDecision && !showRejectForm) ? (
         /* Boutons Valider/Rejeter si verrouillé par moi et pas encore traité OU en mode édition */
