@@ -1,16 +1,18 @@
 
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Paperclip, BookOpen, ChevronDown, ChevronUp, File, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Paperclip, BookOpen, ChevronDown, ChevronUp, File, Download, Lock, Unlock, Edit } from 'lucide-react';
 import { useValidateExercise } from '@/hooks/useValidateExercise';
 import { useValidateExerciseWithPromotion } from '@/hooks/useValidateExerciseWithPromotion';
 import { useValidateGroupExercise } from '@/hooks/group-chat/useValidateGroupExercise';
 import { useExerciseWithFiles } from '@/hooks/useExerciseWithFiles';
+import { useSubmissionLock } from '@/hooks/useSubmissionLock';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import AudioRecorder from './AudioRecorder';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ExerciseValidationProps {
   message: {
@@ -19,12 +21,18 @@ interface ExerciseValidationProps {
     lesson_id?: string;
     formation_id?: string;
     exercise_id?: string;
-    level_id?: string; // Pour détecter le chat de groupe
-    promotion_id?: string; // Pour le contexte groupe
+    level_id?: string;
+    promotion_id?: string;
+    exercise_status?: string;
+    locked_by_teacher_id?: string | null;
+    locked_at?: string | null;
   };
 }
 
 const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
+  const { user } = useAuth();
+  const { lockSubmission, unlockSubmission, isLocking, isUnlocking } = useSubmissionLock();
+  
   // Utiliser le bon hook selon le contexte (chat privé vs groupe)
   const isGroupChat = !!message.level_id;
   const validateExerciseMutationPrivate = useValidateExercise();
@@ -42,10 +50,38 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
   const [rejectReason, setRejectReason] = useState('');
   const [rejectAudioFile, setRejectAudioFile] = useState<File | null>(null);
   const [rejectFiles, setRejectFiles] = useState<File[]>([]);
+  const [lockedByTeacherName, setLockedByTeacherName] = useState<string | null>(null);
   const { uploadFile, isUploading } = useFileUpload();
   
   // Récupérer l'exercice avec ses fichiers
   const { data: exerciseWithFiles } = useExerciseWithFiles(message.exercise_id);
+
+  // Déterminer si c'est ce professeur qui a verrouillé
+  const isLockedByMe = message.locked_by_teacher_id === user?.id;
+  const isLocked = !!message.locked_by_teacher_id;
+  const isLockedByOther = isLocked && !isLockedByMe;
+  
+  // Déterminer si la soumission est déjà traitée
+  const isProcessed = message.exercise_status === 'approved' || message.exercise_status === 'rejected';
+
+  // Récupérer le nom du professeur qui a verrouillé (si ce n'est pas moi)
+  React.useEffect(() => {
+    if (isLockedByOther && message.locked_by_teacher_id) {
+      const fetchTeacherName = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, username')
+          .eq('id', message.locked_by_teacher_id!)
+          .single();
+        
+        if (data) {
+          const name = `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.username || 'Un autre professeur';
+          setLockedByTeacherName(name);
+        }
+      };
+      fetchTeacherName();
+    }
+  }, [message.locked_by_teacher_id, isLockedByOther]);
 
   const handleAudioRecording = (file: File) => {
     setRejectAudioFile(file);
@@ -192,9 +228,22 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
         setRejectAudioFile(null);
         setRejectFiles([]);
       }
+
+      // Automatiquement déverrouiller après validation/rejet
+      if (isLockedByMe) {
+        unlockSubmission(message.id);
+      }
     } catch (error) {
       console.error('Error validating exercise:', error);
     }
+  };
+
+  const handleLockSubmission = () => {
+    lockSubmission(message.id);
+  };
+
+  const handleUnlockForEdit = () => {
+    unlockSubmission(message.id);
   };
 
   const handleFileDownload = (fileUrl: string, fileName?: string) => {
@@ -381,7 +430,42 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
         </div>
       )}
       
-      {!showRejectForm ? (
+      {/* Si la soumission est déjà traitée, afficher un bouton "Modifier la décision" */}
+      {isProcessed && isLockedByMe ? (
+        <Button
+          onClick={handleUnlockForEdit}
+          disabled={isUnlocking}
+          size="sm"
+          variant="outline"
+          className="w-full"
+        >
+          <Edit size={14} className="mr-2" />
+          {isUnlocking ? 'Déverrouillage...' : 'Modifier la décision'}
+        </Button>
+      ) : isLockedByOther ? (
+        /* Si verrouillée par un autre professeur */
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <div className="flex items-center space-x-2 text-yellow-800">
+            <Lock size={16} />
+            <span className="text-sm font-medium">
+              En cours de traitement par {lockedByTeacherName || 'un autre professeur'}
+            </span>
+          </div>
+        </div>
+      ) : !isLocked && !isProcessed ? (
+        /* Bouton de déverrouillage */
+        <Button
+          onClick={handleLockSubmission}
+          disabled={isLocking}
+          size="sm"
+          variant="outline"
+          className="w-full"
+        >
+          <Unlock size={14} className="mr-2" />
+          {isLocking ? 'Déverrouillage...' : '🔒 Déverrouiller pour traiter'}
+        </Button>
+      ) : isLockedByMe && !showRejectForm ? (
+        /* Boutons Valider/Rejeter une fois déverrouillé par moi */
         <div className="flex space-x-2">
           <Button
             onClick={() => handleValidateExercise(true)}
@@ -402,7 +486,10 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
             Rejeter
           </Button>
         </div>
-      ) : (
+      ) : null}
+
+      {/* Formulaire de rejet */}
+      {showRejectForm && isLockedByMe && (
         <div className="space-y-3">
           <Textarea
             placeholder="Expliquez pourquoi l'exercice est rejeté (optionnel si vous ajoutez un vocal ou des fichiers)..."
