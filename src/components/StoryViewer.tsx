@@ -27,6 +27,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 }) => {
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [savedProgress, setSavedProgress] = useState(0); // Sauvegarder la progression pendant la pause
   const [replyText, setReplyText] = useState('');
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
@@ -47,13 +48,27 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [story?.id]);
 
+  // Réinitialiser la progression quand on change de story
   useEffect(() => {
-    if (isPaused) return;
-    
     setProgress(0);
+    setSavedProgress(0);
     // Réinitialiser la durée par défaut pour les nouvelles stories
     if (story.content_type === 'text' || story.content_type === 'image') {
       setMediaDuration(10);
+    }
+  }, [currentStoryIndex, story.content_type]);
+
+  // Gérer la progression de la story
+  useEffect(() => {
+    if (isPaused) {
+      // Sauvegarder la progression actuelle lors de la pause
+      setSavedProgress(progress);
+      return;
+    }
+    
+    // Restaurer la progression sauvegardée lors de la reprise
+    if (savedProgress > 0 && progress === 0) {
+      setProgress(savedProgress);
     }
     
     // Calculer l'intervalle basé sur la durée du média
@@ -70,7 +85,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [currentStoryIndex, onNext, isPaused, mediaDuration, story.content_type]);
+  }, [isPaused, mediaDuration, onNext, progress, savedProgress]);
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date();
