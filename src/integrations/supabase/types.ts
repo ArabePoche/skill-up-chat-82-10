@@ -1026,6 +1026,8 @@ export type Database = {
           is_system_message: boolean | null
           lesson_id: string
           level_id: string | null
+          locked_at: string | null
+          locked_by_teacher_id: string | null
           message_type: string
           promotion_id: string | null
           read_by_teachers: string | null
@@ -1053,6 +1055,8 @@ export type Database = {
           is_system_message?: boolean | null
           lesson_id: string
           level_id?: string | null
+          locked_at?: string | null
+          locked_by_teacher_id?: string | null
           message_type?: string
           promotion_id?: string | null
           read_by_teachers?: string | null
@@ -1080,6 +1084,8 @@ export type Database = {
           is_system_message?: boolean | null
           lesson_id?: string
           level_id?: string | null
+          locked_at?: string | null
+          locked_by_teacher_id?: string | null
           message_type?: string
           promotion_id?: string | null
           read_by_teachers?: string | null
@@ -1119,6 +1125,13 @@ export type Database = {
             columns: ["level_id"]
             isOneToOne: false
             referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_messages_locked_by_teacher_id_fkey"
+            columns: ["locked_by_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3930,6 +3943,10 @@ export type Database = {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
       }
+      lock_exercise_submission: {
+        Args: { p_message_id: string; p_teacher_id: string }
+        Returns: Json
+      }
       mark_lesson_messages_as_read: {
         Args: {
           p_formation_id: string
@@ -4015,6 +4032,10 @@ export type Database = {
           p_sender_id: string
         }
         Returns: undefined
+      }
+      unlock_exercise_submission: {
+        Args: { p_message_id: string; p_teacher_id: string }
+        Returns: Json
       }
       validate_exercise_submission: {
         Args:
