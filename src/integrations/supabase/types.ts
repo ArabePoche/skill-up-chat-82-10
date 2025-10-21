@@ -4055,20 +4055,13 @@ export type Database = {
         Returns: undefined
       }
       validate_exercise_submission_global: {
-        Args:
-          | {
-              p_is_approved: boolean
-              p_message_id: string
-              p_reject_reason?: string
-              p_teacher_id?: string
-              p_user_id: string
-            }
-          | {
-              p_is_approved: boolean
-              p_message_id: string
-              p_reject_reason?: string
-              p_user_id: string
-            }
+        Args: {
+          p_is_approved: boolean
+          p_message_id: string
+          p_reject_reason?: string
+          p_teacher_id?: string
+          p_user_id: string
+        }
         Returns: Json
       }
       validate_exercise_submission_with_promotion: {
