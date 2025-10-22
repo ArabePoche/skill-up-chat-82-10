@@ -75,9 +75,10 @@ interface MessageBubbleProps {
   isTeacher: boolean;
   onReply?: (message: Message) => void; // callback pour définir la réponse dans l'input
   onScrollToMessage?: (messageId: string) => void; // Nouvelle prop pour le scroll
+  highlightedMessageId?: string | null;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onReply, onScrollToMessage }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onReply, onScrollToMessage, highlightedMessageId }) => {
   const { user } = useAuth();
   const isOwnMessage = message.sender_id === user?.id;
   const isRealExerciseSubmission = message.is_exercise_submission === true;
@@ -140,12 +141,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
         content_text: `✅ Exercice validé !\n\n${message.content}`,
         background_color: '#22c55e' // Vert pour exercice validé
       });
-      toast.success('Exercice publié dans le statut !');
+      toast.success('Exercice publié en story !');
     } catch (error) {
       console.error('Error publishing to story:', error);
       toast.error('Erreur lors de la publication en story');
     }
   };
+
+  const isHighlighted = highlightedMessageId === message.id;
 
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
@@ -153,9 +156,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
         <ContextMenuTrigger asChild>
           <div
             ref={bubbleRef}
-            className={`rounded-lg shadow-sm max-w-xs p-3 relative ${
+            data-message-id={message.id}
+            className={`rounded-lg shadow-sm max-w-xs p-3 relative transition-all duration-300 ${
               isOwnMessage ? 'bg-[#dcf8c6]' : 'bg-white'
-            }`}
+            } ${isHighlighted ? 'ring-2 ring-[#25d366] scale-105' : ''}`}
           >
             {!isOwnMessage && (
               <MessageSender profile={message.profiles} />
