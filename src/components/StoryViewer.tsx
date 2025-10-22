@@ -43,11 +43,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const viewsCount = story?.story_views?.length || 0;
 
   useEffect(() => {
-    if (story?.id) {
-      markAsViewed.mutate(story.id);
+    if (story?.id && story?.user_id) {
+      markAsViewed.mutate({ storyId: story.id, storyUserId: story.user_id });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [story?.id]);
+  }, [story?.id, story?.user_id]);
 
   // Réinitialiser la progression quand on change de story
   useEffect(() => {
