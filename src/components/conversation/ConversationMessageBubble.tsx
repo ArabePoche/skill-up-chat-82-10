@@ -128,7 +128,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
                     isOwnMessage ? 'border-white/20 text-white/80' : 'border-gray-200 text-gray-500'
                   }`}>
                     <span className="text-base">📖</span>
-                    <span>Réponse à votre statut</span>
+                    <span>Réponse au statut</span>
                   </div>
                 )}
                 
