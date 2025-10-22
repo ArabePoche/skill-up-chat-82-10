@@ -47,6 +47,7 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
     content: string;
     sender_name: string;
   } | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   // Récupérer le promotionId pour afficher les membres
   const { promotionId } = useChatMode(formation.id);
@@ -94,10 +95,14 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
   };
 
   const handleScrollToMessage = (messageId: string) => {
-    const messageElement = document.getElementById(`message-${messageId}`);
-    if (messageElement) {
-      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    setTimeout(() => {
+      const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedMessageId(messageId);
+        setTimeout(() => setHighlightedMessageId(null), 3000);
+      }
+    }, 100);
   };
 
   if (isLoading) {
@@ -189,6 +194,8 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
                     isTeacher={true}
                     onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
                     onReply={handleReplyToMessage}
+                    onScrollToMessage={handleScrollToMessage}
+                    highlightedMessageId={highlightedMessageId}
                   />
                 </div>
               </div>
