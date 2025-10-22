@@ -33,6 +33,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [isReplying, setIsReplying] = useState(false);
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [mediaDuration, setMediaDuration] = useState<number>(10); // Durée par défaut de 10s pour texte/image
+  const [audioEnded, setAudioEnded] = useState(false);
   const markAsViewed = useMarkStoryAsViewed();
   const { user } = useAuth();
   const story = stories[currentStoryIndex];
@@ -52,6 +53,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   useEffect(() => {
     setProgress(0);
     setSavedProgress(0);
+    setAudioEnded(false);
     // Réinitialiser la durée par défaut pour les nouvelles stories
     if (story.content_type === 'text' || story.content_type === 'image') {
       setMediaDuration(10);
@@ -63,6 +65,12 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     if (isPaused) {
       // Sauvegarder la progression actuelle lors de la pause
       setSavedProgress(progress);
+      return;
+    }
+    
+    // Pour les audios, on ne gère pas la progression automatique
+    // Elle sera déclenchée par l'événement onEnded
+    if (story.content_type === 'audio' && !audioEnded) {
       return;
     }
     
@@ -85,7 +93,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [isPaused, mediaDuration, onNext, progress, savedProgress]);
+  }, [isPaused, mediaDuration, onNext, progress, savedProgress, story.content_type, audioEnded]);
 
   const formatTimeAgo = (dateString: string) => {
     const now = new Date();
@@ -317,14 +325,56 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
               </div>
               <audio
                 src={story.media_url}
+                controls
                 autoPlay
+                playsInline
                 onLoadedMetadata={(e) => {
                   const duration = e.currentTarget.duration;
-                  setMediaDuration(duration);
+                  console.log('Audio duration loaded:', duration);
+                  if (duration && isFinite(duration)) {
+                    setMediaDuration(duration);
+                  }
+                }}
+                onTimeUpdate={(e) => {
+                  if (!isPaused && story.content_type === 'audio') {
+                    const audio = e.currentTarget;
+                    const percentage = (audio.currentTime / audio.duration) * 100;
+                    setProgress(percentage);
+                  }
+                }}
+                onEnded={() => {
+                  console.log('Audio ended, moving to next story');
+                  setAudioEnded(true);
+                  setProgress(100);
+                  setTimeout(() => {
+                    onNext();
+                  }, 300);
+                }}
+                onCanPlay={(e) => {
+                  const duration = e.currentTarget.duration;
+                  console.log('Audio can play, duration:', duration);
+                  if (duration && isFinite(duration) && mediaDuration === 10) {
+                    setMediaDuration(duration);
+                  }
+                }}
+                onDurationChange={(e) => {
+                  const duration = e.currentTarget.duration;
+                  console.log('Audio duration changed:', duration);
+                  if (duration && isFinite(duration)) {
+                    setMediaDuration(duration);
+                  }
+                }}
+                onError={(e) => {
+                  console.error('Error loading audio:', e);
                 }}
                 className="w-full"
               />
               <p className="text-white/70 text-sm text-center">Message vocal</p>
+              {story.description && (
+                <p className="text-white text-sm mt-2 px-4 text-center max-w-md">
+                  {story.description}
+                </p>
+              )}
             </div>
           )}
         </div>
