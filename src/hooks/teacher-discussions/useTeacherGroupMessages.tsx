@@ -63,6 +63,17 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
             username,
             avatar_url,
             is_teacher
+          ),
+          replied_to_message:replied_to_message_id(
+            id,
+            content,
+            sender_id,
+            profiles!sender_id(
+              id,
+              first_name,
+              last_name,
+              username
+            )
           )
         `)
         .eq('formation_id', formationId)
