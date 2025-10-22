@@ -16,7 +16,8 @@ export const useSendTeacherStudentMessage = () => {
       messageType = 'text',
       fileUrl,
       fileType,
-      fileName
+      fileName,
+      repliedToMessageId
     }: {
       formationId: string;
       studentId: string;
@@ -26,6 +27,7 @@ export const useSendTeacherStudentMessage = () => {
       fileUrl?: string;
       fileType?: string;
       fileName?: string;
+      repliedToMessageId?: string;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
       if (!lessonId) throw new Error('lesson_id is required');
@@ -63,6 +65,7 @@ export const useSendTeacherStudentMessage = () => {
       if (fileUrl) messageData.file_url = fileUrl;
       if (fileType) messageData.file_type = fileType;
       if (fileName) messageData.file_name = fileName;
+      if (repliedToMessageId) messageData.replied_to_message_id = repliedToMessageId;
 
       const { data, error } = await supabase
         .from('lesson_messages')
