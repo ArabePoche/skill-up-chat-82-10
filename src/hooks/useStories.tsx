@@ -119,22 +119,43 @@ export const useMarkStoryAsViewed = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (storyId: string) => {
+    mutationFn: async ({ storyId, storyUserId }: { storyId: string; storyUserId: string }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const { error } = await supabase
+      // Ne pas comptabiliser la vue de sa propre story
+      if (user.id === storyUserId) {
+        console.log('⏭️ Skipping view recording: own story');
+        return null;
+      }
+
+      console.log('📝 Recording view for story:', storyId, 'by user:', user.id);
+
+      const { data, error } = await supabase
         .from('story_views')
         .insert({
           story_id: storyId,
           viewer_id: user.id
-        });
+        })
+        .select();
 
-      if (error && !error.message.includes('duplicate key')) {
+      if (error) {
+        if (error.message.includes('duplicate key')) {
+          console.log('ℹ️ View already recorded for this story');
+          return null;
+        }
+        console.error('❌ Error recording view:', error);
         throw error;
       }
+
+      console.log('✅ View recorded successfully:', data);
+      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stories'] });
+    onSuccess: (data) => {
+      // Ne rafraîchir que si une vue a réellement été enregistrée
+      if (data) {
+        console.log('🔄 Refreshing stories after view recorded');
+        queryClient.invalidateQueries({ queryKey: ['stories'] });
+      }
     },
   });
 };
