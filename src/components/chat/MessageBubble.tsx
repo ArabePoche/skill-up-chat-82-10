@@ -140,7 +140,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
         content_text: `✅ Exercice validé !\n\n${message.content}`,
         background_color: '#22c55e' // Vert pour exercice validé
       });
-      toast.success('Exercice publié en story !');
+      toast.success('Exercice publié dans le statut !');
     } catch (error) {
       console.error('Error publishing to story:', error);
       toast.error('Erreur lors de la publication en story');
