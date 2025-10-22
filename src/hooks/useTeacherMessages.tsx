@@ -21,6 +21,17 @@ export const useTeacherMessages = (lessonId: string | undefined, formationId: st
             last_name,
             username,
             avatar_url
+          ),
+          replied_to_message:replied_to_message_id(
+            id,
+            content,
+            sender_id,
+            profiles!sender_id(
+              id,
+              first_name,
+              last_name,
+              username
+            )
           )
         `)
         .eq('lesson_id', lessonId)
