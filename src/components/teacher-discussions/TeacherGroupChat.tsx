@@ -7,6 +7,8 @@ import TypingIndicator from '../chat/TypingIndicator';
 import ChatInputBar from '../chat/ChatInputBar';
 import TeacherChatHeader from '../teacher/TeacherChatHeader';
 import TeachingStudio from '../live-classroom/TeachingStudio';
+import DateSeparator from '../chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { ArrowLeft, Users, User } from 'lucide-react';
 import { useTeacherGroupMessages } from '@/hooks/teacher-discussions/useTeacherGroupMessages';
 import { useSendGroupMessage } from '@/hooks/useSendGroupMessage';
@@ -186,17 +188,24 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
 
           {/* Messages */}
           {messages && messages.length > 0 ? (
-            messages.map((msg) => (
-              <div key={msg.id} className="message-appear">
-                <div id={`message-${msg.id}`}>
-                  <MessageItem
-                    message={msg}
-                    isTeacher={true}
-                    onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
-                    onReply={handleReplyToMessage}
-                    onScrollToMessage={handleScrollToMessage}
-                    highlightedMessageId={highlightedMessageId}
-                  />
+            Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+              <div key={date}>
+                <DateSeparator date={date} />
+                <div className="space-y-4">
+                  {dateMessages.map((msg) => (
+                    <div key={msg.id} className="message-appear">
+                      <div id={`message-${msg.id}`}>
+                        <MessageItem
+                          message={msg}
+                          isTeacher={true}
+                          onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
+                          onReply={handleReplyToMessage}
+                          onScrollToMessage={handleScrollToMessage}
+                          highlightedMessageId={highlightedMessageId}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))
