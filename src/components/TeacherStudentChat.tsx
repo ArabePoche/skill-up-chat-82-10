@@ -6,6 +6,8 @@ import ChatInputBar from './chat/ChatInputBar';
 import InterviewToggleButton from './teacher/InterviewToggleButton';
 import LessonVideoPlayer from './LessonVideoPlayer';
 import TeachingStudio from './live-classroom/TeachingStudio';
+import DateSeparator from './chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { useTeacherStudentMessages } from '@/hooks/useTeacherStudentMessages';
 import { useSendTeacherStudentMessage } from '@/hooks/useSendTeacherStudentMessage';
 import { useValidateExercise } from '@/hooks/useValidateExercise';
@@ -211,16 +213,21 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
 
           {/* Messages */}
           {messages && messages.length > 0 ? (
-            messages.map((msg) => (
-              <div key={msg.id} className="message-appear">
-                <MessageItem
-                  message={msg}
-                  isTeacher={true}
-                  onValidateExercise={(messageId, isValid) => handleValidateExercise(messageId, isValid)}
-                  onReply={handleReplyToMessage}
-                  onScrollToMessage={handleScrollToMessage}
-                  highlightedMessageId={highlightedMessageId}
-                />
+            Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+              <div key={date}>
+                <DateSeparator date={date} />
+                {dateMessages.map((msg) => (
+                  <div key={msg.id} className="message-appear">
+                    <MessageItem
+                      message={msg}
+                      isTeacher={true}
+                      onValidateExercise={(messageId, isValid) => handleValidateExercise(messageId, isValid)}
+                      onReply={handleReplyToMessage}
+                      onScrollToMessage={handleScrollToMessage}
+                      highlightedMessageId={highlightedMessageId}
+                    />
+                  </div>
+                ))}
               </div>
             ))
           ) : (
