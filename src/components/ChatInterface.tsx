@@ -13,6 +13,8 @@ import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 import { useCallNotifications } from '@/hooks/useCallNotifications';
 import ChatInputBar from './chat/ChatInputBar';
 import MessageList from './chat/MessageList';
+import DateSeparator from './chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { LessonVideoPlayerWithTimer } from './video/LessonVideoPlayerWithTimer';
 import { SubscriptionUpgradeModal } from './chat/SubscriptionUpgradeModal';
 import VideoMessageSwitch from './video/VideoMessageSwitch';
