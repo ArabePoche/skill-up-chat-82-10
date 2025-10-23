@@ -11,6 +11,8 @@ import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseDisplay from '@/components/chat/ExerciseDisplay';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { ValidatedByTeacherBadge } from '@/components/chat/ValidatedByTeacherBadge';
+import DateSeparator from '@/components/chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { toast } from 'sonner';
 import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 
@@ -204,7 +206,10 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, index) => {
+        {Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+          <div key={date}>
+            <DateSeparator date={date} />
+            {dateMessages.map((msg, index) => {
           const isOwnMessage = msg.sender_id === user?.id;
           const isSystemMessage = msg.is_system_message;
           const senderName = msg.profiles 
@@ -306,6 +311,8 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
             </div>
           );
         })}
+          </div>
+        ))}
         <div ref={messagesEndRef} />
       </div>
 
