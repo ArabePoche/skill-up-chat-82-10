@@ -5,6 +5,7 @@ import MessageSender from './MessageSender';
 import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
 import ExerciseRejectionDetails from './ExerciseRejectionDetails';
+import StudentExerciseActions from './StudentExerciseActions';
 import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
 import { ValidatedByTeacherBadge } from './ValidatedByTeacherBadge';
@@ -257,6 +258,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
                   </Button>
                 )}
               </div>
+            )}
+
+            {/* Afficher les actions de modification pour l'élève si c'est sa soumission */}
+            {isOwnMessage && isRealExerciseSubmission && !isTeacher && (
+              <StudentExerciseActions 
+                message={message}
+                exerciseTitle={message.exercise_id}
+              />
             )}
 
             {/* Heure et badge modifié */}
