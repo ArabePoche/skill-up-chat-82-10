@@ -79,10 +79,11 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
 
         const studentId = exerciseMessage.sender_id;
 
-        // 2. Mettre à jour les fichiers de rejet si rejet
+        // 2. Mettre à jour les fichiers de rejet ou nettoyer si validation
+        const updateData: any = {};
+        
         if (!isValid) {
-          const updateData: any = {};
-          
+          // Cas rejet : ajouter les fichiers de rejet
           if (rejectReason) {
             updateData.content = `❌ Exercice rejeté. Raison : ${rejectReason}`;
           }
@@ -93,13 +94,18 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
           if (rejectFilesUrls && rejectFilesUrls.length > 0) {
             updateData.reject_files_urls = rejectFilesUrls;
           }
+        } else {
+          // Cas validation : nettoyer les données de rejet précédentes
+          updateData.reject_audio_url = null;
+          updateData.reject_audio_duration = null;
+          updateData.reject_files_urls = null;
+        }
 
-          if (Object.keys(updateData).length > 0) {
-            await supabase
-              .from('lesson_messages')
-              .update(updateData)
-              .eq('id', messageId);
-          }
+        if (Object.keys(updateData).length > 0) {
+          await supabase
+            .from('lesson_messages')
+            .update(updateData)
+            .eq('id', messageId);
         }
 
         // 3. Appeler la fonction globale de validation qui gère TOUTE la logique
