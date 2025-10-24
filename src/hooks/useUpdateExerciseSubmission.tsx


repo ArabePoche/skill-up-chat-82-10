@@ -1,0 +1,115 @@
+/**
+ * Hook pour mettre à jour une soumission d'exercice existante
+ * Permet à l'élève de modifier sa soumission tant qu'elle n'est pas validée
+ */
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+
+export const useUpdateExerciseSubmission = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ 
+      messageId,
+      content,
+      file
+    }: {
+      messageId: string;
+      content: string;
+      file?: File;
+    }) => {
+      if (!user?.id) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
+      let fileUrl = null;
+      let fileName = null;
+      let fileType = null;
+
+      // Si un nouveau fichier est fourni, l'uploader
+      if (file) {
+        console.log('Uploading new exercise file:', file.name, file.type);
+        
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('students_exercises_submission_files')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Error uploading exercise file:', uploadError);
+          throw uploadError;
+        }
+
+        // Obtenir l'URL publique du fichier
+        const { data: { publicUrl } } = supabase.storage
+          .from('students_exercises_submission_files')
+          .getPublicUrl(filePath);
+
+        fileUrl = publicUrl;
+        fileName = file.name;
+        fileType = file.type;
+        
+        console.log('Exercise file uploaded successfully:', { fileUrl, fileName, fileType });
+      }
+
+      // Mettre à jour la soumission existante
+      const updateData: any = {
+        content,
+        updated_at: new Date().toISOString(),
+        exercise_status: null, // Réinitialiser le statut à "en attente"
+      };
+
+      if (fileUrl) {
+        updateData.file_url = fileUrl;
+        updateData.file_type = fileType;
+        updateData.file_name = fileName;
+        updateData.message_type = 'file';
+      }
+
+      const { data, error } = await supabase
+        .from('lesson_messages')
+        .update(updateData)
+        .eq('id', messageId)
+        .eq('sender_id', user.id) // Sécurité : vérifier que c'est bien l'utilisateur qui modifie
+        .eq('is_exercise_submission', true)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating exercise submission:', error);
+        throw error;
+      }
+
+      console.log('Exercise submission updated:', data);
+      return data;
+    },
+    onSuccess: (data) => {
+      // Invalider toutes les clés possibles pour les messages
+      queryClient.invalidateQueries({ 
+        queryKey: ['student-messages', data.lesson_id, data.formation_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['teacher-messages', data.lesson_id, data.formation_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['lesson-messages', data.lesson_id, data.formation_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['promotion-messages', data.lesson_id, data.formation_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['group-chat-messages', data.formation_id, data.level_id] 
+      });
+      toast.success('Soumission modifiée avec succès !');
+    },
+    onError: (error) => {
+      console.error('Erreur lors de la modification:', error);
+      toast.error('Erreur lors de la modification de la soumission');
+    },
+  });
+};
