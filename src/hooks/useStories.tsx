@@ -159,3 +159,56 @@ export const useMarkStoryAsViewed = () => {
     },
   });
 };
+
+export const useUpdateStory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      storyId,
+      content_text,
+      background_color,
+      description
+    }: {
+      storyId: string;
+      content_text?: string;
+      background_color?: string;
+      description?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('user_stories')
+        .update({
+          content_text,
+          background_color,
+          description
+        })
+        .eq('id', storyId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stories'] });
+    },
+  });
+};
+
+export const useDeleteStory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (storyId: string) => {
+      const { error } = await supabase
+        .from('user_stories')
+        .delete()
+        .eq('id', storyId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stories'] });
+    },
+  });
+};
