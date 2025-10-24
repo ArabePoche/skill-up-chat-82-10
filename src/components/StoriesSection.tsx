@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import StoryViewer from './StoryViewer';
 import CreateStoryModal from './CreateStoryModal';
 import StoryViewersModal from './stories/StoryViewersModal';
+import MyStoriesListModal from './stories/MyStoriesListModal';
 
 interface GroupedStories {
   user: {
@@ -27,6 +28,7 @@ const StoriesSection = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [selectedStoryForViews, setSelectedStoryForViews] = useState<string | null>(null);
+  const [showMyStoriesModal, setShowMyStoriesModal] = useState(false);
 
   // Grouper les stories par utilisateur
   const groupedStories = React.useMemo(() => {
@@ -84,10 +86,15 @@ const StoriesSection = () => {
 
   const handleMyStoryClick = () => {
     if (myStories.length > 0) {
-      handleStoryClick(myStories);
+      setShowMyStoriesModal(true);
     } else {
       setShowCreateModal(true);
     }
+  };
+
+  const handleViewMyStory = (story: Story) => {
+    setShowMyStoriesModal(false);
+    handleStoryClick(myStories, myStories.findIndex(s => s.id === story.id));
   };
 
   const handleShowViewers = (storyId: string) => {
@@ -269,6 +276,15 @@ const StoriesSection = () => {
             setSelectedStoryForViews(null);
           }}
           storyId={selectedStoryForViews}
+        />
+      )}
+
+      {showMyStoriesModal && (
+        <MyStoriesListModal
+          isOpen={showMyStoriesModal}
+          onClose={() => setShowMyStoriesModal(false)}
+          stories={myStories}
+          onViewStory={handleViewMyStory}
         />
       )}
     </>
