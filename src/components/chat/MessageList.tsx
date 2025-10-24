@@ -235,6 +235,7 @@ const MessageList: React.FC<MessageListProps> = ({
               isTeacherView={isTeacherView}
               isGroupChat={isGroupChatContext}
               levelId={effectiveLevelId}
+              messages={messages}
             />
           );
         }
@@ -265,6 +266,7 @@ const MessageList: React.FC<MessageListProps> = ({
                   showSubmissionOptions={!isTeacherView}
                   isGroupChat={true}
                   levelId={lessonId} // Dans le contexte groupe, lessonId correspond au levelId
+                  messages={messages}
                 />
               </div>
             );
