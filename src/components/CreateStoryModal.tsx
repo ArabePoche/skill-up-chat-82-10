@@ -4,7 +4,7 @@ import { X, Camera, Type, Mic, Video} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateStory } from '@/hooks/useStories';
+import { useCreateStory, useUpdateStory } from '@/hooks/useStories';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import AudioRecorder from '@/components/chat/AudioRecorder';
@@ -12,19 +12,27 @@ import AudioRecorder from '@/components/chat/AudioRecorder';
 interface CreateStoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  editStory?: {
+    id: string;
+    content_type: 'text' | 'image' | 'video' | 'audio';
+    content_text?: string;
+    background_color?: string;
+    description?: string;
+  };
 }
 
-const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) => {
-  const [contentType, setContentType] = useState<'text' | 'image' | 'video' | 'audio'>('text');
-  const [textContent, setTextContent] = useState('');
-  const [mediaDescription, setMediaDescription] = useState('');
-  const [backgroundColor, setBackgroundColor] = useState('#25d366');
+const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose, editStory }) => {
+  const [contentType, setContentType] = useState<'text' | 'image' | 'video' | 'audio'>(editStory?.content_type || 'text');
+  const [textContent, setTextContent] = useState(editStory?.content_text || '');
+  const [mediaDescription, setMediaDescription] = useState(editStory?.description || '');
+  const [backgroundColor, setBackgroundColor] = useState(editStory?.background_color || '#25d366');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   
   const { user } = useAuth();
   const createStory = useCreateStory();
+  const updateStory = useUpdateStory();
 
   const handleFileChange = (file: File | null) => {
     setMediaFile(file);
@@ -74,18 +82,29 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
     try {
       setUploading(true);
       
-      let mediaUrl = null;
-      if (mediaFile) {
-        mediaUrl = await handleFileUpload(mediaFile);
-      }
+      if (editStory) {
+        // Mode édition - uniquement pour les stories texte
+        await updateStory.mutateAsync({
+          storyId: editStory.id,
+          content_text: contentType === 'text' ? textContent : undefined,
+          background_color: contentType === 'text' ? backgroundColor : undefined,
+          description: (contentType === 'image' || contentType === 'video') ? mediaDescription : undefined
+        });
+      } else {
+        // Mode création
+        let mediaUrl = null;
+        if (mediaFile) {
+          mediaUrl = await handleFileUpload(mediaFile);
+        }
 
-      await createStory.mutateAsync({
-        content_type: contentType,
-        content_text: contentType === 'text' ? textContent : undefined,
-        media_url: mediaUrl,
-        background_color: contentType === 'text' ? backgroundColor : undefined,
-        description: (contentType === 'image' || contentType === 'video') ? mediaDescription : undefined
-      });
+        await createStory.mutateAsync({
+          content_type: contentType,
+          content_text: contentType === 'text' ? textContent : undefined,
+          media_url: mediaUrl,
+          background_color: contentType === 'text' ? backgroundColor : undefined,
+          description: (contentType === 'image' || contentType === 'video') ? mediaDescription : undefined
+        });
+      }
 
       onClose();
       setTextContent('');
@@ -94,7 +113,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
       setMediaPreview(null);
       setContentType('text');
     } catch (error) {
-      console.error('Error creating story:', error);
+      console.error('Error creating/updating story:', error);
     } finally {
       setUploading(false);
     }
@@ -106,47 +125,49 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Créer un statut</h2>
+          <h2 className="text-xl font-semibold">{editStory ? 'Modifier le statut' : 'Créer un statut'}</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X size={20} />
           </Button>
         </div>
 
-        {/* Type de contenu */}
-        <div className="flex space-x-2 mb-4">
-          <Button
-            variant={contentType === 'text' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setContentType('text')}
-          >
-            <Type size={16} className="sm:mr-1" />
-            <span className="hidden sm:inline">Texte</span>
-          </Button>
-          <Button
-            variant={contentType === 'image' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setContentType('image')}
-          >
-            <Camera size={16} className="sm:mr-1" />
-            <span className="hidden sm:inline">Image</span>
-          </Button>
-          <Button
-            variant={contentType === 'video' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setContentType('video')}
-          >
-            <Video size={16} className="sm:mr-1" />
-            <span className="hidden sm:inline">Vidéo</span>
-          </Button>
-          <Button
-            variant={contentType === 'audio' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setContentType('audio')}
-          >
-            <Mic size={16} className="sm:mr-1" />
-            <span className="hidden sm:inline">Vocal</span>
-          </Button>
-        </div>
+        {/* Type de contenu - désactivé en mode édition */}
+        {!editStory && (
+          <div className="flex space-x-2 mb-4">
+            <Button
+              variant={contentType === 'text' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setContentType('text')}
+            >
+              <Type size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Texte</span>
+            </Button>
+            <Button
+              variant={contentType === 'image' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setContentType('image')}
+            >
+              <Camera size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Image</span>
+            </Button>
+            <Button
+              variant={contentType === 'video' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setContentType('video')}
+            >
+              <Video size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Vidéo</span>
+            </Button>
+            <Button
+              variant={contentType === 'audio' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setContentType('audio')}
+            >
+              <Mic size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Vocal</span>
+            </Button>
+          </div>
+        )}
 
         {/* Contenu texte */}
         {contentType === 'text' && (
@@ -254,9 +275,9 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose }) 
           <Button 
             onClick={handleSubmit} 
             className="flex-1"
-            disabled={uploading || (contentType === 'text' && !textContent) || ((contentType === 'image' || contentType === 'video' || contentType === 'audio') && !mediaFile)}
+            disabled={uploading || (contentType === 'text' && !textContent) || (!editStory && (contentType === 'image' || contentType === 'video' || contentType === 'audio') && !mediaFile)}
           >
-            {uploading ? 'Publication...' : 'Publier'}
+            {uploading ? (editStory ? 'Modification...' : 'Publication...') : (editStory ? 'Modifier' : 'Publier')}
           </Button>
         </div>
       </div>
