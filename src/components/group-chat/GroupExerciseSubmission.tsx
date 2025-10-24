@@ -76,9 +76,9 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
     }
   };
 
-  // Si l'exercice est approuvé, ne plus afficher de bouton de soumission
+  // L'exercice n'est masqué que si toutes les soumissions sont approuvées
   if (exerciseStatus === 'approved') {
-    return null; // L'exercice est validé, pas besoin d'afficher quoi que ce soit
+    return null;
   }
 
   if (isSubmitted) {
