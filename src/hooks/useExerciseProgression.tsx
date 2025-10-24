@@ -40,15 +40,24 @@ export const useExerciseProgression = (exercises: Exercise[], messages: Message[
       .map(msg => msg.exercise_id)
       .filter(Boolean) as string[];
 
-    // Identifier les exercices approuvés
-    const approvedExerciseIds = messages
-      .filter(msg => 
-        msg.is_exercise_submission && 
-        msg.exercise_status === 'approved' &&
-        msg.exercise_id
+    // Identifier les exercices complètement approuvés (toutes soumissions validées)
+    const exerciseSubmissions = messages
+      .filter(msg => msg.is_exercise_submission && msg.exercise_id)
+      .reduce((acc, msg) => {
+        const exId = msg.exercise_id!;
+        if (!acc[exId]) {
+          acc[exId] = [];
+        }
+        acc[exId].push(msg.exercise_status || 'pending');
+        return acc;
+      }, {} as Record<string, string[]>);
+
+    // Un exercice est approuvé seulement si TOUTES ses soumissions sont 'approved'
+    const approvedExerciseIds = Object.entries(exerciseSubmissions)
+      .filter(([_, statuses]) => 
+        statuses.length > 0 && statuses.every(status => status === 'approved')
       )
-      .map(msg => msg.exercise_id)
-      .filter(Boolean) as string[];
+      .map(([exId, _]) => exId);
 
     console.log('Exercise progression analysis:', {
       presentedExerciseIds,
