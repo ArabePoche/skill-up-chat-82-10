@@ -11,6 +11,7 @@ interface SubmissionFormProps {
   isSubmitting: boolean;
   exerciseTitle: string;
   showSubmissionOptions?: boolean;
+  initialContent?: string; // Contenu initial pour l'édition
 }
 
 const SubmissionForm: React.FC<SubmissionFormProps> = ({
@@ -18,9 +19,10 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
   onCancel,
   isSubmitting,
   exerciseTitle,
-  showSubmissionOptions = true
+  showSubmissionOptions = true,
+  initialContent = ''
 }) => {
-  const [submissionText, setSubmissionText] = useState('');
+  const [submissionText, setSubmissionText] = useState(initialContent);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
