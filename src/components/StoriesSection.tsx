@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { Plus, Eye } from 'lucide-react';
-import { useStories, useCreateStory, type Story } from '@/hooks/useStories';
+import { useStories, useCreateStory, useDeleteStory, type Story } from '@/hooks/useStories';
 import { useAuth } from '@/hooks/useAuth';
 import StoryViewer from './StoryViewer';
 import CreateStoryModal from './CreateStoryModal';
 import StoryViewersModal from './stories/StoryViewersModal';
 import MyStoriesListModal from './stories/MyStoriesListModal';
+import { toast } from 'sonner';
 
 interface GroupedStories {
   user: {
@@ -23,12 +24,14 @@ interface GroupedStories {
 const StoriesSection = () => {
   const { data: stories = [], isLoading, error } = useStories();
   const { user } = useAuth();
+  const deleteStory = useDeleteStory();
   const [selectedStories, setSelectedStories] = useState<Story[]>([]);
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [selectedStoryForViews, setSelectedStoryForViews] = useState<string | null>(null);
   const [showMyStoriesModal, setShowMyStoriesModal] = useState(false);
+  const [editingStory, setEditingStory] = useState<Story | null>(null);
 
   // Grouper les stories par utilisateur
   const groupedStories = React.useMemo(() => {
@@ -97,9 +100,30 @@ const StoriesSection = () => {
     handleStoryClick(myStories, myStories.findIndex(s => s.id === story.id));
   };
 
+  const handleEditStory = (story: Story) => {
+    setShowMyStoriesModal(false);
+    setEditingStory(story);
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteStory = async (storyId: string) => {
+    try {
+      await deleteStory.mutateAsync(storyId);
+      toast.success('Statut supprimé avec succès');
+    } catch (error) {
+      console.error('Error deleting story:', error);
+      toast.error('Erreur lors de la suppression du statut');
+    }
+  };
+
   const handleShowViewers = (storyId: string) => {
     setSelectedStoryForViews(storyId);
     setShowViewersModal(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setShowCreateModal(false);
+    setEditingStory(null);
   };
 
   // Fonction pour ouvrir le modal de création (bouton +)
@@ -264,7 +288,14 @@ const StoriesSection = () => {
       {showCreateModal && (
         <CreateStoryModal 
           isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)} 
+          onClose={handleCloseCreateModal}
+          editStory={editingStory ? {
+            id: editingStory.id,
+            content_type: editingStory.content_type,
+            content_text: editingStory.content_text,
+            background_color: editingStory.background_color,
+            description: editingStory.description
+          } : undefined}
         />
       )}
 
@@ -285,6 +316,8 @@ const StoriesSection = () => {
           onClose={() => setShowMyStoriesModal(false)}
           stories={myStories}
           onViewStory={handleViewMyStory}
+          onEditStory={handleEditStory}
+          onDeleteStory={handleDeleteStory}
         />
       )}
     </>
