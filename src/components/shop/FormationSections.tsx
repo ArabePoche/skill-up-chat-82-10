@@ -158,7 +158,7 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
 
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-bold text-orange-600">
-                      {formation.price}€
+                      {formation.price?.toLocaleString('fr-FR')} FCFA
                     </span>
                     <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                       Prochainement
