@@ -139,7 +139,7 @@ const FormationsList = () => {
                       formation.profiles.username || 'Auteur inconnu' : 'Auteur inconnu'}
                   </TableCell>
                   <TableCell>
-                    {formation.price ? `${formation.price}€` : 'Gratuit'}
+                    {formation.price ? `${formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
