@@ -234,7 +234,7 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
                     {option.price_monthly !== null && option.price_monthly !== undefined ? (
                       <div>
                         <span className="text-3xl font-bold">
-                          {option.price_monthly}€
+                          {option.price_monthly?.toLocaleString('fr-FR')} FCFA
                         </span>
                         <span className="text-muted-foreground">/mois</span>
                       </div>
@@ -246,7 +246,7 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
                     
                     {option.price_yearly && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        ou {option.price_yearly}€/an
+                        ou {option.price_yearly?.toLocaleString('fr-FR')} FCFA/an
                       </p>
                     )}
                   </div>
