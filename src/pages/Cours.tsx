@@ -159,7 +159,7 @@ const Cours = () => {
 
   console.log('Student formations processed:', studentFormations);
 
-  const debugMessage = `User ID: ${user?.id} | Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
+  const debugMessage = `User ID: | Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
 
   return (
     <div className="bg-gray-50 pt-16 pb-24 md:pb-4">
