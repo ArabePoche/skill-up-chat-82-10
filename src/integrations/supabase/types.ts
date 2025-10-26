@@ -3374,7 +3374,7 @@ export type Database = {
           duration_minutes: number | null
           ended_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           started_at: string
           user_agent: string | null
           user_id: string
@@ -3384,7 +3384,7 @@ export type Database = {
           duration_minutes?: number | null
           ended_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           started_at?: string
           user_agent?: string | null
           user_id: string
@@ -3394,7 +3394,7 @@ export type Database = {
           duration_minutes?: number | null
           ended_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           started_at?: string
           user_agent?: string | null
           user_id?: string
@@ -3611,6 +3611,48 @@ export type Database = {
           },
         ]
       }
+      video_views: {
+        Row: {
+          id: string
+          session_id: string | null
+          user_id: string | null
+          video_id: string
+          viewed_at: string
+          watch_duration_seconds: number | null
+        }
+        Insert: {
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+          video_id: string
+          viewed_at?: string
+          watch_duration_seconds?: number | null
+        }
+        Update: {
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+          video_id?: string
+          viewed_at?: string
+          watch_duration_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_views_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videos: {
         Row: {
           author_id: string | null
@@ -3765,17 +3807,24 @@ export type Database = {
       }
     }
     Functions: {
-      add_time_used: {
-        Args:
-          | {
+      add_time_used:
+        | {
+            Args: {
               p_date?: string
               p_formation_id: string
               p_minutes: number
               p_user_id: string
             }
-          | { p_formation_id: string; p_minutes: number; p_user_id: string }
-        Returns: Record<string, unknown>
-      }
+            Returns: Record<string, unknown>
+          }
+        | {
+            Args: {
+              p_formation_id: string
+              p_minutes: number
+              p_user_id: string
+            }
+            Returns: undefined
+          }
       approve_enrollment: {
         Args: {
           p_decided_by?: string
@@ -3822,22 +3871,14 @@ export type Database = {
         Args: { p_exercise_id: string; p_user_id: string }
         Returns: boolean
       }
-      check_student_inactivity: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      check_exercise_message_exists: {
+        Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
+        Returns: boolean
       }
-      cleanup_expired_media_links: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_expired_stories: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      decrement_post_comments: {
-        Args: { post_id: string }
-        Returns: undefined
-      }
+      check_student_inactivity: { Args: never; Returns: undefined }
+      cleanup_expired_media_links: { Args: never; Returns: undefined }
+      cleanup_expired_stories: { Args: never; Returns: undefined }
+      decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
       delete_video_comment: {
         Args: { comment_id: string; user_id: string }
         Returns: boolean
@@ -3858,18 +3899,12 @@ export type Database = {
         Args: { p_date?: string; p_formation_id: string; p_user_id: string }
         Returns: string
       }
-      get_server_date: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_server_date: { Args: never; Returns: string }
       get_student_promotion: {
         Args: { p_formation_id: string; p_student_id: string }
         Returns: string
       }
-      get_teacher_formations: {
-        Args: { p_user_id: string }
-        Returns: string[]
-      }
+      get_teacher_formations: { Args: { p_user_id: string }; Returns: string[] }
       get_unread_messages_count: {
         Args: {
           p_formation_id: string
@@ -3911,26 +3946,17 @@ export type Database = {
         }
         Returns: undefined
       }
-      has_role: {
-        Args: { role: string; user_id: string }
-        Returns: boolean
-      }
+      has_role: { Args: { role: string; user_id: string }; Returns: boolean }
       increment_messages_sent: {
         Args: { p_date?: string; p_formation_id: string; p_user_id: string }
         Returns: number
       }
-      increment_post_comments: {
-        Args: { post_id: string }
-        Returns: undefined
-      }
+      increment_post_comments: { Args: { post_id: string }; Returns: undefined }
       initialize_first_lesson: {
         Args: { p_lesson_id: string; p_user_id: string }
         Returns: undefined
       }
-      is_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { user_id: string }; Returns: boolean }
       is_student_enrolled: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
@@ -4000,10 +4026,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      process_expired_evaluations: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      process_expired_evaluations: { Args: never; Returns: undefined }
       process_teacher_payment: {
         Args: {
           p_amount: number
@@ -4037,23 +4060,26 @@ export type Database = {
         Args: { p_message_id: string; p_teacher_id: string }
         Returns: Json
       }
-      validate_exercise_submission: {
-        Args:
-          | {
+      validate_exercise_submission:
+        | {
+            Args: {
+              p_is_valid: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
               p_is_valid: boolean
               p_message_id: string
               p_reject_reason?: string
               p_teacher_id?: string
               p_user_id: string
             }
-          | {
-              p_is_valid: boolean
-              p_message_id: string
-              p_reject_reason?: string
-              p_user_id: string
-            }
-        Returns: undefined
-      }
+            Returns: undefined
+          }
       validate_exercise_submission_global: {
         Args: {
           p_is_approved: boolean
@@ -4064,23 +4090,26 @@ export type Database = {
         }
         Returns: Json
       }
-      validate_exercise_submission_with_promotion: {
-        Args:
-          | {
+      validate_exercise_submission_with_promotion:
+        | {
+            Args: {
+              p_is_approved: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
               p_is_approved: boolean
               p_message_id: string
               p_reject_reason?: string
               p_teacher_id?: string
               p_user_id: string
             }
-          | {
-              p_is_approved: boolean
-              p_message_id: string
-              p_reject_reason?: string
-              p_user_id: string
-            }
-        Returns: undefined
-      }
+            Returns: undefined
+          }
     }
     Enums: {
       lesson_status:
