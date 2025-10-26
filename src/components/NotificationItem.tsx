@@ -5,6 +5,7 @@ import StandardNotificationCard from '@/components/notifications/StandardNotific
 import PlanChangeNotificationCard from '@/components/notifications/PlanChangeNotificationCard';
 import PaymentRequestNotificationCard from '@/components/notifications/PaymentRequestNotificationCard';
 import FriendRequestCard from '@/components/notifications/FriendRequestCard';
+import ReactionNotificationCard from '@/components/notifications/ReactionNotificationCard';
 
 interface NotificationItemProps {
   notification: {
@@ -71,6 +72,13 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
     !notification.formation_id &&
     !notification.payment_id
   );
+
+  const isReactionNotification = notification.type === 'post_reaction' || notification.type === 'video_reaction';
+
+  // Si c'est une notification de réaction (like/commentaire)
+  if (isReactionNotification) {
+    return <ReactionNotificationCard notification={notification} />;
+  }
 
   // Si c'est une notification de demande d'amitié
   if (isFriendRequest) {
