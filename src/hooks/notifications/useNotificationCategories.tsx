@@ -35,6 +35,7 @@ export const useNotificationCategories = () => {
         enrollment_requests: { total: 0, unread: 0, ids: [] as string[] },
         plan_changes: { total: 0, unread: 0, ids: [] as string[] },
         payment_requests: { total: 0, unread: 0, ids: [] as string[] },
+        reactions: { total: 0, unread: 0, ids: [] as string[] },
         others: { total: 0, unread: 0, ids: [] as string[] },
       };
 
@@ -55,6 +56,10 @@ export const useNotificationCategories = () => {
           categories.payment_requests.total++;
           categories.payment_requests.ids.push(notification.id);
           if (!notification.is_read) categories.payment_requests.unread++;
+        } else if (notification.type === 'post_reaction' || notification.type === 'video_reaction') {
+          categories.reactions.total++;
+          categories.reactions.ids.push(notification.id);
+          if (!notification.is_read) categories.reactions.unread++;
         } else {
           categories.others.total++;
           categories.others.ids.push(notification.id);
