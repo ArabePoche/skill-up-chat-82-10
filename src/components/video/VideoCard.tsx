@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List } from 'lucide-react';
+import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { useVideoSeries } from '@/hooks/useVideoSeries';
+import { useVideoViews } from '@/hooks/useVideoViews';
 
 interface Video {
   id: string;
@@ -23,6 +24,7 @@ interface Video {
   thumbnail_url: string;
   likes_count: number;
   comments_count: number;
+  views_count?: number;
   author_id: string;
   video_type?: string;
   formation_id?: string;
@@ -63,6 +65,9 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
   const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id);
   const { data: seriesData } = useVideoSeries(video.id);
+  
+  // Tracker les vues
+  useVideoViews(video.id, isActive);
 
   // Récupération dynamique du compteur de commentaires
   const { data: commentsCount = video.comments_count } = useQuery({
@@ -418,6 +423,15 @@ const VideoCard: React.FC<VideoCardProps> = ({
           {video.description && (
             <p className="text-sm opacity-90 line-clamp-3">{video.description}</p>
           )}
+          
+          {/* Afficher le nombre de vues */}
+          {video.views_count !== undefined && video.views_count > 0 && (
+            <div className="flex items-center space-x-1 mt-2 text-sm opacity-90">
+              <Eye size={16} />
+              <span>{formatCount(video.views_count)} vues</span>
+            </div>
+          )}
+          
           {video.price && (
             <div className="mt-2">
               <span className="bg-green-500 px-2 py-1 rounded-full text-xs font-bold">
