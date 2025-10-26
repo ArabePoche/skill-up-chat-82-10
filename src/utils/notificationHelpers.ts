@@ -85,6 +85,67 @@ export const NotificationTriggers = {
       console.error('Erreur dans sendDailyReminders:', error);
       throw error;
     }
+  },
+
+  // Quand quelqu'un like une vidéo
+  onVideoLiked: async (videoId: string, likerUserId: string, likerName: string) => {
+    const { data: video } = await supabase
+      .from('videos')
+      .select('author_id, title')
+      .eq('id', videoId)
+      .single();
+
+    if (video && video.author_id !== likerUserId) {
+      await sendPushNotification({
+        userIds: [video.author_id],
+        title: "❤️ Nouveau like !",
+        message: `${likerName} a aimé votre vidéo${video.title ? ` "${video.title}"` : ''}`,
+        type: "test",
+        clickAction: `/video/${videoId}`,
+        data: { videoId, likerUserId }
+      });
+    }
+  },
+
+  // Quand quelqu'un commente une vidéo
+  onVideoCommented: async (videoId: string, commenterUserId: string, commenterName: string) => {
+    const { data: video } = await supabase
+      .from('videos')
+      .select('author_id, title')
+      .eq('id', videoId)
+      .single();
+
+    if (video && video.author_id !== commenterUserId) {
+      await sendPushNotification({
+        userIds: [video.author_id],
+        title: "💬 Nouveau commentaire !",
+        message: `${commenterName} a commenté votre vidéo${video.title ? ` "${video.title}"` : ''}`,
+        type: "test",
+        clickAction: `/video/${videoId}`,
+        data: { videoId, commenterUserId }
+      });
+    }
+  },
+
+  // Quand quelqu'un like un post
+  onPostLiked: async (postId: string, likerUserId: string, likerName: string) => {
+    const { data: post } = await supabase
+      .from('posts')
+      .select('author_id, content')
+      .eq('id', postId)
+      .single();
+
+    if (post && post.author_id !== likerUserId) {
+      const preview = post.content?.substring(0, 50) || '';
+      await sendPushNotification({
+        userIds: [post.author_id],
+        title: "❤️ Nouveau like !",
+        message: `${likerName} a aimé votre post${preview ? ` "${preview}..."` : ''}`,
+        type: "test",
+        clickAction: `/post/${postId}`,
+        data: { postId, likerUserId }
+      });
+    }
   }
 };
 
