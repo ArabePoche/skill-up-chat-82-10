@@ -3,13 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useEffect } from 'react';
 
-// Fonction pour mettre à jour le champ comments_count dans la table `videos` (optionnel mais utile)
+// Fonction pour mettre à jour le champ comments_count dans la table `videos` (compte tous les commentaires + réponses)
 const updateCommentsCount = async (videoId: string) => {
   const { count, error: countError } = await supabase
     .from('video_comments')
     .select('*', { count: 'exact', head: true })
-    .eq('video_id', videoId)
-    .is('parent_comment_id', null); // Ne compte que les commentaires principaux
+    .eq('video_id', videoId); // Compte TOUS les commentaires (principaux + réponses)
 
   if (countError) {
     console.error('Erreur comptage commentaires :', countError);
@@ -70,7 +69,7 @@ export const useVideoComments = (videoId: string) => {
     enabled: !!videoId,
   });
 
-  // 🔢 Récupère dynamiquement le compteur de commentaires (racines uniquement)
+  // 🔢 Récupère dynamiquement le compteur de commentaires (tous les commentaires + réponses)
   const {
     data: commentsCount = 0,
     isLoading: isCountLoading,
@@ -80,8 +79,7 @@ export const useVideoComments = (videoId: string) => {
       const { count, error } = await supabase
         .from('video_comments')
         .select('*', { count: 'exact' })
-        .eq('video_id', videoId)
-        .is('parent_comment_id', null);
+        .eq('video_id', videoId); // Compte TOUS les commentaires (principaux + réponses)
 
       if (error) {
         console.error('Erreur comptage commentaires :', error);
@@ -120,10 +118,8 @@ export const useVideoComments = (videoId: string) => {
 
       if (error) throw error;
 
-      // Met à jour le champ comments_count (si commentaire principal)
-      if (!parentId) {
-        await updateCommentsCount(videoId);
-      }
+      // Met à jour le champ comments_count (pour tous les commentaires, y compris les réponses)
+      await updateCommentsCount(videoId);
 
       return data;
     },
