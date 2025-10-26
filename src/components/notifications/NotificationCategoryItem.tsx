@@ -33,6 +33,8 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
         return <BookOpen className="w-5 h-5" />;
       case 'payment_requests':
         return <CreditCard className="w-5 h-5" />;
+      case 'reactions':
+        return <span className="text-xl">❤️</span>;
       default:
         return <Bell className="w-5 h-5" />;
     }
@@ -48,6 +50,8 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
         return 'Changements de plan';
       case 'payment_requests':
         return 'Demandes de paiement';
+      case 'reactions':
+        return 'Réactions publications';
       default:
         return 'Autres notifications';
     }
