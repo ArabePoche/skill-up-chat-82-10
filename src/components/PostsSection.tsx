@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { usePosts } from '@/hooks/usePosts';
-import CreatePostModal from '@/components/CreatePostModal';
-import PostCard from '@/components/PostCard';
+import { usePosts } from '@/posts/hooks/usePosts';
+import CreatePostModal from '@/posts/components/CreatePostModal';
+import PostCard from '@/posts/components/PostCard';
 
 const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion'>('all');

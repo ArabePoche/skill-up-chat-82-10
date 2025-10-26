@@ -5,7 +5,7 @@ import TikTokTabs from '@/components/TikTokTabs';
 import StoriesSection from '@/components/StoriesSection';
 import TikTokVideosView from '@/components/TikTokVideosView';
 import PostsSection from '@/components/PostsSection';
-import CreatePostModal from '@/components/CreatePostModal';
+import CreatePostModal from '@/posts/components/CreatePostModal';
 import CreateStoryModal from '@/components/CreateStoryModal';
 import { useAuth } from '@/hooks/useAuth';
 

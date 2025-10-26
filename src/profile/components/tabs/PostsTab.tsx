@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
-import { usePosts } from '@/hooks/usePosts';
-import PostCard from '@/components/PostCard';
+import { usePosts } from '@/posts/hooks/usePosts';
+import PostCard from '@/posts/components/PostCard';
 
 interface PostsTabProps {
   userId?: string;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Heart, Video, FileText } from 'lucide-react';
 import { useUserLikedPosts } from '@/profile/hooks/useUserLikedPosts';
 import { useUserLikedVideos } from '@/hooks/useUserLikedVideos';
-import PostCard from '@/components/PostCard';
+import PostCard from '@/posts/components/PostCard';
 import { useNavigate } from 'react-router-dom';
 
 type LikeType = 'videos' | 'posts';

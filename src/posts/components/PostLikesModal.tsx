@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { usePostLikesDetails } from '@/profile/hooks/usePostLikesDetails';
+import { usePostLikesDetails } from '@/posts/hooks/usePostLikesDetails';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface PostLikesModalProps {

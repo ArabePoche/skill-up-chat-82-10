@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Edit, Trash2, Flag, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useUpdatePost, useDeletePost } from '@/hooks/usePosts';
+import { useUpdatePost, useDeletePost } from '@/posts/hooks/usePosts';
 
 interface PostOptionsModalProps {
   isOpen: boolean;

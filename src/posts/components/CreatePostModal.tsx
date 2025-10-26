@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Image, Briefcase, Info, Star, Trash2, Megaphone, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreatePost } from '@/hooks/usePosts';
+import { useCreatePost } from '@/posts/hooks/usePosts';
 import { toast } from 'sonner';
 
 interface CreatePostModalProps {

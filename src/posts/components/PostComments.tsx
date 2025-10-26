@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
-import { usePostComments } from '../posts/hooks/usePostComments';
+import { usePostComments } from '@/posts/hooks/usePostComments';
 import EmojiPicker from '@/components/EmojiPicker';
-import PostCommentItem from '../posts/components/PostCommentItem';
+import PostCommentItem from '@/posts/components/PostCommentItem';
 
 interface PostCommentsProps {
   postId: string;
