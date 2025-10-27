@@ -222,6 +222,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
                 addSuffix: true,
                 locale: fr
               })}
+              {post.updated_at && new Date(post.updated_at).getTime() !== new Date(post.created_at).getTime() && (
+                <span className="ml-2 text-xs text-gray-500 italic">• modifié</span>
+              )}
             </span>
           </div>
           
