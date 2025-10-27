@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface CommentProfile {
   id: string;
@@ -45,6 +46,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
   level = 0,
   mainCommentId,
 }) => {
+  const navigate = useNavigate();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,7 +77,10 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
 
   return (
     <div className={`flex space-x-3 group ${level > 0 ? 'ml-8 mt-3' : ''}`}>
-      <Avatar className="w-8 h-8 flex-shrink-0">
+      <Avatar 
+        className="w-8 h-8 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
+      >
         <AvatarImage src={comment.profiles?.avatar_url} />
         <AvatarFallback className="bg-gray-700 text-white">
           <User size={14} />
@@ -86,12 +91,21 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
         <div className="bg-gray-800 rounded-lg p-3 relative">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center space-x-2">
-              <span className="font-medium text-white text-sm">
+              <span 
+                className="font-medium text-white text-sm cursor-pointer hover:underline"
+                onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
+              >
                 {getUserDisplayName(comment.profiles)}
                 {comment.replied_to_user_id && comment.replied_to_profile && (
                   <>
                     <span className="mx-1 text-gray-400">🔁</span>
-                    <span className="text-gray-400">
+                    <span 
+                      className="text-gray-400 cursor-pointer hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        comment.replied_to_profile?.id && navigate(`/profile/${comment.replied_to_profile.id}`);
+                      }}
+                    >
                       {getUserDisplayName(comment.replied_to_profile)}
                     </span>
                   </>
