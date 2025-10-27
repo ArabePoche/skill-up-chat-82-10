@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import StoryViewersModal from '@/components/stories/StoryViewersModal';
+import { useNavigate } from 'react-router-dom';
 
 interface StoryViewerProps {
   stories: any[];
@@ -25,6 +26,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   onNext, 
   onPrevious 
 }) => {
+  const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [savedProgress, setSavedProgress] = useState(0); // Sauvegarder la progression pendant la pause
@@ -211,7 +213,10 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
       {/* Header */}
       <div className="absolute top-12 left-4 right-4 flex items-center justify-between text-white z-30">
-        <div className="flex items-center space-x-3">
+        <div 
+          className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => story.profiles?.id && navigate(`/profile/${story.profiles.id}`)}
+        >
           <Avatar className="w-8 h-8 border-2 border-white">
             <AvatarImage src={story.profiles?.avatar_url} />
             <AvatarFallback className="bg-gray-600 text-white text-xs">
