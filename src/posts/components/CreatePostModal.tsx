@@ -4,6 +4,17 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePost, useUpdatePost } from '@/posts/hooks/usePosts';
 import { toast } from 'sonner';
+import { compressImage, formatFileSize } from '@/utils/imageCompression';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -19,6 +30,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   const [existingMedia, setExistingMedia] = useState<Array<{id: string; file_url: string; file_type: string}>>([]);
   const [removedMediaIds, setRemovedMediaIds] = useState<string[]>([]);
   const [removeMainImage, setRemoveMainImage] = useState(false);
+  const [compressionDialog, setCompressionDialog] = useState<{
+    open: boolean;
+    files: File[];
+    originalSizes: number[];
+  }>({ open: false, files: [], originalSizes: [] });
   const { user } = useAuth();
   const { mutate: createPost, isPending: isCreating } = useCreatePost();
   const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
@@ -63,7 +79,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
     { value: 'general' as const, label: 'Autre', icon: Star, color: 'text-amber-400' },
   ];
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     
     // Calculer le nombre total d'images (existantes non supprimées + nouvelles)
@@ -75,29 +91,79 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
       return;
     }
     
-    // Vérifier la taille de chaque fichier (5MB max)
+    // Séparer les fichiers selon leur taille
+    const oversizedFiles: File[] = [];
+    const validFiles: File[] = [];
+    const oversizedSizes: number[] = [];
+    
     for (const file of files) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error(`L'image ${file.name} ne doit pas dépasser 5MB`);
-        return;
+        oversizedFiles.push(file);
+        oversizedSizes.push(file.size);
+      } else {
+        validFiles.push(file);
       }
     }
     
+    // Si des fichiers dépassent 5MB, proposer la compression
+    if (oversizedFiles.length > 0) {
+      setCompressionDialog({
+        open: true,
+        files: oversizedFiles,
+        originalSizes: oversizedSizes,
+      });
+      
+      // Ajouter directement les fichiers valides
+      if (validFiles.length > 0) {
+        await addFilesToPreview(validFiles);
+      }
+      return;
+    }
+    
+    // Tous les fichiers sont valides
+    await addFilesToPreview(files);
+  };
+
+  const addFilesToPreview = async (files: File[]) => {
     const newFiles = [...imageFiles, ...files];
     setImageFiles(newFiles);
     
     // Créer les aperçus
     const newPreviews = [...imagePreviews];
-    files.forEach(file => {
+    for (const file of files) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        newPreviews.push(e.target?.result as string);
-        if (newPreviews.length === newFiles.length) {
-          setImagePreviews(newPreviews);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      const preview = await new Promise<string>((resolve) => {
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.readAsDataURL(file);
+      });
+      newPreviews.push(preview);
+    }
+    setImagePreviews(newPreviews);
+  };
+
+  const handleCompressAndAdd = async () => {
+    const { files } = compressionDialog;
+    
+    try {
+      toast.loading('Compression des images en cours...');
+      
+      const compressedFiles: File[] = [];
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        compressedFiles.push(compressed);
+      }
+      
+      toast.dismiss();
+      toast.success(`${compressedFiles.length} image(s) compressée(s) avec succès`);
+      
+      await addFilesToPreview(compressedFiles);
+      setCompressionDialog({ open: false, files: [], originalSizes: [] });
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Erreur lors de la compression des images');
+      console.error('Compression error:', error);
+      setCompressionDialog({ open: false, files: [], originalSizes: [] });
+    }
   };
 
   const removeImage = (index: number) => {
@@ -166,7 +232,52 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <>
+      {/* Dialog de compression */}
+      <AlertDialog open={compressionDialog.open} onOpenChange={(open) => !open && setCompressionDialog({ open: false, files: [], originalSizes: [] })}>
+        <AlertDialogContent className="bg-gray-900 border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Images trop volumineuses
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              {compressionDialog.files.length > 1 ? (
+                <>
+                  {compressionDialog.files.length} images dépassent 5 MB :
+                  <ul className="mt-2 space-y-1">
+                    {compressionDialog.files.map((file, index) => (
+                      <li key={index} className="text-sm">
+                        • {file.name} ({formatFileSize(compressionDialog.originalSizes[index])})
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <>
+                  L'image <strong>{compressionDialog.files[0]?.name}</strong> ({formatFileSize(compressionDialog.originalSizes[0])}) dépasse la limite de 5 MB.
+                </>
+              )}
+              <p className="mt-3">
+                Voulez-vous compresser {compressionDialog.files.length > 1 ? 'ces images' : 'cette image'} automatiquement ?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700">
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCompressAndAdd}
+              className="bg-edu-primary hover:bg-edu-primary/90 text-white"
+            >
+              Compresser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal principale */}
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
@@ -370,6 +481,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
         </div>
       </div>
     </div>
+    </>
   );
 };
 
