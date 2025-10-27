@@ -1,22 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Image, Briefcase, Info, Star, Trash2, Megaphone, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreatePost } from '@/posts/hooks/usePosts';
+import { useCreatePost, useUpdatePost } from '@/posts/hooks/usePosts';
 import { toast } from 'sonner';
 
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
+  editPost?: any;
 }
 
-const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) => {
+const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, editPost }) => {
   const [content, setContent] = useState('');
   const [postType, setPostType] = useState<'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general' | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const { user } = useAuth();
-  const { mutate: createPost, isPending } = useCreatePost();
+  const { mutate: createPost, isPending: isCreating } = useCreatePost();
+  const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
+  const isPending = isCreating || isUpdating;
+
+  // Charger les données du post à éditer
+  useEffect(() => {
+    if (editPost) {
+      setContent(editPost.content || '');
+      setPostType(editPost.post_type || null);
+      // Pour l'instant on ne charge pas les images existantes
+      // car la modification d'images nécessiterait plus de logique
+    } else {
+      setContent('');
+      setPostType(null);
+      setImageFiles([]);
+      setImagePreviews([]);
+    }
+  }, [editPost]);
 
   const postTypes = [
     { value: 'info' as const, label: 'Information', icon: Info, color: 'text-green-400' },
@@ -84,24 +102,39 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose }) =>
       return;
     }
 
-    console.log('Submitting post with user ID:', user.id);
-
-    // Pour l'instant, on ne prend que la première image
-    // TODO: Implémenter le support multi-images dans le backend
-createPost({
-      content: content.trim(),
-      postType,
-      imageFiles: imageFiles,
-      authorId: user.id
-    }, {
-      onSuccess: () => {
-        setContent('');
-        setPostType(null);
-        setImageFiles([]);
-        setImagePreviews([]);
-        onClose();
-      }
-    });
+    if (editPost) {
+      // Mode édition
+      updatePost({
+        postId: editPost.id,
+        content: content.trim(),
+        postType,
+        imageFiles: imageFiles.length > 0 ? imageFiles : undefined,
+      }, {
+        onSuccess: () => {
+          setContent('');
+          setPostType(null);
+          setImageFiles([]);
+          setImagePreviews([]);
+          onClose();
+        }
+      });
+    } else {
+      // Mode création
+      createPost({
+        content: content.trim(),
+        postType,
+        imageFiles: imageFiles,
+        authorId: user.id
+      }, {
+        onSuccess: () => {
+          setContent('');
+          setPostType(null);
+          setImageFiles([]);
+          setImagePreviews([]);
+          onClose();
+        }
+      });
+    }
   };
 
   if (!isOpen) return null;
@@ -111,7 +144,9 @@ createPost({
       <div className="bg-gray-900 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-white text-lg font-semibold">Créer un post</h2>
+          <h2 className="text-white text-lg font-semibold">
+            {editPost ? 'Modifier le post' : 'Créer un post'}
+          </h2>
           <Button
             variant="ghost"
             size="sm"
@@ -244,7 +279,7 @@ createPost({
             disabled={!content.trim() || !postType || isPending}
             className="bg-edu-primary hover:bg-edu-primary/90 text-white"
           >
-            {isPending ? 'Publication...' : 'Publier'}
+            {isPending ? (editPost ? 'Modification...' : 'Publication...') : (editPost ? 'Modifier' : 'Publier')}
           </Button>
         </div>
       </div>
