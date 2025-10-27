@@ -441,6 +441,17 @@ export const useUpdatePost = () => {
         throw error;
       }
 
+      // Notifier les utilisateurs qui ont interagi avec ce post
+      const { error: notifyError } = await supabase.rpc('notify_post_edited', {
+        p_post_id: postId,
+        p_author_id: currentUserId || ''
+      });
+
+      if (notifyError) {
+        console.error('Error notifying users:', notifyError);
+        // Ne pas bloquer la mise à jour si la notification échoue
+      }
+
       // Insérer les nouveaux médias si présents (en respectant l'ordre)
       if (uploadedUrls.length > 0) {
         const { data: existingMax } = await supabase
