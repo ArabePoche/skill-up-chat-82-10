@@ -23,7 +23,6 @@ export const useVideoById = (videoId: string | undefined) => {
           )
         `)
         .eq('id', videoId)
-        .eq('is_active', true)
         .single();
 
       if (error) {
