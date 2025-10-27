@@ -16,6 +16,9 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   const [postType, setPostType] = useState<'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general' | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingMedia, setExistingMedia] = useState<Array<{id: string; file_url: string; file_type: string}>>([]);
+  const [removedMediaIds, setRemovedMediaIds] = useState<string[]>([]);
+  const [removeMainImage, setRemoveMainImage] = useState(false);
   const { user } = useAuth();
   const { mutate: createPost, isPending: isCreating } = useCreatePost();
   const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
@@ -26,13 +29,28 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
     if (editPost) {
       setContent(editPost.content || '');
       setPostType(editPost.post_type || null);
-      // Pour l'instant on ne charge pas les images existantes
-      // car la modification d'images nécessiterait plus de logique
+      // Charger les médias existants (post_media)
+      if (editPost.media && Array.isArray(editPost.media)) {
+        setExistingMedia(editPost.media.map((m: any) => ({
+          id: m.id,
+          file_url: m.file_url,
+          file_type: m.file_type
+        })));
+      } else {
+        setExistingMedia([]);
+      }
+      setImageFiles([]);
+      setImagePreviews([]);
+      setRemovedMediaIds([]);
+      setRemoveMainImage(false);
     } else {
       setContent('');
       setPostType(null);
       setImageFiles([]);
       setImagePreviews([]);
+      setExistingMedia([]);
+      setRemovedMediaIds([]);
+      setRemoveMainImage(false);
     }
   }, [editPost]);
 
@@ -48,8 +66,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     
+    // Calculer le nombre total d'images (existantes non supprimées + nouvelles)
+    const currentImageCount = existingMedia.length - removedMediaIds.length + imageFiles.length;
+    
     // Vérifier le nombre total de fichiers (max 5)
-    if (imageFiles.length + files.length > 5) {
+    if (currentImageCount + files.length > 5) {
       toast.error('Maximum 5 images autorisées');
       return;
     }
@@ -109,12 +130,17 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
         content: content.trim(),
         postType,
         imageFiles: imageFiles.length > 0 ? imageFiles : undefined,
+        removedMediaIds: removedMediaIds.length > 0 ? removedMediaIds : undefined,
+        removeImage: removeMainImage,
       }, {
         onSuccess: () => {
           setContent('');
           setPostType(null);
           setImageFiles([]);
           setImagePreviews([]);
+          setExistingMedia([]);
+          setRemovedMediaIds([]);
+          setRemoveMainImage(false);
           onClose();
         }
       });
@@ -207,8 +233,68 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
             <label className="text-white text-sm font-medium mb-2 block">
               Images (optionnel - max 5)
             </label>
+
+            {/* Images existantes (mode édition) */}
+            {editPost && existingMedia.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs text-gray-400 mb-2">Images existantes</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {existingMedia.map((media) => {
+                    const isMarkedForRemoval = removedMediaIds.includes(media.id);
+                    return (
+                      <div key={media.id} className="relative group">
+                        <img 
+                          src={media.file_url} 
+                          alt="Média existant"
+                          className={`w-full h-32 object-cover rounded-lg ${isMarkedForRemoval ? 'opacity-50 grayscale' : ''}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRemovedMediaIds(prev => 
+                              isMarkedForRemoval 
+                                ? prev.filter(id => id !== media.id)
+                                : [...prev, media.id]
+                            );
+                          }}
+                          className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition"
+                        >
+                          {isMarkedForRemoval ? 'Annuler' : 'Supprimer'}
+                        </button>
+                        {isMarkedForRemoval && (
+                          <span className="absolute bottom-2 left-2 bg-red-600/80 text-white text-[10px] px-1.5 py-0.5 rounded">
+                            À supprimer
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Image principale (legacy) */}
+            {editPost && editPost.image_url && !removeMainImage && (
+              <div className="mb-3">
+                <h4 className="text-xs text-gray-400 mb-2">Image principale</h4>
+                <div className="relative">
+                  <img 
+                    src={editPost.image_url} 
+                    alt="Image principale"
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRemoveMainImage(true)}
+                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            )}
             
-            {/* Upload button */}
+            {/* Upload de nouvelles images */}
             <div className="flex items-center space-x-3 mb-3">
               <input
                 type="file"
@@ -217,29 +303,29 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
                 onChange={handleImageSelect}
                 className="hidden"
                 id="image-upload"
-                disabled={imageFiles.length >= 5}
+                disabled={imageFiles.length + existingMedia.length - removedMediaIds.length >= 5}
               />
               <label
                 htmlFor="image-upload"
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                  imageFiles.length >= 5 
+                  imageFiles.length + existingMedia.length - removedMediaIds.length >= 5
                     ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
                 }`}
               >
                 <Image size={16} className="text-gray-400" />
                 <span className="text-sm">
-                  {imageFiles.length >= 5 ? 'Maximum atteint' : 'Ajouter des images'}
+                  {imageFiles.length + existingMedia.length - removedMediaIds.length >= 5 ? 'Maximum atteint' : 'Ajouter des images'}
                 </span>
               </label>
-              {imageFiles.length > 0 && (
+              {(imageFiles.length > 0 || existingMedia.length > 0) && (
                 <span className="text-sm text-gray-400">
-                  {imageFiles.length}/5 image{imageFiles.length > 1 ? 's' : ''}
+                  {imageFiles.length + existingMedia.length - removedMediaIds.length}/5 image(s)
                 </span>
               )}
             </div>
             
-            {/* Aperçus des images */}
+            {/* Aperçus des nouvelles images */}
             {imagePreviews.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
                 {imagePreviews.map((preview, index) => (
@@ -256,7 +342,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
                       <Trash2 size={14} />
                     </button>
                     <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                      {imageFiles[index]?.name}
+                      Nouvelle image
                     </div>
                   </div>
                 ))}
