@@ -10,8 +10,19 @@ import PostCard from '@/posts/components/PostCard';
 const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingPost, setEditingPost] = useState<any>(null);
   const { user, profile } = useAuth();
   const { data: posts, isLoading } = usePosts(activeFilter);
+
+  const handleEditPost = (post: any) => {
+    setEditingPost(post);
+    setShowCreateModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setEditingPost(null);
+  };
 
   useEffect(() => {
     if (!targetPostId || !posts) return;
@@ -110,7 +121,7 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
       <div className="space-y-4">
         {posts && posts.length > 0 ? (
           posts.map((post: any) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} onEdit={handleEditPost} />
           ))
         ) : (
           <div className="text-center py-12">
@@ -133,11 +144,12 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
         )}
       </div>
 
-      {/* Modal de création */}
+      {/* Modal de création/édition */}
       {showCreateModal && user && (
         <CreatePostModal
           isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+          onClose={handleCloseModal}
+          editPost={editingPost}
         />
       )}
     </div>
