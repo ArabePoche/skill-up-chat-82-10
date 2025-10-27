@@ -19,7 +19,7 @@ const Home = () => {
     return 'videos';
   }, [pathname]);
 
-  const isVideoRoute = pathname.startsWith('/video/');
+  const isVideoRoute = pathname.startsWith('/video/') || pathname.startsWith('/videos/');
   const isPostRoute = pathname.startsWith('/post/');
 
   const videosRef = useRef<HTMLDivElement>(null);
