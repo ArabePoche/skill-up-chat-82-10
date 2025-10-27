@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Check } from 'lucide-react';
 import { useFollow } from '@/hooks/useFollow';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface UserProfileData {
   id?: string;
@@ -24,6 +25,7 @@ const VideoUserProfile: React.FC<VideoUserProfileProps> = ({
   showFollowButton = false,
   className = ""
 }) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isOwnProfile = user?.id === profile?.id;
   
@@ -77,7 +79,10 @@ const VideoUserProfile: React.FC<VideoUserProfileProps> = ({
   return (
     <div className={`flex flex-col items-center ${className}`}>
       <div className="relative">
-        <Avatar className="w-12 h-12 border-2 border-white">
+        <Avatar 
+          className="w-12 h-12 border-2 border-white cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => profile?.id && navigate(`/profile/${profile.id}`)}
+        >
           <AvatarImage src={profile?.avatar_url} />
           <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm">
             {profile?.first_name?.[0] || 'U'}
