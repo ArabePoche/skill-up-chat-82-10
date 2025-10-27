@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { MessageCircle, Trash2, User } from 'lucide-react';
+import { MessageCircle, Trash2, User, Heart } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { usePostCommentLikes } from '@/posts/hooks/usePostCommentLikes';
 
 interface CommentProfile {
   id: string;
@@ -21,6 +22,7 @@ interface Comment {
   created_at: string;
   user_id: string;
   replies_count?: number;
+  likes_count?: number;
   profiles?: CommentProfile;
   replies?: Comment[];
   replied_to_user_id?: string;
@@ -51,6 +53,12 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+
+  // Hook pour les likes du commentaire
+  const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = usePostCommentLikes(
+    comment.id,
+    comment.likes_count || 0
+  );
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +142,18 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
 
         {/* Actions */}
         <div className="flex items-center space-x-4 mt-1 ml-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleLike}
+            disabled={isLikeLoading || !currentUserId}
+            className={`hover:bg-gray-800/50 p-0 h-auto text-xs ${
+              isLiked ? 'text-red-500 hover:text-red-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Heart size={12} className={`mr-1 ${isLiked ? 'fill-current' : ''}`} />
+            {likesCount > 0 && likesCount}
+          </Button>
           {currentUserId && (
             <Button
               variant="ghost"
