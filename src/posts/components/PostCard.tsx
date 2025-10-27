@@ -15,6 +15,7 @@ import PostLikesModal from '@/posts/components/PostLikesModal';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,7 @@ interface PostCardProps {
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const deletePost = useDeletePost();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -196,7 +198,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
       {/* En-tête du post */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center space-x-3 flex-1">
-          <Avatar className="w-10 h-10">
+          <Avatar 
+            className="w-10 h-10 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => post.profiles?.id && navigate(`/profile/${post.profiles.id}`)}
+          >
             <AvatarImage src={post.profiles?.avatar_url} />
             <AvatarFallback className="bg-gray-700 text-white">
               <User size={20} />
@@ -204,7 +209,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center space-x-2">
-              <span className="font-semibold text-white">
+              <span 
+                className="font-semibold text-white cursor-pointer hover:underline"
+                onClick={() => post.profiles?.id && navigate(`/profile/${post.profiles.id}`)}
+              >
                 {post.profiles?.first_name || post.profiles?.username || 'Utilisateur'}
               </span>
               {renderPostType(post.post_type)}
