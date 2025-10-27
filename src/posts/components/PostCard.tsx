@@ -200,7 +200,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         <div className="flex items-center space-x-3 flex-1">
           <Avatar 
             className="w-10 h-10 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => post.profiles?.id && navigate(`/profile/${post.profiles.id}`)}
+            onClick={() => post.author_id && navigate(`/profile/${post.author_id}`)}
           >
             <AvatarImage src={post.profiles?.avatar_url} />
             <AvatarFallback className="bg-gray-700 text-white">
@@ -211,7 +211,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             <div className="flex items-center space-x-2">
               <span 
                 className="font-semibold text-white cursor-pointer hover:underline"
-                onClick={() => post.profiles?.id && navigate(`/profile/${post.profiles.id}`)}
+                onClick={() => post.author_id && navigate(`/profile/${post.author_id}`)}
               >
                 {post.profiles?.first_name || post.profiles?.username || 'Utilisateur'}
               </span>
