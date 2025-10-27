@@ -67,6 +67,7 @@ const AppWithRouter: React.FC = () => {
         
         {/* Partage vidéo et post dédiés + onglets */}
         <Route path="/video/:id" element={<Layout />} />
+        <Route path="/videos/:id" element={<Layout />} />
         <Route path="/post/:id" element={<Layout />} />
         <Route path="/video" element={<Layout />} />
         <Route path="/post" element={<Layout />} />
