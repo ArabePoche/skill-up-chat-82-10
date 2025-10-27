@@ -1201,6 +1201,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "lesson_video_comments_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lesson_video_comments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1448,6 +1455,8 @@ export type Database = {
           is_read: boolean
           message: string
           payment_id: string | null
+          post_id: string | null
+          reaction_type: string | null
           requested_plan_type: string | null
           sender_id: string | null
           shop_order_id: string | null
@@ -1457,6 +1466,7 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string | null
+          video_id: string | null
         }
         Insert: {
           confirmed_by?: string | null
@@ -1468,6 +1478,8 @@ export type Database = {
           is_read?: boolean
           message: string
           payment_id?: string | null
+          post_id?: string | null
+          reaction_type?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
           shop_order_id?: string | null
@@ -1477,6 +1489,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string | null
+          video_id?: string | null
         }
         Update: {
           confirmed_by?: string | null
@@ -1488,6 +1501,8 @@ export type Database = {
           is_read?: boolean
           message?: string
           payment_id?: string | null
+          post_id?: string | null
+          reaction_type?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
           shop_order_id?: string | null
@@ -1497,6 +1512,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string | null
+          video_id?: string | null
         }
         Relationships: [
           {
@@ -1528,10 +1544,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
             referencedColumns: ["id"]
           },
         ]
@@ -4024,6 +4054,10 @@ export type Database = {
           p_reason: string
           p_user_id: string
         }
+        Returns: undefined
+      }
+      notify_post_edited: {
+        Args: { p_author_id: string; p_post_id: string }
         Returns: undefined
       }
       process_expired_evaluations: { Args: never; Returns: undefined }
