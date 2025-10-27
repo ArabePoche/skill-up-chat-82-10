@@ -74,8 +74,8 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     if (!container) return;
 
     const handleScroll = () => {
-      // Si on est sur /video/:id et qu'on commence à scroller
-      if (location.pathname.startsWith('/video/') && !hasScrolledRef.current) {
+      // Si on est sur /video/:id ou /videos/:id et qu'on commence à scroller
+      if ((location.pathname.startsWith('/video/') || location.pathname.startsWith('/videos/')) && !hasScrolledRef.current) {
         hasScrolledRef.current = true;
         navigate('/video', { replace: true });
       }
@@ -87,7 +87,7 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
 
   // Réinitialiser le flag de scroll quand on arrive sur une nouvelle vidéo via lien
   useEffect(() => {
-    if (location.pathname.startsWith('/video/')) {
+    if (location.pathname.startsWith('/video/') || location.pathname.startsWith('/videos/')) {
       hasScrolledRef.current = false;
     }
   }, [location.pathname]);
