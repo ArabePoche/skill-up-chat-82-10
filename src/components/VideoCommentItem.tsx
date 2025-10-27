@@ -9,6 +9,7 @@ import { useCommentLikes } from '@/hooks/useCommentLikes';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import VideoCommentReplies from '@/components/video/VideoCommentReplies';
+import { useNavigate } from 'react-router-dom';
 
 interface VideoCommentItemProps {
   comment: any;
@@ -17,6 +18,7 @@ interface VideoCommentItemProps {
 }
 
 const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, level = 0 }) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { isLiked, likesCount, toggleLike } = useCommentLikes(comment.id, comment.likes_count);
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -50,7 +52,10 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
   return (
     <div className="space-y-3">
       <div className="flex space-x-3">
-        <Avatar className="w-8 h-8 flex-shrink-0">
+        <Avatar 
+          className="w-8 h-8 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
+        >
           <AvatarImage src={comment.profiles?.avatar_url} />
           <AvatarFallback className="bg-gray-700 text-white">
             <User size={16} />
@@ -60,7 +65,12 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
         <div className="flex-1 min-w-0">
           <div className="bg-gray-800 rounded-2xl p-3">
             <div className="flex items-center space-x-2 mb-1">
-              <span className="font-medium text-white text-sm truncate">{displayName}</span>
+              <span 
+                className="font-medium text-white text-sm truncate cursor-pointer hover:underline"
+                onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
+              >
+                {displayName}
+              </span>
               <span className="text-xs text-gray-400 flex-shrink-0">{timeAgo}</span>
             </div>
             <p className="text-white text-sm leading-relaxed break-words">{comment.content}</p>
