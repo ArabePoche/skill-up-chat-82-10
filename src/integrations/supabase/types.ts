@@ -75,6 +75,83 @@ export type Database = {
           },
         ]
       }
+      application_files: {
+        Row: {
+          application_id: string
+          created_at: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_files_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      applications: {
+        Row: {
+          created_at: string | null
+          cv_url: string | null
+          id: string
+          message: string | null
+          recruiter_id: string
+          source_id: string
+          source_type: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          cv_url?: string | null
+          id?: string
+          message?: string | null
+          recruiter_id: string
+          source_id: string
+          source_type: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          cv_url?: string | null
+          id?: string
+          message?: string | null
+          recruiter_id?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       call_sessions: {
         Row: {
           call_type: string
@@ -1446,6 +1523,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          application_id: string | null
           confirmed_by: string | null
           created_at: string
           enrollment_id: string | null
@@ -1469,6 +1547,7 @@ export type Database = {
           video_id: string | null
         }
         Insert: {
+          application_id?: string | null
           confirmed_by?: string | null
           created_at?: string
           enrollment_id?: string | null
@@ -1492,6 +1571,7 @@ export type Database = {
           video_id?: string | null
         }
         Update: {
+          application_id?: string | null
           confirmed_by?: string | null
           created_at?: string
           enrollment_id?: string | null
@@ -1515,6 +1595,13 @@ export type Database = {
           video_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_enrollment_id_fkey"
             columns: ["enrollment_id"]
@@ -1889,39 +1976,54 @@ export type Database = {
       }
       posts: {
         Row: {
+          age_range: Json | null
           author_id: string
           comments_count: number
           content: string
           created_at: string
+          gender: string | null
+          geographic_zones: string[] | null
           id: string
           image_url: string | null
           is_active: boolean
           likes_count: number
           post_type: string
+          required_documents: Json | null
+          required_profiles: string[] | null
           updated_at: string
         }
         Insert: {
+          age_range?: Json | null
           author_id: string
           comments_count?: number
           content: string
           created_at?: string
+          gender?: string | null
+          geographic_zones?: string[] | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           likes_count?: number
           post_type: string
+          required_documents?: Json | null
+          required_profiles?: string[] | null
           updated_at?: string
         }
         Update: {
+          age_range?: Json | null
           author_id?: string
           comments_count?: number
           content?: string
           created_at?: string
+          gender?: string | null
+          geographic_zones?: string[] | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           likes_count?: number
           post_type?: string
+          required_documents?: Json | null
+          required_profiles?: string[] | null
           updated_at?: string
         }
         Relationships: []
