@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield } from 'lucide-react';
+import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useVerification } from '@/hooks/useVerification';
 
 interface ProfileMenuDrawerProps {
   isOpen: boolean;
@@ -15,7 +16,8 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   onShowNotificationDialog 
 }) => {
   const navigate = useNavigate();
-  const { profile, logout } = useAuth();
+  const { profile, user, logout } = useAuth();
+  const { hasPendingRequest, sendRequest, isSubmitting } = useVerification(user?.id);
 
   const handleLogout = async () => {
     await logout();
@@ -29,6 +31,16 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
     { icon: Bell, label: 'Notifications', action: () => { onClose(); onShowNotificationDialog(); } },
     { icon: HelpCircle, label: 'Aide et support', action: () => {} }
   ];
+
+  // Ajouter le bouton de certification si pas encore vérifié
+  // @ts-ignore - is_verified sera disponible après régénération des types Supabase
+  if (!(profile as any)?.is_verified && !hasPendingRequest) {
+    menuItems.push({
+      icon: CheckCircle,
+      label: 'Demander la certification',
+      action: () => sendRequest()
+    });
+  }
 
   // Ajouter le menu admin si l'utilisateur est admin
   if (profile?.role === 'admin') {
