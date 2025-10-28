@@ -302,6 +302,85 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         <p className="whitespace-pre-wrap">{post.content}</p>
       </div>
 
+      {/* Options de recrutement */}
+      {isRecruitmentPost && (
+        post.required_profiles || 
+        post.required_documents || 
+        post.geographic_zones || 
+        post.age_range || 
+        (post.gender && post.gender !== 'all')
+      ) && (
+        <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 space-y-3">
+          <h3 className="text-white font-semibold text-sm mb-2 flex items-center">
+            <Briefcase size={16} className="mr-2" />
+            Détails du recrutement
+          </h3>
+          
+          {post.required_profiles && post.required_profiles.length > 0 && (
+            <div>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">Profils recherchés</h4>
+              <div className="flex flex-wrap gap-2">
+                {post.required_profiles.map((profile: string, index: number) => (
+                  <span key={index} className="bg-blue-600 text-white px-2 py-1 rounded text-xs">
+                    {profile}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {post.required_documents && post.required_documents.length > 0 && (
+            <div>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">Documents à fournir</h4>
+              <ul className="space-y-1">
+                {post.required_documents.map((doc: {name: string; required: boolean}, index: number) => (
+                  <li key={index} className="text-gray-400 text-xs flex items-center">
+                    <span className={`w-2 h-2 rounded-full mr-2 ${doc.required ? 'bg-red-500' : 'bg-gray-500'}`}></span>
+                    {doc.name} {doc.required && <span className="ml-1 text-red-400">(obligatoire)</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {post.geographic_zones && post.geographic_zones.length > 0 && (
+            <div>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">Zones géographiques</h4>
+              <div className="flex flex-wrap gap-2">
+                {post.geographic_zones.map((zone: string, index: number) => (
+                  <span key={index} className="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">
+                    {zone}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(post.age_range?.min || post.age_range?.max) && (
+            <div>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">Âge requis</h4>
+              <p className="text-gray-400 text-xs">
+                {post.age_range.min && post.age_range.max 
+                  ? `Entre ${post.age_range.min} et ${post.age_range.max} ans`
+                  : post.age_range.min 
+                  ? `Minimum ${post.age_range.min} ans`
+                  : `Maximum ${post.age_range.max} ans`
+                }
+              </p>
+            </div>
+          )}
+
+          {post.gender && post.gender !== 'all' && (
+            <div>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">Sexe</h4>
+              <p className="text-gray-400 text-xs">
+                {post.gender === 'male' ? 'Homme' : 'Femme'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Médias */}
       {renderMedia()}
 
