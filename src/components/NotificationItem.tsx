@@ -6,6 +6,7 @@ import PlanChangeNotificationCard from '@/components/notifications/PlanChangeNot
 import PaymentRequestNotificationCard from '@/components/notifications/PaymentRequestNotificationCard';
 import FriendRequestCard from '@/components/notifications/FriendRequestCard';
 import ReactionNotificationCard from '@/components/notifications/ReactionNotificationCard';
+import ApplicationNotificationCard from '@/components/notifications/ApplicationNotificationCard';
 
 interface NotificationItemProps {
   notification: {
@@ -22,6 +23,7 @@ interface NotificationItemProps {
     formation_id?: string;
     requested_plan_type?: string;
     payment_id?: string;
+    application_id?: string;
     user_info?: {
       id: string;
       first_name: string;
@@ -74,6 +76,20 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
   );
 
   const isReactionNotification = notification.type === 'post_reaction' || notification.type === 'video_reaction';
+
+  const isApplicationNotification = notification.type === 'application_received' && notification.application_id;
+
+  // Si c'est une notification de candidature
+  if (isApplicationNotification) {
+    return <ApplicationNotificationCard notification={{
+      id: notification.id,
+      application_id: notification.application_id!,
+      created_at: notification.created_at,
+      is_read: notification.is_read,
+      title: notification.title,
+      message: notification.message
+    }} />;
+  }
 
   // Si c'est une notification de réaction (like/commentaire)
   if (isReactionNotification) {
