@@ -239,12 +239,20 @@ export const useCreatePost = () => {
       content, 
       postType, 
       imageFiles, 
-      authorId 
+      authorId,
+      recruitmentOptions
     }: {
       content: string;
       postType: 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general';
       imageFiles?: File[] | null;
       authorId: string;
+      recruitmentOptions?: {
+        requiredProfiles?: string[];
+        requiredDocuments?: {name: string; required: boolean}[];
+        geographicZones?: string[];
+        ageRange?: {min?: number; max?: number};
+        gender?: string;
+      };
     }) => {
       try {
         console.log('Creating post with data:', { content, postType, authorId });
@@ -280,7 +288,7 @@ export const useCreatePost = () => {
         const firstImageUrl = uploadedUrls[0] || null;
 
         // Création du post avec tous les champs requis
-        const postData = {
+        const postData: any = {
           content: content.trim(),
           post_type: postType,
           author_id: authorId,
@@ -289,6 +297,25 @@ export const useCreatePost = () => {
           likes_count: 0,
           comments_count: 0
         };
+
+        // Ajouter les options de recrutement si présentes
+        if (recruitmentOptions) {
+          if (recruitmentOptions.requiredProfiles) {
+            postData.required_profiles = recruitmentOptions.requiredProfiles;
+          }
+          if (recruitmentOptions.requiredDocuments) {
+            postData.required_documents = recruitmentOptions.requiredDocuments;
+          }
+          if (recruitmentOptions.geographicZones) {
+            postData.geographic_zones = recruitmentOptions.geographicZones;
+          }
+          if (recruitmentOptions.ageRange) {
+            postData.age_range = recruitmentOptions.ageRange;
+          }
+          if (recruitmentOptions.gender) {
+            postData.gender = recruitmentOptions.gender;
+          }
+        }
 
         console.log('Inserting post data:', postData);
 
@@ -349,7 +376,8 @@ export const useUpdatePost = () => {
       imageFile,
       imageFiles,
       removedMediaIds,
-      removeImage
+      removeImage,
+      recruitmentOptions
     }: {
       postId: string;
       content: string;
@@ -358,6 +386,13 @@ export const useUpdatePost = () => {
       imageFiles?: File[] | null;
       removedMediaIds?: string[];
       removeImage?: boolean;
+      recruitmentOptions?: {
+        requiredProfiles?: string[];
+        requiredDocuments?: {name: string; required: boolean}[];
+        geographicZones?: string[];
+        ageRange?: {min?: number; max?: number};
+        gender?: string;
+      };
     }) => {
       // Gestion des uploads (single ou multiple)
       const uploadedUrls: string[] = [];
@@ -427,6 +462,25 @@ export const useUpdatePost = () => {
       };
       if (imageUrlUpdate !== undefined) {
         updateData.image_url = imageUrlUpdate;
+      }
+
+      // Ajouter les options de recrutement si présentes
+      if (recruitmentOptions) {
+        if (recruitmentOptions.requiredProfiles !== undefined) {
+          updateData.required_profiles = recruitmentOptions.requiredProfiles;
+        }
+        if (recruitmentOptions.requiredDocuments !== undefined) {
+          updateData.required_documents = recruitmentOptions.requiredDocuments;
+        }
+        if (recruitmentOptions.geographicZones !== undefined) {
+          updateData.geographic_zones = recruitmentOptions.geographicZones;
+        }
+        if (recruitmentOptions.ageRange !== undefined) {
+          updateData.age_range = recruitmentOptions.ageRange;
+        }
+        if (recruitmentOptions.gender !== undefined) {
+          updateData.gender = recruitmentOptions.gender;
+        }
       }
 
       const { data, error } = await supabase
@@ -521,4 +575,4 @@ export const useDeletePost = () => {
       toast.error(`Erreur lors de la suppression du post: ${error?.message || 'Action non autorisée'}`);
     }
   });
-};
+}; 
