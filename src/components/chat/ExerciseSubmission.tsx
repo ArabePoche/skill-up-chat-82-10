@@ -1,10 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSubmitExercise } from '@/hooks/useSubmitExercise';
-import { useUpdateExerciseSubmission } from '@/hooks/useUpdateExerciseSubmission';
 import { useAccessControl } from '@/hooks/useAccessControl';
-import { useAuth } from '@/hooks/useAuth';
 import ExerciseCard from './ExerciseCard';
 import SubmissionForm from './SubmissionForm';
 import SubmittedExercise from './SubmittedExercise';
@@ -38,47 +36,24 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
   messages = []
 }) => {
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
-  const { user } = useAuth();
   const submitExerciseMutation = useSubmitExercise();
-  const updateSubmissionMutation = useUpdateExerciseSubmission();
   
   // Utiliser le contrôle d'accès si canSubmitExercise n'est pas fourni
   const { canSubmitExercise: globalCanSubmit } = useAccessControl(formationId);
   const canSubmit = canSubmitExercise !== undefined ? canSubmitExercise : globalCanSubmit;
 
-  // Trouver la soumission existante non validée
-  const existingSubmission = useMemo(() => {
-    if (!user?.id || !messages.length) return null;
-    
-    return messages.find(msg => 
-      msg.exercise_id === exercise.id &&
-      msg.sender_id === user.id &&
-      msg.is_exercise_submission === true &&
-      msg.exercise_status !== 'approved' // Peut être modifié si pas encore validé
-    );
-  }, [messages, exercise.id, user?.id]);
-
   const handleSubmit = async (submissionText: string, selectedFile?: File) => {
     if (!submissionText.trim() && !selectedFile) return;
 
     try {
-      // Si une soumission existe déjà, la mettre à jour
-      if (existingSubmission) {
-        await updateSubmissionMutation.mutateAsync({
-          messageId: existingSubmission.id,
-          content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
-          file: selectedFile,
-        });
-      } else {
-        // Sinon, créer une nouvelle soumission
-        await submitExerciseMutation.mutateAsync({
-          lessonId,
-          formationId,
-          exerciseId: exercise.id,
-          content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
-          file: selectedFile,
-        });
-      }
+      // Toujours créer une nouvelle soumission (permettre les soumissions multiples)
+      await submitExerciseMutation.mutateAsync({
+        lessonId,
+        formationId,
+        exerciseId: exercise.id,
+        content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
+        file: selectedFile,
+      });
 
       setShowSubmissionForm(false);
       onSubmissionComplete?.();
@@ -123,10 +98,7 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
           className="bg-blue-500 hover:bg-blue-600"
           disabled={!canSubmit}
         >
-          {existingSubmission 
-            ? (canSubmit ? 'Modifier la soumission' : 'Modification indisponible')
-            : (canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible')
-          }
+          {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
         </Button>
       )}
 
@@ -135,10 +107,9 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
           <SubmissionForm
             onSubmit={handleSubmit}
             onCancel={() => setShowSubmissionForm(false)}
-            isSubmitting={submitExerciseMutation.isPending || updateSubmissionMutation.isPending}
+            isSubmitting={submitExerciseMutation.isPending}
             exerciseTitle={exercise.title}
             showSubmissionOptions={showSubmissionOptions}
-            initialContent={existingSubmission?.content}
           />
         </div>
       )}
