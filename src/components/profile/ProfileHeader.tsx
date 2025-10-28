@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Edit, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AvatarUploadModal from './AvatarUploadModal';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface ProfileHeaderProps {
   profile: any;
@@ -46,7 +46,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               </button>
             </div>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900">{getDisplayName()}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                {getDisplayName()}
+                {/* @ts-ignore - is_verified sera disponible après régénération des types */}
+                {(profile as any)?.is_verified && <VerifiedBadge size={20} />}
+              </h1>
               <p className="text-gray-600">{user?.email}</p>
               <p className="text-sm text-edu-primary mt-1">
                 {profile?.is_teacher ? 'Enseignant' : 'Étudiant'} actif depuis {
@@ -59,7 +63,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               {profile?.role === 'admin' && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-1">
                   <Shield size={12} className="mr-1" />
-                  Administrateurnnnnnnnn
+                  Administrateur
                 </span>
               )}
             </div>
