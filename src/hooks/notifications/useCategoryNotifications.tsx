@@ -31,6 +31,9 @@ export const useCategoryNotifications = (category: string, enabled: boolean = fa
         case 'payment_requests':
           typeFilter = ['payment_request'];
           break;
+        case 'applications':
+          typeFilter = ['application_received'];
+          break;
         case 'reactions':
           typeFilter = ['post_reaction', 'video_reaction'];
           break;
@@ -51,7 +54,7 @@ export const useCategoryNotifications = (category: string, enabled: boolean = fa
         query = query.in('type', typeFilter);
       } else if (category === 'others') {
         // Pour "others", exclure les types connus
-        query = query.not('type', 'in', '(friend_request,enrollment_request,plan_change_request,payment_request,post_reaction,video_reaction)');
+        query = query.not('type', 'in', '(friend_request,enrollment_request,plan_change_request,payment_request,application_received,post_reaction,video_reaction)');
       }
 
       const { data: notifications, error } = await query;
