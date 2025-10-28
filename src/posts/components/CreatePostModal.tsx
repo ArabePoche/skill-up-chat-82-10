@@ -35,6 +35,18 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
     files: File[];
     originalSizes: number[];
   }>({ open: false, files: [], originalSizes: [] });
+  
+  // États pour les options de recrutement
+  const [requiredProfiles, setRequiredProfiles] = useState<string[]>([]);
+  const [newProfile, setNewProfile] = useState('');
+  const [requiredDocuments, setRequiredDocuments] = useState<{name: string; required: boolean}[]>([]);
+  const [newDocument, setNewDocument] = useState('');
+  const [geographicZones, setGeographicZones] = useState<string[]>([]);
+  const [newZone, setNewZone] = useState('');
+  const [ageMin, setAgeMin] = useState('');
+  const [ageMax, setAgeMax] = useState('');
+  const [gender, setGender] = useState<string>('all');
+  
   const { user } = useAuth();
   const { mutate: createPost, isPending: isCreating } = useCreatePost();
   const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
@@ -59,6 +71,18 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
       setImagePreviews([]);
       setRemovedMediaIds([]);
       setRemoveMainImage(false);
+      
+      // Charger les options de recrutement si c'est un post de recrutement
+      if (editPost.post_type === 'recruitment') {
+        setRequiredProfiles(editPost.required_profiles || []);
+        setRequiredDocuments(editPost.required_documents || []);
+        setGeographicZones(editPost.geographic_zones || []);
+        if (editPost.age_range) {
+          setAgeMin(editPost.age_range.min?.toString() || '');
+          setAgeMax(editPost.age_range.max?.toString() || '');
+        }
+        setGender(editPost.gender || 'all');
+      }
     } else {
       setContent('');
       setPostType(null);
@@ -67,6 +91,12 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
       setExistingMedia([]);
       setRemovedMediaIds([]);
       setRemoveMainImage(false);
+      setRequiredProfiles([]);
+      setRequiredDocuments([]);
+      setGeographicZones([]);
+      setAgeMin('');
+      setAgeMax('');
+      setGender('all');
     }
   }, [editPost]);
 
@@ -189,6 +219,23 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
       return;
     }
 
+    // Préparer les options de recrutement si applicable
+    let recruitmentOptions = undefined;
+    if (postType === 'recruitment') {
+      const ageRange = (ageMin || ageMax) ? {
+        min: ageMin ? parseInt(ageMin) : undefined,
+        max: ageMax ? parseInt(ageMax) : undefined
+      } : undefined;
+      
+      recruitmentOptions = {
+        requiredProfiles: requiredProfiles.length > 0 ? requiredProfiles : undefined,
+        requiredDocuments: requiredDocuments.length > 0 ? requiredDocuments : undefined,
+        geographicZones: geographicZones.length > 0 ? geographicZones : undefined,
+        ageRange,
+        gender: gender !== 'all' ? gender : undefined
+      };
+    }
+
     if (editPost) {
       // Mode édition
       updatePost({
@@ -198,6 +245,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
         imageFiles: imageFiles.length > 0 ? imageFiles : undefined,
         removedMediaIds: removedMediaIds.length > 0 ? removedMediaIds : undefined,
         removeImage: removeMainImage,
+        recruitmentOptions
       }, {
         onSuccess: () => {
           setContent('');
@@ -207,6 +255,12 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
           setExistingMedia([]);
           setRemovedMediaIds([]);
           setRemoveMainImage(false);
+          setRequiredProfiles([]);
+          setRequiredDocuments([]);
+          setGeographicZones([]);
+          setAgeMin('');
+          setAgeMax('');
+          setGender('all');
           onClose();
         }
       });
@@ -216,13 +270,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
         content: content.trim(),
         postType,
         imageFiles: imageFiles,
-        authorId: user.id
+        authorId: user.id,
+        recruitmentOptions
       }, {
         onSuccess: () => {
           setContent('');
           setPostType(null);
           setImageFiles([]);
           setImagePreviews([]);
+          setRequiredProfiles([]);
+          setRequiredDocuments([]);
+          setGeographicZones([]);
+          setAgeMin('');
+          setAgeMax('');
+          setGender('all');
           onClose();
         }
       });
@@ -338,6 +399,226 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
               {content.length}/500
             </div>
           </div>
+
+          {/* Options de recrutement */}
+          {postType === 'recruitment' && (
+            <div className="space-y-4 border-t border-gray-800 pt-4">
+              <h3 className="text-white text-sm font-semibold">Options de recrutement</h3>
+              
+              {/* Profils recherchés */}
+              <div>
+                <label className="text-white text-sm font-medium mb-2 block">
+                  Profils recherchés
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newProfile}
+                    onChange={(e) => setNewProfile(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newProfile.trim()) {
+                        setRequiredProfiles([...requiredProfiles, newProfile.trim()]);
+                        setNewProfile('');
+                      }
+                    }}
+                    placeholder="Ex: Développeur Full Stack"
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (newProfile.trim()) {
+                        setRequiredProfiles([...requiredProfiles, newProfile.trim()]);
+                        setNewProfile('');
+                      }
+                    }}
+                    className="bg-edu-primary hover:bg-edu-primary/90"
+                    size="sm"
+                  >
+                    Ajouter
+                  </Button>
+                </div>
+                {requiredProfiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {requiredProfiles.map((profile, index) => (
+                      <span key={index} className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
+                        {profile}
+                        <button
+                          onClick={() => setRequiredProfiles(requiredProfiles.filter((_, i) => i !== index))}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Documents requis */}
+              <div>
+                <label className="text-white text-sm font-medium mb-2 block">
+                  Documents à fournir
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newDocument}
+                    onChange={(e) => setNewDocument(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newDocument.trim()) {
+                        setRequiredDocuments([...requiredDocuments, { name: newDocument.trim(), required: true }]);
+                        setNewDocument('');
+                      }
+                    }}
+                    placeholder="Ex: CV, Lettre de motivation"
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (newDocument.trim()) {
+                        setRequiredDocuments([...requiredDocuments, { name: newDocument.trim(), required: true }]);
+                        setNewDocument('');
+                      }
+                    }}
+                    className="bg-edu-primary hover:bg-edu-primary/90"
+                    size="sm"
+                  >
+                    Ajouter
+                  </Button>
+                </div>
+                {requiredDocuments.length > 0 && (
+                  <div className="space-y-2">
+                    {requiredDocuments.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-800 px-3 py-2 rounded-lg">
+                        <span className="text-white text-sm">{doc.name}</span>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-2 text-xs text-gray-400">
+                            <input
+                              type="checkbox"
+                              checked={doc.required}
+                              onChange={(e) => {
+                                const updated = [...requiredDocuments];
+                                updated[index].required = e.target.checked;
+                                setRequiredDocuments(updated);
+                              }}
+                              className="accent-edu-primary"
+                            />
+                            Obligatoire
+                          </label>
+                          <button
+                            onClick={() => setRequiredDocuments(requiredDocuments.filter((_, i) => i !== index))}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Zones géographiques */}
+              <div>
+                <label className="text-white text-sm font-medium mb-2 block">
+                  Zones géographiques
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newZone}
+                    onChange={(e) => setNewZone(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newZone.trim()) {
+                        setGeographicZones([...geographicZones, newZone.trim()]);
+                        setNewZone('');
+                      }
+                    }}
+                    placeholder="Ex: Paris, Île-de-France"
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (newZone.trim()) {
+                        setGeographicZones([...geographicZones, newZone.trim()]);
+                        setNewZone('');
+                      }
+                    }}
+                    className="bg-edu-primary hover:bg-edu-primary/90"
+                    size="sm"
+                  >
+                    Ajouter
+                  </Button>
+                </div>
+                {geographicZones.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {geographicZones.map((zone, index) => (
+                      <span key={index} className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
+                        {zone}
+                        <button
+                          onClick={() => setGeographicZones(geographicZones.filter((_, i) => i !== index))}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Âge */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-white text-sm font-medium mb-2 block">
+                    Âge minimum
+                  </label>
+                  <input
+                    type="number"
+                    value={ageMin}
+                    onChange={(e) => setAgeMin(e.target.value)}
+                    placeholder="18"
+                    min="16"
+                    max="99"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-white text-sm font-medium mb-2 block">
+                    Âge maximum
+                  </label>
+                  <input
+                    type="number"
+                    value={ageMax}
+                    onChange={(e) => setAgeMax(e.target.value)}
+                    placeholder="65"
+                    min="16"
+                    max="99"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Sexe */}
+              <div>
+                <label className="text-white text-sm font-medium mb-2 block">
+                  Sexe
+                </label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-edu-primary"
+                >
+                  <option value="all">Tous</option>
+                  <option value="male">Homme</option>
+                  <option value="female">Femme</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* Images */}
           <div>
