@@ -2,12 +2,10 @@
  * Composant de soumission d'exercice spécifique au chat de groupe
  * Utilise useSubmitGroupExercise pour la logique adaptée au niveau
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSubmitGroupExercise } from '@/hooks/group-chat/useSubmitGroupExercise';
-import { useUpdateExerciseSubmission } from '@/hooks/useUpdateExerciseSubmission';
 import { useAccessControl } from '@/hooks/useAccessControl';
-import { useAuth } from '@/hooks/useAuth';
 import ExerciseCard from '../chat/ExerciseCard';
 import SubmissionForm from '../chat/SubmissionForm';
 import SubmittedExercise from '../chat/SubmittedExercise';
@@ -41,25 +39,11 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
   messages = []
 }) => {
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
-  const { user } = useAuth();
   const submitExerciseMutation = useSubmitGroupExercise();
-  const updateSubmissionMutation = useUpdateExerciseSubmission();
   
   // Utiliser le contrôle d'accès si canSubmitExercise n'est pas fourni
   const { canSubmitExercise: globalCanSubmit } = useAccessControl(formationId);
   const canSubmit = canSubmitExercise !== undefined ? canSubmitExercise : globalCanSubmit;
-
-  // Trouver la soumission existante non validée
-  const existingSubmission = useMemo(() => {
-    if (!user?.id || !messages.length) return null;
-    
-    return messages.find(msg => 
-      msg.exercise_id === exercise.id &&
-      msg.sender_id === user.id &&
-      msg.is_exercise_submission === true &&
-      msg.exercise_status !== 'approved' // Peut être modifié si pas encore validé
-    );
-  }, [messages, exercise.id, user?.id]);
 
   const handleSubmit = async (submissionText: string, selectedFile?: File) => {
     if (!submissionText.trim() && !selectedFile) return;
@@ -68,28 +52,18 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
       exerciseId: exercise.id, 
       formationId, 
       levelId,
-      exerciseTitle: exercise.title,
-      existingSubmission: !!existingSubmission
+      exerciseTitle: exercise.title
     });
 
     try {
-      // Si une soumission existe déjà, la mettre à jour
-      if (existingSubmission) {
-        await updateSubmissionMutation.mutateAsync({
-          messageId: existingSubmission.id,
-          content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
-          file: selectedFile,
-        });
-      } else {
-        // Sinon, créer une nouvelle soumission
-        await submitExerciseMutation.mutateAsync({
-          exerciseId: exercise.id,
-          formationId,
-          levelId,
-          content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
-          file: selectedFile,
-        });
-      }
+      // Toujours créer une nouvelle soumission (permettre les soumissions multiples)
+      await submitExerciseMutation.mutateAsync({
+        exerciseId: exercise.id,
+        formationId,
+        levelId,
+        content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
+        file: selectedFile,
+      });
 
       setShowSubmissionForm(false);
       onSubmissionComplete?.();
@@ -134,10 +108,7 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
           className="bg-blue-500 hover:bg-blue-600"
           disabled={!canSubmit}
         >
-          {existingSubmission 
-            ? (canSubmit ? 'Modifier la soumission' : 'Modification indisponible')
-            : (canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible')
-          }
+          {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
         </Button>
       )}
 
@@ -146,10 +117,9 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
           <SubmissionForm
             onSubmit={handleSubmit}
             onCancel={() => setShowSubmissionForm(false)}
-            isSubmitting={submitExerciseMutation.isPending || updateSubmissionMutation.isPending}
+            isSubmitting={submitExerciseMutation.isPending}
             exerciseTitle={exercise.title}
             showSubmissionOptions={showSubmissionOptions}
-            initialContent={existingSubmission?.content}
           />
         </div>
       )}
