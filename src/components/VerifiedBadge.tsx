@@ -12,7 +12,7 @@ interface VerifiedBadgeProps {
  * Affiche un badge professionnel avec bordures dentelées et checkmark
  */
 const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({ 
-  size = 18, 
+  size = 22, 
   className = '',
   showTooltip = true 
 }) => {
