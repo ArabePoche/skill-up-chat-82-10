@@ -3,8 +3,9 @@
  * Affiche le message texte, l'audio vocal et les fichiers joints par le professeur
  */
 import React, { useRef, useState } from 'react';
-import { Play, Pause, Download, FileText } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ExerciseFilePreview from '@/components/shared/ExerciseFilePreview';
 
 interface ExerciseRejectionDetailsProps {
   rejectReason?: string;
@@ -40,9 +41,38 @@ const ExerciseRejectionDetails: React.FC<ExerciseRejectionDetailsProps> = ({
     }
   };
 
-  const getFileName = (url: string) => {
-    const parts = url.split('/');
-    return parts[parts.length - 1] || 'fichier';
+  const getFileTypeFromUrl = (url: string): string => {
+    const extension = url.split('.').pop()?.toLowerCase() || '';
+    
+    // Images
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) {
+      return `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+    }
+    // Videos
+    if (['mp4', 'webm', 'ogg', 'mov'].includes(extension)) {
+      return `video/${extension}`;
+    }
+    // Audio
+    if (['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension)) {
+      return `audio/${extension}`;
+    }
+    // PDF
+    if (extension === 'pdf') {
+      return 'application/pdf';
+    }
+    // Documents
+    if (['doc', 'docx'].includes(extension)) {
+      return 'application/msword';
+    }
+    if (['xls', 'xlsx'].includes(extension)) {
+      return 'application/vnd.ms-excel';
+    }
+    if (['ppt', 'pptx'].includes(extension)) {
+      return 'application/vnd.ms-powerpoint';
+    }
+    
+    // Par défaut
+    return 'application/octet-stream';
   };
 
   if (!rejectReason && !rejectAudioUrl && (!rejectFilesUrls || rejectFilesUrls.length === 0)) {
@@ -98,34 +128,20 @@ const ExerciseRejectionDetails: React.FC<ExerciseRejectionDetailsProps> = ({
             </div>
           )}
 
-          {/* Fichiers joints */}
+          {/* Fichiers joints avec prévisualisation */}
           {rejectFilesUrls && rejectFilesUrls.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-red-800 mb-2">Fichiers d'aide :</p>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {rejectFilesUrls.map((fileUrl, index) => (
-                  <div key={index} className="flex items-center justify-between bg-white rounded p-2 border border-red-200">
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      <FileText size={14} className="text-red-600 flex-shrink-0" />
-                      <span className="text-xs text-red-700 truncate">
-                        {getFileName(fileUrl)}
-                      </span>
-                    </div>
-                    <a
-                      href={fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                    >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-2 h-7 w-7 rounded hover:bg-red-100"
-                      >
-                        <Download size={12} className="text-red-600" />
-                      </Button>
-                    </a>
-                  </div>
+                  <ExerciseFilePreview
+                    key={index}
+                    file={{
+                      file_url: fileUrl,
+                      file_type: getFileTypeFromUrl(fileUrl)
+                    }}
+                    showDownload={true}
+                  />
                 ))}
               </div>
             </div>
