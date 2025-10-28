@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCreatePost, useUpdatePost } from '@/posts/hooks/usePosts';
 import { toast } from 'sonner';
 import { compressImage, formatFileSize } from '@/utils/imageCompression';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +53,22 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   const { mutate: createPost, isPending: isCreating } = useCreatePost();
   const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
   const isPending = isCreating || isUpdating;
+
+  // Récupérer le profil pour vérifier si l'utilisateur est vérifié
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_verified')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   // Charger les données du post à éditer
   useEffect(() => {
@@ -365,17 +383,31 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
             <div className="flex flex-wrap gap-2">
               {postTypes.map((type) => {
                 const Icon = type.icon;
+                const isRecruitment = type.value === 'recruitment';
+                // @ts-ignore - is_verified sera disponible après régénération des types
+                const isVerified = (profile as any)?.is_verified;
+                const isDisabled = isRecruitment && !isVerified;
+                
                 return (
                   <button
                     key={type.value}
-                    onClick={() => setPostType(type.value)}
+                    onClick={() => {
+                      if (isDisabled) {
+                        toast.error('Seuls les comptes vérifiés peuvent créer des posts de recrutement');
+                        return;
+                      }
+                      setPostType(type.value);
+                    }}
+                    disabled={isDisabled}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                       postType === type.value
                         ? 'bg-edu-primary text-white'
+                        : isDisabled
+                        ? 'bg-gray-800/50 text-gray-500 cursor-not-allowed'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    <Icon size={16} className={postType === type.value ? 'text-white' : type.color} />
+                    <Icon size={16} className={postType === type.value ? 'text-white' : isDisabled ? 'text-gray-600' : type.color} />
                     <span>{type.label}</span>
                   </button>
                 );
