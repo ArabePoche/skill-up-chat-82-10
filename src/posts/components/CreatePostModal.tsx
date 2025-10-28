@@ -393,10 +393,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
               onChange={(e) => setContent(e.target.value)}
               placeholder="Quoi de neuf ?"
               className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-edu-primary resize-none"
-              maxLength={500}
+              maxLength={2000}
             />
             <div className="text-right text-xs text-gray-400 mt-1">
-              {content.length}/500
+              {content.length}/2000
             </div>
           </div>
 
