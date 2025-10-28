@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2, Briefcase, Check } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,6 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ApplicationModal } from '@/applications/components/ApplicationModal';
+import { useCheckExistingApplication } from '@/applications/hooks/useApplications';
 
 interface PostCardProps {
   post: any;
@@ -36,12 +38,21 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [openCommentsTick, setOpenCommentsTick] = useState(0);
   const [likesModalOpen, setLikesModalOpen] = useState(false);
+  const [applicationModalOpen, setApplicationModalOpen] = useState(false);
   const commentsRef = React.useRef<HTMLDivElement>(null);
 
   const isAuthor = user?.id === post.author_id;
+  const isRecruitmentPost = post.post_type === 'recruitment';
   
   // Hook pour le système d'amitié
   const { friendshipStatus, sendRequest, acceptRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(post.author_id);
+
+  // Vérifier si l'utilisateur a déjà postulé
+  const { data: existingApplication } = useCheckExistingApplication(
+    user?.id || '',
+    post.id,
+    'post',
+  );
 
   // Hook pour les likes
   const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = usePostLikes(
@@ -349,6 +360,34 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         </Button>
       </div>
 
+      {/* Bouton Postuler pour les posts de recrutement */}
+      {isRecruitmentPost && !isAuthor && user && (
+        <div className="mt-3">
+          {existingApplication ? (
+            <Button
+              disabled
+              className="w-full"
+              variant="outline"
+            >
+              <Check className="mr-2 h-4 w-4" />
+              {existingApplication.status === 'approved' 
+                ? 'Candidature acceptée'
+                : existingApplication.status === 'rejected'
+                ? 'Candidature rejetée'
+                : 'Candidature envoyée'}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setApplicationModalOpen(true)}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              <Briefcase className="mr-2 h-4 w-4" />
+              Postuler
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Section des commentaires intégrée */}
       <div ref={commentsRef}>
         <PostComments 
@@ -372,6 +411,19 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         isOpen={likesModalOpen}
         onClose={() => setLikesModalOpen(false)}
       />
+
+      {/* Modal de candidature */}
+      {user && (
+        <ApplicationModal
+          isOpen={applicationModalOpen}
+          onClose={() => setApplicationModalOpen(false)}
+          userId={user.id}
+          recruiterId={post.author_id}
+          sourceId={post.id}
+          sourceType="post"
+          postContent={post.content}
+        />
+      )}
     </div>
   );
 };
