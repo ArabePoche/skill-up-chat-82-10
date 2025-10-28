@@ -43,7 +43,7 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
   const location = useLocation();
   const navigate = useNavigate();
   const { data: videos = [], fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteVideos();
-  const { data: targetVideo } = useVideoById(targetVideoId);
+  const { data: targetVideo, isLoading: isLoadingTargetVideo } = useVideoById(targetVideoId);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [globalMuted, setGlobalMuted] = useState(false); // Son activé par défaut
@@ -145,6 +145,15 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     // Ne pas refetch pour éviter de perdre la position
     // Les compteurs de commentaires seront mis à jour localement par le hook
   };
+
+  // Si on attend une vidéo ciblée spécifique, afficher le loader jusqu'à ce qu'elle soit chargée
+  if (targetVideoId && isLoadingTargetVideo) {
+    return (
+      <div className="h-full flex items-center justify-center text-white bg-black">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
 
   if (!displayedVideos || displayedVideos.length === 0) {
     return (
