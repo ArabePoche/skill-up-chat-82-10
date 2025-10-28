@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, UserPlus, Users, BookOpen, CreditCard } from 'lucide-react';
+import { Bell, UserPlus, Users, BookOpen, CreditCard, Briefcase } from 'lucide-react';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useCategoryNotifications } from '@/hooks/notifications/useCategoryNotifications';
 import NotificationItem from '@/components/NotificationItem';
@@ -33,6 +33,8 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
         return <BookOpen className="w-5 h-5" />;
       case 'payment_requests':
         return <CreditCard className="w-5 h-5" />;
+      case 'applications':
+        return <Briefcase className="w-5 h-5" />;
       case 'reactions':
         return <span className="text-xl">❤️</span>;
       default:
@@ -50,6 +52,8 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
         return 'Changements de plan';
       case 'payment_requests':
         return 'Demandes de paiement';
+      case 'applications':
+        return 'Candidatures';
       case 'reactions':
         return 'Réactions publications';
       default:
