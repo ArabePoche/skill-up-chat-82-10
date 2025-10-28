@@ -2319,6 +2319,7 @@ export type Database = {
           id: string
           interests: string[] | null
           is_teacher: boolean | null
+          is_verified: boolean | null
           language: string | null
           last_name: string | null
           last_seen: string | null
@@ -2342,6 +2343,7 @@ export type Database = {
           id: string
           interests?: string[] | null
           is_teacher?: boolean | null
+          is_verified?: boolean | null
           language?: string | null
           last_name?: string | null
           last_seen?: string | null
@@ -2365,6 +2367,7 @@ export type Database = {
           id?: string
           interests?: string[] | null
           is_teacher?: boolean | null
+          is_verified?: boolean | null
           language?: string | null
           last_name?: string | null
           last_seen?: string | null
@@ -3619,6 +3622,57 @@ export type Database = {
             columns: ["formation_id"]
             isOneToOne: false
             referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      verification_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          rejection_reason: string | null
+          requested_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
