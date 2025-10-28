@@ -37,8 +37,8 @@ const CompleteProfile = () => {
   const countries = getNames();
 
   const interestOptions = [
-    'Technologie', 'Sciences', 'Littérature', 'Arts', 'Sport', 'Musique', 
-     'Voyage', 'Cuisine', 'Photographie', 'Mode', 'Business', 'Boulangerie'
+    'Technologie', 'Sciences', 'Littérature', 'Arts', 'Sport', 'Religion', 
+     'Voyage', 'Cuisine', 'Photographie', 'Education', 'Business', 'Boulangerie'
   ];
 
   useEffect(() => {
