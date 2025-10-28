@@ -536,7 +536,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
                         setNewZone('');
                       }
                     }}
-                    placeholder="Ex: Paris, Île-de-France"
+                    placeholder="Ex: Mali, Paris, Burkina"
                     className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
                   />
                   <Button
