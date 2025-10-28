@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle } from 'lucide-react';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -164,7 +165,11 @@ const Profil = () => {
               )}
             </div>
             <div className="text-center">
-              <h1 className="text-xl font-bold">{getDisplayName()}</h1>
+              <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+                {getDisplayName()}
+                {/* @ts-ignore - is_verified sera disponible après régénération des types */}
+                {(profile as any)?.is_verified && <VerifiedBadge size={18} />}
+              </h1>
               <p className="text-sm text-muted-foreground">@{profile?.username || 'utilisateur'}</p>
             </div>
           </div>
