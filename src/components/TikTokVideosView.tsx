@@ -68,29 +68,19 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     setGlobalMuted(!globalMuted);
   };
 
-  // Détecter le scroll pour changer l'URL de /video/:id vers /video
+  // Détecter le changement de vidéo pour mettre à jour la route
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      // Si on est sur /video/:id ou /videos/:id et qu'on commence à scroller
-      if ((location.pathname.startsWith('/video/') || location.pathname.startsWith('/videos/')) && !hasScrolledRef.current) {
-        hasScrolledRef.current = true;
+    // Si on est sur /video/:id avec une vidéo ciblée
+    if (targetVideoId && (location.pathname.startsWith('/video/') || location.pathname.startsWith('/videos/'))) {
+      // Trouver l'index de la vidéo ciblée
+      const targetIndex = displayedVideos.findIndex((v: any) => v.id === targetVideoId);
+      
+      // Si la vidéo courante n'est plus la vidéo ciblée, revenir à /video
+      if (targetIndex !== -1 && currentVideoIndex !== targetIndex) {
         navigate('/video', { replace: true });
       }
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [location.pathname, navigate]);
-
-  // Réinitialiser le flag de scroll quand on arrive sur une nouvelle vidéo via lien
-  useEffect(() => {
-    if (location.pathname.startsWith('/video/') || location.pathname.startsWith('/videos/')) {
-      hasScrolledRef.current = false;
     }
-  }, [location.pathname]);
+  }, [currentVideoIndex, targetVideoId, displayedVideos, location.pathname, navigate]);
 
   // Intersection Observer pour la lecture automatique
   useEffect(() => {
