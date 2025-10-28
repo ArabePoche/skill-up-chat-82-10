@@ -56,6 +56,9 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           locked_by_teacher_id,
           locked_at,
           validated_by_teacher_id,
+          reject_audio_url,
+          reject_audio_duration,
+          reject_files_urls,
           profiles!sender_id (
             id,
             first_name,
