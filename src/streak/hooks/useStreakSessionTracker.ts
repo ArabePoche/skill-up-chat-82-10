@@ -41,21 +41,31 @@ export const useStreakSessionTracker = () => {
     return null;
   };
 
-  // Calculer le niveau basé sur le nombre de streaks
+  // Calculer le niveau basé sur le nombre de streaks (logique par intervalles)
   const calculateLevel = (streakCount: number): number => {
-    if (!levels || levels.length === 0) return 0;
+    if (!levels || levels.length === 0) return 1; // Niveau 1 par défaut si pas de configuration
 
-    // Trier les niveaux par ordre décroissant
-    const sortedLevels = [...levels].sort((a, b) => b.days_required - a.days_required);
+    // Trier les niveaux par ordre croissant
+    const sortedLevels = [...levels].sort((a, b) => a.days_required - b.days_required);
 
-    // Trouver le niveau le plus élevé atteint
-    for (const level of sortedLevels) {
-      if (streakCount >= level.days_required) {
-        return level.level_number;
+    // Trouver dans quel intervalle se situe le streak
+    for (let i = 0; i < sortedLevels.length; i++) {
+      const currentLevel = sortedLevels[i];
+      const nextLevel = sortedLevels[i + 1];
+
+      // Si on n'a pas encore atteint le premier palier, on est au niveau 1
+      if (i === 0 && streakCount < currentLevel.days_required) {
+        return 1;
+      }
+
+      // Si on a atteint ce palier mais pas le suivant (ou s'il n'y a pas de suivant)
+      if (streakCount >= currentLevel.days_required && (!nextLevel || streakCount < nextLevel.days_required)) {
+        return currentLevel.level_number + 1; // +1 car on passe au niveau suivant après avoir atteint le palier
       }
     }
 
-    return 0;
+    // Si on a dépassé tous les paliers, on est au niveau max + 1
+    return sortedLevels[sortedLevels.length - 1].level_number + 1;
   };
 
   // Calculer les jours manqués entre deux dates
@@ -191,6 +201,18 @@ export const useStreakSessionTracker = () => {
 
     sessionStartRef.current = null;
   };
+
+  // Initialiser le streak dès le montage si l'utilisateur est connecté
+  useEffect(() => {
+    const initializeUserStreak = async () => {
+      if (!user) return;
+      
+      console.log('🔍 Vérification/Initialisation du streak au montage:', user.id);
+      await initializeStreak(user.id);
+    };
+
+    initializeUserStreak();
+  }, [user]);
 
   // Tracker basé sur la présence utilisateur
   useEffect(() => {
