@@ -52,7 +52,7 @@ export const useActivityTracker = () => {
     const today = new Date().toISOString().split('T')[0];
     
     // Si déjà validé aujourd'hui, ne rien faire
-    if (hasValidatedTodayRef.current || streak.last_activity_date === today) {
+    if (hasValidatedTodayRef.current) {
       return;
     }
 
