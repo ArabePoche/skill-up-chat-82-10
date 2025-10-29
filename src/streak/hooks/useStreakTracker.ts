@@ -1,96 +1,47 @@
 /**
- * Hook pour suivre l'activité quotidienne et valider les streaks
+ * Hook pour lire la progression quotidienne du streak depuis user_streaks
+ * Lit directement depuis user_streaks.daily_minutes (alimenté par useStreakSessionTracker + useActivityTracker)
  */
-import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserStreak } from './useUserStreak';
 import { useStreakConfig } from './useStreakConfig';
 
-export const useStreakTracker = (userId?: string) => {
-  const { streak, updateStreak } = useUserStreak(userId);
+export const useStreakProgress = (userId?: string) => {
   const { globalConfig } = useStreakConfig();
-  const hasCheckedToday = useRef(false);
 
-  // Récupérer l'utilisation quotidienne
-  const { data: todayUsage } = useQuery({
-    queryKey: ['daily-usage-today', userId],
+  // Récupérer les minutes quotidiennes depuis user_streaks
+  const { data: dailyProgress } = useQuery({
+    queryKey: ['streak-daily-progress', userId],
     queryFn: async () => {
       if (!userId) return null;
 
       const today = new Date().toISOString().split('T')[0];
 
       const { data, error } = await supabase
-        .from('daily_usage')
-        .select('*')
+        .from('user_streaks')
+        .select('daily_minutes, last_activity_date')
         .eq('user_id', userId)
-        .eq('date', today);
+        .single();
 
       if (error) throw error;
 
-      // Calculer le total de minutes utilisées aujourd'hui
-      const totalMinutes = data.reduce((sum, usage) => sum + usage.minutes_used, 0);
-      
       return {
-        totalMinutes,
-        records: data,
+        dailyMinutes: data.daily_minutes || 0,
+        lastActivityDate: data.last_activity_date,
+        isValidatedToday: data.last_activity_date === today,
       };
     },
     enabled: !!userId,
-    refetchInterval: 60000, // Refetch toutes les minutes
+    refetchInterval: 10000, // Refetch toutes les 10 secondes pour UI temps réel
   });
 
-  // Vérifier si l'utilisateur a atteint le minimum de minutes
-  useEffect(() => {
-    if (!userId || !streak || !globalConfig || !todayUsage) {
-      return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const lastActivity = streak.last_activity_date;
-
-    // Si déjà validé aujourd'hui, ne rien faire
-    if (lastActivity === today && hasCheckedToday.current) {
-      return;
-    }
-
-    // Vérifier si l'utilisateur a atteint le minimum de minutes
-    const requiredMinutes = globalConfig.minutes_per_day_required;
-    
-    // Valider le streak si les minutes requises sont atteintes
-    if (todayUsage.totalMinutes >= requiredMinutes && lastActivity !== today) {
-      console.log('✅ Streak validé pour aujourd\'hui!', {
-        minutes: todayUsage.totalMinutes,
-        required: requiredMinutes,
-        lastActivity,
-        today
-      });
-      
-      updateStreak({ increment: true });
-      hasCheckedToday.current = true;
-    } else if (todayUsage.totalMinutes >= requiredMinutes) {
-      // Marquer comme déjà vérifié même si déjà validé
-      hasCheckedToday.current = true;
-    }
-  }, [userId, streak, globalConfig, todayUsage, updateStreak]);
-
-  // Réinitialiser le flag à minuit
-  useEffect(() => {
-    const now = new Date();
-    const midnight = new Date(now);
-    midnight.setHours(24, 0, 0, 0);
-    const msUntilMidnight = midnight.getTime() - now.getTime();
-
-    const timer = setTimeout(() => {
-      hasCheckedToday.current = false;
-    }, msUntilMidnight);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const requiredMinutes = globalConfig?.minutes_per_day_required || 5;
+  const todayUsage = dailyProgress?.dailyMinutes || 0;
+  const isStreakValidated = dailyProgress?.isValidatedToday || false;
 
   return {
-    todayUsage: todayUsage?.totalMinutes || 0,
-    requiredMinutes: globalConfig?.minutes_per_day_required || 10,
-    isStreakValidated: streak?.last_activity_date === new Date().toISOString().split('T')[0],
+    todayUsage,
+    requiredMinutes,
+    isStreakValidated,
   };
 };
