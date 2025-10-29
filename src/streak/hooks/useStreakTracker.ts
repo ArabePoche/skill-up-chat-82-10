@@ -42,28 +42,34 @@ export const useStreakTracker = (userId?: string) => {
 
   // Vérifier si l'utilisateur a atteint le minimum de minutes
   useEffect(() => {
-    if (!userId || !streak || !globalConfig || !todayUsage || hasCheckedToday.current) {
+    if (!userId || !streak || !globalConfig || !todayUsage) {
       return;
     }
 
     const today = new Date().toISOString().split('T')[0];
     const lastActivity = streak.last_activity_date;
 
-    // Si déjà compté aujourd'hui, ne rien faire
-    if (lastActivity === today) {
-      hasCheckedToday.current = true;
+    // Si déjà validé aujourd'hui, ne rien faire
+    if (lastActivity === today && hasCheckedToday.current) {
       return;
     }
 
     // Vérifier si l'utilisateur a atteint le minimum de minutes
     const requiredMinutes = globalConfig.minutes_per_day_required;
-    if (todayUsage.totalMinutes >= requiredMinutes) {
+    
+    // Valider le streak si les minutes requises sont atteintes
+    if (todayUsage.totalMinutes >= requiredMinutes && lastActivity !== today) {
       console.log('✅ Streak validé pour aujourd\'hui!', {
         minutes: todayUsage.totalMinutes,
         required: requiredMinutes,
+        lastActivity,
+        today
       });
       
       updateStreak({ increment: true });
+      hasCheckedToday.current = true;
+    } else if (todayUsage.totalMinutes >= requiredMinutes) {
+      // Marquer comme déjà vérifié même si déjà validé
       hasCheckedToday.current = true;
     }
   }, [userId, streak, globalConfig, todayUsage, updateStreak]);
