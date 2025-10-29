@@ -5,6 +5,7 @@ import { Plus, Check } from 'lucide-react';
 import { useFollow } from '@/hooks/useFollow';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface UserProfileData {
   id?: string;
@@ -12,6 +13,7 @@ interface UserProfileData {
   last_name?: string;
   username?: string;
   avatar_url?: string;
+  is_verified?: boolean;
 }
 
 interface VideoUserProfileProps {
@@ -88,6 +90,11 @@ const VideoUserProfile: React.FC<VideoUserProfileProps> = ({
             {profile?.first_name?.[0] || 'U'}
           </AvatarFallback>
         </Avatar>
+        {profile?.is_verified && (
+          <div className="absolute -bottom-1 -right-1">
+            <VerifiedBadge size={16} showTooltip={false} />
+          </div>
+        )}
         {showFollowButton && !isOwnProfile && (
           <Button
             onClick={handleClick}
