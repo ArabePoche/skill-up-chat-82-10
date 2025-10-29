@@ -13,6 +13,7 @@ import { useUpdateApplicationStatus } from '@/applications/hooks/useApplications
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface ApplicationNotificationCardProps {
   notification: {
@@ -47,7 +48,7 @@ const ApplicationNotificationCard: React.FC<ApplicationNotificationCardProps> = 
       // Récupérer le profil du candidat
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, phone')
+        .select('id, first_name, last_name, avatar_url, phone, is_verified')
         .eq('id', application.user_id)
         .single();
 
@@ -157,8 +158,9 @@ const ApplicationNotificationCard: React.FC<ApplicationNotificationCardProps> = 
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold">
+              <h3 className="font-semibold inline-flex items-center gap-1">
                 {applicationData.profile?.first_name} {applicationData.profile?.last_name}
+                {applicationData.profile?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
               </h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Clock size={12} />
