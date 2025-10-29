@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { usePostCommentLikes } from '@/posts/hooks/usePostCommentLikes';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface CommentProfile {
   id: string;
@@ -14,6 +15,7 @@ interface CommentProfile {
   first_name?: string;
   last_name?: string;
   avatar_url?: string;
+  is_verified?: boolean;
 }
 
 interface Comment {
@@ -100,21 +102,23 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center space-x-2">
               <span 
-                className="font-medium text-white text-sm cursor-pointer hover:underline"
+                className="font-medium text-white text-sm cursor-pointer hover:underline inline-flex items-center gap-1"
                 onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
               >
                 {getUserDisplayName(comment.profiles)}
+                {comment.profiles?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
                 {comment.replied_to_user_id && comment.replied_to_profile && (
                   <>
                     <span className="mx-1 text-gray-400">🔁</span>
                     <span 
-                      className="text-gray-400 cursor-pointer hover:underline"
+                      className="text-gray-400 cursor-pointer hover:underline inline-flex items-center gap-1"
                       onClick={(e) => {
                         e.stopPropagation();
                         comment.replied_to_profile?.id && navigate(`/profile/${comment.replied_to_profile.id}`);
                       }}
                     >
                       {getUserDisplayName(comment.replied_to_profile)}
+                      {comment.replied_to_profile?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
                     </span>
                   </>
                 )}
