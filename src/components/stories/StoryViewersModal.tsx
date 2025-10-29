@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface StoryViewersModalProps {
   isOpen: boolean;
@@ -25,7 +26,8 @@ const StoryViewersModal: React.FC<StoryViewersModalProps> = ({ isOpen, onClose, 
             first_name,
             last_name,
             username,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .eq('story_id', storyId)
@@ -113,8 +115,9 @@ const StoryViewersModal: React.FC<StoryViewersModalProps> = ({ isOpen, onClose, 
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">
+                    <p className="font-medium text-sm truncate inline-flex items-center gap-1">
                       {formatUserName(view.profiles)}
+                      {view.profiles?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
                     </p>
                     <p className="text-xs text-gray-500">
                       {formatViewTime(view.viewed_at)}
