@@ -27,6 +27,7 @@ import LessonChat from '@/pages/cours/LessonChat';
 import GroupLessonChat from '@/pages/cours/GroupLessonChat';
 import Conversations from '@/pages/Conversations';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
+import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 
 
 // Créer une instance unique du QueryClient
@@ -46,6 +47,7 @@ const AppWithRouter: React.FC = () => {
     <div className="App">
       <PermissionManager />
       <StreakTrackerWrapper />
+      <ActivityTrackerWrapper />
       <Routes>
         {/* Routes spéciales qui gardent le système de routage classique */}
         <Route path="/formation/:formationId" element={<FormationDetail />} />
