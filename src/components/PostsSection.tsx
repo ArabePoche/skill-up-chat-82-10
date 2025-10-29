@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Share, MoreHorizontal, User, Briefcase, Info, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,11 +9,14 @@ import CreatePostModal from '@/posts/components/CreatePostModal';
 import PostCard from '@/posts/components/PostCard';
 
 const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => {
+  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
+  const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
   const { user, profile } = useAuth();
   const { data: posts, isLoading } = usePosts(activeFilter);
+  const postRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const handleEditPost = (post: any) => {
     setEditingPost(post);
@@ -23,6 +27,41 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
     setShowCreateModal(false);
     setEditingPost(null);
   };
+
+  // Détecter le post visible et mettre à jour la route
+  useEffect(() => {
+    if (!posts || posts.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            const postId = entry.target.getAttribute('data-post-id');
+            if (postId) {
+              setVisiblePostId(postId);
+            }
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    postRefs.current.forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => observer.disconnect();
+  }, [posts]);
+
+  // Effacer l'ID de la route quand on scrolle vers un autre post
+  useEffect(() => {
+    if (!targetPostId) return;
+    
+    // Si le post visible n'est plus le post ciblé, revenir à /post
+    if (visiblePostId && visiblePostId !== targetPostId) {
+      navigate('/post', { replace: true });
+    }
+  }, [visiblePostId, targetPostId, navigate]);
 
   // Scroller automatiquement vers le post ciblé
   useEffect(() => {
@@ -135,8 +174,14 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
       {/* Liste des posts */}
       <div className="space-y-4">
         {posts && posts.length > 0 ? (
-          posts.map((post: any) => (
-            <PostCard key={post.id} post={post} onEdit={handleEditPost} />
+          posts.map((post: any, index: number) => (
+            <div 
+              key={post.id} 
+              ref={(el) => (postRefs.current[index] = el)}
+              data-post-id={post.id}
+            >
+              <PostCard post={post} onEdit={handleEditPost} />
+            </div>
           ))
         ) : (
           <div className="text-center py-12">
