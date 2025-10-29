@@ -156,6 +156,7 @@ export const useRealtimePresence = () => {
     window.addEventListener('keypress', handleUserActivity);
     window.addEventListener('mousemove', handleUserActivity);
     window.addEventListener('touchstart', handleUserActivity);
+    window.addEventListener('scroll', handleUserActivity, { passive: true });
 
     // Initialiser le timer d'inactivité
     resetIdleTimer();
@@ -212,6 +213,7 @@ export const useRealtimePresence = () => {
       window.removeEventListener('keypress', handleUserActivity);
       window.removeEventListener('mousemove', handleUserActivity);
       window.removeEventListener('touchstart', handleUserActivity);
+      window.removeEventListener('scroll', handleUserActivity);
       window.removeEventListener('beforeunload', handleBeforeUnload);
 
       if (appStateListener) {
