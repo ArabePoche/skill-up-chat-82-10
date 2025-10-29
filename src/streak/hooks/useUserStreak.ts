@@ -134,6 +134,23 @@ export const useUserStreak = (userId?: string) => {
         newStreak = Math.max(0, newStreak - 1);
       }
 
+      // 🔥 Calculer automatiquement le niveau basé sur le streak
+      const { data: levelsData } = await supabase
+        .from('streak_levels_config')
+        .select('*')
+        .order('level_number', { ascending: false });
+
+      let calculatedLevel = 0;
+      if (levelsData) {
+        // Trouver le niveau le plus élevé atteint
+        for (const level of levelsData) {
+          if (newStreak >= level.days_required) {
+            calculatedLevel = level.level_number;
+            break;
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('user_streaks')
         .update({
@@ -141,12 +158,20 @@ export const useUserStreak = (userId?: string) => {
           longest_streak: Math.max(streak.longest_streak, newStreak),
           total_days_active: increment ? streak.total_days_active + 1 : streak.total_days_active,
           last_activity_date: today,
+          current_level: calculatedLevel, // 🔥 Mise à jour automatique du niveau
         })
         .eq('user_id', userId)
         .select()
         .single();
 
       if (error) throw error;
+      
+      console.log('🎯 Streak mis à jour:', { 
+        newStreak, 
+        calculatedLevel, 
+        previousLevel: streak.current_level 
+      });
+      
       return data as UserStreak;
     },
     onSuccess: () => {
