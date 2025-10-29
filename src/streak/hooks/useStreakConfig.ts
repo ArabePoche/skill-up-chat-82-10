@@ -16,7 +16,7 @@ export interface StreakLevel {
   level_number: number;
   level_name: string;
   level_badge: string;
-  days_required: number;
+  streaks_required: number;
   level_color: string;
   created_at: string;
   updated_at: string;
