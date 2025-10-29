@@ -3,14 +3,11 @@
  * Ce composant doit être placé au niveau de l'App
  */
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useStreakTracker } from '../hooks/useStreakTracker';
+import { useStreakSessionTracker } from '../hooks/useStreakSessionTracker';
 
 export const StreakTrackerWrapper: React.FC = () => {
-  const { user } = useAuth();
-  
-  // Active le tracking automatique du streak
-  useStreakTracker(user?.id);
+  // Active le tracking automatique des sessions et des streaks
+  useStreakSessionTracker();
   
   // Ce composant n'affiche rien, il active juste le tracking
   return null;
