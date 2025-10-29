@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import StoryViewersModal from '@/components/stories/StoryViewersModal';
 import { useNavigate } from 'react-router-dom';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface StoryViewerProps {
   stories: any[];
@@ -224,8 +225,9 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-sm">
+            <p className="font-medium text-sm inline-flex items-center gap-1">
               {story.profiles?.first_name || story.profiles?.username || 'Utilisateur'}
+              {story.profiles?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
             </p>
             <p className="text-xs text-white/70">
               {formatTimeAgo(story.created_at)}
