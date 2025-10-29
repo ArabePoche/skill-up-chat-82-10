@@ -37,18 +37,18 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
 
   // Calcul de la progression vers le prochain niveau
   const progressToNextLevel = nextLevelDetails
-    ? ((streak.current_streak / nextLevelDetails.days_required) * 100)
+    ? ((streak.current_streak / nextLevelDetails.streaks_required) * 100)
     : 100;
 
-  const daysUntilNextLevel = nextLevelDetails
-    ? Math.max(0, nextLevelDetails.days_required - streak.current_streak)
+  const streaksUntilNextLevel = nextLevelDetails
+    ? Math.max(0, nextLevelDetails.streaks_required - streak.current_streak)
     : 0;
 
   // Mini variant - juste le badge
   if (variant === 'mini') {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
-        {currentLevelDetails ? (
+        {currentLevelDetails && (
           <div
             className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold"
             style={{ 
@@ -154,7 +154,7 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <TrendingUp size={12} />
               <span>
-                Plus que {daysUntilNextLevel} jour{daysUntilNextLevel > 1 ? 's' : ''} pour débloquer
+                Plus que {streaksUntilNextLevel} streak{streaksUntilNextLevel > 1 ? 's' : ''} pour débloquer
               </span>
             </div>
           </div>
