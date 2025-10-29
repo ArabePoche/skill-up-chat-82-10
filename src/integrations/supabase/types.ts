@@ -2613,6 +2613,7 @@ export type Database = {
           level_color: string
           level_name: string
           level_number: number
+          streaks_required: number
           updated_at: string | null
         }
         Insert: {
@@ -2623,6 +2624,7 @@ export type Database = {
           level_color?: string
           level_name: string
           level_number: number
+          streaks_required?: number
           updated_at?: string | null
         }
         Update: {
@@ -2633,6 +2635,7 @@ export type Database = {
           level_color?: string
           level_name?: string
           level_number?: number
+          streaks_required?: number
           updated_at?: string | null
         }
         Relationships: []
@@ -4349,6 +4352,7 @@ export type Database = {
         Args: { p_message_id: string; p_teacher_id: string }
         Returns: Json
       }
+      update_user_streak_daily_minutes: { Args: never; Returns: undefined }
       validate_exercise_submission:
         | {
             Args: {
