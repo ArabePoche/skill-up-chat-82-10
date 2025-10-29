@@ -52,23 +52,38 @@ const Profil = () => {
   const viewedUserId = profileId || user?.id;
   const isOwnProfile = !profileId || profileId === user?.id;
   
-  // Récupérer le profil de l'utilisateur visualisé
-  const { data: viewedProfile } = useQuery({
-    queryKey: ['profile', viewedUserId],
+  // Récupérer le profil de l'utilisateur visualisé (SEULEMENT si ce n'est pas son propre profil)
+  const { data: viewedProfile, isLoading: isLoadingViewedProfile } = useQuery({
+    queryKey: ['viewed-profile', viewedUserId], // Différente de 'profile' pour éviter les conflits
     queryFn: async () => {
       if (!viewedUserId) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, username, avatar_url, is_teacher, role, is_verified, email')
         .eq('id', viewedUserId)
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching viewed profile:', error);
+        throw error;
+      }
+      console.log('Viewed profile loaded:', data); // Debug log
       return data;
     },
-    enabled: !!viewedUserId,
+    enabled: !isOwnProfile && !!viewedUserId, // Ne charge que si ce n'est PAS son propre profil
+    staleTime: 5000, // Cache pendant 5 secondes
   });
   
+  // Utiliser directement currentUserProfile si c'est son propre profil, sinon viewedProfile
   const profile = isOwnProfile ? currentUserProfile : viewedProfile;
+  const isLoadingProfile = isOwnProfile ? !currentUserProfile : isLoadingViewedProfile;
+  
+  console.log('🔍 Profil Debug:', {
+    isOwnProfile,
+    viewedUserId,
+    currentUserProfile,
+    viewedProfile,
+    finalProfile: profile
+  });
   const { data: enrollments } = useUserEnrollments(viewedUserId);
   
   // Hooks pour le système d'amitié
@@ -91,11 +106,15 @@ const Profil = () => {
   };
 
   const getDisplayName = () => {
+    console.log('🔍 getDisplayName called with profile:', profile); // Debug
     if (profile?.first_name && profile?.last_name) {
       return `${profile.first_name} ${profile.last_name}`;
     }
     if (profile?.username) {
       return profile.username;
+    }
+    if (profile?.email) {
+      return profile.email;
     }
     return user?.email || 'Utilisateur';
   };
@@ -116,6 +135,18 @@ const Profil = () => {
         return <VideosTab userId={viewedUserId} />;
     }
   };
+
+  // Afficher un loading si le profil n'est pas encore chargé
+  if (isLoadingProfile && !profile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement du profil...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-16 md:pt-16 md:pb-0">
