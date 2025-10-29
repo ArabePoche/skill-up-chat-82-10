@@ -1,5 +1,5 @@
 /**
- * Hook pour lire la progression quotidienne du streak depuis user_streaks
+ * Hook pour lire la progression quotidienne du streak depuis la table user_streaks
  * Lit directement depuis user_streaks.daily_minutes (alimenté par useStreakSessionTracker + useActivityTracker)
  */
 import { useQuery } from '@tanstack/react-query';
