@@ -11,7 +11,9 @@ interface Profile {
   username?: string;
   avatar_url?: string;
   is_teacher?: boolean;
-  role?: string;
+  role?: 'user' | 'admin';
+  is_verified?: boolean;
+  email?: string;
 }
 
 interface AuthContextType {
@@ -31,25 +33,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   // Récupérer le profil utilisateur
-  const { data: profile } = useQuery({
-    queryKey: ['profile', user?.id],
+  const { data: profile, refetch: refetchProfile, isLoading: isLoadingProfile } = useQuery({
+    queryKey: ['user-profile', user?.id], // Changé la clé pour éviter les conflits de cache
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id) {
+        console.log('❌ No user ID');
+        return null;
+      }
       
+      console.log('🔍 Fetching profile for user:', user.id);
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, username, avatar_url, is_teacher, role, is_verified, email')
         .eq('id', user.id)
         .single();
       
       if (error) {
-        console.error('Error fetching profile:', error);
+        console.error('❌ Error fetching profile:', error);
         return null;
       }
       
+      console.log('✅ Profile loaded in useAuth:', data);
       return data;
     },
     enabled: !!user?.id,
+    staleTime: 30000, // Cache pendant 30 secondes
+    gcTime: 300000, // Garde en cache pendant 5 minutes
+    refetchOnMount: true, // Recharge à chaque montage
+    refetchOnWindowFocus: false, // Ne recharge pas au focus
   });
 
   useEffect(() => {
@@ -126,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = signOut; // Alias pour compatibilité
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signOut, logout }}>
+    <AuthContext.Provider value={{ user, session, profile: profile || null, loading, signOut, logout }}>
       {children}
     </AuthContext.Provider>
   );
