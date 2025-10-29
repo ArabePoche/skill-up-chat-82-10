@@ -7,6 +7,7 @@ import { useFollow } from '@/hooks/useFollow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 /**
  * Composant pour afficher et gérer les demandes d'amitié en attente
@@ -47,8 +48,9 @@ const FriendRequestItem: React.FC<{ request: any }> = ({ request }) => {
           </AvatarFallback>
         </Avatar>
         <div>
-          <p className="font-medium">
+          <p className="font-medium inline-flex items-center gap-1">
             {request.sender?.first_name || request.sender?.username || 'Utilisateur'}
+            {request.sender?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
           </p>
           <p className="text-xs text-muted-foreground">
             {request.sender?.username ? `@${request.sender.username}` : ''}
