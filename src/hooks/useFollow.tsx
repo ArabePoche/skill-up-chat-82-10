@@ -238,7 +238,7 @@ export const usePendingRequests = () => {
       const senderIds = requests.map(r => r.sender_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
+        .select('id, username, first_name, last_name, avatar_url, is_verified')
         .in('id', senderIds);
 
       if (profilesError) {
