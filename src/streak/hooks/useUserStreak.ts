@@ -23,7 +23,7 @@ export interface StreakLevel {
   level_number: number;
   level_name: string;
   level_badge: string;
-  days_required: number;
+  streaks_required: number;
   level_color: string;
 }
 
@@ -75,7 +75,7 @@ export const useUserStreak = (userId?: string) => {
       const { data, error } = await supabase
         .from('streak_levels_config')
         .select('*')
-        .order('days_required', { ascending: true });
+        .order('streaks_required', { ascending: true });
 
       if (error) throw error;
       return data as StreakLevel[];
@@ -87,18 +87,18 @@ export const useUserStreak = (userId?: string) => {
     if (!allLevels || allLevels.length === 0) return null;
     if (!streak) return null;
 
-    // Trier par jours requis croissant
-    const sorted = [...allLevels].sort((a, b) => a.days_required - b.days_required);
+    // Trier par streaks requis croissant
+    const sorted = [...allLevels].sort((a, b) => a.streaks_required - b.streaks_required);
 
     // Si aucun palier atteint, retourner le premier niveau (Explorer)
-    if (streak.current_streak < sorted[0].days_required) {
+    if (streak.current_streak < sorted[0].streaks_required) {
       return sorted[0]; // Premier niveau par défaut
     }
 
     // Trouver le palier le plus élevé atteint
     let achievedLevel: StreakLevel | null = null;
     for (const level of sorted) {
-      if (streak.current_streak >= level.days_required) {
+      if (streak.current_streak >= level.streaks_required) {
         achievedLevel = level;
       } else {
         break;
@@ -112,12 +112,12 @@ export const useUserStreak = (userId?: string) => {
   const nextLevelDetails = React.useMemo(() => {
     if (!streak || !allLevels || allLevels.length === 0) return null;
 
-    // Trier par jours requis croissant
-    const sorted = [...allLevels].sort((a, b) => a.days_required - b.days_required);
+    // Trier par streaks requis croissant
+    const sorted = [...allLevels].sort((a, b) => a.streaks_required - b.streaks_required);
 
     // Trouver le prochain palier non atteint
     for (const level of sorted) {
-      if (streak.current_streak < level.days_required) {
+      if (streak.current_streak < level.streaks_required) {
         return level;
       }
     }
@@ -146,9 +146,9 @@ export const useUserStreak = (userId?: string) => {
           // Si l'activité était hier, incrémenter
           if (lastActivity === yesterdayStr) {
             newStreak += 1;
-          } else if (lastActivity !== today) {
-            // Si c'était il y a plus d'un jour, décrémenter
-            newStreak = Math.max(0, newStreak - 1);
+          } else {
+            // Nouveau départ si on n'a pas eu d'activité hier
+            newStreak = 1;
           }
         }
       } else {
@@ -164,9 +164,9 @@ export const useUserStreak = (userId?: string) => {
 
       let calculatedLevel = 0;
       if (levelsData) {
-        // Trouver le niveau le plus élevé atteint
+        // Trouver le niveau le plus élevé atteint basé sur les streaks
         for (const level of levelsData) {
-          if (newStreak >= level.days_required) {
+          if (newStreak >= level.streaks_required) {
             calculatedLevel = level.level_number;
             break;
           }
