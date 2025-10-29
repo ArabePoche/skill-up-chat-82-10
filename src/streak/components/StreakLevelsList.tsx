@@ -48,7 +48,7 @@ export const StreakLevelsList: React.FC<StreakLevelsListProps> = ({
           {levels?.map((level) => {
             const isUnlocked = currentLevel >= level.level_number;
             const isNext = level.level_number === currentLevel + 1;
-            const daysRemaining = Math.max(0, level.days_required - currentStreak);
+            const streaksRemaining = Math.max(0, level.streaks_required - currentStreak);
 
             return (
               <div
@@ -89,10 +89,10 @@ export const StreakLevelsList: React.FC<StreakLevelsListProps> = ({
                     )}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {level.days_required} jours consécutifs requis
+                    {level.streaks_required} streaks consécutifs requis
                     {!isUnlocked && isNext && (
                       <span className="ml-2 text-orange-500 font-medium">
-                        (plus que {daysRemaining} jour{daysRemaining > 1 ? 's' : ''})
+                        (plus que {streaksRemaining} streak{streaksRemaining > 1 ? 's' : ''})
                       </span>
                     )}
                   </div>
