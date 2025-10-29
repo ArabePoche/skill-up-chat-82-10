@@ -2583,6 +2583,60 @@ export type Database = {
           },
         ]
       }
+      streak_global_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          minutes_per_day_required: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          minutes_per_day_required?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          minutes_per_day_required?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      streak_levels_config: {
+        Row: {
+          created_at: string | null
+          days_required: number
+          id: string
+          level_badge: string
+          level_color: string
+          level_name: string
+          level_number: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          days_required: number
+          id?: string
+          level_badge: string
+          level_color?: string
+          level_name: string
+          level_number: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          days_required?: number
+          id?: string
+          level_badge?: string
+          level_color?: string
+          level_name?: string
+          level_number?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       student_activity_tracking: {
         Row: {
           created_at: string | null
@@ -3590,6 +3644,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_streaks: {
+        Row: {
+          created_at: string | null
+          current_level: number
+          current_streak: number
+          id: string
+          last_activity_date: string | null
+          longest_streak: number
+          total_days_active: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_level?: number
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          total_days_active?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_level?: number
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          total_days_active?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_subscriptions: {
         Row: {
