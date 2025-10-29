@@ -36,7 +36,7 @@ export const useUserLikedPosts = (userId: string | undefined) => {
       const authorIds = [...new Set(posts.map(p => p.author_id))];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, username, avatar_url')
+        .select('id, first_name, last_name, username, avatar_url, is_verified')
         .in('id', authorIds);
       if (profilesError) {
         console.error('Error fetching profiles for liked posts:', profilesError);
@@ -50,7 +50,9 @@ export const useUserLikedPosts = (userId: string | undefined) => {
             first_name: profile.first_name || '',
             last_name: profile.last_name || '',
             username: profile.username || '',
-            avatar_url: profile.avatar_url || ''
+            avatar_url: profile.avatar_url || '',
+            // @ts-ignore
+            is_verified: (profile as any)?.is_verified ?? false
           } : {
             first_name: 'Utilisateur',
             last_name: '',
