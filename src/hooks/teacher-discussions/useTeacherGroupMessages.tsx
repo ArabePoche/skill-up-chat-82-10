@@ -49,6 +49,8 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           receiver_id,
           promotion_id,
           level_id,
+          lesson_id,
+          formation_id,
           is_system_message,
           exercise_id,
           exercise_status,
