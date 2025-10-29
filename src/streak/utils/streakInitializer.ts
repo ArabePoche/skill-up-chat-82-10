@@ -37,7 +37,7 @@ export const ensureStreakRecord = async (userId: string): Promise<boolean> => {
         total_days_active: 0,
         current_level: 0,
         daily_minutes: 0,
-        last_activity_date: today,
+        last_activity_date: null,
         last_login_at: new Date().toISOString(),
       });
 
@@ -64,7 +64,6 @@ export const updateLastActivity = async (userId: string): Promise<void> => {
     const { error } = await supabase
       .from('user_streaks')
       .update({ 
-        last_activity_date: today,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
