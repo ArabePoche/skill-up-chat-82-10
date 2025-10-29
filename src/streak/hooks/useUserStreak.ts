@@ -4,6 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
+import * as React from 'react';
 
 export interface UserStreak {
   id: string;
@@ -67,41 +68,62 @@ export const useUserStreak = (userId?: string) => {
     enabled: !!userId,
   });
 
-  // Récupérer le niveau actuel avec ses détails
-  const { data: currentLevelDetails } = useQuery({
-    queryKey: ['streak-level', streak?.current_level],
+  // Récupérer tous les niveaux pour trouver le palier atteint
+  const { data: allLevels } = useQuery({
+    queryKey: ['streak-levels-all'],
     queryFn: async () => {
-      if (!streak || streak.current_level === 0) return null;
-
       const { data, error } = await supabase
         .from('streak_levels_config')
         .select('*')
-        .eq('level_number', streak.current_level)
-        .single();
+        .order('days_required', { ascending: true });
 
       if (error) throw error;
-      return data as StreakLevel;
+      return data as StreakLevel[];
     },
-    enabled: !!streak && streak.current_level > 0,
   });
 
-  // Récupérer le prochain niveau
-  const { data: nextLevelDetails } = useQuery({
-    queryKey: ['streak-next-level', streak?.current_level],
-    queryFn: async () => {
-      if (!streak) return null;
+  // Récupérer le niveau actuel basé sur le streak (palier atteint)
+  const currentLevelDetails = React.useMemo(() => {
+    if (!allLevels || allLevels.length === 0) return null;
+    if (!streak) return null;
 
-      const { data, error } = await supabase
-        .from('streak_levels_config')
-        .select('*')
-        .eq('level_number', (streak.current_level || 0) + 1)
-        .single();
+    // Trier par jours requis croissant
+    const sorted = [...allLevels].sort((a, b) => a.days_required - b.days_required);
 
-      if (error && error.code !== 'PGRST116') throw error;
-      return data as StreakLevel | null;
-    },
-    enabled: !!streak,
-  });
+    // Si aucun palier atteint, retourner le premier niveau (Explorer)
+    if (streak.current_streak < sorted[0].days_required) {
+      return sorted[0]; // Premier niveau par défaut
+    }
+
+    // Trouver le palier le plus élevé atteint
+    let achievedLevel: StreakLevel | null = null;
+    for (const level of sorted) {
+      if (streak.current_streak >= level.days_required) {
+        achievedLevel = level;
+      } else {
+        break;
+      }
+    }
+
+    return achievedLevel;
+  }, [streak, allLevels]);
+
+  // Récupérer le prochain niveau (prochain palier)
+  const nextLevelDetails = React.useMemo(() => {
+    if (!streak || !allLevels || allLevels.length === 0) return null;
+
+    // Trier par jours requis croissant
+    const sorted = [...allLevels].sort((a, b) => a.days_required - b.days_required);
+
+    // Trouver le prochain palier non atteint
+    for (const level of sorted) {
+      if (streak.current_streak < level.days_required) {
+        return level;
+      }
+    }
+
+    return null; // Tous les paliers sont atteints
+  }, [streak, allLevels]);
 
   // Mutation pour mettre à jour le streak
   const updateStreakMutation = useMutation({
