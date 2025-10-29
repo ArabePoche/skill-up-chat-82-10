@@ -6,7 +6,7 @@ import { Flame, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useUserStreak } from '../hooks/useUserStreak';
-import { useStreakTracker } from '../hooks/useStreakTracker';
+import { useStreakProgress } from '../hooks/useStreakProgress';
 
 interface StreakBadgeProps {
   userId: string;
@@ -20,7 +20,7 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
   className = '' 
 }) => {
   const { streak, currentLevelDetails, nextLevelDetails, isLoading } = useUserStreak(userId);
-  const { todayUsage, requiredMinutes, isStreakValidated } = useStreakTracker(userId);
+  const { todayUsage, requiredMinutes, isStreakValidated } = useStreakProgress(userId);
 
   if (isLoading || !streak) {
     return (
