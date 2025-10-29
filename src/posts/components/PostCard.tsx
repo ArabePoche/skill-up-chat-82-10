@@ -206,7 +206,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   };
 
   return (
-    <div className="bg-gray-900 rounded-lg p-4 mb-4 border border-gray-800">
+    <div id={`post-${post.id}`} className="bg-gray-900 rounded-lg p-4 mb-4 border border-gray-800">
       {/* En-tête du post */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center space-x-3 flex-1">
