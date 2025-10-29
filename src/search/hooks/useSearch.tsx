@@ -30,7 +30,7 @@ export const useSearch = (query: string, filter: SearchFilter) => {
           const authorIds = [...new Set(videos.map(v => v.author_id))];
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, username, avatar_url')
+            .select('id, first_name, last_name, username, avatar_url, is_verified')
             .in('id', authorIds);
           
           results.videos = videos.map(video => ({
@@ -53,7 +53,7 @@ export const useSearch = (query: string, filter: SearchFilter) => {
           const authorIds = [...new Set(posts.map(p => p.author_id))];
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, username, avatar_url')
+            .select('id, first_name, last_name, username, avatar_url, is_verified')
             .in('id', authorIds);
           
           results.posts = posts.map(post => ({
