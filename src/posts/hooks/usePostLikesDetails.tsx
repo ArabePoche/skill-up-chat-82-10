@@ -25,7 +25,7 @@ export const usePostLikesDetails = (postId: string | undefined) => {
       // Récupérer les profils des utilisateurs
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, first_name, last_name')
+        .select('id, username, avatar_url, first_name, last_name, is_verified')
         .in('id', userIds);
       
       if (profilesError) throw profilesError;
