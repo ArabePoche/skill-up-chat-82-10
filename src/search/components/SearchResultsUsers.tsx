@@ -5,6 +5,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface SearchResultsUsersProps {
   users: any[];
@@ -36,10 +37,11 @@ const SearchResultsUsers: React.FC<SearchResultsUsersProps> = ({ users }) => {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-medium truncate">
+            <p className="text-white font-medium truncate inline-flex items-center gap-1">
               {user.first_name || user.last_name
                 ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
                 : user.username || 'Utilisateur'}
+              {user.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
             </p>
             {user.username && (
               <p className="text-gray-400 text-sm truncate">@{user.username}</p>
