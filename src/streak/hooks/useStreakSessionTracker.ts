@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePresence } from '@/contexts/PresenceContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useStreakConfig } from './useStreakConfig';
+import { ensureStreakRecord } from '../utils/streakInitializer';
 
 export const useStreakSessionTracker = () => {
   const { user } = useAuth();
@@ -18,30 +19,26 @@ export const useStreakSessionTracker = () => {
   const { globalConfig, levels } = useStreakConfig();
   
   const previousStatusRef = useRef<string | null>(null);
+  const previousUserRef = useRef<string | null>(null);
   const sessionStartRef = useRef<Date | null>(null);
 
   // Initialiser ou récupérer l'enregistrement streak de l'utilisateur
   const initializeStreak = async (userId: string) => {
-    const { data: existing } = await supabase
-      .from('user_streaks')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (!existing) {
-      // Créer un nouvel enregistrement
-      await supabase.from('user_streaks').insert({
-        user_id: userId,
-        current_streak: 0,
-        longest_streak: 0,
-        total_days_active: 0,
-        current_level: 0,
-        daily_minutes: 0,
-      });
-      console.log('🆕 Nouvel enregistrement streak créé pour:', userId);
+    // Utiliser la fonction utilitaire commune
+    const success = await ensureStreakRecord(userId);
+    
+    if (success) {
+      // Récupérer l'enregistrement après l'avoir créé/vérifié
+      const { data: existing } = await supabase
+        .from('user_streaks')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      return existing;
     }
-
-    return existing;
+    
+    return null;
   };
 
   // Calculer le niveau basé sur le nombre de streaks
@@ -195,28 +192,62 @@ export const useStreakSessionTracker = () => {
     sessionStartRef.current = null;
   };
 
-  // Écouter les changements de statut de présence
+  // Tracker basé sur la présence utilisateur
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // Si plus d'utilisateur et qu'on avait un utilisateur avant, déconnexion
+      if (previousUserRef.current) {
+        console.log('🔓 Déconnexion complète détectée');
+        handleLogout(previousUserRef.current);
+        previousUserRef.current = null;
+        previousStatusRef.current = null;
+      }
+      return;
+    }
 
-    const handleStatusChange = async () => {
+    const handlePresenceChange = async () => {
+      const previousUser = previousUserRef.current;
       const previousStatus = previousStatusRef.current;
       
-      // Connexion: passage de offline à online
-      if (previousStatus !== 'online' && currentStatus === 'online') {
+      // Premier montage avec utilisateur connecté
+      if (!previousUser) {
+        console.log('🔐 Connexion initiale détectée:', user.id);
         await handleLogin(user.id);
+        previousUserRef.current = user.id;
+        previousStatusRef.current = currentStatus;
+        return;
       }
       
-      // Déconnexion: passage de online à offline ou idle
-      if (previousStatus === 'online' && (currentStatus === 'offline' || currentStatus === 'idle')) {
-        await handleLogout(user.id);
+      // Changement d'utilisateur (déconnexion puis reconnexion)
+      if (previousUser !== user.id) {
+        console.log('👤 Changement d\'utilisateur détecté');
+        await handleLogout(previousUser);
+        await handleLogin(user.id);
+        previousUserRef.current = user.id;
+        previousStatusRef.current = currentStatus;
+        return;
       }
 
-      previousStatusRef.current = currentStatus;
+      // Changements de statut de présence
+      if (previousStatus !== currentStatus) {
+        console.log(`📡 Changement de statut: ${previousStatus} → ${currentStatus}`);
+        
+        // Passage à online = connexion/reconnexion
+        if (currentStatus === 'online' && previousStatus !== 'online') {
+          await handleLogin(user.id);
+        }
+        
+        // Passage à offline ou idle depuis online = déconnexion
+        if (previousStatus === 'online' && (currentStatus === 'offline' || currentStatus === 'idle')) {
+          await handleLogout(user.id);
+        }
+        
+        previousStatusRef.current = currentStatus;
+      }
     };
 
-    handleStatusChange();
-  }, [currentStatus, user]);
+    handlePresenceChange();
+  }, [user, currentStatus]);
 
   // Vérifier le streak à minuit
   useEffect(() => {
