@@ -29,6 +29,7 @@ import PostsTab from '@/profile/components/tabs/PostsTab';
 import ExercisesTab from '@/profile/components/tabs/ExercisesTab';
 import LikesTab from '@/profile/components/tabs/LikesTab';
 import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
+import { StreakBadge } from '@/streak';
 
 type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
 
@@ -272,6 +273,13 @@ const Profil = () => {
           formationsCount={enrollments?.length || 0}
           userId={viewedUserId}
         />
+
+        {/* Badge de streak */}
+        {viewedUserId && (
+          <div className="px-4 pb-4">
+            <StreakBadge userId={viewedUserId} variant="compact" />
+          </div>
+        )}
       </div>
 
       {/* Onglets */}
