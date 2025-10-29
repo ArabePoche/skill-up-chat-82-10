@@ -20,6 +20,7 @@ export interface Story {
     last_name?: string;
     username?: string;
     avatar_url?: string;
+    is_verified?: boolean;
   };
   story_views?: Array<{
     viewer_id: string;
@@ -44,7 +45,8 @@ export const useStories = () => {
             first_name,
             last_name,
             username,
-            avatar_url
+            avatar_url,
+            is_verified
           ),
           story_views (
             viewer_id,
