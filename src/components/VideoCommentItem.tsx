@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import VideoCommentReplies from '@/components/video/VideoCommentReplies';
 import { useNavigate } from 'react-router-dom';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface VideoCommentItemProps {
   comment: any;
@@ -66,10 +67,11 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
           <div className="bg-gray-800 rounded-2xl p-3">
             <div className="flex items-center space-x-2 mb-1">
               <span 
-                className="font-medium text-white text-sm truncate cursor-pointer hover:underline"
+                className="font-medium text-white text-sm truncate cursor-pointer hover:underline inline-flex items-center gap-1"
                 onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
               >
                 {displayName}
+                {comment.profiles?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
               </span>
               <span className="text-xs text-gray-400 flex-shrink-0">{timeAgo}</span>
             </div>
