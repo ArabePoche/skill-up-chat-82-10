@@ -19,7 +19,8 @@ export const useVideoById = (videoId: string | undefined) => {
             first_name,
             last_name,
             username,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .eq('id', videoId)
