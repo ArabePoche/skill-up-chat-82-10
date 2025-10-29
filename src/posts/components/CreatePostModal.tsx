@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { compressImage, formatFileSize } from '@/utils/imageCompression';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +49,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   const [ageMin, setAgeMin] = useState('');
   const [ageMax, setAgeMax] = useState('');
   const [gender, setGender] = useState<string>('all');
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   
   const { user } = useAuth();
   const { mutate: createPost, isPending: isCreating } = useCreatePost();
@@ -386,28 +388,27 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
                 const isRecruitment = type.value === 'recruitment';
                 // @ts-ignore - is_verified sera disponible après régénération des types
                 const isVerified = (profile as any)?.is_verified;
-                const isDisabled = isRecruitment && !isVerified;
+                const isLocked = isRecruitment && !isVerified;
                 
                 return (
                   <button
                     key={type.value}
                     onClick={() => {
-                      if (isDisabled) {
-                        toast.error('Seuls les comptes vérifiés peuvent créer des posts de recrutement');
+                      if (isLocked) {
+                        setShowVerificationDialog(true);
                         return;
                       }
                       setPostType(type.value);
                     }}
-                    disabled={isDisabled}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                       postType === type.value
                         ? 'bg-edu-primary text-white'
-                        : isDisabled
-                        ? 'bg-gray-800/50 text-gray-500 cursor-not-allowed'
+                        : isLocked
+                        ? 'bg-gray-800/50 text-gray-500 cursor-pointer hover:bg-gray-800/70'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    <Icon size={16} className={postType === type.value ? 'text-white' : isDisabled ? 'text-gray-600' : type.color} />
+                    <Icon size={16} className={postType === type.value ? 'text-white' : isLocked ? 'text-gray-600' : type.color} />
                     <span>{type.label}</span>
                   </button>
                 );
@@ -794,6 +795,13 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
         </div>
       </div>
     </div>
+
+    {/* Dialog de vérification requis */}
+    <VerificationRequiredDialog
+      open={showVerificationDialog}
+      onOpenChange={setShowVerificationDialog}
+      featureName="La publication de posts de recrutement"
+    />
     </>
   );
 };
