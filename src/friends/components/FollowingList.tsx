@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 /**
  * Liste des utilisateurs suivis (demandes envoyées)
@@ -37,7 +38,7 @@ const FollowingList: React.FC<FollowingListProps> = ({ userId }) => {
       const receiverIds = requests.map(r => r.receiver_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
+        .select('id, username, first_name, last_name, avatar_url, is_verified')
         .in('id', receiverIds);
 
       if (profilesError) throw profilesError;
@@ -103,7 +104,10 @@ const FollowingList: React.FC<FollowingListProps> = ({ userId }) => {
               className="flex-1 cursor-pointer"
               onClick={() => navigate(`/profil/${receiver?.id}`)}
             >
-              <p className="font-medium">{displayName}</p>
+              <p className="font-medium inline-flex items-center gap-1">
+                {displayName}
+                {receiver?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
+              </p>
               <p className="text-xs text-muted-foreground">@{receiver?.username}</p>
             </div>
 
