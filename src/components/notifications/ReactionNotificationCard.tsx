@@ -7,6 +7,7 @@ import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 /**
  * Composant pour afficher les notifications de réactions (likes/commentaires) sur publications
@@ -26,7 +27,7 @@ const ReactionNotificationCard: React.FC<ReactionNotificationCardProps> = ({ not
     if (notification.sender_id) {
       supabase
         .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
+        .select('id, username, first_name, last_name, avatar_url, is_verified')
         .eq('id', notification.sender_id)
         .single()
         .then(({ data }) => setSenderProfile(data));
@@ -82,8 +83,9 @@ const ReactionNotificationCard: React.FC<ReactionNotificationCardProps> = ({ not
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {reactionIcon}
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-gray-900 inline-flex items-center gap-1">
               {displayName}
+              {senderProfile?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
             </span>
           </div>
           
