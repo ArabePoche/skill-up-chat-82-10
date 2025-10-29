@@ -3650,8 +3650,11 @@ export type Database = {
           created_at: string | null
           current_level: number
           current_streak: number
+          daily_minutes: number
           id: string
           last_activity_date: string | null
+          last_login_at: string | null
+          last_logout_at: string | null
           longest_streak: number
           total_days_active: number
           updated_at: string | null
@@ -3661,8 +3664,11 @@ export type Database = {
           created_at?: string | null
           current_level?: number
           current_streak?: number
+          daily_minutes?: number
           id?: string
           last_activity_date?: string | null
+          last_login_at?: string | null
+          last_logout_at?: string | null
           longest_streak?: number
           total_days_active?: number
           updated_at?: string | null
@@ -3672,8 +3678,11 @@ export type Database = {
           created_at?: string | null
           current_level?: number
           current_streak?: number
+          daily_minutes?: number
           id?: string
           last_activity_date?: string | null
+          last_login_at?: string | null
+          last_logout_at?: string | null
           longest_streak?: number
           total_days_active?: number
           updated_at?: string | null
