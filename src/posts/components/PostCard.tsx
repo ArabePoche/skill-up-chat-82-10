@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ApplicationModal } from '@/applications/components/ApplicationModal';
 import { useCheckExistingApplication } from '@/applications/hooks/useApplications';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface PostCardProps {
   post: any;
@@ -221,10 +222,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
           <div className="flex-1">
             <div className="flex items-center space-x-2">
               <span 
-                className="font-semibold text-white cursor-pointer hover:underline"
+                className="font-semibold text-white cursor-pointer hover:underline flex items-center gap-1"
                 onClick={() => post.author_id && navigate(`/profile/${post.author_id}`)}
               >
                 {post.profiles?.first_name || post.profiles?.username || 'Utilisateur'}
+                {post.profiles?.is_verified && <VerifiedBadge size={16} showTooltip={false} />}
               </span>
               {renderPostType(post.post_type)}
             </div>
