@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { useVideoSeries } from '@/hooks/useVideoSeries';
 import { useVideoViews } from '@/hooks/useVideoViews';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface Video {
   id: string;
@@ -34,6 +35,7 @@ interface Video {
     last_name?: string;
     username?: string;
     avatar_url?: string;
+    is_verified?: boolean;
   };
 }
 
@@ -408,10 +410,11 @@ const VideoCard: React.FC<VideoCardProps> = ({
         <div className="text-white">
           <div className="flex items-center space-x-2 mb-2">
             <span 
-              className="font-semibold cursor-pointer hover:underline"
+              className="font-semibold cursor-pointer hover:underline inline-flex items-center gap-1"
               onClick={handleProfileClick}
             >
               @{video.profiles?.username || video.profiles?.first_name || 'Utilisateur'}
+              {video.profiles?.is_verified && <VerifiedBadge size={16} showTooltip={false} />}
             </span>
             {video.video_type === 'promo' && (
               <span className="bg-edu-primary px-2 py-1 rounded-full text-xs font-bold">
