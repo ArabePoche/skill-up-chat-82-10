@@ -59,10 +59,6 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
             <span className="text-lg">{currentLevelDetails.level_badge}</span>
             <span>{currentLevelDetails.level_name}</span>
           </div>
-        ) : (
-          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-muted text-sm">
-            <span>Niveau 0</span>
-          </div>
         )}
         <div className="flex items-center gap-1 text-orange-500">
           <Flame size={16} />
@@ -90,9 +86,9 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
                 </div>
               )}
               <div>
-                <div className="text-sm text-muted-foreground">Niveau</div>
+                <div className="text-sm text-muted-foreground">Palier atteint</div>
                 <div className="font-bold">
-                  {currentLevelDetails?.level_name || 'Débutant'}
+                  {currentLevelDetails?.level_name}
                 </div>
               </div>
             </div>
@@ -127,9 +123,9 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
               </div>
             )}
             <div>
-              <div className="text-sm text-muted-foreground">Niveau actuel</div>
+              <div className="text-sm text-muted-foreground">Palier atteint</div>
               <div className="text-xl font-bold">
-                {currentLevelDetails?.level_name || 'Nouveau'}
+                {currentLevelDetails?.level_name}
               </div>
             </div>
           </div>
@@ -145,11 +141,11 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
           </div>
         </div>
 
-        {/* Progression vers le prochain niveau */}
+        {/* Progression vers le prochain palier */}
         {nextLevelDetails && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Prochain niveau</span>
+              <span className="text-muted-foreground">Prochain palier</span>
               <span className="font-semibold">
                 {nextLevelDetails.level_badge} {nextLevelDetails.level_name}
               </span>
