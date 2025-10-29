@@ -12,6 +12,7 @@ import ManageSeriesDialog from '@/profile/components/ManageSeriesDialog';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
 
 interface VideosTabProps {
   userId?: string;
@@ -27,6 +28,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   const [selectedSeriesTitle, setSelectedSeriesTitle] = useState<string>('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [manageSeriesId, setManageSeriesId] = useState<string | null>(null);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   
   const { data: seriesEpisodes, refetch: refetchEpisodes } = useSeriesVideos(manageSeriesId || undefined);
   
@@ -127,11 +129,19 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   return (
     <>
       <div className="pb-4">
-        {/* Bouton Créer une vidéo - uniquement pour les utilisateurs vérifiés propriétaires */}
-        {isOwner && (profile as any)?.is_verified && (
+        {/* Bouton Créer une vidéo - pour tous les utilisateurs propriétaires */}
+        {isOwner && (
           <div className="px-4 pt-4 pb-2">
             <Button
-              onClick={() => navigate('/upload-video')}
+              onClick={() => {
+                // Si non vérifié, afficher le dialog
+                if (!(profile as any)?.is_verified) {
+                  setShowVerificationDialog(true);
+                  return;
+                }
+                // Si vérifié, naviguer vers l'upload
+                navigate('/upload-video');
+              }}
               className="w-full bg-edu-primary hover:bg-edu-primary/90 text-white"
             >
               <Plus size={20} className="mr-2" />
@@ -245,6 +255,13 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
           onSuccess={handleManageSeriesSuccess}
         />
       )}
+
+      {/* Dialog de vérification requis */}
+      <VerificationRequiredDialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        featureName="La création de vidéos"
+      />
     </>
   );
 };
