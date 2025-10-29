@@ -76,6 +76,18 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-2">
           <div className="relative">
             <div className="absolute top-2 right-2 z-10 flex gap-2">
+              {isImage && isTeacher && lessonId && formationId && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleAnnotate}
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                  title="Annoter l'image pour correction"
+                >
+                  <Edit3 size={16} className="mr-1" />
+                  Annoter
+                </Button>
+              )}
               {isImage && onUpdate && (
                 <SimpleImageEditor
                   fileUrl={fileUrl}
@@ -123,7 +135,7 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
   const content = (
     <>
       {isImage && (
-        <div className="relative">
+        <div className="relative group">
           <img
             src={fileUrl}
             alt={fileName}
@@ -137,6 +149,40 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
               }
             }}
           />
+          {/* Bouton d'annotation visible pour les profs */}
+          {isTeacher && lessonId && formationId && (
+            <div className="absolute top-2 right-2 z-10">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAnnotate();
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                title="Annoter l'image pour correction"
+              >
+                <Edit3 size={16} className="mr-1" />
+                Annoter
+              </Button>
+            </div>
+          )}
+          {/* Bouton plein écran pour tous */}
+          {!isTeacher && (
+            <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFullscreen();
+                }}
+                className="bg-black/50 text-white hover:bg-black/70"
+              >
+                <Maximize2 size={16} />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
