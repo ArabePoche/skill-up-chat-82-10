@@ -27,6 +27,7 @@ interface Post {
     last_name: string;
     username: string;
     avatar_url: string;
+    is_verified?: boolean;
   };
 }
 
@@ -59,7 +60,7 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
         const authorIds = [...new Set(posts.map(post => post.author_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, first_name, last_name, username, avatar_url')
+          .select('id, first_name, last_name, username, avatar_url, is_verified')
           .in('id', authorIds);
 
         const postsWithProfiles = posts.map(post => {
@@ -70,12 +71,15 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
               first_name: profile.first_name || '',
               last_name: profile.last_name || '',
               username: profile.username || '',
-              avatar_url: profile.avatar_url || ''
+              avatar_url: profile.avatar_url || '',
+              // @ts-ignore - is_verified est présent en base mais pas typé partout
+              is_verified: (profile as any)?.is_verified ?? false
             } : {
               first_name: 'Utilisateur',
               last_name: '',
               username: 'user',
-              avatar_url: ''
+              avatar_url: '',
+              is_verified: false
             }
           };
         });
@@ -168,7 +172,7 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
       
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, username, avatar_url')
+        .select('id, first_name, last_name, username, avatar_url, is_verified')
         .in('id', authorIds);
 
       if (profilesError) {
@@ -193,12 +197,15 @@ const postsWithProfiles = posts.map(post => {
       first_name: profile.first_name || '',
       last_name: profile.last_name || '',
       username: profile.username || '',
-      avatar_url: profile.avatar_url || ''
+      avatar_url: profile.avatar_url || '',
+      // @ts-ignore
+      is_verified: (profile as any)?.is_verified ?? false
     } : {
       first_name: 'Utilisateur',
       last_name: '',
       username: 'user',
-      avatar_url: ''
+      avatar_url: '',
+      is_verified: false
     }
   };
 });
