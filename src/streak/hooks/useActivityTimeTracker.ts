@@ -1,10 +1,13 @@
 /**
  * Hook pour tracker automatiquement le temps d'activité quotidien
  * Utilise le système de présence temps réel pour mettre à jour daily_usage
+ * Valide automatiquement le streak lorsque le temps requis est atteint
  */
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePresence } from '@/contexts/PresenceContext';
+import { useStreakConfig } from './useStreakConfig';
+import { useUserStreak } from './useUserStreak';
 
 interface UseActivityTimeTrackerOptions {
   userId?: string;
@@ -13,14 +16,53 @@ interface UseActivityTimeTrackerOptions {
 
 export const useActivityTimeTracker = ({ userId, formationId }: UseActivityTimeTrackerOptions) => {
   const { currentStatus } = usePresence();
+  const { globalConfig } = useStreakConfig();
+  const { streak, updateStreak } = useUserStreak(userId);
   const sessionStartRef = useRef<Date | null>(null);
   const lastUpdateRef = useRef<Date | null>(null);
   const accumulatedMinutesRef = useRef(0);
+  const hasValidatedTodayRef = useRef(false);
 
   // Log pour debug
   useEffect(() => {
     console.log('🕐 ActivityTimeTracker initialisé:', { userId, formationId, currentStatus });
   }, [userId, formationId, currentStatus]);
+
+  // Vérifier et valider le streak si le seuil est atteint
+  const checkAndValidateStreak = async () => {
+    if (!userId || !globalConfig || !streak) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Si déjà validé aujourd'hui, ne rien faire
+    if (hasValidatedTodayRef.current || streak.last_activity_date === today) {
+      return;
+    }
+
+    // Vérifier les minutes du jour depuis user_streaks
+    const { data: streakRow, error } = await supabase
+      .from('user_streaks')
+      .select('daily_minutes, last_activity_date')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) return;
+
+    const totalMinutes = streakRow?.daily_minutes ?? 0;
+    const requiredMinutes = globalConfig.minutes_per_day_required;
+
+    // Valider le streak si le seuil est atteint
+    if (totalMinutes >= requiredMinutes) {
+      console.log('✅ Seuil de temps atteint! Validation du streak:', {
+        totalMinutes,
+        requiredMinutes,
+        today
+      });
+      
+      updateStreak({ increment: true });
+      hasValidatedTodayRef.current = true;
+    }
+  };
 
   // Sauvegarder le temps accumulé dans daily_usage
   const saveTimeToDatabase = async (minutesToAdd: number) => {
@@ -61,6 +103,9 @@ export const useActivityTimeTracker = ({ userId, formationId }: UseActivityTimeT
       }
 
       console.log(`✅ Temps sauvegardé: ${minutesToAdd} minutes pour ${today}`, { userId, formationId });
+      
+      // Vérifier automatiquement si le streak doit être validé après la sauvegarde
+      await checkAndValidateStreak();
     } catch (error) {
       console.error('❌ Erreur lors de la sauvegarde du temps:', error);
     }
@@ -144,6 +189,21 @@ export const useActivityTimeTracker = ({ userId, formationId }: UseActivityTimeT
 
     return () => clearInterval(interval);
   }, [currentStatus, userId, formationId]);
+
+  // Réinitialiser le flag de validation à minuit
+  useEffect(() => {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = midnight.getTime() - now.getTime();
+
+    const timer = setTimeout(() => {
+      hasValidatedTodayRef.current = false;
+      console.log('🌙 Minuit - Flag de validation réinitialisé');
+    }, msUntilMidnight);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Cleanup au démontage
   useEffect(() => {
