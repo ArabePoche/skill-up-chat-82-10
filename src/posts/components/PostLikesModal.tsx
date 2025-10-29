@@ -1,6 +1,7 @@
 import React from 'react';
 import { User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import {
   Dialog,
   DialogContent,
@@ -53,8 +54,9 @@ const PostLikesModal: React.FC<PostLikesModalProps> = ({ postId, isOpen, onClose
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <p className="font-medium text-white">
+                  <p className="font-medium text-white inline-flex items-center gap-1">
                     {like.profiles?.first_name || like.profiles?.username || 'Utilisateur'}
+                    {like.profiles?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
                   </p>
                 </div>
               </div>
