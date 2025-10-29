@@ -43,7 +43,8 @@ export const useVideoComments = (videoId: string) => {
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            is_verified
           ),
           replies:video_comments!parent_comment_id(
             *,
@@ -52,7 +53,8 @@ export const useVideoComments = (videoId: string) => {
               username,
               first_name,
               last_name,
-              avatar_url
+              avatar_url,
+              is_verified
             )
           )
         `)
@@ -112,7 +114,8 @@ export const useVideoComments = (videoId: string) => {
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .single();
