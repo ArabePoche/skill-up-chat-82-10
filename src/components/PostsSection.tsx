@@ -24,10 +24,25 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
     setEditingPost(null);
   };
 
+  // Scroller automatiquement vers le post ciblé
   useEffect(() => {
     if (!targetPostId || !posts) return;
-    const el = document.getElementById(`post-${targetPostId}`);
-    if (el) el.scrollIntoView({ behavior: 'auto', block: 'start' });
+    
+    // Attendre que le DOM soit mis à jour
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`post-${targetPostId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Ajouter un effet de highlight temporaire
+        el.style.transition = 'background-color 0.3s';
+        el.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+        setTimeout(() => {
+          el.style.backgroundColor = '';
+        }, 2000);
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [targetPostId, posts]);
 
   const filterButtons = [
