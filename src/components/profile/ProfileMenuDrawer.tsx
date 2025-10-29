@@ -1,8 +1,10 @@
-import React from 'react';
-import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerification } from '@/hooks/useVerification';
+import VerifiedBadge from '@/components/VerifiedBadge';
+import VerificationRequestModal from '@/verification/components/VerificationRequestModal';
 
 interface ProfileMenuDrawerProps {
   isOpen: boolean;
@@ -17,7 +19,8 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
 }) => {
   const navigate = useNavigate();
   const { profile, user, logout } = useAuth();
-  const { hasPendingRequest, sendRequest, isSubmitting } = useVerification(user?.id);
+  const { hasPendingRequest } = useVerification(user?.id);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -36,9 +39,12 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   // @ts-ignore - is_verified sera disponible après régénération des types Supabase
   if (!(profile as any)?.is_verified && !hasPendingRequest) {
     menuItems.push({
-      icon: CheckCircle,
+      icon: null as any,
       label: 'Demander la certification',
-      action: () => sendRequest()
+      action: () => {
+        onClose();
+        setShowVerificationModal(true);
+      }
     });
   }
 
@@ -78,6 +84,8 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
         <div className="py-2">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
+            const isVerificationButton = item.label === 'Demander la certification';
+            
             return (
               <button
                 key={index}
@@ -89,10 +97,14 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
                   item.label === 'Administration' ? 'bg-red-50 dark:bg-red-950/20' : ''
                 }`}
               >
-                <Icon 
-                  size={20} 
-                  className={item.label === 'Administration' ? 'text-red-600' : 'text-muted-foreground'} 
-                />
+                {isVerificationButton ? (
+                  <VerifiedBadge size={20} showTooltip={false} />
+                ) : (
+                  Icon && <Icon 
+                    size={20} 
+                    className={item.label === 'Administration' ? 'text-red-600' : 'text-muted-foreground'} 
+                  />
+                )}
                 <span className={`flex-1 text-left ${
                   item.label === 'Administration' ? 'text-red-600 font-medium' : ''
                 }`}>
@@ -114,6 +126,12 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modal de demande de certification */}
+      <VerificationRequestModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+      />
     </>
   );
 };
