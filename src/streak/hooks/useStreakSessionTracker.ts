@@ -21,6 +21,8 @@ export const useStreakSessionTracker = () => {
   const previousStatusRef = useRef<string | null>(null);
   const previousUserRef = useRef<string | null>(null);
   const sessionStartRef = useRef<Date | null>(null);
+  const lastUpdateRef = useRef<Date | null>(null);
+  const accumulatedMinutesRef = useRef(0);
 
   // Initialiser ou récupérer l'enregistrement streak de l'utilisateur
   const initializeStreak = async (userId: string) => {
@@ -45,8 +47,8 @@ export const useStreakSessionTracker = () => {
   const calculateLevel = (streakCount: number): number => {
     if (!levels || levels.length === 0) return 1; // Niveau 1 par défaut si pas de configuration
 
-    // Trier les niveaux par ordre croissant
-    const sortedLevels = [...levels].sort((a, b) => a.days_required - b.days_required);
+    // Trier les niveaux par ordre croissant de streaks requis
+    const sortedLevels = [...levels].sort((a, b) => a.streaks_required - b.streaks_required);
 
     // Trouver dans quel intervalle se situe le streak
     for (let i = 0; i < sortedLevels.length; i++) {
@@ -54,12 +56,12 @@ export const useStreakSessionTracker = () => {
       const nextLevel = sortedLevels[i + 1];
 
       // Si on n'a pas encore atteint le premier palier, on est au niveau 1
-      if (i === 0 && streakCount < currentLevel.days_required) {
+      if (i === 0 && streakCount < currentLevel.streaks_required) {
         return 1;
       }
 
       // Si on a atteint ce palier mais pas le suivant (ou s'il n'y a pas de suivant)
-      if (streakCount >= currentLevel.days_required && (!nextLevel || streakCount < nextLevel.days_required)) {
+      if (streakCount >= currentLevel.streaks_required && (!nextLevel || streakCount < nextLevel.streaks_required)) {
         return currentLevel.level_number + 1; // +1 car on passe au niveau suivant après avoir atteint le palier
       }
     }
@@ -142,6 +144,32 @@ export const useStreakSessionTracker = () => {
     });
   };
 
+  // Flush des minutes accumulées vers user_streaks (toutes les ~1 min ou à la déconnexion)
+  const flushAccumulatedMinutes = async (userId: string) => {
+    if (!lastUpdateRef.current) return;
+    const now = new Date();
+    const minutesElapsed = Math.floor((now.getTime() - lastUpdateRef.current.getTime()) / (60 * 1000));
+    if (minutesElapsed > 0) {
+      accumulatedMinutesRef.current += minutesElapsed;
+      lastUpdateRef.current = now;
+    }
+    if (accumulatedMinutesRef.current <= 0) return;
+    const { data: streak } = await supabase
+      .from('user_streaks')
+      .select('daily_minutes')
+      .eq('user_id', userId)
+      .single();
+    if (streak) {
+      const newDaily = (streak.daily_minutes || 0) + accumulatedMinutesRef.current;
+      await supabase
+        .from('user_streaks')
+        .update({ daily_minutes: newDaily })
+        .eq('user_id', userId);
+      console.log('💾 Minutes ajoutées:', accumulatedMinutesRef.current, '→ total', newDaily);
+      accumulatedMinutesRef.current = 0;
+    }
+  };
+
   // Gérer la connexion de l'utilisateur
   const handleLogin = async (userId: string) => {
     const now = new Date().toISOString();
@@ -157,6 +185,8 @@ export const useStreakSessionTracker = () => {
       .eq('user_id', userId);
 
     sessionStartRef.current = new Date(now);
+    lastUpdateRef.current = new Date(now);
+    accumulatedMinutesRef.current = 0;
     
     // Vérifier et valider le streak quotidien
     await validateDailyStreak(userId);
@@ -168,38 +198,26 @@ export const useStreakSessionTracker = () => {
   const handleLogout = async (userId: string) => {
     if (!sessionStartRef.current) return;
 
+    // Flush des minutes accumulées avant de clôturer la session
+    await flushAccumulatedMinutes(userId);
+
     const now = new Date();
-    const sessionDuration = Math.floor(
-      (now.getTime() - sessionStartRef.current.getTime()) / (60 * 1000)
-    ); // Minutes
 
-    // Récupérer le streak actuel
-    const { data: streak } = await supabase
+    // Mettre à jour uniquement last_logout_at (daily_minutes déjà mis à jour)
+    await supabase
       .from('user_streaks')
-      .select('daily_minutes')
-      .eq('user_id', userId)
-      .single();
+      .update({
+        last_logout_at: now.toISOString(),
+      })
+      .eq('user_id', userId);
 
-    if (streak) {
-      const newDailyMinutes = streak.daily_minutes + sessionDuration;
-
-      // Mettre à jour last_logout_at et daily_minutes
-      await supabase
-        .from('user_streaks')
-        .update({
-          last_logout_at: now.toISOString(),
-          daily_minutes: newDailyMinutes,
-        })
-        .eq('user_id', userId);
-
-      console.log('🔴 Déconnexion enregistrée:', {
-        userId,
-        sessionDuration: `${sessionDuration} min`,
-        totalToday: `${newDailyMinutes} min`,
-      });
-    }
+    console.log('🔴 Déconnexion enregistrée:', {
+      userId,
+      time: now.toISOString(),
+    });
 
     sessionStartRef.current = null;
+    lastUpdateRef.current = null;
   };
 
   // Initialiser le streak dès le montage si l'utilisateur est connecté
@@ -271,6 +289,17 @@ export const useStreakSessionTracker = () => {
     handlePresenceChange();
   }, [user, currentStatus]);
 
+  // Flush automatique des minutes chaque minute lorsque l'utilisateur est en ligne
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      if (currentStatus === 'online' && lastUpdateRef.current) {
+        flushAccumulatedMinutes(user.id);
+      }
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, currentStatus]);
+  
   // Vérifier le streak à minuit
   useEffect(() => {
     if (!user) return;
