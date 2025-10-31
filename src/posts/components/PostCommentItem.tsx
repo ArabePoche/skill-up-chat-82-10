@@ -97,10 +97,10 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
         </AvatarFallback>
       </Avatar>
       
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="bg-gray-800 rounded-lg p-3 relative">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col gap-1 min-w-0">
               <span 
                 className="font-medium text-white text-sm cursor-pointer hover:underline inline-flex items-center gap-1"
                 onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
@@ -123,7 +123,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
                   </>
                 )}
               </span>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-500">
                 {formatDistanceToNow(new Date(comment.created_at), {
                   addSuffix: true,
                   locale: fr
@@ -141,7 +141,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
               </Button>
             )}
           </div>
-          <p className="text-white text-sm">{comment.content}</p>
+          <p className="text-white text-sm break-words whitespace-pre-wrap">{comment.content}</p>
         </div>
 
         {/* Actions */}
@@ -174,7 +174,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setShowReplies(!showReplies)}
-              className="text-gray-400 hover:text-white hover:bg-gray-800/50 p-0 h-auto text-xs"
+              className="text-blue-500 hover:text-gray-400 hover:bg-gray-800/50 p-0 h-auto text-xs"
             >
               {showReplies ? 'Masquer' : 'Voir'} {replies.length} réponse{replies.length > 1 ? 's' : ''}
             </Button>
