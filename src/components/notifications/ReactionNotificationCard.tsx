@@ -35,16 +35,15 @@ const ReactionNotificationCard: React.FC<ReactionNotificationCardProps> = ({ not
   }, [notification.sender_id]);
 
   const handleClick = async () => {
-    // Marquer comme lu
+    // Marquer comme lu en base SANS rafraîchir l'UI pour une UX fluide
     if (!notification.is_read) {
       await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('id', notification.id);
       
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notification-categories'] });
-      queryClient.invalidateQueries({ queryKey: ['category-notifications'] });
+      // On ne rafraîchit PAS l'interface ici volontairement
+      // L'utilisateur verra le changement à sa prochaine visite
     }
 
     // Rediriger vers la publication
