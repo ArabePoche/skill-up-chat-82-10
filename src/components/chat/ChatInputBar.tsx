@@ -113,6 +113,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
     if (file && !disabled) {
       checkAuthAndExecute(async () => {
         const toastId = toast.loading('Chargement du fichier en cours...');
+        try {
           
           const uploadResult = await uploadFile(file);
           
