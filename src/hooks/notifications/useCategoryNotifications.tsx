@@ -137,10 +137,33 @@ export const useCategoryNotifications = (category: string, enabled: boolean = fa
                   .single(),
               ]);
 
+              // Chercher si la demande de paiement a été traitée et par qui
+              let approvedByAdmin = null;
+              if (notification.payment_id) {
+                const { data: paymentData } = await supabase
+                  .from('student_payment')
+                  .select('created_by, status')
+                  .eq('id', notification.payment_id)
+                  .single();
+
+                if (paymentData?.created_by && paymentData?.status === 'processed') {
+                  const { data: adminData } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name')
+                    .eq('id', paymentData.created_by)
+                    .single();
+                  
+                  if (adminData) {
+                    approvedByAdmin = adminData;
+                  }
+                }
+              }
+
               return {
                 ...notification,
                 user_info: profileRes.data || null,
                 formation_info: formationRes.data || null,
+                approved_by_admin: approvedByAdmin,
               };
             }
 
