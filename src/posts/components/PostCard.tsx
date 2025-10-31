@@ -4,7 +4,7 @@ import { Heart, MessageCircle, Share, MoreHorizontal, User, Edit, Trash2, Briefc
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, enUS, es, ar } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeletePost } from '@/posts/hooks/usePosts';
 import { usePostLikes } from '@/posts/hooks/usePostLikes';
@@ -25,6 +25,7 @@ import {
 import { ApplicationModal } from '@/applications/components/ApplicationModal';
 import { useCheckExistingApplication } from '@/applications/hooks/useApplications';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { useTranslation } from 'react-i18next';
 
 interface PostCardProps {
   post: any;
@@ -34,6 +35,7 @@ interface PostCardProps {
 const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const deletePost = useDeletePost();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -42,6 +44,17 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const commentsRef = React.useRef<HTMLDivElement>(null);
+
+  // Sélectionner la locale date-fns selon la langue
+  const getDateLocale = () => {
+    switch (i18n.language) {
+      case 'fr': return fr;
+      case 'en': return enUS;
+      case 'es': return es;
+      case 'ar': return ar;
+      default: return fr;
+    }
+  };
 
   const MAX_CONTENT_LENGTH = 300;
   const isLongContent = post.content && post.content.length > MAX_CONTENT_LENGTH;
@@ -103,7 +116,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce post ?')) {
+    if (window.confirm(t('posts.deleteConfirm'))) {
       await deletePost.mutateAsync(post.id);
     }
   };
@@ -124,12 +137,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'Partager ce post',
+          title: t('posts.shareTitle'),
           url: postUrl,
         });
       } else {
         await navigator.clipboard.writeText(postUrl);
-        toast.success('Lien copié dans le presse-papier');
+        toast.success(t('posts.linkCopied'));
       }
     } catch (error) {
       console.error('Erreur lors du partage:', error);
@@ -138,19 +151,19 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
   const renderPostType = (type: string) => {
     const types = {
-      recruitment: { label: 'Recrutement', color: 'bg-blue-600' },
-      info: { label: 'Info', color: 'bg-green-600' },
-      annonce: { label: 'Annonce', color: 'bg-yellow-600' },
-      formation: { label: 'Formation', color: 'bg-purple-600' },
-      religion: { label: 'Religion', color: 'bg-orange-600' },
-      general: { label: 'Général', color: 'bg-gray-600' }
+      recruitment: { labelKey: 'posts.filterRecruitment', color: 'bg-blue-600' },
+      info: { labelKey: 'posts.filterInfo', color: 'bg-green-600' },
+      annonce: { labelKey: 'posts.filterAnnouncement', color: 'bg-yellow-600' },
+      formation: { labelKey: 'posts.filterFormation', color: 'bg-purple-600' },
+      religion: { labelKey: 'posts.filterReligion', color: 'bg-orange-600' },
+      general: { labelKey: 'posts.filterAll', color: 'bg-gray-600' }
     };
     
     const typeInfo = types[type as keyof typeof types] || types.general;
     
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${typeInfo.color}`}>
-        {typeInfo.label}
+        {t(typeInfo.labelKey)}
       </span>
     );
   };
@@ -229,7 +242,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
                 className="font-semibold text-white cursor-pointer hover:underline flex items-center gap-1"
                 onClick={() => post.author_id && navigate(`/profile/${post.author_id}`)}
               >
-                {post.profiles?.first_name || post.profiles?.username || 'Utilisateur'}
+                {post.profiles?.first_name || post.profiles?.username || t('posts.user')}
                 {post.profiles?.is_verified && <VerifiedBadge size={16} showTooltip={false} />}
               </span>
               {renderPostType(post.post_type)}
@@ -237,10 +250,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             <span className="text-sm text-gray-400">
               {formatDistanceToNow(new Date(post.created_at), {
                 addSuffix: true,
-                locale: fr
+                locale: getDateLocale()
               })}
               {post.updated_at && new Date(post.updated_at).getTime() !== new Date(post.created_at).getTime() && (
-                <span className="ml-2 text-xs text-gray-500 italic">• modifié</span>
+                <span className="ml-2 text-xs text-gray-500 italic">• {t('posts.modified')}</span>
               )}
             </span>
           </div>
@@ -270,12 +283,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
               }`}
             >
               {friendshipStatus === 'friends' 
-                ? 'Abonné'
+                ? t('posts.subscribed')
                 : friendshipStatus === 'pending_sent' 
-                ? 'En attente'
+                ? t('posts.pending')
                 : friendshipStatus === 'pending_received' 
-                ? 'Suivre'
-                : 'Suivre'
+                ? t('posts.follow')
+                : t('posts.follow')
               }
             </Button>
           )}
@@ -292,11 +305,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             <DropdownMenuContent className="bg-gray-800 border-gray-700">
               <DropdownMenuItem onClick={handleEdit} className="text-white hover:bg-gray-700">
                 <Edit size={16} className="mr-2" />
-                Modifier
+                {t('posts.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleDelete} className="text-red-400 hover:bg-gray-700">
                 <Trash2 size={16} className="mr-2" />
-                Supprimer
+                {t('posts.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -317,7 +330,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             onClick={() => setIsExpanded(!isExpanded)}
             className="text-blue-400 hover:text-white mt-2 text-xs p-0 h-auto"
           >
-            {isExpanded ? 'Réduire' : 'Lire plus'}
+            {isExpanded ? t('posts.readLess') : t('posts.readMore')}
           </Button>
         )}
       </div>
@@ -333,12 +346,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 space-y-3">
           <h3 className="text-white font-semibold text-sm mb-2 flex items-center">
             <Briefcase size={16} className="mr-2" />
-            Détails du recrutement
+            {t('posts.recruitmentDetails')}
           </h3>
           
           {post.required_profiles && post.required_profiles.length > 0 && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">Profils recherchés</h4>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.profilesNeeded')}</h4>
               <div className="flex flex-wrap gap-2">
                 {post.required_profiles.map((profile: string, index: number) => (
                   <span key={index} className="bg-blue-600 text-white px-2 py-1 rounded text-xs">
@@ -351,12 +364,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {post.required_documents && post.required_documents.length > 0 && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">Documents à fournir</h4>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.documentsToProvide')}</h4>
               <ul className="space-y-1">
                 {post.required_documents.map((doc: {name: string; required: boolean}, index: number) => (
                   <li key={index} className="text-gray-400 text-xs flex items-center">
                     <span className={`w-2 h-2 rounded-full mr-2 ${doc.required ? 'bg-red-500' : 'bg-gray-500'}`}></span>
-                    {doc.name} {doc.required && <span className="ml-1 text-red-400">(obligatoire)</span>}
+                    {doc.name} {doc.required && <span className="ml-1 text-red-400">({t('posts.required')})</span>}
                   </li>
                 ))}
               </ul>
@@ -365,7 +378,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {post.geographic_zones && post.geographic_zones.length > 0 && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">Zones géographiques</h4>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.geographicZones')}</h4>
               <div className="flex flex-wrap gap-2">
                 {post.geographic_zones.map((zone: string, index: number) => (
                   <span key={index} className="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">
@@ -378,13 +391,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {(post.age_range?.min || post.age_range?.max) && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">Âge requis</h4>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.ageRequired')}</h4>
               <p className="text-gray-400 text-xs">
                 {post.age_range.min && post.age_range.max 
-                  ? `Entre ${post.age_range.min} et ${post.age_range.max} ans`
+                  ? `${t('posts.between')} ${post.age_range.min} ${t('posts.and')} ${post.age_range.max} ${t('posts.years')}`
                   : post.age_range.min 
-                  ? `Minimum ${post.age_range.min} ans`
-                  : `Maximum ${post.age_range.max} ans`
+                  ? `${t('posts.minimum')} ${post.age_range.min} ${t('posts.years')}`
+                  : `${t('posts.maximum')} ${post.age_range.max} ${t('posts.years')}`
                 }
               </p>
             </div>
@@ -392,9 +405,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {post.gender && post.gender !== 'all' && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">Sexe</h4>
+              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.gender')}</h4>
               <p className="text-gray-400 text-xs">
-                {post.gender === 'male' ? 'Homme' : 'Femme'}
+                {post.gender === 'male' ? t('posts.male') : t('posts.female')}
               </p>
             </div>
           )}
@@ -435,7 +448,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
           disabled={isLikeLoading || !user}
         >
           <Heart size={18} className={`mr-2 ${isLiked ? 'fill-current' : ''}`} />
-          J'aime
+          {t('posts.like')}
         </Button>
         
         <Button 
@@ -445,7 +458,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
           onClick={handleComment}
         >
           <MessageCircle size={18} className="mr-2" />
-          Commenter
+          {t('posts.comment')}
         </Button>
         
         <Button 
@@ -455,7 +468,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
           onClick={handleShare}
         >
           <Share size={18} className="mr-2" />
-          Partager
+          {t('posts.share')}
         </Button>
       </div>
 
@@ -470,10 +483,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             >
               <Check className="mr-2 h-4 w-4" />
               {existingApplication.status === 'approved' 
-                ? 'Candidature acceptée'
+                ? t('posts.applicationAccepted')
                 : existingApplication.status === 'rejected'
-                ? 'Candidature rejetée'
-                : 'Candidature envoyée'}
+                ? t('posts.applicationRejected')
+                : t('posts.applicationSent')}
             </Button>
           ) : (
             <Button
@@ -481,7 +494,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               <Briefcase className="mr-2 h-4 w-4" />
-              Postuler
+              {t('posts.apply')}
             </Button>
           )}
         </div>
