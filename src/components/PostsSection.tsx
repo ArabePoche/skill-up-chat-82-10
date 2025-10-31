@@ -7,9 +7,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/posts/hooks/usePosts';
 import CreatePostModal from '@/posts/components/CreatePostModal';
 import PostCard from '@/posts/components/PostCard';
+import { useTranslation } from 'react-i18next';
 
 const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState<'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
@@ -85,19 +87,19 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
   }, [targetPostId, posts]);
 
   const filterButtons = [
-    { key: 'all' as const, label: 'Tous', icon: Users },
-    { key: 'info' as const, label: 'Information', icon: Info },
-    { key: 'recruitment' as const, label: 'Recrutement', icon: Briefcase },
-    { key: 'annonce' as const, label: 'Annonce', icon: Info },
-    { key: 'formation' as const, label: 'Formation', icon: Info },
-    { key: 'religion' as const, label: 'Religion', icon: Info },
+    { key: 'all' as const, label: t('posts.filterAll'), icon: Users },
+    { key: 'info' as const, label: t('posts.filterInfo'), icon: Info },
+    { key: 'recruitment' as const, label: t('posts.filterRecruitment'), icon: Briefcase },
+    { key: 'annonce' as const, label: t('posts.filterAnnouncement'), icon: Info },
+    { key: 'formation' as const, label: t('posts.filterFormation'), icon: Info },
+    { key: 'religion' as const, label: t('posts.filterReligion'), icon: Info },
   ];
 
   if (isLoading) {
     return (
       <div className="p-4 pt-20">
         <div className="flex items-center justify-center py-12">
-          <div className="text-white">Chargement des posts...</div>
+          <div className="text-white">{t('posts.loading')}</div>
         </div>
       </div>
     );
@@ -108,14 +110,14 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
       {/* Header avec filtres */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-white text-xl font-bold">Publications</h1>
+          <h1 className="text-white text-xl font-bold">{t('posts.title')}</h1>
           {user && (
             <Button
               onClick={() => setShowCreateModal(true)}
               className="bg-edu-primary hover:bg-edu-primary/90 text-white"
               size="sm"
             >
-              Créer un post
+              {t('posts.createPost')}
             </Button>
           )}
         </div>
@@ -139,11 +141,11 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
                 onClick={() => setShowCreateModal(true)}
                 className="flex-1 text-left bg-gray-800 hover:bg-gray-700 text-gray-400 px-4 py-2 rounded-full transition-colors"
               >
-                Quoi de neuf ?
+                {t('posts.whatsNew')}
               </button>
             ) : (
               <div className="flex-1 bg-gray-800 text-gray-500 px-4 py-2 rounded-full cursor-not-allowed">
-                Connectez-vous pour partager quelque chose...
+                {t('posts.loginToShare')}
               </div>
             )}
           </div>
@@ -187,8 +189,8 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               {activeFilter === 'all' 
-                ? 'Aucune publication pour le moment' 
-                : `Aucune publication de type "${filterButtons.find(f => f.key === activeFilter)?.label}" pour le moment`
+                ? t('posts.noPosts')
+                : t('posts.noPostsType', { type: filterButtons.find(f => f.key === activeFilter)?.label })
               }
             </div>
             {user && (
@@ -197,7 +199,7 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
                 variant="outline"
                 className="border-gray-600 text-gray-300 hover:bg-gray-800"
               >
-                Créer le premier post
+                {t('posts.createFirstPost')}
               </Button>
             )}
           </div>
