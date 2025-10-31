@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield } from 'lucide-react';
+import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerification } from '@/hooks/useVerification';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import VerificationRequestModal from '@/verification/components/VerificationRequestModal';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 interface ProfileMenuDrawerProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   const { profile, user, logout } = useAuth();
   const { hasPendingRequest } = useVerification(user?.id);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const { t } = useTranslation();
 
   const handleLogout = async () => {
     await logout();
@@ -28,11 +31,11 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   };
 
   const menuItems = [
-    { icon: Settings, label: 'Paramètres', action: () => navigate('/complete-profile') },
-    { icon: BookOpen, label: 'Mes formations', action: () => navigate('/cours') },
-    { icon: Award, label: 'Badges et récompenses', action: () => {} },
-    { icon: Bell, label: 'Notifications', action: () => { onClose(); onShowNotificationDialog(); } },
-    { icon: HelpCircle, label: 'Aide et support', action: () => {} }
+    { icon: Settings, label: t('settings.general'), action: () => navigate('/complete-profile') },
+    { icon: BookOpen, label: t('courses.myCourses'), action: () => navigate('/cours') },
+    { icon: Award, label: t('profile.notifications'), action: () => {} },
+    { icon: Bell, label: t('profile.notifications'), action: () => { onClose(); onShowNotificationDialog(); } },
+    { icon: HelpCircle, label: t('common.help', { defaultValue: 'Aide et support' }), action: () => {} }
   ];
 
   // Ajouter le bouton de certification si pas encore vérifié
@@ -40,7 +43,7 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   if (!(profile as any)?.is_verified && !hasPendingRequest) {
     menuItems.push({
       icon: null as any,
-      label: 'Demander la certification',
+      label: t('common.certification', { defaultValue: 'Demander la certification' }),
       action: () => {
         onClose();
         setShowVerificationModal(true);
@@ -52,7 +55,7 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   if (profile?.role === 'admin') {
     menuItems.push({
       icon: Shield,
-      label: 'Administration',
+      label: t('admin.dashboard'),
       action: () => navigate('/admin')
     });
   }
@@ -71,7 +74,7 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
       <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background shadow-xl z-50 overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold">Menu</h2>
+          <h2 className="text-lg font-semibold">{t('common.menu', { defaultValue: 'Menu' })}</h2>
           <button 
             onClick={onClose}
             className="p-2 hover:bg-muted rounded-full transition-colors"
@@ -113,6 +116,16 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
               </button>
             );
           })}
+          
+          {/* Sélecteur de langue */}
+          <div className="px-4 py-3 border-t border-border mt-2">
+            <div className="flex items-center gap-3">
+              <Globe size={20} className="text-muted-foreground" />
+              <div className="flex-1">
+                <LanguageSwitcher />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Logout */}
@@ -122,7 +135,7 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
             className="w-full flex items-center gap-3 px-4 py-3 border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
           >
             <LogOut size={20} />
-            <span>Se déconnecter</span>
+            <span>{t('common.logout')}</span>
           </button>
         </div>
       </div>
