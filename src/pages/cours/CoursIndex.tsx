@@ -97,7 +97,7 @@ const CoursIndex = () => {
 
   
 
-  const debugMessage = `User ID: ${user?.id} | Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
+  const debugMessage = ` Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24">
@@ -114,8 +114,8 @@ const CoursIndex = () => {
           formations={studentFormations}
           isTeacherSection={false}
           onFormationClick={handleFormationClick}
-          emptyMessage="Vous n'êtes inscrit à aucune formation"
-          debugInfo={debugMessage}
+          emptyMessage="Vous n'êtes inscrit à aucune formation "
+          
         />
 
         {teacherFormations && teacherFormations.length > 0 && (
