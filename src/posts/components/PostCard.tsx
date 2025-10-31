@@ -40,7 +40,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   const [openCommentsTick, setOpenCommentsTick] = useState(0);
   const [likesModalOpen, setLikesModalOpen] = useState(false);
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const commentsRef = React.useRef<HTMLDivElement>(null);
+
+  const MAX_CONTENT_LENGTH = 300;
+  const isLongContent = post.content && post.content.length > MAX_CONTENT_LENGTH;
 
   const isAuthor = user?.id === post.author_id;
   const isRecruitmentPost = post.post_type === 'recruitment';
@@ -301,7 +305,21 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
       {/* Contenu du post */}
       <div className="text-white mb-3">
-        <p className="whitespace-pre-wrap">{post.content}</p>
+        <p className="whitespace-pre-wrap break-words">
+          {isLongContent && !isExpanded 
+            ? `${post.content.substring(0, MAX_CONTENT_LENGTH)}...` 
+            : post.content}
+        </p>
+        {isLongContent && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-blue-400 hover:text-white mt-2 text-xs p-0 h-auto"
+          >
+            {isExpanded ? 'Réduire' : 'Lire plus'}
+          </Button>
+        )}
       </div>
 
       {/* Options de recrutement */}
