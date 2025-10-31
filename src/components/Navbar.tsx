@@ -4,19 +4,21 @@ import { Home, ShoppingCart, MessageSquare, User, GraduationCap } from 'lucide-r
 import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
+import { useTranslation } from 'react-i18next';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentView, setCurrentView } = useNavigation();
   const { data: unreadCounts } = useUnreadCounts();
+  const { t } = useTranslation();
 
   const navItems = [
-    { icon: Home, label: 'Accueil', view: 'home' as NavigationView, path: '/' },
-    { icon: ShoppingCart, label: 'Shop', view: 'shop' as NavigationView, path: '/shop' },
-    { icon: GraduationCap, label: 'Cours', view: 'cours' as NavigationView, path: '/cours', special: true },
-    { icon: MessageSquare, label: 'Messages', view: 'messages' as NavigationView, path: '/messages' },
-    { icon: User, label: 'Profil', view: 'profil' as NavigationView, path: '/profil' },
+    { icon: Home, label: t('nav.home'), view: 'home' as NavigationView, path: '/' },
+    { icon: ShoppingCart, label: t('nav.shop'), view: 'shop' as NavigationView, path: '/shop' },
+    { icon: GraduationCap, label: t('nav.courses'), view: 'cours' as NavigationView, path: '/cours', special: true },
+    { icon: MessageSquare, label: t('nav.messages'), view: 'messages' as NavigationView, path: '/messages' },
+    { icon: User, label: t('nav.profile'), view: 'profil' as NavigationView, path: '/profil' },
   ];
 
   const handleNavigation = (item: typeof navItems[0]) => {
