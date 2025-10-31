@@ -16,6 +16,7 @@ import { useFollow } from '@/hooks/useFollow';
 import { useVideoSeries } from '@/hooks/useVideoSeries';
 import { useVideoViews } from '@/hooks/useVideoViews';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { useTranslation } from 'react-i18next';
 
 interface Video {
   id: string;
@@ -55,6 +56,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isMuted } = useGlobalSound();
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -171,7 +173,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const handleSave = () => {
     handleActionClick(() => {
       setIsSaved(!isSaved);
-      toast.success(isSaved ? 'Vidéo retirée des favoris' : 'Vidéo ajoutée aux favoris');
+      toast.success(isSaved ? t('video.removedFromFavorites') : t('video.savedToFavorites'));
     });
   };
 
@@ -349,7 +351,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
             <Share size={24} />
           </Button>
           <span className="text-white text-xs mt-1 font-medium">
-            Partager
+            {t('video.share')}
           </span>
         </div>
 
@@ -366,7 +368,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
             <Bookmark size={24} className={isSaved ? 'fill-current' : ''} />
           </Button>
           <span className="text-white text-xs mt-1 font-medium">
-            {isSaved ? 'Sauvé' : 'Sauver'}
+            {isSaved ? t('video.saved') : t('video.save')}
           </span>
         </div>
 
@@ -382,7 +384,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
               <List size={24} />
             </Button>
             <span className="text-white text-xs mt-1 font-medium">
-              Série
+              {t('video.series')}
             </span>
           </div>
         )}
@@ -399,7 +401,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
               <ShoppingBag size={24} />
             </Button>
             <span className="text-white text-xs mt-1 font-medium">
-              Formation
+              {t('video.formation')}
             </span>
           </div>
         )}
@@ -413,12 +415,12 @@ const VideoCard: React.FC<VideoCardProps> = ({
               className="font-semibold cursor-pointer hover:underline inline-flex items-center gap-1"
               onClick={handleProfileClick}
             >
-              @{video.profiles?.username || video.profiles?.first_name || 'Utilisateur'}
+              @{video.profiles?.username || video.profiles?.first_name || t('video.user')}
               {video.profiles?.is_verified && <VerifiedBadge size={16} showTooltip={false} />}
             </span>
             {video.video_type === 'promo' && (
               <span className="bg-edu-primary px-2 py-1 rounded-full text-xs font-bold">
-                PROMO
+                {t('video.promo')}
               </span>
             )}
           </div>
@@ -431,7 +433,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
           {video.views_count !== undefined && video.views_count > 0 && (
             <div className="flex items-center space-x-1 mt-2 text-sm opacity-90">
               <Eye size={16} />
-              <span>{formatCount(video.views_count)} vues</span>
+              <span>{formatCount(video.views_count)} {t('video.views')}</span>
             </div>
           )}
           
