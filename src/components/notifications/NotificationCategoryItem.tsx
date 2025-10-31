@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Bell, UserPlus, Users, BookOpen, CreditCard, Briefcase } from 'lucide-react';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useCategoryNotifications } from '@/hooks/notifications/useCategoryNotifications';
 import NotificationItem from '@/components/NotificationItem';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface NotificationCategoryItemProps {
   category: string;
@@ -20,8 +22,35 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
   unreadCount,
   isOpen,
 }) => {
+  const queryClient = useQueryClient();
   // Charger les notifications uniquement quand la catégorie est ouverte
   const { data: notifications = [], isLoading } = useCategoryNotifications(category, isOpen);
+
+  // Marquer toutes les notifications de réaction comme lues lors de l'ouverture
+  // SANS rafraîchir l'UI immédiatement pour une meilleure UX
+  useEffect(() => {
+    if (isOpen && category === 'reactions' && notifications.length > 0) {
+      const unreadReactionIds = notifications
+        .filter((n: any) => !n.is_read)
+        .map((n: any) => n.id);
+
+      if (unreadReactionIds.length > 0) {
+        // Marquer comme lues en base de données après un petit délai
+        // mais ne pas invalider les queries pour garder l'UI stable
+        const timer = setTimeout(async () => {
+          await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .in('id', unreadReactionIds);
+          
+          // On ne rafraîchit PAS l'interface ici volontairement
+          // L'utilisateur verra le changement à sa prochaine visite
+        }, 500);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isOpen, category, notifications]);
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
