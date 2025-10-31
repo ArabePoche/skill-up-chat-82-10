@@ -97,8 +97,6 @@ const CoursIndex = () => {
 
   
 
-  const debugMessage = ` Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
-
   return (
     <div className="bg-gray-50 min-h-screen pb-24">
       <CoursHeader 
@@ -137,4 +135,4 @@ const CoursIndex = () => {
   );
 };
 
-export default CoursIndex;
+export default CoursIndex; 
