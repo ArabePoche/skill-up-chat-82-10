@@ -303,7 +303,7 @@ const ExerciseSubmissionModal: React.FC<ExerciseSubmissionModalProps> = ({
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || (!content.trim() && files.length === 0)}
-              className="bg-green hover:bg-green/90"
+              className="bg-green-500 hover:bg-green-600"
             >
               {isSubmitting ? 'Envoi en cours...' : 'Soumettre'}
             </Button>
