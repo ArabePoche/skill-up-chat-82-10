@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, Users, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
 
 interface Formation {
   id: string;
@@ -36,6 +37,7 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
   onViewDetails,
   userInterests = []
 }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [selectedFormationForPreInscription, setSelectedFormationForPreInscription] = useState<Formation | null>(null);
 
@@ -65,8 +67,8 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
         <section>
           <div className="flex items-center space-x-2 mb-6">
             <Star className="text-yellow-500" size={24} />
-            <h2 className="text-2xl font-bold text-gray-900">Recommandées pour vous</h2>
-            <Badge variant="secondary">Basé sur vos intérêts</Badge>
+            <h2 className="text-2xl font-bold text-gray-900">{t('shop.recommendedForYou')}</h2>
+            <Badge variant="secondary">{t('shop.basedOnInterests')}</Badge>
           </div>
           <FormationGrid
             formations={recommendedFormations}
@@ -80,8 +82,8 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
       <section>
         <div className="flex items-center space-x-2 mb-6">
           <Users className="text-green-500" size={24} />
-          <h2 className="text-2xl font-bold text-gray-900">Formations Disponibles</h2>
-          <Badge variant="outline">{activeFormations.length} formations</Badge>
+          <h2 className="text-2xl font-bold text-gray-900">{t('shop.availableFormations')}</h2>
+          <Badge variant="outline">{activeFormations.length} {t('shop.formations')}</Badge>
         </div>
         
         {activeFormations.length > 0 ? (
@@ -93,7 +95,7 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
         ) : (
           <Card>
             <CardContent className="text-center py-8">
-              <p className="text-gray-500">Aucune formation disponible pour le moment.</p>
+              <p className="text-gray-500">{t('shop.noFormationsAvailable')}</p>
             </CardContent>
           </Card>
         )}
@@ -104,9 +106,9 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
         <section>
           <div className="flex items-center space-x-2 mb-6">
             <Clock className="text-orange-500" size={24} />
-            <h2 className="text-2xl font-bold text-gray-900">Formations en Construction</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t('shop.inConstruction')}</h2>
             <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-              Bientôt disponibles
+              {t('shop.comingSoon')}
             </Badge>
           </div>
           
@@ -128,7 +130,7 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
                       <Clock size={48} className="text-orange-400" />
                     )}
                     <div className="absolute top-2 right-2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                      EN CONSTRUCTION
+                      {t('shop.inConstructionBadge')}
                     </div>
                   </div>
                 </CardHeader>
@@ -138,7 +140,7 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
                     {formation.title}
                   </CardTitle>
                   <p className="text-sm text-gray-600 mb-2">
-                    Par {formation.profiles?.first_name || formation.profiles?.username || 'Instructeur'}
+                    {t('shop.by')} {formation.profiles?.first_name || formation.profiles?.username || t('shop.instructor')}
                   </p>
                   {formation.description && (
                     <p className="text-sm text-gray-700 mb-4 line-clamp-3">
@@ -149,10 +151,10 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
                     <div className="flex items-center text-orange-700 mb-2">
                       <AlertCircle size={16} className="mr-2" />
-                      <span className="text-sm font-medium">Formation en développement</span>
+                      <span className="text-sm font-medium">{t('shop.inDevelopment')}</span>
                     </div>
                     <p className="text-xs text-orange-600">
-                      Soyez parmi les premiers à découvrir cette formation dès sa sortie !
+                      {t('shop.beFirstToDiscover')}
                     </p>
                   </div>
 
@@ -161,7 +163,7 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
                       {formation.price?.toLocaleString('fr-FR')} FCFA
                     </span>
                     <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      Prochainement
+                      {t('shop.soon')}
                     </div>
                   </div>
 
@@ -170,7 +172,7 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
                     onClick={() => handlePreInscription(formation)}
                   >
                     <Clock size={16} className="mr-2" />
-                    Pré-inscription gratuite
+                    {t('shop.freePreRegistration')}
                   </Button>
                 </CardContent>
               </Card>
