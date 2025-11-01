@@ -256,9 +256,7 @@ const ExerciseSubmissionModal: React.FC<ExerciseSubmissionModalProps> = ({
                           className="w-full max-w-[200px]"
                           style={{ height: '32px' }}
                         />
-                        <p className="text-xs mt-2 text-center break-all px-1 text-muted-foreground">
-                          {filePreview.file.name}
-                        </p>
+                        
                       </div>
                     ) : (
                       <div className="w-full h-32 flex flex-col items-center justify-center bg-muted p-2">
