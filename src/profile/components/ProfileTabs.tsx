@@ -1,5 +1,6 @@
 import React from 'react';
 import { Video, FileText, CheckCircle, Heart, Bookmark } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
 
@@ -9,12 +10,13 @@ interface ProfileTabsProps {
 }
 
 const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useTranslation();
   const tabs = [
-    { id: 'videos' as const, label: 'Vidéos', icon: Video },
-    { id: 'posts' as const, label: 'Posts', icon: FileText },
-    { id: 'exercises' as const, label: 'Exercices', icon: CheckCircle },
-    { id: 'likes' as const, label: "J'aime", icon: Heart },
-    { id: 'favorites' as const, label: 'Favoris', icon: Bookmark },
+    { id: 'videos' as const, label: t('profile.videos'), icon: Video },
+    { id: 'posts' as const, label: t('profile.posts'), icon: FileText },
+    { id: 'exercises' as const, label: t('profile.exercises'), icon: CheckCircle },
+    { id: 'likes' as const, label: t('profile.likes'), icon: Heart },
+    { id: 'favorites' as const, label: t('profile.favorites'), icon: Bookmark },
   ];
 
   return (
