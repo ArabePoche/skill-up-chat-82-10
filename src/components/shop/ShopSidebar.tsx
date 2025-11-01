@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
+import { useTranslation } from 'react-i18next';
 
 interface ShopSidebarProps {
   categories: Array<{ id: string; name: string; label: string }>;
@@ -25,6 +26,8 @@ const ShopSidebar: React.FC<ShopSidebarProps> = ({
   isVisible,
   onClose
 }) => {
+  const { t } = useTranslation();
+  
   if (!isVisible) return null;
 
   return (
@@ -33,7 +36,7 @@ const ShopSidebar: React.FC<ShopSidebarProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-lg flex items-center">
             <Filter size={20} className="mr-2" />
-            Filtres
+            {t('shop.filters')}
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose} className="md:hidden">
             ×
@@ -43,7 +46,7 @@ const ShopSidebar: React.FC<ShopSidebarProps> = ({
         {/* Catégories */}
         <Card className="mb-4">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Catégories</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('shop.categories')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {categories.map((category) => (
@@ -67,7 +70,7 @@ const ShopSidebar: React.FC<ShopSidebarProps> = ({
         {/* Prix */}
         <Card className="mb-4">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Prix</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('shop.price')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -90,7 +93,7 @@ const ShopSidebar: React.FC<ShopSidebarProps> = ({
         {/* Notes */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Notes</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('shop.ratings')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {[4, 3, 2, 1].map((rating) => (
@@ -104,7 +107,7 @@ const ShopSidebar: React.FC<ShopSidebarProps> = ({
                       </span>
                     ))}
                   </div>
-                  et plus
+                  {t('shop.andMore')}
                 </label>
               </div>
             ))}
