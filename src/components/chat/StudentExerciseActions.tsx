@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useUpdateExerciseSubmission } from '@/hooks/useUpdateExerciseSubmission';
+import { useUpdateExerciseSubmission } from './hooks/useUpdateExerciseSubmission';
 import SubmissionForm from './SubmissionForm';
 
 interface StudentExerciseActionsProps {

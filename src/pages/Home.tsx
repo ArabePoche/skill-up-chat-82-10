@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import TikTokTabs from '@/components/TikTokTabs';
 import TikTokVideosView from '@/components/TikTokVideosView';
-import PostsSection from '@/components/PostsSection';
+import PostsSection from '@/posts/components/PostsSection';
 import SearchView from '@/components/SearchView';
 import { useTabScroll } from '@/contexts/TabScrollContext';
 

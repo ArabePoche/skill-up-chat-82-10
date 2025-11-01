@@ -120,11 +120,11 @@ export const useUpdateExerciseSubmission = () => {
       queryClient.invalidateQueries({ 
         queryKey: ['group-chat-messages', data.formation_id, data.level_id] 
       });
-      toast.success('Soumission mise à jour avec succès !');
+      toast.success('Soumission mise à jour avec succès');
     },
-    onError: (error) => {
-      console.error('Erreur lors de la mise à jour:', error);
+    onError: (error: Error) => {
+      console.error('Error updating exercise submission:', error);
       toast.error('Erreur lors de la mise à jour de la soumission');
-    },
+    }
   });
 };
