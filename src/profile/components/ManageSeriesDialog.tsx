@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { GripVertical, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   DndContext,
   closestCenter,
@@ -119,6 +120,7 @@ const ManageSeriesDialog: React.FC<ManageSeriesDialogProps> = ({
   currentEpisodes,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [selectedVideos, setSelectedVideos] = useState<string[]>(
     currentEpisodes.map(ep => ep.video_id)
   );
@@ -179,12 +181,12 @@ const ManageSeriesDialog: React.FC<ManageSeriesDialogProps> = ({
         if (error) throw error;
       }
 
-      toast.success('Série mise à jour avec succès');
+      toast.success(t('video.seriesUpdated'));
       onOpenChange(false);
       onSuccess();
     } catch (error) {
       console.error('Error updating series:', error);
-      toast.error('Erreur lors de la mise à jour de la série');
+      toast.error(t('video.seriesUpdateError'));
     } finally {
       setIsLoading(false);
     }
@@ -194,7 +196,7 @@ const ManageSeriesDialog: React.FC<ManageSeriesDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Gérer les épisodes - {seriesTitle}</DialogTitle>
+          <DialogTitle>{t('video.manageEpisodes')} - {seriesTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4 space-y-6">
@@ -202,10 +204,10 @@ const ManageSeriesDialog: React.FC<ManageSeriesDialogProps> = ({
           {selectedVideoObjects.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">
-                Épisodes de la série ({selectedVideoObjects.length})
+                {t('video.seriesEpisodes')} ({selectedVideoObjects.length})
               </h3>
               <p className="text-xs text-muted-foreground mb-3">
-                Glissez-déposez pour réorganiser l'ordre des épisodes
+                {t('video.dragToReorder')}
               </p>
               <DndContext
                 sensors={sensors}
@@ -235,10 +237,10 @@ const ManageSeriesDialog: React.FC<ManageSeriesDialogProps> = ({
           {unselectedVideos.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">
-                Vidéos disponibles ({unselectedVideos.length})
+                {t('video.availableVideos')} ({unselectedVideos.length})
               </h3>
               <p className="text-xs text-muted-foreground mb-3">
-                Cliquez pour ajouter une vidéo à la série
+                {t('video.clickToAdd')}
               </p>
               <div className="space-y-2">
                 {unselectedVideos.map((video) => (
@@ -270,7 +272,7 @@ const ManageSeriesDialog: React.FC<ManageSeriesDialogProps> = ({
 
           {userVideos.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
-              Aucune vidéo disponible
+              {t('video.noVideosAvailable')}
             </p>
           )}
         </div>
@@ -281,10 +283,10 @@ const ManageSeriesDialog: React.FC<ManageSeriesDialogProps> = ({
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            Annuler
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? 'Enregistrement...' : 'Enregistrer'}
+            {isLoading ? t('video.saving') : t('common.save')}
           </Button>
         </div>
       </DialogContent>
