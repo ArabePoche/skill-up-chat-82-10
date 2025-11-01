@@ -146,6 +146,31 @@
     "videoCall": "مكالمة فيديو",
     "audioCall": "مكالمة صوتية"
   },
+  "messages": {
+    "title": "المناقشات والإشعارات",
+    "conversations": "المناقشات",
+    "searchPlaceholder": "البحث في المحادثات...",
+    "noConversations": "لا توجد محادثات",
+    "noConversationsHelp": "انقر على زر بدء مناقشة للدردشة مع جهات الاتصال الخاصة بك",
+    "startDiscussion": "بدء مناقشة",
+    "loading": "جاري التحميل...",
+    "loadingError": "خطأ في التحميل",
+    "noNotifications": "لا توجد إشعارات",
+    "noNotificationsHelp": "سيتم إخطارك هنا بالأنشطة الجديدة",
+    "loginToSeeNotifications": "قم بتسجيل الدخول لرؤية إشعاراتك"
+  },
+  "notifications": {
+    "noCategoryNotifications": "لا توجد إشعارات في هذه الفئة",
+    "categories": {
+      "friendRequests": "طلبات الصداقة",
+      "enrollmentRequests": "طلبات التسجيل",
+      "planChanges": "تغييرات الخطة",
+      "paymentRequests": "طلبات الدفع",
+      "applications": "الطلبات",
+      "reactions": "تفاعلات المنشورات",
+      "other": "إشعارات أخرى"
+    }
+  },
   "profile": {
     "myProfile": "ملفي الشخصي",
     "editProfile": "تعديل الملف الشخصي",
