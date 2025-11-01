@@ -139,12 +139,13 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, disabled = fal
     <Button
       onClick={startCapture}
       disabled={disabled}
-      variant="outline"
+      variant="actionPurple"
       size="sm"
-      className="p-2"
+      className="gap-1.5"
       title="Prendre une photo"
     >
       <Camera size={16} />
+      <span>Photo</span>
     </Button>
   );
 };
