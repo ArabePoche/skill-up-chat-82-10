@@ -7,6 +7,7 @@ import { Send, User, Heart, MessageCircle, MoreVertical, Flag } from 'lucide-rea
 import { useAuth } from '@/hooks/useAuth';
 import { useVideoComments } from '@/hooks/useVideoComments';
 import VideoCommentItem from '@/components/VideoCommentItem';
+import { useTranslation } from 'react-i18next';
 
 interface VideoCommentsModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
   videoId,
   videoTitle
 }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { comments, isLoading, isSubmitting, addComment } = useVideoComments(videoId);
   const [newComment, setNewComment] = useState('');
@@ -58,7 +60,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
               <MessageCircle size={20} className="text-blue-600" />
             </div>
             <div>
-              <span className="text-lg font-semibold">Commentaires</span>
+              <span className="text-lg font-semibold">{t('video.comments')}</span>
               {videoTitle && (
                 <p className="text-sm text-gray-500 font-normal mt-1 line-clamp-1">{videoTitle}</p>
               )}
@@ -72,21 +74,21 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
             {isLoading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-sm text-gray-500">Chargement des commentaires...</p>
+                <p className="text-sm text-gray-500">{t('video.loadingComments')}</p>
               </div>
             ) : comments.length === 0 ? (
               <div className="text-center py-12">
                 <div className="bg-gray-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <MessageCircle size={24} className="text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun commentaire</h3>
-                <p className="text-sm text-gray-500">Soyez le premier à partager votre avis !</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('video.noComments')}</h3>
+                <p className="text-sm text-gray-500">{t('video.firstComment')}</p>
               </div>
             ) : (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">
-                    {comments.length} commentaire{comments.length > 1 ? 's' : ''}
+                    {t('video.commentCount', { count: comments.length })}
                   </span>
                 </div>
                 
@@ -116,13 +118,13 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
                     <Textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Que pensez-vous de cette vidéo ?"
+                      placeholder={t('video.whatThink')}
                       className="min-h-[80px] resize-none border-gray-200 focus:border-blue-300 focus:ring-blue-200 bg-white"
                       maxLength={500}
                     />
                     <div className="flex justify-between items-center mt-3">
                       <span className="text-xs text-gray-400">
-                        {newComment.length}/500 caractères
+                        {newComment.length}/500 {t('video.characters')}
                       </span>
                       <div className="flex gap-2">
                         <Button
@@ -133,7 +135,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
                           disabled={!newComment.trim() || isSubmitting}
                           className="text-gray-500 hover:text-gray-700"
                         >
-                          Annuler
+                          {t('common.cancel')}
                         </Button>
                         <Button
                           type="submit"
@@ -144,12 +146,12 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
                           {isSubmitting ? (
                             <>
                               <div className="animate-spin rounded-full w-4 h-4 border-b-2 border-white mr-2"></div>
-                              Envoi...
+                              {t('video.sending')}
                             </>
                           ) : (
                             <>
                               <Send size={14} className="mr-2" />
-                              Publier
+                              {t('video.publish')}
                             </>
                           )}
                         </Button>
@@ -163,9 +165,9 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
             <div className="text-center py-6 border-t border-gray-100 bg-gray-50/50">
               <div className="bg-white rounded-lg p-6 mx-4 shadow-sm border border-gray-200">
                 <User size={32} className="mx-auto text-gray-400 mb-3" />
-                <h3 className="font-medium text-gray-900 mb-2">Connectez-vous pour commenter</h3>
+                <h3 className="font-medium text-gray-900 mb-2">{t('video.loginToComment')}</h3>
                 <p className="text-sm text-gray-500">
-                  Rejoignez la conversation et partagez votre avis sur cette vidéo
+                  {t('video.joinConversation')}
                 </p>
               </div>
             </div>
