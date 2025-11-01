@@ -1,6 +1,7 @@
 
 import React from 'react';
 import ProductCard from './ProductCard';
+import { useTranslation } from 'react-i18next';
 
 interface Product {
   id: string;
@@ -26,10 +27,12 @@ interface ProductGridProps {
 }
 
 const ProductGrid: React.FC<ProductGridProps> = ({ products, user, onAddToCart }) => {
+  const { t } = useTranslation();
+  
   if (products.length === 0) {
     return (
       <div className="text-center py-8 sm:py-12">
-        <p className="text-gray-500 text-sm sm:text-base">Aucun produit trouvé</p>
+        <p className="text-gray-500 text-sm sm:text-base">{t('shop.noProductsFound')}</p>
       </div>
     );
   }
