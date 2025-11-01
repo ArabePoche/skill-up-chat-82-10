@@ -46,14 +46,12 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
     if (!content.trim() && files.length === 0) return;
 
     try {
-      // Soumettre le premier fichier (pour compatibilité avec l'API actuelle)
-      // TODO: Adapter l'API pour supporter plusieurs fichiers
       await submitExerciseMutation.mutateAsync({
         lessonId,
         formationId,
         exerciseId: exercise.id,
         content: content || `Soumission de l'exercice: ${exercise.title}`,
-        file: files[0],
+        files: files,
       });
 
       setShowSubmissionModal(false);
