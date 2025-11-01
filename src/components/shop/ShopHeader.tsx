@@ -32,7 +32,7 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
               <Menu size={16} className="sm:hidden" />
               <Menu size={20} className="hidden sm:block" />
             </Button>
-            <h1 className="text-lg sm:text-xl font-bold">EduShop</h1>
+            <h1 className="text-lg sm:text-xl font-bold">EducaShop</h1>
           </div>
           
           {/* Panier */}
