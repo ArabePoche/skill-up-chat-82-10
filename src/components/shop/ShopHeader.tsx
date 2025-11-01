@@ -3,6 +3,7 @@ import React from 'react';
 import { Search, Filter, ShoppingCart, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTranslation } from 'react-i18next';
 
 interface ShopHeaderProps {
   activeTab: string;
@@ -19,6 +20,8 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
   setSearchQuery,
   cartItemsCount = 0
 }) => {
+  const { t } = useTranslation();
+  
   return (
     <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white sticky top-0 z-40 shadow-lg">
       {/* Header principal */}
@@ -51,7 +54,7 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
           <div className="relative flex-1">
             <Input
               type="text"
-              placeholder={`Rechercher des ${activeTab === 'formations' ? 'formations' : 'produits'}...`}
+              placeholder={t('shop.searchPlaceholder', { type: activeTab === 'formations' ? t('shop.formations') : t('shop.products') })}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white text-black border-0 focus:ring-2 focus:ring-orange-500 rounded-sm text-sm sm:text-base h-8 sm:h-10"
@@ -78,7 +81,7 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
                 : 'border-transparent text-white/80 hover:text-white'
             }`}
           >
-            Formations
+            {t('shop.formations')}
           </button>
           <button
             onClick={() => setActiveTab('products')}
@@ -88,7 +91,7 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
                 : 'border-transparent text-white/80 hover:text-white'
             }`}
           >
-            Produits
+            {t('shop.products')}
           </button>
         </div>
       </div>
