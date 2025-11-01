@@ -148,6 +148,31 @@
     "videoCall": "Videollamada",
     "audioCall": "Llamada de Audio"
   },
+  "messages": {
+    "title": "Discusiones y Notificaciones",
+    "conversations": "Discusiones",
+    "searchPlaceholder": "Buscar en conversaciones...",
+    "noConversations": "Sin conversaciones",
+    "noConversationsHelp": "Haga clic en el botón iniciar discusión para chatear con sus contactos",
+    "startDiscussion": "Iniciar discusión",
+    "loading": "Cargando...",
+    "loadingError": "Error al cargar",
+    "noNotifications": "Sin notificaciones",
+    "noNotificationsHelp": "Será notificado aquí de nuevas actividades",
+    "loginToSeeNotifications": "Inicie sesión para ver sus notificaciones"
+  },
+  "notifications": {
+    "noCategoryNotifications": "Sin notificaciones en esta categoría",
+    "categories": {
+      "friendRequests": "Solicitudes de Amistad",
+      "enrollmentRequests": "Solicitudes de Inscripción",
+      "planChanges": "Cambios de Plan",
+      "paymentRequests": "Solicitudes de Pago",
+      "applications": "Solicitudes",
+      "reactions": "Reacciones de Publicaciones",
+      "other": "Otras Notificaciones"
+    }
+  },
   "profile": {
     "myProfile": "Mi Perfil",
     "editProfile": "Editar Perfil",
