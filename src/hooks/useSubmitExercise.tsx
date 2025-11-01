@@ -14,48 +14,49 @@ export const useSubmitExercise = () => {
       formationId, 
       exerciseId,
       content,
-      file
+      files
     }: {
       lessonId: string;
       formationId: string;
       exerciseId: string;
       content: string;
-      file?: File;
+      files?: File[];
     }) => {
       if (!user?.id) {
         throw new Error('Utilisateur non authentifié');
       }
 
-      let fileUrl = null;
-      let fileName = null;
-      let fileType = null;
+      const uploadedFiles: Array<{ url: string; name: string; type: string }> = [];
 
-      // Si un fichier est fourni, l'uploader dans le bucket students_exercises_submission_files
-      if (file) {
-        console.log('Uploading exercise file:', file.name, file.type);
+      // Upload de tous les fichiers
+      if (files && files.length > 0) {
+        console.log('Uploading exercise files:', files.length);
         
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/${lessonId}/${exerciseId}/${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('students_exercises_submission_files')
-          .upload(filePath, file);
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop();
+          const filePath = `${user.id}/${lessonId}/${exerciseId}/${Date.now()}_${file.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('students_exercises_submission_files')
+            .upload(filePath, file);
 
-        if (uploadError) {
-          console.error('Error uploading exercise file:', uploadError);
-          throw uploadError;
+          if (uploadError) {
+            console.error('Error uploading exercise file:', uploadError);
+            throw uploadError;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('students_exercises_submission_files')
+            .getPublicUrl(filePath);
+
+          uploadedFiles.push({
+            url: publicUrl,
+            name: file.name,
+            type: file.type
+          });
         }
-
-        // Obtenir l'URL publique du fichier
-        const { data: { publicUrl } } = supabase.storage
-          .from('students_exercises_submission_files')
-          .getPublicUrl(filePath);
-
-        fileUrl = publicUrl;
-        fileName = file.name;
-        fileType = file.type;
         
-        console.log('Exercise file uploaded successfully:', { fileUrl, fileName, fileType });
+        console.log('Exercise files uploaded successfully:', uploadedFiles);
       }
 
       console.log('Submitting exercise via lesson_messages:', { lessonId, formationId, exerciseId, content });
@@ -121,26 +122,48 @@ export const useSubmitExercise = () => {
       }
 
 
-      // Insérer la soumission d'exercice dans lesson_messages
-      const { data, error } = await supabase
-        .from('lesson_messages')
-        .insert({
+      // Créer un message pour chaque fichier + un message texte si nécessaire
+      const messages = [];
+      
+      // Message texte si du contenu est fourni
+      if (content && content.trim()) {
+        messages.push({
           lesson_id: lessonId,
           formation_id: formationId,
           sender_id: user.id,
           content: content,
-          message_type: fileUrl ? 'file' : 'text',
-          file_url: fileUrl,
-          file_type: fileType,
-          file_name: fileName,
+          message_type: 'text',
           is_exercise_submission: true,
           exercise_status: null,
           exercise_id: exerciseId,
           promotion_id: studentPromotion?.promotion_id,
           level_id: lessonCheck?.level_id
-        })
-        .select()
-        .single();
+        });
+      }
+
+      // Un message par fichier
+      for (const file of uploadedFiles) {
+        messages.push({
+          lesson_id: lessonId,
+          formation_id: formationId,
+          sender_id: user.id,
+          content: `Fichier: ${file.name}`,
+          message_type: 'file',
+          file_url: file.url,
+          file_type: file.type,
+          file_name: file.name,
+          is_exercise_submission: true,
+          exercise_status: null,
+          exercise_id: exerciseId,
+          promotion_id: studentPromotion?.promotion_id,
+          level_id: lessonCheck?.level_id
+        });
+      }
+
+      const { data, error } = await supabase
+        .from('lesson_messages')
+        .insert(messages)
+        .select();
 
       if (error) {
         console.error('Error submitting exercise:', error);
@@ -163,25 +186,25 @@ export const useSubmitExercise = () => {
         console.error('Error updating lesson progress:', progressError);
       }
       
-      console.log('Exercise submitted:', data);
-      return data;
+      console.log('Exercise submitted with', messages.length, 'messages');
+      return data?.[0] || data;
     },
     onSuccess: (data) => {
-      // Invalider toutes les clés possibles pour les messages
+      // Invalider tous les messages de la leçon
       queryClient.invalidateQueries({ 
-        queryKey: ['student-messages', data.lesson_id, data.formation_id] 
+        queryKey: ['student-messages'] 
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['teacher-messages', data.lesson_id, data.formation_id] 
+        queryKey: ['teacher-messages'] 
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['lesson-messages', data.lesson_id, data.formation_id] 
+        queryKey: ['lesson-messages'] 
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['individual-messages', data.lesson_id, data.formation_id] 
+        queryKey: ['individual-messages'] 
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['promotion-messages', data.lesson_id, data.formation_id] 
+        queryKey: ['promotion-messages'] 
       });
       queryClient.invalidateQueries({ 
         queryKey: ['lesson-unlocking'] 
