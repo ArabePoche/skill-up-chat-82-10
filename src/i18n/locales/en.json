@@ -148,6 +148,31 @@
     "videoCall": "Video Call",
     "audioCall": "Audio Call"
   },
+  "messages": {
+    "title": "Discussions & Notifications",
+    "conversations": "Discussions",
+    "searchPlaceholder": "Search in conversations...",
+    "noConversations": "No conversations",
+    "noConversationsHelp": "Click the start discussion button to chat with your contacts",
+    "startDiscussion": "Start a discussion",
+    "loading": "Loading...",
+    "loadingError": "Error loading",
+    "noNotifications": "No notifications",
+    "noNotificationsHelp": "You will be notified here of new activities",
+    "loginToSeeNotifications": "Log in to see your notifications"
+  },
+  "notifications": {
+    "noCategoryNotifications": "No notifications in this category",
+    "categories": {
+      "friendRequests": "Friend Requests",
+      "enrollmentRequests": "Enrollment Requests",
+      "planChanges": "Plan Changes",
+      "paymentRequests": "Payment Requests",
+      "applications": "Applications",
+      "reactions": "Post Reactions",
+      "other": "Other Notifications"
+    }
+  },
   "profile": {
     "myProfile": "My Profile",
     "editProfile": "Edit Profile",
