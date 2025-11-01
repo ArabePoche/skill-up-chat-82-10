@@ -232,12 +232,13 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
     <Button
       onClick={startCapture}
       disabled={disabled}
-      variant="outline"
+      variant="actionPurple"
       size="sm"
-      className="p-2"
+      className="gap-1.5"
       title="Prendre une photo ou importer depuis la galerie"
     >
       <Camera size={16} />
+      <span>Photo</span>
     </Button>
   );
 };
