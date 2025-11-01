@@ -11,8 +11,10 @@ import ShopSidebar from '@/components/shop/ShopSidebar';
 import CategoryFilter from '@/components/shop/CategoryFilter';
 import FormationSections from '@/components/shop/FormationSections';
 import ProductGrid from '@/components/shop/ProductGrid';
+import { useTranslation } from 'react-i18next';
 
 const Shop = () => {
+  const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('formations');
@@ -56,8 +58,8 @@ const Shop = () => {
   }) || [];
 
   const currentCategories = activeTab === 'formations' 
-    ? [{ id: 'all', name: 'all', label: 'Tout' }, ...(formationCategories || [])]
-    : [{ id: 'all', name: 'all', label: 'Tout' }, ...(productCategories || [])];
+    ? [{ id: 'all', name: 'all', label: t('shop.all') }, ...(formationCategories || [])]
+    : [{ id: 'all', name: 'all', label: t('shop.all') }, ...(productCategories || [])];
 
   const isLoading = activeTab === 'formations' 
     ? formationsLoading || formationCategoriesLoading
@@ -120,7 +122,7 @@ const Shop = () => {
                 size="sm"
               >
                 <Filter size={14} />
-                <span>Filtres</span>
+                <span>{t('shop.filters')}</span>
               </Button>
               <div className="flex-1 max-w-xs">
                 <CategoryFilter
@@ -136,7 +138,7 @@ const Shop = () => {
           <div className="p-2 sm:p-4 lg:p-6">
             {isLoading ? (
               <div className="flex justify-center py-12">
-                <div className="text-gray-500">Chargement...</div>
+                <div className="text-gray-500">{t('common.loading')}</div>
               </div>
             ) : activeTab === 'formations' ? (
               <FormationSections
