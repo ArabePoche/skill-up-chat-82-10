@@ -12,6 +12,7 @@ import PaymentProgressBar from '@/components/payments/PaymentProgressBar';
 import PaymentHistoryList from '@/components/payments/PaymentHistoryList';
 import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
 import { GroupChatInterface } from '@/components/group-chat/GroupChatInterface';
+import { useTranslation } from 'react-i18next';
 
 interface Lesson {
   id: number | string;
@@ -61,6 +62,7 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   onBack, 
   onLessonClick 
 }) => {
+  const { t } = useTranslation();
   const { data: userRole } = useUserRole(String(formation.id));
   const { subscription } = useUserSubscription(String(formation.id));
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
@@ -136,7 +138,7 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
               {formation.students_count && (
                 <div className="flex items-center">
                   <Users size={14} className="mr-1" />
-                  <span>{formation.students_count} étudiants</span>
+                  <span>{formation.students_count} {t('formation.studentsCount')}</span>
                 </div>
               )}
               {formation.duration_hours && (
@@ -161,14 +163,14 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
       <div className="bg-white p-4 mb-2 shadow-sm">
         <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
           <BookOpen size={16} className="mr-2" />
-          Accès rapide
+          {t('formation.quickAccess')}
         </h3>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => window.open(`/formation/${formation.id}/pricing`, '_blank')}
             className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
           >
-            💳 Options d'abonnement
+            💳 {t('formation.subscriptionOptions')}
           </button>
           <div className="flex-1">
             <PaymentRequestButton formationId={String(formation.id)} />
