@@ -16,8 +16,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { groupMessagesByDate, formatMessageTime } from '@/utils/dateUtils';
 import { ContactsDiscoveryDialog } from '@/contacts-discovery/components/ContactsDiscoveryDialog';
 import NotificationCategoryItem from '@/components/notifications/NotificationCategoryItem';
+import { useTranslation } from 'react-i18next';
+import { useI18nReady } from '@/hooks/useI18nReady';
 
 const Messages = () => {
+  const { t } = useTranslation();
+  const i18nReady = useI18nReady();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('conversations');
@@ -50,11 +54,15 @@ const Messages = () => {
     }
   };
 
+  if (!i18nReady) {
+    return null;
+  }
+
   if ((activeTab === 'conversations' && conversationsLoading) || (activeTab === 'notifications' && categoriesLoading)) {
     return (
       <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
         <div className="flex justify-center items-center py-12">
-          <div className="text-gray-500">Chargement...</div>
+          <div className="text-gray-500">{t('messages.loading')}</div>
         </div>
       </div>
     );
@@ -64,7 +72,7 @@ const Messages = () => {
     return (
       <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
         <div className="flex justify-center items-center py-12">
-          <div className="text-red-500">Erreur lors du chargement</div>
+          <div className="text-red-500">{t('messages.loadingError')}</div>
         </div>
       </div>
     );
@@ -75,7 +83,7 @@ const Messages = () => {
       {/* Header */}
       <div className="bg-edu-whatsapp-green text-white p-4 sticky top-0 md:top-16">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Discussions & Notifications</h1>
+          <h1 className="text-xl font-semibold">{t('messages.title')}</h1>
           <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
             <MoreVertical size={20} />
           </button>
@@ -90,11 +98,11 @@ const Messages = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-gray-50">
             <TabsTrigger value="conversations" className="flex items-center space-x-2">
-              <span>Discussions</span>
+              <span>{t('messages.conversations')}</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center space-x-2">
               <Bell size={16} />
-              <span>Notifications</span>
+              <span>{t('profile.notifications')}</span>
               {unreadNotifications > 0 && (
                 <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center p-0 text-xs">
                   {unreadNotifications > 99 ? '99+' : unreadNotifications}
@@ -110,7 +118,7 @@ const Messages = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
-                  placeholder="Rechercher dans les conversations..."
+                  placeholder={t('messages.searchPlaceholder')}
                   className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-edu-primary focus:border-transparent"
                 />
               </div>
@@ -168,8 +176,8 @@ const Messages = () => {
                 ))
               ) : (
                 <div className="text-center py-12">
-                  <div className="text-gray-500 mb-2">Aucune conversation</div>
-                  <p className="text-sm text-gray-400">Cliquez sur le bouton démarrer une discussion pour échanger avec vos contacts</p>
+                  <div className="text-gray-500 mb-2">{t('messages.noConversations')}</div>
+                  <p className="text-sm text-gray-400">{t('messages.noConversationsHelp')}</p>
                 </div>
               )}
             </div>
@@ -180,14 +188,14 @@ const Messages = () => {
               {!user ? (
                 <div className="text-center py-12">
                   <Bell size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600">Connectez-vous pour voir vos notifications</p>
+                  <p className="text-gray-600">{t('messages.loginToSeeNotifications')}</p>
                 </div>
               ) : categories.length === 0 ? (
                 <div className="bg-white rounded-lg p-8 border text-center">
                   <Bell size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600 font-medium mb-2">Aucune notification</p>
+                  <p className="text-gray-600 font-medium mb-2">{t('messages.noNotifications')}</p>
                   <p className="text-gray-500 text-sm">
-                    Vous serez notifié ici des nouvelles activités
+                    {t('messages.noNotificationsHelp')}
                   </p>
                 </div>
               ) : (
@@ -227,7 +235,7 @@ const Messages = () => {
         <Button
           onClick={() => setIsDiscoveryOpen(true)}
           className="fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full bg-edu-whatsapp-green hover:bg-edu-whatsapp-green/90 shadow-lg z-50 p-0 flex items-center justify-center"
-          aria-label="Démarrer une discussion"
+          aria-label={t('messages.startDiscussion')}
         >
           <UserPlus size={24} className="text-white" />
         </Button>
