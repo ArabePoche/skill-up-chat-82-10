@@ -201,13 +201,14 @@ const ExerciseSubmissionModal: React.FC<ExerciseSubmissionModalProps> = ({
               
               <Button
                 type="button"
-                variant="outline"
+                variant="actionBlue"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSubmitting || files.length >= 10}
+                className="gap-1.5"
               >
-                <Upload size={16} className="mr-1" />
-                Fichiers
+                <Upload size={16} />
+                <span>Fichiers</span>
               </Button>
 
               <CameraCapture
