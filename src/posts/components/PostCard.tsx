@@ -8,7 +8,7 @@ import { fr, enUS, es, ar } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeletePost } from '@/posts/hooks/usePosts';
 import { usePostLikes } from '@/posts/hooks/usePostLikes';
-import { useFollow } from '@/hooks/useFollow';
+import { useFollow } from '@/friends/hooks/useFollow';
 import PostComments from '@/posts/components/PostComments';
 import PostImageModal from '@/posts/components/PostImageModal';
 import PostLikesModal from '@/posts/components/PostLikesModal';

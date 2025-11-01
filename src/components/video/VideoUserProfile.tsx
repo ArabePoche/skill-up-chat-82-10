@@ -2,7 +2,7 @@ import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Plus, Check } from 'lucide-react';
-import { useFollow } from '@/hooks/useFollow';
+import { useFollow } from '@/friends/hooks/useFollow';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import VerifiedBadge from '@/components/VerifiedBadge';

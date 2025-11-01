@@ -1,9 +1,9 @@
 import React from 'react';
-import { usePendingRequests } from '@/hooks/useFollow';
+import { usePendingRequests } from '@/friends/hooks/useFollow';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Check, X, User } from 'lucide-react';
-import { useFollow } from '@/hooks/useFollow';
+import { useFollow } from '@/friends/hooks/useFollow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
 import { fr, ar, es, enUS } from 'date-fns/locale';

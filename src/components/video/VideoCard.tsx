@@ -12,7 +12,7 @@ import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useFollow } from '@/hooks/useFollow';
+import { useFollow } from '@/friends/hooks/useFollow';
 import { useVideoSeries } from '@/hooks/useVideoSeries';
 import { useVideoViews } from '@/hooks/useVideoViews';
 import VerifiedBadge from '@/components/VerifiedBadge';
