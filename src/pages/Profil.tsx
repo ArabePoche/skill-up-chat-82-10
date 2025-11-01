@@ -21,9 +21,9 @@ import { useFollow, useFollowersCount, useFollowingCount, usePendingSentRequests
 import { Button } from '@/components/ui/button';
 import ProfileCounters from '@/profile/components/ProfileCounters';
 import ProfileTabs from '@/profile/components/ProfileTabs';
-import ProfileMenuDrawer from '@/components/profile/ProfileMenuDrawer';
+import ProfileMenuDrawer from '@/profile/components/ProfileMenuDrawer';
 import NotificationPermissionDialog from '@/components/notifications/NotificationPermissionDialog';
-import AvatarUploadModal from '@/components/profile/AvatarUploadModal';
+import AvatarUploadModal from '@/profile/components/AvatarUploadModal';
 import FriendRequestsPanel from '@/components/FriendRequestsPanel';
 import VideosTab from '@/profile/components/tabs/VideosTab';
 import PostsTab from '@/profile/components/tabs/PostsTab';
