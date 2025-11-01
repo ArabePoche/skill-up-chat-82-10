@@ -4,6 +4,7 @@ import { X, Upload, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAvatarUpload } from '@/profile/hooks/useAvatarUpload';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface AvatarUploadModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   onClose,
   currentAvatarUrl
 }) => {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { mutate: uploadAvatar, isPending } = useAvatarUpload();
@@ -25,13 +27,13 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
     if (file) {
       // Vérification du type de fichier
       if (!file.type.startsWith('image/')) {
-        toast.error('Veuillez sélectionner un fichier image');
+        toast.error(t('profile.selectImageFile'));
         return;
       }
 
       // Vérification de la taille (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('Le fichier est trop volumineux (max 5MB)');
+        toast.error(t('profile.fileTooLarge'));
         return;
       }
 
@@ -48,7 +50,7 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
 
   const handleUpload = () => {
     if (!selectedFile) {
-      toast.error('Veuillez sélectionner une image');
+      toast.error(t('profile.selectImage'));
       return;
     }
 
@@ -57,11 +59,11 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
         onClose();
         setSelectedFile(null);
         setPreviewUrl(null);
-        toast.success('Photo de profil mise à jour !');
+        toast.success(t('profile.avatarUpdated'));
       },
       onError: (error) => {
         console.error('Erreur upload avatar:', error);
-        toast.error('Erreur lors de la mise à jour de la photo');
+        toast.error(t('profile.avatarUpdateError'));
       }
     });
   };
@@ -79,7 +81,7 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
       <div className="bg-white rounded-lg max-w-md w-full p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">
-            Modifier la photo de profil
+            {t('profile.editAvatar')}
           </h2>
           <button
             onClick={handleClose}
@@ -96,13 +98,13 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               {previewUrl ? (
                 <img 
                   src={previewUrl} 
-                  alt="Aperçu" 
+                  alt={t('profile.preview')} 
                   className="w-full h-full object-cover"
                 />
               ) : currentAvatarUrl ? (
                 <img 
                   src={currentAvatarUrl} 
-                  alt="Avatar actuel" 
+                  alt={t('profile.currentAvatar')} 
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -125,14 +127,14 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               className="w-full flex items-center justify-center gap-2 py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-edu-primary cursor-pointer transition-colors"
             >
               <Upload size={20} />
-              <span>Choisir une image</span>
+              <span>{t('profile.chooseImage')}</span>
             </label>
           </div>
 
           {selectedFile && (
             <div className="text-sm text-gray-600">
-              <p>Fichier sélectionné: {selectedFile.name}</p>
-              <p>Taille: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              <p>{t('profile.selectedFile')}: {selectedFile.name}</p>
+              <p>{t('profile.size')}: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
           )}
 
@@ -144,14 +146,14 @@ const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               className="flex-1"
               disabled={isPending}
             >
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleUpload}
               className="flex-1"
               disabled={!selectedFile || isPending}
             >
-              {isPending ? 'Upload...' : 'Enregistrer'}
+              {isPending ? t('profile.uploading') : t('common.save')}
             </Button>
           </div>
         </div>
