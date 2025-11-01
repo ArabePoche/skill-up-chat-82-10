@@ -15,13 +15,13 @@ export const useSubmitGroupExercise = () => {
     mutationFn: async ({ 
       exerciseId,
       content,
-      file,
+      files,
       formationId,
       levelId
     }: {
       exerciseId: string;
       content: string;
-      file?: File;
+      files?: File[];
       formationId: string;
       levelId: string;
     }) => {
@@ -29,36 +29,37 @@ export const useSubmitGroupExercise = () => {
         throw new Error('Utilisateur non authentifié');
       }
 
-      let fileUrl = null;
-      let fileName = null;
-      let fileType = null;
+      const uploadedFiles: Array<{ url: string; name: string; type: string }> = [];
 
-      // Si un fichier est fourni, l'uploader dans le bucket students_exercises_submission_files
-      if (file) {
-        console.log('Uploading group exercise file:', file.name, file.type);
+      // Upload de tous les fichiers
+      if (files && files.length > 0) {
+        console.log('Uploading group exercise files:', files.length);
         
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/${levelId}/${exerciseId}/${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('students_exercises_submission_files')
-          .upload(filePath, file);
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop();
+          const filePath = `${user.id}/${levelId}/${exerciseId}/${Date.now()}_${file.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('students_exercises_submission_files')
+            .upload(filePath, file);
 
-        if (uploadError) {
-          console.error('Error uploading group exercise file:', uploadError);
-          throw uploadError;
+          if (uploadError) {
+            console.error('Error uploading group exercise file:', uploadError);
+            throw uploadError;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('students_exercises_submission_files')
+            .getPublicUrl(filePath);
+
+          uploadedFiles.push({
+            url: publicUrl,
+            name: file.name,
+            type: file.type
+          });
         }
-
-        // Obtenir l'URL publique du fichier
-        const { data: { publicUrl } } = supabase.storage
-          .from('students_exercises_submission_files')
-          .getPublicUrl(filePath);
-
-        fileUrl = publicUrl;
-        fileName = file.name;
-        fileType = file.type;
         
-        console.log('Group exercise file uploaded successfully:', { fileUrl, fileName, fileType });
+        console.log('Group exercise files uploaded successfully:', uploadedFiles);
       }
 
       // Récupérer les informations de l'exercice pour obtenir le lesson_id
@@ -121,26 +122,48 @@ export const useSubmitGroupExercise = () => {
         console.error('Error fetching student promotion:', promotionError);
       }
 
-      // Insérer la soumission d'exercice dans lesson_messages
-      const { data, error } = await supabase
-        .from('lesson_messages')
-        .insert({
+      // Créer un message pour chaque fichier + un message texte si nécessaire
+      const messages = [];
+      
+      // Message texte si du contenu est fourni
+      if (content && content.trim()) {
+        messages.push({
           lesson_id: lessonId,
           formation_id: formationId,
           sender_id: user.id,
           content: content,
-          message_type: fileUrl ? 'file' : 'text',
-          file_url: fileUrl,
-          file_type: fileType,
-          file_name: fileName,
+          message_type: 'text',
           is_exercise_submission: true,
           exercise_status: null,
           exercise_id: exerciseId,
           promotion_id: studentPromotion?.promotion_id,
           level_id: levelId
-        })
-        .select()
-        .single();
+        });
+      }
+
+      // Un message par fichier
+      for (const file of uploadedFiles) {
+        messages.push({
+          lesson_id: lessonId,
+          formation_id: formationId,
+          sender_id: user.id,
+          content: `Fichier: ${file.name}`,
+          message_type: 'file',
+          file_url: file.url,
+          file_type: file.type,
+          file_name: file.name,
+          is_exercise_submission: true,
+          exercise_status: null,
+          exercise_id: exerciseId,
+          promotion_id: studentPromotion?.promotion_id,
+          level_id: levelId
+        });
+      }
+
+      const { data, error } = await supabase
+        .from('lesson_messages')
+        .insert(messages)
+        .select();
 
       if (error) {
         console.error('Error submitting group exercise:', error);
@@ -163,19 +186,19 @@ export const useSubmitGroupExercise = () => {
         console.error('Error updating lesson progress:', progressError);
       }
       
-      console.log('Group exercise submitted:', data);
-      return data;
+      console.log('Group exercise submitted with', messages.length, 'messages');
+      return data?.[0] || data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalider toutes les clés possibles pour les messages de groupe
       queryClient.invalidateQueries({ 
-        queryKey: ['group-chat-messages', data.formation_id, data.level_id] 
+        queryKey: ['group-chat-messages'] 
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['promotion-messages', data.level_id, data.formation_id] 
+        queryKey: ['promotion-messages'] 
       });
       queryClient.invalidateQueries({ 
-        queryKey: ['level-exercises', data.level_id] 
+        queryKey: ['level-exercises'] 
       });
       queryClient.invalidateQueries({ 
         queryKey: ['lesson-unlocking'] 
