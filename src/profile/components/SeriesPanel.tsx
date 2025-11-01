@@ -6,6 +6,7 @@ import { X, Play, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSeriesVideos } from '@/profile/hooks/useSeriesVideos';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface SeriesPanelProps {
   seriesId: string;
@@ -23,6 +24,7 @@ const SeriesPanel: React.FC<SeriesPanelProps> = ({
   onManageSeries,
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { data: episodes, isLoading } = useSeriesVideos(seriesId);
 
   const handlePlayVideo = (videoId: string) => {
@@ -37,7 +39,7 @@ const SeriesPanel: React.FC<SeriesPanelProps> = ({
         <div className="flex-1">
           <h2 className="text-xl font-semibold">{seriesTitle}</h2>
           <p className="text-sm text-muted-foreground">
-            {episodes?.length || 0} épisode{episodes && episodes.length > 1 ? 's' : ''}
+            {t('video.episodeCount', { count: episodes?.length || 0 })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -56,7 +58,7 @@ const SeriesPanel: React.FC<SeriesPanelProps> = ({
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-muted-foreground">Chargement...</div>
+            <div className="text-muted-foreground">{t('common.loading')}</div>
           </div>
         ) : episodes && episodes.length > 0 ? (
           <div className="p-4 space-y-3">
@@ -90,7 +92,7 @@ const SeriesPanel: React.FC<SeriesPanelProps> = ({
                     {episode.videos.title}
                   </h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Épisode {index + 1}
+                    {t('video.episodeNumber', { number: index + 1 })}
                   </p>
                 </div>
               </div>
@@ -99,7 +101,7 @@ const SeriesPanel: React.FC<SeriesPanelProps> = ({
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <p className="text-muted-foreground">
-              Aucun épisode dans cette série
+              {t('video.noEpisodes')}
             </p>
           </div>
         )}
