@@ -20,6 +20,7 @@ import { SubscriptionUpgradeModal } from './chat/SubscriptionUpgradeModal';
 import VideoMessageSwitch from './video/VideoMessageSwitch';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 
 interface ChatInterfaceProps {
@@ -38,6 +39,7 @@ interface ChatInterfaceProps {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack }) => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{
     id: string;
@@ -135,10 +137,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     if (userRole?.role === 'student') {
       const success = await initiateCall(type, '', lesson.id.toString());
       if (success) {
-        toast.info(`Appel ${type === 'video' ? 'vidéo' : 'audio'} envoyé aux professeurs`);
+        toast.info(`${t(type === 'video' ? 'formation.videoCall' : 'formation.audioCall')} ${t('video.share').toLowerCase()}`);
       }
     } else {
-      toast.info('Fonctionnalité d\'appel disponible pour les élèves');
+      toast.info(t('formation.audioCall'));
     }
   };
 
@@ -192,8 +194,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     return (
       <div className="min-h-screen bg-[#e5ddd5] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">Vérification...</div>
-          <p className="text-gray-600">Connexion en cours</p>
+          <div className="text-lg font-semibold mb-2">{t('formation.verifying')}</div>
+          <p className="text-gray-600">{t('formation.connecting')}</p>
         </div>
       </div>
     );
@@ -207,8 +209,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     return (
       <div className="min-h-screen bg-[#e5ddd5] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">Chargement...</div>
-          <p className="text-gray-600">Récupération des messages</p>
+          <div className="text-lg font-semibold mb-2">{t('common.loading')}</div>
+          <p className="text-gray-600">{t('formation.loadingMessages')}</p>
         </div>
       </div>
     );
@@ -222,13 +224,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       {incomingCall && userRole?.role === 'teacher' && (
         <div className="fixed top-20 right-4 bg-white border rounded-lg shadow-lg p-4 z-50">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">Appel entrant</h3>
+            <h3 className="font-semibold">{t('formation.incomingCall')}</h3>
             <span className="text-sm text-gray-500">
               {incomingCall.call_type === 'video' ? '📹' : '📞'}
             </span>
           </div>
           <p className="text-sm mb-3">
-            Vous avez un appel entrant
+            {t('formation.incomingCallMsg')}
           </p>
           <div className="flex space-x-2">
             <Button 
@@ -236,14 +238,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
               onClick={() => acceptCall(incomingCall.id)}
               className="bg-green-500 hover:bg-green-600"
             >
-              Accepter
+              {t('formation.accept')}
             </Button>
             <Button 
               size="sm" 
               variant="outline"
               onClick={() => rejectCall(incomingCall.id)}
             >
-              Rejeter
+              {t('formation.reject')}
             </Button>
           </div>
         </div>
@@ -265,7 +267,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
             <div className="flex-1 min-w-0">
               <h1 className="font-semibold text-sm sm:text-base md:text-lg truncate">{lesson.title}</h1>
               <p className="text-xs sm:text-sm text-white/80 truncate">
-                Formation: {formation.title}
+                {t('formation.formationLabel')} {formation.title}
               </p>
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs text-white/60">
               {/* Indicateur de frappe en-tête supprimé (géré en liste) */}
@@ -281,7 +283,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
                 size="sm"
                 onClick={() => handleCall('video')}
                 className="p-2 hover:bg-white/10 rounded-full text-white"
-                title="Appel vidéo"
+                title={t('formation.videoCall')}
               >
                 <Video size={18} className="sm:w-5 sm:h-5" />
               </Button>
@@ -290,7 +292,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
                 size="sm"
                 onClick={() => handleCall('audio')}
                 className="p-2 hover:bg-white/10 rounded-full text-white"
-                title="Appel audio"
+                title={t('formation.audioCall')}
               >
                 <Phone size={18} className="sm:w-5 sm:h-5" />
               </Button>
