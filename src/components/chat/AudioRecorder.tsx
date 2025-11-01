@@ -101,12 +101,13 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
         <Button
           onClick={startRecording}
           disabled={disabled}
-          variant="outline"
+          variant="actionOrange"
           size="sm"
-          className="p-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all duration-200 flex-shrink-0 hover:bg-gray-100 hover:scale-105"
+          className="gap-1.5 transition-all duration-200 flex-shrink-0 hover:scale-105"
           title="Enregistrer un message vocal"
         >
-          <Mic size={12} className="sm:w-[14px] sm:h-[14px]" />
+          <Mic size={16} />
+          <span>Vocal</span>
         </Button>
       ) : (
         <Button
