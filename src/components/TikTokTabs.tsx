@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Video, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface TikTokTabsProps {
   activeTab: 'videos' | 'posts' | 'search';
@@ -7,10 +8,11 @@ interface TikTokTabsProps {
 }
 
 const TikTokTabs: React.FC<TikTokTabsProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useTranslation();
   const tabs = [
-    { id: 'videos' as const, label: 'Vidéos', icon: Video },
-    { id: 'posts' as const, label: 'Posts', icon: FileText },
-    { id: 'search' as const, label: 'Recherche', icon: Search },
+    { id: 'videos' as const, label: t('common.videos'), icon: Video },
+    { id: 'posts' as const, label: t('common.posts'), icon: FileText },
+    { id: 'search' as const, label: t('common.search'), icon: Search },
   ];
 
   const isPostsActive = activeTab === 'posts';
