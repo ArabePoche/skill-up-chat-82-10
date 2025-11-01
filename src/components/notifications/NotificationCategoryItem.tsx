@@ -5,6 +5,8 @@ import { useCategoryNotifications } from '@/hooks/notifications/useCategoryNotif
 import NotificationItem from '@/components/NotificationItem';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { useI18nReady } from '@/hooks/useI18nReady';
 
 interface NotificationCategoryItemProps {
   category: string;
@@ -22,6 +24,8 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
   unreadCount,
   isOpen,
 }) => {
+  const { t } = useTranslation();
+  const i18nReady = useI18nReady();
   const queryClient = useQueryClient();
   // Charger les notifications uniquement quand la catégorie est ouverte
   const { data: notifications = [], isLoading } = useCategoryNotifications(category, isOpen);
@@ -74,21 +78,25 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
   const getCategoryTitle = (cat: string) => {
     switch (cat) {
       case 'friend_requests':
-        return 'Demandes d\'amitié';
+        return t('notifications.categories.friendRequests');
       case 'enrollment_requests':
-        return 'Demandes d\'inscription';
+        return t('notifications.categories.enrollmentRequests');
       case 'plan_changes':
-        return 'Changements de plan';
+        return t('notifications.categories.planChanges');
       case 'payment_requests':
-        return 'Demandes de paiement';
+        return t('notifications.categories.paymentRequests');
       case 'applications':
-        return 'Candidatures';
+        return t('notifications.categories.applications');
       case 'reactions':
-        return 'Réactions publications';
+        return t('notifications.categories.reactions');
       default:
-        return 'Autres notifications';
+        return t('notifications.categories.other');
     }
   };
+
+  if (!i18nReady) {
+    return null;
+  }
 
   return (
     <AccordionItem value={category} className="bg-white rounded-lg border">
@@ -115,11 +123,11 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
       <AccordionContent className="px-6 pb-4">
         {isLoading ? (
           <div className="text-center py-4 text-gray-500">
-            Chargement...
+            {t('common.loading')}
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-4 text-gray-500">
-            Aucune notification dans cette catégorie
+            {t('notifications.noCategoryNotifications')}
           </div>
         ) : (
           <div className="space-y-3 pt-2">
