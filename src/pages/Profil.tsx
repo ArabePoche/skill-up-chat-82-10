@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import {
   AlertDialog,
@@ -34,6 +35,7 @@ import { StreakBadge } from '@/streak';
 type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
 
 const Profil = () => {
+  const { t } = useTranslation();
   const { user, profile: currentUserProfile } = useAuth();
   const navigate = useNavigate();
   const { profileId } = useParams();
@@ -117,7 +119,7 @@ const Profil = () => {
     if (profile?.email) {
       return profile.email;
     }
-    return user?.email || 'Utilisateur';
+    return user?.email || t('profile.user');
   };
 
   const renderTabContent = () => {
@@ -143,7 +145,7 @@ const Profil = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Chargement du profil...</p>
+          <p className="text-muted-foreground">{t('profile.loadingProfile')}</p>
         </div>
       </div>
     );
@@ -202,7 +204,7 @@ const Profil = () => {
                 {/* @ts-ignore - is_verified sera disponible après régénération des types */}
                 {(profile as any)?.is_verified && <VerifiedBadge size={18} />}
               </h1>
-              <p className="text-sm text-muted-foreground">@{profile?.username || 'utilisateur'}</p>
+              <p className="text-sm text-muted-foreground">@{profile?.username || t('profile.user')}</p>
             </div>
           </div>
         </div>
@@ -217,7 +219,7 @@ const Profil = () => {
                   className="flex-1 bg-blue-500 hover:bg-blue-600"
                 >
                   <MessageCircle size={18} className="mr-2" />
-                  Discuter
+                  {t('profile.chat')}
                 </Button>
                 <Button
                   onClick={() => setShowRemoveFriendDialog(true)}
@@ -225,7 +227,7 @@ const Profil = () => {
                   className="flex-1 bg-green-500 hover:bg-green-600"
                 >
                   <UserCheck size={18} className="mr-2" />
-                  Amis
+                  {t('profile.friends')}
                 </Button>
               </div>
             ) : friendshipStatus === 'pending_sent' ? (
@@ -234,7 +236,7 @@ const Profil = () => {
                 disabled={isFollowLoading}
                 className="w-full bg-yellow-500 hover:bg-yellow-600"
               >
-                Demande envoyée
+                {t('profile.requestSent')}
               </Button>
             ) : friendshipStatus === 'pending_received' ? (
               <div className="flex gap-2">
@@ -243,14 +245,14 @@ const Profil = () => {
                   disabled={isFollowLoading}
                   className="flex-1 bg-green-500 hover:bg-green-600"
                 >
-                  Accepter
+                  {t('profile.accept')}
                 </Button>
                 <Button
                   onClick={() => cancelRequest()}
                   disabled={isFollowLoading}
                   className="flex-1 bg-red-500 hover:bg-red-600"
                 >
-                  Refuser
+                  {t('profile.reject')}
                 </Button>
               </div>
             ) : (
@@ -260,7 +262,7 @@ const Profil = () => {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 <UserPlus size={18} className="mr-2" />
-                Envoyer une demande
+                {t('profile.sendRequest')}
               </Button>
             )}
           </div>
@@ -318,14 +320,13 @@ const Profil = () => {
       <AlertDialog open={showRemoveFriendDialog} onOpenChange={setShowRemoveFriendDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Retirer cet ami ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('profile.removeFriend')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir retirer {profile?.first_name} {profile?.last_name} de votre liste d'amis ?
-              Vous devrez envoyer une nouvelle demande pour redevenir amis.
+              {t('profile.removeFriendConfirm', { name: `${profile?.first_name} ${profile?.last_name}` })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 removeFriend();
@@ -333,7 +334,7 @@ const Profil = () => {
               }}
               className="bg-red-500 hover:bg-red-600"
             >
-              Retirer
+              {t('profile.remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
