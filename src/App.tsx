@@ -26,6 +26,7 @@ import TeacherInterface from '@/pages/cours/TeacherInterface';
 import LessonChat from '@/pages/cours/LessonChat';
 import GroupLessonChat from '@/pages/cours/GroupLessonChat';
 import Conversations from '@/pages/Conversations';
+import UploadVideo from '@/pages/UploadVideo';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 
@@ -68,6 +69,9 @@ const AppWithRouter: React.FC = () => {
         
         {/* Routes pour conversations */}
         <Route path="/conversations/:otherUserId" element={<Conversations />} />
+        
+        {/* Route pour upload vidéo */}
+        <Route path="/upload-video" element={<UploadVideo />} />
         
         {/* Partage vidéo et post dédiés + onglets */}
         <Route path="/video/:id" element={<Layout />} />

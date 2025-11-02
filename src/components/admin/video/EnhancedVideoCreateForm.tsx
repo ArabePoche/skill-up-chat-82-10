@@ -18,9 +18,19 @@ interface EnhancedVideoCreateFormProps {
 }
 
 const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuccess, onCancel }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { uploadFile, isUploading } = useFileUpload();
-  const { data: formations = [] } = useFormations();
+  const { data: allFormations = [] } = useFormations();
+  
+  // Filtrer les formations selon le rôle de l'utilisateur
+  const formations = React.useMemo(() => {
+    // Si admin, afficher toutes les formations
+    if (profile?.role === 'admin') {
+      return allFormations;
+    }
+    // Sinon, afficher uniquement les formations dont l'utilisateur est auteur
+    return allFormations.filter(formation => formation.author_id === user?.id);
+  }, [allFormations, profile?.role, user?.id]);
   
   const [formData, setFormData] = useState({
     title: '',
