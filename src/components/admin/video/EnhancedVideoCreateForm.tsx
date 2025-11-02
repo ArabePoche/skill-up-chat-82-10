@@ -105,6 +105,12 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
       return;
     }
 
+    // Vérifier que pour une vidéo promo ou leçon, une formation est sélectionnée
+    if ((formData.video_type === 'promo' || formData.video_type === 'lesson') && !formData.formation_id.trim()) {
+      toast.error('Veuillez sélectionner une formation pour ce type de vidéo');
+      return;
+    }
+
     try {
       let videoUrl = formData.video_url;
       let thumbnailUrl = formData.thumbnail_url;
@@ -276,28 +282,48 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
 
       {(formData.video_type === 'promo' || formData.video_type === 'lesson') && (
         <div>
-          <Label htmlFor="formation_id">Formation associée</Label>
+          <Label htmlFor="formation_id">
+            Formation associée <span className="text-destructive">*</span>
+          </Label>
           <Select
             value={formData.formation_id}
             onValueChange={(value) => handleInputChange('formation_id', value)}
+            required
           >
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner une formation" />
             </SelectTrigger>
             <SelectContent>
-              {formations.map((formation) => (
-                <SelectItem key={formation.id} value={formation.id}>
-                  {formation.title}
+              {formations.length === 0 ? (
+                <SelectItem value="no-formations" disabled>
+                  Aucune formation disponible
                 </SelectItem>
-              ))}
+              ) : (
+                formations.map((formation) => (
+                  <SelectItem key={formation.id} value={formation.id}>
+                    {formation.title}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
+          {formations.length === 0 && (
+            <p className="text-sm text-destructive mt-1">
+              ⚠️ Vous devez d'abord créer une formation pour créer une vidéo {formData.video_type === 'promo' ? 'promotionnelle' : 'de leçon'}.
+            </p>
+          )}
         </div>
       )}
 
-      
       <div className="flex space-x-2">
-        <Button type="submit" className="flex-1" disabled={isUploading}>
+        <Button 
+          type="submit" 
+          className="flex-1" 
+          disabled={
+            isUploading || 
+            (formations.length === 0 && (formData.video_type === 'promo' || formData.video_type === 'lesson'))
+          }
+        >
           {isUploading ? 'Upload en cours...' : 'Créer'}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
