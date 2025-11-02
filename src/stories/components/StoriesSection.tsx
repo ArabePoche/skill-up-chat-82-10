@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
 import { Plus, Eye } from 'lucide-react';
-import { useStories, useCreateStory, useDeleteStory, type Story } from '@/hooks/useStories';
+import { useStories, useCreateStory, useDeleteStory, type Story } from '@/stories/hooks/useStories';
 import { useAuth } from '@/hooks/useAuth';
 import StoryViewer from './StoryViewer';
 import CreateStoryModal from './CreateStoryModal';
-import StoryViewersModal from './stories/StoryViewersModal';
-import MyStoriesListModal from './stories/MyStoriesListModal';
+import StoryViewersModal from './StoryViewersModal';
+import MyStoriesListModal from './MyStoriesListModal';
 import { toast } from 'sonner';
 
 interface GroupedStories {

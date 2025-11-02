@@ -12,7 +12,7 @@ import { ValidatedByTeacherBadge } from './ValidatedByTeacherBadge';
 import EmojiPicker from '@/components/EmojiPicker';
 import { MoreVertical, Reply, Edit2, Trash2, Smile, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCreateStory } from '@/hooks/useStories';
+import { useCreateStory } from '@/stories/hooks/useStories';
 import { toast } from 'sonner';
 import {
   ContextMenu,

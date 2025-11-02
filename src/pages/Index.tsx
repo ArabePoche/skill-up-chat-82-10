@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import StatusBar from '@/components/StatusBar';
 import TikTokTabs from '@/components/TikTokTabs';
-import StoriesSection from '@/components/StoriesSection';
+import StoriesSection from '@/stories/components/StoriesSection';
 import TikTokVideosView from '@/components/TikTokVideosView';
 import PostsSection from '@/posts/components/PostsSection';
 import CreatePostModal from '@/posts/components/CreatePostModal';
-import CreateStoryModal from '@/components/CreateStoryModal';
+import CreateStoryModal from '@/stories/components/CreateStoryModal';
 import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {

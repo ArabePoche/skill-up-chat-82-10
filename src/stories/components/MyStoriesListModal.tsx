@@ -4,7 +4,7 @@
 import React from 'react';
 import { X, Eye, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { type Story } from '@/hooks/useStories';
+import { type Story } from '@/stories/hooks/useStories';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {

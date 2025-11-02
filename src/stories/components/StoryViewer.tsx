@@ -4,11 +4,11 @@ import { X, ChevronLeft, ChevronRight, Send, Eye, Mic } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useMarkStoryAsViewed } from '@/hooks/useStories';
+import { useMarkStoryAsViewed } from '@/stories/hooks/useStories';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import StoryViewersModal from '@/components/stories/StoryViewersModal';
+import StoryViewersModal from './StoryViewersModal';
 import { useNavigate } from 'react-router-dom';
 import VerifiedBadge from '@/components/VerifiedBadge';
 

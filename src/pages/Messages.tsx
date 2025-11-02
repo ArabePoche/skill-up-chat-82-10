@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import NotificationItem from '@/components/NotificationItem';
-import StoriesSection from '@/components/StoriesSection';
+import StoriesSection from '@/stories/components/StoriesSection';
 import { useAuth } from '@/hooks/useAuth';
 import { groupMessagesByDate, formatMessageTime } from '@/utils/dateUtils';
 import { ContactsDiscoveryDialog } from '@/contacts-discovery/components/ContactsDiscoveryDialog';

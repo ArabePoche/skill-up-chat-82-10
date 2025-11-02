@@ -4,7 +4,7 @@ import { X, Camera, Type, Mic, Video} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreateStory, useUpdateStory } from '@/hooks/useStories';
+import { useCreateStory, useUpdateStory } from '@/stories/hooks/useStories';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import AudioRecorder from '@/components/chat/AudioRecorder';
