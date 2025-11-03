@@ -5,6 +5,7 @@ import { useShopFormations, useFormationCategories } from '@/hooks/useShopFormat
 import { useProducts, useCategories } from '@/hooks/useProducts';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
+import { useUserInterests } from '@/hooks/useUserInterests';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ShopHeader from '@/components/shop/ShopHeader';
@@ -26,6 +27,7 @@ const Shop = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { cartItemsCount, addToCart } = useCart();
+  const { data: userInterests = [] } = useUserInterests();
   
   const { data: formations, isLoading: formationsLoading } = useShopFormations(activeCategory);
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
@@ -63,9 +65,6 @@ const Shop = () => {
   const isLoading = activeTab === 'formations' 
     ? formationsLoading || formationCategoriesLoading
     : productsLoading || productCategoriesLoading;
-
-  // Récupérer les centres d'intérêt de l'utilisateur depuis le profil
-  const userInterests = user ? (user as any).interests || [] : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
