@@ -3,12 +3,17 @@
  * Affiche les articles du panier avec possibilité de modifier/supprimer
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useCart } from '@/hooks/useCart';
+import { useOrders } from '@/hooks/shop/useOrders';
+import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,7 +23,17 @@ interface CartDrawerProps {
 }
 
 const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
-  const { cartItems, removeFromCart, updateQuantity, cartItemsCount, refreshCart } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, cartItemsCount, refreshCart, clearCart } = useCart();
+  const { createOrder, loading: orderLoading } = useOrders();
+  const { user } = useAuth();
+  const [showCheckoutForm, setShowCheckoutForm] = useState(false);
+  const [formData, setFormData] = useState({
+    delivery_address: '',
+    delivery_city: '',
+    delivery_postal_code: '',
+    delivery_phone: '',
+    buyer_notes: '',
+  });
 
   // Rafraîchir le panier à chaque ouverture du drawer
   useEffect(() => {
@@ -27,7 +42,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen, refreshCart]);
 
-  // Récupérer les détails des produits du panier
+  // Récupérer les détails des produits du panier avec le seller_id
   const { data: productsDetails } = useQuery({
     queryKey: ['cart-products', cartItems.map(item => item.product_id)],
     queryFn: async () => {
@@ -36,7 +51,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
       const productIds = cartItems.map(item => item.product_id);
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, price, image_url, product_media(media_url)')
+        .select('id, title, price, image_url, seller_id, product_media(media_url)')
         .in('id', productIds);
 
       if (error) throw error;
@@ -55,6 +70,46 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
       const product = getProductDetails(item.product_id);
       return total + (product?.price || 0) * item.quantity;
     }, 0);
+  };
+
+  const handleCheckout = async () => {
+    if (!user || !productsDetails) return;
+
+    const items = cartItems.map(item => {
+      const product = getProductDetails(item.product_id);
+      return {
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: product?.price || 0,
+        seller_id: product?.seller_id || '',
+      };
+    }).filter(item => item.seller_id); // Filtrer les produits sans vendeur
+
+    if (items.length === 0) {
+      return;
+    }
+
+    const orders = await createOrder({
+      delivery_address: formData.delivery_address,
+      delivery_city: formData.delivery_city,
+      delivery_postal_code: formData.delivery_postal_code,
+      delivery_phone: formData.delivery_phone,
+      buyer_notes: formData.buyer_notes,
+      items,
+    });
+
+    if (orders) {
+      await clearCart();
+      setShowCheckoutForm(false);
+      setFormData({
+        delivery_address: '',
+        delivery_city: '',
+        delivery_postal_code: '',
+        delivery_phone: '',
+        buyer_notes: '',
+      });
+      onClose();
+    }
   };
 
   return (
@@ -154,15 +209,89 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                 <span className="text-orange-600">{Math.round(calculateTotal())}€</span>
               </div>
 
-              <Button 
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-base font-semibold"
-                onClick={() => {
-                  // TODO: Implémenter le processus de checkout
-                  console.log('Checkout');
-                }}
-              >
-                Passer la commande
-              </Button>
+              {!showCheckoutForm ? (
+                <Button 
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white h-12 text-base font-semibold"
+                  onClick={() => setShowCheckoutForm(true)}
+                >
+                  Passer la commande
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="delivery_phone">Téléphone *</Label>
+                    <Input
+                      id="delivery_phone"
+                      type="tel"
+                      value={formData.delivery_phone}
+                      onChange={(e) => setFormData({...formData, delivery_phone: e.target.value})}
+                      placeholder="+33 6 12 34 56 78"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="delivery_address">Adresse *</Label>
+                    <Input
+                      id="delivery_address"
+                      value={formData.delivery_address}
+                      onChange={(e) => setFormData({...formData, delivery_address: e.target.value})}
+                      placeholder="123 Rue Example"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="delivery_city">Ville *</Label>
+                    <Input
+                      id="delivery_city"
+                      value={formData.delivery_city}
+                      onChange={(e) => setFormData({...formData, delivery_city: e.target.value})}
+                      placeholder="Paris"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="delivery_postal_code">Code postal *</Label>
+                    <Input
+                      id="delivery_postal_code"
+                      value={formData.delivery_postal_code}
+                      onChange={(e) => setFormData({...formData, delivery_postal_code: e.target.value})}
+                      placeholder="75001"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="buyer_notes">Notes (optionnel)</Label>
+                    <Textarea
+                      id="buyer_notes"
+                      value={formData.buyer_notes}
+                      onChange={(e) => setFormData({...formData, buyer_notes: e.target.value})}
+                      placeholder="Instructions spéciales..."
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setShowCheckoutForm(false)}
+                    >
+                      Retour
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                      onClick={handleCheckout}
+                      disabled={orderLoading || !formData.delivery_phone || !formData.delivery_address || !formData.delivery_city || !formData.delivery_postal_code}
+                    >
+                      {orderLoading ? 'Envoi...' : 'Confirmer'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
