@@ -2189,7 +2189,7 @@ export type Database = {
           original_price: number | null
           price: number
           product_category_id: string | null
-          product_type: Database["public"]["Enums"]["product_type"]
+          product_type: string
           product_type_id: string | null
           promo_video_url: string | null
           purchase_price: number | null
@@ -2224,7 +2224,7 @@ export type Database = {
           original_price?: number | null
           price: number
           product_category_id?: string | null
-          product_type: Database["public"]["Enums"]["product_type"]
+          product_type: string
           product_type_id?: string | null
           promo_video_url?: string | null
           purchase_price?: number | null
@@ -2259,7 +2259,7 @@ export type Database = {
           original_price?: number | null
           price?: number
           product_category_id?: string | null
-          product_type?: Database["public"]["Enums"]["product_type"]
+          product_type?: string
           product_type_id?: string | null
           promo_video_url?: string | null
           purchase_price?: number | null
@@ -4235,10 +4235,15 @@ export type Database = {
         Returns: undefined
       }
       has_role: { Args: { role: string; user_id: string }; Returns: boolean }
-      increment_messages_sent: {
-        Args: { p_date?: string; p_formation_id: string; p_user_id: string }
-        Returns: number
-      }
+      increment_messages_sent:
+        | {
+            Args: { p_date?: string; p_formation_id: string; p_user_id: string }
+            Returns: number
+          }
+        | {
+            Args: { p_formation_id: string; p_user_id: string }
+            Returns: undefined
+          }
       increment_post_comments: { Args: { post_id: string }; Returns: undefined }
       initialize_first_lesson: {
         Args: { p_lesson_id: string; p_user_id: string }
