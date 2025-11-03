@@ -163,9 +163,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
 
       <CardContent className="p-4">
         <div className="mb-2">
-          <Badge variant="outline" className="text-xs">
-            {product.product_type === 'formation' ? 'Formation' : 
-             product.product_type === 'article' ? 'Article' : 'Service'}
+          <Badge variant="outline" className="text-xs capitalize">
+            {product.product_type}
           </Badge>
         </div>
 
@@ -210,7 +209,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
         <Button 
           className="w-full bg-orange-500 hover:bg-orange-600 text-white"
           disabled={!user}
-          onClick={() => onAddToCart?.(product.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToCart?.(product.id);
+          }}
         >
           <ShoppingCart size={16} className="mr-2" />
           {!user ? 'Connectez-vous' : 'Ajouter au panier'}
