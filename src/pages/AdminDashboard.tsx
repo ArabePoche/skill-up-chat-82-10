@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +15,7 @@ import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PromotionManagementAdmin } from '@/components/promotions/PromotionManagementAdmin';
 import { TeacherApplicationsList } from '@/teacher-application/components/TeacherApplicationsList';
+import VerificationRequestsManagement from '@/components/admin/VerificationRequestsManagement';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -73,6 +73,8 @@ const AdminDashboard = () => {
         return <TeachersManagement />;
       case 'teacher-applications':
         return <TeacherApplicationsList />;
+      case 'verification-requests':
+        return <VerificationRequestsManagement />;
       case 'promotions':
         return <PromotionManagementAdmin />;
       case 'products':

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Video, List } from 'lucide-react';
+import { Video, List, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserVideos } from '@/profile/hooks/useUserVideos';
 import { useUserSeries } from '@/profile/hooks/useUserSeries';
@@ -12,6 +12,7 @@ import ManageSeriesDialog from '@/profile/components/ManageSeriesDialog';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
 
 interface VideosTabProps {
   userId?: string;
@@ -27,10 +28,27 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   const [selectedSeriesTitle, setSelectedSeriesTitle] = useState<string>('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [manageSeriesId, setManageSeriesId] = useState<string | null>(null);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   
   const { data: seriesEpisodes, refetch: refetchEpisodes } = useSeriesVideos(manageSeriesId || undefined);
   
   const isOwner = user?.id === userId;
+
+  // Récupérer le profil pour vérifier si l'utilisateur est vérifié
+  const { data: profile } = useQuery({
+    queryKey: ['profile', userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_verified')
+        .eq('id', userId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
 
   // Récupérer toutes les associations vidéos-séries
   const { data: videoSeriesMap } = useQuery({
@@ -111,6 +129,27 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   return (
     <>
       <div className="pb-4">
+        {/* Bouton Créer une vidéo - pour tous les utilisateurs propriétaires */}
+        {isOwner && (
+          <div className="px-4 pt-4 pb-2">
+            <Button
+              onClick={() => {
+                // Si non vérifié, afficher le dialog
+                if (!(profile as any)?.is_verified) {
+                  setShowVerificationDialog(true);
+                  return;
+                }
+                // Si vérifié, naviguer vers l'upload
+                navigate('/upload-video');
+              }}
+              className="w-full bg-edu-primary hover:bg-edu-primary/90 text-white"
+            >
+              <Plus size={20} className="mr-2" />
+              Créer une vidéo
+            </Button>
+          </div>
+        )}
+
         {/* Section Séries */}
         {series && series.length > 0 && (
           <SeriesCarousel
@@ -216,6 +255,13 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
           onSuccess={handleManageSeriesSuccess}
         />
       )}
+
+      {/* Dialog de vérification requis */}
+      <VerificationRequiredDialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        featureName="La création de vidéos"
+      />
     </>
   );
 };

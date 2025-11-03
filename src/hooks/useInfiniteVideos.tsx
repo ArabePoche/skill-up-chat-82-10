@@ -11,6 +11,7 @@ interface Video {
   thumbnail_url: string;
   likes_count: number;
   comments_count: number;
+  views_count?: number;
   author_id: string;
   video_type?: string;
   formation_id?: string;
@@ -57,7 +58,8 @@ export const useInfiniteVideos = () => {
             first_name,
             last_name,
             username,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .eq('is_active', true)

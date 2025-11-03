@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useSubmitExercise } from '@/hooks/useSubmitExercise';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseCard from './ExerciseCard';
-import SubmissionForm from './SubmissionForm';
 import SubmittedExercise from './SubmittedExercise';
+import ExerciseSubmissionModal from '@/components/exercise-submission/ExerciseSubmissionModal';
 
 interface ExerciseSubmissionProps {
   exercise: {
@@ -17,10 +17,11 @@ interface ExerciseSubmissionProps {
   lessonId: string;
   formationId: string;
   isSubmitted?: boolean;
-  exerciseStatus?: string; // Nouveau prop pour le statut (approved, rejected, pending)
+  exerciseStatus?: string;
   onSubmissionComplete?: () => void;
   showSubmissionOptions?: boolean;
-  canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
+  canSubmitExercise?: boolean;
+  messages?: any[]; // Pour récupérer la soumission existante
 }
 
 const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({ 
@@ -31,28 +32,29 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
   exerciseStatus,
   onSubmissionComplete,
   showSubmissionOptions = true,
-  canSubmitExercise
+  canSubmitExercise,
+  messages = []
 }) => {
-  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const submitExerciseMutation = useSubmitExercise();
   
   // Utiliser le contrôle d'accès si canSubmitExercise n'est pas fourni
   const { canSubmitExercise: globalCanSubmit } = useAccessControl(formationId);
   const canSubmit = canSubmitExercise !== undefined ? canSubmitExercise : globalCanSubmit;
 
-  const handleSubmit = async (submissionText: string, selectedFile?: File) => {
-    if (!submissionText.trim() && !selectedFile) return;
+  const handleSubmit = async (content: string, files: File[]) => {
+    if (!content.trim() && files.length === 0) return;
 
     try {
       await submitExerciseMutation.mutateAsync({
         lessonId,
         formationId,
         exerciseId: exercise.id,
-        content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
-        file: selectedFile,
+        content: content || `Soumission de l'exercice: ${exercise.title}`,
+        files: files,
       });
 
-      setShowSubmissionForm(false);
+      setShowSubmissionModal(false);
       onSubmissionComplete?.();
       
       // Scroll automatique vers le bas après soumission
@@ -76,30 +78,30 @@ const ExerciseSubmission: React.FC<ExerciseSubmissionProps> = ({
   }
 
   return (
-    <ExerciseCard 
-      exercise={exercise}
-    >
-      {!showSubmissionForm && showSubmissionOptions && (
-        <Button
-          onClick={() => setShowSubmissionForm(true)}
-          size="sm"
-          className="bg-blue-500 hover:bg-blue-600"
-          disabled={!canSubmit}
-        >
-          {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
-        </Button>
-      )}
+    <>
+      <ExerciseCard 
+        exercise={exercise}
+      >
+        {showSubmissionOptions && (
+          <Button
+            onClick={() => setShowSubmissionModal(true)}
+            size="sm"
+            className="bg-blue-500 hover:bg-blue-600"
+            disabled={!canSubmit}
+          >
+            {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
+          </Button>
+        )}
+      </ExerciseCard>
 
-      {showSubmissionForm && (
-        <SubmissionForm
-          onSubmit={handleSubmit}
-          onCancel={() => setShowSubmissionForm(false)}
-          isSubmitting={submitExerciseMutation.isPending}
-          exerciseTitle={exercise.title}
-          showSubmissionOptions={showSubmissionOptions}
-        />
-      )}
-    </ExerciseCard>
+      <ExerciseSubmissionModal
+        isOpen={showSubmissionModal}
+        onClose={() => setShowSubmissionModal(false)}
+        onSubmit={handleSubmit}
+        isSubmitting={submitExerciseMutation.isPending}
+        exerciseTitle={exercise.title}
+      />
+    </>
   );
 };
 

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,23 +17,25 @@ import { useUserEnrollments } from '@/hooks/useFormations';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useFollow, useFollowersCount, useFollowingCount, usePendingSentRequests } from '@/hooks/useFollow';
+import { useFollow, useFollowersCount, useFollowingCount, usePendingSentRequests } from '@/friends/hooks/useFollow';
 import { Button } from '@/components/ui/button';
 import ProfileCounters from '@/profile/components/ProfileCounters';
 import ProfileTabs from '@/profile/components/ProfileTabs';
-import ProfileMenuDrawer from '@/components/profile/ProfileMenuDrawer';
+import ProfileMenuDrawer from '@/profile/components/ProfileMenuDrawer';
 import NotificationPermissionDialog from '@/components/notifications/NotificationPermissionDialog';
-import AvatarUploadModal from '@/components/profile/AvatarUploadModal';
-import FriendRequestsPanel from '@/components/FriendRequestsPanel';
+import AvatarUploadModal from '@/profile/components/AvatarUploadModal';
+import FriendRequestsPanel from '@/friends/components/FriendRequestsPanel';
 import VideosTab from '@/profile/components/tabs/VideosTab';
 import PostsTab from '@/profile/components/tabs/PostsTab';
 import ExercisesTab from '@/profile/components/tabs/ExercisesTab';
 import LikesTab from '@/profile/components/tabs/LikesTab';
 import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
+import { StreakBadge } from '@/streak';
 
 type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
 
 const Profil = () => {
+  const { t } = useTranslation();
   const { user, profile: currentUserProfile } = useAuth();
   const navigate = useNavigate();
   const { profileId } = useParams();
@@ -51,23 +55,38 @@ const Profil = () => {
   const viewedUserId = profileId || user?.id;
   const isOwnProfile = !profileId || profileId === user?.id;
   
-  // Récupérer le profil de l'utilisateur visualisé
-  const { data: viewedProfile } = useQuery({
-    queryKey: ['profile', viewedUserId],
+  // Récupérer le profil de l'utilisateur visualisé (SEULEMENT si ce n'est pas son propre profil)
+  const { data: viewedProfile, isLoading: isLoadingViewedProfile } = useQuery({
+    queryKey: ['viewed-profile', viewedUserId], // Différente de 'profile' pour éviter les conflits
     queryFn: async () => {
       if (!viewedUserId) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, username, avatar_url, is_teacher, role, is_verified, email')
         .eq('id', viewedUserId)
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching viewed profile:', error);
+        throw error;
+      }
+      console.log('Viewed profile loaded:', data); // Debug log
       return data;
     },
-    enabled: !!viewedUserId,
+    enabled: !isOwnProfile && !!viewedUserId, // Ne charge que si ce n'est PAS son propre profil
+    staleTime: 5000, // Cache pendant 5 secondes
   });
   
+  // Utiliser directement currentUserProfile si c'est son propre profil, sinon viewedProfile
   const profile = isOwnProfile ? currentUserProfile : viewedProfile;
+  const isLoadingProfile = isOwnProfile ? !currentUserProfile : isLoadingViewedProfile;
+  
+  console.log('🔍 Profil Debug:', {
+    isOwnProfile,
+    viewedUserId,
+    currentUserProfile,
+    viewedProfile,
+    finalProfile: profile
+  });
   const { data: enrollments } = useUserEnrollments(viewedUserId);
   
   // Hooks pour le système d'amitié
@@ -90,13 +109,17 @@ const Profil = () => {
   };
 
   const getDisplayName = () => {
+    console.log('🔍 getDisplayName called with profile:', profile); // Debug
     if (profile?.first_name && profile?.last_name) {
       return `${profile.first_name} ${profile.last_name}`;
     }
     if (profile?.username) {
       return profile.username;
     }
-    return user?.email || 'Utilisateur';
+    if (profile?.email) {
+      return profile.email;
+    }
+    return user?.email || t('profile.user');
   };
 
   const renderTabContent = () => {
@@ -115,6 +138,18 @@ const Profil = () => {
         return <VideosTab userId={viewedUserId} />;
     }
   };
+
+  // Afficher un loading si le profil n'est pas encore chargé
+  if (isLoadingProfile && !profile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">{t('profile.loadingProfile')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-16 md:pt-16 md:pb-0">
@@ -164,8 +199,12 @@ const Profil = () => {
               )}
             </div>
             <div className="text-center">
-              <h1 className="text-xl font-bold">{getDisplayName()}</h1>
-              <p className="text-sm text-muted-foreground">@{profile?.username || 'utilisateur'}</p>
+              <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+                {getDisplayName()}
+                {/* @ts-ignore - is_verified sera disponible après régénération des types */}
+                {(profile as any)?.is_verified && <VerifiedBadge size={18} />}
+              </h1>
+              <p className="text-sm text-muted-foreground">@{profile?.username || t('profile.user')}</p>
             </div>
           </div>
         </div>
@@ -180,7 +219,7 @@ const Profil = () => {
                   className="flex-1 bg-blue-500 hover:bg-blue-600"
                 >
                   <MessageCircle size={18} className="mr-2" />
-                  Discuter
+                  {t('profile.chat')}
                 </Button>
                 <Button
                   onClick={() => setShowRemoveFriendDialog(true)}
@@ -188,7 +227,7 @@ const Profil = () => {
                   className="flex-1 bg-green-500 hover:bg-green-600"
                 >
                   <UserCheck size={18} className="mr-2" />
-                  Amis
+                  {t('profile.friends')}
                 </Button>
               </div>
             ) : friendshipStatus === 'pending_sent' ? (
@@ -197,7 +236,7 @@ const Profil = () => {
                 disabled={isFollowLoading}
                 className="w-full bg-yellow-500 hover:bg-yellow-600"
               >
-                Demande envoyée
+                {t('profile.requestSent')}
               </Button>
             ) : friendshipStatus === 'pending_received' ? (
               <div className="flex gap-2">
@@ -206,14 +245,14 @@ const Profil = () => {
                   disabled={isFollowLoading}
                   className="flex-1 bg-green-500 hover:bg-green-600"
                 >
-                  Accepter
+                  {t('profile.accept')}
                 </Button>
                 <Button
                   onClick={() => cancelRequest()}
                   disabled={isFollowLoading}
                   className="flex-1 bg-red-500 hover:bg-red-600"
                 >
-                  Refuser
+                  {t('profile.reject')}
                 </Button>
               </div>
             ) : (
@@ -223,7 +262,7 @@ const Profil = () => {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 <UserPlus size={18} className="mr-2" />
-                Envoyer une demande
+                {t('profile.sendRequest')}
               </Button>
             )}
           </div>
@@ -236,6 +275,13 @@ const Profil = () => {
           formationsCount={enrollments?.length || 0}
           userId={viewedUserId}
         />
+
+        {/* Badge de streak */}
+        {viewedUserId && (
+          <div className="px-4 pb-4">
+            <StreakBadge userId={viewedUserId} variant="compact" />
+          </div>
+        )}
       </div>
 
       {/* Onglets */}
@@ -274,14 +320,13 @@ const Profil = () => {
       <AlertDialog open={showRemoveFriendDialog} onOpenChange={setShowRemoveFriendDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Retirer cet ami ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('profile.removeFriend')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir retirer {profile?.first_name} {profile?.last_name} de votre liste d'amis ?
-              Vous devrez envoyer une nouvelle demande pour redevenir amis.
+              {t('profile.removeFriendConfirm', { name: `${profile?.first_name} ${profile?.last_name}` })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 removeFriend();
@@ -289,7 +334,7 @@ const Profil = () => {
               }}
               className="bg-red-500 hover:bg-red-600"
             >
-              Retirer
+              {t('profile.remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

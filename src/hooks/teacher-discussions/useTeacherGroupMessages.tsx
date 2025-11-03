@@ -49,11 +49,18 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
           receiver_id,
           promotion_id,
           level_id,
+          lesson_id,
+          formation_id,
           is_system_message,
           exercise_id,
           exercise_status,
           is_exercise_submission,
+          locked_by_teacher_id,
+          locked_at,
           validated_by_teacher_id,
+          reject_audio_url,
+          reject_audio_duration,
+          reject_files_urls,
           profiles!sender_id (
             id,
             first_name,
@@ -61,6 +68,17 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
             username,
             avatar_url,
             is_teacher
+          ),
+          replied_to_message:replied_to_message_id(
+            id,
+            content,
+            sender_id,
+            profiles!sender_id(
+              id,
+              first_name,
+              last_name,
+              username
+            )
           )
         `)
         .eq('formation_id', formationId)

@@ -1,29 +1,51 @@
 
 import React, { useState, useMemo } from 'react';
 import { Search, MoreVertical, Bell, UserPlus, Users, BookOpen, CreditCard } from 'lucide-react';
-import { useConversations } from '@/hooks/useMessages';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useConversationsList } from '@/hooks/messages/useConversationsList';
+import { useNotificationCategories } from '@/hooks/notifications/useNotificationCategories';
+import { useCategoryNotifications } from '@/hooks/notifications/useCategoryNotifications';
+import { useNotificationActions } from '@/hooks/notifications/useNotificationActions';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import NotificationItem from '@/components/NotificationItem';
-import StoriesSection from '@/components/StoriesSection';
+import StoriesSection from '@/stories/components/StoriesSection';
 import { useAuth } from '@/hooks/useAuth';
-import { groupMessagesByDate, formatMessageTime } from '@/utils/dateUtils';
+import { formatMessageTime } from '@/utils/dateUtils';
 import { ContactsDiscoveryDialog } from '@/contacts-discovery/components/ContactsDiscoveryDialog';
+import NotificationCategoryItem from '@/components/notifications/NotificationCategoryItem';
+import { useTranslation } from 'react-i18next';
+import { useI18nReady } from '@/hooks/useI18nReady';
 
 const Messages = () => {
-  const { data: conversations = [], isLoading: conversationsLoading, error: conversationsError } = useConversations();
-  const { notifications = [], isLoading: notificationsLoading } = useNotifications();
+  const { t } = useTranslation();
+  const i18nReady = useI18nReady();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('conversations');
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
+  const [openCategories, setOpenCategories] = useState<string[]>([]);
+
+  // Charger les conversations uniquement quand l'onglet est actif
+  const { 
+    data: conversations = [], 
+    isLoading: conversationsLoading, 
+    error: conversationsError 
+  } = useConversationsList(activeTab === 'conversations');
+
+  // Charger uniquement les catégories de notifications (compteurs)
+  const { data: categories = [], isLoading: categoriesLoading } = useNotificationCategories();
+  
+  const isAdmin = profile?.role === 'admin';
+
+  // Compter les notifications non lues (somme de toutes les catégories)
+  const unreadNotifications = categories.reduce((sum, cat) => sum + cat.unreadCount, 0);
+
+  // Pas de groupement par date, afficher directement les conversations
 
   const handleConversationClick = (conversation: any) => {
-    // Navigation selon le type de conversation
     if (conversation.type === 'direct_message') {
       navigate(`/conversations/${conversation.otherUserId}`);
     } else if (conversation.type === 'formation_teacher' || conversation.type === 'formation_student') {
@@ -31,76 +53,15 @@ const Messages = () => {
     }
   };
 
-  // Compter les notifications non lues
-  const unreadNotifications = notifications.filter(n => !n.is_read).length;
+  if (!i18nReady) {
+    return null;
+  }
 
-  // Grouper les conversations par date
-  const groupedConversations = groupMessagesByDate(conversations);
-
-  // Grouper les notifications par catégorie
-  const groupedNotifications = useMemo(() => {
-    const groups = {
-      friend_requests: [] as typeof notifications,
-      enrollment_requests: [] as typeof notifications,
-      plan_changes: [] as typeof notifications,
-      payment_requests: [] as typeof notifications,
-      others: [] as typeof notifications,
-    };
-
-    notifications.forEach((notification) => {
-      if (notification.type === 'friend_request' || notification.sender_id) {
-        groups.friend_requests.push(notification);
-      } else if (notification.type === 'enrollment_request' && notification.enrollment_id) {
-        groups.enrollment_requests.push(notification);
-      } else if (notification.type === 'plan_change_request') {
-        groups.plan_changes.push(notification);
-      } else if (notification.type === 'payment_request') {
-        groups.payment_requests.push(notification);
-      } else {
-        groups.others.push(notification);
-      }
-    });
-
-    return groups;
-  }, [notifications]);
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'friend_requests':
-        return <UserPlus className="w-5 h-5" />;
-      case 'enrollment_requests':
-        return <Users className="w-5 h-5" />;
-      case 'plan_changes':
-        return <BookOpen className="w-5 h-5" />;
-      case 'payment_requests':
-        return <CreditCard className="w-5 h-5" />;
-      default:
-        return <Bell className="w-5 h-5" />;
-    }
-  };
-
-  const getCategoryTitle = (category: string) => {
-    switch (category) {
-      case 'friend_requests':
-        return 'Demandes d\'amitié';
-      case 'enrollment_requests':
-        return 'Demandes d\'inscription';
-      case 'plan_changes':
-        return 'Changements de plan';
-      case 'payment_requests':
-        return 'Demandes de paiement';
-      default:
-        return 'Autres notifications';
-    }
-  };
-
-  const isAdmin = profile?.role === 'admin';
-
-  if (conversationsLoading || notificationsLoading) {
+  if ((activeTab === 'conversations' && conversationsLoading) || (activeTab === 'notifications' && categoriesLoading)) {
     return (
       <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
         <div className="flex justify-center items-center py-12">
-          <div className="text-gray-500">Chargement...</div>
+          <div className="text-gray-500">{t('messages.loading')}</div>
         </div>
       </div>
     );
@@ -110,7 +71,7 @@ const Messages = () => {
     return (
       <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
         <div className="flex justify-center items-center py-12">
-          <div className="text-red-500">Erreur lors du chargement</div>
+          <div className="text-red-500">{t('messages.loadingError')}</div>
         </div>
       </div>
     );
@@ -121,7 +82,7 @@ const Messages = () => {
       {/* Header */}
       <div className="bg-edu-whatsapp-green text-white p-4 sticky top-0 md:top-16">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Discussions & Notifications</h1>
+          <h1 className="text-xl font-semibold">{t('messages.title')}</h1>
           <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
             <MoreVertical size={20} />
           </button>
@@ -136,11 +97,11 @@ const Messages = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-gray-50">
             <TabsTrigger value="conversations" className="flex items-center space-x-2">
-              <span>Discussions</span>
+              <span>{t('messages.conversations')}</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center space-x-2">
               <Bell size={16} />
-              <span>Notifications</span>
+              <span>{t('profile.notifications')}</span>
               {unreadNotifications > 0 && (
                 <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center p-0 text-xs">
                   {unreadNotifications > 99 ? '99+' : unreadNotifications}
@@ -156,66 +117,59 @@ const Messages = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
-                  placeholder="Rechercher dans les conversations..."
+                  placeholder={t('messages.searchPlaceholder')}
                   className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-edu-primary focus:border-transparent"
                 />
               </div>
             </div>
 
-            {/* Conversations List grouped by date */}
+            {/* Conversations List */}
             <div className="divide-y divide-gray-100">
-              {Object.keys(groupedConversations).length > 0 ? (
-                Object.entries(groupedConversations).map(([dateGroup, groupConversations]) => (
-                  <div key={dateGroup}>
-                    <div className="sticky top-0 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 border-b border-gray-200">
-                      {dateGroup}
-                    </div>
-                    {groupConversations.map((conversation) => (
-                      <div
-                        key={conversation.id}
-                        className="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => handleConversationClick(conversation)}
-                      >
-                        <div className="relative mr-3">
-                          <div className="w-12 h-12 bg-edu-primary rounded-full flex items-center justify-center overflow-hidden">
-                            {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
-                              <img 
-                                src={conversation.avatar} 
-                                alt={conversation.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-white font-bold text-xl">{conversation.avatar}</span>
-                            )}
-                          </div>
-                          {conversation.online && (
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h3 className="font-medium text-gray-900 truncate">{conversation.name}</h3>
-                            <span className="text-xs text-gray-500 flex-shrink-0">
-                              {formatMessageTime(conversation.created_at || new Date())}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
-                        </div>
-                        
-                        {conversation.unread > 0 && (
-                          <div className="ml-2 bg-edu-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {conversation.unread}
-                          </div>
+              {conversations.length > 0 ? (
+                conversations.map((conversation) => (
+                  <div
+                    key={conversation.id}
+                    className="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleConversationClick(conversation)}
+                  >
+                    <div className="relative mr-3">
+                      <div className="w-12 h-12 bg-edu-primary rounded-full flex items-center justify-center overflow-hidden">
+                        {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
+                          <img 
+                            src={conversation.avatar} 
+                            alt={conversation.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-white font-bold text-xl">{conversation.avatar}</span>
                         )}
                       </div>
-                    ))}
+                      {conversation.online && (
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-medium text-gray-900 truncate">{conversation.name}</h3>
+                        <span className="text-xs text-gray-500 flex-shrink-0">
+                          {formatMessageTime(conversation.created_at || new Date())}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
+                    </div>
+                    
+                    {conversation.unread > 0 && (
+                      <div className="ml-2 bg-edu-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {conversation.unread}
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
                 <div className="text-center py-12">
-                  <div className="text-gray-500 mb-2">Aucune conversation</div>
-                  <p className="text-sm text-gray-400">Cliquez sur le bouton démarrer une discussion pour échanger avec vos contacts</p>
+                  <div className="text-gray-500 mb-2">{t('messages.noConversations')}</div>
+                  <p className="text-sm text-gray-400">{t('messages.noConversationsHelp')}</p>
                 </div>
               )}
             </div>
@@ -226,55 +180,39 @@ const Messages = () => {
               {!user ? (
                 <div className="text-center py-12">
                   <Bell size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600">Connectez-vous pour voir vos notifications</p>
+                  <p className="text-gray-600">{t('messages.loginToSeeNotifications')}</p>
                 </div>
-              ) : notifications.length === 0 ? (
+              ) : categories.length === 0 ? (
                 <div className="bg-white rounded-lg p-8 border text-center">
                   <Bell size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600 font-medium mb-2">Aucune notification</p>
+                  <p className="text-gray-600 font-medium mb-2">{t('messages.noNotifications')}</p>
                   <p className="text-gray-500 text-sm">
-                    Vous serez notifié ici des nouvelles activités
+                    {t('messages.noNotificationsHelp')}
                   </p>
                 </div>
               ) : (
-                <Accordion type="multiple" defaultValue={['friend_requests', 'enrollment_requests', 'plan_changes', 'payment_requests', 'others']} className="space-y-4">
-                  {Object.entries(groupedNotifications).map(([category, items]) => {
-                    // Ne pas afficher les catégories vides
-                    if (items.length === 0) return null;
+                <Accordion 
+                  type="multiple" 
+                  value={openCategories}
+                  onValueChange={setOpenCategories}
+                  className="space-y-4"
+                >
+                  {categories.map((categoryData) => {
+                    const { category, totalCount, unreadCount } = categoryData;
                     
-                    // Ne montrer enrollment_requests, plan_changes et payment_requests qu'aux admins
-                    if ((category === 'enrollment_requests' || category === 'plan_changes' || category === 'payment_requests') && !isAdmin) {
+                    // Ne montrer les catégories admin qu'aux admins
+                    if (['enrollment_requests', 'plan_changes', 'payment_requests'].includes(category) && !isAdmin) {
                       return null;
                     }
 
                     return (
-                      <AccordionItem key={category} value={category} className="bg-white rounded-lg border">
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                          <div className="flex items-center gap-3">
-                            <div className="text-primary">
-                              {getCategoryIcon(category)}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-900">
-                                {getCategoryTitle(category)}
-                              </span>
-                              <span className="bg-primary/10 text-primary text-sm font-medium px-2.5 py-0.5 rounded-full">
-                                {items.length}
-                              </span>
-                            </div>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-4">
-                          <div className="space-y-3 pt-2">
-                            {items.map((notification) => (
-                              <NotificationItem
-                                key={notification.id}
-                                notification={notification}
-                              />
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
+                      <NotificationCategoryItem
+                        key={category}
+                        category={category}
+                        totalCount={totalCount}
+                        unreadCount={unreadCount}
+                        isOpen={openCategories.includes(category)}
+                      />
                     );
                   })}
                 </Accordion>
@@ -289,7 +227,7 @@ const Messages = () => {
         <Button
           onClick={() => setIsDiscoveryOpen(true)}
           className="fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full bg-edu-whatsapp-green hover:bg-edu-whatsapp-green/90 shadow-lg z-50 p-0 flex items-center justify-center"
-          aria-label="Démarrer une discussion"
+          aria-label={t('messages.startDiscussion')}
         >
           <UserPlus size={24} className="text-white" />
         </Button>

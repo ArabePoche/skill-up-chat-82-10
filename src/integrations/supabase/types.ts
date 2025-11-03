@@ -75,6 +75,83 @@ export type Database = {
           },
         ]
       }
+      application_files: {
+        Row: {
+          application_id: string
+          created_at: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_files_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      applications: {
+        Row: {
+          created_at: string | null
+          cv_url: string | null
+          id: string
+          message: string | null
+          recruiter_id: string
+          source_id: string
+          source_type: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          cv_url?: string | null
+          id?: string
+          message?: string | null
+          recruiter_id: string
+          source_id: string
+          source_type: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          cv_url?: string | null
+          id?: string
+          message?: string | null
+          recruiter_id?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       call_sessions: {
         Row: {
           call_type: string
@@ -1026,6 +1103,8 @@ export type Database = {
           is_system_message: boolean | null
           lesson_id: string
           level_id: string | null
+          locked_at: string | null
+          locked_by_teacher_id: string | null
           message_type: string
           promotion_id: string | null
           read_by_teachers: string | null
@@ -1053,6 +1132,8 @@ export type Database = {
           is_system_message?: boolean | null
           lesson_id: string
           level_id?: string | null
+          locked_at?: string | null
+          locked_by_teacher_id?: string | null
           message_type?: string
           promotion_id?: string | null
           read_by_teachers?: string | null
@@ -1080,6 +1161,8 @@ export type Database = {
           is_system_message?: boolean | null
           lesson_id?: string
           level_id?: string | null
+          locked_at?: string | null
+          locked_by_teacher_id?: string | null
           message_type?: string
           promotion_id?: string | null
           read_by_teachers?: string | null
@@ -1119,6 +1202,13 @@ export type Database = {
             columns: ["level_id"]
             isOneToOne: false
             referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_messages_locked_by_teacher_id_fkey"
+            columns: ["locked_by_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1187,6 +1277,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lesson_video_comments_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lesson_video_comments_user_id_fkey"
             columns: ["user_id"]
@@ -1426,6 +1523,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          application_id: string | null
           confirmed_by: string | null
           created_at: string
           enrollment_id: string | null
@@ -1435,6 +1533,8 @@ export type Database = {
           is_read: boolean
           message: string
           payment_id: string | null
+          post_id: string | null
+          reaction_type: string | null
           requested_plan_type: string | null
           sender_id: string | null
           shop_order_id: string | null
@@ -1444,8 +1544,10 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string | null
+          video_id: string | null
         }
         Insert: {
+          application_id?: string | null
           confirmed_by?: string | null
           created_at?: string
           enrollment_id?: string | null
@@ -1455,6 +1557,8 @@ export type Database = {
           is_read?: boolean
           message: string
           payment_id?: string | null
+          post_id?: string | null
+          reaction_type?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
           shop_order_id?: string | null
@@ -1464,8 +1568,10 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string | null
+          video_id?: string | null
         }
         Update: {
+          application_id?: string | null
           confirmed_by?: string | null
           created_at?: string
           enrollment_id?: string | null
@@ -1475,6 +1581,8 @@ export type Database = {
           is_read?: boolean
           message?: string
           payment_id?: string | null
+          post_id?: string | null
+          reaction_type?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
           shop_order_id?: string | null
@@ -1484,8 +1592,16 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string | null
+          video_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_enrollment_id_fkey"
             columns: ["enrollment_id"]
@@ -1515,10 +1631,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
             referencedColumns: ["id"]
           },
         ]
@@ -1846,39 +1976,54 @@ export type Database = {
       }
       posts: {
         Row: {
+          age_range: Json | null
           author_id: string
           comments_count: number
           content: string
           created_at: string
+          gender: string | null
+          geographic_zones: string[] | null
           id: string
           image_url: string | null
           is_active: boolean
           likes_count: number
           post_type: string
+          required_documents: Json | null
+          required_profiles: string[] | null
           updated_at: string
         }
         Insert: {
+          age_range?: Json | null
           author_id: string
           comments_count?: number
           content: string
           created_at?: string
+          gender?: string | null
+          geographic_zones?: string[] | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           likes_count?: number
           post_type: string
+          required_documents?: Json | null
+          required_profiles?: string[] | null
           updated_at?: string
         }
         Update: {
+          age_range?: Json | null
           author_id?: string
           comments_count?: number
           content?: string
           created_at?: string
+          gender?: string | null
+          geographic_zones?: string[] | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           likes_count?: number
           post_type?: string
+          required_documents?: Json | null
+          required_profiles?: string[] | null
           updated_at?: string
         }
         Relationships: []
@@ -2044,7 +2189,7 @@ export type Database = {
           original_price: number | null
           price: number
           product_category_id: string | null
-          product_type: Database["public"]["Enums"]["product_type"]
+          product_type: string
           product_type_id: string | null
           promo_video_url: string | null
           purchase_price: number | null
@@ -2079,7 +2224,7 @@ export type Database = {
           original_price?: number | null
           price: number
           product_category_id?: string | null
-          product_type: Database["public"]["Enums"]["product_type"]
+          product_type: string
           product_type_id?: string | null
           promo_video_url?: string | null
           purchase_price?: number | null
@@ -2114,7 +2259,7 @@ export type Database = {
           original_price?: number | null
           price?: number
           product_category_id?: string | null
-          product_type?: Database["public"]["Enums"]["product_type"]
+          product_type?: string
           product_type_id?: string | null
           promo_video_url?: string | null
           purchase_price?: number | null
@@ -2174,6 +2319,7 @@ export type Database = {
           id: string
           interests: string[] | null
           is_teacher: boolean | null
+          is_verified: boolean | null
           language: string | null
           last_name: string | null
           last_seen: string | null
@@ -2197,6 +2343,7 @@ export type Database = {
           id: string
           interests?: string[] | null
           is_teacher?: boolean | null
+          is_verified?: boolean | null
           language?: string | null
           last_name?: string | null
           last_seen?: string | null
@@ -2220,6 +2367,7 @@ export type Database = {
           id?: string
           interests?: string[] | null
           is_teacher?: boolean | null
+          is_verified?: boolean | null
           language?: string | null
           last_name?: string | null
           last_seen?: string | null
@@ -2434,6 +2582,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      streak_global_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          minutes_per_day_required: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          minutes_per_day_required?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          minutes_per_day_required?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      streak_levels_config: {
+        Row: {
+          created_at: string | null
+          days_required: number
+          id: string
+          level_badge: string
+          level_color: string
+          level_name: string
+          level_number: number
+          streaks_required: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          days_required: number
+          id?: string
+          level_badge: string
+          level_color?: string
+          level_name: string
+          level_number: number
+          streaks_required?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          days_required?: number
+          id?: string
+          level_badge?: string
+          level_color?: string
+          level_name?: string
+          level_number?: number
+          streaks_required?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       student_activity_tracking: {
         Row: {
@@ -3361,7 +3566,7 @@ export type Database = {
           duration_minutes: number | null
           ended_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           started_at: string
           user_agent: string | null
           user_id: string
@@ -3371,7 +3576,7 @@ export type Database = {
           duration_minutes?: number | null
           ended_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           started_at?: string
           user_agent?: string | null
           user_id: string
@@ -3381,7 +3586,7 @@ export type Database = {
           duration_minutes?: number | null
           ended_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           started_at?: string
           user_agent?: string | null
           user_id?: string
@@ -3402,6 +3607,7 @@ export type Database = {
           content_text: string | null
           content_type: string
           created_at: string
+          description: string | null
           expires_at: string
           id: string
           is_active: boolean
@@ -3413,6 +3619,7 @@ export type Database = {
           content_text?: string | null
           content_type: string
           created_at?: string
+          description?: string | null
           expires_at?: string
           id?: string
           is_active?: boolean
@@ -3424,6 +3631,7 @@ export type Database = {
           content_text?: string | null
           content_type?: string
           created_at?: string
+          description?: string | null
           expires_at?: string
           id?: string
           is_active?: boolean
@@ -3439,6 +3647,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_streaks: {
+        Row: {
+          created_at: string | null
+          current_level: number
+          current_streak: number
+          daily_minutes: number
+          id: string
+          last_activity_date: string | null
+          last_login_at: string | null
+          last_logout_at: string | null
+          longest_streak: number
+          total_days_active: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_level?: number
+          current_streak?: number
+          daily_minutes?: number
+          id?: string
+          last_activity_date?: string | null
+          last_login_at?: string | null
+          last_logout_at?: string | null
+          longest_streak?: number
+          total_days_active?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_level?: number
+          current_streak?: number
+          daily_minutes?: number
+          id?: string
+          last_activity_date?: string | null
+          last_login_at?: string | null
+          last_logout_at?: string | null
+          longest_streak?: number
+          total_days_active?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_subscriptions: {
         Row: {
@@ -3471,6 +3724,57 @@ export type Database = {
             columns: ["formation_id"]
             isOneToOne: false
             referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      verification_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          rejection_reason: string | null
+          requested_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          rejection_reason?: string | null
+          requested_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3588,6 +3892,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "video_likes_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_views: {
+        Row: {
+          id: string
+          session_id: string | null
+          user_id: string | null
+          video_id: string
+          viewed_at: string
+          watch_duration_seconds: number | null
+        }
+        Insert: {
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+          video_id: string
+          viewed_at?: string
+          watch_duration_seconds?: number | null
+        }
+        Update: {
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+          video_id?: string
+          viewed_at?: string
+          watch_duration_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_views_video_id_fkey"
             columns: ["video_id"]
             isOneToOne: false
             referencedRelation: "videos"
@@ -3749,17 +4095,24 @@ export type Database = {
       }
     }
     Functions: {
-      add_time_used: {
-        Args:
-          | {
+      add_time_used:
+        | {
+            Args: {
               p_date?: string
               p_formation_id: string
               p_minutes: number
               p_user_id: string
             }
-          | { p_formation_id: string; p_minutes: number; p_user_id: string }
-        Returns: Record<string, unknown>
-      }
+            Returns: Record<string, unknown>
+          }
+        | {
+            Args: {
+              p_formation_id: string
+              p_minutes: number
+              p_user_id: string
+            }
+            Returns: undefined
+          }
       approve_enrollment: {
         Args: {
           p_decided_by?: string
@@ -3802,25 +4155,25 @@ export type Database = {
         Args: { p_promotion_id: string }
         Returns: boolean
       }
-      check_student_inactivity: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      check_all_exercise_submissions_approved: {
+        Args: { p_exercise_id: string; p_user_id: string }
+        Returns: boolean
       }
-      cleanup_expired_media_links: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      check_exercise_message_exists: {
+        Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
+        Returns: boolean
       }
-      cleanup_expired_stories: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      decrement_post_comments: {
-        Args: { post_id: string }
-        Returns: undefined
-      }
+      check_student_inactivity: { Args: never; Returns: undefined }
+      cleanup_expired_media_links: { Args: never; Returns: undefined }
+      cleanup_expired_stories: { Args: never; Returns: undefined }
+      decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
       delete_video_comment: {
         Args: { comment_id: string; user_id: string }
         Returns: boolean
+      }
+      get_exercise_global_status: {
+        Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
+        Returns: string
       }
       get_formation_details_by_id: {
         Args: { p_formation_id: string; p_user_id: string }
@@ -3834,18 +4187,12 @@ export type Database = {
         Args: { p_date?: string; p_formation_id: string; p_user_id: string }
         Returns: string
       }
-      get_server_date: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_server_date: { Args: never; Returns: string }
       get_student_promotion: {
         Args: { p_formation_id: string; p_student_id: string }
         Returns: string
       }
-      get_teacher_formations: {
-        Args: { p_user_id: string }
-        Returns: string[]
-      }
+      get_teacher_formations: { Args: { p_user_id: string }; Returns: string[] }
       get_unread_messages_count: {
         Args: {
           p_formation_id: string
@@ -3887,26 +4234,22 @@ export type Database = {
         }
         Returns: undefined
       }
-      has_role: {
-        Args: { role: string; user_id: string }
-        Returns: boolean
-      }
-      increment_messages_sent: {
-        Args: { p_date?: string; p_formation_id: string; p_user_id: string }
-        Returns: number
-      }
-      increment_post_comments: {
-        Args: { post_id: string }
-        Returns: undefined
-      }
+      has_role: { Args: { role: string; user_id: string }; Returns: boolean }
+      increment_messages_sent:
+        | {
+            Args: { p_date?: string; p_formation_id: string; p_user_id: string }
+            Returns: number
+          }
+        | {
+            Args: { p_formation_id: string; p_user_id: string }
+            Returns: undefined
+          }
+      increment_post_comments: { Args: { post_id: string }; Returns: undefined }
       initialize_first_lesson: {
         Args: { p_lesson_id: string; p_user_id: string }
         Returns: undefined
       }
-      is_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { user_id: string }; Returns: boolean }
       is_student_enrolled: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
@@ -3918,6 +4261,10 @@ export type Database = {
       is_teacher_of_formation: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
+      }
+      lock_exercise_submission: {
+        Args: { p_message_id: string; p_teacher_id: string }
+        Returns: Json
       }
       mark_lesson_messages_as_read: {
         Args: {
@@ -3972,10 +4319,11 @@ export type Database = {
         }
         Returns: undefined
       }
-      process_expired_evaluations: {
-        Args: Record<PropertyKey, never>
+      notify_post_edited: {
+        Args: { p_author_id: string; p_post_id: string }
         Returns: undefined
       }
+      process_expired_evaluations: { Args: never; Returns: undefined }
       process_teacher_payment: {
         Args: {
           p_amount: number
@@ -4005,40 +4353,61 @@ export type Database = {
         }
         Returns: undefined
       }
-      validate_exercise_submission: {
-        Args:
-          | {
+      unlock_exercise_submission: {
+        Args: { p_message_id: string; p_teacher_id: string }
+        Returns: Json
+      }
+      update_user_streak_daily_minutes: { Args: never; Returns: undefined }
+      validate_exercise_submission:
+        | {
+            Args: {
+              p_is_valid: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
               p_is_valid: boolean
               p_message_id: string
               p_reject_reason?: string
               p_teacher_id?: string
               p_user_id: string
             }
-          | {
-              p_is_valid: boolean
+            Returns: undefined
+          }
+      validate_exercise_submission_global: {
+        Args: {
+          p_is_approved: boolean
+          p_message_id: string
+          p_reject_reason?: string
+          p_teacher_id?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      validate_exercise_submission_with_promotion:
+        | {
+            Args: {
+              p_is_approved: boolean
               p_message_id: string
               p_reject_reason?: string
               p_user_id: string
             }
-        Returns: undefined
-      }
-      validate_exercise_submission_with_promotion: {
-        Args:
-          | {
+            Returns: undefined
+          }
+        | {
+            Args: {
               p_is_approved: boolean
               p_message_id: string
               p_reject_reason?: string
               p_teacher_id?: string
               p_user_id: string
             }
-          | {
-              p_is_approved: boolean
-              p_message_id: string
-              p_reject_reason?: string
-              p_user_id: string
-            }
-        Returns: undefined
-      }
+            Returns: undefined
+          }
     }
     Enums: {
       lesson_status:

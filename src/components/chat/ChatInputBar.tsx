@@ -112,8 +112,8 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
     const file = event.target.files?.[0];
     if (file && !disabled) {
       checkAuthAndExecute(async () => {
+        const toastId = toast.loading('Chargement du fichier en cours...');
         try {
-          toast.loading('Upload du fichier en cours...');
           
           const uploadResult = await uploadFile(file);
           
@@ -135,9 +135,11 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
             uploadedFile
           );
           
+          toast.dismiss(toastId);
           toast.success('Fichier envoyé avec succès');
         } catch (error) {
           console.error('Upload error:', error);
+          toast.dismiss(toastId);
           toast.error('Erreur lors de l\'upload');
         }
       });

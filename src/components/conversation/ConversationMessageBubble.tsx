@@ -14,6 +14,7 @@ import EmojiPicker from '@/components/EmojiPicker';
 import ModernMediaPreview from '@/components/chat/ModernMediaPreview';
 import { useConversationMessageReactions, useToggleConversationReaction } from '@/hooks/conversations/useConversationMessageReactions';
 import { useDeleteConversationMessage, useEditConversationMessage } from '@/hooks/conversations/useConversationOperations';
+import { LinkifiedText } from '@/utils/linkify';
 
 interface ConversationMedia {
   id: string;
@@ -127,11 +128,15 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
                     isOwnMessage ? 'border-white/20 text-white/80' : 'border-gray-200 text-gray-500'
                   }`}>
                     <span className="text-base">📖</span>
-                    <span>Réponse à une story</span>
+                    <span>Réponse au statut</span>
                   </div>
                 )}
                 
-                {message.content && <p className="text-sm break-words">{message.content}</p>}
+                {message.content && (
+                  <p className="text-sm break-words">
+                    <LinkifiedText text={message.content} />
+                  </p>
+                )}
                 
                 {/* Prévisualisation des médias */}
                 {message.conversation_media && message.conversation_media.length > 0 && (

@@ -4,6 +4,17 @@
  */
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { Capacitor } from '@capacitor/core';
+
+// Import conditionnel du plugin Contacts
+let Contacts: any = null;
+try {
+  if (Capacitor.isNativePlatform()) {
+    Contacts = require('@capacitor-community/contacts').Contacts;
+  }
+} catch (error) {
+  console.warn('Capacitor Contacts plugin not available:', error);
+}
 
 interface PhoneContact {
   name: string;
@@ -38,50 +49,57 @@ export const usePhoneContacts = () => {
         return demoContacts;
       }
 
-      // Vérifier si Capacitor est disponible (mobile natif)
-      if ((window as any).Capacitor) {
+      // Vérifier si on est sur une plateforme native avec Capacitor
+      const isNativePlatform = Capacitor.isNativePlatform();
+      
+      if (isNativePlatform && Contacts) {
         try {
-          const Capacitor = (window as any).Capacitor;
-          const isNativePlatform = Capacitor.isNativePlatform();
+          console.log('📱 Tentative d\'accès aux contacts natifs...');
           
-          if (isNativePlatform) {
-            // Vérifier si le plugin Contacts est disponible
-            const Contacts = (window as any).Capacitor?.Plugins?.Contacts;
-            
-            if (Contacts) {
-              // Demander la permission d'accès aux contacts
-              const permission = await Contacts.requestPermissions();
-              
-              if (permission.contacts === 'granted') {
-                // Récupérer tous les contacts
-                const result = await Contacts.getContacts({
-                  projection: {
-                    name: true,
-                    phones: true,
-                  }
-                });
-                
-                const formattedContacts: PhoneContact[] = result.contacts
-                  .filter((contact: any) => contact.phones && contact.phones.length > 0)
-                  .map((contact: any) => ({
-                    name: contact.name?.display || 'Sans nom',
-                    phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/\s+/g, '') || '') || []
-                  }));
-                
-                setContacts(formattedContacts);
-                return formattedContacts;
-              } else {
-                toast({
-                  title: "Permission refusée",
-                  description: "Vous devez autoriser l'accès aux contacts pour utiliser cette fonctionnalité",
-                  variant: "destructive",
-                });
-                return [];
+          // Demander la permission d'accès aux contacts
+          const permission = await Contacts.requestPermissions();
+          console.log('🔐 Permission contacts:', permission);
+          
+          if (permission.contacts === 'granted') {
+            // Récupérer tous les contacts
+            const result = await Contacts.getContacts({
+              projection: {
+                name: true,
+                phones: true,
               }
-            }
+            });
+            
+            console.log('📇 Contacts récupérés:', result.contacts?.length || 0);
+            
+            const formattedContacts: PhoneContact[] = result.contacts
+              .filter((contact: any) => contact.phones && contact.phones.length > 0)
+              .map((contact: any) => ({
+                name: contact.name?.display || 'Sans nom',
+                phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/\s+/g, '') || '') || []
+              }));
+            
+            setContacts(formattedContacts);
+            toast({
+              title: "Contacts chargés",
+              description: `${formattedContacts.length} contact(s) trouvé(s)`,
+            });
+            return formattedContacts;
+          } else {
+            toast({
+              title: "Permission refusée",
+              description: "Vous devez autoriser l'accès aux contacts pour utiliser cette fonctionnalité",
+              variant: "destructive",
+            });
+            return [];
           }
         } catch (capacitorError) {
-          console.log('Erreur Capacitor, tentative avec API web:', capacitorError);
+          console.error('❌ Erreur accès contacts natifs:', capacitorError);
+          toast({
+            title: "Erreur",
+            description: "Impossible d'accéder aux contacts du téléphone",
+            variant: "destructive",
+          });
+          return [];
         }
       }
       

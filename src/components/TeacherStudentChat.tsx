@@ -6,6 +6,8 @@ import ChatInputBar from './chat/ChatInputBar';
 import InterviewToggleButton from './teacher/InterviewToggleButton';
 import LessonVideoPlayer from './LessonVideoPlayer';
 import TeachingStudio from './live-classroom/TeachingStudio';
+import DateSeparator from './chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { useTeacherStudentMessages } from '@/hooks/useTeacherStudentMessages';
 import { useSendTeacherStudentMessage } from '@/hooks/useSendTeacherStudentMessage';
 import { useValidateExercise } from '@/hooks/useValidateExercise';
@@ -53,6 +55,12 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
   const messagesRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [showStudio, setShowStudio] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    content: string;
+    sender_name: string;
+  } | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   
   // Hooks pour la gestion des messages
   const { data: messages = [], isLoading } = useTeacherStudentMessages(
@@ -90,7 +98,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
 
   
 
-  const handleSendMessage = (content: string, messageType = 'text', fileData?: any) => {
+  const handleSendMessage = (content: string, messageType = 'text', fileData?: any, repliedToMessageId?: string) => {
     if (student.user_id && lesson.id) {
       sendMessageMutation.mutate({
         formationId: formation.id,
@@ -100,9 +108,34 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
         messageType,
         fileUrl: fileData?.uploadUrl || fileData?.fileUrl,
         fileType: fileData?.type || fileData?.fileType,
-        fileName: fileData?.name || fileData?.fileName
+        fileName: fileData?.name || fileData?.fileName,
+        repliedToMessageId
       });
     }
+  };
+
+  const handleReplyToMessage = (message: any) => {
+    const senderName = message.profiles?.first_name || message.profiles?.username || 'Utilisateur';
+    setReplyingTo({
+      id: message.id,
+      content: message.content,
+      sender_name: senderName
+    });
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleScrollToMessage = (messageId: string) => {
+    setTimeout(() => {
+      const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedMessageId(messageId);
+        setTimeout(() => setHighlightedMessageId(null), 3000);
+      }
+    }, 100);
   };
 
   const handleValidateExercise = async (messageId: string, isValid: boolean, rejectReason?: string) => {
@@ -180,13 +213,21 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
 
           {/* Messages */}
           {messages && messages.length > 0 ? (
-            messages.map((msg) => (
-              <div key={msg.id} className="message-appear">
-                <MessageItem
-                  message={msg}
-                  isTeacher={true}
-                  onValidateExercise={(messageId, isValid) => handleValidateExercise(messageId, isValid)}
-                />
+            Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+              <div key={date}>
+                <DateSeparator date={date} />
+                {dateMessages.map((msg) => (
+                  <div key={msg.id} className="message-appear">
+                    <MessageItem
+                      message={msg}
+                      isTeacher={true}
+                      onValidateExercise={(messageId, isValid) => handleValidateExercise(messageId, isValid)}
+                      onReply={handleReplyToMessage}
+                      onScrollToMessage={handleScrollToMessage}
+                      highlightedMessageId={highlightedMessageId}
+                    />
+                  </div>
+                ))}
               </div>
             ))
           ) : (
@@ -222,6 +263,9 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
             disabled={sendMessageMutation.isPending}
             lessonId={lesson.id}
             formationId={formation.id}
+            replyingTo={replyingTo}
+            onCancelReply={handleCancelReply}
+            onScrollToMessage={handleScrollToMessage}
           />
         </div>
       </div>

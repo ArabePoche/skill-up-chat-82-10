@@ -5,6 +5,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface SearchResultsPostsProps {
   posts: any[];
@@ -37,10 +38,11 @@ const SearchResultsPosts: React.FC<SearchResultsPostsProps> = ({ posts }) => {
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-white text-sm font-medium">
+              <p className="text-white text-sm font-medium inline-flex items-center gap-1">
                 {post.profiles?.first_name || post.profiles?.last_name
                   ? `${post.profiles.first_name || ''} ${post.profiles.last_name || ''}`.trim()
                   : post.profiles?.username || 'Utilisateur'}
+                {post.profiles?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
               </p>
             </div>
           </div>

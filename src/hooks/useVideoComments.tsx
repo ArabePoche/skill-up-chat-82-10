@@ -2,14 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useEffect } from 'react';
+import { NotificationTriggers } from '@/utils/notificationHelpers';
 
-// Fonction pour mettre à jour le champ comments_count dans la table `videos` (optionnel mais utile)
+// Fonction pour mettre à jour le champ comments_count dans la table `videos` (compte tous les commentaires + réponses)
 const updateCommentsCount = async (videoId: string) => {
   const { count, error: countError } = await supabase
     .from('video_comments')
     .select('*', { count: 'exact', head: true })
-    .eq('video_id', videoId)
-    .is('parent_comment_id', null); // Ne compte que les commentaires principaux
+    .eq('video_id', videoId); // Compte TOUS les commentaires (principaux + réponses)
 
   if (countError) {
     console.error('Erreur comptage commentaires :', countError);
@@ -43,7 +43,8 @@ export const useVideoComments = (videoId: string) => {
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            is_verified
           ),
           replies:video_comments!parent_comment_id(
             *,
@@ -52,7 +53,8 @@ export const useVideoComments = (videoId: string) => {
               username,
               first_name,
               last_name,
-              avatar_url
+              avatar_url,
+              is_verified
             )
           )
         `)
@@ -70,7 +72,7 @@ export const useVideoComments = (videoId: string) => {
     enabled: !!videoId,
   });
 
-  // 🔢 Récupère dynamiquement le compteur de commentaires (racines uniquement)
+  // 🔢 Récupère dynamiquement le compteur de commentaires (tous les commentaires + réponses)
   const {
     data: commentsCount = 0,
     isLoading: isCountLoading,
@@ -80,8 +82,7 @@ export const useVideoComments = (videoId: string) => {
       const { count, error } = await supabase
         .from('video_comments')
         .select('*', { count: 'exact' })
-        .eq('video_id', videoId)
-        .is('parent_comment_id', null);
+        .eq('video_id', videoId); // Compte TOUS les commentaires (principaux + réponses)
 
       if (error) {
         console.error('Erreur comptage commentaires :', error);
@@ -113,17 +114,56 @@ export const useVideoComments = (videoId: string) => {
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .single();
 
       if (error) throw error;
 
-      // Met à jour le champ comments_count (si commentaire principal)
-      if (!parentId) {
-        await updateCommentsCount(videoId);
+      // Récupérer l'auteur de la vidéo et créer la notification
+      const { data: video } = await supabase
+        .from('videos')
+        .select('author_id, title')
+        .eq('id', videoId)
+        .single();
+
+      if (video && video.author_id !== user.id) {
+        // Récupérer le nom du commentateur
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, username')
+          .eq('id', user.id)
+          .single();
+
+        const commenterName = profile?.first_name && profile?.last_name 
+          ? `${profile.first_name} ${profile.last_name}`
+          : profile?.username || 'Un utilisateur';
+
+        // Créer la notification en base de données
+        await supabase.from('notifications').insert({
+          user_id: video.author_id,
+          sender_id: user.id,
+          title: '💬 Nouveau commentaire !',
+          message: `${commenterName} a commenté votre vidéo${video.title ? ` "${video.title}"` : ''}`,
+          type: 'video_reaction',
+          video_id: videoId,
+          reaction_type: 'comment',
+          is_read: false,
+          is_for_all_admins: false
+        });
+
+        // Envoyer aussi la push notification
+        try {
+          await NotificationTriggers.onVideoCommented(videoId, user.id, commenterName);
+        } catch (notifError) {
+          console.error('Erreur push notification:', notifError);
+        }
       }
+
+      // Met à jour le champ comments_count (pour tous les commentaires, y compris les réponses)
+      await updateCommentsCount(videoId);
 
       return data;
     },

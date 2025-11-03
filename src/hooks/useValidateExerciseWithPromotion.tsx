@@ -41,9 +41,15 @@ export const useValidateExerciseWithPromotion = () => {
         };
         
         if (!isValid && (rejectAudioUrl || rejectFilesUrls?.length)) {
+          // Cas rejet : ajouter les fichiers de rejet
           updateData.reject_audio_url = rejectAudioUrl;
           updateData.reject_audio_duration = rejectAudioDuration;
           updateData.reject_files_urls = rejectFilesUrls;
+        } else if (isValid) {
+          // Cas validation : nettoyer les données de rejet précédentes
+          updateData.reject_audio_url = null;
+          updateData.reject_audio_duration = null;
+          updateData.reject_files_urls = null;
         }
         
         await supabase

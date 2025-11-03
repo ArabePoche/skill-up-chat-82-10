@@ -18,6 +18,9 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        actionBlue: "bg-[hsl(var(--action-blue))] text-[hsl(var(--action-blue-foreground))] hover:bg-[hsl(var(--action-blue))]/90 shadow-md hover:shadow-lg transition-all",
+        actionPurple: "bg-[hsl(var(--action-purple))] text-[hsl(var(--action-purple-foreground))] hover:bg-[hsl(var(--action-purple))]/90 shadow-md hover:shadow-lg transition-all",
+        actionOrange: "bg-[hsl(var(--action-orange))] text-[hsl(var(--action-orange-foreground))] hover:bg-[hsl(var(--action-orange))]/90 shadow-md hover:shadow-lg transition-all",
       },
       size: {
         default: "h-10 px-4 py-2",

@@ -22,17 +22,6 @@ export const useUnreadCounts = () => {
         console.error('Error counting notifications:', notifError);
       }
 
-      // Compter les messages non lus des leçons
-      const { data: lessonMessagesData, error: lessonMsgError } = await supabase
-        .from('lesson_messages')
-        .select('id', { count: 'exact' })
-        .eq('receiver_id', user.id)
-        .eq('is_read', false);
-
-      if (lessonMsgError) {
-        console.error('Error counting lesson messages:', lessonMsgError);
-      }
-
       // Compter les messages directs non lus
       const { data: conversationMessagesData, error: convMsgError } = await supabase
         .from('conversation_messages')
@@ -45,9 +34,8 @@ export const useUnreadCounts = () => {
       }
 
       const notificationsCount = notificationsData?.length || 0;
-      const lessonMessagesCount = lessonMessagesData?.length || 0;
       const conversationMessagesCount = conversationMessagesData?.length || 0;
-      const messagesCount = lessonMessagesCount + conversationMessagesCount;
+      const messagesCount = conversationMessagesCount;
       const total = notificationsCount + messagesCount;
 
       return {
@@ -57,6 +45,6 @@ export const useUnreadCounts = () => {
       };
     },
     enabled: !!user?.id,
-    refetchInterval: 10000, // Rafraîchir toutes les 30 secondes
+    refetchInterval: 10000, // Rafraîchir toutes les 10 secondes
   });
 };

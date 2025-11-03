@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { MessageCircle, Trash2, User } from 'lucide-react';
+import { MessageCircle, Trash2, User, Heart } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { usePostCommentLikes } from '@/posts/hooks/usePostCommentLikes';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface CommentProfile {
   id: string;
@@ -12,6 +15,7 @@ interface CommentProfile {
   first_name?: string;
   last_name?: string;
   avatar_url?: string;
+  is_verified?: boolean;
 }
 
 interface Comment {
@@ -20,6 +24,7 @@ interface Comment {
   created_at: string;
   user_id: string;
   replies_count?: number;
+  likes_count?: number;
   profiles?: CommentProfile;
   replies?: Comment[];
   replied_to_user_id?: string;
@@ -45,10 +50,17 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
   level = 0,
   mainCommentId,
 }) => {
+  const navigate = useNavigate();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+
+  // Hook pour les likes du commentaire
+  const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = usePostCommentLikes(
+    comment.id,
+    comment.likes_count || 0
+  );
 
   const handleReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,29 +87,43 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
 
   return (
     <div className={`flex space-x-3 group ${level > 0 ? 'ml-8 mt-3' : ''}`}>
-      <Avatar className="w-8 h-8 flex-shrink-0">
+      <Avatar 
+        className="w-8 h-8 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
+      >
         <AvatarImage src={comment.profiles?.avatar_url} />
         <AvatarFallback className="bg-gray-700 text-white">
           <User size={14} />
         </AvatarFallback>
       </Avatar>
       
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="bg-gray-800 rounded-lg p-3 relative">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center space-x-2">
-              <span className="font-medium text-white text-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col gap-1 min-w-0">
+              <span 
+                className="font-medium text-white text-sm cursor-pointer hover:underline inline-flex items-center gap-1"
+                onClick={() => comment.profiles?.id && navigate(`/profile/${comment.profiles.id}`)}
+              >
                 {getUserDisplayName(comment.profiles)}
+                {comment.profiles?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
                 {comment.replied_to_user_id && comment.replied_to_profile && (
                   <>
                     <span className="mx-1 text-gray-400">🔁</span>
-                    <span className="text-gray-400">
+                    <span 
+                      className="text-gray-400 cursor-pointer hover:underline inline-flex items-center gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        comment.replied_to_profile?.id && navigate(`/profile/${comment.replied_to_profile.id}`);
+                      }}
+                    >
                       {getUserDisplayName(comment.replied_to_profile)}
+                      {comment.replied_to_profile?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
                     </span>
                   </>
                 )}
               </span>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-500">
                 {formatDistanceToNow(new Date(comment.created_at), {
                   addSuffix: true,
                   locale: fr
@@ -115,11 +141,23 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
               </Button>
             )}
           </div>
-          <p className="text-white text-sm">{comment.content}</p>
+          <p className="text-white text-sm break-words whitespace-pre-wrap">{comment.content}</p>
         </div>
 
         {/* Actions */}
         <div className="flex items-center space-x-4 mt-1 ml-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleLike}
+            disabled={isLikeLoading || !currentUserId}
+            className={`hover:bg-gray-800/50 p-0 h-auto text-xs ${
+              isLiked ? 'text-red-500 hover:text-red-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Heart size={12} className={`mr-1 ${isLiked ? 'fill-current' : ''}`} />
+            {likesCount > 0 && likesCount}
+          </Button>
           {currentUserId && (
             <Button
               variant="ghost"
@@ -136,7 +174,7 @@ const PostCommentItem: React.FC<PostCommentItemProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setShowReplies(!showReplies)}
-              className="text-gray-400 hover:text-white hover:bg-gray-800/50 p-0 h-auto text-xs"
+              className="text-blue-500 hover:text-gray-400 hover:bg-gray-800/50 p-0 h-auto text-xs"
             >
               {showReplies ? 'Masquer' : 'Voir'} {replies.length} réponse{replies.length > 1 ? 's' : ''}
             </Button>

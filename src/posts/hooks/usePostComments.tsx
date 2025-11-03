@@ -20,14 +20,16 @@ export const usePostComments = (postId: string) => {
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            is_verified
           ),
           replied_to_profile:profiles!post_comments_replied_to_user_id_fkey1(
             id,
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .eq('post_id', postId)
@@ -82,7 +84,8 @@ export const usePostComments = (postId: string) => {
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            is_verified
           )
         `)
         .single();

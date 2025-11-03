@@ -339,7 +339,7 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
               />
             </div>
             <div>
-              <Label>Prix actuel (€)</Label>
+              <Label>Prix actuel (FCFA)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -350,7 +350,7 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
               />
             </div>
             <div>
-              <Label>Prix original (€)</Label>
+              <Label>Prix original (FCFA)</Label>
               <Input
                 type="number"
                 step="0.01"

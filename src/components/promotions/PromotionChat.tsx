@@ -11,6 +11,8 @@ import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseDisplay from '@/components/chat/ExerciseDisplay';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { ValidatedByTeacherBadge } from '@/components/chat/ValidatedByTeacherBadge';
+import DateSeparator from '@/components/chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { toast } from 'sonner';
 import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 
@@ -58,13 +60,18 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
       msg.is_exercise_submission === true
     );
 
-    // Trier par date décroissante pour avoir la plus récente
-    const sortedSubmissions = submissions.sort((a: any, b: any) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    if (submissions.length === 0) return undefined;
 
-    // Retourner le statut de la soumission la plus récente
-    return sortedSubmissions.length > 0 ? sortedSubmissions[0].exercise_status : undefined;
+    // Un exercice est complètement approuvé uniquement si TOUTES les soumissions sont 'approved'
+    const allApproved = submissions.every((sub: any) => sub.exercise_status === 'approved');
+    if (allApproved) return 'approved';
+
+    // S'il y a au moins une soumission rejetée
+    const hasRejected = submissions.some((sub: any) => sub.exercise_status === 'rejected');
+    if (hasRejected) return 'rejected';
+
+    // Sinon, il y a des soumissions en attente
+    return 'pending';
   };
 
   const scrollToBottom = () => {
@@ -204,7 +211,10 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, index) => {
+        {Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+          <div key={date}>
+            <DateSeparator date={date} />
+            {dateMessages.map((msg, index) => {
           const isOwnMessage = msg.sender_id === user?.id;
           const isSystemMessage = msg.is_system_message;
           const senderName = msg.profiles 
@@ -306,6 +316,8 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
             </div>
           );
         })}
+          </div>
+        ))}
         <div ref={messagesEndRef} />
       </div>
 

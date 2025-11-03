@@ -108,12 +108,19 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
         formation_id: formData.formation_id.trim() || null,
       };
 
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('videos')
         .update(videoData)
-        .eq('id', video.id);
+        .eq('id', video.id)
+        .select()
+        .maybeSingle();
 
       if (error) throw error;
+
+      if (!updated) {
+        toast.error("Mise à jour non appliquée (pas d'autorisation ou élément introuvable)");
+        return;
+      }
       
       toast.success('Vidéo modifiée avec succès');
       onSuccess();

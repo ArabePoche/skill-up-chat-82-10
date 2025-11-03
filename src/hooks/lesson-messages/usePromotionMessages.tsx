@@ -21,6 +21,7 @@ export interface GroupMessage {
   promotion_id?: string;
   lesson_id?: string;
   formation_id: string;
+  level_id?: string;
   validated_by_teacher_id?: string;
   profiles?: {
     id: string;

@@ -27,6 +27,18 @@ export const useValidateExercise = () => {
       
 
       try {
+        // Si validation (rejet → validé), nettoyer les données de rejet
+        if (isValid) {
+          await supabase
+            .from('lesson_messages')
+            .update({
+              reject_audio_url: null,
+              reject_audio_duration: null,
+              reject_files_urls: null
+            })
+            .eq('id', messageId);
+        }
+
         // Appeler la nouvelle fonction globale validate_exercise_submission_global
         const { data, error } = await supabase.rpc('validate_exercise_submission_global', {
           p_message_id: messageId,

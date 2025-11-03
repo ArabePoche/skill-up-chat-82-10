@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import FriendsModal from '@/friends/components/FriendsModal';
+import { useTranslation } from 'react-i18next';
 
 interface ProfileCountersProps {
   followingCount: number;
@@ -14,6 +15,7 @@ const ProfileCounters: React.FC<ProfileCountersProps> = ({
   formationsCount,
   userId
 }) => {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [defaultTab, setDefaultTab] = useState<'following' | 'friends' | 'suggestions'>('friends');
 
@@ -23,9 +25,9 @@ const ProfileCounters: React.FC<ProfileCountersProps> = ({
   };
 
   const counters = [
-    { label: 'Suivis', value: followingCount, tab: 'following' as const },
-    { label: 'Amis', value: friendsCount, tab: 'friends' as const },
-    { label: 'Formations', value: formationsCount, tab: null },
+    { label: t('profile.following'), value: followingCount, tab: 'following' as const },
+    { label: t('profile.friends'), value: friendsCount, tab: 'friends' as const },
+    { label: t('profile.formations'), value: formationsCount, tab: null },
   ];
 
   return (

@@ -2,13 +2,14 @@ import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Plus, Check } from 'lucide-react';
-import { useFollow } from '@/hooks/useFollow';
+import { useFollow } from '@/friends/hooks/useFollow';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useQueryClient } from '@tanstack/react-query';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface FriendRequestCardProps {
   notification: {
@@ -38,7 +39,7 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
 
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
+        .select('id, username, first_name, last_name, avatar_url, is_verified')
         .eq('id', notification.sender_id)
         .single();
 
@@ -125,10 +126,11 @@ const FriendRequestCard: React.FC<FriendRequestCardProps> = ({ notification }) =
 
       <div className="flex-1">
         <p 
-          className="font-medium text-foreground cursor-pointer hover:underline" 
+          className="font-medium text-foreground cursor-pointer hover:underline inline-flex items-center gap-1" 
           onClick={handleProfileClick}
         >
           {displayName}
+          {senderProfile?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
         </p>
         <p className="text-sm text-muted-foreground">Demande d'abonnement</p>
         <p className="text-xs text-muted-foreground">

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, FabricText, Point } from 'fabric';
+import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, Textbox, Point } from 'fabric';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import ImprovedCanvasImageLoader from './ImprovedCanvasImageLoader';
@@ -87,6 +87,15 @@ const ModernImageAnnotationCanvas: React.FC<ModernImageAnnotationCanvasProps> = 
       backgroundColor: '#ffffff',
     });
 
+    // Initialiser le pinceau de dessin (Fabric v6)
+    canvas.isDrawingMode = activeTool === 'draw' || activeTool === 'highlight';
+    const brush = new PencilBrush(canvas);
+    brush.color = (activeTool === 'highlight' && activeColor.startsWith('#'))
+      ? `${activeColor}80`
+      : activeColor;
+    brush.width = activeTool === 'highlight' ? brushSize * 2 : brushSize;
+    canvas.freeDrawingBrush = brush;
+
     // Activer le zoom avec la molette
     canvas.on('mouse:wheel', (opt) => {
       const delta = opt.e.deltaY;
@@ -135,26 +144,27 @@ const ModernImageAnnotationCanvas: React.FC<ModernImageAnnotationCanvasProps> = 
       canvas.selection = true;
     });
 
-    FabricImage.fromObject({
-      src: img.src,
-      scaleX: scale,
-      scaleY: scale,
-      selectable: false,
-      evented: false
-    }).then((fabricImg) => {
+    // Utiliser l'image HTML déjà chargée pour éviter les problèmes CORS
+    try {
+      const fabricImg = new FabricImage(img, {
+        scaleX: scale,
+        scaleY: scale,
+        selectable: false,
+        evented: false,
+      });
       canvas.backgroundImage = fabricImg;
       canvas.renderAll();
       setImageLoaded(true);
       setImageLoadError(false);
       toast.success('Image chargée! Utilisez Ctrl+molette pour zoomer et Ctrl+glisser pour naviguer 🎨');
-    }).catch((error) => {
-      console.error('Error creating Fabric image:', error);
+    } catch (error) {
+      console.error('Error creating Fabric image from HTMLImageElement:', error);
       setImageLoadError(true);
       toast.error('Erreur lors de la création de l\'image');
-    });
+    }
 
     setFabricCanvas(canvas);
-  }, [fabricCanvas]);
+  }, [fabricCanvas, activeColor, brushSize]);
 
   const handleImageError = (error: string) => {
     setImageLoadError(true);
@@ -175,17 +185,22 @@ const ModernImageAnnotationCanvas: React.FC<ModernImageAnnotationCanvasProps> = 
   useEffect(() => {
     if (!fabricCanvas) return;
 
-    fabricCanvas.isDrawingMode = activeTool === 'draw' || activeTool === 'highlight';
-    
-    if (fabricCanvas.isDrawingMode) {
-      const brush = new PencilBrush(fabricCanvas);
-      brush.color = activeTool === 'highlight' ? 
-        `${activeColor}80` : activeColor;
-      brush.width = activeTool === 'highlight' ? 
-        brushSize * 2 : brushSize;
-      
-      fabricCanvas.freeDrawingBrush = brush;
+    // Activer/désactiver le mode dessin selon l'outil
+    const drawing = activeTool === 'draw' || activeTool === 'highlight';
+    fabricCanvas.isDrawingMode = drawing;
+    fabricCanvas.selection = !drawing;
+
+    // S'assurer que le brush existe et le configurer
+    if (!fabricCanvas.freeDrawingBrush) {
+      fabricCanvas.freeDrawingBrush = new PencilBrush(fabricCanvas);
     }
+    const brush = fabricCanvas.freeDrawingBrush as PencilBrush;
+    brush.color = (activeTool === 'highlight' && activeColor.startsWith('#'))
+      ? `${activeColor}80`
+      : activeColor;
+    brush.width = activeTool === 'highlight' ? brushSize * 2 : brushSize;
+
+    fabricCanvas.requestRenderAll();
 
     const handleCanvasClick = (event: any) => {
       const pointer = fabricCanvas.getPointer(event.e);
@@ -194,7 +209,7 @@ const ModernImageAnnotationCanvas: React.FC<ModernImageAnnotationCanvasProps> = 
         setNotePosition({ x: pointer.x, y: pointer.y });
         setIsAddingNote(true);
       } else if (activeTool === 'text') {
-        const text = new FabricText('Cliquez pour modifier', {
+        const text = new Textbox('Cliquez pour modifier', {
           left: pointer.x,
           top: pointer.y,
           fontSize: fontSize,
@@ -234,6 +249,7 @@ const ModernImageAnnotationCanvas: React.FC<ModernImageAnnotationCanvasProps> = 
         strokeWidth: 2,
       });
       fabricCanvas.add(circle);
+      fabricCanvas.requestRenderAll();
     } else if (tool === 'rectangle') {
       const rect = new Rect({
         left: 100,
@@ -245,6 +261,7 @@ const ModernImageAnnotationCanvas: React.FC<ModernImageAnnotationCanvasProps> = 
         strokeWidth: 2,
       });
       fabricCanvas.add(rect);
+      fabricCanvas.requestRenderAll();
     } else if (tool === 'crop') {
       toast.info('Sélectionnez la zone à rogner, puis cliquez sur Actions > Rogner');
     }

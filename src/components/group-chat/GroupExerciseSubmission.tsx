@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useSubmitGroupExercise } from '@/hooks/group-chat/useSubmitGroupExercise';
 import { useAccessControl } from '@/hooks/useAccessControl';
 import ExerciseCard from '../chat/ExerciseCard';
-import SubmissionForm from '../chat/SubmissionForm';
 import SubmittedExercise from '../chat/SubmittedExercise';
+import ExerciseSubmissionModal from '@/components/exercise-submission/ExerciseSubmissionModal';
 
 interface GroupExerciseSubmissionProps {
   exercise: {
@@ -20,10 +20,11 @@ interface GroupExerciseSubmissionProps {
   formationId: string;
   levelId: string;
   isSubmitted?: boolean;
-  exerciseStatus?: string; // Nouveau prop pour le statut (approved, rejected, pending)
+  exerciseStatus?: string;
   onSubmissionComplete?: () => void;
   showSubmissionOptions?: boolean;
-  canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
+  canSubmitExercise?: boolean;
+  messages?: any[]; // Pour récupérer la soumission existante
 }
 
 const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({ 
@@ -34,17 +35,18 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
   exerciseStatus,
   onSubmissionComplete,
   showSubmissionOptions = true,
-  canSubmitExercise
+  canSubmitExercise,
+  messages = []
 }) => {
-  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const submitExerciseMutation = useSubmitGroupExercise();
   
   // Utiliser le contrôle d'accès si canSubmitExercise n'est pas fourni
   const { canSubmitExercise: globalCanSubmit } = useAccessControl(formationId);
   const canSubmit = canSubmitExercise !== undefined ? canSubmitExercise : globalCanSubmit;
 
-  const handleSubmit = async (submissionText: string, selectedFile?: File) => {
-    if (!submissionText.trim() && !selectedFile) return;
+  const handleSubmit = async (content: string, files: File[]) => {
+    if (!content.trim() && files.length === 0) return;
 
     console.log('🎯 Using GroupExerciseSubmission for:', { 
       exerciseId: exercise.id, 
@@ -58,11 +60,11 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
         exerciseId: exercise.id,
         formationId,
         levelId,
-        content: submissionText || `Soumission de l'exercice: ${exercise.title}`,
-        file: selectedFile,
+        content: content || `Soumission de l'exercice: ${exercise.title}`,
+        files: files,
       });
 
-      setShowSubmissionForm(false);
+      setShowSubmissionModal(false);
       onSubmissionComplete?.();
       
       // Scroll automatique vers le bas après soumission
@@ -76,9 +78,9 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
     }
   };
 
-  // Si l'exercice est approuvé, ne plus afficher de bouton de soumission
+  // L'exercice n'est masqué que si toutes les soumissions sont approuvées
   if (exerciseStatus === 'approved') {
-    return null; // L'exercice est validé, pas besoin d'afficher quoi que ce soit
+    return null;
   }
 
   if (isSubmitted) {
@@ -86,30 +88,30 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
   }
 
   return (
-    <ExerciseCard 
-      exercise={exercise}
-    >
-      {!showSubmissionForm && showSubmissionOptions && (
-        <Button
-          onClick={() => setShowSubmissionForm(true)}
-          size="sm"
-          className="bg-blue-500 hover:bg-blue-600"
-          disabled={!canSubmit}
-        >
-          {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
-        </Button>
-      )}
+    <>
+      <ExerciseCard 
+        exercise={exercise}
+      >
+        {showSubmissionOptions && (
+          <Button
+            onClick={() => setShowSubmissionModal(true)}
+            size="sm"
+            className="bg-blue-500 hover:bg-blue-600"
+            disabled={!canSubmit}
+          >
+            {canSubmit ? 'Rendre l\'exercice' : 'Soumission indisponible'}
+          </Button>
+        )}
+      </ExerciseCard>
 
-      {showSubmissionForm && (
-        <SubmissionForm
-          onSubmit={handleSubmit}
-          onCancel={() => setShowSubmissionForm(false)}
-          isSubmitting={submitExerciseMutation.isPending}
-          exerciseTitle={exercise.title}
-          showSubmissionOptions={showSubmissionOptions}
-        />
-      )}
-    </ExerciseCard>
+      <ExerciseSubmissionModal
+        isOpen={showSubmissionModal}
+        onClose={() => setShowSubmissionModal(false)}
+        onSubmit={handleSubmit}
+        isSubmitting={submitExerciseMutation.isPending}
+        exerciseTitle={exercise.title}
+      />
+    </>
   );
 };
 

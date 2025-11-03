@@ -1,1 +1,4 @@
 project_id = "jiasafdbfqqhhdazoybu"
+
+[functions.unlock-weekly-lessons]
+verify_jwt = false

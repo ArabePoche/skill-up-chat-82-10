@@ -7,6 +7,8 @@ import TypingIndicator from '../chat/TypingIndicator';
 import ChatInputBar from '../chat/ChatInputBar';
 import TeacherChatHeader from '../teacher/TeacherChatHeader';
 import TeachingStudio from '../live-classroom/TeachingStudio';
+import DateSeparator from '../chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { ArrowLeft, Users, User } from 'lucide-react';
 import { useTeacherGroupMessages } from '@/hooks/teacher-discussions/useTeacherGroupMessages';
 import { useSendGroupMessage } from '@/hooks/useSendGroupMessage';
@@ -47,6 +49,7 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
     content: string;
     sender_name: string;
   } | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   // Récupérer le promotionId pour afficher les membres
   const { promotionId } = useChatMode(formation.id);
@@ -94,10 +97,14 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
   };
 
   const handleScrollToMessage = (messageId: string) => {
-    const messageElement = document.getElementById(`message-${messageId}`);
-    if (messageElement) {
-      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    setTimeout(() => {
+      const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedMessageId(messageId);
+        setTimeout(() => setHighlightedMessageId(null), 3000);
+      }
+    }, 100);
   };
 
   if (isLoading) {
@@ -181,15 +188,24 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
 
           {/* Messages */}
           {messages && messages.length > 0 ? (
-            messages.map((msg) => (
-              <div key={msg.id} className="message-appear">
-                <div id={`message-${msg.id}`}>
-                  <MessageItem
-                    message={msg}
-                    isTeacher={true}
-                    onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
-                    onReply={handleReplyToMessage}
-                  />
+            Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+              <div key={date}>
+                <DateSeparator date={date} />
+                <div className="space-y-4">
+                  {dateMessages.map((msg) => (
+                    <div key={msg.id} className="message-appear">
+                      <div id={`message-${msg.id}`}>
+                        <MessageItem
+                          message={msg}
+                          isTeacher={true}
+                          onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
+                          onReply={handleReplyToMessage}
+                          onScrollToMessage={handleScrollToMessage}
+                          highlightedMessageId={highlightedMessageId}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))

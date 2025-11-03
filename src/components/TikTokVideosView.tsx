@@ -1,8 +1,9 @@
 
-import React, { useState, useRef, useCallback, useEffect, createContext, useContext } from 'react';
+import React, { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import VideoCard from '@/components/video/VideoCard';
 import { useInfiniteVideos } from '@/hooks/useInfiniteVideos';
+import { useVideoById } from '@/hooks/useVideoById';
 import ConfettiAnimation from '@/components/ConfettiAnimation';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
   const location = useLocation();
   const navigate = useNavigate();
   const { data: videos = [], fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteVideos();
+  const { data: targetVideo, isLoading: isLoadingTargetVideo } = useVideoById(targetVideoId);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [globalMuted, setGlobalMuted] = useState(false); // Son activé par défaut
@@ -49,38 +51,40 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
   const hasScrolledRef = useRef(false);
 
+  // Fusionner la vidéo cible avec le flux si elle n'est pas déjà présente
+  const displayedVideos = useMemo(() => {
+    if (!targetVideoId || !targetVideo) return videos;
+    
+    // Vérifier si la vidéo cible est déjà dans le flux
+    const isInFlow = videos.some(v => v.id === targetVideoId);
+    if (isInFlow) return videos;
+    
+    // Insérer la vidéo cible au début du flux
+    return [targetVideo, ...videos];
+  }, [targetVideoId, targetVideo, videos]);
+
   // Contrôle global du son
   const toggleGlobalMute = () => {
     setGlobalMuted(!globalMuted);
   };
 
-  // Détecter le scroll pour changer l'URL de /video/:id vers /video
+  // Détecter le changement de vidéo pour mettre à jour la route
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      // Si on est sur /video/:id et qu'on commence à scroller
-      if (location.pathname.startsWith('/video/') && !hasScrolledRef.current) {
-        hasScrolledRef.current = true;
+    // Si on est sur /video/:id avec une vidéo ciblée
+    if (targetVideoId && (location.pathname.startsWith('/video/') || location.pathname.startsWith('/videos/'))) {
+      // Trouver l'index de la vidéo ciblée
+      const targetIndex = displayedVideos.findIndex((v: any) => v.id === targetVideoId);
+      
+      // Si la vidéo courante n'est plus la vidéo ciblée, revenir à /video
+      if (targetIndex !== -1 && currentVideoIndex !== targetIndex) {
         navigate('/video', { replace: true });
       }
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [location.pathname, navigate]);
-
-  // Réinitialiser le flag de scroll quand on arrive sur une nouvelle vidéo via lien
-  useEffect(() => {
-    if (location.pathname.startsWith('/video/')) {
-      hasScrolledRef.current = false;
     }
-  }, [location.pathname]);
+  }, [currentVideoIndex, targetVideoId, displayedVideos, location.pathname, navigate]);
 
   // Intersection Observer pour la lecture automatique
   useEffect(() => {
-    if (!videos || videos.length === 0) return;
+    if (!displayedVideos || displayedVideos.length === 0) return;
     
     const observer = new IntersectionObserver(
       (entries) => {
@@ -99,20 +103,20 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     });
 
     return () => observer.disconnect();
-  }, [videos]);
+  }, [displayedVideos]);
 
   // Charger plus de vidéos quand on approche de la fin
   useEffect(() => {
-    if (!videos || videos.length === 0) return;
+    if (!displayedVideos || displayedVideos.length === 0) return;
     
-    if (currentVideoIndex >= videos.length - 2 && hasNextPage && !isFetchingNextPage) {
+    if (currentVideoIndex >= displayedVideos.length - 2 && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [currentVideoIndex, videos, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [currentVideoIndex, displayedVideos, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    if (!targetVideoId || !videos || videos.length === 0) return;
-    const index = videos.findIndex((v: any) => v.id === targetVideoId);
+    if (!targetVideoId || !displayedVideos || displayedVideos.length === 0) return;
+    const index = displayedVideos.findIndex((v: any) => v.id === targetVideoId);
     if (index >= 0) {
       setCurrentVideoIndex(index);
       const ref = videoRefs.current[index];
@@ -120,7 +124,7 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
         ref.scrollIntoView({ behavior: 'auto', block: 'start' });
       }
     }
-  }, [targetVideoId, videos]);
+  }, [targetVideoId, displayedVideos]);
 
   const handleLikeWithConfetti = () => {
     setShowConfetti(true);
@@ -132,7 +136,16 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     // Les compteurs de commentaires seront mis à jour localement par le hook
   };
 
-  if (!videos || videos.length === 0) {
+  // Si on attend une vidéo ciblée spécifique, afficher le loader jusqu'à ce qu'elle soit chargée
+  if (targetVideoId && isLoadingTargetVideo) {
+    return (
+      <div className="h-full flex items-center justify-center text-white bg-black">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  if (!displayedVideos || displayedVideos.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-white bg-black">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -171,7 +184,7 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
         </div>
         
         {/* Affichage de toutes les vidéos avec scroll fluide */}
-        {videos.map((video, index) => (
+        {displayedVideos.map((video, index) => (
           <div
             key={video.id}
             ref={(el) => (videoRefs.current[index] = el)}

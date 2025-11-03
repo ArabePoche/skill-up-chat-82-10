@@ -5,19 +5,21 @@ import FormationDetail from '@/components/cours/FormationDetail';
 import ChatInterface from '@/components/ChatInterface';
 import { useFormationById } from '@/hooks/useFormations';
 import Navbar from '@/components/Navbar';
+import { useTranslation } from 'react-i18next';
 
 const FormationDetailPage = () => {
   const { formationId } = useParams();
   const navigate = useNavigate();
   const [selectedLesson, setSelectedLesson] = useState(null);
   const { data: formation, isLoading, error } = useFormationById(formationId);
+  const { t } = useTranslation();
 
   if (!formationId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Formation non trouvée</h1>
-          <p className="text-muted-foreground">L'ID de la formation est manquant.</p>
+          <h1 className="text-2xl font-bold text-foreground mb-4">{t('formation.notFound')}</h1>
+          <p className="text-muted-foreground">{t('formation.missingId')}</p>
         </div>
       </div>
     );
@@ -27,8 +29,8 @@ const FormationDetailPage = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-xl font-bold text-foreground mb-4">Chargement...</h1>
-          <p className="text-muted-foreground">Récupération des détails de la formation</p>
+          <h1 className="text-xl font-bold text-foreground mb-4">{t('common.loading')}</h1>
+          <p className="text-muted-foreground">{t('formation.loadingDetails')}</p>
         </div>
       </div>
     );
@@ -38,8 +40,8 @@ const FormationDetailPage = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Erreur</h1>
-          <p className="text-muted-foreground">Impossible de charger la formation.</p>
+          <h1 className="text-2xl font-bold text-foreground mb-4">{t('common.error')}</h1>
+          <p className="text-muted-foreground">{t('formation.errorLoading')}</p>
         </div>
       </div>
     );

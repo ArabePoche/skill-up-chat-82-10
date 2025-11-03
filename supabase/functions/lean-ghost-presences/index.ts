@@ -6,7 +6,7 @@
  * À exécuter périodiquement via cron job
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.77.0";
 
 const GHOST_THRESHOLD = 15 * 60 * 1000; // 15 minutes
 

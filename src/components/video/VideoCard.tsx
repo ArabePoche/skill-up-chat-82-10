@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List } from 'lucide-react';
+import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
@@ -12,8 +12,11 @@ import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useFollow } from '@/hooks/useFollow';
+import { useFollow } from '@/friends/hooks/useFollow';
 import { useVideoSeries } from '@/hooks/useVideoSeries';
+import { useVideoViews } from '@/hooks/useVideoViews';
+import VerifiedBadge from '@/components/VerifiedBadge';
+import { useTranslation } from 'react-i18next';
 
 interface Video {
   id: string;
@@ -23,6 +26,7 @@ interface Video {
   thumbnail_url: string;
   likes_count: number;
   comments_count: number;
+  views_count?: number;
   author_id: string;
   video_type?: string;
   formation_id?: string;
@@ -32,6 +36,7 @@ interface Video {
     last_name?: string;
     username?: string;
     avatar_url?: string;
+    is_verified?: boolean;
   };
 }
 
@@ -51,6 +56,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isMuted } = useGlobalSound();
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -63,6 +69,9 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
   const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id);
   const { data: seriesData } = useVideoSeries(video.id);
+  
+  // Tracker les vues
+  useVideoViews(video.id, isActive);
 
   // Récupération dynamique du compteur de commentaires
   const { data: commentsCount = video.comments_count } = useQuery({
@@ -164,13 +173,19 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const handleSave = () => {
     handleActionClick(() => {
       setIsSaved(!isSaved);
-      toast.success(isSaved ? 'Vidéo retirée des favoris' : 'Vidéo ajoutée aux favoris');
+      toast.success(isSaved ? t('video.removedFromFavorites') : t('video.savedToFavorites'));
     });
   };
 
   const handleFormationRedirect = () => {
     if (video.formation_id) {
       navigate(`/formation/${video.formation_id}`);
+    }
+  };
+
+  const handleProfileClick = () => {
+    if (video.author_id) {
+      navigate(`/profile/${video.author_id}`);
     }
   };
 
@@ -272,7 +287,10 @@ const VideoCard: React.FC<VideoCardProps> = ({
       <div className="absolute right-3 bottom-20 flex flex-col items-center space-y-4 z-10">
         {/* Avatar du créateur avec bouton d'abonnement */}
         <div className="relative">
-          <Avatar className="w-12 h-12 border-2 border-white">
+          <Avatar 
+            className="w-12 h-12 border-2 border-white cursor-pointer"
+            onClick={handleProfileClick}
+          >
             <AvatarImage src={video.profiles?.avatar_url} />
             <AvatarFallback className="bg-gray-600 text-white text-sm">
               {video.profiles?.first_name?.charAt(0) || 'U'}
@@ -333,7 +351,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
             <Share size={24} />
           </Button>
           <span className="text-white text-xs mt-1 font-medium">
-            Partager
+            {t('video.share')}
           </span>
         </div>
 
@@ -350,7 +368,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
             <Bookmark size={24} className={isSaved ? 'fill-current' : ''} />
           </Button>
           <span className="text-white text-xs mt-1 font-medium">
-            {isSaved ? 'Sauvé' : 'Sauver'}
+            {isSaved ? t('video.saved') : t('video.save')}
           </span>
         </div>
 
@@ -366,7 +384,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
               <List size={24} />
             </Button>
             <span className="text-white text-xs mt-1 font-medium">
-              Série
+              {t('video.series')}
             </span>
           </div>
         )}
@@ -383,7 +401,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
               <ShoppingBag size={24} />
             </Button>
             <span className="text-white text-xs mt-1 font-medium">
-              Formation
+              {t('video.formation')}
             </span>
           </div>
         )}
@@ -393,12 +411,16 @@ const VideoCard: React.FC<VideoCardProps> = ({
       <div className="absolute left-4 bottom-20 right-20 z-10">
         <div className="text-white">
           <div className="flex items-center space-x-2 mb-2">
-            <span className="font-semibold">
-              @{video.profiles?.username || video.profiles?.first_name || 'Utilisateur'}
+            <span 
+              className="font-semibold cursor-pointer hover:underline inline-flex items-center gap-1"
+              onClick={handleProfileClick}
+            >
+              @{video.profiles?.username || video.profiles?.first_name || t('video.user')}
+              {video.profiles?.is_verified && <VerifiedBadge size={16} showTooltip={false} />}
             </span>
             {video.video_type === 'promo' && (
               <span className="bg-edu-primary px-2 py-1 rounded-full text-xs font-bold">
-                PROMO
+                {t('video.promo')}
               </span>
             )}
           </div>
@@ -406,6 +428,15 @@ const VideoCard: React.FC<VideoCardProps> = ({
           {video.description && (
             <p className="text-sm opacity-90 line-clamp-3">{video.description}</p>
           )}
+          
+          {/* Afficher le nombre de vues */}
+          {video.views_count !== undefined && video.views_count > 0 && (
+            <div className="flex items-center space-x-1 mt-2 text-sm opacity-90">
+              <Eye size={16} />
+              <span>{formatCount(video.views_count)} {t('video.views')}</span>
+            </div>
+          )}
+          
           {video.price && (
             <div className="mt-2">
               <span className="bg-green-500 px-2 py-1 rounded-full text-xs font-bold">

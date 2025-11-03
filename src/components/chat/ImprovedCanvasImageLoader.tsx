@@ -35,12 +35,36 @@ const ImprovedCanvasImageLoader: React.FC<ImprovedCanvasImageLoaderProps> = ({
       onImageLoad(img);
     };
     
-    img.onerror = (event) => {
-      console.error('Image loading failed:', event);
-      const errorMsg = 'Impossible de charger l\'image. Vérifiez le format ou la connexion.';
-      setError(errorMsg);
-      setLoading(false);
-      onError?.(errorMsg);
+    img.onerror = async (event) => {
+      console.error('Image loading failed (direct):', event);
+      // Fallback: tenter via fetch + blob pour éviter certains problèmes CORS/CDN
+      try {
+        const res = await fetch(imageUrl, { mode: 'cors' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => {
+          console.log('Image loaded via blob fallback:', fallbackImg.width, 'x', fallbackImg.height);
+          URL.revokeObjectURL(blobUrl);
+          setLoading(false);
+          onImageLoad(fallbackImg);
+        };
+        fallbackImg.onerror = (e) => {
+          console.error('Fallback blob image load failed:', e);
+          const errorMsg = 'Impossible de charger l\'image.';
+          setError(errorMsg);
+          setLoading(false);
+          onError?.(errorMsg);
+        };
+        fallbackImg.src = blobUrl;
+      } catch (e) {
+        console.error('Image fetch fallback failed:', e);
+        const errorMsg = 'Impossible de charger l\'image. Vérifiez le format ou la connexion.';
+        setError(errorMsg);
+        setLoading(false);
+        onError?.(errorMsg);
+      }
     };
 
     // Gérer les différents formats d'URL avec validation

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Play, Users, Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Formation {
   id: string;
@@ -20,7 +21,10 @@ interface FormationCardProps {
   onClick: (formation: Formation) => void;
 }
 
-const FormationCard: React.FC<FormationCardProps> = ({ formation, isTeacherSection = false, onClick }) => (
+const FormationCard: React.FC<FormationCardProps> = ({ formation, isTeacherSection = false, onClick }) => {
+  const { t } = useTranslation();
+  
+  return (
   <div
     onClick={() => onClick(formation)}
     className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer overflow-hidden"
@@ -38,23 +42,23 @@ const FormationCard: React.FC<FormationCardProps> = ({ formation, isTeacherSecti
         )}
       </div>
       <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
-        {isTeacherSection ? `${formation.students} élèves` : `${formation.progress || 0}% complété`}
+        {isTeacherSection ? `${formation.students} ${t('formation.students')}` : `${formation.progress || 0}% ${t('formation.completed')}`}
       </div>
       {isTeacherSection && (
         <div className="absolute top-2 left-2 bg-[#25d366] text-white px-2 py-1 rounded text-xs">
-          👨‍🏫 Professeur
+          👨‍🏫 {t('formation.teacher')}
         </div>
       )}
     </div>
 
     <div className="p-3 sm:p-4">
       <h3 className="font-semibold text-base sm:text-lg mb-2 line-clamp-2">{formation.title}</h3>
-      <p className="text-sm text-gray-600 mb-3">Par {formation.author || 'Auteur inconnu'}</p>
+      <p className="text-sm text-gray-600 mb-3">{t('formation.by')} {formation.author || t('formation.unknownAuthor')}</p>
       
       <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
         <div className="flex items-center space-x-1">
           <Users size={14} />
-          <span className="text-xs sm:text-sm">{formation.students} étudiants</span>
+          <span className="text-xs sm:text-sm">{formation.students} {t('formation.studentsCount')}</span>
         </div>
         <div className="flex items-center space-x-1">
           <Star size={14} className="text-yellow-400 fill-current" />
@@ -72,6 +76,7 @@ const FormationCard: React.FC<FormationCardProps> = ({ formation, isTeacherSecti
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default FormationCard;

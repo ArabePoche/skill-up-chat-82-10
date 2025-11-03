@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { UserX, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,7 +53,7 @@ const FriendsList: React.FC<FriendsListProps> = ({ userId }) => {
       // Récupérer les profils des amis
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
+        .select('id, username, first_name, last_name, avatar_url, is_verified')
         .in('id', friendIds);
 
       if (profilesError) throw profilesError;
@@ -120,7 +121,10 @@ const FriendsList: React.FC<FriendsListProps> = ({ userId }) => {
               className="flex-1 cursor-pointer"
               onClick={() => navigate(`/profil/${friendData?.id}`)}
             >
-              <p className="font-medium">{displayName}</p>
+              <p className="font-medium inline-flex items-center gap-1">
+                {displayName}
+                {friendData?.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
+              </p>
               <p className="text-xs text-muted-foreground">@{friendData?.username}</p>
             </div>
 

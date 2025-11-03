@@ -13,10 +13,12 @@ import { useTeacherFormations } from '@/hooks/useTeacherFormations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
+import { useTranslation } from 'react-i18next';
 
 const CoursIndex = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   const { data: allFormations, isLoading: formationsLoading } = useFormations();
   const { data: userEnrollments, isLoading: enrollmentsLoading, error: enrollmentsError } = useUserEnrollments(user?.id);
@@ -63,8 +65,8 @@ const CoursIndex = () => {
   if (loading) {
     return (
       <LoadingSpinner 
-        message="Vérification de la connexion..." 
-        subtitle="Veuillez patienter" 
+        message={t('formation.verifyingConnection')} 
+        subtitle={t('formation.pleaseWait')} 
       />
     );
   }
@@ -78,8 +80,8 @@ const CoursIndex = () => {
   if (isLoading) {
     return (
       <LoadingSpinner 
-        message="Chargement..." 
-        subtitle="Récupération de vos formations" 
+        message={t('common.loading')} 
+        subtitle={t('formation.loadingFormations')} 
       />
     );
   }
@@ -97,30 +99,28 @@ const CoursIndex = () => {
 
   
 
-  const debugMessage = `User ID: ${user?.id} | Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
-
   return (
     <div className="bg-gray-50 min-h-screen pb-24">
       <CoursHeader 
-        title="Mes Formations" 
-        subtitle="Continuez votre apprentissage" 
+        title={t('formation.myFormations')} 
+        subtitle={t('formation.continueLearn')} 
         
       />
         
       <div className="p-4 space-y-6">
         <FormationSection
-          title="Mes cours suivis"
+          title={t('formation.myEnrolledCourses')}
           icon="student"
           formations={studentFormations}
           isTeacherSection={false}
           onFormationClick={handleFormationClick}
-          emptyMessage="Vous n'êtes inscrit à aucune formation"
-          debugInfo={debugMessage}
+          emptyMessage={t('formation.notEnrolled')}
+          
         />
 
         {teacherFormations && teacherFormations.length > 0 && (
           <FormationSection
-            title="Espace enseignant"
+            title={t('formation.teacherSpace')}
             icon="teacher"
             formations={teacherFormations}
             isTeacherSection={true}
@@ -137,4 +137,4 @@ const CoursIndex = () => {
   );
 };
 
-export default CoursIndex;
+export default CoursIndex; 

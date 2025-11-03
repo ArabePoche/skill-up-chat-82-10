@@ -89,7 +89,7 @@ const TeachingStudio: React.FC<TeachingStudioProps> = ({
       {/* Header */}
       <div className="bg-gray-800 p-4 flex items-center justify-between border-b border-gray-700">
         <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold">Studio d'Enseignement</h1>
+          <h1 className="text-xl font-bold">Studio de cours</h1>
           <span className="text-sm text-gray-300">{lesson.title}</span>
         </div>
         

@@ -5,13 +5,14 @@ import MessageSender from './MessageSender';
 import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
 import ExerciseRejectionDetails from './ExerciseRejectionDetails';
+import StudentExerciseActions from './StudentExerciseActions';
 import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
 import { ValidatedByTeacherBadge } from './ValidatedByTeacherBadge';
 import EmojiPicker from '@/components/EmojiPicker';
 import { MoreVertical, Reply, Edit2, Trash2, Smile, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCreateStory } from '@/hooks/useStories';
+import { useCreateStory } from '@/stories/hooks/useStories';
 import { toast } from 'sonner';
 import {
   ContextMenu,
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/context-menu';
 import { useMessageReactions, useToggleReaction } from '@/hooks/useMessageReactions';
 import { useEditLessonMessage, useDeleteLessonMessage } from '@/hooks/useLessonOperations.messages';
+import { LinkifiedText } from '@/utils/linkify';
 
 interface Message {
   id: string;
@@ -39,6 +41,7 @@ interface Message {
   exercise_id?: string;
   lesson_id?: string;
   formation_id?: string;
+  level_id?: string;
   is_read?: boolean;
   reject_audio_url?: string;
   reject_audio_duration?: number;
@@ -65,6 +68,7 @@ interface Message {
   };
   is_system_message?: boolean;
   validated_by_teacher_id?: string;
+  promotion_id?: string;
 }
 
 interface MessageBubbleProps {
@@ -72,9 +76,10 @@ interface MessageBubbleProps {
   isTeacher: boolean;
   onReply?: (message: Message) => void; // callback pour définir la réponse dans l'input
   onScrollToMessage?: (messageId: string) => void; // Nouvelle prop pour le scroll
+  highlightedMessageId?: string | null;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onReply, onScrollToMessage }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onReply, onScrollToMessage, highlightedMessageId }) => {
   const { user } = useAuth();
   const isOwnMessage = message.sender_id === user?.id;
   const isRealExerciseSubmission = message.is_exercise_submission === true;
@@ -144,15 +149,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
     }
   };
 
+  const isHighlighted = highlightedMessageId === message.id;
+
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
             ref={bubbleRef}
-            className={`rounded-lg shadow-sm max-w-xs p-3 relative ${
+            data-message-id={message.id}
+            className={`rounded-lg shadow-sm max-w-xs p-3 relative transition-all duration-300 ${
               isOwnMessage ? 'bg-[#dcf8c6]' : 'bg-white'
-            }`}
+            } ${isHighlighted ? 'ring-2 ring-[#25d366] scale-105' : ''}`}
           >
             {!isOwnMessage && (
               <MessageSender profile={message.profiles} />
@@ -193,7 +201,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-800 mb-2 whitespace-pre-wrap">{message.content}</p>
+              <p className="text-sm text-gray-800 mb-2 whitespace-pre-wrap">
+                <LinkifiedText text={message.content} />
+              </p>
             )}
 
             {message.file_url && message.file_name && (
@@ -210,10 +220,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
               </div>
             )}
 
-            {isTeacher && isRealExerciseSubmission && !message.exercise_status && (
+            {/* Afficher ExerciseValidation pour les profs (toujours, même si déjà traité) */}
+            {isTeacher && isRealExerciseSubmission && (
               <ExerciseValidation message={message} />
             )}
 
+            {/* Afficher le statut et les détails pour tous */}
             {isRealExerciseSubmission && message.exercise_status && (
               <div className="space-y-2">
                 <ExerciseStatus status={message.exercise_status} />
@@ -246,6 +258,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
                   </Button>
                 )}
               </div>
+            )}
+
+            {/* Afficher les actions de modification pour l'élève si c'est sa soumission */}
+            {isOwnMessage && isRealExerciseSubmission && !isTeacher && (
+              <StudentExerciseActions 
+                message={message}
+                exerciseTitle={message.exercise_id}
+              />
             )}
 
             {/* Heure et badge modifié */}

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,6 +18,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Vérifier si l'utilisateur est déjà connecté
@@ -91,14 +93,14 @@ const Auth = () => {
 
         if (data.user) {
           toast({
-            title: "Compte créé avec succès !",
+            title: t('auth.signupSuccess'),
             description: "Veuillez vérifier votre email pour confirmer votre compte.",
           });
         }
       }
     } catch (error: any) {
       toast({
-        title: "Erreur",
+        title: t('common.error'),
         description: error.message || "Une erreur est survenue",
         variant: "destructive",
       });
@@ -115,7 +117,7 @@ const Auth = () => {
           <div className="bg-[#25d366] text-white p-6 text-center">
             <h1 className="text-2xl font-bold mb-2">EducaTok</h1>
             <p className="text-white/80">
-              {isLogin ? 'Connectez-vous à votre compte' : 'Créez votre compte'}
+              {isLogin ? t('auth.loginTitle') : t('auth.signupTitle')}
             </p>
           </div>
 
@@ -128,7 +130,7 @@ const Auth = () => {
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                     <Input
                       type="text"
-                      placeholder="Prénom"
+                      placeholder={t('auth.firstName')}
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       className="pl-10"
@@ -139,7 +141,7 @@ const Auth = () => {
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                     <Input
                       type="text"
-                      placeholder="Nom"
+                      placeholder={t('auth.lastName')}
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       className="pl-10"
@@ -153,7 +155,7 @@ const Auth = () => {
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t('auth.emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -165,7 +167,7 @@ const Auth = () => {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Mot de passe au choix"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
@@ -185,7 +187,7 @@ const Auth = () => {
                 className="w-full bg-[#25d366] hover:bg-[#20c75a] text-white"
                 disabled={isLoading}
               >
-                {isLoading ? 'Chargement...' : (isLogin ? 'Se connecter' : 'Créer un compte')}
+                {isLoading ? t('common.loading') : (isLogin ? t('common.login') : t('common.signup'))}
               </Button>
             </form>
 
@@ -195,8 +197,8 @@ const Auth = () => {
                 className="text-[#25d366] hover:underline"
               >
                 {isLogin 
-                  ? "Pas encore de compte ? Créez-en un" 
-                  : "Déjà un compte ? Connectez-vous"
+                  ? t('auth.noAccount') 
+                  : t('auth.hasAccount')
                 }
               </button>
             </div>
@@ -209,7 +211,7 @@ const Auth = () => {
             className="flex items-center justify-center mx-auto text-gray-600 hover:text-gray-800"
           >
             <ArrowLeft size={16} className="mr-1" />
-            Aller à l'accueil
+            {t('common.back')}
           </button>
         </div>
       </div>

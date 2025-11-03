@@ -30,6 +30,8 @@ interface Message {
   exercise_id?: string;
   lesson_id?: string;
   formation_id?: string;
+  level_id?: string;
+  promotion_id?: string;
   is_read?: boolean;
   profiles?: {
     id: string;
@@ -113,13 +115,18 @@ const MessageList: React.FC<MessageListProps> = ({
       msg.is_exercise_submission === true
     );
 
-    // Trier par date décroissante pour avoir la plus récente
-    const sortedSubmissions = submissions.sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    if (submissions.length === 0) return undefined;
 
-    // Retourner le statut de la soumission la plus récente
-    return sortedSubmissions.length > 0 ? sortedSubmissions[0].exercise_status : undefined;
+    // Un exercice est complètement approuvé uniquement si TOUTES les soumissions sont 'approved'
+    const allApproved = submissions.every(sub => sub.exercise_status === 'approved');
+    if (allApproved) return 'approved';
+
+    // S'il y a au moins une soumission rejetée
+    const hasRejected = submissions.some(sub => sub.exercise_status === 'rejected');
+    if (hasRejected) return 'rejected';
+
+    // Sinon, il y a des soumissions en attente
+    return 'pending';
   };
 
   const scrollToBottom = () => {
@@ -228,6 +235,7 @@ const MessageList: React.FC<MessageListProps> = ({
               isTeacherView={isTeacherView}
               isGroupChat={isGroupChatContext}
               levelId={effectiveLevelId}
+              messages={messages}
             />
           );
         }
@@ -258,6 +266,7 @@ const MessageList: React.FC<MessageListProps> = ({
                   showSubmissionOptions={!isTeacherView}
                   isGroupChat={true}
                   levelId={lessonId} // Dans le contexte groupe, lessonId correspond au levelId
+                  messages={messages}
                 />
               </div>
             );

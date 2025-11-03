@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getNames } from 'country-list';
 import { TeacherApplicationForm } from '@/teacher-application/components/TeacherApplicationForm';
 import { getPhoneCodeByCountry } from '@/utils/countryPhoneCodes';
+import { useTranslation } from 'react-i18next';
 
 const CompleteProfile = () => {
   const [formData, setFormData] = useState({
@@ -32,13 +33,24 @@ const CompleteProfile = () => {
   const [phoneError, setPhoneError] = useState<string>('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { i18n, t } = useTranslation();
 
   // Utilisation de la bibliothèque country-list pour obtenir la liste des pays
   const countries = getNames();
 
   const interestOptions = [
-    'Technologie', 'Sciences', 'Littérature', 'Arts', 'Sport', 'Musique', 
-     'Voyage', 'Cuisine', 'Photographie', 'Mode', 'Business', 'Boulangerie'
+    { key: 'technology', label: t('completeProfile.interestOptions.technology') },
+    { key: 'sciences', label: t('completeProfile.interestOptions.sciences') },
+    { key: 'literature', label: t('completeProfile.interestOptions.literature') },
+    { key: 'arts', label: t('completeProfile.interestOptions.arts') },
+    { key: 'sport', label: t('completeProfile.interestOptions.sport') },
+    { key: 'religion', label: t('completeProfile.interestOptions.religion') },
+    { key: 'travel', label: t('completeProfile.interestOptions.travel') },
+    { key: 'cooking', label: t('completeProfile.interestOptions.cooking') },
+    { key: 'photography', label: t('completeProfile.interestOptions.photography') },
+    { key: 'education', label: t('completeProfile.interestOptions.education') },
+    { key: 'business', label: t('completeProfile.interestOptions.business') },
+    { key: 'bakery', label: t('completeProfile.interestOptions.bakery') }
   ];
 
   useEffect(() => {
@@ -78,6 +90,7 @@ const CompleteProfile = () => {
 
       if (profile) {
         console.log('Profile loaded:', profile);
+        const profileLanguage = profile.language || 'fr';
         setFormData({
           firstName: profile.first_name || '',
           lastName: profile.last_name || '',
@@ -89,13 +102,15 @@ const CompleteProfile = () => {
           interests: profile.interests || [],
           wantToBeInstructor: profile.is_teacher || false,
           newPassword: '',
-          language: profile.language || 'fr'
+          language: profileLanguage
         });
+        // Appliquer la langue du profil à l'interface
+        i18n.changeLanguage(profileLanguage);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in checkUser:', error);
       toast({
-        title: "Erreur",
+        title: t('completeProfile.error'),
         description: "Erreur lors du chargement du profil",
         variant: "destructive",
       });
@@ -104,12 +119,12 @@ const CompleteProfile = () => {
     }
   };
 
-  const handleInterestToggle = (interest: string) => {
+  const handleInterestToggle = (interestKey: string) => {
     setFormData(prev => ({
       ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
+      interests: prev.interests.includes(interestKey)
+        ? prev.interests.filter(i => i !== interestKey)
+        : [...prev.interests, interestKey]
     }));
   };
 
@@ -134,10 +149,10 @@ const CompleteProfile = () => {
 
         if (checkError) {
           console.error('Erreur vérification téléphone:', checkError);
-          setPhoneError("Impossible de vérifier le numéro de téléphone. Veuillez réessayer.");
+          setPhoneError(t('completeProfile.phoneVerificationError'));
           toast({
-            title: "Erreur de vérification",
-            description: "Impossible de vérifier le numéro de téléphone. Veuillez réessayer.",
+            title: t('completeProfile.error'),
+            description: t('completeProfile.phoneVerificationError'),
             variant: "destructive",
           });
           setIsLoading(false);
@@ -145,10 +160,10 @@ const CompleteProfile = () => {
         }
 
         if (existingProfiles && existingProfiles.length > 0) {
-          setPhoneError("Ce numéro de téléphone est déjà associé à un autre compte. Veuillez en utiliser un autre.");
+          setPhoneError(t('completeProfile.phoneAlreadyUsed'));
           toast({
-            title: "Numéro déjà utilisé",
-            description: "Ce numéro de téléphone est déjà associé à un autre compte. Veuillez en utiliser un autre.",
+            title: t('completeProfile.error'),
+            description: t('completeProfile.phoneAlreadyUsed'),
             variant: "destructive",
           });
           setIsLoading(false);
@@ -177,10 +192,10 @@ const CompleteProfile = () => {
       if (profileError) {
       // Vérifier si c'est une erreur de contrainte unique sur le numéro de téléphone
         if (profileError.code === '23505' && profileError.message?.includes('unique_phone_per_country')) {
-          setPhoneError("Ce numéro de téléphone est déjà associé à un autre compte.");
+          setPhoneError(t('completeProfile.phoneAlreadyUsed'));
           toast({
-            title: "Numéro déjà utilisé",
-            description: "Ce numéro de téléphone est déjà associé à un autre compte.",
+            title: t('completeProfile.error'),
+            description: t('completeProfile.phoneAlreadyUsed'),
             variant: "destructive",
           });
           setIsLoading(false);
@@ -199,15 +214,15 @@ const CompleteProfile = () => {
       }
 
       toast({
-        title: "Profil mis à jour !",
-        description: "Votre profil a été complété avec succès.",
+        title: t('completeProfile.profileUpdated'),
+        description: t('completeProfile.profileUpdatedDesc'),
       });
 
       navigate('/cours');
     } catch (error: any) {
       console.error('Submit error:', error);
       toast({
-        title: "Erreur",
+        title: t('completeProfile.error'),
         description: error.message || "Une erreur est survenue",
         variant: "destructive",
       });
@@ -220,8 +235,8 @@ const CompleteProfile = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">Chargement...</div>
-          <p className="text-gray-600">Initialisation du profil</p>
+          <div className="text-lg font-semibold mb-2">{t('completeProfile.loading')}</div>
+          <p className="text-gray-600">{t('completeProfile.initializing')}</p>
         </div>
       </div>
     );
@@ -231,8 +246,8 @@ const CompleteProfile = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg font-semibold mb-2">Redirection...</div>
-          <p className="text-gray-600">Vous devez être connecté</p>
+          <div className="text-lg font-semibold mb-2">{t('completeProfile.redirecting')}</div>
+          <p className="text-gray-600">{t('completeProfile.mustBeConnected')}</p>
         </div>
       </div>
     );
@@ -242,19 +257,19 @@ const CompleteProfile = () => {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h1 className="text-2xl font-bold text-center mb-6">Complétez votre profil</h1>
+          <h1 className="text-2xl font-bold text-center mb-6">{t('completeProfile.title')}</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Informations personnelles */}
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <User className="mr-2" size={20} />
-                Informations personnelles
+                {t('completeProfile.personalInfo')}
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">Prénom *</Label>
+                  <Label htmlFor="firstName">{t('completeProfile.firstName')} {t('completeProfile.required')}</Label>
                   <Input
                     id="firstName"
                     value={formData.firstName}
@@ -263,7 +278,7 @@ const CompleteProfile = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Nom *</Label>
+                  <Label htmlFor="lastName">{t('completeProfile.lastName')} {t('completeProfile.required')}</Label>
                   <Input
                     id="lastName"
                     value={formData.lastName}
@@ -274,7 +289,7 @@ const CompleteProfile = () => {
               </div>
 
               <div>
-                <Label htmlFor="country">Pays</Label>
+                <Label htmlFor="country">{t('completeProfile.country')}</Label>
                 <select
                   id="country"
                   value={formData.country}
@@ -289,7 +304,7 @@ const CompleteProfile = () => {
                   }}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background"
                 >
-                  <option value="">Sélectionnez un pays</option>
+                  <option value="">{t('completeProfile.selectCountry')}</option>
                   {countries.map(country => (
                     <option key={country} value={country}>{country}</option>
                   ))}
@@ -297,7 +312,7 @@ const CompleteProfile = () => {
               </div>
 
               <div>
-                <Label htmlFor="phone">Numéro de téléphone</Label>
+                <Label htmlFor="phone">{t('completeProfile.phone')}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="phoneCode"
@@ -315,10 +330,10 @@ const CompleteProfile = () => {
                       value={formData.phone}
                       onChange={(e) => {
                         setFormData(prev => ({ ...prev, phone: e.target.value }));
-                        setPhoneError(''); // Réinitialiser l'erreur quand l'utilisateur modifie
+                        setPhoneError('');
                       }}
                       className={`pl-10 ${phoneError ? 'border-red-500 focus:ring-red-500' : ''}`}
-                      placeholder="Numéro de téléphone"
+                      placeholder={t('completeProfile.phonePlaceholder')}
                     />
                   </div>
                 </div>
@@ -332,22 +347,22 @@ const CompleteProfile = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="gender">Genre</Label>
+                  <Label htmlFor="gender">{t('completeProfile.gender')}</Label>
                   <select
                     id="gender"
                     value={formData.gender}
                     onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
                     className="w-full h-10 px-3 rounded-md border border-input bg-background"
                   >
-                    <option value="">Sélectionnez</option>
-                    <option value="homme">Homme</option>
-                    <option value="femme">Femme</option>
-                    <option value="autre">Autre</option>
-                    <option value="prefere_ne_pas_dire">Préfère ne pas dire</option>
+                    <option value="">{t('completeProfile.selectGender')}</option>
+                    <option value="homme">{t('completeProfile.male')}</option>
+                    <option value="femme">{t('completeProfile.female')}</option>
+                    <option value="autre">{t('completeProfile.other')}</option>
+                    <option value="prefere_ne_pas_dire">{t('completeProfile.preferNotToSay')}</option>
                   </select>
                 </div>
                 <div>
-                  <Label htmlFor="age">Âge (optionnel)</Label>
+                  <Label htmlFor="age">{t('completeProfile.age')}</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                     <Input
@@ -368,21 +383,21 @@ const CompleteProfile = () => {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <Heart className="mr-2" size={20} />
-                Centres d'intérêt
+                {t('completeProfile.interests')}
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {interestOptions.map(interest => (
                   <button
-                    key={interest}
+                    key={interest.key}
                     type="button"
-                    onClick={() => handleInterestToggle(interest)}
+                    onClick={() => handleInterestToggle(interest.key)}
                     className={`p-2 text-sm rounded-md border transition-colors ${
-                      formData.interests.includes(interest)
+                      formData.interests.includes(interest.key)
                         ? 'bg-[#25d366] text-white border-[#25d366]'
                         : 'bg-white text-gray-700 border-gray-300 hover:border-[#25d366]'
                     }`}
                   >
-                    {interest}
+                    {interest.label}
                   </button>
                 ))}
               </div>
@@ -392,7 +407,7 @@ const CompleteProfile = () => {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <Settings className="mr-2" size={20} />
-                Options
+                {t('completeProfile.options')}
               </h2>
 
               <div className="flex items-center space-x-2">
@@ -403,41 +418,92 @@ const CompleteProfile = () => {
                   onChange={(e) => setFormData(prev => ({ ...prev, wantToBeInstructor: e.target.checked }))}
                   className="w-4 h-4 text-[#25d366] border-gray-300 rounded focus:ring-[#25d366]"
                 />
-                <Label htmlFor="instructor">Je souhaite devenir encadreur</Label>
+                <Label htmlFor="instructor">{t('completeProfile.wantToBeInstructor')}</Label>
               </div>
 
               {/* Formulaire de candidature d'encadreur */}
               {formData.wantToBeInstructor && user && (
                 <div className="mt-6">
                   <TeacherApplicationForm 
-                    userId={user.id}
-                    onSuccess={() => {
-                      toast({
-                        title: "Candidature soumise !",
-                        description: "Votre candidature a été envoyée avec succès.",
-                      });
-                    }}
+                  userId={user.id}
+                  onSuccess={() => {
+                    toast({
+                      title: t('completeProfile.applicationSubmitted'),
+                      description: t('completeProfile.applicationSubmittedDesc'),
+                    });
+                  }}
                   />
                 </div>
               )}
 
               <div>
-                <Label htmlFor="language">Langue</Label>
-                <select
-                  id="language"
-                  value={formData.language}
-                  onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                >
-                  <option value="fr">Français</option>
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                  <option value="ar">العربية</option>
-                </select>
+                <Label htmlFor="language">{t('completeProfile.language')}</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, language: 'fr' }));
+                      i18n.changeLanguage('fr');
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-md border transition-all ${
+                      formData.language === 'fr'
+                        ? 'bg-[#25d366] text-white border-[#25d366] shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-[#25d366]'
+                    }`}
+                  >
+                    <span className="text-2xl">🇫🇷</span>
+                    <span className="font-medium">Français</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, language: 'en' }));
+                      i18n.changeLanguage('en');
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-md border transition-all ${
+                      formData.language === 'en'
+                        ? 'bg-[#25d366] text-white border-[#25d366] shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-[#25d366]'
+                    }`}
+                  >
+                    <span className="text-2xl">🇬🇧</span>
+                    <span className="font-medium">English</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, language: 'ar' }));
+                      i18n.changeLanguage('ar');
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-md border transition-all ${
+                      formData.language === 'ar'
+                        ? 'bg-[#25d366] text-white border-[#25d366] shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-[#25d366]'
+                    }`}
+                  >
+                    <span className="text-2xl">🇸🇦</span>
+                    <span className="font-medium">العربية</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, language: 'es' }));
+                      i18n.changeLanguage('es');
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-md border transition-all ${
+                      formData.language === 'es'
+                        ? 'bg-[#25d366] text-white border-[#25d366] shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-[#25d366]'
+                    }`}
+                  >
+                    <span className="text-2xl">🇪🇸</span>
+                    <span className="font-medium">Español</span>
+                  </button>
+                </div>
               </div>
 
               <div>
-                <Label htmlFor="newPassword">Nouveau mot de passe (optionnel)</Label>
+                <Label htmlFor="newPassword">{t('completeProfile.newPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
@@ -463,14 +529,14 @@ const CompleteProfile = () => {
                 variant="outline"
                 onClick={() => navigate('/cours')}
               >
-                Passer pour l'instant
+                {t('completeProfile.skipForNow')}
               </Button>
               <Button
                 type="submit"
                 className="bg-[#25d366] hover:bg-[#20c75a]"
                 disabled={isLoading}
               >
-                {isLoading ? 'Sauvegarde...' : 'Sauvegarder'}
+                {isLoading ? t('completeProfile.loading') : t('completeProfile.saveProfile')}
               </Button>
             </div>
           </form>

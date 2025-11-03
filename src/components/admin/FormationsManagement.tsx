@@ -633,7 +633,7 @@ const FormationsManagement = () => {
                     {formation.badge || 'N/A'}
                   </Badge>
                 </TableCell>
-                <TableCell>{formation.price ? `${formation.price}€` : 'Gratuit'}</TableCell>
+                <TableCell>{formation.price ? `${formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}</TableCell>
                 <TableCell>
                   <Badge variant={formation.is_active ? 'default' : 'destructive'}>
                     {formation.is_active ? 'Actif' : 'Inactif'}

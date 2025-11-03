@@ -7,6 +7,7 @@ import { UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 /**
  * Liste de suggestions aléatoires d'utilisateurs
@@ -39,7 +40,7 @@ const SuggestionsList: React.FC = () => {
       // Récupérer tous les utilisateurs sauf ceux avec une relation existante
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, first_name, last_name, avatar_url')
+        .select('id, username, first_name, last_name, avatar_url, is_verified')
         .not('id', 'in', `(${Array.from(existingIds).join(',')})`)
         .limit(100); // Récupérer plus d'utilisateurs pour la pagination
 
@@ -142,7 +143,10 @@ const SuggestionsList: React.FC = () => {
               className="flex-1 cursor-pointer"
               onClick={() => navigate(`/profil/${user.id}`)}
             >
-              <p className="font-medium">{displayName}</p>
+              <p className="font-medium inline-flex items-center gap-1">
+                {displayName}
+                {user.is_verified && <VerifiedBadge size={14} showTooltip={false} />}
+              </p>
               <p className="text-xs text-muted-foreground">@{user.username}</p>
             </div>
 

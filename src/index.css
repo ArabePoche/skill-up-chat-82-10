@@ -53,6 +53,14 @@
     --whatsapp-dark-green: #075e54;
     --whatsapp-blue: #34b7f1;
     --whatsapp-gray: #f0f0f0;
+
+    /* Action buttons colors */
+    --action-blue: 217 91% 60%;
+    --action-blue-foreground: 0 0% 100%;
+    --action-purple: 271 81% 56%;
+    --action-purple-foreground: 0 0% 100%;
+    --action-orange: 25 95% 53%;
+    --action-orange-foreground: 0 0% 100%;
   }
 
   .dark {

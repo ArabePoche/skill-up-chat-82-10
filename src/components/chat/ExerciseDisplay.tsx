@@ -24,6 +24,7 @@ interface ExerciseDisplayProps {
   isGroupChat?: boolean; // Nouvelle prop pour identifier le type de chat
   levelId?: string; // Pour le chat de groupe
   canSubmitExercise?: boolean; // Nouveau prop pour contrôler l'accès
+  messages?: any[]; // Liste des messages pour détecter les soumissions existantes
 }
 
 const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
@@ -36,7 +37,8 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
   isTeacherView = false,
   isGroupChat = false,
   levelId,
-  canSubmitExercise
+  canSubmitExercise,
+  messages = []
 }) => {
   const { data: exerciseWithFiles } = useExerciseWithFiles(exercise.id);
 
@@ -135,6 +137,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
         exerciseStatus={exerciseStatus}
         showSubmissionOptions={showSubmissionOptions}
         canSubmitExercise={canSubmitExercise}
+        messages={messages}
       />
     );
   }
@@ -155,6 +158,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
       exerciseStatus={exerciseStatus}
       showSubmissionOptions={showSubmissionOptions}
       canSubmitExercise={canSubmitExercise}
+      messages={messages}
     />
   );
 };

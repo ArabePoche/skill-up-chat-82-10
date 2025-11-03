@@ -16,6 +16,7 @@ interface SystemMessageProps {
   isTeacherView?: boolean;
   isGroupChat?: boolean;
   levelId?: string;
+  messages?: any[]; // Liste des messages pour détecter les soumissions existantes
 }
 
 const SystemMessage: React.FC<SystemMessageProps> = ({
@@ -26,7 +27,8 @@ const SystemMessage: React.FC<SystemMessageProps> = ({
   exerciseStatus,
   isTeacherView = false,
   isGroupChat = false,
-  levelId
+  levelId,
+  messages = []
 }) => {
   return (
     <div className="space-y-3">
@@ -48,6 +50,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({
           showSubmissionOptions={!isTeacherView}
           isGroupChat={isGroupChat}
           levelId={levelId}
+          messages={messages}
         />
       )}
     </div>

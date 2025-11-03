@@ -40,6 +40,12 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
       return;
     }
 
+    // Vérifier que pour une vidéo promo, une formation est sélectionnée
+    if (formData.video_type === 'promo' && !formData.formation_id.trim()) {
+      toast.error('Veuillez sélectionner une formation pour une vidéo promo');
+      return;
+    }
+
     try {
       const videoData = {
         title: formData.title.trim(),

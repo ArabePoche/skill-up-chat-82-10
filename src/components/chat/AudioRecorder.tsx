@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Mic, Square, Play, Pause, Trash2, Send } from 'lucide-react';
+import { Mic, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AudioRecorderProps {
@@ -10,14 +10,9 @@ interface AudioRecorderProps {
 
 const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disabled = false }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -46,18 +41,16 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
         
-        // Créer un audio temporaire pour obtenir la durée réelle
-        const tempAudio = new Audio(url);
-        tempAudio.onloadedmetadata = () => {
-          setAudioDuration(tempAudio.duration);
-        };
+        // Envoyer automatiquement l'audio au modal
+        const file = new File([blob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+        onRecordingComplete(file);
         
         // Arrêter le stream
         stream.getTracks().forEach(track => track.stop());
+        
+        // Réinitialiser l'état
+        setRecordingTime(0);
       };
 
       mediaRecorder.start(100);
@@ -87,95 +80,11 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
     }
   };
 
-  const playAudio = () => {
-    if (!audioUrl || !audioRef.current) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
-  const deleteRecording = () => {
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl);
-    }
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setIsPlaying(false);
-    setRecordingTime(0);
-    setAudioDuration(0);
-  };
-
-  const sendRecording = () => {
-    if (audioBlob) {
-      const file = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
-      onRecordingComplete(file);
-      deleteRecording();
-    }
-  };
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // Si on a un enregistrement, afficher les contrôles de lecture
-  if (audioBlob) {
-    return (
-      <div className="flex items-center justify-between space-x-1 sm:space-x-2 bg-gray-50 rounded-lg p-2 border border-gray-200 w-full max-w-[280px] sm:max-w-xs">
-        <audio
-          ref={audioRef}
-          src={audioUrl || undefined}
-          onEnded={() => setIsPlaying(false)}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          className="hidden"
-        />
-        
-        <Button
-          onClick={playAudio}
-          variant="ghost"
-          size="sm"
-          className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-green-100 flex-shrink-0"
-        >
-          {isPlaying ? (
-            <Pause size={12} className="text-green-600 sm:w-[14px] sm:h-[14px]" />
-          ) : (
-            <Play size={12} className="text-green-600 sm:w-[14px] sm:h-[14px]" />
-          )}
-        </Button>
-        
-        <div className="flex-1 flex items-center justify-center">
-          <span className="text-xs sm:text-sm text-gray-600 font-mono">
-            {formatTime(Math.floor(audioDuration) || recordingTime)}
-          </span>
-        </div>
-        
-        <Button
-          onClick={deleteRecording}
-          variant="ghost"
-          size="sm"
-          className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-red-100 flex-shrink-0"
-        >
-          <Trash2 size={12} className="text-red-500 sm:w-[14px] sm:h-[14px]" />
-        </Button>
-        
-        <Button
-          onClick={sendRecording}
-          variant="ghost"
-          size="sm"
-          className="p-1 h-6 w-6 sm:h-8 sm:w-8 rounded-full hover:bg-green-100 flex-shrink-0"
-        >
-          <Send size={12} className="text-green-600 sm:w-[14px] sm:h-[14px]" />
-        </Button>
-      </div>
-    );
-  }
 
   // Bouton d'enregistrement
   return (
@@ -188,24 +97,27 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
         </div>
       )}
       
-      <Button
-        onClick={isRecording ? stopRecording : startRecording}
-        disabled={disabled}
-        variant="outline"
-        size="sm"
-        className={`p-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all duration-200 flex-shrink-0 ${
-          isRecording 
-            ? 'bg-red-500 text-white hover:bg-red-600 border-red-300 scale-110 shadow-lg animate-pulse' 
-            : 'hover:bg-gray-100 hover:scale-105'
-        }`}
-        title={isRecording ? 'Arrêter l\'enregistrement' : 'Enregistrer un message vocal'}
-      >
-        {isRecording ? (
-          <Square size={12} className="sm:w-[14px] sm:h-[14px]" />
-        ) : (
-          <Mic size={12} className="sm:w-[14px] sm:h-[14px]" />
-        )}
-      </Button>
+      {!isRecording ? (
+        <Button
+          onClick={startRecording}
+          disabled={disabled}
+          variant="actionOrange"
+          size="sm"
+          className="gap-1.5 transition-all duration-200 flex-shrink-0 hover:scale-105"
+          title="Enregistrer un message vocal"
+        >
+          <Mic size={16} />
+          <span>Vocal</span>
+        </Button>
+      ) : (
+        <Button
+          onClick={stopRecording}
+          className="bg-red-500 hover:bg-red-600 p-2 h-8 w-8 sm:h-10 sm:w-10 rounded-full transition-all duration-200 flex-shrink-0 scale-110 shadow-lg"
+          title="Arrêter et envoyer"
+        >
+          <Pause size={12} className="text-white sm:w-[14px] sm:h-[14px]" />
+        </Button>
+      )}
     </div>
   );
 };

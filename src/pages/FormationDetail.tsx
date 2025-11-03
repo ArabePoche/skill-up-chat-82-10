@@ -10,12 +10,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEnrollmentWithProtection } from '@/hooks/useEnrollments';
 import FormationPricing from '@/components/FormationPricing';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const FormationDetail = () => {
   const { formationId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { enroll, isFormationPending } = useEnrollmentWithProtection();
+  const { t } = useTranslation();
 
   const { data: formation, isLoading } = useQuery({
     queryKey: ['formation-detail', formationId],
@@ -56,7 +58,7 @@ const FormationDetail = () => {
 
   const handleEnroll = async () => {
     if (!user) {
-      toast.error('Veuillez vous connecter pour vous inscrire');
+      toast.error(t('formation.loginToEnroll'));
       navigate('/auth');
       return;
     }
@@ -64,7 +66,7 @@ const FormationDetail = () => {
     if (!formationId) return;
 
     if (isFormationPending(formationId)) {
-      toast.error('Inscription déjà en cours...');
+      toast.error(t('formation.enrolling'));
       return;
     }
 
@@ -76,10 +78,10 @@ const FormationDetail = () => {
   };
 
   const formatAuthorName = (profile: any) => {
-    if (!profile) return 'Auteur inconnu';
+    if (!profile) return t('formation.unknownAuthor');
     const firstName = profile.first_name || '';
     const lastName = profile.last_name || '';
-    return `${firstName} ${lastName}`.trim() || profile.username || 'Auteur inconnu';
+    return `${firstName} ${lastName}`.trim() || profile.username || t('formation.unknownAuthor');
   };
 
   const totalLessons = formation?.levels?.reduce((total, level) => total + (level.lessons?.length || 0), 0) || 0;
@@ -89,7 +91,7 @@ const FormationDetail = () => {
       <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-edu-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement de la formation...</p>
+          <p className="text-gray-600">{t('formation.loading')}</p>
         </div>
       </div>
     );
@@ -99,8 +101,8 @@ const FormationDetail = () => {
     return (
       <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Formation non trouvée</h1>
-          <Button onClick={() => navigate('/shop')}>Retour au shop</Button>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">{t('formation.notFound')}</h1>
+          <Button onClick={() => navigate('/shop')}>{t('formation.backToShop')}</Button>
         </div>
       </div>
     );
@@ -120,7 +122,7 @@ const FormationDetail = () => {
             >
               <ArrowLeft size={20} />
             </Button>
-            <h1 className="text-xl font-semibold text-gray-900 truncate">Détails de la formation</h1>
+            <h1 className="text-xl font-semibold text-gray-900 truncate">{t('formation.details')}</h1>
           </div>
         </div>
       </div>
@@ -137,7 +139,7 @@ const FormationDetail = () => {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-gray-400">Image de formation</span>
+                <span className="text-gray-400">{t('formation.imageAlt')}</span>
               )}
             </div>
             {formation.badge && (
@@ -152,7 +154,7 @@ const FormationDetail = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{formation.title}</h1>
                 <p className="text-gray-600">
-                  Par {formatAuthorName(formation.profiles)}
+                  {t('formation.by')} {formatAuthorName(formation.profiles)}
                 </p>
               </div>
 
@@ -182,12 +184,12 @@ const FormationDetail = () => {
 
                 <div className="flex items-center space-x-2 text-gray-600">
                   <Users size={16} />
-                  <span>{formation.students_count || 0} étudiants</span>
+                  <span>{formation.students_count || 0} {t('formation.studentsCount')}</span>
                 </div>
 
                 <div className="flex items-center space-x-2 text-gray-600">
                   <BookOpen size={16} />
-                  <span>{totalLessons} leçons</span>
+                  <span>{totalLessons} {t('formation.lessons')}</span>
                 </div>
 
                 {formation.duration && (
@@ -206,7 +208,7 @@ const FormationDetail = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <BookOpen size={20} />
-              <span>Contenu de la formation</span>
+              <span>{t('formation.content')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -219,7 +221,7 @@ const FormationDetail = () => {
                 {level.lessons && level.lessons.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">
-                      {level.lessons.length} leçon(s)
+                      {level.lessons.length} {t('courses.lesson')}(s)
                     </p>
                     <div className="space-y-1">
                       {level.lessons
@@ -236,7 +238,7 @@ const FormationDetail = () => {
                         ))}
                       {level.lessons.length > 3 && (
                         <p className="text-sm text-gray-500 italic">
-                          ... et {level.lessons.length - 3} autres leçons
+                          {t('formation.otherLessons', { count: level.lessons.length - 3 })}
                         </p>
                       )}
                     </div>
@@ -250,8 +252,8 @@ const FormationDetail = () => {
         {/* Section Pricing dédiée */}
         <div className="space-y-4">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Plans d'abonnement</h2>
-            <p className="text-gray-600">Choisissez l'offre qui correspond à vos besoins</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('formation.pricingTitle')}</h2>
+            <p className="text-gray-600">{t('formation.pricingSubtitle')}</p>
           </div>
           
           <FormationPricing formationId={formationId || ''} />
@@ -261,40 +263,40 @@ const FormationDetail = () => {
         <div className="flex justify-center">
           <Card className="w-full max-w-md">
             <CardContent className="p-6 text-center space-y-4">
-              <h3 className="text-lg font-semibold">Inscription rapide</h3>
+              <h3 className="text-lg font-semibold">{t('formation.quickEnroll')}</h3>
               <Button 
                 className="w-full bg-edu-primary hover:bg-edu-primary/90"
                 onClick={handleEnroll}
                 disabled={!user || isFormationPending(formationId || '')}
                 size="lg"
               >
-                {!user ? 'Connectez-vous pour vous inscrire' : 
-                 isFormationPending(formationId || '') ? 'Inscription en cours...' : 
-                 'S\'inscrire maintenant (Plan Gratuit)'}
+                {!user ? t('formation.loginToEnroll') : 
+                 isFormationPending(formationId || '') ? t('formation.enrolling') : 
+                 t('formation.enrollNow')}
               </Button>
 
               {!user && (
                 <p className="text-xs text-gray-500">
-                  Vous devez être connecté pour vous inscrire à cette formation
+                  {t('formation.mustBeConnected')}
                 </p>
               )}
               
               <div className="pt-4 border-t space-y-2 text-sm text-gray-600">
                 <div className="flex justify-between">
-                  <span>Niveaux:</span>
+                  <span>{t('formation.levels')}</span>
                   <span className="font-medium">{formation.levels?.length || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Leçons:</span>
+                  <span>{t('formation.lessonsLabel')}</span>
                   <span className="font-medium">{totalLessons}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Étudiants:</span>
+                  <span>{t('formation.studentsLabel')}</span>
                   <span className="font-medium">{formation.students_count || 0}</span>
                 </div>
                 {formation.duration && (
                   <div className="flex justify-between">
-                    <span>Durée:</span>
+                    <span>{t('formation.duration')}</span>
                     <span className="font-medium">{formation.duration}h</span>
                   </div>
                 )}

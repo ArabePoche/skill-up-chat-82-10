@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface Episode {
   video_id: string;
@@ -35,6 +36,7 @@ const SeriesEpisodesModal: React.FC<SeriesEpisodesModalProps> = ({
   currentVideoId,
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleEpisodeClick = (videoId: string) => {
     navigate(`/video/${videoId}`);
@@ -52,7 +54,7 @@ const SeriesEpisodesModal: React.FC<SeriesEpisodesModalProps> = ({
                 {seriesTitle}
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
-                Tous les {episodes.length} Épisodes
+                {t('video.allEpisodes', { count: episodes.length })}
               </p>
             </div>
             <Button
@@ -92,7 +94,7 @@ const SeriesEpisodesModal: React.FC<SeriesEpisodesModalProps> = ({
                   {episode.videos.thumbnail_url ? (
                     <img
                       src={episode.videos.thumbnail_url}
-                      alt={`Épisode ${episodeNumber}`}
+                      alt={t('video.episodeNumber', { number: episodeNumber })}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -110,7 +112,7 @@ const SeriesEpisodesModal: React.FC<SeriesEpisodesModalProps> = ({
                   <div className="absolute bottom-2 left-2 right-2">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-white text-xs font-semibold">
-                        Épisode {episodeNumber}
+                        {t('video.episodeNumber', { number: episodeNumber })}
                       </span>
                       <span className="text-white/90 text-xs line-clamp-2">
                         {episode.videos.title}
