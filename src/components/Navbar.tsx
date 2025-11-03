@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
 import { useTranslation } from 'react-i18next';
+import { useCart } from '@/hooks/useCart';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ const Navbar = () => {
   const { currentView, setCurrentView } = useNavigation();
   const { data: unreadCounts } = useUnreadCounts();
   const { t } = useTranslation();
+  const { cartItemsCount } = useCart();
 
   const navItems = [
     { icon: Home, label: t('nav.home'), view: 'home' as NavigationView, path: '/' },
@@ -39,6 +41,7 @@ const Navbar = () => {
           const isActive = isCurrentRoute(item.path);
           const Icon = item.icon;
           const showBadge = item.view === 'messages' && unreadCounts && unreadCounts.total > 0;
+          const showCartBadge = item.view === 'shop' && cartItemsCount > 0;
           
           // Section: Style spécial pour l'onglet "Cours" (bouton central)
           // Déplacement du label "Cours" à l'intérieur du cercle coloré, sous l'icône.
@@ -93,13 +96,21 @@ const Navbar = () => {
               }`}
             >
               <div className="relative">
-                <Icon size={16} className={`mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''}`} />
+                <Icon size={16} className={`mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
                 {showBadge && (
                   <Badge 
                     variant="destructive" 
                     className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center p-0 text-xs"
                   >
                     {unreadCounts.total > 99 ? '99+' : unreadCounts.total}
+                  </Badge>
+                )}
+                {showCartBadge && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center p-0 text-xs animate-bounce"
+                  >
+                    {cartItemsCount > 99 ? '99+' : cartItemsCount}
                   </Badge>
                 )}
               </div>
