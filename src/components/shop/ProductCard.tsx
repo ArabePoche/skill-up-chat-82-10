@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ShoppingCart, Star, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import useEmblaCarousel from 'embla-carousel-react';
 
 interface Product {
   id: string;
@@ -30,10 +31,12 @@ interface ProductCardProps {
   product: Product;
   user: any;
   onAddToCart?: (productId: string) => void;
+  onClick?: (product: Product) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, onClick }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, skipSnaps: false });
   
   // Récupérer toutes les images disponibles
   const images = product.product_media?.map(m => m.media_url) || 
@@ -41,15 +44,29 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart })
   
   const hasMultipleImages = images.length > 1;
   
-  const nextImage = (e: React.MouseEvent) => {
+  const scrollPrev = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
-  
-  const previousImage = (e: React.MouseEvent) => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCurrentImageIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  React.useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on('select', onSelect);
+    return () => {
+      emblaApi.off('select', onSelect);
+    };
+  }, [emblaApi, onSelect]);
   const formatAuthorName = (profile: any) => {
     if (!profile) return 'Auteur inconnu';
     const firstName = profile.first_name || '';
@@ -62,7 +79,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart })
     : product.price;
 
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 bg-white border border-gray-200 hover:border-orange-300 relative">
+    <Card 
+      className="group hover:shadow-xl transition-all duration-300 bg-white border border-gray-200 hover:border-orange-300 relative cursor-pointer"
+      onClick={() => onClick?.(product)}
+    >
       {/* Badge promo */}
       {product.discount_percentage && (
         <Badge className="absolute top-2 left-2 z-10 bg-red-500 text-white">
@@ -81,16 +101,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart })
 
       <CardHeader className="p-0">
         <div className="relative overflow-hidden">
-          <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-            {images.length > 0 ? (
-              <img 
-                src={images[currentImageIndex]} 
-                alt={product.title || 'Produit'}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            ) : (
-              <span className="text-gray-400">Image produit</span>
-            )}
+          <div ref={emblaRef} className="overflow-hidden w-full h-48">
+            <div className="flex">
+              {images.length > 0 ? (
+                images.map((image, index) => (
+                  <div key={index} className="flex-[0_0_100%] min-w-0">
+                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                      <img 
+                        src={image} 
+                        alt={`${product.title || 'Produit'} - Image ${index + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex-[0_0_100%] min-w-0">
+                  <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <span className="text-gray-400">Image produit</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Boutons de navigation des images */}
@@ -99,22 +131,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart })
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={previousImage}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                onClick={scrollPrev}
               >
                 <ChevronLeft size={16} />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={nextImage}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                onClick={scrollNext}
               >
                 <ChevronRight size={16} />
               </Button>
               
               {/* Indicateurs de pagination */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
                 {images.map((_, index) => (
                   <div
                     key={index}
