@@ -56,6 +56,10 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     containScroll: 'keepSnaps',
     dragFree: true,
   });
+  const [emblaSimilarRef, emblaSimilarApi] = useEmblaCarousel({
+    slidesToScroll: 1,
+    align: 'start',
+  });
 
   const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
   const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
@@ -269,16 +273,39 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             {/* Produits similaires */}
             {similarProducts.length > 0 && (
               <div className="mt-12">
-                <h3 className="text-xl font-bold mb-6">Produits similaires</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {similarProducts.map((similarProduct) => (
-                    <ProductCard
-                      key={similarProduct.id}
-                      product={similarProduct}
-                      user={user}
-                      onAddToCart={onAddToCart}
-                    />
-                  ))}
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold">Produits similaires</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => emblaSimilarApi?.scrollPrev()}
+                    >
+                      <ChevronLeft size={16} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => emblaSimilarApi?.scrollNext()}
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                </div>
+                <div ref={emblaSimilarRef} className="overflow-hidden">
+                  <div className="flex gap-4">
+                    {similarProducts.map((similarProduct) => (
+                      <div key={similarProduct.id} className="flex-[0_0_280px] min-w-0">
+                        <ProductCard
+                          product={similarProduct}
+                          user={user}
+                          onAddToCart={onAddToCart}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
