@@ -120,7 +120,20 @@
     "audioCall": "Appel audio",
     "formationLabel": "Formation:",
     "quickAccess": "Accès rapide",
-    "subscriptionOptions": "Options d'abonnement"
+    "subscriptionOptions": "Options d'abonnement",
+    "teacherView": "Vue Professeur",
+    "teacherViewSubtitle": "Discussions privées & groupes",
+    "quickActions": "Actions rapides",
+    "calls": "Appels",
+    "coursePreview": "Aperçu de la formation",
+    "privateDiscussions": "Discussions privées",
+    "groupDiscussions": "Discussions de groupe",
+    "privateDiscussionsInfo": "Discussions privées : organisées par leçon, conversation 1-à-1 avec chaque étudiant",
+    "groupDiscussionsInfo": "Discussions de groupe : organisées par niveau, tous les étudiants ensemble",
+    "incomingCalls": "Appels entrants",
+    "featureDisabled": "Fonctionnalité temporairement désactivée",
+    "student": "Étudiant",
+    "lesson": "Leçon"
   },
   "exercise": {
     "submit": "Rendre l'exercice",

@@ -120,7 +120,20 @@
     "audioCall": "Audio Call",
     "formationLabel": "Course:",
     "quickAccess": "Quick Access",
-    "subscriptionOptions": "Subscription Options"
+    "subscriptionOptions": "Subscription Options",
+    "teacherView": "Teacher View",
+    "teacherViewSubtitle": "Private & group discussions",
+    "quickActions": "Quick actions",
+    "calls": "Calls",
+    "coursePreview": "Course preview",
+    "privateDiscussions": "Private discussions",
+    "groupDiscussions": "Group discussions",
+    "privateDiscussionsInfo": "Private discussions: organized by lesson, 1-on-1 conversation with each student",
+    "groupDiscussionsInfo": "Group discussions: organized by level, all students together",
+    "incomingCalls": "Incoming calls",
+    "featureDisabled": "Feature temporarily disabled",
+    "student": "Student",
+    "lesson": "Lesson"
   },
   "exercise": {
     "submit": "Submit Exercise",

@@ -13,8 +13,8 @@ import { useTeacherPrivateDiscussions } from '@/hooks/teacher-discussions/useTea
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// import CallsModal from './teacher/CallsModal';
 import TeacherCallModal from './live-classroom/TeacherCallModal';
+import { useTranslation } from 'react-i18next';
 
 interface TeacherViewProps {
   formation: {
@@ -26,6 +26,7 @@ interface TeacherViewProps {
 }
 
 const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
+  const { t } = useTranslation();
   const [selectedDiscussion, setSelectedDiscussion] = useState<{
     studentId: string;
     lessonId: string;
@@ -63,13 +64,13 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
     // Construire le nom de l'étudiant à partir du profil
     const studentName = selectedDiscussionData?.student_profile ? 
       `${selectedDiscussionData.student_profile.first_name || ''} ${selectedDiscussionData.student_profile.last_name || ''}`.trim() || 
-      selectedDiscussionData.student_profile.username || 'Étudiant' : 'Étudiant';
+      selectedDiscussionData.student_profile.username || t('formation.student') : t('formation.student');
     
     setSelectedDiscussion({
       studentId,
       lessonId,
       studentName,
-      lessonTitle: selectedDiscussionData?.lesson_title || 'Leçon',
+      lessonTitle: selectedDiscussionData?.lesson_title || t('formation.lesson'),
       studentProfile: selectedDiscussionData?.student_profile || null
     });
   };
@@ -132,7 +133,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
           </div>
           <div className="flex-1">
             <h1 className="font-semibold text-lg">{formation.title}</h1>
-            <p className="text-sm text-white/80">Vue Professeur • Discussions privées & groupes</p>
+            <p className="text-sm text-white/80">{t('formation.teacherView')} • {t('formation.teacherViewSubtitle')}</p>
           </div>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="ml-2">
@@ -145,7 +146,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
       {/* Actions rapides */}
       <div className="bg-white p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800">Actions rapides</h3>
+          <h3 className="font-semibold text-gray-800">{t('formation.quickActions')}</h3>
           
           {/* Bouton Appels avec badge */}
           <Button
@@ -154,7 +155,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
             className="relative flex items-center space-x-2"
           >
             <Phone className="h-4 w-4" />
-            <span>Appels</span>
+            <span>{t('formation.calls')}</span>
             {incomingCalls.length > 0 && (
               <Badge 
                 variant="destructive" 
@@ -168,7 +169,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
         
         {showVideoPlayer && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold mb-2">Aperçu de la formation</h3>
+            <h3 className="font-semibold mb-2">{t('formation.coursePreview')}</h3>
             <LessonVideoPlayer
               url=""
             />
@@ -182,11 +183,11 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="private" className="flex items-center space-x-2">
               <User size={16} />
-              <span>Discussions privées</span>
+              <span>{t('formation.privateDiscussions')}</span>
             </TabsTrigger>
             <TabsTrigger value="group" className="flex items-center space-x-2">
               <Users size={16} />
-              <span>Discussions de groupe</span>
+              <span>{t('formation.groupDiscussions')}</span>
             </TabsTrigger>
           </TabsList>
           
@@ -195,7 +196,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
               <div className="flex items-center space-x-2">
                 <MessageCircle size={16} className="text-blue-600" />
                 <p className="text-sm text-blue-800">
-                  <strong>Discussions privées :</strong> organisées par leçon, conversation 1-à-1 avec chaque étudiant
+                  <strong>{t('formation.privateDiscussions')} :</strong> {t('formation.privateDiscussionsInfo').split(' : ')[1]}
                 </p>
               </div>
             </div>
@@ -210,7 +211,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
               <div className="flex items-center space-x-2">
                 <Users size={16} className="text-green-600" />
                 <p className="text-sm text-green-800">
-                  <strong>Discussions de groupe :</strong> organisées par niveau, tous les étudiants ensemble
+                  <strong>{t('formation.groupDiscussions')} :</strong> {t('formation.groupDiscussionsInfo').split(' : ')[1]}
                 </p>
               </div>
             </div>
@@ -225,13 +226,13 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
       {showCallsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Appels entrants</h3>
-            <p className="text-gray-600 mb-4">Fonctionnalité temporairement désactivée</p>
+            <h3 className="text-lg font-semibold mb-4">{t('formation.incomingCalls')}</h3>
+            <p className="text-gray-600 mb-4">{t('formation.featureDisabled')}</p>
             <button 
               onClick={() => setShowCallsModal(false)}
               className="w-full bg-blue-600 text-white py-2 rounded-lg"
             >
-              Fermer
+              {t('common.close')}
             </button>
           </div>
         </div>

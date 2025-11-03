@@ -109,52 +109,8 @@ export const useConversationsList = (enabled: boolean = false) => {
 
       const conversations = [];
 
-      // Ajouter les conversations de formations (enseignant)
-      if (teacherFormations.data) {
-        for (const teacher of teacherFormations.data) {
-          for (const tf of teacher.teacher_formations) {
-            if (tf.formations) {
-              conversations.push({
-                id: `teacher-${tf.formations.id}`,
-                name: `${tf.formations.title} - Groupe`,
-                lastMessage: 'Formation dont vous êtes professeur',
-                timestamp: 'Aujourd\'hui',
-                created_at: tf.formations.created_at || new Date().toISOString(),
-                unread: teacherUnreadMap.get(tf.formations.id) || 0,
-                avatar: '👨‍🏫',
-                online: false,
-                type: 'formation_teacher',
-                formationId: tf.formations.id
-              });
-            }
-          }
-        }
-      }
-
-      // Ajouter les conversations de formations (étudiant)
-      if (studentEnrollments.data) {
-        for (const enrollment of studentEnrollments.data) {
-          if (enrollment.formations) {
-            const authorName = enrollment.formations.profiles 
-              ? `${enrollment.formations.profiles.first_name || ''} ${enrollment.formations.profiles.last_name || ''}`.trim() 
-                || enrollment.formations.profiles.username
-              : 'Professeur';
-
-            conversations.push({
-              id: `student-${enrollment.formations.id}`,
-              name: `${enrollment.formations.title}`,
-              lastMessage: `Formation avec ${authorName}`,
-              timestamp: 'Aujourd\'hui',
-              created_at: enrollment.created_at || new Date().toISOString(),
-              unread: studentUnreadMap.get(enrollment.formations.id) || 0,
-              avatar: '📚',
-              online: false,
-              type: 'formation_student',
-              formationId: enrollment.formations.id
-            });
-          }
-        }
-      }
+      // NE PLUS ajouter les formations dans les conversations
+      // Les formations seront accessibles via la page /cours
 
       // Traiter les conversations de stories
       if (storyMessages.data && storyMessages.data.length > 0) {
