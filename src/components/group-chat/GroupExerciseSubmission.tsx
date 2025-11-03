@@ -60,7 +60,7 @@ const GroupExerciseSubmission: React.FC<GroupExerciseSubmissionProps> = ({
         exerciseId: exercise.id,
         formationId,
         levelId,
-        content: content || `Soumission de l'exercice: ${exercise.title}`,
+        content: content.trim(), // Ne pas forcer un texte par défaut
         files: files,
       });
 
