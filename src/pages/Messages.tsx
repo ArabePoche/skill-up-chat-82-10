@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import NotificationItem from '@/components/NotificationItem';
 import StoriesSection from '@/stories/components/StoriesSection';
 import { useAuth } from '@/hooks/useAuth';
-import { groupMessagesByDate, formatMessageTime } from '@/utils/dateUtils';
+import { formatMessageTime } from '@/utils/dateUtils';
 import { ContactsDiscoveryDialog } from '@/contacts-discovery/components/ContactsDiscoveryDialog';
 import NotificationCategoryItem from '@/components/notifications/NotificationCategoryItem';
 import { useTranslation } from 'react-i18next';
@@ -43,8 +43,7 @@ const Messages = () => {
   // Compter les notifications non lues (somme de toutes les catégories)
   const unreadNotifications = categories.reduce((sum, cat) => sum + cat.unreadCount, 0);
 
-  // Grouper les conversations par date
-  const groupedConversations = groupMessagesByDate(conversations);
+  // Pas de groupement par date, afficher directement les conversations
 
   const handleConversationClick = (conversation: any) => {
     if (conversation.type === 'direct_message') {
@@ -124,54 +123,47 @@ const Messages = () => {
               </div>
             </div>
 
-            {/* Conversations List grouped by date */}
+            {/* Conversations List */}
             <div className="divide-y divide-gray-100">
-              {Object.keys(groupedConversations).length > 0 ? (
-                Object.entries(groupedConversations).map(([dateGroup, groupConversations]) => (
-                  <div key={dateGroup}>
-                    <div className="sticky top-0 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 border-b border-gray-200">
-                      {dateGroup}
-                    </div>
-                    {groupConversations.map((conversation) => (
-                      <div
-                        key={conversation.id}
-                        className="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => handleConversationClick(conversation)}
-                      >
-                        <div className="relative mr-3">
-                          <div className="w-12 h-12 bg-edu-primary rounded-full flex items-center justify-center overflow-hidden">
-                            {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
-                              <img 
-                                src={conversation.avatar} 
-                                alt={conversation.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-white font-bold text-xl">{conversation.avatar}</span>
-                            )}
-                          </div>
-                          {conversation.online && (
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h3 className="font-medium text-gray-900 truncate">{conversation.name}</h3>
-                            <span className="text-xs text-gray-500 flex-shrink-0">
-                              {formatMessageTime(conversation.created_at || new Date())}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
-                        </div>
-                        
-                        {conversation.unread > 0 && (
-                          <div className="ml-2 bg-edu-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {conversation.unread}
-                          </div>
+              {conversations.length > 0 ? (
+                conversations.map((conversation) => (
+                  <div
+                    key={conversation.id}
+                    className="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleConversationClick(conversation)}
+                  >
+                    <div className="relative mr-3">
+                      <div className="w-12 h-12 bg-edu-primary rounded-full flex items-center justify-center overflow-hidden">
+                        {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
+                          <img 
+                            src={conversation.avatar} 
+                            alt={conversation.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-white font-bold text-xl">{conversation.avatar}</span>
                         )}
                       </div>
-                    ))}
+                      {conversation.online && (
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-medium text-gray-900 truncate">{conversation.name}</h3>
+                        <span className="text-xs text-gray-500 flex-shrink-0">
+                          {formatMessageTime(conversation.created_at || new Date())}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
+                    </div>
+                    
+                    {conversation.unread > 0 && (
+                      <div className="ml-2 bg-edu-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {conversation.unread}
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
