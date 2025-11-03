@@ -4,13 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { useShopFormations, useFormationCategories } from '@/hooks/useShopFormations';
 import { useProducts, useCategories } from '@/hooks/useProducts';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ShopHeader from '@/components/shop/ShopHeader';
 import ShopSidebar from '@/components/shop/ShopSidebar';
 import CategoryFilter from '@/components/shop/CategoryFilter';
 import FormationSections from '@/components/shop/FormationSections';
-import ProductGrid from '@/components/shop/ProductGrid';
+import ProductSections from '@/components/shop/ProductSections';
 import { useTranslation } from 'react-i18next';
 
 const Shop = () => {
@@ -22,6 +23,7 @@ const Shop = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { cartItemsCount, addToCart } = useCart();
   
   const { data: formations, isLoading: formationsLoading } = useShopFormations(activeCategory);
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
@@ -32,11 +34,6 @@ const Shop = () => {
     console.log('Shop: Navigating to formation details:', formationId);
     navigate(`/formation/${formationId}`);
   }, [navigate]);
-
-  const handleAddToCart = useCallback((productId: string) => {
-    console.log('Adding to cart:', productId);
-    // TODO: Implement cart functionality
-  }, []);
 
   const filteredFormations = formations?.filter(formation => {
     const title = formation.title || '';
@@ -75,7 +72,7 @@ const Shop = () => {
         setActiveTab={setActiveTab}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        cartItemsCount={0}
+        cartItemsCount={cartItemsCount}
       />
 
       <div className="flex flex-col md:flex-row">
@@ -147,10 +144,11 @@ const Shop = () => {
                 userInterests={userInterests}
               />
             ) : (
-              <ProductGrid
+              <ProductSections
                 products={filteredProducts}
                 user={user}
-                onAddToCart={handleAddToCart}
+                onAddToCart={addToCart}
+                userInterests={userInterests}
               />
             )}
           </div>
