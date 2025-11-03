@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { ShoppingCart, Star, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingCart, Star, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,10 @@ interface Product {
   discount_percentage?: number;
   rating?: number;
   product_type: string;
+  product_media?: Array<{
+    media_url: string;
+    display_order: number;
+  }>;
   profiles?: {
     first_name?: string;
     last_name?: string;
@@ -29,6 +33,23 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Récupérer toutes les images disponibles
+  const images = product.product_media?.map(m => m.media_url) || 
+                 (product.image_url ? [product.image_url] : []);
+  
+  const hasMultipleImages = images.length > 1;
+  
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+  
+  const previousImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
   const formatAuthorName = (profile: any) => {
     if (!profile) return 'Auteur inconnu';
     const firstName = profile.first_name || '';
@@ -61,9 +82,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart })
       <CardHeader className="p-0">
         <div className="relative overflow-hidden">
           <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-            {product.image_url ? (
+            {images.length > 0 ? (
               <img 
-                src={product.image_url} 
+                src={images[currentImageIndex]} 
                 alt={product.title || 'Produit'}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -71,6 +92,40 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart })
               <span className="text-gray-400">Image produit</span>
             )}
           </div>
+          
+          {/* Boutons de navigation des images */}
+          {hasMultipleImages && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={previousImage}
+              >
+                <ChevronLeft size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 rounded-full w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={nextImage}
+              >
+                <ChevronRight size={16} />
+              </Button>
+              
+              {/* Indicateurs de pagination */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                {images.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                      index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </CardHeader>
 
