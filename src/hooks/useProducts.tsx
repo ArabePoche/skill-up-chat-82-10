@@ -34,8 +34,8 @@ export const useProducts = (category?: string) => {
         query = query.eq('categories.name', category);
       }
 
-      const { data, error } = await query
-        .order('created_at', { ascending: false });
+      // Utiliser un ordre aléatoire pour éviter un ordre fixe
+      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -45,7 +45,8 @@ export const useProducts = (category?: string) => {
         image_url: product.image_url || product.product_media?.[0]?.media_url || null
       })) || [];
       
-      return productsWithImages;
+      // Mélanger aléatoirement les produits pour un affichage varié
+      return productsWithImages.sort(() => Math.random() - 0.5);
     },
   });
 };
