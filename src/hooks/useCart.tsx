@@ -50,6 +50,31 @@ export const useCart = () => {
     loadCart();
   }, [loadCart]);
 
+  // Écouter les changements en temps réel sur le panier
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('cart-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cart_items',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          loadCart();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadCart]);
+
   // Ajouter un produit au panier
   const addToCart = useCallback(async (productId: string) => {
     if (!user) {
@@ -132,6 +157,30 @@ export const useCart = () => {
     }
   }, [user, loadCart, toast]);
 
+  // Mettre à jour la quantité d'un article
+  const updateQuantity = useCallback(async (cartItemId: string, newQuantity: number) => {
+    if (!user || newQuantity < 1) return;
+
+    try {
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity: newQuantity })
+        .eq('id', cartItemId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await loadCart();
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de modifier la quantité',
+        variant: 'destructive',
+      });
+    }
+  }, [user, loadCart, toast]);
+
   // Vider le panier
   const clearCart = useCallback(async () => {
     if (!user) return;
@@ -166,6 +215,7 @@ export const useCart = () => {
     loading,
     addToCart,
     removeFromCart,
+    updateQuantity,
     clearCart,
     refreshCart: loadCart,
   };
