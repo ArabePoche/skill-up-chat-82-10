@@ -20,10 +20,15 @@ export const useProducts = (category?: string) => {
             last_name,
             username,
             avatar_url
+          ),
+          product_media!product_media_product_id_fkey (
+            media_url,
+            display_order
           )
         `)
         .eq('is_active', true)
-        .neq('product_type', 'formation'); // Exclure les formations
+        .neq('product_type', 'formation') // Exclure les formations
+        .order('display_order', { foreignTable: 'product_media', ascending: true });
 
       if (category && category !== 'all') {
         query = query.eq('categories.name', category);
@@ -33,7 +38,14 @@ export const useProducts = (category?: string) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      
+      // Ajouter l'image principale (première image de product_media) à chaque produit
+      const productsWithImages = data?.map(product => ({
+        ...product,
+        image_url: product.image_url || product.product_media?.[0]?.media_url || null
+      })) || [];
+      
+      return productsWithImages;
     },
   });
 };
