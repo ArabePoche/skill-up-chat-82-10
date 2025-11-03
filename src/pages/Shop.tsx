@@ -2,7 +2,8 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useShopFormations, useFormationCategories } from '@/hooks/useShopFormations';
-import { useProducts, useCategories } from '@/hooks/useProducts';
+import { useProducts } from '@/hooks/useProducts';
+import { useProductCategories } from '@/hooks/useProductCategories';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { useUserInterests } from '@/hooks/useUserInterests';
@@ -32,7 +33,7 @@ const Shop = () => {
   const { data: formations, isLoading: formationsLoading } = useShopFormations(activeCategory);
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
   const { data: products, isLoading: productsLoading } = useProducts(activeCategory);
-  const { data: productCategories, isLoading: productCategoriesLoading } = useCategories();
+  const { data: productCategories, isLoading: productCategoriesLoading } = useProductCategories();
 
   const handleViewDetails = useCallback((formationId: string) => {
     console.log('Shop: Navigating to formation details:', formationId);
