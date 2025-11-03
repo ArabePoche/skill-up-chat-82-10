@@ -12,6 +12,7 @@ import ShopSidebar from '@/components/shop/ShopSidebar';
 import CategoryFilter from '@/components/shop/CategoryFilter';
 import FormationSections from '@/components/shop/FormationSections';
 import ProductSections from '@/components/shop/ProductSections';
+import CartDrawer from '@/components/shop/cart/CartDrawer';
 import { useTranslation } from 'react-i18next';
 
 const Shop = () => {
@@ -20,6 +21,7 @@ const Shop = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('formations');
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -73,6 +75,12 @@ const Shop = () => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         cartItemsCount={cartItemsCount}
+        onCartClick={() => setCartDrawerOpen(true)}
+      />
+
+      <CartDrawer 
+        isOpen={cartDrawerOpen}
+        onClose={() => setCartDrawerOpen(false)}
       />
 
       <div className="flex flex-col md:flex-row">
