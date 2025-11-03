@@ -11,6 +11,7 @@ interface ShopHeaderProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   cartItemsCount?: number;
+  onCartClick: () => void;
 }
 
 const ShopHeader: React.FC<ShopHeaderProps> = ({
@@ -18,7 +19,8 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
   setActiveTab,
   searchQuery,
   setSearchQuery,
-  cartItemsCount = 0
+  cartItemsCount = 0,
+  onCartClick
 }) => {
   const { t } = useTranslation();
   
@@ -37,7 +39,12 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
           
           {/* Panier */}
           <div className="relative">
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 w-8 h-8 sm:w-10 sm:h-10">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white hover:bg-white/20 w-8 h-8 sm:w-10 sm:h-10"
+              onClick={onCartClick}
+            >
               <ShoppingCart size={16} className="sm:hidden" />
               <ShoppingCart size={20} className="hidden sm:block" />
               {cartItemsCount > 0 && (
