@@ -53,8 +53,8 @@ const ShopSidebar: React.FC<ShopSidebarProps> = ({
               <div key={category.id} className="flex items-center space-x-2">
                 <Checkbox
                   id={category.id}
-                  checked={activeCategory === category.name}
-                  onCheckedChange={() => setActiveCategory(category.name)}
+                  checked={activeCategory === category.id}
+                  onCheckedChange={() => setActiveCategory(category.id)}
                 />
                 <label
                   htmlFor={category.id}
