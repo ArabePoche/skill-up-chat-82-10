@@ -9,40 +9,29 @@ export const useProductCategories = () => {
   return useQuery({
     queryKey: ['product-categories-used'],
     queryFn: async () => {
-      // Récupérer toutes les catégories distinctes des produits actifs
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          categories (
-            id,
-            name,
-            label
-          )
-        `)
-        .eq('is_active', true)
-        .neq('product_type', 'formation');
+      // Récupérer toutes les catégories qui ont au moins un produit actif
+      const { data: categories, error } = await supabase
+        .from('categories')
+        .select('id, name, label');
 
       if (error) throw error;
 
-      // Extraire les catégories uniques (sans doublons)
-      const categoriesMap = new Map();
-      
-      data?.forEach(product => {
-        if (product.categories) {
-          const cat = product.categories as { id: string; name: string; label: string };
-          if (!categoriesMap.has(cat.id)) {
-            categoriesMap.set(cat.id, cat);
-          }
-        }
-      });
+      // Pour chaque catégorie, vérifier s'il y a des produits actifs
+      const categoriesWithProducts = await Promise.all(
+        (categories || []).map(async (category) => {
+          const { count } = await supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('category_id', category.id)
+            .eq('is_active', true)
+            .neq('product_type', 'formation');
+          
+          return count && count > 0 ? category : null;
+        })
+      );
 
-      // Convertir en tableau et ajouter "Tout" au début
-      const uniqueCategories = Array.from(categoriesMap.values());
-      
-      return [
-        { id: 'all', name: 'all', label: 'Tout' },
-        ...uniqueCategories
-      ];
+      // Filtrer les catégories sans produits
+      return categoriesWithProducts.filter(cat => cat !== null);
     },
   });
 };
