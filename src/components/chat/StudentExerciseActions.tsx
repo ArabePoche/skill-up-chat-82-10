@@ -38,7 +38,7 @@ const StudentExerciseActions: React.FC<StudentExerciseActionsProps> = ({
     try {
       await updateSubmissionMutation.mutateAsync({
         messageId: message.id,
-        content: submissionText || `Soumission de l'exercice: ${exerciseTitle || ''}`,
+        content: submissionText.trim(), // Ne pas forcer un texte par défaut
         file: selectedFile,
       });
 
