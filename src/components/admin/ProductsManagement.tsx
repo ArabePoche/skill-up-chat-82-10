@@ -82,6 +82,10 @@ const ProductsManagement = () => {
       delivery_available?: boolean;
       images?: File[];
     }) => {
+      // Récupérer l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       // Créer le produit
       const { data: product, error: productError } = await supabase
         .from('products')
@@ -99,6 +103,7 @@ const ProductsManagement = () => {
           size: productData.size,
           color: productData.color,
           delivery_available: productData.delivery_available,
+          seller_id: user.id,
         })
         .select()
         .single();
@@ -209,10 +214,13 @@ const ProductsManagement = () => {
     const color = formData.get('color') as string;
     const delivery_available = formData.get('delivery_available') === 'on';
 
-    // Déterminer le product_type basé sur le type sélectionné
+    // Récupérer le product_type depuis les données du type sélectionné
+    const selectedProductType = productTypes?.find(type => type.id === selectedType);
     const productType: 'formation' | 'article' | 'service' = 
-      selectedType.toLowerCase().includes('formation') ? 'formation' :
-      selectedType.toLowerCase().includes('service') ? 'service' : 'article';
+      selectedProductType?.name === 'formation' ? 'formation' :
+      selectedProductType?.name === 'service' ? 'service' : 'article';
+
+    console.log('Selected type:', selectedProductType, 'Product type:', productType);
 
     const productData = {
       title,
