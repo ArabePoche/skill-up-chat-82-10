@@ -31,7 +31,7 @@ export const useProducts = (category?: string) => {
         .order('display_order', { foreignTable: 'product_media', ascending: true });
 
       if (category && category !== 'all') {
-        query = query.eq('categories.name', category);
+        query = query.eq('category_id', category);
       }
 
       // Utiliser un ordre aléatoire pour éviter un ordre fixe
