@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 const Shop = () => {
   const { t } = useTranslation();
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('formations');
   const [sidebarVisible, setSidebarVisible] = useState(false);
