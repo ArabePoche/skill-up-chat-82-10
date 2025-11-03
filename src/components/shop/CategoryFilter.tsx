@@ -28,9 +28,9 @@ const CategoryFilter: React.FC<CategoryFilterProps> = ({
         {categories.map((category) => (
           <button
             key={category.id}
-            onClick={() => setActiveCategory(category.name)}
+            onClick={() => setActiveCategory(category.id)}
             className={`px-2 sm:px-4 py-1 sm:py-2 rounded-full whitespace-nowrap transition-all duration-200 text-xs sm:text-sm flex-shrink-0 ${
-              activeCategory === category.name
+              activeCategory === category.id
                 ? 'bg-edu-primary text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
