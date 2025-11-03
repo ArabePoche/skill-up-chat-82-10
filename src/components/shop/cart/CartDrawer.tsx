@@ -3,7 +3,7 @@
  * Affiche les articles du panier avec possibilité de modifier/supprimer
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -18,7 +18,14 @@ interface CartDrawerProps {
 }
 
 const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
-  const { cartItems, removeFromCart, updateQuantity, cartItemsCount } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, cartItemsCount, refreshCart } = useCart();
+
+  // Rafraîchir le panier à chaque ouverture du drawer
+  useEffect(() => {
+    if (isOpen) {
+      refreshCart();
+    }
+  }, [isOpen, refreshCart]);
 
   // Récupérer les détails des produits du panier
   const { data: productsDetails } = useQuery({
