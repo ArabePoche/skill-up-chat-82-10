@@ -18,11 +18,12 @@ interface Formation {
   id: string;
   title: string;
   description: string;
+  image_url?: string;
   thumbnail_url?: string;
   duration_hours?: number;
   level?: string;
   price?: number;
-  status?: string;
+  is_active: boolean;
 }
 
 interface AvailableFormationsCarouselProps {
@@ -32,13 +33,23 @@ interface AvailableFormationsCarouselProps {
 const AvailableFormationsCarousel: React.FC<AvailableFormationsCarouselProps> = ({ formations }) => {
   const navigate = useNavigate();
 
-  const handleViewFormation = (formationId: string) => {
-    navigate(`/shop?formation=${formationId}`);
+  const handleViewFormation = (formationId: string, isActive: boolean) => {
+    if (!isActive) {
+      return; // Ne pas permettre la navigation pour les formations non actives
+    }
+    navigate(`/cours/formation/${formationId}`);
   };
 
   if (!formations || formations.length === 0) {
     return null;
   }
+
+  // Trier les formations : actives en premier, puis non actives
+  const sortedFormations = [...formations].sort((a, b) => {
+    if (a.is_active && !b.is_active) return -1;
+    if (!a.is_active && b.is_active) return 1;
+    return 0;
+  });
 
   return (
     <div className="space-y-6">
@@ -59,13 +70,13 @@ const AvailableFormationsCarousel: React.FC<AvailableFormationsCarouselProps> = 
         className="w-full"
       >
         <CarouselContent className="-ml-2 md:-ml-4">
-          {formations.map((formation) => (
+          {sortedFormations.map((formation) => (
             <CarouselItem key={formation.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
               <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full">
                 <div className="relative h-48 bg-gradient-to-br from-primary/10 to-primary/5">
-                  {formation.thumbnail_url ? (
+                  {formation.image_url || formation.thumbnail_url ? (
                     <img
-                      src={formation.thumbnail_url}
+                      src={formation.image_url || formation.thumbnail_url}
                       alt={formation.title}
                       className="w-full h-full object-cover"
                     />
@@ -74,7 +85,7 @@ const AvailableFormationsCarousel: React.FC<AvailableFormationsCarouselProps> = 
                       <BookOpen className="h-16 w-16 text-primary/40" />
                     </div>
                   )}
-                  {formation.status === 'in_construction' && (
+                  {!formation.is_active && (
                     <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">
                       En construction
                     </div>
@@ -113,12 +124,15 @@ const AvailableFormationsCarousel: React.FC<AvailableFormationsCarouselProps> = 
                   )}
 
                   <Button 
-                    onClick={() => handleViewFormation(formation.id)}
+                    onClick={() => handleViewFormation(formation.id, formation.is_active)}
                     className="w-full group"
-                    variant="default"
+                    variant={!formation.is_active ? 'secondary' : 'default'}
+                    disabled={!formation.is_active}
                   >
-                    Découvrir
-                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    {!formation.is_active ? 'Bientôt disponible' : 'Découvrir'}
+                    {formation.is_active && (
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    )}
                   </Button>
                 </CardContent>
               </Card>
