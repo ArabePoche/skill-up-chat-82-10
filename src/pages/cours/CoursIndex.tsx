@@ -8,6 +8,7 @@ import ChatInterface from '@/components/ChatInterface';
 import CoursHeader from '@/components/cours/CoursHeader';
 import FormationSection from '@/components/cours/FormationSection';
 import LoadingSpinner from '@/components/cours/LoadingSpinner';
+import AvailableFormationsCarousel from '@/components/cours/AvailableFormationsCarousel';
 import { useFormations, useUserEnrollments } from '@/hooks/useFormations';
 import { useTeacherFormations } from '@/hooks/useTeacherFormations';
 import { useAuth } from '@/hooks/useAuth';
@@ -97,6 +98,12 @@ const CoursIndex = () => {
     };
   }).filter(Boolean) || [];
 
+  // Filtrer les formations disponibles (non inscrites)
+  const enrolledFormationIds = new Set(studentFormations.map(f => f.id));
+  const availableFormations = allFormations?.filter(
+    formation => !enrolledFormationIds.has(formation.id)
+  ) || [];
+
   
 
   return (
@@ -108,15 +115,18 @@ const CoursIndex = () => {
       />
         
       <div className="p-4 space-y-6">
-        <FormationSection
-          title={t('formation.myEnrolledCourses')}
-          icon="student"
-          formations={studentFormations}
-          isTeacherSection={false}
-          onFormationClick={handleFormationClick}
-          emptyMessage={t('formation.notEnrolled')}
-          
-        />
+        {studentFormations.length === 0 ? (
+          <AvailableFormationsCarousel formations={availableFormations} />
+        ) : (
+          <FormationSection
+            title={t('formation.myEnrolledCourses')}
+            icon="student"
+            formations={studentFormations}
+            isTeacherSection={false}
+            onFormationClick={handleFormationClick}
+            emptyMessage={t('formation.notEnrolled')}
+          />
+        )}
 
         {teacherFormations && teacherFormations.length > 0 && (
           <FormationSection
