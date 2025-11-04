@@ -72,8 +72,13 @@ const menuItems = [
 ];
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const isCollapsed = state === 'collapsed';
+
+  const handleTabChange = (tab: string) => {
+    onTabChange(tab);
+    setOpenMobile(false);
+  };
 
   return (
     <Sidebar className="border-r">
@@ -97,7 +102,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.value}>
                   <SidebarMenuButton
-                    onClick={() => onTabChange(item.value)}
+                    onClick={() => handleTabChange(item.value)}
                     isActive={activeTab === item.value}
                     tooltip={isCollapsed ? item.title : undefined}
                   >
