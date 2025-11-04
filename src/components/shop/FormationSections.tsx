@@ -158,14 +158,6 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-lg font-bold text-orange-600">
-                      {formation.price?.toLocaleString('fr-FR')} FCFA
-                    </span>
-                    <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {t('shop.soon')}
-                    </div>
-                  </div>
 
                   <Button 
                     className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium shadow-md"
