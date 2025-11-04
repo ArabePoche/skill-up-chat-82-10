@@ -16,6 +16,7 @@ import { useOrders } from '@/hooks/shop/useOrders';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
   const { cartItems, removeFromCart, updateQuantity, cartItemsCount, refreshCart, clearCart } = useCart();
   const { createOrder, loading: orderLoading } = useOrders();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showCheckoutForm, setShowCheckoutForm] = useState(false);
   const [formData, setFormData] = useState({
     delivery_address: '',
@@ -41,6 +43,26 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
       refreshCart();
     }
   }, [isOpen, refreshCart]);
+
+  // Préremplir le téléphone depuis le profil utilisateur
+  useEffect(() => {
+    const prefillPhone = async () => {
+      if (!showCheckoutForm || !user || formData.delivery_phone) return;
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', user.id)
+          .single();
+        if (!error && data?.phone) {
+          setFormData((prev) => ({ ...prev, delivery_phone: data.phone }));
+        }
+      } catch (e) {
+        console.warn('Impossible de pré-remplir le téléphone:', e);
+      }
+    };
+    prefillPhone();
+  }, [showCheckoutForm, user, formData.delivery_phone]);
 
   // Récupérer les détails des produits du panier avec le seller_id
   const { data: productsDetails } = useQuery({
@@ -73,7 +95,23 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
   };
 
   const handleCheckout = async () => {
-    if (!user || !productsDetails) return;
+    if (!user) {
+      toast({
+        title: 'Connexion requise',
+        description: 'Veuillez vous connecter pour passer commande',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!productsDetails) {
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de charger les détails des produits',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const items = cartItems.map(item => {
       const product = getProductDetails(item.product_id);
@@ -83,9 +121,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
         price: product?.price || 0,
         seller_id: product?.seller_id || '',
       };
-    }).filter(item => item.seller_id); // Filtrer les produits sans vendeur
+    }).filter(item => item.seller_id);
 
     if (items.length === 0) {
+      toast({
+        title: 'Erreur',
+        description: 'Aucun produit valide dans le panier',
+        variant: 'destructive',
+      });
       return;
     }
 
