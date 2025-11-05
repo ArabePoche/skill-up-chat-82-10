@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
 import useBackButtonHandler from '@/hooks/useBackButtonHandler';
-import { OfflineIndicator } from '@/offline';
 import { registerServiceWorker } from '@/offline/utils/registerSW';
 
 import Formation from '@/pages/Formation';
@@ -111,7 +110,6 @@ const App: React.FC = () => {
             <NavigationProvider>
               <TabScrollProvider>
                 <AppWithRouter />
-                <OfflineIndicator />
                 <Toaster />
               </TabScrollProvider>
             </NavigationProvider>
