@@ -47,7 +47,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Stratégie de cache : Network First, fallback to Cache
+// Stratégie de cache : Cache First pour assets, Network First pour API
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -60,32 +60,70 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stratégie Network First pour les assets
+  // Pour les navigations (pages), toujours servir depuis le cache en priorité
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('/index.html')
+        .then((cachedResponse) => {
+          if (cachedResponse) {
+            console.log('📦 Serving navigation from cache');
+            return cachedResponse;
+          }
+          return fetch(request);
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Stratégie Cache First pour les assets statiques (JS, CSS, images, fonts)
+  const isStaticAsset = url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|woff|woff2|ttf|eot|ico)$/);
+  
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(request)
+        .then((cachedResponse) => {
+          if (cachedResponse) {
+            console.log('📦 Serving static asset from cache:', url.pathname);
+            return cachedResponse;
+          }
+          
+          // Si pas en cache, télécharger et mettre en cache
+          return fetch(request).then((response) => {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+            return response;
+          });
+        })
+        .catch(() => {
+          console.log('❌ Asset not available offline:', url.pathname);
+          return new Response('Offline - Asset not available', {
+            status: 503,
+            statusText: 'Service Unavailable',
+          });
+        })
+    );
+    return;
+  }
+
+  // Pour tout le reste, Network First avec fallback cache
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cloner la réponse pour la mettre en cache
         const responseClone = response.clone();
-        
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(request, responseClone);
         });
-
         return response;
       })
       .catch(() => {
-        // Si le réseau échoue, essayer le cache
         return caches.match(request).then((cachedResponse) => {
           if (cachedResponse) {
             console.log('📦 Serving from cache:', request.url);
             return cachedResponse;
           }
-
-          // Si pas en cache et que c'est une navigation, retourner index.html
-          if (request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-
           return new Response('Offline - Content not available', {
             status: 503,
             statusText: 'Service Unavailable',
