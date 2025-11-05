@@ -17,12 +17,15 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['**/*'],
       manifest: {
-        name: 'EducaTok',
+        name: 'EducaTok - Plateforme éducative interactive',
         short_name: 'EducaTok',
-        description: 'Plateforme éducative moderne avec cours interactifs',
-        theme_color: '#ffffff',
+        description: 'Plateforme éducative moderne avec cours interactifs et chat pédagogique',
+        theme_color: '#1a1f37', // Correspond à --primary en mode clair
         background_color: '#ffffff',
         display: 'standalone',
+        start_url: '/',
+        scope: '/',
+        orientation: 'portrait-primary',
         icons: [
           {
             src: '/assets/logo_IDS.jpg',
