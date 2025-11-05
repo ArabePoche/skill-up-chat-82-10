@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, ShoppingCart, messages-square, User, GraduationCap } from 'lucide-react';
+import { Home, ShoppingCart, Messages-square, User, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
