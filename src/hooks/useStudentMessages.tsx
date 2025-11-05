@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useLessonMessages } from './useLessonMessages';
+import { useCachedLessonMessages } from '@/message-cache';
 
-// Deprecated: Use useLessonMessages instead
-export const useStudentMessages = useLessonMessages;
-export const usePromotionMessages = useLessonMessages;
+// Deprecated: Use useCachedLessonMessages instead
+export const useStudentMessages = useCachedLessonMessages;
+export const usePromotionMessages = useCachedLessonMessages;
 
 export const useLessonExercises = (lessonId: string | undefined) => {
   return useQuery({

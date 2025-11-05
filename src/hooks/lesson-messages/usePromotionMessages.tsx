@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getCurrentUserProgress, getUsersProgressMap } from '@/utils/progressionUtils';
+import { localMessageStore } from '@/message-cache/utils/localMessageStore';
+import { useState, useEffect } from 'react';
 
 export interface GroupMessage {
   id: string;
@@ -51,6 +53,27 @@ export const usePromotionMessages = (
   mode: 'lesson' | 'level' = 'lesson'
 ) => {
   const { user } = useAuth();
+  const [cachedMessages, setCachedMessages] = useState<GroupMessage[] | null>(null);
+  const [isLoadingCache, setIsLoadingCache] = useState(true);
+
+  // Charger depuis le cache au montage
+  useEffect(() => {
+    if (!lessonIdOrLevelId || !formationId || !user?.id) {
+      setIsLoadingCache(false);
+      return;
+    }
+
+    const loadCache = async () => {
+      const cacheKey = mode === 'level' 
+        ? `level_${lessonIdOrLevelId}` 
+        : lessonIdOrLevelId;
+      const cached = await localMessageStore.getMessages(cacheKey, formationId, `${user.id}_${promotionId}`);
+      setCachedMessages(cached as GroupMessage[] | null);
+      setIsLoadingCache(false);
+    };
+
+    loadCache();
+  }, [lessonIdOrLevelId, formationId, user?.id, promotionId, mode]);
 
   return useQuery({
     queryKey: ['promotion-messages', lessonIdOrLevelId, formationId, user?.id, promotionId, mode],
@@ -416,9 +439,17 @@ export const usePromotionMessages = (
         mode
       });
 
+      // Sauvegarder dans le cache
+      const cacheKey = mode === 'level' 
+        ? `level_${lessonIdOrLevelId}` 
+        : lessonIdOrLevelId;
+      await localMessageStore.saveMessages(cacheKey, formationId, `${user.id}_${promotionId}`, sortedItems);
+
       return sortedItems;
     },
     enabled: !!lessonIdOrLevelId && !!formationId && !!user?.id && !!promotionId,
-    refetchInterval: false,
+    initialData: cachedMessages || undefined,
+    refetchInterval: 5000,
+    staleTime: 3000,
   });
 };
