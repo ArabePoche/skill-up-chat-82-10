@@ -27,6 +27,7 @@ const Messages = () => {
   const [activeTab, setActiveTab] = useState('conversations');
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
   const [openCategories, setOpenCategories] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Charger les conversations uniquement quand l'onglet est actif
   const { 
@@ -42,6 +43,17 @@ const Messages = () => {
 
   // Compter les notifications non lues (somme de toutes les catégories)
   const unreadNotifications = categories.reduce((sum, cat) => sum + cat.unreadCount, 0);
+
+  // Filtrer les conversations selon la recherche
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    
+    const query = searchQuery.toLowerCase().trim();
+    return conversations.filter(conv => 
+      conv.name?.toLowerCase().includes(query) || 
+      conv.lastMessage?.toLowerCase().includes(query)
+    );
+  }, [conversations, searchQuery]);
 
   // Pas de groupement par date, afficher directement les conversations
 
@@ -118,6 +130,8 @@ const Messages = () => {
                 <input
                   type="text"
                   placeholder={t('messages.searchPlaceholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-edu-primary focus:border-transparent"
                 />
               </div>
@@ -125,8 +139,8 @@ const Messages = () => {
 
             {/* Conversations List */}
             <div className="divide-y divide-gray-100">
-              {conversations.length > 0 ? (
-                conversations.map((conversation) => (
+              {filteredConversations.length > 0 ? (
+                filteredConversations.map((conversation) => (
                   <div
                     key={conversation.id}
                     className="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors"

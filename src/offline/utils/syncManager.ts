@@ -1,0 +1,195 @@
+/**
+ * Gestionnaire de synchronisation automatique
+ * Détecte le retour de connexion et synchronise avec Supabase
+ */
+
+import { supabase } from '@/integrations/supabase/client';
+import { offlineStore } from './offlineStore';
+import { localMessageStore } from '@/message-cache/utils/localMessageStore';
+
+type SyncCallback = (isOnline: boolean) => void;
+
+class SyncManager {
+  private isOnline: boolean = navigator.onLine;
+  private syncInProgress: boolean = false;
+  private callbacks: Set<SyncCallback> = new Set();
+  private syncQueue: Array<() => Promise<void>> = [];
+
+  constructor() {
+    this.init();
+  }
+
+  private init() {
+    // Écouter les changements de connexion
+    window.addEventListener('online', () => this.handleOnline());
+    window.addEventListener('offline', () => this.handleOffline());
+
+    // Vérifier périodiquement la connexion
+    setInterval(() => this.checkConnection(), 30000);
+  }
+
+  private handleOnline() {
+    console.log('🌐 Connection restored');
+    this.isOnline = true;
+    this.notifyCallbacks(true);
+    this.syncAll();
+  }
+
+  private handleOffline() {
+    console.log('📵 Connection lost');
+    this.isOnline = false;
+    this.notifyCallbacks(false);
+  }
+
+  private async checkConnection() {
+    const wasOnline = this.isOnline;
+    this.isOnline = navigator.onLine;
+
+    // Test réel de connexion avec Supabase
+    if (this.isOnline) {
+      try {
+        const { error } = await supabase.from('formations').select('id').limit(1);
+        this.isOnline = !error;
+      } catch {
+        this.isOnline = false;
+      }
+    }
+
+    // Si changement d'état
+    if (wasOnline !== this.isOnline) {
+      this.notifyCallbacks(this.isOnline);
+      if (this.isOnline) {
+        this.syncAll();
+      }
+    }
+  }
+
+  /**
+   * Synchronise toutes les données offline avec le serveur
+   */
+  async syncAll(): Promise<void> {
+    if (!this.isOnline || this.syncInProgress) return;
+
+    this.syncInProgress = true;
+    console.log('🔄 Starting sync...');
+
+    try {
+      // Synchroniser les formations offline
+      const offlineFormations = await offlineStore.getAllFormations();
+      
+      for (const formation of offlineFormations) {
+        await this.syncFormation(formation.id);
+      }
+
+      // Nettoyer les caches expirés
+      await localMessageStore.cleanExpiredCache();
+
+      console.log('✅ Sync completed');
+    } catch (error) {
+      console.error('❌ Sync failed:', error);
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  /**
+   * Synchronise une formation spécifique
+   */
+  private async syncFormation(formationId: string): Promise<void> {
+    try {
+      // Récupérer les données à jour depuis Supabase
+      const { data: formation, error: formationError } = await supabase
+        .from('formations')
+        .select('*')
+        .eq('id', formationId)
+        .single();
+
+      if (formationError) throw formationError;
+
+      // Mettre à jour le cache offline
+      await offlineStore.saveFormation(formation);
+
+      // Récupérer et synchroniser les leçons via fetch
+      const SUPABASE_URL = 'https://jiasafdbfqqhhdazoybu.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppYXNhZmRiZnFxaGhkYXpveWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTQ5MTAsImV4cCI6MjA2NTQ5MDkxMH0.TXPwCkGAZRrn83pTsZHr2QFZwX03nBWdNPJN0s_jLKQ';
+      
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/lessons?formation_id=eq.${formationId}&order=order_index.asc`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+        }
+      );
+      const lessons = await response.json();
+
+      // Sauvegarder chaque leçon
+      for (const lesson of lessons || []) {
+        const offlineLesson = await offlineStore.getLesson(lesson.id);
+        
+        // Si la leçon existe déjà offline avec audio, garder l'audio
+        if (offlineLesson && offlineLesson.offlineAudioUrl) {
+          await offlineStore.saveLesson(lesson);
+        } else {
+          await offlineStore.saveLesson(lesson);
+        }
+      }
+
+      console.log(`✅ Formation ${formationId} synced`);
+    } catch (error) {
+      console.error(`❌ Failed to sync formation ${formationId}:`, error);
+    }
+  }
+
+  /**
+   * Ajoute une tâche à la queue de synchronisation
+   */
+  queueSync(task: () => Promise<void>) {
+    this.syncQueue.push(task);
+    if (this.isOnline) {
+      this.processSyncQueue();
+    }
+  }
+
+  private async processSyncQueue() {
+    while (this.syncQueue.length > 0 && this.isOnline) {
+      const task = this.syncQueue.shift();
+      if (task) {
+        try {
+          await task();
+        } catch (error) {
+          console.error('Sync queue task failed:', error);
+        }
+      }
+    }
+  }
+
+  /**
+   * S'abonner aux changements de connexion
+   */
+  onConnectionChange(callback: SyncCallback) {
+    this.callbacks.add(callback);
+    return () => this.callbacks.delete(callback);
+  }
+
+  private notifyCallbacks(isOnline: boolean) {
+    this.callbacks.forEach(callback => callback(isOnline));
+  }
+
+  /**
+   * Obtenir l'état de connexion actuel
+   */
+  getOnlineStatus(): boolean {
+    return this.isOnline;
+  }
+
+  /**
+   * Forcer une synchronisation manuelle
+   */
+  async forceSync(): Promise<void> {
+    await this.syncAll();
+  }
+}
+
+export const syncManager = new SyncManager();

@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
 import useBackButtonHandler from '@/hooks/useBackButtonHandler';
+import { registerServiceWorker } from '@/offline/utils/registerSW';
+import LanguageOnboarding from '@/components/LanguageOnboarding';
 
 import Formation from '@/pages/Formation';
 import FormationDetail from '@/pages/FormationDetail';
@@ -96,6 +98,15 @@ const AppWithRouter: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const [showLanguageOnboarding, setShowLanguageOnboarding] = useState(
+    !localStorage.getItem('languageSelected')
+  );
+
+  useEffect(() => {
+    // Enregistrer le Service Worker au démarrage
+    registerServiceWorker();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -103,8 +114,14 @@ const App: React.FC = () => {
           <PresenceProvider>
             <NavigationProvider>
               <TabScrollProvider>
-                <AppWithRouter />
-                <Toaster />
+                {showLanguageOnboarding ? (
+                  <LanguageOnboarding onComplete={() => setShowLanguageOnboarding(false)} />
+                ) : (
+                  <>
+                    <AppWithRouter />
+                    <Toaster />
+                  </>
+                )}
               </TabScrollProvider>
             </NavigationProvider>
           </PresenceProvider>

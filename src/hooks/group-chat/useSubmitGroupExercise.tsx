@@ -122,16 +122,16 @@ export const useSubmitGroupExercise = () => {
         console.error('Error fetching student promotion:', promotionError);
       }
 
-      // Créer un message pour chaque fichier + un message texte si nécessaire
+      // Créer un message pour chaque fichier + un message texte SEULEMENT si fourni
       const messages = [];
       
-      // Message texte si du contenu est fourni
-      if (content && content.trim()) {
+      // Message texte UNIQUEMENT si du contenu est fourni (pas de texte par défaut)
+      if (content && content.trim().length > 0) {
         messages.push({
           lesson_id: lessonId,
           formation_id: formationId,
           sender_id: user.id,
-          content: content,
+          content: content.trim(),
           message_type: 'text',
           is_exercise_submission: true,
           exercise_status: null,

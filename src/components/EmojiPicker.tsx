@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Smile, Heart, Sun, Coffee, Car, Flag, Music, Star } from 'lucide-react';
 
 interface EmojiPickerProps {
@@ -10,6 +10,23 @@ interface EmojiPickerProps {
 
 const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onToggle }) => {
   const [activeCategory, setActiveCategory] = useState('smileys');
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        onToggle();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onToggle]);
 
   const emojiCategories = {
     smileys: {
@@ -48,8 +65,13 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
 
   if (!isOpen) return null;
 
+  const handleEmojiSelect = (emoji: string) => {
+    onEmojiSelect(emoji);
+    onToggle();
+  };
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg w-80 max-h-72">
+    <div ref={pickerRef} className="bg-white border border-gray-200 rounded-lg shadow-lg w-80 max-h-72">
       {/* Categories */}
       <div className="flex border-b border-gray-200 bg-gray-50 rounded-t-lg">
         {Object.entries(emojiCategories).map(([key, category]) => {
@@ -76,7 +98,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
             <button
               key={index}
               type="button"
-              onClick={() => onEmojiSelect(emoji)}
+              onClick={() => handleEmojiSelect(emoji)}
               className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded transition-colors"
               title={emoji}
             >

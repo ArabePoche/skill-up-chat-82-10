@@ -2,9 +2,11 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useShopFormations, useFormationCategories } from '@/hooks/useShopFormations';
-import { useProducts, useCategories } from '@/hooks/useProducts';
+import { useProducts } from '@/hooks/useProducts';
+import { useProductCategories } from '@/hooks/useProductCategories';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
+import { useUserInterests } from '@/hooks/useUserInterests';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ShopHeader from '@/components/shop/ShopHeader';
@@ -17,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 const Shop = () => {
   const { t } = useTranslation();
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('formations');
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -26,11 +28,12 @@ const Shop = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { cartItemsCount, addToCart } = useCart();
+  const { data: userInterests = [] } = useUserInterests();
   
   const { data: formations, isLoading: formationsLoading } = useShopFormations(activeCategory);
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
   const { data: products, isLoading: productsLoading } = useProducts(activeCategory);
-  const { data: productCategories, isLoading: productCategoriesLoading } = useCategories();
+  const { data: productCategories, isLoading: productCategoriesLoading } = useProductCategories();
 
   const handleViewDetails = useCallback((formationId: string) => {
     console.log('Shop: Navigating to formation details:', formationId);
@@ -63,9 +66,6 @@ const Shop = () => {
   const isLoading = activeTab === 'formations' 
     ? formationsLoading || formationCategoriesLoading
     : productsLoading || productCategoriesLoading;
-
-  // Récupérer les centres d'intérêt de l'utilisateur depuis le profil
-  const userInterests = user ? (user as any).interests || [] : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">

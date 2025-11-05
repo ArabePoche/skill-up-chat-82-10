@@ -98,21 +98,34 @@ export const useCart = () => {
           .eq('id', existingItem.id);
 
         if (error) throw error;
+        
+        // Mise à jour optimiste immédiate
+        setCartItems(prev => 
+          prev.map(item => 
+            item.id === existingItem.id 
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        );
       } else {
         // Ajouter un nouvel article
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('cart_items')
           .insert({
             user_id: user.id,
             product_id: productId,
             quantity: 1,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+        
+        // Mise à jour optimiste immédiate
+        if (data) {
+          setCartItems(prev => [...prev, data]);
+        }
       }
-
-      // Recharger le panier
-      await loadCart();
 
       toast({
         title: 'Produit ajouté',
@@ -120,6 +133,8 @@ export const useCart = () => {
       });
     } catch (error) {
       console.error('Error adding to cart:', error);
+      // En cas d'erreur, recharger pour synchroniser
+      await loadCart();
       toast({
         title: 'Erreur',
         description: 'Impossible d\'ajouter le produit au panier',
@@ -220,3 +235,4 @@ export const useCart = () => {
     refreshCart: loadCart,
   };
 };
+ 

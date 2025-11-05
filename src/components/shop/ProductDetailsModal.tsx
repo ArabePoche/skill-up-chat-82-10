@@ -294,17 +294,19 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     </Button>
                   </div>
                 </div>
-                <div ref={emblaSimilarRef} className="overflow-hidden">
-                  <div className="flex gap-4">
-                    {similarProducts.map((similarProduct) => (
-                      <div key={similarProduct.id} className="flex-[0_0_280px] min-w-0">
-                        <ProductCard
-                          product={similarProduct}
-                          user={user}
-                          onAddToCart={onAddToCart}
-                        />
-                      </div>
-                    ))}
+                <div className="relative">
+                  <div ref={emblaSimilarRef} className="overflow-hidden">
+                    <div className="flex gap-4">
+                      {similarProducts.map((similarProduct) => (
+                        <div key={similarProduct.id} className="flex-[0_0_280px] min-w-0">
+                          <ProductCard
+                            product={similarProduct}
+                            user={user}
+                            onAddToCart={onAddToCart}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
