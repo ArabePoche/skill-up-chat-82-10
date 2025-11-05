@@ -5,7 +5,7 @@
 - **Cache local** : IndexedDB pour stocker formations, leçons et fichiers audio
 - **Synchronisation automatique** : Dès que la connexion revient
 - **Service Worker** : Cache de l'interface et des assets statiques
-- **Indicateur visuel** : Affiche l'état de connexion en temps réel
+- **Toast du statut de la connexion** : Affiche l'état de connexion en temps réel avec un toast
 
 ## 🚀 Utilisation
 
@@ -28,14 +28,6 @@ import { useOfflineFormation } from '@/offline';
 const { formation, lessons, isOfflineAvailable, downloadForOffline } = useOfflineFormation(formationId);
 ```
 
-### Indicateur de connexion
-
-```tsx
-import { OfflineIndicator } from '@/offline';
-
-// Affiche automatiquement l'état en ligne/hors ligne
-<OfflineIndicator />
-```
 
 ## 🔄 Synchronisation
 
