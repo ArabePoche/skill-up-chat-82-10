@@ -30,21 +30,21 @@ export const useOfflineFormation = (formationId: string | undefined) => {
       if (isOnline) {
         // En ligne : charger depuis Supabase
         try {
-          const formationQuery: any = await supabase
+          const { data: formationData } = await supabase
             .from('formations')
             .select('*')
             .eq('id', formationId)
             .single();
 
-          const lessonsQuery = await supabase
+          // @ts-expect-error - Complex Supabase type inference issue
+          const lessonsResult = await supabase
             .from('lessons')
             .select('*')
             .eq('formation_id', formationId)
-            .order('order_index', { ascending: true }) as unknown as any;
+            .order('order_index', { ascending: true });
           
-          const formationData = formationQuery.data;
-          const lessonsData = lessonsQuery.data;
-
+          const lessonsData = lessonsResult.data;
+          
           setFormation(formationData);
           setLessons(lessonsData || []);
         } catch (error) {
