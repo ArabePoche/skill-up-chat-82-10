@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, ShoppingCart, MessagesSquare, User, GraduationCap } from 'lucide-react';
+import { Home, ShoppingCart, MessageCircleMore, User, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
@@ -19,7 +19,7 @@ const Navbar = () => {
     { icon: Home, label: t('nav.home'), view: 'home' as NavigationView, path: '/' },
     { icon: ShoppingCart, label: t('nav.shop'), view: 'shop' as NavigationView, path: '/shop' },
     { icon: GraduationCap, label: t('nav.courses'), view: 'cours' as NavigationView, path: '/cours', special: true },
-    { icon: MessagesSquare, label: t('nav.messages'), view: 'messages' as NavigationView, path: '/messages' },
+    { icon: MessageCircleMore, label: t('nav.messages'), view: 'messages' as NavigationView, path: '/messages' },
     { icon: User, label: t('nav.profile'), view: 'profil' as NavigationView, path: '/profil' },
   ];
 
