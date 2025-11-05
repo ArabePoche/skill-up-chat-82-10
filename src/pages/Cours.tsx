@@ -10,12 +10,17 @@ import { useFormations, useUserEnrollments } from '@/hooks/useFormations';
 import { useTeacherFormations } from '@/hooks/useTeacherFormations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
+import { useOfflineFormations } from '@/offline/hooks/useOfflineFormations';
+import { WifiOff } from 'lucide-react';
 
 const Cours = () => {
   const [selectedFormation, setSelectedFormation] = useState(null);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { isOnline } = useOfflineSync();
+  const { offlineFormations, isLoading: offlineLoading } = useOfflineFormations();
   
   const { data: allFormations, isLoading: formationsLoading } = useFormations();
   const { data: userEnrollments, isLoading: enrollmentsLoading, error: enrollmentsError } = useUserEnrollments(user?.id);
@@ -137,7 +142,7 @@ const Cours = () => {
 
   const isLoading = formationsLoading || enrollmentsLoading || teacherFormationsLoading;
 
-  if (isLoading) {
+  if (isLoading && offlineLoading) {
     return (
       <LoadingSpinner 
         message="Chargement..." 
@@ -146,18 +151,32 @@ const Cours = () => {
     );
   }
 
-  const studentFormations = userEnrollments?.map(enrollment => {
-    const formation = enrollment.formations;
-    if (!formation) return null;
-    
-    return {
+  // Si hors ligne, utiliser les formations offline
+  let studentFormations = [];
+  
+  if (!isOnline && offlineFormations.length > 0) {
+    // Mode hors ligne : afficher les formations téléchargées
+    studentFormations = offlineFormations.map(formation => ({
       ...formation,
       progress: 0,
       isTeacher: false
-    };
-  }).filter(Boolean) || [];
+    }));
+  } else {
+    // Mode en ligne : afficher les formations inscrites
+    studentFormations = userEnrollments?.map(enrollment => {
+      const formation = enrollment.formations;
+      if (!formation) return null;
+      
+      return {
+        ...formation,
+        progress: 0,
+        isTeacher: false
+      };
+    }).filter(Boolean) || [];
+  }
 
   console.log('Student formations processed:', studentFormations);
+  console.log('Offline mode:', !isOnline, 'Offline formations:', offlineFormations.length);
 
   const debugMessage = `User ID: | Enrollments: ${userEnrollments?.length || 0} | Error: ${enrollmentsError ? 'YES - ' + enrollmentsError.message : 'NO'} | Loading: ${enrollmentsLoading}`;
 
@@ -168,14 +187,27 @@ const Cours = () => {
         subtitle="Continuez votre apprentissage" 
       />
 
-      <div className="p-4 space-y-6 pt-16">
+      {!isOnline && offlineFormations.length > 0 && (
+        <div className="mx-4 mt-16 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+          <WifiOff className="h-4 w-4 text-amber-600" />
+          <p className="text-sm text-amber-700">
+            Mode hors ligne - {offlineFormations.length} formation(s) disponible(s)
+          </p>
+        </div>
+      )}
+
+      <div className="p-4 space-y-6 pt-4">
         <FormationSection
           title="Mes cours suivis"
           icon="student"
           formations={studentFormations}
           isTeacherSection={false}
           onFormationClick={setSelectedFormation}
-          emptyMessage="Vous n'êtes inscrit à aucune formation"
+          emptyMessage={
+            !isOnline && offlineFormations.length === 0
+              ? "Aucune formation disponible hors ligne. Téléchargez des formations quand vous êtes en ligne."
+              : "Vous n'êtes inscrit à aucune formation"
+          }
           debugInfo={debugMessage}
         />
 
