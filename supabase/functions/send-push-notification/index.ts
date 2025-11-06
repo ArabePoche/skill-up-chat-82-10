@@ -1,180 +1,82 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.77.0";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface NotificationRequest {
+interface NotificationPayload {
   userIds?: string[];
   title: string;
-  message: string;
+  message?: string;
   type: string;
   clickAction?: string;
   data?: Record<string, any>;
 }
 
-// Messages motivants inspirés de Duolingo
-const DUOLINGO_MESSAGES = {
-  daily_reminder: [
-    "👋 Tu n'as pas étudié aujourd'hui, viens apprendre avec nous !",
-    "🧠 5 minutes par jour suffisent pour progresser !",
-    "⏳ Ton cerveau attend ta dose quotidienne de savoir...",
-    "🎯 Tu es à 1 cours de valider ton objectif hebdo !",
-    "📚 Tes cours t'attendent, ne les fais pas patienter !",
-    "🔥 Garde ta streak d'apprentissage vivante !",
-    "💪 Un petit effort aujourd'hui, un grand pas demain !"
-  ],
-  teacher_response: [
-    "💬 Un prof vous a répondu !",
-    "📝 Votre professeur a un message pour vous",
-    "👨‍🏫 Réponse de votre enseignant disponible",
-    "💭 Nouvelle réponse dans votre discussion"
-  ],
-  exercise_validation: [
-    "🎉 Super ! Votre exercice a été validé",
-    "✅ Bravo ! Exercice réussi avec brio",
-    "🏆 Félicitations ! Votre travail est approuvé",
-    "⭐ Excellent travail ! Exercice validé"
-  ],
-  new_lesson: [
-    "📚 Un nouveau cours est dispo, viens vite l'explorer !",
-    "🆕 Nouveau contenu débloqué ! À découvrir maintenant",
-    "🎓 Une nouvelle leçon vous attend",
-    "📖 Nouveau chapitre disponible dans votre formation"
-  ]
-};
-
-// Firebase project ID - unifié avec la config client
-const FIREBASE_PROJECT_ID = "push-notifications-727ff";
-
-// Fonction pour envoyer une vraie notification FCM
-async function sendFCMNotification(
-  token: string,
-  title: string,
-  body: string,
-  data?: Record<string, any>
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  try {
-    // Récupérer la clé de service Firebase depuis les secrets Supabase
-    const serviceAccountKey = Deno.env.get('FIREBASE_SERVICE_ACCOUNT_KEY');
-    
-    if (!serviceAccountKey) {
-      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT_KEY non configurée - notifications désactivées');
-      return { 
-        success: false, 
-        error: 'Configuration Firebase manquante. Veuillez configurer FIREBASE_SERVICE_ACCOUNT_KEY dans les secrets.' 
-      };
-    }
-
-    // Parser la clé de service
-    const serviceAccount = JSON.parse(serviceAccountKey);
-    
-    // Créer le JWT pour l'authentification Google
-    const now = Math.floor(Date.now() / 1000);
-    const jwtHeader = { alg: "RS256", typ: "JWT" };
-    const jwtClaims = {
-      iss: serviceAccount.client_email,
-      scope: "https://www.googleapis.com/auth/firebase.messaging",
-      aud: "https://oauth2.googleapis.com/token",
-      exp: now + 3600,
-      iat: now
-    };
-
-    // Note: Pour une implémentation complète, il faudrait signer le JWT avec RS256
-    // Pour l'instant, on simule l'envoi en attendant la vraie clé
-    
-    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`;
-    
-    const message = {
-      message: {
-        token: token,
-        notification: {
-          title: title,
-          body: body
-        },
-        data: data || {},
-        webpush: {
-          fcm_options: {
-            link: data?.click_action || '/'
-          }
-        }
-      }
-    };
-
-    console.log('📤 Envoi notification FCM pour token:', token.substring(0, 20) + '...');
-    
-    // TODO: Implémenter l'appel réel une fois la clé configurée
-    // const response = await fetch(fcmUrl, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${accessToken}`
-    //   },
-    //   body: JSON.stringify(message)
-    // });
-
-    return { 
-      success: true, 
-      messageId: `simulated_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` 
-    };
-
-  } catch (error) {
-    console.error('❌ Erreur FCM:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Erreur inconnue' 
-    };
-  }
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
     );
 
-    const { userIds, title, message, type, clickAction, data }: NotificationRequest = await req.json();
+    // Parse request body
+    const payload: NotificationPayload = await req.json();
+    const { userIds, title, message, type, clickAction, data } = payload;
 
-    console.log('Sending push notification:', { userIds, title, message, type });
+    console.log('📨 Sending push notification:', { userIds, title, type });
 
-    // Récupérer les tokens FCM des utilisateurs ciblés
-    let query = supabaseClient
+    // Get Firebase service account credentials
+    const firebaseServiceAccount = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
+    if (!firebaseServiceAccount) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT not configured');
+    }
+
+    const serviceAccount = JSON.parse(firebaseServiceAccount);
+
+    // Get FCM tokens for users
+    let tokensQuery = supabaseClient
       .from('push_tokens')
-      .select('user_id, token, notification_preferences')
+      .select('token, user_id, notification_preferences')
       .eq('is_active', true);
 
     if (userIds && userIds.length > 0) {
-      query = query.in('user_id', userIds);
+      tokensQuery = tokensQuery.in('user_id', userIds);
     }
 
-    const { data: tokens, error: tokensError } = await query;
+    const { data: pushTokens, error: tokensError } = await tokensQuery;
 
     if (tokensError) {
-      console.error('Erreur lors de la récupération des tokens:', tokensError);
+      console.error('Error fetching tokens:', tokensError);
+      throw tokensError;
+    }
+
+    if (!pushTokens || pushTokens.length === 0) {
+      console.log('⚠️ No active push tokens found for users');
       return new Response(
-        JSON.stringify({ error: 'Erreur lors de la récupération des tokens' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, message: 'No active tokens found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    if (!tokens || tokens.length === 0) {
-      console.log('Aucun token trouvé pour les utilisateurs ciblés');
-      return new Response(
-        JSON.stringify({ message: 'Aucun token trouvé', sent: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Filter tokens based on user preferences
+    const filteredTokens = pushTokens.filter(token => {
+      const prefs = token.notification_preferences as any;
+      if (!prefs) return true; // Send if no preferences set
 
-    // Filtrer les tokens selon les préférences de notification
-    const filteredTokens = tokens.filter(tokenData => {
-      const prefs = tokenData.notification_preferences || {};
-      
+      // Check preference based on notification type
       switch (type) {
         case 'daily_reminder':
           return prefs.daily_reminders !== false;
@@ -185,124 +87,178 @@ Deno.serve(async (req) => {
         case 'new_lesson':
           return prefs.new_lessons !== false;
         default:
-          return true; // Pour les notifications système/test
+          return true;
       }
     });
 
-    console.log(`${filteredTokens.length} tokens après filtrage des préférences`);
-
     if (filteredTokens.length === 0) {
+      console.log('⚠️ All users have disabled this notification type');
       return new Response(
-        JSON.stringify({ message: 'Aucun utilisateur avec cette préférence activée', sent: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, message: 'Users have disabled this notification type' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Envoyer les notifications via FCM
-    const results = [];
-    let successCount = 0;
+    // Get OAuth2 access token for Firebase
+    const accessToken = await getFirebaseAccessToken(serviceAccount);
 
-    for (const tokenData of filteredTokens) {
-      try {
-        // Sélectionner un message aléatoire selon le type
-        let finalMessage = message;
-        if (DUOLINGO_MESSAGES[type as keyof typeof DUOLINGO_MESSAGES]) {
-          const messages = DUOLINGO_MESSAGES[type as keyof typeof DUOLINGO_MESSAGES];
-          finalMessage = messages[Math.floor(Math.random() * messages.length)];
-        }
+    // Send notifications via Firebase Cloud Messaging
+    const results = await Promise.allSettled(
+      filteredTokens.map(async (tokenData) => {
+        const fcmMessage = {
+          message: {
+            token: tokenData.token,
+            notification: {
+              title: title,
+              body: message || '',
+            },
+            data: {
+              click_action: clickAction || '/',
+              type: type,
+              ...(data || {}),
+            },
+            webpush: {
+              fcm_options: {
+                link: clickAction || '/',
+              },
+            },
+          },
+        };
 
-        console.log(`📤 Envoi notification à l'utilisateur ${tokenData.user_id}`);
-        
-        // Envoyer la notification via FCM
-        const fcmResult = await sendFCMNotification(
-          tokenData.token,
-          title,
-          finalMessage,
+        const response = await fetch(
+          `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
           {
-            click_action: clickAction || '/',
-            notification_type: type,
-            ...data
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(fcmMessage),
           }
         );
-        
-        // Enregistrer le log de la notification
-        await supabaseClient
-          .from('notification_logs')
-          .insert({
-            user_id: tokenData.user_id,
-            title: title,
-            message: finalMessage,
-            notification_type: type,
-            status: fcmResult.success ? 'sent' : 'failed',
-            fcm_response: fcmResult
-          });
 
-        if (fcmResult.success) {
-          results.push({ 
-            token: tokenData.token.slice(0, 20) + '...', 
-            success: true, 
-            userId: tokenData.user_id,
-            messageId: fcmResult.messageId
-          });
-          successCount++;
-        } else {
-          results.push({ 
-            token: tokenData.token.slice(0, 20) + '...', 
-            success: false, 
-            error: fcmResult.error,
-            userId: tokenData.user_id 
-          });
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error(`Failed to send to token ${tokenData.token.substring(0, 20)}...`, errorData);
+          
+          // If token is invalid, mark it as inactive
+          if (response.status === 404 || errorData.includes('NOT_FOUND') || errorData.includes('INVALID_ARGUMENT')) {
+            await supabaseClient
+              .from('push_tokens')
+              .update({ is_active: false })
+              .eq('token', tokenData.token);
+            console.log(`❌ Marked token as inactive: ${tokenData.token.substring(0, 20)}...`);
+          }
+          
+          throw new Error(`FCM Error: ${errorData}`);
         }
 
-      } catch (error) {
-        console.error('❌ Erreur lors de l\'envoi pour le token:', tokenData.token, error);
-        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-        
-        // Enregistrer l'erreur
-        await supabaseClient
-          .from('notification_logs')
-          .insert({
-            user_id: tokenData.user_id,
-            title: title,
-            message: message,
-            notification_type: type,
-            status: 'failed',
-            fcm_response: { error: errorMessage }
-          });
+        const result = await response.json();
+        console.log(`✅ Sent notification to user ${tokenData.user_id}`);
+        return result;
+      })
+    );
 
-        results.push({ 
-          token: tokenData.token.slice(0, 20) + '...', 
-          success: false, 
-          error: errorMessage,
-          userId: tokenData.user_id 
-        });
-      }
-    }
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failCount = results.filter(r => r.status === 'rejected').length;
 
-    console.log(`Notifications envoyées: ${successCount}/${filteredTokens.length}`);
+    console.log(`📊 Results: ${successCount} sent, ${failCount} failed`);
 
     return new Response(
       JSON.stringify({
-        message: 'Notifications traitées avec succès',
+        success: true,
         sent: successCount,
-        total: filteredTokens.length,
-        results: results,
-        preview: {
-          title,
-          messageExamples: type in DUOLINGO_MESSAGES 
-            ? DUOLINGO_MESSAGES[type as keyof typeof DUOLINGO_MESSAGES].slice(0, 3)
-            : [message]
-        }
+        failed: failCount,
+        total: results.length,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
-
   } catch (error) {
-    console.error('Erreur dans send-push-notification:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue';
+    console.error('❌ Error sending push notification:', error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
+
+// Helper function to get Firebase OAuth2 access token
+async function getFirebaseAccessToken(serviceAccount: any): Promise<string> {
+  const jwtHeader = {
+    alg: 'RS256',
+    typ: 'JWT',
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const jwtClaimSet = {
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+
+  // Import crypto for signing
+  const encoder = new TextEncoder();
+  const privateKey = serviceAccount.private_key;
+
+  // Create JWT
+  const headerBase64 = btoa(JSON.stringify(jwtHeader)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const claimSetBase64 = btoa(JSON.stringify(jwtClaimSet)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const unsignedToken = `${headerBase64}.${claimSetBase64}`;
+
+  // Import the private key
+  const pemHeader = '-----BEGIN PRIVATE KEY-----';
+  const pemFooter = '-----END PRIVATE KEY-----';
+  const pemContents = privateKey.substring(
+    pemHeader.length,
+    privateKey.length - pemFooter.length - 1
+  ).replace(/\s/g, '');
+  
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign']
+  );
+
+  // Sign the token
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    encoder.encode(unsignedToken)
+  );
+
+  const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+  const jwt = `${unsignedToken}.${signatureBase64}`;
+
+  // Exchange JWT for access token
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    throw new Error(`Failed to get access token: ${errorText}`);
+  }
+
+  const tokenData = await tokenResponse.json();
+  return tokenData.access_token;
+}
