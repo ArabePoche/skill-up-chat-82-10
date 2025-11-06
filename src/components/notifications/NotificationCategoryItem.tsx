@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { Bell, UserPlus, Users, BookOpen, CreditCard, Briefcase } from 'lucide-react';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { useCategoryNotifications } from '@/hooks/notifications/useCategoryNotifications';
-import NotificationItem from '@/components/NotificationItem';
+import { useCategoryNotifications } from './hooks/useCategoryNotifications';
+import NotificationItem from './NotificationItem';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
