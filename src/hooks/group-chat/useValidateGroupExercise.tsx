@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { NotificationTriggers } from '@/utils/notificationHelpers';
 
 export const useValidateGroupExercise = (formationId?: string, levelId?: string) => {
   const queryClient = useQueryClient();
@@ -131,13 +132,32 @@ export const useValidateGroupExercise = (formationId?: string, levelId?: string)
         // La fonction SQL gère toute la progression, on retourne juste le résultat
         const result = validationResult as any;
         
+        // Envoyer notification push si exercice validé
+        if (isValid && studentId) {
+          try {
+            const { data: exerciseData } = await supabase
+              .from('exercises')
+              .select('title')
+              .eq('id', exerciseId)
+              .single();
+            
+            await NotificationTriggers.onExerciseValidated(
+              studentId, 
+              exerciseData?.title || 'Exercice'
+            );
+          } catch (notifError) {
+            console.error('Erreur envoi notification:', notifError);
+          }
+        }
+        
         return { 
           progressionUpdate: result?.next_exercise_unlocked ? 'next_exercise' 
             : result?.next_lesson_unlocked ? 'next_lesson'
             : result?.level_completed ? 'level_completed'
             : result?.formation_completed ? 'formation_completed'
             : null,
-          validationResult: result
+          validationResult: result,
+          studentId
         };
 
       } catch (error) {
