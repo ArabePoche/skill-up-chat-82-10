@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Bell, UserPlus, Users, BookOpen, CreditCard, Briefcase } from 'lucide-react';
+import { Bell, UserPlus, Users, BookOpen, CreditCard, Briefcase, ShoppingCart } from 'lucide-react';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useCategoryNotifications } from './hooks/useCategoryNotifications';
 import NotificationItem from './NotificationItem';
@@ -70,6 +70,8 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
         return <Briefcase className="w-5 h-5" />;
       case 'reactions':
         return <span className="text-xl">❤️</span>;
+      case 'orders':
+        return <ShoppingCart className="w-5 h-5" />;
       default:
         return <Bell className="w-5 h-5" />;
     }
@@ -89,6 +91,8 @@ const NotificationCategoryItem: React.FC<NotificationCategoryItemProps> = ({
         return t('notifications.categories.applications');
       case 'reactions':
         return t('notifications.categories.reactions');
+      case 'orders':
+        return t('notifications.categories.orders');
       default:
         return t('notifications.categories.other');
     }
