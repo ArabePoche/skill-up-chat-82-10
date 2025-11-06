@@ -387,9 +387,10 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         </div>
       </div>
 
-      {/* Reply section - AMÉLIORÉ POUR MOBILE */}
-      <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-40">
-        {showReplyInput ? (
+      {/* Reply section - AMÉLIORÉ POUR MOBILE - Caché pour ma propre story */}
+      {!isMyStory && (
+        <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-40">
+          {showReplyInput ? (
           <div className="flex items-center space-x-2 sm:space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 sm:py-3">
             <Button
               onClick={handleCloseReply}
@@ -431,7 +432,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             Répondre à {story.profiles?.first_name || 'cette story'}...
           </Button>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Navigation buttons */}
       {currentStoryIndex > 0 && (
