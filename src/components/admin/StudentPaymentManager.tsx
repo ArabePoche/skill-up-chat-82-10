@@ -118,7 +118,7 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
           amount: amountNum,
           payment_method: paymentMethod,
           comment: comment.trim() || null,
-          reference: reference.trim() || null,
+          reference_number: reference.trim() || null,
           days_added: daysToAdd,
           hours_added: hoursToAdd,
           status: 'confirmed',
@@ -295,7 +295,9 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
                     <div key={payment.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium">{payment.amount.toLocaleString('fr-FR')} FCFA</span>
+                          <span className="font-medium">
+                            {payment.amount ? payment.amount.toLocaleString('fr-FR') : '0'} FCFA
+                          </span>
                           <span className="text-sm text-gray-500">
                             {new Date(payment.created_at).toLocaleDateString('fr-FR')}
                           </span>
@@ -316,10 +318,9 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
                         {payment.comment && (
                           <p className="text-xs text-gray-500 mt-1">{payment.comment}</p>
                         )}
-                        {/* TODO: Ajouter la colonne 'reference' à la table student_payment */}
-                        {/* {payment.reference && (
-                          <p className="text-xs text-blue-500 mt-1">Réf: {payment.reference}</p>
-                        )} */}
+                        {payment.reference_number && (
+                          <p className="text-xs text-blue-500 mt-1">Réf: {payment.reference_number}</p>
+                        )}
                       </div>
                     </div>
                   ))}
