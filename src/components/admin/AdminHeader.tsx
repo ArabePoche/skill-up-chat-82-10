@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Users, Activity, MessageCircle, CheckCircle, Clock, Crown, Globe, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { CountriesModal } from './CountriesModal';
 
 interface AdminHeaderProps {
   profileName: string;
@@ -11,6 +12,8 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
+  const [showCountriesModal, setShowCountriesModal] = useState(false);
+  
   const { data: stats } = useQuery({
     queryKey: ['admin-header-stats'],
     queryFn: async () => {
@@ -71,7 +74,10 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+          <Card 
+            className="bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:from-green-600 hover:to-green-700 transition-all"
+            onClick={() => setShowCountriesModal(true)}
+          >
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
@@ -108,6 +114,11 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
           </Card>
         </div>
       </div>
+
+      <CountriesModal 
+        isOpen={showCountriesModal} 
+        onClose={() => setShowCountriesModal(false)} 
+      />
     </div>
   );
 }
