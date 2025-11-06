@@ -27,8 +27,8 @@ const LanguageOnboarding: React.FC<LanguageOnboardingProps> = ({ onComplete }) =
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-primary via-primary-glow to-accent flex items-center justify-center p-4">
-      <div className="bg-background rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in-0 zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-primary via-primary-glow to-accent flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-background rounded-2xl shadow-2xl max-w-md w-full p-8 my-auto animate-in fade-in-0 zoom-in-95 duration-300">
         <div className="text-center mb-6">
           <div className="text-6xl mb-4">🌍</div>
           <h1 className="text-3xl font-bold text-foreground mb-2">
