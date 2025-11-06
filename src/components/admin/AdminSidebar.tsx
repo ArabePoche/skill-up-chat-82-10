@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle } from 'lucide-react';
+import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +28,11 @@ const menuItems = [
     title: 'Utilisateurs en ligne',
     value: 'online-users',
     icon: UserCheck,
+  },
+  {
+    title: 'Suivi des paiements',
+    value: 'payment-tracking',
+    icon: CreditCard,
   },
   {
     title: 'Créer Formation',
