@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
 import { useFormationPricing } from '@/hooks/useFormationPricing';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
+import { calculateRemainingDays } from '@/utils/paymentCalculations';
 
 interface StudentPaymentManagerProps {
   studentId: string;
@@ -167,7 +168,11 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
     }
   });
 
-  const totalDaysRemaining = paymentProgress?.total_days_remaining || 0;
+  // Calculer les jours restants en temps réel
+  const totalDaysRemaining = calculateRemainingDays(
+    paymentProgress?.total_days_remaining,
+    paymentProgress?.last_payment_date
+  );
   const totalHoursRemaining = paymentProgress?.hours_remaining || 0;
   const lastPaymentDate = paymentProgress?.last_payment_date;
 
