@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationTriggers } from '@/utils/notificationHelpers';
 
 export const useValidateExerciseWithPromotion = () => {
   const queryClient = useQueryClient();
@@ -72,6 +73,24 @@ export const useValidateExerciseWithPromotion = () => {
         }
 
         console.log('Exercise validation with promotion completed successfully by teacher:', user.id);
+        
+        // Envoyer notification push si exercice validé
+        if (isValid && userId) {
+          try {
+            const { data: messageData } = await supabase
+              .from('lesson_messages')
+              .select('exercise:exercises(title)')
+              .eq('id', messageId)
+              .single();
+            
+            const exerciseTitle = (messageData as any)?.exercise?.title || 'Exercice';
+            
+            await NotificationTriggers.onExerciseValidated(userId, exerciseTitle);
+          } catch (notifError) {
+            console.error('Erreur envoi notification:', notifError);
+          }
+        }
+        
         return data;
       } catch (error) {
         console.error('Error in validation mutation:', error);
