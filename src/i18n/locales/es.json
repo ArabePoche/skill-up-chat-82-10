@@ -170,6 +170,7 @@
       "paymentRequests": "Solicitudes de Pago",
       "applications": "Solicitudes",
       "reactions": "Reacciones de Publicaciones",
+      "orders": "Pedidos",
       "other": "Otras Notificaciones"
     }
   },
