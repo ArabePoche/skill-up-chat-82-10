@@ -183,6 +183,7 @@
       "paymentRequests": "Demandes de paiement",
       "applications": "Candidatures",
       "reactions": "Réactions publications",
+      "orders": "Commandes",
       "other": "Autres notifications"
     }
   },
