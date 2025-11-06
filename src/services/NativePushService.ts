@@ -128,7 +128,19 @@ export class NativePushService {
     if (this.isNative) {
       return PushNotifications !== null; // Capacitor disponible
     } else {
-      return 'Notification' in window && 'serviceWorker' in navigator;
+      // Pour le web (desktop et mobile)
+      // Vérifier que l'API Notification existe et que le service worker est supporté
+      const hasNotificationAPI = 'Notification' in window;
+      const hasSW = 'serviceWorker' in navigator;
+      
+      console.log('🔍 Vérification support notifications:', {
+        hasNotificationAPI,
+        hasSW,
+        userAgent: navigator.userAgent,
+        platform: navigator.platform
+      });
+      
+      return hasNotificationAPI && hasSW;
     }
   }
 
