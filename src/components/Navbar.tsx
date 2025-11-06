@@ -33,9 +33,8 @@ const Navbar = () => {
   };
 
   return (
-    // Section: Conteneur principal de la barre de navigation
-    // Réduction du padding vertical (py-0.5 -> py-0) pour une barre plus compacte.
-    <nav className="bg-white border-t border-gray-200 px-4 py-0 relative">
+    // Section: Conteneur principal de la barre de navigation - utilise rem pour l'accessibilité
+    <nav className="bg-white border-t border-gray-200 px-[1rem] py-[0.25rem] relative">
       <div className="flex justify-around items-center relative">
         {navItems.map((item, index) => {
           const isActive = isCurrentRoute(item.path);
@@ -54,7 +53,7 @@ const Navbar = () => {
               >
                 {/* Conteneur principal du bouton spécial */}
                 <div className={`
-                  w-12 h-12 rounded-full flex items-center justify-center flex-col
+                  w-[3rem] h-[3rem] rounded-full flex items-center justify-center flex-col
                   transform -translate-y-2 shadow-lg transition-all duration-300
                   ${isActive 
                     ? 'bg-gradient-to-r from-edu-primary to-edu-secondary scale-110 shadow-xl' 
@@ -62,13 +61,10 @@ const Navbar = () => {
                   }
                 `}>
                   <Icon 
-                    size={24} 
-                    className={`text-white ${isActive ? 'animate-bounce-subtle' : ''}`} 
+                    className={`w-[1.5rem] h-[1.5rem] text-white ${isActive ? 'animate-bounce-subtle' : ''}`} 
                   />
                   {/* Label du bouton spécial déplacé à l'intérieur du cercle */}
-                  <span className={`
-                    text-xs font-bold text-white mt-0.5 transition-colors duration-200
-                  `}>
+                  <span className="text-[0.65rem] font-bold text-white mt-0.5 transition-colors duration-200 leading-tight">
                     {item.label}
                   </span>
                 </div>
@@ -76,7 +72,7 @@ const Navbar = () => {
                 {/* Le label externe est supprimé car il est maintenant à l'intérieur du cercle */}
                 {/* Indicateur actif pour le bouton spécial */}
                 {isActive && (
-                  <div className="absolute -bottom-1 w-2 h-2 bg-edu-primary rounded-full animate-pulse" />
+                  <div className="absolute -bottom-1 w-[0.5rem] h-[0.5rem] bg-edu-primary rounded-full animate-pulse" />
                 )}
               </button>
             );
@@ -89,18 +85,18 @@ const Navbar = () => {
             <button
               key={item.view}
               onClick={() => handleNavigation(item)}
-              className={`flex flex-col items-center py-1 px-3 rounded-lg transition-all duration-200 relative ${
+              className={`flex flex-col items-center py-[0.25rem] px-[0.75rem] rounded-lg transition-all duration-200 relative ${
                 isActive
                   ? 'text-edu-primary bg-edu-primary/10'
                   : 'text-gray-600 hover:text-edu-primary hover:bg-gray-50'
               }`}
             >
               <div className="relative">
-                <Icon size={16} className={`mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
+                <Icon className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
                 {showBadge && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center p-0 text-xs"
+                    className="absolute -top-1.5 -right-1.5 min-h-[1rem] min-w-[1rem] h-auto w-auto flex items-center justify-center p-[0.125rem] text-[0.65rem] leading-none"
                   >
                     {unreadCounts.total > 99 ? '99+' : unreadCounts.total}
                   </Badge>
@@ -108,13 +104,13 @@ const Navbar = () => {
                 {showCartBadge && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center p-0 text-xs animate-bounce"
+                    className="absolute -top-1.5 -right-1.5 min-h-[1rem] min-w-[1rem] h-auto w-auto flex items-center justify-center p-[0.125rem] text-[0.65rem] leading-none animate-bounce"
                   >
                     {cartItemsCount > 99 ? '99+' : cartItemsCount}
                   </Badge>
                 )}
               </div>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-[0.75rem] font-medium leading-tight">{item.label}</span>
             </button>
           );
         })}
