@@ -7,6 +7,7 @@ import PaymentRequestNotificationCard from '@/components/notifications/PaymentRe
 import FriendRequestCard from '@/components/notifications/FriendRequestCard';
 import ReactionNotificationCard from '@/components/notifications/ReactionNotificationCard';
 import ApplicationNotificationCard from '@/components/notifications/ApplicationNotificationCard';
+import OrderNotificationCard from '@/components/notifications/OrderNotificationCard';
 
 interface NotificationItemProps {
   notification: {
@@ -78,6 +79,20 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
   const isReactionNotification = notification.type === 'post_reaction' || notification.type === 'video_reaction';
 
   const isApplicationNotification = notification.type === 'application_received' && notification.application_id;
+
+  const isOrderNotification = notification.type === 'order';
+
+  // Si c'est une notification de commande
+  if (isOrderNotification) {
+    return <OrderNotificationCard notification={{
+      id: notification.id,
+      shop_order_id: (notification as any).shop_order_id,
+      created_at: notification.created_at,
+      is_read: notification.is_read,
+      title: notification.title,
+      message: notification.message
+    }} />;
+  }
 
   // Si c'est une notification de candidature
   if (isApplicationNotification) {
