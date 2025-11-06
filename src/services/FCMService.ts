@@ -27,6 +27,17 @@ export const FCMService = {
     try {
       console.log('🔔 Demande de permission pour les notifications...');
       
+      // Vérifier le support avant de continuer
+      if (!('Notification' in window)) {
+        console.error('❌ API Notification non disponible');
+        return { success: false, error: 'Les notifications ne sont pas supportées sur ce navigateur' };
+      }
+
+      if (!('serviceWorker' in navigator)) {
+        console.error('❌ Service Worker non disponible');
+        return { success: false, error: 'Les Service Workers ne sont pas supportés sur ce navigateur' };
+      }
+      
       const permission = await Notification.requestPermission();
       console.log('📋 Permission:', permission);
       
@@ -37,16 +48,15 @@ export const FCMService = {
 
       // Enregistrer le service worker
       let registration: ServiceWorkerRegistration | undefined;
-      if ('serviceWorker' in navigator) {
-        try {
-          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          console.log('🔧 Service Worker enregistré:', registration);
-          // Attendre que le service worker soit prêt
-          await navigator.serviceWorker.ready;
-          console.log('✅ Service Worker prêt');
-        } catch (swError) {
-          console.error('❌ Erreur Service Worker:', swError);
-        }
+      try {
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('🔧 Service Worker enregistré:', registration);
+        // Attendre que le service worker soit prêt
+        await navigator.serviceWorker.ready;
+        console.log('✅ Service Worker prêt');
+      } catch (swError) {
+        console.error('❌ Erreur Service Worker:', swError);
+        return { success: false, error: `Erreur Service Worker: ${swError instanceof Error ? swError.message : 'Erreur inconnue'}` };
       }
 
       const messaging = initializeFirebase();
