@@ -2,10 +2,12 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, ShoppingCart, MessageCircleMore, User, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useNavigation, NavigationView } from '@/contexts/NavigationContext';
 import { useTranslation } from 'react-i18next';
 import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ const Navbar = () => {
   const { data: unreadCounts } = useUnreadCounts();
   const { t } = useTranslation();
   const { cartItemsCount } = useCart();
+  const { profile } = useAuth();
 
   const navItems = [
     { icon: Home, label: t('nav.home'), view: 'home' as NavigationView, path: '/' },
@@ -92,7 +95,16 @@ const Navbar = () => {
               }`}
             >
               <div className="relative">
-                <Icon className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
+                {item.view === 'profil' ? (
+                  <Avatar className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''}`}>
+                    <AvatarImage src={profile?.avatar_url || ''} alt={profile?.first_name || 'User'} />
+                    <AvatarFallback className="text-[0.5rem] bg-edu-primary/10 text-edu-primary">
+                      {profile?.first_name?.[0] || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <Icon className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
+                )}
                 {showBadge && (
                   <Badge 
                     variant="destructive" 
