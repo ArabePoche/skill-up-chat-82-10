@@ -8,11 +8,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Clock, Search, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { StudentPaymentManager } from '../StudentPaymentManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/hooks/useAuth';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 /**
  * Composant pour le suivi des paiements de tous les étudiants
  */
 const StudentPaymentTracking = () => {
+  const { user, profile, loading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFormation, setSelectedFormation] = useState<string>('all');
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
@@ -30,12 +33,14 @@ const StudentPaymentTracking = () => {
       if (error) throw error;
       return data || [];
     },
+    enabled: !!user && profile?.role === 'admin',
   });
 
   // Récupérer tous les étudiants avec leurs progrès de paiement
-  const { data: studentsPayments, isLoading, refetch } = useQuery({
+  const { data: studentsPayments, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['admin-students-payments', selectedFormation],
     queryFn: async () => {
+      console.log('Fetching students payments...');
       let query = supabase
         .from('enrollment_requests')
         .select(`
@@ -43,17 +48,7 @@ const StudentPaymentTracking = () => {
           user_id,
           formation_id,
           plan_type,
-          profiles!enrollment_requests_user_id_fkey (
-            id,
-            first_name,
-            last_name,
-            avatar_url,
-            email
-          ),
-          formations!enrollment_requests_formation_id_fkey (
-            id,
-            title
-          )
+          created_at
         `)
         .eq('status', 'approved');
 
@@ -63,22 +58,57 @@ const StudentPaymentTracking = () => {
 
       const { data: enrollments, error } = await query.order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching enrollments:', error);
+        throw error;
+      }
+
+      console.log('Enrollments fetched:', enrollments?.length);
 
       // Récupérer les progrès de paiement pour chaque étudiant
       const studentIds = enrollments?.map(e => e.user_id) || [];
+      const formationIds = enrollments?.map(e => e.formation_id) || [];
       
       if (studentIds.length === 0) return [];
+
+      // Récupérer les profils des étudiants
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url, email')
+        .in('id', studentIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      // Récupérer les formations
+      const { data: formations, error: formationsError } = await supabase
+        .from('formations')
+        .select('id, title')
+        .in('id', [...new Set(formationIds)]);
+
+      if (formationsError) {
+        console.error('Error fetching formations:', formationsError);
+        throw formationsError;
+      }
 
       const { data: progressData, error: progressError } = await supabase
         .from('student_payment_progress')
         .select('*')
         .in('user_id', studentIds);
 
-      if (progressError) throw progressError;
+      if (progressError) {
+        console.error('Error fetching progress:', progressError);
+        throw progressError;
+      }
+
+      console.log('Progress data fetched:', progressData?.length);
 
       // Combiner les données
       return enrollments?.map(enrollment => {
+        const profile = profiles?.find(p => p.id === enrollment.user_id);
+        const formation = formations?.find(f => f.id === enrollment.formation_id);
         const progress = progressData?.find(
           p => p.user_id === enrollment.user_id && p.formation_id === enrollment.formation_id
         );
@@ -96,26 +126,27 @@ const StudentPaymentTracking = () => {
 
         return {
           ...enrollment,
+          profile,
+          formation,
           payment_progress: progress,
           days_remaining: daysRemaining,
           hours_remaining: progress?.hours_remaining || 0,
         };
       }) || [];
     },
+    enabled: !!user && profile?.role === 'admin',
     refetchInterval: 30000, // Actualiser toutes les 30 secondes
   });
 
   // Filtrer les étudiants par recherche
   const filteredStudents = studentsPayments?.filter(student => {
-    const profile = student.profiles as any;
-    const formation = student.formations as any;
     const searchLower = searchTerm.toLowerCase();
     
     return (
-      profile?.first_name?.toLowerCase().includes(searchLower) ||
-      profile?.last_name?.toLowerCase().includes(searchLower) ||
-      profile?.email?.toLowerCase().includes(searchLower) ||
-      formation?.title?.toLowerCase().includes(searchLower)
+      student.profile?.first_name?.toLowerCase().includes(searchLower) ||
+      student.profile?.last_name?.toLowerCase().includes(searchLower) ||
+      student.profile?.email?.toLowerCase().includes(searchLower) ||
+      student.formation?.title?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -132,11 +163,47 @@ const StudentPaymentTracking = () => {
     return <CheckCircle className="w-4 h-4" />;
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="text-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
         <p className="text-muted-foreground">Chargement des données de paiement...</p>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="text-center py-12">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Vous devez être connecté pour accéder à cette page.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (profile.role !== 'admin') {
+    return (
+      <div className="text-center py-12">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Vous devez être administrateur pour accéder à cette page.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <div className="text-center py-12">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Erreur lors du chargement des données : {queryError.message}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -226,8 +293,6 @@ const StudentPaymentTracking = () => {
               </TableHeader>
               <TableBody>
                 {filteredStudents?.map((student) => {
-                  const profile = student.profiles as any;
-                  const formation = student.formations as any;
                   const isExpanded = expandedStudent === `${student.user_id}-${student.formation_id}`;
 
                   return (
@@ -236,21 +301,21 @@ const StudentPaymentTracking = () => {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">
-                              <AvatarImage src={profile?.avatar_url} />
+                              <AvatarImage src={student.profile?.avatar_url} />
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                {profile?.first_name?.[0]}{profile?.last_name?.[0]}
+                                {student.profile?.first_name?.[0]}{student.profile?.last_name?.[0]}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <p className="font-medium">
-                                {profile?.first_name} {profile?.last_name}
+                                {student.profile?.first_name} {student.profile?.last_name}
                               </p>
-                              <p className="text-xs text-muted-foreground">{profile?.email}</p>
+                              <p className="text-xs text-muted-foreground">{student.profile?.email}</p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <p className="font-medium text-sm">{formation?.title}</p>
+                          <p className="font-medium text-sm">{student.formation?.title}</p>
                         </TableCell>
                         <TableCell>
                           <span className="text-sm capitalize px-2 py-1 bg-muted rounded-full">
