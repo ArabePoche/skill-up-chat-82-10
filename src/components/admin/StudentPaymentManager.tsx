@@ -146,6 +146,8 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
           total_days_remaining: newTotalDays,
           hours_remaining: remainingHours,
           last_payment_date: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,formation_id'
         });
 
       if (progressError) throw progressError;
