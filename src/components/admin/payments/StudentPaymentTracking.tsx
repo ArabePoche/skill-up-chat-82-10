@@ -279,16 +279,16 @@ const StudentPaymentTracking = () => {
           </div>
 
           {/* Tableau des étudiants */}
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Étudiant</TableHead>
-                  <TableHead>Formation</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead className="text-center">Jours restants</TableHead>
-                  <TableHead className="text-center">Statut</TableHead>
-                  <TableHead className="text-center">Actions</TableHead>
+                  <TableHead className="min-w-[200px]">Étudiant</TableHead>
+                  <TableHead className="hidden md:table-cell min-w-[180px]">Formation</TableHead>
+                  <TableHead className="hidden lg:table-cell">Plan</TableHead>
+                  <TableHead className="text-center min-w-[120px]">Jours restants</TableHead>
+                  <TableHead className="text-center min-w-[100px]">Statut</TableHead>
+                  <TableHead className="text-center min-w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -298,33 +298,36 @@ const StudentPaymentTracking = () => {
                   return (
                     <React.Fragment key={`${student.user_id}-${student.formation_id}`}>
                       <TableRow className="hover:bg-muted/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
+                        <TableCell className="min-w-[200px]">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <Avatar className="h-8 w-8 md:h-10 md:w-10 flex-shrink-0">
                               <AvatarImage src={student.profile?.avatar_url} />
-                              <AvatarFallback className="bg-primary/10 text-primary">
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm">
                                 {student.profile?.first_name?.[0]}{student.profile?.last_name?.[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className="font-medium">
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">
                                 {student.profile?.first_name} {student.profile?.last_name}
                               </p>
-                              <p className="text-xs text-muted-foreground">{student.profile?.email}</p>
+                              <p className="text-xs text-muted-foreground truncate md:hidden">
+                                {student.formation?.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate hidden md:block">{student.profile?.email}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell min-w-[180px]">
                           <p className="font-medium text-sm">{student.formation?.title}</p>
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm capitalize px-2 py-1 bg-muted rounded-full">
+                        <TableCell className="hidden lg:table-cell">
+                          <span className="text-xs md:text-sm capitalize px-2 py-1 bg-muted rounded-full whitespace-nowrap">
                             {student.plan_type}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center min-w-[120px]">
                           <div className="flex items-center justify-center gap-1">
-                            <span className="text-lg font-bold">{student.days_remaining}</span>
+                            <span className="text-base md:text-lg font-bold">{student.days_remaining}</span>
                             {student.hours_remaining > 0 && (
                               <span className="text-xs text-muted-foreground">
                                 +{student.hours_remaining}h
@@ -332,18 +335,18 @@ const StudentPaymentTracking = () => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full ${getStatusColor(student.days_remaining)}`}>
+                        <TableCell className="text-center min-w-[100px]">
+                          <div className={`inline-flex items-center gap-1 px-2 md:px-3 py-1 rounded-full ${getStatusColor(student.days_remaining)}`}>
                             {getStatusIcon(student.days_remaining)}
-                            <span className="text-xs font-medium">
+                            <span className="text-xs font-medium hidden md:inline">
                               {student.days_remaining === 0 ? 'Expiré' : student.days_remaining <= 7 ? 'Urgent' : 'Actif'}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center min-w-[100px]">
                           <button
                             onClick={() => setExpandedStudent(isExpanded ? null : `${student.user_id}-${student.formation_id}`)}
-                            className="text-primary hover:underline text-sm font-medium"
+                            className="text-primary hover:underline text-xs md:text-sm font-medium whitespace-nowrap"
                           >
                             {isExpanded ? 'Masquer' : 'Gérer'}
                           </button>
@@ -351,7 +354,7 @@ const StudentPaymentTracking = () => {
                       </TableRow>
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={6} className="bg-muted/30 p-4">
+                          <TableCell colSpan={6} className="bg-muted/30 p-2 md:p-4">
                             <StudentPaymentManager
                               studentId={student.user_id}
                               formationId={student.formation_id}
