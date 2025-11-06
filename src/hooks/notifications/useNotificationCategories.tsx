@@ -37,6 +37,7 @@ export const useNotificationCategories = () => {
         payment_requests: { total: 0, unread: 0, ids: [] as string[] },
         applications: { total: 0, unread: 0, ids: [] as string[] },
         reactions: { total: 0, unread: 0, ids: [] as string[] },
+        orders: { total: 0, unread: 0, ids: [] as string[] },
         others: { total: 0, unread: 0, ids: [] as string[] },
       };
 
@@ -65,6 +66,10 @@ export const useNotificationCategories = () => {
           categories.reactions.total++;
           categories.reactions.ids.push(notification.id);
           if (!notification.is_read) categories.reactions.unread++;
+        } else if (notification.type === 'order') {
+          categories.orders.total++;
+          categories.orders.ids.push(notification.id);
+          if (!notification.is_read) categories.orders.unread++;
         } else {
           categories.others.total++;
           categories.others.ids.push(notification.id);
