@@ -80,9 +80,10 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
 
   const isApplicationNotification = notification.type === 'application_received' && notification.application_id;
 
-  const isOrderNotification = notification.type === 'order';
+  // Notification de commande uniquement pour le vendeur (new_order)
+  const isOrderNotification = notification.type === 'new_order' && (notification as any).shop_order_id;
 
-  // Si c'est une notification de commande
+  // Si c'est une notification de commande pour le vendeur
   if (isOrderNotification) {
     return <OrderNotificationCard notification={{
       id: notification.id,
