@@ -1,4 +1,7 @@
 project_id = "jiasafdbfqqhhdazoybu"
 
+[functions.send-push-notification]
+verify_jwt = true
+
 [functions.unlock-weekly-lessons]
-verify_jwt = false
+verify_jwt = false 
