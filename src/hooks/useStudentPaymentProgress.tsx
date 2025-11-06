@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { calculateRemainingDays } from '@/utils/paymentCalculations';
 
 /**
  * Hook pour récupérer la progression de paiement d'un étudiant
@@ -37,21 +38,15 @@ export const useStudentPaymentProgress = (formationId: string) => {
       }
 
       // Calculer les jours restants en temps réel
-      if (data.last_payment_date && data.total_days_remaining > 0) {
-        const lastPaymentDate = new Date(data.last_payment_date);
-        const currentDate = new Date();
-        const daysSincePayment = Math.floor((currentDate.getTime() - lastPaymentDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Calculer les jours réellement restants
-        const actualDaysRemaining = Math.max(0, data.total_days_remaining - daysSincePayment);
-        
-        return {
-          ...data,
-          total_days_remaining: actualDaysRemaining
-        };
-      }
+      const actualDaysRemaining = calculateRemainingDays(
+        data.total_days_remaining,
+        data.last_payment_date
+      );
 
-      return data;
+      return {
+        ...data,
+        total_days_remaining: actualDaysRemaining
+      };
     },
     enabled: !!user?.id && !!formationId,
     staleTime: 0,
