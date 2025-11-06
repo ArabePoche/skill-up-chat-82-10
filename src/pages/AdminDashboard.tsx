@@ -16,6 +16,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PromotionManagementAdmin } from '@/components/promotions/PromotionManagementAdmin';
 import { TeacherApplicationsList } from '@/teacher-application/components/TeacherApplicationsList';
 import VerificationRequestsManagement from '@/components/admin/VerificationRequestsManagement';
+import StudentPaymentTracking from '@/components/admin/payments/StudentPaymentTracking';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -67,6 +68,8 @@ const AdminDashboard = () => {
         return <DashboardStats />;
       case 'online-users':
         return <OnlineUsersList />;
+      case 'payment-tracking':
+        return <StudentPaymentTracking />;
       case 'create-formation':
         return <FormationsManagement />;
       case 'teachers':
