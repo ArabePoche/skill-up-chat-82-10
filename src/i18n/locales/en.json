@@ -183,6 +183,7 @@
       "paymentRequests": "Payment Requests",
       "applications": "Applications",
       "reactions": "Post Reactions",
+      "orders": "Orders",
       "other": "Other Notifications"
     }
   },
