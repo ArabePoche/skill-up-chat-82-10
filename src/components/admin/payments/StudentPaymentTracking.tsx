@@ -10,6 +10,7 @@ import { StudentPaymentManager } from '../StudentPaymentManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { calculateRemainingDays } from '@/utils/paymentCalculations';
 
 /**
  * Composant pour le suivi des paiements de tous les étudiants
@@ -113,16 +114,11 @@ const StudentPaymentTracking = () => {
           p => p.user_id === enrollment.user_id && p.formation_id === enrollment.formation_id
         );
 
-        // Calculer les jours restants en temps réel
-        let daysRemaining = progress?.total_days_remaining || 0;
-        if (progress?.last_payment_date && progress?.total_days_remaining > 0) {
-          const lastPaymentDate = new Date(progress.last_payment_date);
-          const currentDate = new Date();
-          const daysSincePayment = Math.floor(
-            (currentDate.getTime() - lastPaymentDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          daysRemaining = Math.max(0, progress.total_days_remaining - daysSincePayment);
-        }
+        // Calculer les jours restants en temps réel avec la fonction centralisée
+        const daysRemaining = calculateRemainingDays(
+          progress?.total_days_remaining,
+          progress?.last_payment_date
+        );
 
         return {
           ...enrollment,
