@@ -66,7 +66,7 @@ export const useNotificationCategories = () => {
           categories.reactions.total++;
           categories.reactions.ids.push(notification.id);
           if (!notification.is_read) categories.reactions.unread++;
-        } else if (notification.type === 'order') {
+        } else if (notification.type === 'new_order') {
           categories.orders.total++;
           categories.orders.ids.push(notification.id);
           if (!notification.is_read) categories.orders.unread++;
