@@ -1,29 +1,35 @@
 import React from 'react';
-import { Video, FileText, CheckCircle, Heart, Bookmark } from 'lucide-react';
+import { Video, FileText, CheckCircle, Heart, Bookmark, Store } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useI18nReady } from '@/hooks/useI18nReady';
 
-type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
+type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites' | 'shop';
 
 interface ProfileTabsProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  showShopTab?: boolean;
 }
 
-const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, onTabChange }) => {
+const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, onTabChange, showShopTab = false }) => {
   const { t } = useTranslation();
   const i18nReady = useI18nReady();
   
   if (!i18nReady) {
     return null;
   }
-  const tabs = [
+  
+  const baseTabs = [
     { id: 'videos' as const, label: t('profile.videos'), icon: Video },
     { id: 'posts' as const, label: t('profile.posts'), icon: FileText },
     { id: 'exercises' as const, label: t('profile.exercises'), icon: CheckCircle },
     { id: 'likes' as const, label: t('profile.likes'), icon: Heart },
     { id: 'favorites' as const, label: t('profile.favorites'), icon: Bookmark },
   ];
+  
+  const tabs = showShopTab 
+    ? [...baseTabs, { id: 'shop' as const, label: 'Boutique', icon: Store }]
+    : baseTabs;
 
   return (
     <div className="sticky top-0 z-20 bg-background border-b border-border">
