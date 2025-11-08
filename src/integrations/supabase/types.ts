@@ -1617,13 +1617,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "notifications_order_id_fkey"
-            columns: ["shop_order_id"]
-            isOneToOne: false
-            referencedRelation: "student_payment"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "notifications_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false
@@ -1645,6 +1638,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_shop_order_id_fkey"
+            columns: ["shop_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_video_id_fkey"
             columns: ["video_id"]
             isOneToOne: false
@@ -1662,6 +1662,7 @@ export type Database = {
           quantity: number
           selected_color: string | null
           selected_size: string | null
+          status: string | null
           unit_price: number | null
         }
         Insert: {
@@ -1672,6 +1673,7 @@ export type Database = {
           quantity: number
           selected_color?: string | null
           selected_size?: string | null
+          status?: string | null
           unit_price?: number | null
         }
         Update: {
@@ -1682,6 +1684,7 @@ export type Database = {
           quantity?: number
           selected_color?: string | null
           selected_size?: string | null
+          status?: string | null
           unit_price?: number | null
         }
         Relationships: [
@@ -2547,6 +2550,83 @@ export type Database = {
           },
         ]
       }
+      service_files: {
+        Row: {
+          created_at: string | null
+          file_name: string | null
+          file_type: string
+          file_url: string
+          id: string
+          order_index: number | null
+          service_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name?: string | null
+          file_type: string
+          file_url: string
+          id?: string
+          order_index?: number | null
+          service_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          order_index?: number | null
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_files_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          duration: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       story_views: {
         Row: {
           id: string
@@ -2961,6 +3041,13 @@ export type Database = {
           {
             foreignKeyName: "student_payment_confirmed_by_fkey"
             columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_payment_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
