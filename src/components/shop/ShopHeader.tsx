@@ -79,26 +79,36 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
 
       {/* Onglets */}
       <div className="px-[0.5rem] sm:px-[1rem] pb-[0.25rem] sm:pb-[0.5rem]">
-        <div className="flex space-x-[1rem] sm:space-x-[1.5rem] border-b border-white/20 overflow-x-auto">
+        <div className="flex space-x-[0.5rem] sm:space-x-[1rem] border-b border-white/20 overflow-x-auto">
           <button
             onClick={() => setActiveTab('formations')}
-            className={`pb-[0.25rem] sm:pb-[0.5rem] px-[0.25rem] font-medium transition-colors border-b-2 whitespace-nowrap text-[0.875rem] sm:text-base ${
+            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${
               activeTab === 'formations'
-                ? 'border-orange-500 text-orange-200'
-                : 'border-transparent text-white/80 hover:text-white'
+                ? 'border-orange-500 text-white bg-white/10 shadow-lg'
+                : 'border-transparent text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
             {t('shop.formations')}
           </button>
           <button
             onClick={() => setActiveTab('products')}
-            className={`pb-[0.25rem] sm:pb-[0.5rem] px-[0.25rem] font-medium transition-colors border-b-2 whitespace-nowrap text-[0.875rem] sm:text-base ${
+            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${
               activeTab === 'products'
-                ? 'border-orange-500 text-orange-200'
-                : 'border-transparent text-white/80 hover:text-white'
+                ? 'border-orange-500 text-white bg-white/10 shadow-lg'
+                : 'border-transparent text-white/70 hover:text-white hover:bg-white/5'
             }`}
           >
             {t('shop.products')}
+          </button>
+          <button
+            onClick={() => setActiveTab('services')}
+            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${
+              activeTab === 'services'
+                ? 'border-orange-500 text-white bg-white/10 shadow-lg'
+                : 'border-transparent text-white/70 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {t('shop.services', 'Services')}
           </button>
         </div>
       </div>
