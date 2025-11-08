@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useShopFormations, useFormationCategories } from '@/hooks/useShopFormations';
 import { useProducts } from '@/hooks/useProducts';
 import { useProductCategories } from '@/hooks/useProductCategories';
+import { useServices } from '@/shop/services/hooks/useServices';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { useUserInterests } from '@/hooks/useUserInterests';
@@ -14,6 +15,7 @@ import ShopSidebar from '@/components/shop/ShopSidebar';
 import CategoryFilter from '@/components/shop/CategoryFilter';
 import FormationSections from '@/components/shop/FormationSections';
 import ProductSections from '@/components/shop/ProductSections';
+import ServiceSections from '@/components/shop/ServiceSections';
 import CartDrawer from '@/components/shop/cart/CartDrawer';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +36,7 @@ const Shop = () => {
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
   const { data: products, isLoading: productsLoading } = useProducts(activeCategory);
   const { data: productCategories, isLoading: productCategoriesLoading } = useProductCategories();
+  const { data: services, isLoading: servicesLoading } = useServices(activeCategory);
 
   const handleViewDetails = useCallback((formationId: string) => {
     console.log('Shop: Navigating to formation details:', formationId);
@@ -59,13 +62,27 @@ const Shop = () => {
            description.toLowerCase().includes(query)) && inPriceRange;
   }) || [];
 
+  const filteredServices = services?.filter(service => {
+    const name = service.name || '';
+    const description = service.description || '';
+    const query = searchQuery.toLowerCase();
+    const inPriceRange = service.price >= priceRange[0] && service.price <= priceRange[1];
+    
+    return (name.toLowerCase().includes(query) ||
+           description.toLowerCase().includes(query)) && inPriceRange;
+  }) || [];
+
   const currentCategories = activeTab === 'formations' 
     ? [{ id: 'all', name: 'all', label: t('shop.all') }, ...(formationCategories || [])]
-    : [{ id: 'all', name: 'all', label: t('shop.all') }, ...(productCategories || [])];
+    : activeTab === 'products'
+    ? [{ id: 'all', name: 'all', label: t('shop.all') }, ...(productCategories || [])]
+    : [{ id: 'all', name: 'all', label: t('shop.all') }];
 
   const isLoading = activeTab === 'formations' 
     ? formationsLoading || formationCategoriesLoading
-    : productsLoading || productCategoriesLoading;
+    : activeTab === 'products'
+    ? productsLoading || productCategoriesLoading
+    : servicesLoading;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
@@ -151,12 +168,17 @@ const Shop = () => {
                 onViewDetails={handleViewDetails}
                 userInterests={userInterests}
               />
-            ) : (
+            ) : activeTab === 'products' ? (
               <ProductSections
                 products={filteredProducts}
                 user={user}
                 onAddToCart={addToCart}
                 userInterests={userInterests}
+              />
+            ) : (
+              <ServiceSections
+                services={filteredServices}
+                onBookService={(serviceId) => console.log('Book service:', serviceId)}
               />
             )}
           </div>
