@@ -30,9 +30,10 @@ import PostsTab from '@/profile/components/tabs/PostsTab';
 import ExercisesTab from '@/profile/components/tabs/ExercisesTab';
 import LikesTab from '@/profile/components/tabs/LikesTab';
 import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
+import ShopTab from '@/profile/components/tabs/ShopTab';
 import { StreakBadge } from '@/streak';
 
-type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites';
+type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites' | 'shop';
 
 const Profil = () => {
   const { t } = useTranslation();
@@ -134,6 +135,8 @@ const Profil = () => {
         return <LikesTab userId={viewedUserId} />;
       case 'favorites':
         return <FavoritesTab userId={viewedUserId} />;
+      case 'shop':
+        return <ShopTab userId={viewedUserId} />;
       default:
         return <VideosTab userId={viewedUserId} />;
     }
@@ -285,7 +288,11 @@ const Profil = () => {
       </div>
 
       {/* Onglets */}
-      <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <ProfileTabs 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab}
+        showShopTab={(profile as any)?.is_verified === true}
+      />
 
       {/* Contenu de l'onglet actif */}
       <div className="pb-4">
