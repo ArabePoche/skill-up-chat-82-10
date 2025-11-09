@@ -87,7 +87,7 @@ export const PushNotificationSetup = () => {
           </div>
           <div className="flex items-center gap-2">
             {hasPermission && <Check className="w-5 h-5 text-green-500" />}
-            {!hasPermission && permission !== 'granted' && (
+            {!hasPermission && (
               <Button
                 onClick={requestPermission}
                 disabled={isLoading}
