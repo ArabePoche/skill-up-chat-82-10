@@ -130,14 +130,31 @@ Deno.serve(async (req) => {
         pemKey = pemKey.replace(/\\n/g, '\n');
       }
       
-      // Extraire le contenu base64 de la clé PEM
-      const pemContents = pemKey
+      // Extraire le contenu base64 de la clé PEM (gérer aussi RSA PRIVATE KEY)
+      let pemContents = pemKey
         .replace(/-----BEGIN PRIVATE KEY-----/g, '')
         .replace(/-----END PRIVATE KEY-----/g, '')
+        .replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
+        .replace(/-----END RSA PRIVATE KEY-----/g, '')
         .replace(/[\r\n\s]/g, '');
 
-      // Décoder la clé base64
-      const binaryString = atob(pemContents);
+      // Corriger le padding base64 si nécessaire
+      const remainder = pemContents.length % 4;
+      if (remainder === 2) pemContents += '==';
+      else if (remainder === 3) pemContents += '=';
+      else if (remainder === 1) {
+        console.error('❌ Invalid base64 length for private key');
+        throw new Error('Failed to decode base64');
+      }
+
+      // Décoder la clé base64 avec gestion d'erreur explicite
+      let binaryString: string;
+      try {
+        binaryString = atob(pemContents);
+      } catch (e) {
+        console.error('❌ Base64 decode failed for private key');
+        throw e;
+      }
       const binaryKey = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         binaryKey[i] = binaryString.charCodeAt(i);
