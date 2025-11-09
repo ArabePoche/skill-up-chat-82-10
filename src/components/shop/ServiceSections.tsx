@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Euro } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Service } from '@/shop/services/hooks/useServices';
+import { Service } from '@/components/shop/services/hooks/useServices';
 
 interface ServiceSectionsProps {
   services: Service[];

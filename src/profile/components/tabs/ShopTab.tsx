@@ -12,10 +12,10 @@ import {
   useUpdateService, 
   useDeleteService,
   type ServiceWithFiles 
-} from '@/shop/services/hooks/useServices';
-import { useAddServiceFiles } from '@/shop/services/hooks/useServices';
-import ServiceCard from '@/shop/services/components/ServiceCard';
-import ServiceForm from '@/shop/services/components/ServiceForm';
+} from '@/components/shop/services/hooks/useServices';
+import { useAddServiceFiles } from '@/components/shop/services/hooks/useServices';
+import ServiceCard from '@/components/shop/services/components/ServiceCard';
+import ServiceForm from '@/components/shop/services/components/ServiceForm';
 import { toast } from 'sonner';
 import {
   AlertDialog,

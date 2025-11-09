@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { FCMService } from '@/services/FCMService';
 import { NotificationService } from '@/services/NotificationService';
 import { nativePushService } from '@/services/NativePushService';
+import { NotificationSoundService } from '@/services/NotificationSoundService';
 
 export interface NotificationPreferences {
   daily_reminders: boolean;
@@ -40,6 +41,9 @@ export const usePushNotifications = () => {
           setPermission(currentPermission as NotificationPermission);
         }
         loadUserPreferences();
+        
+        // Précharger les sons de notification
+        NotificationSoundService.preloadSounds();
       } else {
         console.warn('⚠️ Notifications non supportées sur cet appareil');
       }
@@ -177,6 +181,9 @@ export const usePushNotifications = () => {
           icon: '/icon-192.png',
           badge: '/badge-72.png'
         });
+        
+        // Jouer le son de notification
+        await NotificationSoundService.playNotificationSound('default');
         
         setTimeout(() => localNotif.close(), 3000);
       }

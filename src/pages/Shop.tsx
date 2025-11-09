@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useShopFormations, useFormationCategories } from '@/hooks/useShopFormations';
 import { useProducts } from '@/hooks/useProducts';
 import { useProductCategories } from '@/hooks/useProductCategories';
-import { useServices } from '@/shop/services/hooks/useServices';
+import { useServices } from '@/components/shop/services/hooks/useServices';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { useUserInterests } from '@/hooks/useUserInterests';
