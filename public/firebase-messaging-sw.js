@@ -1,6 +1,9 @@
-// Service Worker pour Firebase Cloud Messaging
+// Service Worker pour Firebase Cloud Messaging avec Workbox
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+
+// Workbox manifest injection point (requis par vite-plugin-pwa)
+self.__WB_MANIFEST;
 
 // Configuration Firebase
 const firebaseConfig = {
