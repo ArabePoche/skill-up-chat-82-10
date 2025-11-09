@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -204,8 +205,8 @@ export const usePushNotifications = () => {
   }, [fcmToken, user]);
 
   // Computed property for hasPermission
-  // Sur le web, on exige un token FCM valide pour activer les actions
-  const hasPermission = permission === 'granted' && !!fcmToken;
+  // Sur le web on exige un token FCM; sur mobile natif, seule la permission suffit
+  const hasPermission = permission === 'granted' && (Capacitor.isNativePlatform() ? true : !!fcmToken);
 
   return {
     isSupported,
