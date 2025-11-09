@@ -119,14 +119,29 @@ Deno.serve(async (req) => {
       const jwtClaimSetEncoded = base64url(JSON.stringify(jwtClaimSet));
       const signatureInput = `${jwtHeader}.${jwtClaimSetEncoded}`;
       
-      // Extraire la clé privée du format PEM
-      const pemKey = serviceAccount.private_key;
-      const pemContents = pemKey
-        .replace('-----BEGIN PRIVATE KEY-----', '')
-        .replace('-----END PRIVATE KEY-----', '')
-        .replace(/\n/g, '');
+      // Extraire la clé privée - gérer les \n littéraux dans le JSON
+      let pemKey = serviceAccount.private_key as string;
+      if (!pemKey || typeof pemKey !== 'string') {
+        throw new Error('Service account private_key is missing or invalid');
+      }
       
-      const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+      // Remplacer les \n littéraux par de vraies nouvelles lignes si nécessaire
+      if (pemKey.includes('\\n')) {
+        pemKey = pemKey.replace(/\\n/g, '\n');
+      }
+      
+      // Extraire le contenu base64 de la clé PEM
+      const pemContents = pemKey
+        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+        .replace(/-----END PRIVATE KEY-----/g, '')
+        .replace(/[\r\n\s]/g, '');
+
+      // Décoder la clé base64
+      const binaryString = atob(pemContents);
+      const binaryKey = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        binaryKey[i] = binaryString.charCodeAt(i);
+      }
       
       // Importer la clé privée
       const privateKey = await crypto.subtle.importKey(
