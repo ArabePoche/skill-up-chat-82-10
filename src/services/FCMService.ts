@@ -46,17 +46,15 @@ export const FCMService = {
         return { success: false, error: 'Permission refusée par l\'utilisateur' };
       }
 
-      // Enregistrer le service worker
+      // Utiliser le service worker existant (géré par VitePWA)
       let registration: ServiceWorkerRegistration | undefined;
       try {
-        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('🔧 Service Worker enregistré:', registration);
-        // Attendre que le service worker soit prêt
-        await navigator.serviceWorker.ready;
-        console.log('✅ Service Worker prêt');
+        // Attendre que le service worker soit prêt (déjà enregistré par VitePWA)
+        registration = await navigator.serviceWorker.ready;
+        console.log('✅ Service Worker prêt:', registration);
       } catch (swError) {
         console.error('❌ Erreur Service Worker:', swError);
-        return { success: false, error: `Erreur Service Worker: ${swError instanceof Error ? swError.message : 'Erreur inconnue'}` };
+        return { success: false, error: `Service Worker non disponible: ${swError instanceof Error ? swError.message : 'Erreur inconnue'}` };
       }
 
       const messaging = initializeFirebase();
