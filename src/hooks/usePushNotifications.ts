@@ -182,8 +182,10 @@ export const usePushNotifications = () => {
           badge: '/badge-72.png'
         });
         
-        // Jouer le son de notification
-        await NotificationSoundService.playNotificationSound('default');
+        // Jouer le son de notification (ignorer l'erreur si les fichiers audio n'existent pas)
+        NotificationSoundService.playNotificationSound('default').catch(() => {
+          console.log('Sons de notification non disponibles');
+        });
         
         setTimeout(() => localNotif.close(), 3000);
       }
