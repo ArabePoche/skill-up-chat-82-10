@@ -16,9 +16,17 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['**/*'],
+      // Use generateSW to avoid injecting into Firebase messaging SW
+      strategies: 'generateSW',
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+      },
       devOptions: {
-        enabled: true, // Active le SW même en dev
-        type: 'module'
+        enabled: true,
+        type: 'classic'
       },
       manifest: {
         name: 'EducaTok - Plateforme éducative interactive',
@@ -38,54 +46,6 @@ export default defineConfig(({ mode }) => ({
             purpose: 'any maskable'
           }
         ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,woff,woff2,ttf,eot}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        // Mode offline-first avec stratégies adaptées
-        runtimeCaching: [
-          // API Supabase: Network First (toujours essayer le réseau)
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 5 * 60 // 5 minutes
-              }
-            }
-          },
-          // Assets statiques: Cache First
-          {
-            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'images-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 jours
-              }
-            }
-          },
-          // Fonts: Cache First
-          {
-            urlPattern: /\.(?:woff|woff2|ttf|eot)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'fonts-cache',
-              expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 365 * 24 * 60 * 60 // 1 an
-              }
-            }
-          }
-        ],
-        // Pré-cache tous les assets essentiels
-        cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true
       }
     })
   ].filter(Boolean),
