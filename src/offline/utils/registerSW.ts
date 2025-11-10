@@ -16,6 +16,10 @@ export const registerServiceWorker = async () => {
         },
         onOfflineReady() {
           console.log('✅ Application prête pour le mode offline');
+          // Notifier l'utilisateur
+          if (window.location.pathname !== '/auth') {
+            console.log('📱 Vous pouvez maintenant utiliser l\'app hors ligne');
+          }
         },
         onRegistered(registration) {
           console.log('✅ Service Worker enregistré:', registration);
