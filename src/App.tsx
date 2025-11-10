@@ -31,6 +31,7 @@ import Conversations from '@/pages/Conversations';
 import UploadVideo from '@/pages/UploadVideo';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
+import { OfflineIndicator } from '@/offline';
 
 
 // Créer une instance unique du QueryClient
@@ -51,6 +52,7 @@ const AppWithRouter: React.FC = () => {
       <PermissionManager />
       <StreakTrackerWrapper />
       <ActivityTrackerWrapper />
+      <OfflineIndicator />
       <Routes>
         {/* Routes spéciales qui gardent le système de routage classique */}
         <Route path="/formation/:formationId" element={<FormationDetail />} />
