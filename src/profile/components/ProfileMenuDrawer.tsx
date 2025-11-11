@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe } from 'lucide-react';
+import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe, School } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerification } from '@/hooks/useVerification';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import VerificationRequestModal from '@/verification/components/VerificationRequestModal';
+import SchoolManagementModal from '@/school/components/SchoolManagementModal';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 
@@ -23,6 +24,7 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   const { profile, user, logout } = useAuth();
   const { hasPendingRequest } = useVerification(user?.id);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showSchoolModal, setShowSchoolModal] = useState(false);
   const { t } = useTranslation();
 
   const handleLogout = async () => {
@@ -37,6 +39,19 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
     { icon: Bell, label: t('profile.notifications'), action: () => { onClose(); onShowNotificationDialog(); } },
     { icon: HelpCircle, label: t('common.help', { defaultValue: 'Aide et support' }), action: () => {} }
   ];
+
+  // Ajouter le bouton de gestion d'école pour les utilisateurs certifiés
+  // @ts-ignore - is_verified sera disponible après régénération des types Supabase
+  if ((profile as any)?.is_verified) {
+    menuItems.push({
+      icon: School,
+      label: t('school.mySchool', { defaultValue: 'Mon école' }),
+      action: () => {
+        onClose();
+        setShowSchoolModal(true);
+      }
+    });
+  }
 
   // Ajouter le bouton de certification si pas encore vérifié
   // @ts-ignore - is_verified sera disponible après régénération des types Supabase
@@ -144,6 +159,12 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
       <VerificationRequestModal
         isOpen={showVerificationModal}
         onClose={() => setShowVerificationModal(false)}
+      />
+
+      {/* Modal de gestion d'école */}
+      <SchoolManagementModal
+        isOpen={showSchoolModal}
+        onClose={() => setShowSchoolModal(false)}
       />
     </>
   );
