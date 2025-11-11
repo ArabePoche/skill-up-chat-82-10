@@ -1,0 +1,140 @@
+-- Table pour les écoles
+CREATE TABLE public.schools (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Table pour les années scolaires
+CREATE TABLE public.school_years (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+  year_label TEXT NOT NULL, -- ex: "2024-2025"
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(school_id, year_label)
+);
+
+-- Table pour les membres de l'école (enseignants, admins)
+CREATE TABLE public.school_members (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'teacher', -- 'teacher', 'admin'
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(school_id, user_id)
+);
+
+-- Enable RLS
+ALTER TABLE public.schools ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.school_years ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.school_members ENABLE ROW LEVEL SECURITY;
+
+-- Policies pour schools
+CREATE POLICY "Verified users can create schools"
+  ON public.schools
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = owner_id AND
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.is_verified = true
+    )
+  );
+
+CREATE POLICY "School owners can view their schools"
+  ON public.schools
+  FOR SELECT
+  USING (auth.uid() = owner_id);
+
+CREATE POLICY "School members can view their schools"
+  ON public.schools
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM school_members
+      WHERE school_members.school_id = schools.id
+      AND school_members.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "School owners can update their schools"
+  ON public.schools
+  FOR UPDATE
+  USING (auth.uid() = owner_id);
+
+CREATE POLICY "School owners can delete their schools"
+  ON public.schools
+  FOR DELETE
+  USING (auth.uid() = owner_id);
+
+-- Policies pour school_years
+CREATE POLICY "School owners can manage school years"
+  ON public.school_years
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM schools
+      WHERE schools.id = school_years.school_id
+      AND schools.owner_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "School members can view school years"
+  ON public.school_years
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM school_members
+      WHERE school_members.school_id = school_years.school_id
+      AND school_members.user_id = auth.uid()
+    )
+  );
+
+-- Policies pour school_members
+CREATE POLICY "School owners can manage members"
+  ON public.school_members
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM schools
+      WHERE schools.id = school_members.school_id
+      AND schools.owner_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "School members can view other members"
+  ON public.school_members
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM school_members sm
+      WHERE sm.school_id = school_members.school_id
+      AND sm.user_id = auth.uid()
+    )
+  );
+
+-- Indexes pour performance
+CREATE INDEX idx_schools_owner_id ON public.schools(owner_id);
+CREATE INDEX idx_school_years_school_id ON public.school_years(school_id);
+CREATE INDEX idx_school_years_active ON public.school_years(school_id, is_active);
+CREATE INDEX idx_school_members_school_id ON public.school_members(school_id);
+CREATE INDEX idx_school_members_user_id ON public.school_members(user_id);
+
+-- Trigger pour updated_at
+CREATE TRIGGER update_schools_updated_at
+  BEFORE UPDATE ON public.schools
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_school_years_updated_at
+  BEFORE UPDATE ON public.school_years
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
