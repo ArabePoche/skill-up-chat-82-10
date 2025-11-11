@@ -2481,6 +2481,109 @@ export type Database = {
           },
         ]
       }
+      school_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          school_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_members_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_years: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          school_id: string
+          start_date: string
+          updated_at: string
+          year_label: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          school_id: string
+          start_date: string
+          updated_at?: string
+          year_label: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          school_id?: string
+          start_date?: string
+          updated_at?: string
+          year_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_years_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schools: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          school_type: Database["public"]["Enums"]["school_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          school_type?: Database["public"]["Enums"]["school_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          school_type?: Database["public"]["Enums"]["school_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       series: {
         Row: {
           cover_url: string | null
@@ -4503,6 +4606,7 @@ export type Database = {
         | "awaiting_review"
         | "completed"
       product_type: "formation" | "article" | "service"
+      school_type: "virtual" | "physical" | "both"
       status: "not_started" | "in_progress" | "awaiting_review" | "completed"
       user_role: "user" | "admin"
       video_type: "lesson" | "promo" | "classic"
@@ -4640,6 +4744,7 @@ export const Constants = {
         "completed",
       ],
       product_type: ["formation", "article", "service"],
+      school_type: ["virtual", "physical", "both"],
       status: ["not_started", "in_progress", "awaiting_review", "completed"],
       user_role: ["user", "admin"],
       video_type: ["lesson", "promo", "classic"],
