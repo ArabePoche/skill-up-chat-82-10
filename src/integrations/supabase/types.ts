@@ -2511,6 +2511,13 @@ export type Database = {
             referencedRelation: "schools"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "school_members_user_id_fkey1"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       school_years: {
@@ -2582,7 +2589,15 @@ export type Database = {
           school_type?: Database["public"]["Enums"]["school_type"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schools_owner_id_fkey1"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       series: {
         Row: {
@@ -4440,6 +4455,14 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: { user_id: string }; Returns: boolean }
+      is_school_member: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_school_owner: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_student_enrolled: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
@@ -4452,6 +4475,7 @@ export type Database = {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_user_verified: { Args: { _user_id: string }; Returns: boolean }
       lock_exercise_submission: {
         Args: { p_message_id: string; p_teacher_id: string }
         Returns: Json
