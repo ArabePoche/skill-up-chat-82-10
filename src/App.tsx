@@ -29,6 +29,7 @@ import LessonChat from '@/pages/cours/LessonChat';
 import GroupLessonChat from '@/pages/cours/GroupLessonChat';
 import Conversations from '@/pages/Conversations';
 import UploadVideo from '@/pages/UploadVideo';
+import School from '@/pages/School';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { OfflineIndicator } from '@/offline';
@@ -76,6 +77,9 @@ const AppWithRouter: React.FC = () => {
         
         {/* Route pour upload vidéo */}
         <Route path="/upload-video" element={<UploadVideo />} />
+        
+        {/* Route pour le système de gestion d'école */}
+        <Route path="/school" element={<School />} />
         
         {/* Partage vidéo et post dédiés + onglets */}
         <Route path="/video/:id" element={<Layout />} />
