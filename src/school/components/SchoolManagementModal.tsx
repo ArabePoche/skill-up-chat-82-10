@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus, Calendar, Building2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserSchool, useSchoolYears, useCreateSchool, useCreateSchoolYear, useUpdateSchoolYear, SchoolType } from '../hooks/useSchool';
 import { useUpdateSchool } from '../hooks/useUpdateSchool';
@@ -18,6 +19,7 @@ interface SchoolManagementModalProps {
 
 const SchoolManagementModal: React.FC<SchoolManagementModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: school, isLoading: isLoadingSchool } = useUserSchool(user?.id);
   const { data: schoolYears = [] } = useSchoolYears(school?.id);
@@ -102,6 +104,12 @@ const SchoolManagementModal: React.FC<SchoolManagementModalProps> = ({ isOpen, o
       school_id: school.id,
       is_active: !currentStatus,
     });
+
+    // Si on active une année, rediriger vers la page School
+    if (!currentStatus) {
+      onClose();
+      navigate('/school');
+    }
   };
 
   return (
