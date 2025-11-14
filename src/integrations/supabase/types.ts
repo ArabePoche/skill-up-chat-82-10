@@ -286,6 +286,60 @@ export type Database = {
         }
         Relationships: []
       }
+      classes: {
+        Row: {
+          created_at: string
+          current_students: number
+          cycle: string
+          gender_type: string
+          id: string
+          max_students: number
+          name: string
+          school_id: string
+          school_year_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_students?: number
+          cycle: string
+          gender_type?: string
+          id?: string
+          max_students?: number
+          name: string
+          school_id: string
+          school_year_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_students?: number
+          cycle?: string
+          gender_type?: string
+          id?: string
+          max_students?: number
+          name?: string
+          school_id?: string
+          school_year_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_media: {
         Row: {
           created_at: string
@@ -2563,30 +2617,42 @@ export type Database = {
       }
       schools: {
         Row: {
+          country: string | null
           created_at: string
           description: string | null
+          founded_year: number | null
           id: string
           name: string
           owner_id: string
+          phone: string | null
           school_type: Database["public"]["Enums"]["school_type"]
+          teaching_language: string | null
           updated_at: string
         }
         Insert: {
+          country?: string | null
           created_at?: string
           description?: string | null
+          founded_year?: number | null
           id?: string
           name: string
           owner_id: string
+          phone?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
+          teaching_language?: string | null
           updated_at?: string
         }
         Update: {
+          country?: string | null
           created_at?: string
           description?: string | null
+          founded_year?: number | null
           id?: string
           name?: string
           owner_id?: string
+          phone?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
+          teaching_language?: string | null
           updated_at?: string
         }
         Relationships: [
