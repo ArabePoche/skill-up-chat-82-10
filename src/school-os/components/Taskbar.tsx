@@ -1,11 +1,13 @@
 // Composant barre de tâches avec apps ouvertes
 import React, { useState } from 'react';
-import { Grid3x3, Search, Image } from 'lucide-react';
+import { Grid3x3, Search, Image, Calendar, ChevronDown } from 'lucide-react';
 import { WindowState } from '../types';
 import { getAppById } from '../apps';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface TaskbarProps {
   windows: WindowState[];
@@ -24,6 +26,8 @@ export const Taskbar: React.FC<TaskbarProps> = ({
 }) => {
   const [wallpaperDialogOpen, setWallpaperDialogOpen] = useState(false);
   const [wallpaperUrl, setWallpaperUrl] = useState('');
+  const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
+  const { activeSchoolYear, schoolYears, setActiveSchoolYear } = useSchoolYear();
 
   const handleWallpaperChange = () => {
     if (wallpaperUrl) {
@@ -82,6 +86,57 @@ export const Taskbar: React.FC<TaskbarProps> = ({
         >
           <Image className="w-5 h-5" />
         </button>
+
+        {/* Séparateur */}
+        <div className="w-px h-8 bg-border" />
+
+        {/* Sélecteur d'année scolaire */}
+        <Popover open={yearPopoverOpen} onOpenChange={setYearPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button className="h-12 px-4 rounded-xl hover:bg-accent transition-colors flex items-center gap-2 min-w-[140px]">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <div className="flex flex-col items-start">
+                <span className="text-xs text-muted-foreground">Année scolaire</span>
+                <span className="text-sm font-medium">
+                  {activeSchoolYear?.year_label || 'Aucune'}
+                </span>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-80 p-2 bg-background/95 backdrop-blur-md border shadow-xl" 
+            align="end"
+            sideOffset={8}
+          >
+            <div className="space-y-1">
+              {schoolYears.map((year) => (
+                <button
+                  key={year.id}
+                  onClick={() => {
+                    setActiveSchoolYear(year);
+                    setYearPopoverOpen(false);
+                  }}
+                  className={`w-full p-3 rounded-lg text-left transition-colors ${
+                    activeSchoolYear?.id === year.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-accent'
+                  }`}
+                >
+                  <div className="font-semibold">{year.year_label}</div>
+                  <div className="text-xs opacity-80 mt-1">
+                    {new Date(year.start_date).toLocaleDateString()} - {new Date(year.end_date).toLocaleDateString()}
+                  </div>
+                </button>
+              ))}
+              {schoolYears.length === 0 && (
+                <div className="text-center text-muted-foreground py-4 text-sm">
+                  Aucune année scolaire disponible
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Dialog pour changer le fond d'écran */}
