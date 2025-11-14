@@ -138,7 +138,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                         <SelectValue placeholder="Sélectionner un cycle" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="z-50 bg-background">
+                    <SelectContent>
                       {CYCLES.map((c) => (
                         <SelectItem key={c.value} value={c.value}>
                           {c.label}
@@ -247,7 +247,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                                 <SelectValue placeholder="Sélectionner le type" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="z-50 bg-background">
+                            <SelectContent>
                               {GENDER_TYPES.map((type) => (
                                 <SelectItem key={type.value} value={type.value}>
                                   {type.label}
