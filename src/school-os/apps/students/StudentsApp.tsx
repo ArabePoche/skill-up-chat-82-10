@@ -7,6 +7,7 @@ import { Plus, Search, Filter } from 'lucide-react';
 import { useStudents, useDeleteStudent } from './hooks/useStudents';
 import { StudentCard } from './components/StudentCard';
 import { AddStudentDialog } from './components/AddStudentDialog';
+import { StudentDetailModal } from './components/StudentDetailModal';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -30,6 +31,8 @@ export const StudentsApp: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [deleteStudentId, setDeleteStudentId] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const deleteStudent = useDeleteStudent();
 
@@ -192,6 +195,10 @@ export const StudentsApp: React.FC = () => {
               key={student.id}
               student={student}
               onDelete={setDeleteStudentId}
+              onClick={(student) => {
+                setSelectedStudent(student);
+                setIsDetailModalOpen(true);
+              }}
             />
           ))}
         </div>
@@ -223,6 +230,22 @@ export const StudentsApp: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de détails de l'élève */}
+      {selectedStudent && (
+        <StudentDetailModal
+          student={selectedStudent}
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedStudent(null);
+          }}
+          onEdit={(student) => {
+            setIsDetailModalOpen(false);
+            // TODO: Ouvrir le dialog d'édition si nécessaire
+          }}
+        />
+      )}
     </div>
   );
 };
