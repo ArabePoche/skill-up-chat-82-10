@@ -16,12 +16,14 @@ interface StudentCardProps {
   student: any;
   onEdit?: (student: any) => void;
   onDelete?: (id: string) => void;
+  onClick?: (student: any) => void;
 }
 
 export const StudentCard: React.FC<StudentCardProps> = ({
   student,
   onEdit,
   onDelete,
+  onClick,
 }) => {
   const getInitials = () => {
     return `${student.first_name?.[0] || ''}${student.last_name?.[0] || ''}`.toUpperCase();
@@ -47,7 +49,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onClick?.(student)}>
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           <Avatar className="w-16 h-16">
@@ -70,7 +72,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
