@@ -1,12 +1,30 @@
 // Application de gestion des classes
-import React, { useState } from 'react';
+import React from 'react';
 import { CreateClassModal } from '@/school/components/CreateClassModal';
 import { ClassesList } from '@/school/components/ClassesList';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserSchool } from '@/school/hooks/useSchool';
 
 export const ClassesApp: React.FC = () => {
-  // TODO: Récupérer l'école et l'année scolaire depuis le contexte ou les props
-  const schoolId = 'temp-school-id';
-  const schoolYearId = 'temp-school-year-id';
+  const { user } = useAuth();
+  const { data: school } = useUserSchool(user?.id);
+  const { activeSchoolYear } = useSchoolYear();
+
+  if (!school?.id || !activeSchoolYear?.id) {
+    return (
+      <div className="p-6 h-full overflow-auto">
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            Veuillez créer une école et une année scolaire pour gérer les classes
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const schoolId = school.id;
+  const schoolYearId = activeSchoolYear.id;
 
   return (
     <div className="p-6 h-full overflow-auto">
