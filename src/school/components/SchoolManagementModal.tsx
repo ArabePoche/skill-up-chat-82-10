@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { X, Plus, Calendar, Building2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { X, Building2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserSchool, useSchoolYears, useCreateSchool, useCreateSchoolYear, useUpdateSchoolYear, SchoolType } from '../hooks/useSchool';
+import { useUserSchool, useCreateSchool, SchoolType } from '../hooks/useSchool';
 import { useUpdateSchool } from '../hooks/useUpdateSchool';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,22 +18,14 @@ interface SchoolManagementModalProps {
 
 const SchoolManagementModal: React.FC<SchoolManagementModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: school, isLoading: isLoadingSchool } = useUserSchool(user?.id);
-  const { data: schoolYears = [] } = useSchoolYears(school?.id);
   const createSchool = useCreateSchool();
-  const createSchoolYear = useCreateSchoolYear();
-  const updateSchoolYear = useUpdateSchoolYear();
   const updateSchool = useUpdateSchool();
 
   const [schoolName, setSchoolName] = useState('');
   const [schoolDescription, setSchoolDescription] = useState('');
   const [schoolType, setSchoolType] = useState<SchoolType>('physical');
-  const [yearLabel, setYearLabel] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [showYearForm, setShowYearForm] = useState(false);
   const [isEditingSchoolType, setIsEditingSchoolType] = useState(false);
 
   if (!isOpen) return null;
@@ -64,52 +55,6 @@ const SchoolManagementModal: React.FC<SchoolManagementModalProps> = ({ isOpen, o
     });
     
     setIsEditingSchoolType(false);
-  };
-
-  const handleCreateYear = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!school?.id) return;
-
-    await createSchoolYear.mutateAsync({
-      school_id: school.id,
-      year_label: yearLabel,
-      start_date: startDate,
-      end_date: endDate,
-    });
-
-    setYearLabel('');
-    setStartDate('');
-    setEndDate('');
-    setShowYearForm(false);
-  };
-
-  const handleToggleActiveYear = async (yearId: string, currentStatus: boolean) => {
-    if (!school?.id) return;
-
-    // Désactiver toutes les autres années d'abord
-    if (!currentStatus) {
-      const activeYears = schoolYears.filter(y => y.is_active && y.id !== yearId);
-      for (const year of activeYears) {
-        await updateSchoolYear.mutateAsync({
-          id: year.id,
-          school_id: school.id,
-          is_active: false,
-        });
-      }
-    }
-
-    // Activer/désactiver l'année sélectionnée
-    await updateSchoolYear.mutateAsync({
-      id: yearId,
-      school_id: school.id,
-      is_active: !currentStatus,
-    });
-
-    // Si on active une année, rediriger vers la page School
-    if (!currentStatus) {
-      onClose();
-      navigate('/school');
-    }
   };
 
   return (
@@ -246,105 +191,6 @@ const SchoolManagementModal: React.FC<SchoolManagementModalProps> = ({ isOpen, o
                           {t('common.cancel', { defaultValue: 'Annuler' })}
                         </Button>
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Liste des années scolaires */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">
-                      {t('school.schoolYears', { defaultValue: 'Années scolaires' })}
-                    </h3>
-                    <Button
-                      onClick={() => setShowYearForm(!showYearForm)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <Plus size={16} className="mr-2" />
-                      {t('school.addYear', { defaultValue: 'Ajouter' })}
-                    </Button>
-                  </div>
-
-                  {showYearForm && (
-                    <form onSubmit={handleCreateYear} className="space-y-4 p-4 bg-muted rounded-lg mb-4">
-                      <div>
-                        <Label htmlFor="yearLabel">{t('school.yearLabel', { defaultValue: 'Libellé' })}</Label>
-                        <Input
-                          id="yearLabel"
-                          value={yearLabel}
-                          onChange={(e) => setYearLabel(e.target.value)}
-                          placeholder="2024-2025"
-                          required
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="startDate">{t('school.startDate', { defaultValue: 'Date de début' })}</Label>
-                          <Input
-                            id="startDate"
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="endDate">{t('school.endDate', { defaultValue: 'Date de fin' })}</Label>
-                          <Input
-                            id="endDate"
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" disabled={createSchoolYear.isPending}>
-                          {t('school.create', { defaultValue: 'Créer' })}
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => setShowYearForm(false)}>
-                          {t('common.cancel', { defaultValue: 'Annuler' })}
-                        </Button>
-                      </div>
-                    </form>
-                  )}
-
-                  <div className="space-y-2">
-                    {schoolYears.map((year) => (
-                      <div
-                        key={year.id}
-                        className={`p-4 rounded-lg border-2 transition-colors ${
-                          year.is_active
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border bg-background'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Calendar size={20} className={year.is_active ? 'text-primary' : 'text-muted-foreground'} />
-                            <div>
-                              <h4 className="font-semibold">{year.year_label}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(year.start_date).toLocaleDateString()} - {new Date(year.end_date).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            onClick={() => handleToggleActiveYear(year.id, year.is_active)}
-                            variant={year.is_active ? 'default' : 'outline'}
-                            size="sm"
-                          >
-                            {year.is_active ? t('school.active', { defaultValue: 'Active' }) : t('school.activate', { defaultValue: 'Activer' })}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {schoolYears.length === 0 && (
-                      <p className="text-center text-muted-foreground py-8">
-                        {t('school.noYears', { defaultValue: 'Aucune année scolaire créée' })}
-                      </p>
                     )}
                   </div>
                 </div>
