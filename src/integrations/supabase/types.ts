@@ -3310,6 +3310,94 @@ export type Database = {
           },
         ]
       }
+      students_school: {
+        Row: {
+          address: string | null
+          city: string | null
+          class_id: string | null
+          created_at: string | null
+          date_of_birth: string
+          first_name: string
+          gender: string
+          id: string
+          last_name: string
+          medical_notes: string | null
+          parent_email: string | null
+          parent_name: string | null
+          parent_phone: string | null
+          photo_url: string | null
+          school_id: string
+          school_year_id: string
+          status: string
+          student_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          class_id?: string | null
+          created_at?: string | null
+          date_of_birth: string
+          first_name: string
+          gender: string
+          id?: string
+          last_name: string
+          medical_notes?: string | null
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          photo_url?: string | null
+          school_id: string
+          school_year_id: string
+          status?: string
+          student_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          class_id?: string | null
+          created_at?: string | null
+          date_of_birth?: string
+          first_name?: string
+          gender?: string
+          id?: string
+          last_name?: string
+          medical_notes?: string | null
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          photo_url?: string | null
+          school_id?: string
+          school_year_id?: string
+          status?: string
+          student_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_school_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_school_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_school_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_application_files: {
         Row: {
           application_id: string
