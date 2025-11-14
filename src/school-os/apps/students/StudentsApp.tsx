@@ -1,18 +1,228 @@
 // Application de gestion des élèves
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Search, Filter } from 'lucide-react';
+import { useStudents, useDeleteStudent } from './hooks/useStudents';
+import { StudentCard } from './components/StudentCard';
+import { AddStudentDialog } from './components/AddStudentDialog';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Card } from '@/components/ui/card';
+import { useUserSchool, useCurrentSchoolYear } from '@/school/hooks/useSchool';
+import { useSchoolClasses } from '@/school/hooks/useClasses';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export const StudentsApp: React.FC = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [selectedGender, setSelectedGender] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [deleteStudentId, setDeleteStudentId] = useState<string | null>(null);
+
+  const deleteStudent = useDeleteStudent();
+
+  // Récupérer l'utilisateur connecté
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    },
+  });
+
+  // Récupérer l'école de l'utilisateur
+  const { data: school } = useUserSchool(user?.id);
+
+  // Récupérer l'année scolaire courante
+  const { data: schoolYear } = useCurrentSchoolYear(school?.id);
+
+  // Récupérer les classes
+  const { data: classes } = useSchoolClasses(school?.id, schoolYear?.id);
+
+  const { data: students, isLoading } = useStudents(school?.id);
+
+  const filteredStudents = useMemo(() => {
+    if (!students) return [];
+
+    return students.filter((student) => {
+      const matchesSearch =
+        student.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.student_code?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesClass =
+        selectedClass === 'all' || student.class_id === selectedClass;
+
+      const matchesGender =
+        selectedGender === 'all' || student.gender === selectedGender;
+
+      const matchesStatus =
+        selectedStatus === 'all' || student.status === selectedStatus;
+
+      return matchesSearch && matchesClass && matchesGender && matchesStatus;
+    });
+  }, [students, searchQuery, selectedClass, selectedGender, selectedStatus]);
+
+  const handleDelete = async () => {
+    if (!deleteStudentId) return;
+    await deleteStudent.mutateAsync(deleteStudentId);
+    setDeleteStudentId(null);
+  };
+
+  if (!school || !schoolYear) {
+    return (
+      <div className="p-6 h-full flex items-center justify-center">
+        <Card className="p-6">
+          <p className="text-muted-foreground">
+            Veuillez d'abord créer une école et une année scolaire active.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 h-full overflow-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold">Gestion des Élèves</h2>
           <p className="text-muted-foreground mt-1">
-            Gérez les élèves de votre établissement
+            {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''} trouvé{filteredStudents.length > 1 ? 's' : ''}
           </p>
         </div>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Ajouter un élève
+        </Button>
       </div>
-      {/* TODO: Implémenter l'interface de gestion des élèves */}
+
+      {/* Filtres */}
+      <Card className="p-4 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="w-4 h-4" />
+          <span className="font-medium">Filtres</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un élève..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <Select value={selectedClass} onValueChange={setSelectedClass}>
+            <SelectTrigger>
+              <SelectValue placeholder="Toutes les classes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les classes</SelectItem>
+              {classes?.map((cls) => (
+                <SelectItem key={cls.id} value={cls.id}>
+                  {cls.name} ({cls.cycle})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedGender} onValueChange={setSelectedGender}>
+            <SelectTrigger>
+              <SelectValue placeholder="Tous les genres" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les genres</SelectItem>
+              <SelectItem value="male">Garçons</SelectItem>
+              <SelectItem value="female">Filles</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger>
+              <SelectValue placeholder="Tous les statuts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="active">Actifs</SelectItem>
+              <SelectItem value="inactive">Inactifs</SelectItem>
+              <SelectItem value="transferred">Transférés</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
+      {/* Liste des élèves */}
+      {isLoading ? (
+        <div className="text-center py-12 text-muted-foreground">
+          Chargement des élèves...
+        </div>
+      ) : filteredStudents.length === 0 ? (
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground mb-4">
+            Aucun élève trouvé
+          </p>
+          {searchQuery || selectedClass !== 'all' || selectedGender !== 'all' || selectedStatus !== 'all' ? (
+            <p className="text-sm text-muted-foreground">
+              Essayez de modifier vos filtres
+            </p>
+          ) : (
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Ajouter votre premier élève
+            </Button>
+          )}
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {filteredStudents.map((student) => (
+            <StudentCard
+              key={student.id}
+              student={student}
+              onDelete={setDeleteStudentId}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Dialog d'ajout */}
+      <AddStudentDialog
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        schoolId={school.id}
+        schoolYearId={schoolYear.id}
+        classes={classes || []}
+      />
+
+      {/* Dialog de confirmation de suppression */}
+      <AlertDialog open={!!deleteStudentId} onOpenChange={() => setDeleteStudentId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cet élève ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. L'élève sera définitivement supprimé de la base de données.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
