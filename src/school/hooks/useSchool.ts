@@ -82,14 +82,18 @@ export const useCurrentSchoolYear = (schoolId?: string) => {
       if (!schoolId) return null;
       
       const { data, error } = await supabase
-        .from('school_years' as any)
+        .from('school_years')
         .select('*')
         .eq('school_id', schoolId)
-        .eq('is_current', true)
+        .eq('is_active', true)
         .single();
       
-      if (error) throw error;
-      return data as any;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching current school year:', error);
+        throw error;
+      }
+      
+      return data as SchoolYear | null;
     },
     enabled: !!schoolId,
   });
