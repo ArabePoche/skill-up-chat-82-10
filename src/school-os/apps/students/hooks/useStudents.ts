@@ -50,7 +50,7 @@ export const useStudents = (schoolId?: string) => {
     queryFn: async () => {
       let query = supabase
         .from('students_school')
-        .select('*, classes(name, cycle), school_years(name)')
+        .select('*, classes(name, cycle), school_years(year_label)')
         .order('created_at', { ascending: false });
 
       if (schoolId) {
