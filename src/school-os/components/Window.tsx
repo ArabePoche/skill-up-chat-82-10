@@ -1,6 +1,6 @@
 // Composant fenêtre modale pour les applications
-import React from 'react';
-import { X, Minus, Maximize2 } from 'lucide-react';
+import React, { Suspense } from 'react';
+import { X, Minus, Maximize2, Loader2 } from 'lucide-react';
 import { WindowState } from '../types';
 import { getAppById } from '../apps';
 import { cn } from '@/lib/utils';
@@ -71,7 +71,15 @@ export const Window: React.FC<WindowProps> = ({
 
       {/* Contenu */}
       <div className="flex-1 overflow-auto bg-background">
-        <AppComponent />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          }
+        >
+          <AppComponent />
+        </Suspense>
       </div>
     </div>
   );
