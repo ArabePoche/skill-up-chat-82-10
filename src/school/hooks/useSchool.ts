@@ -74,6 +74,27 @@ export const useSchoolYears = (schoolId?: string) => {
   });
 };
 
+// Hook pour récupérer l'année scolaire courante
+export const useCurrentSchoolYear = (schoolId?: string) => {
+  return useQuery({
+    queryKey: ['current-school-year', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return null;
+      
+      const { data, error } = await supabase
+        .from('school_years' as any)
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('is_current', true)
+        .single();
+      
+      if (error) throw error;
+      return data as any;
+    },
+    enabled: !!schoolId,
+  });
+};
+
 // Hook pour créer une école
 export const useCreateSchool = () => {
   const queryClient = useQueryClient();
