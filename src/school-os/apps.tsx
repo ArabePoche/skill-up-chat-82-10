@@ -1,16 +1,17 @@
 // Configuration des applications disponibles dans le système scolaire
+import { lazy } from 'react';
 import { Users, GraduationCap, BookOpen, Calendar, FileText, Settings, BarChart, Mail } from 'lucide-react';
 import { SchoolApp } from './types';
 
-// Composants temporaires pour chaque app
-const ClassesApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Gestion des Classes</h2><p className="text-muted-foreground mt-2">Interface de gestion des classes</p></div>;
-const TeachersApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Gestion des Enseignants</h2><p className="text-muted-foreground mt-2">Interface de gestion des enseignants</p></div>;
-const StudentsApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Gestion des Élèves</h2><p className="text-muted-foreground mt-2">Interface de gestion des élèves</p></div>;
-const ScheduleApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Emploi du Temps</h2><p className="text-muted-foreground mt-2">Interface de gestion des emplois du temps</p></div>;
-const GradesApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Gestion des Notes</h2><p className="text-muted-foreground mt-2">Interface de gestion des notes</p></div>;
-const ReportsApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Rapports</h2><p className="text-muted-foreground mt-2">Interface de génération de rapports</p></div>;
-const MessagesApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Messages</h2><p className="text-muted-foreground mt-2">Interface de messagerie</p></div>;
-const SettingsApp = () => <div className="p-6"><h2 className="text-2xl font-bold">Paramètres</h2><p className="text-muted-foreground mt-2">Configuration de l'école</p></div>;
+// Lazy loading des applications pour optimiser les performances
+const ClassesApp = lazy(() => import('./apps/classes/ClassesApp').then(m => ({ default: m.ClassesApp })));
+const TeachersApp = lazy(() => import('./apps/teachers/TeachersApp').then(m => ({ default: m.TeachersApp })));
+const StudentsApp = lazy(() => import('./apps/students/StudentsApp').then(m => ({ default: m.StudentsApp })));
+const ScheduleApp = lazy(() => import('./apps/schedule/ScheduleApp').then(m => ({ default: m.ScheduleApp })));
+const GradesApp = lazy(() => import('./apps/grades/GradesApp').then(m => ({ default: m.GradesApp })));
+const ReportsApp = lazy(() => import('./apps/reports/ReportsApp').then(m => ({ default: m.ReportsApp })));
+const MessagesApp = lazy(() => import('./apps/messages/MessagesApp').then(m => ({ default: m.MessagesApp })));
+const SettingsApp = lazy(() => import('./apps/settings/SettingsApp').then(m => ({ default: m.SettingsApp })));
 
 export const schoolApps: SchoolApp[] = [
   {
