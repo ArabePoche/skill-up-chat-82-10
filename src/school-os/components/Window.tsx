@@ -27,9 +27,9 @@ export const Window: React.FC<WindowProps> = ({
   const AppComponent = app.component;
 
   const positionClasses = {
-    full: 'inset-4',
-    left: 'left-4 top-4 bottom-4 right-1/2 mr-2',
-    right: 'right-4 top-4 bottom-4 left-1/2 ml-2',
+    full: 'left-4 right-4 top-4 bottom-20',
+    left: 'left-4 top-4 bottom-20 right-1/2 mr-2',
+    right: 'right-4 top-4 bottom-20 left-1/2 ml-2',
   };
 
   return (
