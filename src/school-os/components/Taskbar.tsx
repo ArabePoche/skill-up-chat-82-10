@@ -39,7 +39,8 @@ export const Taskbar: React.FC<TaskbarProps> = ({
 
   return (
     <>
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-md border rounded-2xl shadow-2xl px-4 py-2 flex items-center gap-3 z-[9999]">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t shadow-2xl px-4 py-3 flex items-center justify-center gap-3 z-[9999]">
+        <div className="flex items-center gap-3 max-w-7xl w-full">
         {/* Bouton menu principal */}
         <button
           onClick={onOpenQuickPanel}
@@ -137,6 +138,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({
             </div>
           </PopoverContent>
         </Popover>
+        </div>
       </div>
 
       {/* Dialog pour changer le fond d'écran */}
