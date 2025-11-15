@@ -2574,6 +2574,53 @@ export type Database = {
           },
         ]
       }
+      school_student_families: {
+        Row: {
+          address: string | null
+          created_at: string
+          family_name: string
+          id: string
+          notes: string | null
+          primary_contact_email: string | null
+          primary_contact_name: string | null
+          primary_contact_phone: string | null
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          family_name: string
+          id?: string
+          notes?: string | null
+          primary_contact_email?: string | null
+          primary_contact_name?: string | null
+          primary_contact_phone?: string | null
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          family_name?: string
+          id?: string
+          notes?: string | null
+          primary_contact_email?: string | null
+          primary_contact_name?: string | null
+          primary_contact_phone?: string | null
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_student_families_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_years: {
         Row: {
           created_at: string
@@ -3317,6 +3364,7 @@ export type Database = {
           class_id: string | null
           created_at: string | null
           date_of_birth: string
+          family_id: string | null
           first_name: string
           gender: string
           id: string
@@ -3338,6 +3386,7 @@ export type Database = {
           class_id?: string | null
           created_at?: string | null
           date_of_birth: string
+          family_id?: string | null
           first_name: string
           gender: string
           id?: string
@@ -3359,6 +3408,7 @@ export type Database = {
           class_id?: string | null
           created_at?: string | null
           date_of_birth?: string
+          family_id?: string | null
           first_name?: string
           gender?: string
           id?: string
@@ -3380,6 +3430,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_school_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "school_student_families"
             referencedColumns: ["id"]
           },
           {
