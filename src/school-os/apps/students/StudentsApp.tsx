@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { useUserSchool, useCurrentSchoolYear } from '@/school/hooks/useSchool';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
-import { FamilyManager } from '@/school-os/families';
+import { FamilyManager, FamilyStudentsManager } from '@/school-os/families';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -264,7 +264,20 @@ export const StudentsApp: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="families">
-          <FamilyManager schoolId={school.id} />
+          <Tabs defaultValue="list" className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="list">Liste des Familles</TabsTrigger>
+              <TabsTrigger value="students">Élèves par Famille</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="list">
+              <FamilyManager schoolId={school.id} />
+            </TabsContent>
+            
+            <TabsContent value="students">
+              <FamilyStudentsManager schoolId={school.id} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>
