@@ -8,6 +8,7 @@ export interface Student {
   school_id: string;
   class_id: string | null;
   school_year_id: string;
+  family_id: string | null;
   first_name: string;
   last_name: string;
   date_of_birth: string;
@@ -50,7 +51,7 @@ export const useStudents = (schoolId?: string) => {
     queryFn: async () => {
       let query = supabase
         .from('students_school')
-        .select('*, classes(name, cycle), school_years(year_label)')
+        .select('*, classes(name, cycle), school_years(year_label), school_student_families(family_name)')
         .order('created_at', { ascending: false });
 
       if (schoolId) {
@@ -66,14 +67,63 @@ export const useStudents = (schoolId?: string) => {
   });
 };
 
+// Fonction pour générer l'identifiant étudiant unique
+const generateStudentCode = async (
+  schoolId: string,
+  firstName: string,
+  lastName: string,
+  gender: 'male' | 'female'
+): Promise<string> => {
+  const year = new Date().getFullYear();
+  const genderCode = gender === 'male' ? 'M' : 'F';
+  const firstLetterFirstName = firstName.charAt(0).toUpperCase();
+  const firstLetterLastName = lastName.charAt(0).toUpperCase();
+
+  // Récupérer les codes existants pour cette année
+  const { data: existingCodes } = await supabase
+    .from('students_school')
+    .select('student_code')
+    .eq('school_id', schoolId)
+    .like('student_code', `${genderCode}-${year}-%`)
+    .order('student_code', { ascending: false })
+    .limit(1);
+
+  let sequenceNumber = 1;
+  
+  if (existingCodes && existingCodes.length > 0 && existingCodes[0].student_code) {
+    // Extraire le numéro séquentiel du dernier code
+    const lastCode = existingCodes[0].student_code;
+    const match = lastCode.match(/-(\d{5})/);
+    if (match) {
+      sequenceNumber = parseInt(match[1]) + 1;
+    }
+  }
+
+  // Formatter le numéro sur 5 chiffres
+  const formattedNumber = sequenceNumber.toString().padStart(5, '0');
+  
+  return `${genderCode}-${year}-${firstLetterFirstName}${formattedNumber}${firstLetterLastName}`;
+};
+
 export const useAddStudent = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (newStudent: NewStudent) => {
+      // Générer automatiquement le code étudiant
+      const studentCode = await generateStudentCode(
+        newStudent.school_id,
+        newStudent.first_name,
+        newStudent.last_name,
+        newStudent.gender
+      );
+
       const { data, error } = await supabase
         .from('students_school')
-        .insert(newStudent)
+        .insert({
+          ...newStudent,
+          student_code: studentCode,
+        })
         .select()
         .single();
 
