@@ -14,6 +14,8 @@ import {
 import { useSchoolClasses, useDeleteClass } from '../hooks/useClasses';
 import { CreateClassModal } from './CreateClassModal';
 import { EditClassModal } from './EditClassModal';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClassesListProps {
   schoolId: string;
@@ -34,6 +36,34 @@ export const ClassesList: React.FC<ClassesListProps> = ({
 }) => {
   const { data: classes, isLoading } = useSchoolClasses(schoolId, schoolYearId);
   const deleteClass = useDeleteClass();
+
+  // Récupérer le nombre réel d'élèves par classe
+  const { data: studentCounts } = useQuery({
+    queryKey: ['students-count-by-class', schoolId, schoolYearId],
+    queryFn: async () => {
+      if (!schoolId || !schoolYearId) return {};
+      
+      const { data, error } = await supabase
+        .from('students_school')
+        .select('class_id')
+        .eq('school_id', schoolId)
+        .eq('school_year_id', schoolYearId)
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      
+      // Compter les élèves par classe
+      const counts: Record<string, number> = {};
+      data?.forEach((student: any) => {
+        if (student.class_id) {
+          counts[student.class_id] = (counts[student.class_id] || 0) + 1;
+        }
+      });
+      
+      return counts;
+    },
+    enabled: !!schoolId && !!schoolYearId,
+  });
 
   const handleDelete = async (id: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette classe ?')) {
@@ -57,8 +87,8 @@ export const ClassesList: React.FC<ClassesListProps> = ({
     return acc;
   }, {} as Record<string, typeof classes>);
 
-  // Calcul des statistiques
-  const totalStudents = classes?.reduce((sum, cls) => sum + cls.current_students, 0) || 0;
+  // Calcul des statistiques avec les vrais comptes d'élèves
+  const totalStudents = classes?.reduce((sum, cls) => sum + (studentCounts?.[cls.id] || 0), 0) || 0;
   const totalCapacity = classes?.reduce((sum, cls) => sum + cls.max_students, 0) || 0;
   const averageOccupancy = totalCapacity > 0 ? (totalStudents / totalCapacity) * 100 : 0;
 
@@ -140,9 +170,9 @@ export const ClassesList: React.FC<ClassesListProps> = ({
         </Card>
       ) : (
         <div className="space-y-4">
-          <Accordion type="multiple" className="space-y-4" defaultValue={Object.keys(groupedClasses || {})}>
+          <Accordion type="multiple" className="space-y-4">
             {Object.entries(groupedClasses || {}).map(([cycle, cycleClasses]) => {
-              const cycleStudents = cycleClasses.reduce((sum, cls) => sum + cls.current_students, 0);
+              const cycleStudents = cycleClasses.reduce((sum, cls) => sum + (studentCounts?.[cls.id] || 0), 0);
               const cycleCapacity = cycleClasses.reduce((sum, cls) => sum + cls.max_students, 0);
               const cycleOccupancy = cycleCapacity > 0 ? (cycleStudents / cycleCapacity) * 100 : 0;
 
@@ -182,8 +212,9 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                   <AccordionContent className="px-6 pb-6">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-2">
                       {cycleClasses.map((cls) => {
-                        const occupancyRate = (cls.current_students / cls.max_students) * 100;
-                        const isFull = cls.current_students >= cls.max_students;
+                        const currentStudents = studentCounts?.[cls.id] || 0;
+                        const occupancyRate = (currentStudents / cls.max_students) * 100;
+                        const isFull = currentStudents >= cls.max_students;
 
                         return (
                           <Card 
@@ -225,7 +256,7 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <span className={`font-semibold ${isFull ? 'text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>
-                                      {cls.current_students}
+                                      {currentStudents}
                                     </span>
                                     <span className="text-muted-foreground">/ {cls.max_students}</span>
                                   </div>
