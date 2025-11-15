@@ -21,9 +21,11 @@ import {
   Camera,
   Edit,
   Heart,
+  Users,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { StudentFamilySelector } from '@/school-os/families';
 
 interface StudentDetailModalProps {
   student: any;
@@ -279,6 +281,21 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               <Separator />
             </>
           )}
+
+          {/* Famille */}
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Famille
+            </h4>
+            <StudentFamilySelector
+              studentId={student.id}
+              schoolId={student.school_id}
+              currentFamilyId={student.family_id}
+            />
+          </div>
+
+          <Separator />
 
           {/* Notes médicales */}
           {student.medical_notes && (
