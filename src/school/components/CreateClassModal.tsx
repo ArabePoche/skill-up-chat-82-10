@@ -47,6 +47,9 @@ const classFormSchema = z.object({
       genderType: z.enum(['mixte', 'garçons', 'filles'], {
         required_error: 'Veuillez sélectionner un type',
       }),
+      annualFee: z.coerce
+        .number()
+        .min(0, 'Le montant doit être positif'),
     })
   ).min(1, 'Au moins une classe est requise').max(20, 'Maximum 20 classes'),
 });
@@ -83,7 +86,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
     resolver: zodResolver(classFormSchema),
     defaultValues: {
       cycle: 'primaire',
-      classes: [{ name: '', maxStudents: 30, genderType: 'mixte' }],
+      classes: [{ name: '', maxStudents: 30, genderType: 'mixte', annualFee: 0 }],
     },
   });
 
@@ -100,6 +103,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       cycle: data.cycle,
       max_students: cls.maxStudents,
       gender_type: cls.genderType,
+      annual_fee: cls.annualFee,
     }));
 
     await createClasses.mutateAsync(classesData);
@@ -167,7 +171,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ name: '', maxStudents: 30, genderType: 'mixte' })}
+                  onClick={() => append({ name: '', maxStudents: 30, genderType: 'mixte', annualFee: 0 })}
                   disabled={fields.length >= 20}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -255,6 +259,26 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                               ))}
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Somme annuelle */}
+                    <FormField
+                      control={form.control}
+                      name={`classes.${index}.annualFee`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Somme annuelle (€)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="0"
+                              {...field}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
