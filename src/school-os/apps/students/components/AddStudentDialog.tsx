@@ -1,5 +1,5 @@
 // Dialog pour ajouter un élève
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAddStudent, NewStudent } from '../hooks/useStudents';
 import { useForm } from 'react-hook-form';
+import { StudentFamilySelector, FamilyFormSelector } from '@/school-os/families';
+import { Plus } from 'lucide-react';
 
 interface AddStudentDialogProps {
   isOpen: boolean;
@@ -26,19 +28,40 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
 }) => {
   const { register, handleSubmit, reset, setValue, watch } = useForm<NewStudent>();
   const addStudent = useAddStudent();
+  const [createdStudentId, setCreatedStudentId] = useState<string | null>(null);
+  const [showFamilySelector, setShowFamilySelector] = useState(false);
 
   const onSubmit = async (data: NewStudent) => {
-    await addStudent.mutateAsync({
+    const result = await addStudent.mutateAsync({
       ...data,
       school_id: schoolId,
       school_year_id: schoolYearId,
     });
+    setCreatedStudentId(result.id);
     reset();
+  };
+
+  const handleClose = () => {
+    setCreatedStudentId(null);
+    setShowFamilySelector(false);
     onClose();
   };
 
+  const handleFamilySelect = (familyData: {
+    family_name: string;
+    primary_contact_name?: string;
+    primary_contact_phone?: string;
+    primary_contact_email?: string;
+    address?: string;
+  }) => {
+    setValue('parent_name', familyData.primary_contact_name || '');
+    setValue('parent_phone', familyData.primary_contact_phone || '');
+    setValue('parent_email', familyData.primary_contact_email || '');
+    setValue('address', familyData.address || '');
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Ajouter un élève</DialogTitle>
@@ -91,18 +114,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="student_code">Code élève</Label>
-              <Input
-                id="student_code"
-                {...register('student_code')}
-                placeholder="Code unique"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="class_id">Classe</Label>
+          <div className="space-y-2">
+            <Label htmlFor="class_id">Classe</Label>
               <Select
                 onValueChange={(value) => setValue('class_id', value)}
               >
@@ -117,11 +130,27 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+          </div>
+
+          <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+            <p className="text-sm text-muted-foreground">
+              ℹ️ Un identifiant unique sera généré automatiquement au format : M/F-AAAA-PXXXXXN
+            </p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-lg font-semibold">Informations du parent/tuteur</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-lg font-semibold">Informations du parent/tuteur</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFamilySelector(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Remplir depuis une famille
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -182,13 +211,35 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
             />
           </div>
 
+          {createdStudentId && (
+            <div className="p-4 bg-muted rounded-lg space-y-3">
+              <p className="text-sm font-medium">✓ Élève créé avec succès !</p>
+              <p className="text-xs text-muted-foreground">
+                Vous pouvez maintenant lier cet élève à une famille existante
+              </p>
+              <StudentFamilySelector
+                studentId={createdStudentId}
+                schoolId={schoolId}
+              />
+            </div>
+          )}
+
+          <FamilyFormSelector
+            isOpen={showFamilySelector}
+            onClose={() => setShowFamilySelector(false)}
+            schoolId={schoolId}
+            onFamilySelect={handleFamilySelect}
+          />
+
           <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Annuler
+            <Button type="button" variant="outline" onClick={handleClose}>
+              {createdStudentId ? 'Fermer' : 'Annuler'}
             </Button>
-            <Button type="submit" disabled={addStudent.isPending}>
-              {addStudent.isPending ? 'Ajout...' : 'Ajouter l\'élève'}
-            </Button>
+            {!createdStudentId && (
+              <Button type="submit" disabled={addStudent.isPending}>
+                {addStudent.isPending ? 'Ajout...' : 'Ajouter l\'élève'}
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>
