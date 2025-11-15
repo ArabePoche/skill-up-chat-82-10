@@ -45,6 +45,9 @@ const editClassFormSchema = z.object({
   gender_type: z.enum(['mixte', 'garçons', 'filles'], {
     required_error: 'Veuillez sélectionner un type',
   }),
+  annual_fee: z.coerce
+    .number()
+    .min(0, 'Le montant doit être positif'),
 });
 
 type EditClassFormValues = z.infer<typeof editClassFormSchema>;
@@ -78,6 +81,7 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
       cycle: classData.cycle,
       max_students: classData.max_students,
       gender_type: classData.gender_type,
+      annual_fee: classData.annual_fee || 0,
     },
   });
 
@@ -192,6 +196,26 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Somme annuelle */}
+            <FormField
+              control={form.control}
+              name="annual_fee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Somme annuelle (€)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
