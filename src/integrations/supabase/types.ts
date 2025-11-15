@@ -288,6 +288,7 @@ export type Database = {
       }
       classes: {
         Row: {
+          annual_fee: number | null
           created_at: string
           current_students: number
           cycle: string
@@ -300,6 +301,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          annual_fee?: number | null
           created_at?: string
           current_students?: number
           cycle: string
@@ -312,6 +314,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          annual_fee?: number | null
           created_at?: string
           current_students?: number
           cycle?: string
@@ -3364,6 +3367,8 @@ export type Database = {
           class_id: string | null
           created_at: string | null
           date_of_birth: string
+          discount_amount: number | null
+          discount_percentage: number | null
           family_id: string | null
           first_name: string
           gender: string
@@ -3386,6 +3391,8 @@ export type Database = {
           class_id?: string | null
           created_at?: string | null
           date_of_birth: string
+          discount_amount?: number | null
+          discount_percentage?: number | null
           family_id?: string | null
           first_name: string
           gender: string
@@ -3408,6 +3415,8 @@ export type Database = {
           class_id?: string | null
           created_at?: string | null
           date_of_birth?: string
+          discount_amount?: number | null
+          discount_percentage?: number | null
           family_id?: string | null
           first_name?: string
           gender?: string
