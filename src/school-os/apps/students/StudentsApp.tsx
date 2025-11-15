@@ -3,7 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Search, Filter, Users } from 'lucide-react';
 import { useStudents, useDeleteStudent } from './hooks/useStudents';
 import { StudentCard } from './components/StudentCard';
 import { AddStudentDialog } from './components/AddStudentDialog';
@@ -13,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { useUserSchool, useCurrentSchoolYear } from '@/school/hooks/useSchool';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
+import { FamilyManager } from '@/school-os/families';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,18 +100,31 @@ export const StudentsApp: React.FC = () => {
 
   return (
     <div className="p-6 h-full overflow-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold">Gestion des Élèves</h2>
-          <p className="text-muted-foreground mt-1">
-            {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''} trouvé{filteredStudents.length > 1 ? 's' : ''}
-          </p>
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter un élève
-        </Button>
-      </div>
+      <Tabs defaultValue="students" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="students">
+            <Search className="w-4 h-4 mr-2" />
+            Élèves
+          </TabsTrigger>
+          <TabsTrigger value="families">
+            <Users className="w-4 h-4 mr-2" />
+            Familles
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="students" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold">Gestion des Élèves</h2>
+              <p className="text-muted-foreground mt-1">
+                {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''} trouvé{filteredStudents.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Ajouter un élève
+            </Button>
+          </div>
 
       {/* Filtres */}
       <Card className="p-4 mb-6">
@@ -246,6 +261,12 @@ export const StudentsApp: React.FC = () => {
           }}
         />
       )}
+        </TabsContent>
+
+        <TabsContent value="families">
+          <FamilyManager schoolId={school.id} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
