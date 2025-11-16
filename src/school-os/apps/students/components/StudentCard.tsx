@@ -22,14 +22,12 @@ import { useFamilySiblings } from '@/school-os/families/hooks/useFamilies';
 interface StudentCardProps {
   student: any;
   onEdit?: (student: any) => void;
-  onDelete?: (id: string) => void;
   onClick?: (student: any) => void;
 }
 
 export const StudentCard: React.FC<StudentCardProps> = ({
   student,
   onEdit,
-  onDelete,
   onClick,
 }) => {
   const [showSiblings, setShowSiblings] = useState(false);
@@ -89,12 +87,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit?.(student)}>
                     Modifier
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onDelete?.(student.id)}
-                    className="text-destructive"
-                  >
-                    Supprimer
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
