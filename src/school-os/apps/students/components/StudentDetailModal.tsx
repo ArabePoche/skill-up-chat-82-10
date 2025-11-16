@@ -22,16 +22,19 @@ import {
   Edit,
   Heart,
   Users,
+  Trash2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { StudentFamilySelector } from '@/school-os/families';
+import { DeleteStudentDialog } from './DeleteStudentDialog';
 
 interface StudentDetailModalProps {
   student: any;
   isOpen: boolean;
   onClose: () => void;
   onEdit?: (student: any) => void;
+  onDelete?: (studentId: string) => void;
 }
 
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
@@ -39,8 +42,10 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   isOpen,
   onClose,
   onEdit,
+  onDelete,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const getInitials = () => {
     return `${student.first_name?.[0] || ''}${student.last_name?.[0] || ''}`.toUpperCase();
@@ -127,7 +132,8 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Détails de l'élève</DialogTitle>
@@ -340,19 +346,47 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Fermer
-            </Button>
-            {onEdit && (
-              <Button onClick={() => onEdit(student)}>
-                <Edit className="w-4 h-4 mr-2" />
-                Modifier
+          <div className="flex justify-between gap-2">
+            <div>
+              {onDelete && (
+                <Button 
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Supprimer
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Fermer
               </Button>
-            )}
+              {onEdit && (
+                <Button onClick={() => onEdit(student)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Modifier
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Dialog de confirmation de suppression - en dehors du Dialog parent */}
+    <DeleteStudentDialog
+      open={showDeleteDialog}
+      onOpenChange={setShowDeleteDialog}
+      studentName={`${student.first_name} ${student.last_name}`}
+      onConfirm={() => {
+        if (onDelete) {
+          onDelete(student.id);
+          setShowDeleteDialog(false);
+          onClose();
+        }
+      }}
+    />
+    </>
   );
 };
