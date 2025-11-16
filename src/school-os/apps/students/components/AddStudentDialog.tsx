@@ -211,6 +211,40 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="discount_percentage">Remise (%)</Label>
+              <Input
+                id="discount_percentage"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                {...register('discount_percentage', { 
+                  valueAsNumber: true,
+                  min: 0,
+                  max: 100
+                })}
+                placeholder="Pourcentage de remise"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="discount_amount">Remise fixe (montant)</Label>
+              <Input
+                id="discount_amount"
+                type="number"
+                min="0"
+                step="0.01"
+                {...register('discount_amount', { 
+                  valueAsNumber: true,
+                  min: 0
+                })}
+                placeholder="Montant fixe de remise"
+              />
+            </div>
+          </div>
+
           {createdStudentId && (
             <div className="p-4 bg-muted rounded-lg space-y-3">
               <p className="text-sm font-medium">✓ Élève créé avec succès !</p>
