@@ -15,16 +15,6 @@ import { Card } from '@/components/ui/card';
 import { useUserSchool, useCurrentSchoolYear } from '@/school/hooks/useSchool';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
 import { FamilyManager, FamilyStudentsManager } from '@/school-os/families';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 export const StudentsApp: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,7 +22,6 @@ export const StudentsApp: React.FC = () => {
   const [selectedGender, setSelectedGender] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [deleteStudentId, setDeleteStudentId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -79,12 +68,6 @@ export const StudentsApp: React.FC = () => {
       return matchesSearch && matchesClass && matchesGender && matchesStatus;
     });
   }, [students, searchQuery, selectedClass, selectedGender, selectedStatus]);
-
-  const handleDelete = async () => {
-    if (!deleteStudentId) return;
-    await deleteStudent.mutateAsync(deleteStudentId);
-    setDeleteStudentId(null);
-  };
 
   if (!school || !schoolYear) {
     return (
@@ -209,7 +192,6 @@ export const StudentsApp: React.FC = () => {
             <StudentCard
               key={student.id}
               student={student}
-              onDelete={setDeleteStudentId}
               onClick={(student) => {
                 setSelectedStudent(student);
                 setIsDetailModalOpen(true);
@@ -228,23 +210,7 @@ export const StudentsApp: React.FC = () => {
         classes={classes || []}
       />
 
-      {/* Dialog de confirmation de suppression */}
-      <AlertDialog open={!!deleteStudentId} onOpenChange={() => setDeleteStudentId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer cet élève ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. L'élève sera définitivement supprimé de la base de données.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Dialog de confirmation de suppression - géré dans StudentDetailModal */}
 
       {/* Modal de détails de l'élève */}
       {selectedStudent && (
@@ -258,6 +224,9 @@ export const StudentsApp: React.FC = () => {
           onEdit={(student) => {
             setIsDetailModalOpen(false);
             // TODO: Ouvrir le dialog d'édition si nécessaire
+          }}
+          onDelete={(studentId) => {
+            deleteStudent.mutateAsync(studentId);
           }}
         />
       )}
