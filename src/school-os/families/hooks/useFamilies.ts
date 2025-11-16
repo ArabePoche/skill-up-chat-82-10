@@ -142,4 +142,25 @@ export const useLinkStudentToFamily = () => {
     },
   });
 };
+
+// Hook pour récupérer les frères/sœurs d'un élève
+export const useFamilySiblings = (familyId?: string | null, currentStudentId?: string) => {
+  return useQuery({
+    queryKey: ['family-siblings', familyId, currentStudentId],
+    queryFn: async () => {
+      if (!familyId) return [];
+
+      const { data, error } = await supabase
+        .from('students_school')
+        .select('*, classes(name, cycle)')
+        .eq('family_id', familyId)
+        .neq('id', currentStudentId || '')
+        .order('date_of_birth');
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!familyId,
+  });
+};
  
