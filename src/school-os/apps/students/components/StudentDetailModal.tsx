@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +47,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getInitials = () => {
     return `${student.first_name?.[0] || ''}${student.last_name?.[0] || ''}`.toUpperCase();
@@ -137,6 +139,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Détails de l'élève</DialogTitle>
+          <DialogDescription>Gestion des détails de l'élève</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -379,13 +382,21 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
       open={showDeleteDialog}
       onOpenChange={setShowDeleteDialog}
       studentName={`${student.first_name} ${student.last_name}`}
-      onConfirm={() => {
+      onConfirm={async () => {
         if (onDelete) {
-          onDelete(student.id);
-          setShowDeleteDialog(false);
-          onClose();
+          setIsDeleting(true);
+          try {
+            await onDelete(student.id);
+            setShowDeleteDialog(false);
+            onClose();
+          } catch (error) {
+            console.error('Erreur lors de la suppression:', error);
+          } finally {
+            setIsDeleting(false);
+          }
         }
       }}
+      isDeleting={isDeleting}
     />
     </>
   );
