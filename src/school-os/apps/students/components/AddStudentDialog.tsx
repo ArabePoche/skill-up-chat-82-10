@@ -134,7 +134,7 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
 
           <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
             <p className="text-sm text-muted-foreground">
-              ℹ️ Un identifiant unique sera généré automatiquement au format : M/F-AAAA-PXXXXXN
+              ℹ️ Un numéro matricule unique sera généré automatiquement au format : M/F-AAAA-PXXXXXN
             </p>
           </div>
 
