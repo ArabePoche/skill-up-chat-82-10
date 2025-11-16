@@ -50,6 +50,20 @@ export const useCreateFamily = () => {
 
   return useMutation({
     mutationFn: async (familyData: CreateFamilyData) => {
+      // Vérifier si le numéro de téléphone existe déjà (si fourni)
+      if (familyData.primary_contact_phone) {
+        const { data: existingFamily } = await supabase
+          .from('school_student_families')
+          .select('id, family_name')
+          .eq('school_id', familyData.school_id)
+          .eq('primary_contact_phone', familyData.primary_contact_phone)
+          .maybeSingle();
+
+        if (existingFamily) {
+          throw new Error(`Ce numéro de téléphone est déjà utilisé par la famille "${existingFamily.family_name}"`);
+        }
+      }
+
       const { data, error } = await supabase
         .from('school_student_families')
         .insert(familyData)
