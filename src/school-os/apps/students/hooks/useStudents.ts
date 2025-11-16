@@ -176,6 +176,42 @@ export const useUpdateStudent = () => {
   });
 };
 
+// Hook pour créer plusieurs élèves à la fois
+export const useAddStudents = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newStudents: NewStudent[]) => {
+      const studentsWithCodes = await Promise.all(
+        newStudents.map(async (student) => {
+          const studentCode = await generateStudentCode(
+            student.school_id,
+            student.first_name,
+            student.last_name,
+            student.gender
+          );
+          return { ...student, student_code: studentCode };
+        })
+      );
+
+      const { data, error } = await supabase
+        .from('students_school')
+        .insert(studentsWithCodes)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success(`${data?.length || 0} élève(s) ajouté(s) avec succès`);
+    },
+    onError: (error: any) => {
+      toast.error('Erreur lors de l\'ajout des élèves: ' + error.message);
+    },
+  });
+};
+
 export const useDeleteStudent = () => {
   const queryClient = useQueryClient();
 
