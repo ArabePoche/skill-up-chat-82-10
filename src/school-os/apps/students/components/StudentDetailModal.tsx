@@ -314,6 +314,31 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             </>
           )}
 
+          {/* Remises accordées */}
+          {(student.discount_percentage || student.discount_amount) && (
+            <>
+              <div className="space-y-4">
+                <h4 className="font-semibold">Remises accordées</h4>
+                <div className="bg-muted p-4 rounded-lg space-y-2">
+                  {student.discount_percentage && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Remise en pourcentage :</span>
+                      <span className="font-medium">{student.discount_percentage}%</span>
+                    </div>
+                  )}
+                  {student.discount_amount && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Remise fixe :</span>
+                      <span className="font-medium">{student.discount_amount} FCFA</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+            </>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
