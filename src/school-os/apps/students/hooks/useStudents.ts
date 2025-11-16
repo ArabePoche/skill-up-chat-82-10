@@ -22,8 +22,17 @@ export interface Student {
   city: string | null;
   medical_notes: string | null;
   status: 'active' | 'inactive' | 'transferred';
+  discount_percentage: number | null;
+  discount_amount: number | null;
   created_at: string;
   updated_at: string;
+  classes?: {
+    name: string;
+    cycle: string;
+  };
+  school_student_families?: {
+    family_name: string;
+  };
 }
 
 export interface NewStudent {
@@ -43,6 +52,8 @@ export interface NewStudent {
   city?: string;
   medical_notes?: string;
   status?: 'active' | 'inactive' | 'transferred';
+  discount_percentage?: number;
+  discount_amount?: number;
 }
 
 export const useStudents = (schoolId?: string) => {
