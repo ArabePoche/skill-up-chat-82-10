@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Mail, Phone, MapPin, Users } from 'lucide-react';
+import { MoreVertical, Mail, Phone, MapPin, Users, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useFamilySiblings } from '@/school-os/families/hooks/useFamilies';
 
 interface StudentCardProps {
@@ -31,6 +36,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   onClick,
 }) => {
   const [showSiblings, setShowSiblings] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const { data: siblings } = useFamilySiblings(student.family_id, student.id);
 
   const getInitials = () => {
@@ -57,112 +63,130 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onClick?.(student)}>
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <Avatar className="w-16 h-16">
-            <AvatarImage src={student.photo_url} alt={`${student.first_name} ${student.last_name}`} />
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
+    <Card className="hover:shadow-md transition-shadow">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-12 h-12 cursor-pointer" onClick={() => onClick?.(student)}>
+              <AvatarImage src={student.photo_url} alt={`${student.first_name} ${student.last_name}`} />
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <h3 className="font-semibold text-lg">
-                  {student.first_name} {student.last_name}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {calculateAge(student.date_of_birth)} ans • {student.gender === 'male' ? 'Garçon' : 'Fille'}
-                </p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base truncate cursor-pointer" onClick={() => onClick?.(student)}>
+                    {student.first_name} {student.last_name}
+                  </h3>
+                  {student.classes && (
+                    <p className="text-sm text-muted-foreground truncate">
+                      {student.classes.name}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <Badge
+                    variant={
+                      student.status === 'active'
+                        ? 'default'
+                        : student.status === 'inactive'
+                        ? 'secondary'
+                        : 'destructive'
+                    }
+                    className="text-xs"
+                  >
+                    {student.status === 'active'
+                      ? 'Actif'
+                      : student.status === 'inactive'
+                      ? 'Inactif'
+                      : 'Transféré'}
+                  </Badge>
+
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit?.(student)}>
+                        Modifier
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onEdit?.(student)}>
-                    Modifier
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
-
-            <div className="flex flex-wrap gap-2 mb-3">
-              {student.classes && (
-                <Badge variant="secondary">
-                  {student.classes.name} - {student.classes.cycle}
-                </Badge>
-              )}
-              {student.student_code && (
-                <Badge variant="outline">Code: {student.student_code}</Badge>
-              )}
-              <Badge
-                variant={
-                  student.status === 'active'
-                    ? 'default'
-                    : student.status === 'inactive'
-                    ? 'secondary'
-                    : 'destructive'
-                }
-              >
-                {student.status === 'active'
-                  ? 'Actif'
-                  : student.status === 'inactive'
-                  ? 'Inactif'
-                  : 'Transféré'}
-              </Badge>
-              {student.family_id && student.school_student_families && (
-                <Badge 
-                  variant="outline" 
-                  className="cursor-pointer hover:bg-accent"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowSiblings(true);
-                  }}
-                >
-                  <Users className="h-3 w-3 mr-1" />
-                  Famille: {student.school_student_families.family_name}
-                  {siblings && siblings.length > 0 && ` (${siblings.length} frère${siblings.length > 1 ? 's' : ''})`}
-                </Badge>
-              )}
-            </div>
-
-            {student.parent_name && (
-              <div className="space-y-1 text-sm">
-                <p className="font-medium">Parent/Tuteur: {student.parent_name}</p>
-                {student.parent_phone && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-3 w-3" />
-                    <span>{student.parent_phone}</span>
-                  </div>
-                )}
-                {student.parent_email && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-3 w-3" />
-                    <span>{student.parent_email}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {(student.address || student.city) && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                <MapPin className="h-3 w-3" />
-                <span>
-                  {student.address}
-                  {student.address && student.city && ', '}
-                  {student.city}
-                </span>
-              </div>
-            )}
           </div>
-        </div>
-      </CardContent>
+
+          <CollapsibleContent>
+            <div className="mt-3 pt-3 border-t space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {calculateAge(student.date_of_birth)} ans • {student.gender === 'male' ? 'Garçon' : 'Fille'}
+                </Badge>
+                {student.student_code && (
+                  <Badge variant="outline" className="text-xs">
+                    {student.student_code}
+                  </Badge>
+                )}
+                {student.family_id && student.school_student_families && (
+                  <Badge 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-accent text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSiblings(true);
+                    }}
+                  >
+                    <Users className="h-3 w-3 mr-1" />
+                    Famille: {student.school_student_families.family_name}
+                    {siblings && siblings.length > 0 && ` (${siblings.length})`}
+                  </Badge>
+                )}
+              </div>
+
+              {student.parent_name && (
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium">Parent/Tuteur: {student.parent_name}</p>
+                  {student.parent_phone && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      <span>{student.parent_phone}</span>
+                    </div>
+                  )}
+                  {student.parent_email && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-3 w-3" />
+                      <span>{student.parent_email}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(student.address || student.city) && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  <span>
+                    {student.address}
+                    {student.address && student.city && ', '}
+                    {student.city}
+                  </span>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </CardContent>
+      </Collapsible>
 
       <Dialog open={showSiblings} onOpenChange={setShowSiblings}>
         <DialogContent>
