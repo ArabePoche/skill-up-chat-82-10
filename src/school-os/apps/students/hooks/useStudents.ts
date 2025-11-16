@@ -78,7 +78,23 @@ export const useStudents = (schoolId?: string) => {
   });
 };
 
-// Fonction pour générer l'identifiant étudiant unique
+// Fonction pour générer un UID alphanumérique aléatoire sécurisé
+const generateSecureUID = (length: number = 6): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let uid = '';
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  
+  for (let i = 0; i < length; i++) {
+    uid += chars[array[i] % chars.length];
+  }
+  
+  return uid;
+};
+
+// Fonction pour générer l'identifiant étudiant unique globalement sur toute la plateforme
+// Format: AAAA-M/F-PXXXXXXN
+// AAAA = année, M/F = sexe, P = première lettre prénom, XXXXXX = UID aléatoire, N = première lettre nom
 const generateStudentCode = async (
   schoolId: string,
   firstName: string,
@@ -90,30 +106,35 @@ const generateStudentCode = async (
   const firstLetterFirstName = firstName.charAt(0).toUpperCase();
   const firstLetterLastName = lastName.charAt(0).toUpperCase();
 
-  // Récupérer les codes existants pour cette année
-  const { data: existingCodes } = await supabase
-    .from('students_school')
-    .select('student_code')
-    .eq('school_id', schoolId)
-    .like('student_code', `${genderCode}-${year}-%`)
-    .order('student_code', { ascending: false })
-    .limit(1);
+  // Générer un matricule unique avec vérification dans la base
+  let studentCode = '';
+  let isUnique = false;
+  let attempts = 0;
+  const maxAttempts = 100; // Sécurité pour éviter une boucle infinie
 
-  let sequenceNumber = 1;
-  
-  if (existingCodes && existingCodes.length > 0 && existingCodes[0].student_code) {
-    // Extraire le numéro séquentiel du dernier code
-    const lastCode = existingCodes[0].student_code;
-    const match = lastCode.match(/-(\d{5})/);
-    if (match) {
-      sequenceNumber = parseInt(match[1]) + 1;
-    }
+  while (!isUnique && attempts < maxAttempts) {
+    // Générer un UID aléatoire sécurisé
+    const uid = generateSecureUID(6);
+    
+    // Construire le matricule : AAAA-M/F-PXXXXXXN
+    studentCode = `${year}-${genderCode}-${firstLetterFirstName}${uid}${firstLetterLastName}`;
+    
+    // Vérifier l'unicité dans toute la plateforme
+    const { data: existing } = await supabase
+      .from('students_school')
+      .select('id')
+      .eq('student_code', studentCode)
+      .maybeSingle();
+    
+    isUnique = !existing;
+    attempts++;
   }
 
-  // Formatter le numéro sur 5 chiffres
-  const formattedNumber = sequenceNumber.toString().padStart(5, '0');
-  
-  return `${genderCode}-${year}-${firstLetterFirstName}${formattedNumber}${firstLetterLastName}`;
+  if (!isUnique) {
+    throw new Error('Impossible de générer un matricule unique après plusieurs tentatives');
+  }
+
+  return studentCode;
 };
 
 export const useAddStudent = () => {
