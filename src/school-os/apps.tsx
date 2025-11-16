@@ -1,12 +1,13 @@
 // Configuration des applications disponibles dans le système scolaire
 import { lazy } from 'react';
-import { Users, GraduationCap, BookOpen, Calendar, FileText, Settings, BarChart, Mail } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, Calendar, FileText, Settings, BarChart, Mail, CreditCard } from 'lucide-react';
 import { SchoolApp } from './types';
 
 // Lazy loading des applications pour optimiser les performances
 const ClassesApp = lazy(() => import('./apps/classes/ClassesApp').then(m => ({ default: m.ClassesApp })));
 const TeachersApp = lazy(() => import('./apps/teachers/TeachersApp').then(m => ({ default: m.TeachersApp })));
 const StudentsApp = lazy(() => import('./apps/students/StudentsApp').then(m => ({ default: m.StudentsApp })));
+const PaymentsApp = lazy(() => import('./apps/payments/PaymentsApp').then(m => ({ default: m.PaymentsApp })));
 const ScheduleApp = lazy(() => import('./apps/schedule/ScheduleApp').then(m => ({ default: m.ScheduleApp })));
 const GradesApp = lazy(() => import('./apps/grades/GradesApp').then(m => ({ default: m.GradesApp })));
 const ReportsApp = lazy(() => import('./apps/reports/ReportsApp').then(m => ({ default: m.ReportsApp })));
@@ -34,6 +35,13 @@ export const schoolApps: SchoolApp[] = [
     icon: 'Users',
     color: '#10B981',
     component: StudentsApp,
+  },
+  {
+    id: 'payments',
+    name: 'Paiements',
+    icon: 'CreditCard',
+    color: '#8B5CF6',
+    component: PaymentsApp,
   },
   {
     id: 'schedule',
