@@ -1,16 +1,23 @@
 // Card pour afficher un élève
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Mail, Phone, MapPin } from 'lucide-react';
+import { MoreVertical, Mail, Phone, MapPin, Users } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useFamilySiblings } from '@/school-os/families/hooks/useFamilies';
 
 interface StudentCardProps {
   student: any;
@@ -25,6 +32,9 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   onDelete,
   onClick,
 }) => {
+  const [showSiblings, setShowSiblings] = useState(false);
+  const { data: siblings } = useFamilySiblings(student.family_id, student.id);
+
   const getInitials = () => {
     return `${student.first_name?.[0] || ''}${student.last_name?.[0] || ''}`.toUpperCase();
   };
@@ -114,6 +124,20 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                   ? 'Inactif'
                   : 'Transféré'}
               </Badge>
+              {student.family_id && student.school_student_families && (
+                <Badge 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-accent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSiblings(true);
+                  }}
+                >
+                  <Users className="h-3 w-3 mr-1" />
+                  Famille: {student.school_student_families.family_name}
+                  {siblings && siblings.length > 0 && ` (${siblings.length} frère${siblings.length > 1 ? 's' : ''})`}
+                </Badge>
+              )}
             </div>
 
             {student.parent_name && (
@@ -147,6 +171,43 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           </div>
         </div>
       </CardContent>
+
+      <Dialog open={showSiblings} onOpenChange={setShowSiblings}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Frères et sœurs - Famille {student.school_student_families?.family_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {siblings && siblings.length > 0 ? (
+              siblings.map((sibling: any) => (
+                <div key={sibling.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={sibling.photo_url} />
+                    <AvatarFallback className="bg-primary/10">
+                      {`${sibling.first_name?.[0] || ''}${sibling.last_name?.[0] || ''}`.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-medium">{sibling.first_name} {sibling.last_name}</p>
+                    {sibling.classes && (
+                      <p className="text-sm text-muted-foreground">
+                        {sibling.classes.name} - {sibling.classes.cycle}
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {new Date().getFullYear() - new Date(sibling.date_of_birth).getFullYear()} ans
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-4">
+                Aucun frère ou sœur dans cette famille
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
