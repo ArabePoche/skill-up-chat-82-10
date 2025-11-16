@@ -42,7 +42,7 @@ export const FamilyForm: React.FC<FamilyFormProps> = ({
         <Input
           id="family_name"
           {...register('family_name', { required: 'Le nom est requis' })}
-          placeholder="Famille Dupont"
+          placeholder="Famille Diarra"
         />
         {errors.family_name && (
           <p className="text-sm text-destructive mt-1">{errors.family_name.message}</p>
@@ -54,7 +54,7 @@ export const FamilyForm: React.FC<FamilyFormProps> = ({
         <Input
           id="primary_contact_name"
           {...register('primary_contact_name')}
-          placeholder="Jean Dupont"
+          placeholder="Ali Diarra"
         />
       </div>
 
@@ -83,7 +83,7 @@ export const FamilyForm: React.FC<FamilyFormProps> = ({
         <Textarea
           id="address"
           {...register('address')}
-          placeholder="123 Rue de la Paix, 75000 Paris"
+          placeholder="123 Rue de la Paix, Porte 75"
           rows={2}
         />
       </div>
