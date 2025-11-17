@@ -55,7 +55,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
     }
   }, [selectedFamily]);
 
-  // Calculer la répartition intelligente du paiement selon les frais de chaque élève
+  // Calculer la répartition par mois complets selon les frais mensuels de chaque élève
   useEffect(() => {
     if (!currentFamily || !totalAmount) return;
 
@@ -65,23 +65,18 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
     const selected = currentFamily.students.filter(s => selectedStudents[s.id]);
     if (selected.length === 0) return;
 
-    // Calculer les frais effectifs après remises pour chaque élève
-    const studentsWithEffectiveFees = selected.map(student => {
-      const { finalAmount } = calculateDiscountedAmount(
-        student.annual_fee,
-        student.discount_percentage,
-        student.discount_amount
-      );
-      return {
-        ...student,
-        effectiveFee: finalAmount,
-      };
-    });
-
-    // Calculer la somme totale des frais effectifs
-    const totalEffectiveFees = studentsWithEffectiveFees.reduce((sum, s) => sum + s.effectiveFee, 0);
+    // Calculer les frais mensuels de chaque élève (total_amount_due / 9 mois par défaut)
+    const SCHOOL_MONTHS = 9; // TODO: Récupérer depuis l'année scolaire
     
-    if (totalEffectiveFees === 0) {
+    const studentsWithMonthlyFees = selected.map(student => ({
+      ...student,
+      monthlyFee: student.total_amount_due / SCHOOL_MONTHS,
+    }));
+
+    // Calculer le total des frais mensuels
+    const totalMonthlyFees = studentsWithMonthlyFees.reduce((sum, s) => sum + s.monthlyFee, 0);
+    
+    if (totalMonthlyFees === 0) {
       // Répartition égale si pas de frais définis
       const equalAmount = (amount / selected.length).toFixed(2);
       const newAmounts: Record<string, string> = {};
@@ -89,16 +84,41 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
         newAmounts[student.id] = equalAmount;
       });
       setStudentAmounts(newAmounts);
-    } else {
-      // Répartition proportionnelle selon les frais effectifs de chaque élève
-      const newAmounts: Record<string, string> = {};
-      studentsWithEffectiveFees.forEach(student => {
-        const proportion = student.effectiveFee / totalEffectiveFees;
-        const studentAmount = Math.min(amount * proportion, student.remaining_amount);
-        newAmounts[student.id] = studentAmount.toFixed(2);
-      });
-      setStudentAmounts(newAmounts);
+      return;
     }
+
+    // Calculer combien de mois complets peuvent être payés pour la famille
+    const monthsPayable = Math.floor(amount / totalMonthlyFees);
+    const remainder = amount - (monthsPayable * totalMonthlyFees);
+
+    // Répartir en mois complets
+    const newAmounts: Record<string, string> = {};
+    
+    studentsWithMonthlyFees.forEach(student => {
+      // Payer les mois complets
+      let studentAmount = monthsPayable * student.monthlyFee;
+      
+      // Ne pas dépasser le montant restant dû
+      studentAmount = Math.min(studentAmount, student.remaining_amount);
+      
+      newAmounts[student.id] = studentAmount.toFixed(2);
+    });
+
+    // Si il reste de l'argent, le répartir proportionnellement
+    if (remainder > 0) {
+      studentsWithMonthlyFees.forEach(student => {
+        const proportion = student.monthlyFee / totalMonthlyFees;
+        const additionalAmount = remainder * proportion;
+        const currentAmount = parseFloat(newAmounts[student.id] || '0');
+        const totalAmount = Math.min(
+          currentAmount + additionalAmount,
+          student.remaining_amount
+        );
+        newAmounts[student.id] = totalAmount.toFixed(2);
+      });
+    }
+
+    setStudentAmounts(newAmounts);
   }, [totalAmount, selectedStudents, currentFamily]);
 
   const handleToggleStudent = (studentId: string) => {
