@@ -26,7 +26,7 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
   const [studentId, setStudentId] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [paymentType, setPaymentType] = useState('school_fees');
+  const [paymentType, setPaymentType] = useState('tuition');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -62,7 +62,7 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
     setStudentId('');
     setAmount('');
     setPaymentMethod('cash');
-    setPaymentType('school_fees');
+    setPaymentType('tuition');
     setPaymentDate(new Date().toISOString().split('T')[0]);
     setNotes('');
     setReferenceNumber('');
