@@ -2,8 +2,9 @@
  * Liste des paiements par famille (vue existante)
  */
 import React, { useState } from 'react';
-import { useFamiliesWithPayments } from '../hooks/useFamilyPayments';
+import { useFamiliesWithPayments, type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { FamilyPaymentCard } from './FamilyPaymentCard';
+import { FamilyPaymentDialog } from './FamilyPaymentDialog';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,8 +14,24 @@ interface FamilyPaymentListProps {
 }
 
 export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }) => {
-  const { data: families = [], isLoading } = useFamiliesWithPayments(schoolId);
+  const { data: families = [], isLoading, refetch } = useFamiliesWithPayments(schoolId);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedFamily, setSelectedFamily] = useState<FamilyWithStudents | undefined>();
+
+  const handleAddPayment = (family: FamilyWithStudents) => {
+    setSelectedFamily(family);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setSelectedFamily(undefined);
+  };
+
+  const handlePaymentSuccess = () => {
+    refetch();
+  };
 
   const filteredFamilies = families.filter(family => {
     const query = searchQuery.toLowerCase();
@@ -63,11 +80,21 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
             <FamilyPaymentCard 
               key={family.family_id} 
               family={family} 
-              onAddPayment={() => {/* TODO: Implement family payment */}}
+              onAddPayment={() => handleAddPayment(family)}
             />
           ))
         )}
       </div>
+
+      {schoolId && (
+        <FamilyPaymentDialog
+          open={isDialogOpen}
+          onOpenChange={handleDialogClose}
+          schoolId={schoolId}
+          selectedFamily={selectedFamily}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 };
