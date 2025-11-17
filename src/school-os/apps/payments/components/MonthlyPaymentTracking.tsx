@@ -22,7 +22,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
   const [filters, setFilters] = useState({
     status: 'all' as 'all' | 'up_to_date' | 'partial' | 'late',
     classId: '',
-    month: '',
+    month: 'all',
     searchQuery: ''
   });
 
@@ -156,7 +156,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
                 <SelectValue placeholder="Filtrer par mois" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les mois</SelectItem>
+                <SelectItem value="all">Tous les mois</SelectItem>
                 {monthOptions.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
