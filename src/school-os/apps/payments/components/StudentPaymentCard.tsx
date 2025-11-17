@@ -3,12 +3,31 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, User, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Plus, User, AlertCircle, CheckCircle, Clock, Users, Percent } from 'lucide-react';
 
 interface StudentPaymentCardProps {
   student: any;
   onAddPayment: () => void;
 }
+
+// Helper pour calculer les montants avec remise
+const calculateDiscountedAmount = (
+  baseAmount: number,
+  discountPercentage: number | null,
+  discountAmount: number | null
+): number => {
+  let finalAmount = baseAmount;
+  
+  if (discountPercentage && discountPercentage > 0) {
+    finalAmount -= (baseAmount * discountPercentage) / 100;
+  }
+  
+  if (discountAmount && discountAmount > 0) {
+    finalAmount -= discountAmount;
+  }
+  
+  return Math.max(0, finalAmount);
+};
 
 export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   student,
@@ -17,6 +36,21 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   const totalDue = student.total_amount_due || 0;
   const totalPaid = student.total_amount_paid || 0;
   const remaining = student.remaining_amount || 0;
+  
+  // Calculer les frais annuels avec remise appliquée
+  const annualFee = student.annual_fee || 0;
+  const effectiveAnnualFee = calculateDiscountedAmount(
+    annualFee,
+    student.discount_percentage,
+    student.discount_amount
+  );
+  
+  // Calculer le montant de la remise
+  const discountAmount = annualFee - effectiveAnnualFee;
+  
+  // Calculer les montants périodiques (9 mois pour l'année scolaire)
+  const monthlyFee = effectiveAnnualFee / 9;
+  const quarterlyFee = effectiveAnnualFee / 3;
 
   const getPaymentStatus = () => {
     if (remaining === 0 && totalPaid > 0) {
@@ -40,8 +74,20 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
               <User className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">
+              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                 {student.first_name} {student.last_name}
+                {(student.discount_percentage || student.discount_amount) && (
+                  <Badge variant="outline" className="text-[10px] py-0">
+                    <Percent className="w-3 h-3 mr-1" />
+                    {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
+                  </Badge>
+                )}
+                {student.is_family_member && (
+                  <Badge variant="secondary" className="text-[10px] py-0">
+                    <Users className="w-3 h-3 mr-1" />
+                    {student.family_name}
+                  </Badge>
+                )}
               </CardTitle>
               <p className="text-xs text-muted-foreground">
                 {student.student_code}
@@ -56,6 +102,30 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {/* Frais périodiques */}
+        <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Frais de scolarité (9 mois):</p>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Mensuel:</span>
+            <span className="font-medium">{Math.round(monthlyFee).toLocaleString('fr-FR')} FCFA</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Trimestriel:</span>
+            <span className="font-medium">{Math.round(quarterlyFee).toLocaleString('fr-FR')} FCFA</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Annuel:</span>
+            <span className="font-medium">{Math.round(effectiveAnnualFee).toLocaleString('fr-FR')} FCFA</span>
+          </div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-xs pt-1 border-t mt-1">
+              <span className="text-green-600">Remise accordée:</span>
+              <span className="font-medium text-green-600">-{Math.round(discountAmount).toLocaleString('fr-FR')} FCFA</span>
+            </div>
+          )}
+        </div>
+
+        {/* Progression du paiement */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Montant dû:</span>
