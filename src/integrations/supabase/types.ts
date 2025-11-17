@@ -4679,6 +4679,14 @@ export type Database = {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: undefined
       }
+      calculate_amount_with_discount: {
+        Args: {
+          base_amount: number
+          discount_amount: number
+          discount_percentage: number
+        }
+        Returns: number
+      }
       can_student_access_lesson: {
         Args: { p_lesson_id: string; p_student_id: string }
         Returns: boolean
