@@ -1,12 +1,14 @@
 /**
  * Carte affichant le détail mensuel des paiements d'un élève
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Users, Percent, CheckCircle2, AlertCircle, Clock, Circle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { User, Users, Percent, CheckCircle2, AlertCircle, Clock, Circle, ChevronDown, ChevronUp, Edit } from 'lucide-react';
 import { StudentMonthlyTracking, MonthlyPaymentStatus } from '../hooks/useMonthlyPaymentTracking';
 import { cn } from '@/lib/utils';
+import { EditDiscountDialog } from './EditDiscountDialog';
 
 interface MonthlyPaymentCardProps {
   tracking: StudentMonthlyTracking;
@@ -14,6 +16,8 @@ interface MonthlyPaymentCardProps {
 
 export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking }) => {
   const { student, monthlyFee, months, totalMonthsPaid, totalMonthsLate, overallStatus } = tracking;
+  const [isDetailExpanded, setIsDetailExpanded] = useState(false);
+  const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
 
   const getStatusColor = (status: MonthlyPaymentStatus['status']) => {
     switch (status) {
@@ -63,21 +67,32 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
               <User className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-                {student.first_name} {student.last_name}
-                {(student.discount_percentage || student.discount_amount) && (
-                  <Badge variant="outline" className="text-[10px] py-0">
-                    <Percent className="w-3 h-3 mr-1" />
-                    {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
-                  </Badge>
-                )}
-                {student.is_family_member && (
-                  <Badge variant="outline" className="text-[10px] py-0">
-                    <Users className="w-3 h-3 mr-1" />
-                    {student.family_name}
-                  </Badge>
-                )}
-              </CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                  {student.first_name} {student.last_name}
+                  {(student.discount_percentage || student.discount_amount) && (
+                    <Badge variant="outline" className="text-[10px] py-0">
+                      <Percent className="w-3 h-3 mr-1" />
+                      {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
+                    </Badge>
+                  )}
+                  {student.is_family_member && (
+                    <Badge variant="outline" className="text-[10px] py-0">
+                      <Users className="w-3 h-3 mr-1" />
+                      {student.family_name}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditDiscountOpen(true)}
+                  className="h-6 px-2 text-xs"
+                >
+                  <Edit className="w-3 h-3 mr-1" />
+                  Remise
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {student.classes?.name || 'Aucune classe'} • {student.student_code || 'N/A'}
               </p>
@@ -101,8 +116,21 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
 
         {/* Timeline des mois */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">Détail mensuel:</p>
-          <div className="grid grid-cols-3 md:grid-cols-9 gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsDetailExpanded(!isDetailExpanded)}
+            className="w-full justify-between p-2 h-auto"
+          >
+            <span className="text-sm font-medium">Détail mensuel:</span>
+            {isDetailExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </Button>
+          {isDetailExpanded && (
+            <div className="grid grid-cols-3 md:grid-cols-9 gap-2">
             {months.map((month) => (
               <div key={month.month} className="relative group">
                 <div
@@ -130,7 +158,8 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Résumé des paiements */}
@@ -167,6 +196,12 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
           </div>
         )}
       </CardContent>
+
+      <EditDiscountDialog
+        open={isEditDiscountOpen}
+        onOpenChange={setIsEditDiscountOpen}
+        student={student}
+      />
     </Card>
   );
 };
