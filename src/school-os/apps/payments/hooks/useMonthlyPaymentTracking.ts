@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import { useSchoolStudents } from './usePayments';
 import { useStudentPayments } from './usePayments';
 import { calculateDiscountedAmount } from './useFamilyPayments';
+import { useCurrentSchoolYear } from '@/school/hooks/useSchool';
 
 export interface MonthlyPaymentStatus {
   month: string; // Format: "2025-01" pour janvier 2025
@@ -25,44 +26,61 @@ export interface StudentMonthlyTracking {
   overallStatus: 'up_to_date' | 'partial' | 'late';
 }
 
-const SCHOOL_MONTHS = 9; // 9 mois d'année scolaire
 const MONTH_NAMES = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
 
 /**
+ * Calcule le nombre de mois entre deux dates
+ */
+const getMonthsBetweenDates = (startDate: Date, endDate: Date): number => {
+  const years = endDate.getFullYear() - startDate.getFullYear();
+  const months = endDate.getMonth() - startDate.getMonth();
+  return years * 12 + months + 1; // +1 pour inclure le mois de début
+};
+
+/**
  * Calcule le suivi mensuel des paiements pour tous les élèves
  */
-export const useMonthlyPaymentTracking = (schoolId?: string, schoolYearStart?: Date) => {
+export const useMonthlyPaymentTracking = (schoolId?: string) => {
   const { data: students = [], isLoading } = useSchoolStudents(schoolId);
-
-  // Date de début d'année scolaire (par défaut septembre de l'année en cours)
-  const yearStart = schoolYearStart || new Date(new Date().getFullYear(), 8, 1); // Septembre
+  const { data: schoolYear } = useCurrentSchoolYear(schoolId);
 
   const trackingData = useMemo(() => {
-    if (!students.length) return [];
+    if (!students.length || !schoolYear) return [];
 
+    // Utiliser les dates de l'année scolaire
+    const yearStart = new Date(schoolYear.start_date);
+    const yearEnd = new Date(schoolYear.end_date);
     const currentDate = new Date();
+    
+    // Calculer le nombre de mois dans l'année scolaire
+    const schoolMonths = getMonthsBetweenDates(yearStart, yearEnd);
     
     return students.map(student => {
       // Calculer le frais annuel effectif (après remise)
       // Utiliser total_amount_due qui contient déjà le frais annuel avec remise appliquée
       const effectiveAnnualFee = student.total_amount_due || 0;
 
-      const monthlyFee = effectiveAnnualFee / SCHOOL_MONTHS;
+      const monthlyFee = effectiveAnnualFee / schoolMonths;
 
-      // Générer les 9 mois de l'année scolaire
+      // Générer les mois de l'année scolaire
       const months: MonthlyPaymentStatus[] = [];
-      for (let i = 0; i < SCHOOL_MONTHS; i++) {
+      for (let i = 0; i < schoolMonths; i++) {
         const monthDate = new Date(yearStart);
         monthDate.setMonth(yearStart.getMonth() + i);
         
         const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
         const monthLabel = `${MONTH_NAMES[monthDate.getMonth()]} ${monthDate.getFullYear()}`;
         
-        // Déterminer si ce mois est passé
-        const isPastDue = monthDate < currentDate;
+        // Un mois est en retard si :
+        // 1. La date du mois est passée
+        // 2. ET ce n'est pas le mois en cours (on laisse jusqu'à la fin du mois)
+        const monthEndDate = new Date(monthDate);
+        monthEndDate.setMonth(monthEndDate.getMonth() + 1);
+        monthEndDate.setDate(0); // Dernier jour du mois
+        const isPastDue = monthEndDate < currentDate;
         
         months.push({
           month: monthKey,
@@ -92,8 +110,15 @@ export const useMonthlyPaymentTracking = (schoolId?: string, schoolYearStart?: D
           months[i].paidAmount = remainderAmount;
           months[i].status = 'partial';
         } else if (months[i].isPastDue) {
-          months[i].status = 'late';
-          totalMonthsLate++;
+          // Un élève est en retard si le mois précédent n'est pas totalement payé
+          const previousMonth = i > 0 ? months[i - 1] : null;
+          if (previousMonth && previousMonth.status !== 'paid') {
+            months[i].status = 'late';
+            totalMonthsLate++;
+          } else if (i === 0 || (previousMonth && previousMonth.status === 'paid')) {
+            months[i].status = 'late';
+            totalMonthsLate++;
+          }
         }
       }
 
@@ -114,12 +139,17 @@ export const useMonthlyPaymentTracking = (schoolId?: string, schoolYearStart?: D
         overallStatus
       };
     });
-  }, [students, yearStart]);
+  }, [students, schoolYear]);
 
   return {
     trackingData,
-    isLoading,
-    yearStart
+    isLoading: isLoading || !schoolYear,
+    yearStart: schoolYear ? new Date(schoolYear.start_date) : undefined,
+    yearEnd: schoolYear ? new Date(schoolYear.end_date) : undefined,
+    schoolMonths: schoolYear ? getMonthsBetweenDates(
+      new Date(schoolYear.start_date),
+      new Date(schoolYear.end_date)
+    ) : 0,
   };
 };
 
@@ -149,7 +179,7 @@ export const useFilteredTracking = (
     }
 
     // Filtre par mois (élèves en retard pour ce mois)
-    if (filters.month) {
+    if (filters.month && filters.month !== 'all') {
       filtered = filtered.filter(item => {
         const monthData = item.months.find(m => m.month === filters.month);
         return monthData && (monthData.status === 'late' || monthData.status === 'partial');
