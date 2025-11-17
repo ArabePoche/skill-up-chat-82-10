@@ -5,6 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Réexporter la fonction de calcul de remise depuis le module utilitaire
+export { calculateDiscountedAmount, formatDiscount, hasDiscount } from '../utils/discountCalculations';
+
 export interface FamilyWithStudents {
   family_id: string;
   family_name: string;
@@ -167,33 +170,4 @@ export const useAddFamilyPayment = () => {
       toast.error('Erreur lors de l\'ajout du paiement familial');
     },
   });
-};
-
-/**
- * Calculer le montant avec remise appliquée
- */
-export const calculateDiscountedAmount = (
-  baseAmount: number,
-  discountPercentage: number | null,
-  discountAmount: number | null
-): { finalAmount: number; discountApplied: number } => {
-  let finalAmount = baseAmount;
-  let discountApplied = 0;
-
-  // Appliquer la remise en pourcentage d'abord
-  if (discountPercentage && discountPercentage > 0) {
-    discountApplied = (baseAmount * discountPercentage) / 100;
-    finalAmount -= discountApplied;
-  }
-
-  // Puis appliquer la remise fixe
-  if (discountAmount && discountAmount > 0) {
-    discountApplied += discountAmount;
-    finalAmount -= discountAmount;
-  }
-
-  // S'assurer que le montant final n'est pas négatif
-  finalAmount = Math.max(0, finalAmount);
-
-  return { finalAmount, discountApplied };
 };
