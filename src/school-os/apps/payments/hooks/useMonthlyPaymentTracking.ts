@@ -1,11 +1,11 @@
 /**
  * Hook pour le suivi mensuel des paiements
  * Calcule automatiquement le statut de paiement par mois pour chaque élève
+ * Les remises sont déjà appliquées dans total_amount_due
  */
 import { useMemo } from 'react';
 import { useSchoolStudents } from './usePayments';
 import { useStudentPayments } from './usePayments';
-import { calculateDiscountedAmount } from './useFamilyPayments';
 import { useCurrentSchoolYear } from '@/school/hooks/useSchool';
 
 export interface MonthlyPaymentStatus {
@@ -59,8 +59,8 @@ export const useMonthlyPaymentTracking = (schoolId?: string) => {
     const schoolMonths = getMonthsBetweenDates(yearStart, yearEnd);
     
     return students.map(student => {
-      // Calculer le frais annuel effectif (après remise)
-      // Utiliser total_amount_due qui contient déjà le frais annuel avec remise appliquée
+      // Le montant total_amount_due contient déjà la remise appliquée côté serveur
+      // grâce à la fonction calculate_amount_with_discount dans la DB
       const effectiveAnnualFee = student.total_amount_due || 0;
 
       const monthlyFee = effectiveAnnualFee / schoolMonths;
