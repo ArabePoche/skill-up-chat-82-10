@@ -34,6 +34,11 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
   const { data: students } = useSchoolStudents(schoolId);
   const addPayment = useAddPayment();
 
+  // Calculer le montant restant avec remise pour l'élève sélectionné
+  const selectedStudentData = students?.find(s => s.id === studentId);
+  const remainingAmount = selectedStudentData?.remaining_amount || 0;
+  const hasDiscount = selectedStudentData?.discount_percentage || selectedStudentData?.discount_amount;
+
   useEffect(() => {
     if (selectedStudent) {
       setStudentId(selectedStudent.id);
@@ -97,6 +102,34 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
             </Select>
           </div>
 
+          {/* Afficher les informations de paiement de l'élève sélectionné */}
+          {selectedStudentData && (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Montant dû (avec remise) :</span>
+                <span className="font-semibold">{selectedStudentData.total_amount_due.toLocaleString('fr-FR')} FCFA</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Déjà payé :</span>
+                <span>{selectedStudentData.total_amount_paid.toLocaleString('fr-FR')} FCFA</span>
+              </div>
+              <div className="flex justify-between text-sm border-t pt-2">
+                <span className="text-muted-foreground font-medium">Reste à payer :</span>
+                <span className="font-bold text-primary">{remainingAmount.toLocaleString('fr-FR')} FCFA</span>
+              </div>
+              {hasDiscount && (
+                <div className="flex items-center gap-2 text-xs text-green-600 pt-1">
+                  <span className="bg-green-100 px-2 py-0.5 rounded">
+                    {selectedStudentData.discount_percentage 
+                      ? `Remise : ${selectedStudentData.discount_percentage}%` 
+                      : `Remise : ${selectedStudentData.discount_amount?.toLocaleString('fr-FR')} FCFA`
+                    }
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amount">Montant (FCFA) *</Label>
@@ -107,9 +140,14 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
                 step="1"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="Ex: 50000"
+                placeholder={remainingAmount > 0 ? `Ex: ${remainingAmount.toLocaleString('fr-FR')}` : "Ex: 50000"}
                 required
               />
+              {remainingAmount > 0 && parseFloat(amount || '0') > remainingAmount && (
+                <p className="text-xs text-amber-600">
+                  ⚠️ Le montant dépasse le reste à payer
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
