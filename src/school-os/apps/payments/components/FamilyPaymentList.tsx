@@ -1,0 +1,73 @@
+/**
+ * Liste des paiements par famille (vue existante)
+ */
+import React, { useState } from 'react';
+import { useFamiliesWithPayments } from '../hooks/useFamilyPayments';
+import { FamilyPaymentCard } from './FamilyPaymentCard';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+
+interface FamilyPaymentListProps {
+  schoolId?: string;
+}
+
+export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }) => {
+  const { data: families = [], isLoading } = useFamiliesWithPayments(schoolId);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredFamilies = families.filter(family => {
+    const query = searchQuery.toLowerCase();
+    return (
+      family.family_name.toLowerCase().includes(query) ||
+      family.students.some(student => 
+        `${student.first_name} ${student.last_name}`.toLowerCase().includes(query)
+      )
+    );
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center space-y-2">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+          <p className="text-sm text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Barre de recherche */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher une famille..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Liste des familles */}
+      <div className="space-y-4">
+        {filteredFamilies.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Aucune famille trouvée.
+            </CardContent>
+          </Card>
+        ) : (
+          filteredFamilies.map(family => (
+            <FamilyPaymentCard 
+              key={family.family_id} 
+              family={family} 
+              onAddPayment={() => {/* TODO: Implement family payment */}}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
