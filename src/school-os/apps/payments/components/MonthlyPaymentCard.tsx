@@ -9,6 +9,7 @@ import { User, Users, Percent, CheckCircle2, AlertCircle, Clock, Circle, Chevron
 import { StudentMonthlyTracking, MonthlyPaymentStatus } from '../hooks/useMonthlyPaymentTracking';
 import { cn } from '@/lib/utils';
 import { EditDiscountDialog } from './EditDiscountDialog';
+import { MonthlyStatusBadges } from './MonthlyStatusBadges';
 
 interface MonthlyPaymentCardProps {
   tracking: StudentMonthlyTracking;
@@ -16,7 +17,6 @@ interface MonthlyPaymentCardProps {
 
 export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking }) => {
   const { student, monthlyFee, months, totalMonthsPaid, totalMonthsLate, overallStatus } = tracking;
-  const [isDetailExpanded, setIsDetailExpanded] = useState(false);
   const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
 
   const getStatusColor = (status: MonthlyPaymentStatus['status']) => {
@@ -114,52 +114,10 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
           <p className="text-lg font-bold">{Math.round(monthlyFee).toLocaleString('fr-FR')} FCFA</p>
         </div>
 
-        {/* Timeline des mois */}
+        {/* Statuts mensuels */}
         <div className="space-y-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsDetailExpanded(!isDetailExpanded)}
-            className="w-full justify-between p-2 h-auto"
-          >
-            <span className="text-sm font-medium">Détail mensuel:</span>
-            {isDetailExpanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </Button>
-          {isDetailExpanded && (
-            <div className="grid grid-cols-3 md:grid-cols-9 gap-2">
-            {months.map((month) => (
-              <div key={month.month} className="relative group">
-                <div
-                  className={cn(
-                    "w-full aspect-square rounded-lg transition-all cursor-pointer",
-                    getStatusColor(month.status),
-                    "hover:ring-2 hover:ring-offset-2 hover:ring-primary"
-                  )}
-                  title={`${month.monthLabel}: ${month.status === 'paid' ? 'Payé' : month.status === 'partial' ? 'Partiellement payé' : month.status === 'late' ? 'En retard' : 'À venir'}`}
-                >
-                  {/* Tooltip au survol */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                    <div className="bg-popover text-popover-foreground text-xs rounded-lg shadow-lg p-2 whitespace-nowrap border">
-                      <p className="font-medium">{month.monthLabel}</p>
-                      <p className="text-muted-foreground">
-                        {month.paidAmount > 0 
-                          ? `${Math.round(month.paidAmount).toLocaleString()} / ${Math.round(month.expectedAmount).toLocaleString()} FCFA`
-                          : month.isPastDue 
-                            ? 'Non payé'
-                            : 'À venir'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground">Détail mensuel:</p>
+          <MonthlyStatusBadges months={months} />
         </div>
 
         {/* Résumé des paiements */}
