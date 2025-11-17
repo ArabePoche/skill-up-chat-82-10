@@ -1,9 +1,10 @@
 // Carte affichant les informations de paiement d'un élève
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, User, AlertCircle, CheckCircle, Clock, Users, Percent } from 'lucide-react';
+import { Plus, User, AlertCircle, CheckCircle, Clock, Users, Percent, Edit } from 'lucide-react';
+import { EditDiscountDialog } from './EditDiscountDialog';
 
 interface StudentPaymentCardProps {
   student: any;
@@ -33,6 +34,7 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   student,
   onAddPayment,
 }) => {
+  const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
   const totalDue = student.total_amount_due || 0;
   const totalPaid = student.total_amount_paid || 0;
   const remaining = student.remaining_amount || 0;
@@ -74,21 +76,32 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
               <User className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-                {student.first_name} {student.last_name}
-                {(student.discount_percentage || student.discount_amount) && (
-                  <Badge variant="outline" className="text-[10px] py-0">
-                    <Percent className="w-3 h-3 mr-1" />
-                    {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
-                  </Badge>
-                )}
-                {student.is_family_member && (
-                  <Badge variant="secondary" className="text-[10px] py-0">
-                    <Users className="w-3 h-3 mr-1" />
-                    {student.family_name}
-                  </Badge>
-                )}
-              </CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                  {student.first_name} {student.last_name}
+                  {(student.discount_percentage || student.discount_amount) && (
+                    <Badge variant="outline" className="text-[10px] py-0">
+                      <Percent className="w-3 h-3 mr-1" />
+                      {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
+                    </Badge>
+                  )}
+                  {student.is_family_member && (
+                    <Badge variant="secondary" className="text-[10px] py-0">
+                      <Users className="w-3 h-3 mr-1" />
+                      {student.family_name}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditDiscountOpen(true)}
+                  className="h-6 px-2 text-xs"
+                >
+                  <Edit className="w-3 h-3 mr-1" />
+                  Remise
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {student.student_code}
               </p>
@@ -154,6 +167,12 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
           Ajouter un paiement
         </Button>
       </CardContent>
+
+      <EditDiscountDialog
+        open={isEditDiscountOpen}
+        onOpenChange={setIsEditDiscountOpen}
+        student={student}
+      />
     </Card>
   );
 };
