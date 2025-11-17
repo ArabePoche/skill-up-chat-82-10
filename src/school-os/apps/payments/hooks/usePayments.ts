@@ -9,30 +9,46 @@ export const useSchoolStudents = (schoolId?: string) => {
     queryFn: async () => {
       if (!schoolId) return [];
 
-      const { data, error } = await supabase
+      // Charger les étudiants
+      const { data: students, error: studentsError } = await supabase
         .from('students_school')
         .select(`
           *,
           classes:class_id(name),
-          payment_progress:school_student_payment_progress(
-            total_amount_due,
-            total_amount_paid,
-            remaining_amount,
-            last_payment_date
-          )
+          school_student_families:family_id(family_name)
         `)
         .eq('school_id', schoolId)
         .order('last_name', { ascending: true });
 
-      if (error) throw error;
+      if (studentsError) throw studentsError;
+      if (!students) return [];
 
-      return data.map(student => ({
-        ...student,
-        total_amount_due: student.payment_progress?.[0]?.total_amount_due || 0,
-        total_amount_paid: student.payment_progress?.[0]?.total_amount_paid || 0,
-        remaining_amount: student.payment_progress?.[0]?.remaining_amount || 0,
-        last_payment_date: student.payment_progress?.[0]?.last_payment_date || null,
-      }));
+      // Charger les progrès de paiement séparément
+      const { data: paymentProgress, error: progressError } = await supabase
+        .from('school_student_payment_progress')
+        .select('*')
+        .eq('school_id', schoolId);
+
+      if (progressError) throw progressError;
+
+      // Créer un map des progrès de paiement par student_id
+      const progressMap = new Map(
+        (paymentProgress || []).map((p: any) => [p.student_id, p])
+      );
+
+      return students.map(student => {
+        const progress: any = progressMap.get(student.id);
+        return {
+          ...student,
+          total_amount_due: progress?.total_amount_due || 0,
+          total_amount_paid: progress?.total_amount_paid || 0,
+          remaining_amount: progress?.remaining_amount || 0,
+          last_payment_date: progress?.last_payment_date || null,
+          has_discount: !!(student.discount_percentage || student.discount_amount),
+          is_family_member: !!student.family_id,
+          family_name: student.school_student_families?.family_name || null,
+        };
+      });
     },
     enabled: !!schoolId,
   });
