@@ -108,3 +108,42 @@ export const useAddPayment = () => {
     },
   });
 };
+
+export const useUpdateStudentDiscount = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      studentId,
+      discountPercentage,
+      discountAmount,
+    }: {
+      studentId: string;
+      discountPercentage: number | null;
+      discountAmount: number | null;
+    }) => {
+      const { data, error } = await supabase
+        .from('students_school')
+        .update({
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
+        })
+        .eq('id', studentId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['school-students-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-payment-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['family-payments'] });
+      toast.success('Remise mise à jour avec succès');
+    },
+    onError: (error) => {
+      console.error('Erreur lors de la mise à jour de la remise:', error);
+      toast.error('Erreur lors de la mise à jour de la remise');
+    },
+  });
+};
