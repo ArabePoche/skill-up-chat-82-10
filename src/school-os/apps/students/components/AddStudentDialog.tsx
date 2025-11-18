@@ -147,8 +147,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Ajouter des élèves</DialogTitle>
           <DialogDescription>
             Ajoutez un ou plusieurs élèves à votre établissement
@@ -156,47 +156,49 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Bouton pour ajouter un élève */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-semibold">
-                  Élèves à ajouter
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Ajoutez les informations de chaque élève
-                </p>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+              {/* Bouton pour ajouter un élève */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">
+                    Élèves à ajouter
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ajoutez les informations de chaque élève
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    append({
+                      first_name: '',
+                      last_name: '',
+                      date_of_birth: '',
+                      gender: 'male',
+                      class_id: '',
+                      parent_name: '',
+                      parent_phone: '',
+                      parent_email: '',
+                      address: '',
+                      city: '',
+                      medical_notes: '',
+                      discount_percentage: 0,
+                      discount_amount: 0,
+                    })
+                  }
+                  disabled={fields.length >= 50}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  append({
-                    first_name: '',
-                    last_name: '',
-                    date_of_birth: '',
-                    gender: 'male',
-                    class_id: '',
-                    parent_name: '',
-                    parent_phone: '',
-                    parent_email: '',
-                    address: '',
-                    city: '',
-                    medical_notes: '',
-                    discount_percentage: 0,
-                    discount_amount: 0,
-                  })
-                }
-                disabled={fields.length >= 50}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter
-              </Button>
-            </div>
 
-            {/* Liste des élèves */}
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+              {/* Liste des élèves */}
+              <div className="space-y-4">
               {fields.map((field, index) => (
                 <div key={field.id} className="border rounded-lg p-4 space-y-4 bg-muted/30">
                   <div className="flex items-center justify-between mb-3">
@@ -462,13 +464,13 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
 
-            <p className="text-sm text-muted-foreground">
-              ℹ️ Un numéro matricule unique sera généré automatiquement pour chaque élève au format : M/F-AAAA-PXXXXXN
-            </p>
+              <p className="text-sm text-muted-foreground">
+                ℹ️ Un numéro matricule unique sera généré automatiquement pour chaque élève au format : M/F-AAAA-PXXXXXN
+              </p>
 
-            {createdStudentIds.length > 0 && (
+              {createdStudentIds.length > 0 && (
               <div className="p-4 bg-muted rounded-lg space-y-3">
                 <p className="text-sm font-medium">✓ {createdStudentIds.length} élève(s) créé(s) avec succès !</p>
                 <p className="text-xs text-muted-foreground">
@@ -484,7 +486,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                   ))}
                 </div>
               </div>
-            )}
+              )}
+            </div>
 
             <FamilyFormSelector
               isOpen={showFamilySelector}
@@ -493,7 +496,7 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
               onFamilySelect={(familyData) => handleFamilySelect(familyData, selectedStudentIndex)}
             />
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex justify-end gap-3 pt-4 border-t flex-shrink-0">
               <Button type="button" variant="outline" onClick={handleClose}>
                 {createdStudentIds.length > 0 ? 'Fermer' : 'Annuler'}
               </Button>
