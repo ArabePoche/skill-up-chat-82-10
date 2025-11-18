@@ -84,9 +84,9 @@ export const StudentsApp: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full overflow-auto">
-      <Tabs defaultValue="students" className="w-full">
-        <TabsList className="mb-6">
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <Tabs defaultValue="students" className="w-full flex flex-col h-full overflow-hidden">
+        <TabsList className="mb-6 flex-shrink-0">
           <TabsTrigger value="students">
             <Search className="w-4 h-4 mr-2" />
             Élèves
@@ -97,8 +97,9 @@ export const StudentsApp: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="students" className="space-y-6">
-          <div className="flex justify-between items-center">
+        <TabsContent value="students" className="flex flex-col h-full overflow-hidden">
+          {/* Entête fixe */}
+          <div className="flex justify-between items-center mb-6 flex-shrink-0">
             <div>
               <h2 className="text-2xl font-bold">Gestion des Élèves</h2>
               <p className="text-muted-foreground mt-1">
@@ -111,8 +112,8 @@ export const StudentsApp: React.FC = () => {
             </Button>
           </div>
 
-      {/* Filtres */}
-      <Card className="p-4 mb-6">
+      {/* Filtres fixes */}
+      <Card className="p-4 mb-6 flex-shrink-0">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4" />
           <span className="font-medium">Filtres</span>
@@ -167,7 +168,8 @@ export const StudentsApp: React.FC = () => {
         </div>
       </Card>
 
-      {/* Liste des élèves */}
+      {/* Liste des élèves scrollable */}
+      <div className="flex-1 overflow-y-auto">
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">
           Chargement des élèves...
@@ -202,6 +204,7 @@ export const StudentsApp: React.FC = () => {
           ))}
         </div>
       )}
+      </div>
 
       {/* Dialog d'ajout */}
       <AddStudentDialog
