@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface StudentPaymentListProps {
   schoolId?: string;
@@ -40,9 +41,9 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
   }
 
   return (
-    <div className="space-y-6">
-      {/* Barre de recherche et actions */}
-      <div className="flex flex-col sm:flex-row gap-4">
+    <div className="flex flex-col h-full">
+      {/* Barre de recherche et actions - FIXE */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 shrink-0">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -58,27 +59,29 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
         </Button>
       </div>
 
-      {/* Liste des élèves */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredStudents.length === 0 ? (
-          <Card className="col-span-full">
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Aucun élève trouvé.
-            </CardContent>
-          </Card>
-        ) : (
-          filteredStudents.map(student => (
-            <StudentPaymentCard 
-              key={student.id} 
-              student={student}
-              onAddPayment={() => {
-                setSelectedStudent(student);
-                setIsAddPaymentOpen(true);
-              }}
-            />
-          ))
-        )}
-      </div>
+      {/* Liste des élèves - SCROLLABLE */}
+      <ScrollArea className="flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pr-4">
+          {filteredStudents.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Aucun élève trouvé.
+              </CardContent>
+            </Card>
+          ) : (
+            filteredStudents.map(student => (
+              <StudentPaymentCard 
+                key={student.id} 
+                student={student}
+                onAddPayment={() => {
+                  setSelectedStudent(student);
+                  setIsAddPaymentOpen(true);
+                }}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
 
       {/* Dialog d'ajout de paiement */}
       <AddPaymentDialog
