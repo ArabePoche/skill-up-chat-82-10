@@ -64,7 +64,7 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
     });
 
     // Reset form
-    setStudentId('');
+    setStudentId(selectedStudent?.id || '');
     setAmount('');
     setPaymentMethod('cash');
     setPaymentType('tuition');
@@ -187,10 +187,9 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="school_fees">Frais de scolarité</SelectItem>
+                  <SelectItem value="tuition">Frais de scolarité</SelectItem>
                   <SelectItem value="registration">Inscription</SelectItem>
-                  <SelectItem value="books">Fournitures</SelectItem>
-                  <SelectItem value="uniform">Uniforme</SelectItem>
+                  <SelectItem value="activity">Activités/Fournitures</SelectItem>
                   <SelectItem value="transport">Transport</SelectItem>
                   <SelectItem value="canteen">Cantine</SelectItem>
                   <SelectItem value="other">Autre</SelectItem>
