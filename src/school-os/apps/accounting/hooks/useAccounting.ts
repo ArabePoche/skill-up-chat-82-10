@@ -31,6 +31,7 @@ export interface AccountingStats {
 
 /**
  * Récupérer toutes les transactions d'une école
+ * Inclut automatiquement les paiements des élèves
  */
 export const useTransactions = (schoolId?: string) => {
   return useQuery({
@@ -38,14 +39,56 @@ export const useTransactions = (schoolId?: string) => {
     queryFn: async () => {
       if (!schoolId) return [];
 
-      const { data, error } = await supabase
+      // Récupérer les transactions manuelles
+      const { data: transactions, error: transError } = await supabase
         .from('school_transactions')
         .select('*')
         .eq('school_id', schoolId)
         .order('transaction_date', { ascending: false });
 
-      if (error) throw error;
-      return data as Transaction[];
+      if (transError) throw transError;
+
+      // Récupérer les paiements des élèves
+      const { data: studentPayments, error: paymentsError } = await supabase
+        .from('school_students_payment')
+        .select(`
+          *,
+          student:students_school(
+            first_name,
+            last_name
+          )
+        `)
+        .eq('school_id', schoolId)
+        .order('payment_date', { ascending: false });
+
+      if (paymentsError) throw paymentsError;
+
+      // Convertir les paiements des élèves en format transaction
+      const studentTransactions: Transaction[] = (studentPayments || []).map(payment => ({
+        id: payment.id,
+        school_id: payment.school_id,
+        type: 'income' as const,
+        category: 'Paiements élèves',
+        amount: payment.amount,
+        transaction_date: payment.payment_date,
+        description: payment.notes 
+          ? `Paiement élève: ${(payment as any).student?.first_name || ''} ${(payment as any).student?.last_name || ''} - ${payment.notes}`
+          : `Paiement élève: ${(payment as any).student?.first_name || ''} ${(payment as any).student?.last_name || ''}`,
+        reference_number: payment.reference_number || undefined,
+        payment_method: payment.payment_method,
+        attached_file_url: undefined,
+        created_by: payment.received_by,
+        created_at: payment.created_at,
+        updated_at: payment.updated_at,
+      }));
+
+      // Combiner et trier par date
+      const allTransactions = [...(transactions || []), ...studentTransactions];
+      allTransactions.sort((a, b) => 
+        new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+      );
+
+      return allTransactions;
     },
     enabled: !!schoolId,
   });
@@ -53,6 +96,7 @@ export const useTransactions = (schoolId?: string) => {
 
 /**
  * Récupérer les statistiques comptables
+ * Calcule les revenus en incluant les paiements des élèves
  */
 export const useAccountingStats = (schoolId?: string) => {
   return useQuery({
@@ -60,14 +104,60 @@ export const useAccountingStats = (schoolId?: string) => {
     queryFn: async () => {
       if (!schoolId) return [];
 
-      const { data, error } = await supabase
+      // Récupérer les stats de base
+      const { data: baseStats, error: statsError } = await supabase
         .from('school_accounting_stats')
         .select('*')
         .eq('school_id', schoolId)
         .order('month', { ascending: false });
 
-      if (error) throw error;
-      return data as AccountingStats[];
+      if (statsError) throw statsError;
+
+      // Récupérer les paiements des élèves
+      const { data: studentPayments, error: paymentsError } = await supabase
+        .from('school_students_payment')
+        .select('amount, payment_date')
+        .eq('school_id', schoolId);
+
+      if (paymentsError) throw paymentsError;
+
+      // Calculer les revenus des élèves par mois
+      const paymentsByMonth: { [key: string]: number } = {};
+      studentPayments?.forEach(payment => {
+        const month = payment.payment_date.substring(0, 7); // YYYY-MM
+        paymentsByMonth[month] = (paymentsByMonth[month] || 0) + payment.amount;
+      });
+
+      // Combiner les stats avec les paiements des élèves
+      const stats = baseStats?.map(stat => {
+        const month = stat.month?.substring(0, 7) || '';
+        const studentRevenue = paymentsByMonth[month] || 0;
+        const totalIncome = (stat.total_income || 0) + studentRevenue;
+        
+        return {
+          ...stat,
+          total_income: totalIncome,
+          net_balance: totalIncome - (stat.total_expense || 0),
+        };
+      }) || [];
+
+      // Ajouter les mois qui n'existent que dans les paiements élèves
+      Object.keys(paymentsByMonth).forEach(month => {
+        if (!stats.find(s => s.month?.startsWith(month))) {
+          stats.push({
+            school_id: schoolId,
+            month: `${month}-01`,
+            total_income: paymentsByMonth[month],
+            total_expense: 0,
+            net_balance: paymentsByMonth[month],
+          });
+        }
+      });
+
+      // Trier par mois décroissant
+      stats.sort((a, b) => (b.month || '').localeCompare(a.month || ''));
+
+      return stats as AccountingStats[];
     },
     enabled: !!schoolId,
   });
