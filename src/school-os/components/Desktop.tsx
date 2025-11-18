@@ -77,16 +77,16 @@ export const Desktop: React.FC = () => {
       </div>
 
       {/* Barre de recherche fixe en haut à droite */}
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-6 right-6 z-50">
         {searchOpen ? (
-          <div className="bg-background/80 backdrop-blur-md border rounded-xl shadow-xl p-2 flex items-center gap-2 w-64">
-            <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <div className="bg-background/80 backdrop-blur-md border rounded-xl shadow-xl p-2 flex items-center gap-2 w-48">
+            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <Input
               autoFocus
               placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
               onBlur={() => {
                 setTimeout(() => {
                   setSearchOpen(false);
@@ -98,9 +98,9 @@ export const Desktop: React.FC = () => {
         ) : (
           <button
             onClick={() => setSearchOpen(true)}
-            className="w-12 h-12 bg-background/80 backdrop-blur-md border rounded-xl shadow-xl hover:bg-background/90 transition-colors flex items-center justify-center"
+            className="w-10 h-10 bg-background/80 backdrop-blur-md border rounded-xl shadow-xl hover:bg-background/90 transition-colors flex items-center justify-center"
           >
-            <Search className="w-6 h-6" />
+            <Search className="w-5 h-5" />
           </button>
         )}
       </div>
