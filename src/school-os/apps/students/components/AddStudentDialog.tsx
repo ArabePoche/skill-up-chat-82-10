@@ -157,46 +157,46 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-            {/* Contenu scrollable */}
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-              {/* Bouton pour ajouter un élève */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base font-semibold">
-                    Élèves à ajouter
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Ajoutez les informations de chaque élève
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    append({
-                      first_name: '',
-                      last_name: '',
-                      date_of_birth: '',
-                      gender: 'male',
-                      class_id: '',
-                      parent_name: '',
-                      parent_phone: '',
-                      parent_email: '',
-                      address: '',
-                      city: '',
-                      medical_notes: '',
-                      discount_percentage: 0,
-                      discount_amount: 0,
-                    })
-                  }
-                  disabled={fields.length >= 50}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter
-                </Button>
+            {/* Bouton fixe pour ajouter un élève */}
+            <div className="flex items-center justify-between pb-4 border-b flex-shrink-0">
+              <div>
+                <Label className="text-base font-semibold">
+                  Élèves à ajouter
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Ajoutez les informations de chaque élève
+                </p>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  append({
+                    first_name: '',
+                    last_name: '',
+                    date_of_birth: '',
+                    gender: 'male',
+                    class_id: '',
+                    parent_name: '',
+                    parent_phone: '',
+                    parent_email: '',
+                    address: '',
+                    city: '',
+                    medical_notes: '',
+                    discount_percentage: 0,
+                    discount_amount: 0,
+                  })
+                }
+                disabled={fields.length >= 50}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter
+              </Button>
+            </div>
 
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6 pt-4">
               {/* Liste des élèves */}
               <div className="space-y-4">
               {fields.map((field, index) => (
