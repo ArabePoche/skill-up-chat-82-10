@@ -2735,6 +2735,62 @@ export type Database = {
           },
         ]
       }
+      school_transactions: {
+        Row: {
+          amount: number
+          attached_file_url: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          payment_method: string | null
+          reference_number: string | null
+          school_id: string
+          transaction_date: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          attached_file_url?: string | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          payment_method?: string | null
+          reference_number?: string | null
+          school_id: string
+          transaction_date?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          attached_file_url?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          payment_method?: string | null
+          reference_number?: string | null
+          school_id?: string
+          transaction_date?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_transactions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_years: {
         Row: {
           created_at: string
@@ -4580,6 +4636,24 @@ export type Database = {
       }
     }
     Views: {
+      school_accounting_stats: {
+        Row: {
+          month: string | null
+          net_balance: number | null
+          school_id: string | null
+          total_expense: number | null
+          total_income: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_transactions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_sessions_with_details: {
         Row: {
           created_at: string | null
