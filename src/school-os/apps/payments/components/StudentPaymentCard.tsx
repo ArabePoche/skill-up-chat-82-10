@@ -102,9 +102,15 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
                   Remise
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {student.student_code}
-              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{student.student_code}</span>
+                {student.classes && (
+                  <>
+                    <span>•</span>
+                    <span>{student.classes.name}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <Badge variant={status.variant} className="flex items-center gap-1">
