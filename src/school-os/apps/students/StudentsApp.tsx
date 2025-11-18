@@ -9,6 +9,7 @@ import { useStudents, useDeleteStudent } from './hooks/useStudents';
 import { StudentCard } from './components/StudentCard';
 import { AddStudentDialog } from './components/AddStudentDialog';
 import { StudentDetailModal } from './components/StudentDetailModal';
+import { EditStudentDialog } from './components/EditStudentDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -24,6 +25,7 @@ export const StudentsApp: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const deleteStudent = useDeleteStudent();
 
@@ -214,21 +216,33 @@ export const StudentsApp: React.FC = () => {
 
       {/* Modal de détails de l'élève */}
       {selectedStudent && (
-        <StudentDetailModal
-          student={selectedStudent}
-          isOpen={isDetailModalOpen}
-          onClose={() => {
-            setIsDetailModalOpen(false);
-            setSelectedStudent(null);
-          }}
-          onEdit={(student) => {
-            setIsDetailModalOpen(false);
-            // TODO: Ouvrir le dialog d'édition si nécessaire
-          }}
-          onDelete={(studentId) => {
-            deleteStudent.mutateAsync(studentId);
-          }}
-        />
+        <>
+          <StudentDetailModal
+            student={selectedStudent}
+            isOpen={isDetailModalOpen}
+            onClose={() => {
+              setIsDetailModalOpen(false);
+              setSelectedStudent(null);
+            }}
+            onEdit={(student) => {
+              setIsDetailModalOpen(false);
+              setIsEditDialogOpen(true);
+            }}
+            onDelete={(studentId) => {
+              deleteStudent.mutateAsync(studentId);
+            }}
+          />
+
+          <EditStudentDialog
+            isOpen={isEditDialogOpen}
+            onClose={() => {
+              setIsEditDialogOpen(false);
+              setSelectedStudent(null);
+            }}
+            student={selectedStudent}
+            classes={classes || []}
+          />
+        </>
       )}
         </TabsContent>
 
