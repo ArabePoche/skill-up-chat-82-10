@@ -4887,6 +4887,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      recalculate_student_amount_due: {
+        Args: {
+          student_row: Database["public"]["Tables"]["students_school"]["Row"]
+        }
+        Returns: number
+      }
       reject_teacher_application: {
         Args: {
           p_application_id: string
