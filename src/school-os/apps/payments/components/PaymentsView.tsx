@@ -16,9 +16,9 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ schoolId }) => {
   const [activeTab, setActiveTab] = useState('monthly');
 
   return (
-    <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full md:w-auto grid-cols-3 mb-6">
+    <div className="flex flex-col h-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+        <TabsList className="grid w-full md:w-auto grid-cols-3 mb-6 shrink-0">
           <TabsTrigger value="monthly" className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             <span className="hidden sm:inline">Suivi mensuel</span>
@@ -33,15 +33,15 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ schoolId }) => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="monthly">
+        <TabsContent value="monthly" className="flex-1 overflow-hidden mt-0">
           <MonthlyPaymentTracking schoolId={schoolId} />
         </TabsContent>
 
-        <TabsContent value="students">
+        <TabsContent value="students" className="flex-1 overflow-hidden mt-0">
           <StudentPaymentList schoolId={schoolId} />
         </TabsContent>
 
-        <TabsContent value="families">
+        <TabsContent value="families" className="flex-1 overflow-hidden mt-0">
           <FamilyPaymentList schoolId={schoolId} />
         </TabsContent>
       </Tabs>
