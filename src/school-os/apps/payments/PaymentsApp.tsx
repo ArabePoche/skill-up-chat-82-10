@@ -27,7 +27,7 @@ export const PaymentsApp: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="h-full flex flex-col p-6">
       <PaymentsView schoolId={school.id} />
     </div>
   );
