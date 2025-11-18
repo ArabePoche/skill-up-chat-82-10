@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Calendar, Users, AlertCircle, CheckCircle2, Clock, FileText } from 'lucide-react';
 import { useMonthlyPaymentTracking, useFilteredTracking, StudentMonthlyTracking } from '../hooks/useMonthlyPaymentTracking';
 import { MonthlyPaymentCard } from './MonthlyPaymentCard';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MonthlyPaymentTrackingProps {
   schoolId?: string;
@@ -58,9 +59,9 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
   }
 
   return (
-    <div className="space-y-6">
-      {/* En-tête avec statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="flex flex-col h-full">
+      {/* En-tête avec statistiques - FIXE */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 shrink-0">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -110,8 +111,8 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
         </Card>
       </div>
 
-      {/* Filtres */}
-      <Card>
+      {/* Filtres - FIXE */}
+      <Card className="mb-6 shrink-0">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="w-5 h-5" />
@@ -168,7 +169,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
             {/* Réinitialiser les filtres */}
             <Button
               variant="outline"
-              onClick={() => setFilters({ status: 'all', classId: '', month: '', searchQuery: '' })}
+              onClick={() => setFilters({ status: 'all', classId: '', month: 'all', searchQuery: '' })}
             >
               Réinitialiser
             </Button>
@@ -196,23 +197,25 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
         </CardContent>
       </Card>
 
-      {/* Liste des élèves */}
-      <div className="space-y-4">
-        {filteredData.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Aucun élève ne correspond aux critères de filtrage.
-            </CardContent>
-          </Card>
-        ) : (
-          filteredData.map(tracking => (
-            <MonthlyPaymentCard
-              key={tracking.student.id}
-              tracking={tracking}
-            />
-          ))
-        )}
-      </div>
+      {/* Liste des élèves - SCROLLABLE */}
+      <ScrollArea className="flex-1">
+        <div className="space-y-4 pr-4">
+          {filteredData.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Aucun élève ne correspond aux critères de filtrage.
+              </CardContent>
+            </Card>
+          ) : (
+            filteredData.map(tracking => (
+              <MonthlyPaymentCard
+                key={tracking.student.id}
+                tracking={tracking}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 };
