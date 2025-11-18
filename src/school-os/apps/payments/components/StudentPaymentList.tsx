@@ -18,6 +18,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
   const { data: students = [], isLoading } = useSchoolStudents(schoolId);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   const filteredStudents = students.filter(student => {
     const query = searchQuery.toLowerCase();
@@ -70,7 +71,10 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
             <StudentPaymentCard 
               key={student.id} 
               student={student}
-              onAddPayment={() => setIsAddPaymentOpen(true)}
+              onAddPayment={() => {
+                setSelectedStudent(student);
+                setIsAddPaymentOpen(true);
+              }}
             />
           ))
         )}
@@ -79,8 +83,12 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
       {/* Dialog d'ajout de paiement */}
       <AddPaymentDialog
         open={isAddPaymentOpen}
-        onOpenChange={setIsAddPaymentOpen}
+        onOpenChange={(open) => {
+          setIsAddPaymentOpen(open);
+          if (!open) setSelectedStudent(null);
+        }}
         schoolId={schoolId || ''}
+        selectedStudent={selectedStudent}
         onSuccess={() => {}}
       />
     </div>
