@@ -10,17 +10,17 @@ export const useSchoolMessages = (schoolId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Récupérer toutes les notifications de type school_join_request pour cette école
+  // Récupérer toutes les demandes d'adhésion pour cette école
   const { data: joinRequests = [], isLoading } = useQuery({
     queryKey: ['school-join-requests', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
 
       const { data, error } = await supabase
-        .from('notifications')
+        .from('school_join_requests')
         .select(`
           *,
-          sender:profiles!notifications_sender_id_fkey(
+          user:profiles!school_join_requests_user_id_fkey(
             id,
             first_name,
             last_name,
@@ -28,8 +28,7 @@ export const useSchoolMessages = (schoolId?: string) => {
             avatar_url
           )
         `)
-        .eq('type', 'school_join_request')
-        .ilike('message', `%École: ${schoolId}%`)
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -40,22 +39,25 @@ export const useSchoolMessages = (schoolId?: string) => {
 
   // Approuver une demande
   const approveMutation = useMutation({
-    mutationFn: async ({ notificationId, userId, schoolId, role }: {
-      notificationId: string;
+    mutationFn: async ({ requestId, userId, schoolId, role }: {
+      requestId: string;
       userId: string;
       schoolId: string;
       role: string;
     }) => {
-      // Marquer la notification comme lue
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', notificationId);
+      // Mettre à jour le statut de la demande
+      const { error: updateError } = await supabase
+        .from('school_join_requests')
+        .update({ 
+          status: 'approved',
+          reviewed_by: user?.id,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
 
-      if (notifError) throw notifError;
+      if (updateError) throw updateError;
 
-      // TODO: Ajouter l'utilisateur à l'école avec le rôle approprié
-      // Pour l'instant on marque juste comme lu
+      // TODO: Ajouter l'utilisateur à school_members avec le rôle approprié
       
       toast.success('Demande approuvée');
     },
@@ -70,15 +72,20 @@ export const useSchoolMessages = (schoolId?: string) => {
 
   // Refuser une demande
   const rejectMutation = useMutation({
-    mutationFn: async ({ notificationId, reason }: {
-      notificationId: string;
+    mutationFn: async ({ requestId, reason }: {
+      requestId: string;
       reason?: string;
     }) => {
-      // Supprimer la notification ou la marquer comme refusée
+      // Mettre à jour le statut de la demande
       const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', notificationId);
+        .from('school_join_requests')
+        .update({ 
+          status: 'rejected',
+          reviewed_by: user?.id,
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: reason
+        })
+        .eq('id', requestId);
 
       if (error) throw error;
       
