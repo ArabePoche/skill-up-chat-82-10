@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
-import CreateSchoolForm from './CreateSchoolForm';
+import CreateSchoolModal from './CreateSchoolModal';
 
 /**
  * Bouton pour créer une nouvelle école
@@ -10,20 +10,20 @@ import CreateSchoolForm from './CreateSchoolForm';
  */
 const CreateSchoolButton: React.FC = () => {
   const { t } = useTranslation();
-  const [showForm, setShowForm] = useState(false);
-
-  if (showForm) {
-    return <CreateSchoolForm onClose={() => setShowForm(false)} />;
-  }
+  const [showModal, setShowModal] = useState(false);
 
   return (
-    <Button 
-      onClick={() => setShowForm(true)}
-      className="w-full"
-    >
-      <Plus className="h-4 w-4 mr-2" />
-      {t('school.createSchool', { defaultValue: 'Créer une école' })}
-    </Button>
+    <>
+      <Button 
+        onClick={() => setShowModal(true)}
+        className="w-full"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        {t('school.createSchool', { defaultValue: 'Créer une école' })}
+      </Button>
+      
+      <CreateSchoolModal isOpen={showModal} onClose={() => setShowModal(false)} />
+    </>
   );
 };
 
