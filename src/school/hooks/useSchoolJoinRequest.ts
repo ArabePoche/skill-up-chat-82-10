@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 
 /**
  * Hook pour envoyer une demande d'adhésion à une école
- * Note: Utilise notifications temporairement en attendant la table school_join_requests
  */
 export const useSchoolJoinRequest = () => {
   const queryClient = useQueryClient();
@@ -16,16 +15,14 @@ export const useSchoolJoinRequest = () => {
       role: string;
       formData?: any;
     }) => {
-      // Pour l'instant, on stocke dans notifications en attendant la vraie table
-      const formDataString = data.formData ? JSON.stringify(data.formData) : '';
-      
       const { error } = await supabase
-        .from('notifications')
+        .from('school_join_requests')
         .insert({
-          title: 'Demande d\'adhésion',
-          message: `Nouvelle demande (Rôle: ${data.role}) - École: ${data.schoolId}\n${formDataString}`,
-          type: 'school_join_request',
+          school_id: data.schoolId,
           user_id: data.userId,
+          role: data.role,
+          form_data: data.formData,
+          status: 'pending',
         });
 
       if (error) throw error;
