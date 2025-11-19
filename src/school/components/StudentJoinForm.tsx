@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -18,9 +19,10 @@ interface StudentJoinFormProps {
     parentEmail: string;
   }) => void;
   isPending: boolean;
+  availableClasses?: Array<{ id: string; name: string }>;
 }
 
-const StudentJoinForm: React.FC<StudentJoinFormProps> = ({ onSubmit, isPending }) => {
+const StudentJoinForm: React.FC<StudentJoinFormProps> = ({ onSubmit, isPending, availableClasses = [] }) => {
   const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -61,15 +63,34 @@ const StudentJoinForm: React.FC<StudentJoinFormProps> = ({ onSubmit, isPending }
 
         <div>
           <Label htmlFor="grade">
-            {t('school.grade', { defaultValue: 'Niveau souhaité' })} *
+            {t('school.grade', { defaultValue: 'Classe souhaitée' })} *
           </Label>
-          <Input
-            id="grade"
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-            placeholder={t('school.gradePlaceholder', { defaultValue: 'CP, CE1, 6ème...' })}
-            required
-          />
+          {availableClasses.length > 0 ? (
+            <Select 
+              value={grade} 
+              onValueChange={setGrade}
+              required
+            >
+              <SelectTrigger id="grade">
+                <SelectValue placeholder={t('school.selectClass', { defaultValue: 'Sélectionner une classe' })} />
+              </SelectTrigger>
+              <SelectContent className="z-[70] bg-background">
+                {availableClasses.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.name}>
+                    {cls.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              id="grade"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              placeholder={t('school.gradePlaceholder', { defaultValue: 'CP, CE1, 6ème...' })}
+              required
+            />
+          )}
         </div>
       </div>
 
