@@ -18,9 +18,10 @@ interface TeacherJoinFormProps {
     preferredGrade?: string;
   }) => void;
   isPending: boolean;
+  availableClasses?: Array<{ id: string; name: string }>;
 }
 
-const TeacherJoinForm: React.FC<TeacherJoinFormProps> = ({ onSubmit, isPending }) => {
+const TeacherJoinForm: React.FC<TeacherJoinFormProps> = ({ onSubmit, isPending, availableClasses = [] }) => {
   const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [teacherType, setTeacherType] = useState<'specialist' | 'generalist'>('generalist');
@@ -80,15 +81,34 @@ const TeacherJoinForm: React.FC<TeacherJoinFormProps> = ({ onSubmit, isPending }
       {teacherType === 'generalist' && (
         <div>
           <Label htmlFor="preferredGrade">
-            {t('school.preferredGrade', { defaultValue: 'Classe préférée' })} *
+            {t('school.preferredGrade', { defaultValue: 'Classe souhaitée' })} *
           </Label>
-          <Input
-            id="preferredGrade"
-            value={preferredGrade}
-            onChange={(e) => setPreferredGrade(e.target.value)}
-            placeholder={t('school.preferredGradePlaceholder', { defaultValue: 'CP, CE1, 6ème...' })}
-            required
-          />
+          {availableClasses.length > 0 ? (
+            <Select 
+              value={preferredGrade} 
+              onValueChange={setPreferredGrade}
+              required
+            >
+              <SelectTrigger id="preferredGrade">
+                <SelectValue placeholder={t('school.selectClass', { defaultValue: 'Sélectionner une classe' })} />
+              </SelectTrigger>
+              <SelectContent className="z-[70] bg-background">
+                {availableClasses.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.name}>
+                    {cls.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              id="preferredGrade"
+              value={preferredGrade}
+              onChange={(e) => setPreferredGrade(e.target.value)}
+              placeholder={t('school.preferredGradePlaceholder', { defaultValue: 'CP, CE1, 6ème...' })}
+              required
+            />
+          )}
         </div>
       )}
 
