@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreateSchool, SchoolType } from '../hooks/useSchool';
-import { countries } from 'country-list';
+import { getData } from 'country-list';
 
 /**
  * Modal complet de création d'école
@@ -35,7 +35,7 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
   const [foundedYear, setFoundedYear] = useState('');
   const [website, setWebsite] = useState('');
 
-  const countryList = countries().sort((a, b) => a.name.localeCompare(b.name));
+  const countryList = getData().sort((a, b) => a.name.localeCompare(b.name));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
