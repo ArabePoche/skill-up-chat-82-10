@@ -104,7 +104,19 @@ export const useCreateSchool = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; schoolType: SchoolType; userId: string }) => {
+    mutationFn: async (data: { 
+      name: string; 
+      description?: string; 
+      schoolType: SchoolType; 
+      userId: string;
+      country?: string;
+      city?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+      foundedYear?: number;
+      website?: string;
+    }) => {
       const { data: school, error } = await supabase
         .from('schools')
         .insert({
@@ -112,6 +124,13 @@ export const useCreateSchool = () => {
           description: data.description,
           school_type: data.schoolType,
           owner_id: data.userId,
+          country: data.country,
+          city: data.city,
+          address: data.address,
+          phone: data.phone,
+          email: data.email,
+          founded_year: data.foundedYear,
+          website: data.website,
         })
         .select()
         .single();
@@ -121,6 +140,7 @@ export const useCreateSchool = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['user-school', variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ['user-schools'] });
       toast.success('École créée avec succès');
     },
     onError: (error) => {
