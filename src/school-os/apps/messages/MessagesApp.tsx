@@ -7,11 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Inbox, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserSchool } from '@/school/hooks/useSchool';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 
 export const MessagesApp: React.FC = () => {
   const { user } = useAuth();
-  const { data: school } = useUserSchool(user?.id);
+  const { school } = useSchoolYear();
   const [activeTab, setActiveTab] = useState('join-requests');
   
   const {
@@ -23,24 +23,20 @@ export const MessagesApp: React.FC = () => {
     isRejecting,
   } = useSchoolMessages(school?.id);
 
-  const pendingRequests = joinRequests.filter((req) => !req.is_read);
-  const processedRequests = joinRequests.filter((req) => req.is_read);
+  const pendingRequests = joinRequests.filter((req) => req.status === 'pending');
+  const processedRequests = joinRequests.filter((req) => req.status !== 'pending');
 
-  const handleApprove = (notification: any) => {
-    const lines = notification.message.split('\n');
-    const roleLine = lines.find((l: string) => l.includes('Rôle:'));
-    const role = roleLine?.match(/Rôle: (\w+)/)?.[1] || 'unknown';
-    
+  const handleApprove = (request: any) => {
     approveRequest({
-      notificationId: notification.id,
-      userId: notification.user_id,
+      requestId: request.id,
+      userId: request.user_id,
       schoolId: school?.id || '',
-      role,
+      role: request.role,
     });
   };
 
-  const handleReject = (notificationId: string) => {
-    rejectRequest({ notificationId });
+  const handleReject = (requestId: string) => {
+    rejectRequest({ requestId });
   };
 
   if (!school) {
@@ -107,12 +103,12 @@ export const MessagesApp: React.FC = () => {
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">
                     En attente ({pendingRequests.length})
                   </h3>
-                  {pendingRequests.map((notification) => (
+                  {pendingRequests.map((request) => (
                     <JoinRequestCard
-                      key={notification.id}
-                      notification={notification}
-                      onApprove={() => handleApprove(notification)}
-                      onReject={() => handleReject(notification.id)}
+                      key={request.id}
+                      request={request}
+                      onApprove={() => handleApprove(request)}
+                      onReject={() => handleReject(request.id)}
                       isApproving={isApproving}
                       isRejecting={isRejecting}
                     />
@@ -123,10 +119,10 @@ export const MessagesApp: React.FC = () => {
                       <h3 className="text-sm font-medium text-muted-foreground mb-2 mt-6">
                         Traitées ({processedRequests.length})
                       </h3>
-                      {processedRequests.map((notification) => (
+                      {processedRequests.map((request) => (
                         <JoinRequestCard
-                          key={notification.id}
-                          notification={notification}
+                          key={request.id}
+                          request={request}
                           onApprove={() => {}}
                           onReject={() => {}}
                           isApproving={false}
