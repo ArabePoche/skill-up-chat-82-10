@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import { useSchoolJoinRequest } from '../hooks/useSchoolJoinRequest';
 import { useAuth } from '@/hooks/useAuth';
+import { useSchoolClasses } from '../hooks/useClasses';
 import ParentJoinForm from './ParentJoinForm';
 import TeacherJoinForm from './TeacherJoinForm';
 import StudentJoinForm from './StudentJoinForm';
@@ -31,8 +32,15 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const sendRequest = useSchoolJoinRequest();
+  const { data: classes = [] } = useSchoolClasses(school.id);
   
   const [role, setRole] = useState<string>('');
+  
+  // Préparer la liste des classes disponibles
+  const availableClasses = classes.map(cls => ({
+    id: cls.id,
+    name: cls.name
+  }));
 
   const handleParentSubmit = async (data: any) => {
     if (!user?.id) return;
@@ -136,13 +144,21 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
 
           {role === 'teacher' && (
             <div className="pt-4 border-t">
-              <TeacherJoinForm onSubmit={handleTeacherSubmit} isPending={sendRequest.isPending} />
+              <TeacherJoinForm 
+                onSubmit={handleTeacherSubmit} 
+                isPending={sendRequest.isPending}
+                availableClasses={availableClasses}
+              />
             </div>
           )}
 
           {role === 'student' && (
             <div className="pt-4 border-t">
-              <StudentJoinForm onSubmit={handleStudentSubmit} isPending={sendRequest.isPending} />
+              <StudentJoinForm 
+                onSubmit={handleStudentSubmit} 
+                isPending={sendRequest.isPending}
+                availableClasses={availableClasses}
+              />
             </div>
           )}
 
