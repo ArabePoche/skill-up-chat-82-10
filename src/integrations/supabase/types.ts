@@ -2577,6 +2577,69 @@ export type Database = {
           },
         ]
       }
+      school_staff: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          hire_date: string
+          id: string
+          last_name: string
+          phone: string | null
+          position: string
+          salary: number | null
+          school_id: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          hire_date?: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          position: string
+          salary?: number | null
+          school_id: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          hire_date?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          position?: string
+          salary?: number | null
+          school_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_staff_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_staff_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_student_families: {
         Row: {
           address: string | null
@@ -2731,6 +2794,122 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students_school"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_teacher_classes: {
+        Row: {
+          class_id: string
+          created_at: string | null
+          hours_per_week: number | null
+          id: string
+          subject: string | null
+          teacher_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string | null
+          hours_per_week?: number | null
+          id?: string
+          subject?: string | null
+          teacher_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string | null
+          hours_per_week?: number | null
+          id?: string
+          subject?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_teacher_classes_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_teacher_classes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "school_teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_teachers: {
+        Row: {
+          application_status: string | null
+          base_salary: number | null
+          contract_type: string | null
+          created_at: string | null
+          email: string
+          employment_status: string | null
+          first_name: string
+          hire_date: string | null
+          id: string
+          last_name: string
+          notes: string | null
+          payment_frequency: string | null
+          phone: string | null
+          salary_currency: string | null
+          school_id: string
+          specialties: string[] | null
+          teacher_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          application_status?: string | null
+          base_salary?: number | null
+          contract_type?: string | null
+          created_at?: string | null
+          email: string
+          employment_status?: string | null
+          first_name: string
+          hire_date?: string | null
+          id?: string
+          last_name: string
+          notes?: string | null
+          payment_frequency?: string | null
+          phone?: string | null
+          salary_currency?: string | null
+          school_id: string
+          specialties?: string[] | null
+          teacher_type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          application_status?: string | null
+          base_salary?: number | null
+          contract_type?: string | null
+          created_at?: string | null
+          email?: string
+          employment_status?: string | null
+          first_name?: string
+          hire_date?: string | null
+          id?: string
+          last_name?: string
+          notes?: string | null
+          payment_frequency?: string | null
+          phone?: string | null
+          salary_currency?: string | null
+          school_id?: string
+          specialties?: string[] | null
+          teacher_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_teachers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -3027,6 +3206,45 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      staff_permissions: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          id: string
+          permission: Database["public"]["Enums"]["staff_permission_type"]
+          staff_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          permission: Database["public"]["Enums"]["staff_permission_type"]
+          staff_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["staff_permission_type"]
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "school_staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       story_views: {
         Row: {
@@ -4781,6 +4999,14 @@ export type Database = {
         Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
         Returns: boolean
       }
+      check_staff_permission: {
+        Args: {
+          p_permission: Database["public"]["Enums"]["staff_permission_type"]
+          p_school_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       check_student_inactivity: { Args: never; Returns: undefined }
       cleanup_expired_media_links: { Args: never; Returns: undefined }
       cleanup_expired_stories: { Args: never; Returns: undefined }
@@ -5050,6 +5276,17 @@ export type Database = {
         | "completed"
       product_type: "formation" | "article" | "service"
       school_type: "virtual" | "physical" | "both"
+      staff_permission_type:
+        | "can_enroll_students"
+        | "can_view_accounting"
+        | "can_modify_accounting"
+        | "can_manage_classes"
+        | "can_manage_teachers"
+        | "can_manage_staff"
+        | "can_manage_payments"
+        | "can_view_reports"
+        | "can_manage_schedule"
+        | "can_manage_grades"
       status: "not_started" | "in_progress" | "awaiting_review" | "completed"
       user_role: "user" | "admin"
       video_type: "lesson" | "promo" | "classic"
@@ -5188,6 +5425,18 @@ export const Constants = {
       ],
       product_type: ["formation", "article", "service"],
       school_type: ["virtual", "physical", "both"],
+      staff_permission_type: [
+        "can_enroll_students",
+        "can_view_accounting",
+        "can_modify_accounting",
+        "can_manage_classes",
+        "can_manage_teachers",
+        "can_manage_staff",
+        "can_manage_payments",
+        "can_view_reports",
+        "can_manage_schedule",
+        "can_manage_grades",
+      ],
       status: ["not_started", "in_progress", "awaiting_review", "completed"],
       user_role: ["user", "admin"],
       video_type: ["lesson", "promo", "classic"],
