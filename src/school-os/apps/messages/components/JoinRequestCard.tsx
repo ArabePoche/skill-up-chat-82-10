@@ -8,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface JoinRequestCardProps {
-  notification: any;
+  request: any;
   onApprove: () => void;
   onReject: () => void;
   isApproving: boolean;
@@ -19,31 +19,15 @@ interface JoinRequestCardProps {
  * Carte pour afficher une demande d'adhésion à l'école
  */
 export const JoinRequestCard: React.FC<JoinRequestCardProps> = ({
-  notification,
+  request,
   onApprove,
   onReject,
   isApproving,
   isRejecting,
 }) => {
-  // Parser les données du message
-  const parseRequestData = () => {
-    try {
-      const lines = notification.message.split('\n');
-      const roleLine = lines.find((l: string) => l.includes('Rôle:'));
-      const role = roleLine?.match(/Rôle: (\w+)/)?.[1] || 'unknown';
-      
-      const formDataLine = lines.find((l: string) => l.startsWith('{'));
-      const formData = formDataLine ? JSON.parse(formDataLine) : {};
-
-      return { role, formData };
-    } catch (error) {
-      console.error('Error parsing request data:', error);
-      return { role: 'unknown', formData: {} };
-    }
-  };
-
-  const { role, formData } = parseRequestData();
-  const sender = notification.sender;
+  const role = request.role;
+  const formData = request.form_data || {};
+  const sender = request.user;
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return '?';
@@ -96,15 +80,13 @@ export const JoinRequestCard: React.FC<JoinRequestCardProps> = ({
               <p className="text-sm text-muted-foreground">{sender?.email}</p>
             </div>
             
-            {!notification.is_read && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                {formatDistanceToNow(new Date(notification.created_at), {
-                  addSuffix: true,
-                  locale: fr,
-                })}
-              </div>
-            )}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {formatDistanceToNow(new Date(request.created_at), {
+                addSuffix: true,
+                locale: fr,
+              })}
+            </div>
           </div>
 
           {/* Informations supplémentaires du formulaire */}
@@ -125,7 +107,7 @@ export const JoinRequestCard: React.FC<JoinRequestCardProps> = ({
           )}
 
           {/* Actions */}
-          {!notification.is_read && (
+          {request.status === 'pending' && (
             <div className="flex items-center gap-2 pt-2">
               <Button
                 size="sm"
@@ -146,6 +128,25 @@ export const JoinRequestCard: React.FC<JoinRequestCardProps> = ({
                 <X className="h-4 w-4" />
                 Refuser
               </Button>
+            </div>
+          )}
+          
+          {request.status === 'approved' && (
+            <div className="pt-2">
+              <Badge variant="default" className="w-fit">
+                Approuvée
+              </Badge>
+            </div>
+          )}
+          
+          {request.status === 'rejected' && (
+            <div className="pt-2">
+              <Badge variant="destructive" className="w-fit">
+                Refusée
+                {request.rejection_reason && (
+                  <span className="ml-1 text-xs">: {request.rejection_reason}</span>
+                )}
+              </Badge>
             </div>
           )}
         </div>
