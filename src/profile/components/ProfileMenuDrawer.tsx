@@ -40,18 +40,15 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
     { icon: HelpCircle, label: t('common.help', { defaultValue: 'Aide et support' }), action: () => {} }
   ];
 
-  // Ajouter le bouton de gestion d'école pour les utilisateurs certifiés
-  // @ts-ignore - is_verified sera disponible après régénération des types Supabase
-  if ((profile as any)?.is_verified) {
-    menuItems.push({
-      icon: School,
-      label: t('school.mySchool', { defaultValue: 'Mon école' }),
-      action: () => {
-        onClose();
-        setShowSchoolModal(true);
-      }
-    });
-  }
+  // Ajouter le bouton École pour TOUS les utilisateurs
+  menuItems.push({
+    icon: School,
+    label: t('school.title', { defaultValue: 'École' }),
+    action: () => {
+      onClose();
+      setShowSchoolModal(true);
+    }
+  });
 
   // Ajouter le bouton de certification si pas encore vérifié
   // @ts-ignore - is_verified sera disponible après régénération des types Supabase
