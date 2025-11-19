@@ -25,10 +25,10 @@ import {
   Users,
   Trash2,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { StudentFamilySelector } from '@/school-os/families';
 import { DeleteStudentDialog } from './DeleteStudentDialog';
+import { useStudentPhotoUpload } from '../hooks/useStudentPhotoUpload';
 
 interface StudentDetailModalProps {
   student: any;
@@ -45,9 +45,9 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const [isUploading, setIsUploading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { mutate: uploadPhoto, isPending: isUploading } = useStudentPhotoUpload();
 
   const getInitials = () => {
     return `${student.first_name?.[0] || ''}${student.last_name?.[0] || ''}`.toUpperCase();
@@ -72,65 +72,16 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     return age;
   };
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Vérifier le type et la taille du fichier
-    if (!file.type.startsWith('image/')) {
-      toast.error('Veuillez sélectionner une image');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La taille de l\'image ne doit pas dépasser 5 Mo');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      // Supprimer l'ancienne photo si elle existe
-      if (student.photo_url) {
-        const oldPath = student.photo_url.split('/').pop();
-        if (oldPath) {
-          await supabase.storage
-            .from('student-photos')
-            .remove([`${student.school_id}/${oldPath}`]);
-        }
-      }
-
-      // Upload la nouvelle photo
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${student.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${student.school_id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('student-photos')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Obtenir l'URL publique
-      const { data: { publicUrl } } = supabase.storage
-        .from('student-photos')
-        .getPublicUrl(filePath);
-
-      // Mettre à jour l'élève
-      const { error: updateError } = await supabase
-        .from('students_school')
-        .update({ photo_url: publicUrl })
-        .eq('id', student.id);
-
-      if (updateError) throw updateError;
-
-      toast.success('Photo mise à jour avec succès');
-      window.location.reload(); // Recharger pour afficher la nouvelle photo
-    } catch (error: any) {
-      toast.error('Erreur lors de l\'upload de la photo: ' + error.message);
-    } finally {
-      setIsUploading(false);
-    }
+    uploadPhoto({
+      file,
+      studentId: student.id,
+      schoolId: student.school_id,
+      currentPhotoUrl: student.photo_url,
+    });
   };
 
   return (
