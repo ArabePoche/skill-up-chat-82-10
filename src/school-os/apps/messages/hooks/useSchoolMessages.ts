@@ -45,6 +45,23 @@ export const useSchoolMessages = (schoolId?: string) => {
       schoolId: string;
       role: string;
     }) => {
+      // Récupérer les données de la demande
+      const { data: request, error: requestError } = await supabase
+        .from('school_join_requests')
+        .select(`
+          *,
+          user:profiles!school_join_requests_user_id_fkey(
+            first_name,
+            last_name,
+            email,
+            phone
+          )
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+
       // Mettre à jour le statut de la demande
       const { error: updateError } = await supabase
         .from('school_join_requests')
@@ -57,7 +74,68 @@ export const useSchoolMessages = (schoolId?: string) => {
 
       if (updateError) throw updateError;
 
-      // TODO: Ajouter l'utilisateur à school_members avec le rôle approprié
+      // Si c'est un professeur, l'ajouter à school_teachers
+      if (role === 'teacher' && request.user) {
+        const formData = (request.form_data || {}) as {
+          teacherType?: 'specialist' | 'generalist';
+          specialty?: string;
+          preferredGrade?: string;
+          message?: string;
+        };
+        const teacherType = formData.teacherType || 'generalist';
+        const specialties = formData.specialty ? [formData.specialty] : [];
+
+        // Créer ou mettre à jour l'entrée dans school_teachers (upsert)
+        const { data: teacherData, error: teacherError } = await supabase
+          .from('school_teachers')
+          .upsert({
+            school_id: schoolId,
+            user_id: userId,
+            first_name: request.user.first_name || '',
+            last_name: request.user.last_name || '',
+            email: request.user.email || '',
+            phone: request.user.phone || '',
+            teacher_type: teacherType,
+            specialties: specialties.length > 0 ? specialties : null,
+            employment_status: 'active',
+            application_status: 'approved',
+            hire_date: new Date().toISOString().split('T')[0],
+          }, {
+            onConflict: 'school_id,user_id'
+          })
+          .select()
+          .single();
+
+        if (teacherError) throw teacherError;
+
+        // Si une classe préférée est spécifiée pour un généraliste
+        if (teacherType === 'generalist' && formData.preferredGrade && teacherData) {
+          // Trouver la classe par son nom
+          const { data: classData, error: classError } = await supabase
+            .from('classes')
+            .select('id')
+            .eq('school_id', schoolId)
+            .eq('name', formData.preferredGrade)
+            .single();
+
+          if (classError) {
+            console.error('Erreur lors de la recherche de la classe:', classError);
+          } else if (classData) {
+            // Créer l'entrée dans school_teacher_classes
+            const { error: classAssignError } = await supabase
+              .from('school_teacher_classes')
+              .insert({
+                teacher_id: teacherData.id,
+                class_id: classData.id,
+                subject: 'Généraliste',
+              });
+
+            if (classAssignError) {
+              console.error('Erreur lors de l\'assignation à la classe:', classAssignError);
+            }
+          }
+        }
+      }
       
       toast.success('Demande approuvée');
     },
