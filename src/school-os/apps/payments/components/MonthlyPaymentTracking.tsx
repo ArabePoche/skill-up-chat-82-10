@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, Calendar, Users, AlertCircle, CheckCircle2, Clock, FileText } from 'lucide-react';
+import { Search, Calendar, Users, AlertCircle, CheckCircle2, Clock, FileText, Filter, X } from 'lucide-react';
 import { useMonthlyPaymentTracking, useFilteredTracking, StudentMonthlyTracking } from '../hooks/useMonthlyPaymentTracking';
 import { useMonthlyPaymentStats } from '../hooks/useMonthlyPaymentStats';
 import { MonthlyPaymentCard } from './MonthlyPaymentCard';
@@ -41,6 +41,8 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
     month: 'all',
     searchQuery: ''
   });
+
+  const [showFilters, setShowFilters] = useState(false);
 
   const filteredData = useFilteredTracking(trackingData, filters);
 
@@ -83,143 +85,103 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
       {/* Onglet Suivi des élèves */}
       <TabsContent value="tracking" className="flex flex-col h-full mt-0 pt-0">
         <div className="flex flex-col h-full">
-          {/* En-tête avec statistiques - FIXE */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 shrink-0">
-        <Card>
-          <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Total élèves</p>
-                <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
+          {/* Statistiques compactes - FIXE */}
+          <Card className="mb-2 shrink-0">
+            <CardContent className="p-2 sm:p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs font-semibold">{stats.total}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3 h-3 text-green-600" />
+                  <span className="text-xs font-semibold text-green-600">{stats.upToDate}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 text-orange-600" />
+                  <span className="text-xs font-semibold text-orange-600">{stats.partial}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle className="w-3 h-3 text-red-600" />
+                  <span className="text-xs font-semibold text-red-600">{stats.late}</span>
+                </div>
               </div>
-              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">À jour</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.upToDate}</p>
+          {/* Barre de recherche et filtre - FIXE */}
+          <div className="mb-2 shrink-0 space-y-2">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un élève..."
+                  value={filters.searchQuery}
+                  onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                  className="pl-7 h-8 text-xs"
+                />
               </div>
-              <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Partiel</p>
-                <p className="text-xl sm:text-2xl font-bold text-orange-600">{stats.partial}</p>
-              </div>
-              <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">En retard</p>
-                <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.late}</p>
-              </div>
-              <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtres - FIXE */}
-      <Card className="mb-4 sm:mb-6 shrink-0">
-        <CardHeader className="pb-3 sm:pb-4">
-          <CardTitle className="text-sm sm:text-lg flex items-center gap-2">
-            <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-            Suivi mensuel des paiements
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 sm:space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-            {/* Recherche */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un élève..."
-                value={filters.searchQuery}
-                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
-                className="pl-9"
-              />
+              <Button
+                variant={showFilters ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="h-8 px-3"
+              >
+                {showFilters ? <X className="w-3 h-3" /> : <Filter className="w-3 h-3" />}
+              </Button>
             </div>
 
-            {/* Filtre par statut */}
-            <Select
-              value={filters.status}
-              onValueChange={(value: any) => setFilters({ ...filters, status: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrer par statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="up_to_date">À jour</SelectItem>
-                <SelectItem value="partial">Partiellement payé</SelectItem>
-                <SelectItem value="late">En retard</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Filtres avancés - Masquables */}
+            {showFilters && (
+              <Card>
+                <CardContent className="p-2 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Filtre par statut */}
+                    <Select
+                      value={filters.status}
+                      onValueChange={(value: any) => setFilters({ ...filters, status: value })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Statut" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous</SelectItem>
+                        <SelectItem value="up_to_date">À jour</SelectItem>
+                        <SelectItem value="partial">Partiel</SelectItem>
+                        <SelectItem value="late">Retard</SelectItem>
+                      </SelectContent>
+                    </Select>
 
-            {/* Filtre par mois */}
-            <Select
-              value={filters.month}
-              onValueChange={(value) => setFilters({ ...filters, month: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrer par mois" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les mois</SelectItem>
-                {monthOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    {/* Filtre par mois */}
+                    <Select
+                      value={filters.month}
+                      onValueChange={(value) => setFilters({ ...filters, month: value })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Mois" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les mois</SelectItem>
+                        {monthOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            {/* Réinitialiser les filtres */}
-            <Button
-              variant="outline"
-              onClick={() => setFilters({ status: 'all', classId: '', month: 'all', searchQuery: '' })}
-              className="sm:col-span-2 lg:col-span-1"
-            >
-              Réinitialiser
-            </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setFilters({ status: 'all', classId: '', month: 'all', searchQuery: '' })}
+                    className="w-full h-7 text-xs"
+                  >
+                    Réinitialiser
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
-
-          {/* Légende */}
-          <div className="flex flex-wrap gap-2 sm:gap-3 pt-2 border-t">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-500"></div>
-              <span className="text-muted-foreground">Payé</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-orange-500"></div>
-              <span className="text-muted-foreground">Partiel</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-500"></div>
-              <span className="text-muted-foreground">Retard</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-muted"></div>
-              <span className="text-muted-foreground">À venir</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Liste des élèves - SCROLLABLE */}
       <ScrollArea className="flex-1">
