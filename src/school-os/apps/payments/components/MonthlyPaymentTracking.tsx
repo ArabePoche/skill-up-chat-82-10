@@ -22,6 +22,17 @@ interface MonthlyPaymentTrackingProps {
 
 export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ schoolId }) => {
   const { trackingData, isLoading, yearStart, schoolMonths } = useMonthlyPaymentTracking(schoolId);
+  
+  // Debug: Log données
+  React.useEffect(() => {
+    console.log('📊 MonthlyPaymentTracking Debug:', {
+      trackingDataLength: trackingData.length,
+      schoolMonths,
+      isLoading,
+      firstStudent: trackingData[0]
+    });
+  }, [trackingData, schoolMonths, isLoading]);
+  
   const globalStats = useMonthlyPaymentStats(trackingData, schoolMonths);
   
   const [filters, setFilters] = useState({
@@ -232,8 +243,10 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
       </TabsContent>
 
       {/* Onglet Statistiques détaillées */}
-      <TabsContent value="statistics" className="flex-1 overflow-y-auto mt-0 pt-0">
-        <MonthlyPaymentStats stats={globalStats} />
+      <TabsContent value="statistics" className="mt-0 pt-0">
+        <div className="space-y-4">
+          <MonthlyPaymentStats stats={globalStats} />
+        </div>
       </TabsContent>
     </Tabs>
   );
