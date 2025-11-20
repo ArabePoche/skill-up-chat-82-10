@@ -58,7 +58,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
   return (
     <div className="flex flex-col h-full">
       {/* Barre de recherche - FIXE */}
-      <div className="relative mb-6 shrink-0">
+      <div className="relative mb-4 sm:mb-6 shrink-0">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Rechercher une famille..."
@@ -70,7 +70,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
 
       {/* Liste des familles - SCROLLABLE */}
       <ScrollArea className="flex-1">
-        <div className="space-y-4 pr-4">
+        <div className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
           {filteredFamilies.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
