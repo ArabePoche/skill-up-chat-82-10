@@ -4,3 +4,4 @@ export * from './components/FamilyManager';
 export * from './components/FamilyForm';
 export * from './components/StudentFamilySelector';
 export * from './components/FamilyStudentsManager';
+export * from './components/FamilyFormSelectorDialog';
