@@ -3812,6 +3812,7 @@ export type Database = {
       students_school: {
         Row: {
           address: string | null
+          birth_place: string | null
           city: string | null
           class_id: string | null
           created_at: string | null
@@ -3819,11 +3820,16 @@ export type Database = {
           discount_amount: number | null
           discount_percentage: number | null
           family_id: string | null
+          father_name: string | null
+          father_occupation: string | null
           first_name: string
           gender: string
           id: string
           last_name: string
           medical_notes: string | null
+          mother_name: string | null
+          mother_occupation: string | null
+          observations: string | null
           parent_email: string | null
           parent_name: string | null
           parent_phone: string | null
@@ -3836,6 +3842,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          birth_place?: string | null
           city?: string | null
           class_id?: string | null
           created_at?: string | null
@@ -3843,11 +3850,16 @@ export type Database = {
           discount_amount?: number | null
           discount_percentage?: number | null
           family_id?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
           first_name: string
           gender: string
           id?: string
           last_name: string
           medical_notes?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          observations?: string | null
           parent_email?: string | null
           parent_name?: string | null
           parent_phone?: string | null
@@ -3860,6 +3872,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          birth_place?: string | null
           city?: string | null
           class_id?: string | null
           created_at?: string | null
@@ -3867,11 +3880,16 @@ export type Database = {
           discount_amount?: number | null
           discount_percentage?: number | null
           family_id?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
           first_name?: string
           gender?: string
           id?: string
           last_name?: string
           medical_notes?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          observations?: string | null
           parent_email?: string | null
           parent_name?: string | null
           parent_phone?: string | null
