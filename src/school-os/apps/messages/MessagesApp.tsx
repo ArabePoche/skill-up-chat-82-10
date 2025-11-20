@@ -26,17 +26,13 @@ export const MessagesApp: React.FC = () => {
   const pendingRequests = joinRequests.filter((req) => req.status === 'pending');
   const processedRequests = joinRequests.filter((req) => req.status !== 'pending');
 
-  const handleApprove = (request: any) => {
-    approveRequest({
-      requestId: request.id,
-      userId: request.user_id,
-      schoolId: school?.id || '',
-      role: request.role,
-    });
+  // Handlers simplifiés
+  const handleApprove = (requestId: string) => {
+    approveRequest({ requestId });
   };
 
-  const handleReject = (requestId: string) => {
-    rejectRequest({ requestId });
+  const handleReject = (requestId: string, reason?: string) => {
+    rejectRequest({ requestId, reason });
   };
 
   if (!school) {
@@ -103,16 +99,16 @@ export const MessagesApp: React.FC = () => {
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">
                     En attente ({pendingRequests.length})
                   </h3>
-                  {pendingRequests.map((request) => (
-                    <JoinRequestCard
-                      key={request.id}
-                      request={request}
-                      onApprove={() => handleApprove(request)}
-                      onReject={() => handleReject(request.id)}
-                      isApproving={isApproving}
-                      isRejecting={isRejecting}
-                    />
-                  ))}
+                      {pendingRequests.map((request) => (
+                        <JoinRequestCard
+                          key={request.id}
+                          request={request}
+                          onApprove={() => handleApprove(request.id)}
+                          onReject={() => handleReject(request.id)}
+                          isApproving={isApproving}
+                          isRejecting={isRejecting}
+                        />
+                      ))}
 
                   {processedRequests.length > 0 && (
                     <>
