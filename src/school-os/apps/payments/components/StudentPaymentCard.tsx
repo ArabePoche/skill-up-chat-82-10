@@ -69,75 +69,77 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
 
   return (
     <Card className="hover:shadow-lg transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="w-5 h-5 text-primary" />
+      <CardHeader className="pb-2 sm:pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                <CardTitle className="text-sm sm:text-base">
                   {student.first_name} {student.last_name}
-                  {(student.discount_percentage || student.discount_amount) && (
-                    <Badge variant="outline" className="text-[10px] py-0">
-                      <Percent className="w-3 h-3 mr-1" />
-                      {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
-                    </Badge>
-                  )}
-                  {student.is_family_member && (
-                    <Badge variant="secondary" className="text-[10px] py-0">
-                      <Users className="w-3 h-3 mr-1" />
-                      {student.family_name}
-                    </Badge>
-                  )}
                 </CardTitle>
+                {(student.discount_percentage || student.discount_amount) && (
+                  <Badge variant="outline" className="text-[9px] sm:text-[10px] py-0 px-1.5">
+                    <Percent className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                    {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
+                  </Badge>
+                )}
+                {student.is_family_member && (
+                  <Badge variant="secondary" className="text-[9px] sm:text-[10px] py-0 px-1.5">
+                    <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                    {student.family_name}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                  <span>{student.student_code}</span>
+                  {student.classes && (
+                    <>
+                      <span>•</span>
+                      <span>{student.classes.name}</span>
+                    </>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditDiscountOpen(true)}
-                  className="h-6 px-2 text-xs"
+                  className="h-5 sm:h-6 px-1.5 sm:px-2 text-[10px] sm:text-xs"
                 >
-                  <Edit className="w-3 h-3 mr-1" />
+                  <Edit className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                   Remise
                 </Button>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{student.student_code}</span>
-                {student.classes && (
-                  <>
-                    <span>•</span>
-                    <span>{student.classes.name}</span>
-                  </>
-                )}
-              </div>
             </div>
           </div>
-          <Badge variant={status.variant} className="flex items-center gap-1">
+          <Badge variant={status.variant} className="flex items-center gap-1 self-start sm:self-auto text-xs">
             <StatusIcon className="w-3 h-3" />
             {status.label}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2.5 sm:space-y-3">
         {/* Frais périodiques */}
-        <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Frais de scolarité (9 mois):</p>
-          <div className="flex justify-between text-xs">
+        <div className="bg-muted/50 rounded-lg p-2 sm:p-3 space-y-1 sm:space-y-1.5">
+          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1 sm:mb-2">Frais de scolarité (9 mois):</p>
+          <div className="flex justify-between text-[10px] sm:text-xs">
             <span className="text-muted-foreground">Mensuel:</span>
             <span className="font-medium">{Math.round(monthlyFee).toLocaleString('fr-FR')} FCFA</span>
           </div>
-          <div className="flex justify-between text-xs">
+          <div className="flex justify-between text-[10px] sm:text-xs">
             <span className="text-muted-foreground">Trimestriel:</span>
             <span className="font-medium">{Math.round(quarterlyFee).toLocaleString('fr-FR')} FCFA</span>
           </div>
-          <div className="flex justify-between text-xs">
+          <div className="flex justify-between text-[10px] sm:text-xs">
             <span className="text-muted-foreground">Annuel:</span>
             <span className="font-medium">{Math.round(effectiveAnnualFee).toLocaleString('fr-FR')} FCFA</span>
           </div>
           {discountAmount > 0 && (
-            <div className="flex justify-between text-xs pt-1 border-t mt-1">
+            <div className="flex justify-between text-[10px] sm:text-xs pt-1 border-t mt-1">
               <span className="text-green-600">Remise accordée:</span>
               <span className="font-medium text-green-600">-{Math.round(discountAmount).toLocaleString('fr-FR')} FCFA</span>
             </div>
@@ -145,16 +147,16 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
         </div>
 
         {/* Progression du paiement */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
+        <div className="space-y-1.5 sm:space-y-2">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Montant dû:</span>
             <span className="font-medium">{totalDue.toLocaleString('fr-FR')} FCFA</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Montant payé:</span>
             <span className="font-medium text-green-600">{totalPaid.toLocaleString('fr-FR')} FCFA</span>
           </div>
-          <div className="flex justify-between text-sm border-t pt-2">
+          <div className="flex justify-between text-xs sm:text-sm border-t pt-1.5 sm:pt-2">
             <span className="text-muted-foreground font-medium">Reste à payer:</span>
             <span className={`font-bold ${status.color}`}>
               {remaining.toLocaleString('fr-FR')} FCFA
@@ -163,14 +165,14 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
         </div>
 
         {student.last_payment_date && (
-          <p className="text-xs text-muted-foreground">
-            Dernier paiement: {new Date(student.last_payment_date).toLocaleDateString('fr-FR')}
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
+            Dernier: {new Date(student.last_payment_date).toLocaleDateString('fr-FR')}
           </p>
         )}
 
         <Button onClick={onAddPayment} className="w-full" size="sm">
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter un paiement
+          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+          <span className="text-xs sm:text-sm">Ajouter un paiement</span>
         </Button>
       </CardContent>
 
