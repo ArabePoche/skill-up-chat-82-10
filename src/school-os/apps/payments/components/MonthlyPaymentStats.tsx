@@ -49,8 +49,27 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
     year: 'numeric'
   }).format(new Date());
 
+  // Debug log
+  React.useEffect(() => {
+    console.log('📈 MonthlyPaymentStats rendered with:', {
+      totalStudents: stats.totalStudents,
+      totalExpectedMonthly: stats.totalExpectedMonthly,
+      classesListLength: stats.classesList.length
+    });
+  }, [stats]);
+
   return (
     <div className="space-y-6">
+      {stats.totalStudents === 0 && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <Building2 className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-60" />
+            <p className="text-sm text-muted-foreground">
+              Aucune donnée de paiement trouvée pour cette école sur l'année scolaire active.
+            </p>
+          </CardContent>
+        </Card>
+      )}
       {/* Statistiques globales de l'école */}
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
