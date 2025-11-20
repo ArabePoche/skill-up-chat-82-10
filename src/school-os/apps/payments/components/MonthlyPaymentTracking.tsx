@@ -10,15 +10,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Search, Calendar, Users, AlertCircle, CheckCircle2, Clock, FileText } from 'lucide-react';
 import { useMonthlyPaymentTracking, useFilteredTracking, StudentMonthlyTracking } from '../hooks/useMonthlyPaymentTracking';
+import { useMonthlyPaymentStats } from '../hooks/useMonthlyPaymentStats';
 import { MonthlyPaymentCard } from './MonthlyPaymentCard';
+import { MonthlyPaymentStats } from './MonthlyPaymentStats';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface MonthlyPaymentTrackingProps {
   schoolId?: string;
 }
 
 export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ schoolId }) => {
-  const { trackingData, isLoading, yearStart } = useMonthlyPaymentTracking(schoolId);
+  const { trackingData, isLoading, yearStart, schoolMonths } = useMonthlyPaymentTracking(schoolId);
+  const globalStats = useMonthlyPaymentStats(trackingData, schoolMonths);
   
   const [filters, setFilters] = useState({
     status: 'all' as 'all' | 'up_to_date' | 'partial' | 'late',
@@ -59,9 +63,17 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* En-tête avec statistiques - FIXE */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 shrink-0">
+    <Tabs defaultValue="tracking" className="flex flex-col h-full">
+      <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 shrink-0">
+        <TabsTrigger value="tracking">Suivi des élèves</TabsTrigger>
+        <TabsTrigger value="statistics">Statistiques détaillées</TabsTrigger>
+      </TabsList>
+
+      {/* Onglet Suivi des élèves */}
+      <TabsContent value="tracking" className="flex flex-col h-full mt-0 pt-0">
+        <div className="flex flex-col h-full">
+          {/* En-tête avec statistiques - FIXE */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 shrink-0">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -216,6 +228,13 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
           )}
         </div>
       </ScrollArea>
-    </div>
+        </div>
+      </TabsContent>
+
+      {/* Onglet Statistiques détaillées */}
+      <TabsContent value="statistics" className="flex-1 overflow-y-auto mt-0 pt-0">
+        <MonthlyPaymentStats stats={globalStats} />
+      </TabsContent>
+    </Tabs>
   );
 };
