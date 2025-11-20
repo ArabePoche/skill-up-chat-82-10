@@ -249,18 +249,18 @@ export const StudentsApp: React.FC = () => {
       )}
         </TabsContent>
 
-        <TabsContent value="families">
-          <Tabs defaultValue="list" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsContent value="families" className="flex flex-col h-full overflow-hidden mt-0 pt-0">
+          <Tabs defaultValue="list" className="w-full flex flex-col h-full overflow-hidden">
+            <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 flex-shrink-0">
               <TabsTrigger value="list">Liste des Familles</TabsTrigger>
               <TabsTrigger value="students">Élèves par Famille</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="list">
+            <TabsContent value="list" className="flex-1 overflow-y-auto mt-0 pt-0">
               <FamilyManager schoolId={school.id} />
             </TabsContent>
             
-            <TabsContent value="students">
+            <TabsContent value="students" className="flex-1 overflow-y-auto mt-0 pt-0">
               <FamilyStudentsManager schoolId={school.id} />
             </TabsContent>
           </Tabs>
