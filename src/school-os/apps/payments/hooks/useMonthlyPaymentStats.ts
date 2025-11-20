@@ -61,7 +61,7 @@ export const useMonthlyPaymentStats = (
 
     trackingData.forEach(tracking => {
       const classId = tracking.student.class_id || 'no-class';
-      const className = tracking.student.class?.name || 'Sans classe';
+      const className = tracking.student.classes?.name || 'Sans classe';
       
       if (!classesByClassId.has(classId)) {
         classesByClassId.set(classId, {
