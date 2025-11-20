@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAddStudents, NewStudent } from '../hooks/useStudents';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { StudentFamilySelector, FamilyFormSelector } from '@/school-os/families';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -38,15 +39,21 @@ const studentSchema = z.object({
   last_name: z.string().min(1, 'Le nom est requis'),
   date_of_birth: z.string().min(1, 'La date de naissance est requise'),
   gender: z.enum(['male', 'female'], { required_error: 'Le genre est requis' }),
+  father_name: z.string().optional(),
+  father_occupation: z.string().optional(),
+  birth_place: z.string().optional(),
   class_id: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  discount_percentage: z.coerce.number().min(0).max(100).optional(),
+  discount_amount: z.coerce.number().min(0).optional(),
   parent_name: z.string().optional(),
   parent_phone: z.string().optional(),
   parent_email: z.string().email('Email invalide').optional().or(z.literal('')),
-  address: z.string().optional(),
-  city: z.string().optional(),
   medical_notes: z.string().optional(),
-  discount_percentage: z.coerce.number().min(0).max(100).optional(),
-  discount_amount: z.coerce.number().min(0).optional(),
+  mother_name: z.string().optional(),
+  mother_occupation: z.string().optional(),
+  observations: z.string().optional(),
 });
 
 // Schéma pour le formulaire complet
@@ -67,6 +74,7 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
   const [createdStudentIds, setCreatedStudentIds] = useState<string[]>([]);
   const [showFamilySelector, setShowFamilySelector] = useState(false);
   const [selectedStudentIndex, setSelectedStudentIndex] = useState<number>(0);
+  const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({});
 
   const form = useForm<StudentsFormValues>({
     resolver: zodResolver(studentsFormSchema),
@@ -77,15 +85,21 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
           last_name: '',
           date_of_birth: '',
           gender: 'male',
+          father_name: '',
+          father_occupation: '',
+          birth_place: '',
           class_id: '',
+          address: '',
+          city: '',
+          discount_percentage: 0,
+          discount_amount: 0,
           parent_name: '',
           parent_phone: '',
           parent_email: '',
-          address: '',
-          city: '',
           medical_notes: '',
-          discount_percentage: 0,
-          discount_amount: 0,
+          mother_name: '',
+          mother_occupation: '',
+          observations: '',
         },
       ],
     },
@@ -104,15 +118,21 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
       last_name: student.last_name,
       date_of_birth: student.date_of_birth,
       gender: student.gender,
+      father_name: student.father_name,
+      father_occupation: student.father_occupation,
+      birth_place: student.birth_place,
       class_id: student.class_id || null,
+      address: student.address,
+      city: student.city,
+      discount_percentage: student.discount_percentage,
+      discount_amount: student.discount_amount,
       parent_name: student.parent_name,
       parent_phone: student.parent_phone,
       parent_email: student.parent_email,
-      address: student.address,
-      city: student.city,
       medical_notes: student.medical_notes,
-      discount_percentage: student.discount_percentage,
-      discount_amount: student.discount_amount,
+      mother_name: student.mother_name,
+      mother_occupation: student.mother_occupation,
+      observations: student.observations,
     }));
 
     const result = await addStudents.mutateAsync(studentsData);
@@ -177,15 +197,21 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                     last_name: '',
                     date_of_birth: '',
                     gender: 'male',
+                    father_name: '',
+                    father_occupation: '',
+                    birth_place: '',
                     class_id: '',
+                    address: '',
+                    city: '',
+                    discount_percentage: 0,
+                    discount_amount: 0,
                     parent_name: '',
                     parent_phone: '',
                     parent_email: '',
-                    address: '',
-                    city: '',
                     medical_notes: '',
-                    discount_percentage: 0,
-                    discount_amount: 0,
+                    mother_name: '',
+                    mother_occupation: '',
+                    observations: '',
                   })
                 }
                 disabled={fields.length >= 50}
@@ -328,29 +354,26 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                     </Button>
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name={`students.${index}.parent_name`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nom du parent/tuteur</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nom complet" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name={`students.${index}.parent_phone`}
+                      name={`students.${index}.father_name`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Téléphone</FormLabel>
+                          <FormLabel>Nom du père</FormLabel>
                           <FormControl>
-                            <Input placeholder="+225 XX XX XX XX" {...field} />
+                            <Input 
+                              placeholder="Nom complet du père" 
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                // Auto-remplir le tutaire si vide
+                                const currentTutaire = form.getValues(`students.${index}.parent_name`);
+                                if (!currentTutaire || currentTutaire === '') {
+                                  form.setValue(`students.${index}.parent_name`, e.target.value);
+                                }
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -359,12 +382,40 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
 
                     <FormField
                       control={form.control}
-                      name={`students.${index}.parent_email`}
+                      name={`students.${index}.father_occupation`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Fonction du père</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="email@example.com" {...field} />
+                            <Input placeholder="Profession" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`students.${index}.birth_place`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Lieu de naissance</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ville de naissance" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`students.${index}.parent_phone`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Téléphone</FormLabel>
+                          <FormControl>
+                            <Input placeholder="+225 XX XX XX XX" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -401,24 +452,6 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                       )}
                     />
                   </div>
-
-                  <FormField
-                    control={form.control}
-                    name={`students.${index}.medical_notes`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes médicales</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Allergies, conditions médicales, etc."
-                            rows={2}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -462,6 +495,127 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                       )}
                     />
                   </div>
+
+                  {/* Section pliable "Plus d'informations" */}
+                  <Collapsible
+                    open={expandedSections[index] || false}
+                    onOpenChange={(open) => {
+                      setExpandedSections(prev => ({ ...prev, [index]: open }));
+                    }}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between"
+                        size="sm"
+                      >
+                        <span>Plus d'informations</span>
+                        {expandedSections[index] ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-4 pt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name={`students.${index}.parent_name`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nom du tuteur</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Nom du tuteur (modifiable)" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={`students.${index}.parent_email`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email du parent</FormLabel>
+                              <FormControl>
+                                <Input type="email" placeholder="email@example.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name={`students.${index}.medical_notes`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Notes médicales</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Allergies, conditions médicales, etc."
+                                rows={2}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name={`students.${index}.mother_name`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nom de la mère</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Nom complet de la mère" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={`students.${index}.mother_occupation`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Fonction de la mère</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Profession" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name={`students.${index}.observations`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Observations</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Notes additionnelles, informations spéciales..."
+                                rows={3}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               ))}
               </div>
@@ -474,7 +628,7 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
               <div className="p-4 bg-muted rounded-lg space-y-3">
                 <p className="text-sm font-medium">✓ {createdStudentIds.length} élève(s) créé(s) avec succès !</p>
                 <p className="text-xs text-muted-foreground">
-                  Vous pouvez maintenant lier ces élèves à des familles existantes
+                  Vous pouvez maintenant lier ces élèves à des familles existantes ou continuer l'inscription
                 </p>
                 <div className="space-y-2">
                   {createdStudentIds.map((studentId) => (
@@ -482,9 +636,75 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                       key={studentId}
                       studentId={studentId}
                       schoolId={schoolId}
+                      onFamilyLinked={() => {
+                        // Réinitialiser le formulaire pour continuer l'inscription
+                        setCreatedStudentIds([]);
+                        form.reset({
+                          students: [
+                            {
+                              first_name: '',
+                              last_name: '',
+                              date_of_birth: '',
+                              gender: 'male',
+                              class_id: '',
+                              parent_name: '',
+                              parent_phone: '',
+                              parent_email: '',
+                              address: '',
+                              city: '',
+                              medical_notes: '',
+                              discount_percentage: 0,
+                              discount_amount: 0,
+                              mother_name: '',
+                              mother_occupation: '',
+                              father_occupation: '',
+                              birth_place: '',
+                              observations: '',
+                            },
+                          ],
+                        });
+                        setExpandedSections({});
+                      }}
                     />
                   ))}
                 </div>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={() => {
+                    // Réinitialiser sans lier à une famille
+                    setCreatedStudentIds([]);
+                    form.reset({
+                      students: [
+                        {
+                          first_name: '',
+                          last_name: '',
+                          date_of_birth: '',
+                          gender: 'male',
+                          class_id: '',
+                          parent_name: '',
+                          parent_phone: '',
+                          parent_email: '',
+                          address: '',
+                          city: '',
+                          medical_notes: '',
+                          discount_percentage: 0,
+                          discount_amount: 0,
+                          mother_name: '',
+                          mother_occupation: '',
+                          father_occupation: '',
+                          birth_place: '',
+                          observations: '',
+                        },
+                      ],
+                    });
+                    setExpandedSections({});
+                  }}
+                >
+                  Continuer l'inscription sans lier à une famille
+                </Button>
               </div>
               )}
             </div>
