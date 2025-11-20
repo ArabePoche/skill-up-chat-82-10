@@ -7,7 +7,7 @@ import { SchoolApp } from './types';
 const ClassesApp = lazy(() => import('./apps/classes/ClassesApp').then(m => ({ default: m.ClassesApp })));
 const TeachersApp = lazy(() => import('./apps/teachers/TeachersApp').then(m => ({ default: m.TeachersApp })));
 const StudentsApp = lazy(() => import('./apps/students/StudentsApp').then(m => ({ default: m.StudentsApp })));
-const PaymentsApp = lazy(() => import('./apps/payments/PaymentsApp').then(m => ({ default: m.PaymentsApp })));
+const PaymentsApp = lazy(() => import('./apps/payments').then(m => ({ default: m.PaymentsApp })));
 const AccountingApp = lazy(() => import('./apps/accounting/AccountingApp').then(m => ({ default: m.AccountingApp })));
 const ScheduleApp = lazy(() => import('./apps/schedule/ScheduleApp').then(m => ({ default: m.ScheduleApp })));
 const GradesApp = lazy(() => import('./apps/grades/GradesApp').then(m => ({ default: m.GradesApp })));
