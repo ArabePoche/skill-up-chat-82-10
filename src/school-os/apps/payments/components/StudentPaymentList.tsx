@@ -43,7 +43,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
   return (
     <div className="flex flex-col h-full">
       {/* Barre de recherche et actions - FIXE */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 shrink-0">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4 sm:mb-6 shrink-0">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -53,15 +53,16 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
             className="pl-9"
           />
         </div>
-        <Button onClick={() => setIsAddPaymentOpen(true)}>
+        <Button onClick={() => setIsAddPaymentOpen(true)} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
-          Ajouter un paiement
+          <span className="hidden sm:inline">Ajouter un paiement</span>
+          <span className="sm:hidden">Ajouter</span>
         </Button>
       </div>
 
       {/* Liste des élèves - SCROLLABLE */}
       <ScrollArea className="flex-1">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pr-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 pr-2 sm:pr-4">
           {filteredStudents.length === 0 ? (
             <Card className="col-span-full">
               <CardContent className="py-8 text-center text-muted-foreground">
