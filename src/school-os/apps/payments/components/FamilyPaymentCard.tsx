@@ -32,60 +32,60 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
 
   return (
     <Card className="hover:shadow-lg transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-primary" />
+      <CardHeader className="pb-2 sm:pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <div>
-              <CardTitle className="text-base">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-sm sm:text-base truncate">
                 {family.family_name}
               </CardTitle>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
                 {family.students.length} élève{family.students.length > 1 ? 's' : ''}
               </p>
             </div>
           </div>
-          <Badge variant={status.variant} className="flex items-center gap-1">
+          <Badge variant={status.variant} className="flex items-center gap-1 shrink-0 text-xs">
             <StatusIcon className="w-3 h-3" />
             {status.label}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Montant dû total:</span>
+      <CardContent className="space-y-2.5 sm:space-y-3">
+        <div className="space-y-1.5 sm:space-y-2">
+          <div className="flex justify-between text-xs sm:text-sm">
+            <span className="text-muted-foreground">Montant dû:</span>
             <span className="font-medium">{family.total_family_due.toLocaleString('fr-FR')} FCFA</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Montant payé total:</span>
+          <div className="flex justify-between text-xs sm:text-sm">
+            <span className="text-muted-foreground">Payé:</span>
             <span className="font-medium text-green-600">{family.total_family_paid.toLocaleString('fr-FR')} FCFA</span>
           </div>
-          <div className="flex justify-between text-sm border-t pt-2">
-            <span className="text-muted-foreground font-medium">Reste à payer:</span>
+          <div className="flex justify-between text-xs sm:text-sm border-t pt-1.5 sm:pt-2">
+            <span className="text-muted-foreground font-medium">Reste:</span>
             <span className={`font-bold ${status.color}`}>
               {family.total_family_remaining.toLocaleString('fr-FR')} FCFA
             </span>
           </div>
         </div>
 
-        <div className="border-t pt-3">
-          <p className="text-xs text-muted-foreground mb-2">Élèves:</p>
+        <div className="border-t pt-2 sm:pt-3">
+          <p className="text-[10px] sm:text-xs text-muted-foreground mb-1.5 sm:mb-2">Élèves:</p>
           <div className="space-y-1">
             {family.students.map((student) => (
-              <div key={student.id} className="flex justify-between items-center text-xs">
-                <span className="text-muted-foreground">
-                  {student.first_name} {student.last_name}
+              <div key={student.id} className="flex justify-between items-start gap-2 text-[10px] sm:text-xs">
+                <span className="text-muted-foreground flex-1 min-w-0">
+                  <span className="block truncate">{student.first_name} {student.last_name}</span>
                   {(student.discount_percentage || student.discount_amount) && (
-                    <Badge variant="outline" className="ml-2 text-[10px] py-0">
+                    <Badge variant="outline" className="mt-0.5 text-[9px] py-0 px-1">
                       {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
                     </Badge>
                   )}
                 </span>
-                <span className={student.remaining_amount > 0 ? 'text-orange-600 font-medium' : 'text-green-600'}>
+                <span className={`font-medium shrink-0 ${student.remaining_amount > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                   {student.remaining_amount > 0 
                     ? `${student.remaining_amount.toLocaleString('fr-FR')} FCFA` 
                     : '✓'}
@@ -96,8 +96,8 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
         </div>
 
         <Button onClick={onAddPayment} className="w-full" size="sm">
-          <Plus className="w-4 h-4 mr-2" />
-          Paiement familial
+          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+          <span className="text-xs sm:text-sm">Paiement familial</span>
         </Button>
       </CardContent>
     </Card>
