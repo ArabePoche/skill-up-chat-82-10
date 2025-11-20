@@ -3,5 +3,4 @@ export * from './hooks/useFamilies';
 export * from './components/FamilyManager';
 export * from './components/FamilyForm';
 export * from './components/StudentFamilySelector';
-export * from './components/FamilyFormSelector';
 export * from './components/FamilyStudentsManager';
