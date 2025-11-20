@@ -75,75 +75,75 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
 
   return (
     <Tabs defaultValue="tracking" className="flex flex-col h-full">
-      <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 shrink-0">
-        <TabsTrigger value="tracking">Suivi des élèves</TabsTrigger>
-        <TabsTrigger value="statistics">Statistiques détaillées</TabsTrigger>
+      <TabsList className="grid w-full max-w-md grid-cols-2 mb-3 sm:mb-4 shrink-0">
+        <TabsTrigger value="tracking" className="text-xs sm:text-sm">Suivi des élèves</TabsTrigger>
+        <TabsTrigger value="statistics" className="text-xs sm:text-sm">Statistiques</TabsTrigger>
       </TabsList>
 
       {/* Onglet Suivi des élèves */}
       <TabsContent value="tracking" className="flex flex-col h-full mt-0 pt-0">
         <div className="flex flex-col h-full">
           {/* En-tête avec statistiques - FIXE */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 shrink-0">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 shrink-0">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total élèves</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Total élèves</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
               </div>
-              <Users className="w-8 h-8 text-muted-foreground" />
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">À jour</p>
-                <p className="text-2xl font-bold text-green-600">{stats.upToDate}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">À jour</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.upToDate}</p>
               </div>
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
+              <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Partiellement payé</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.partial}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Partiel</p>
+                <p className="text-xl sm:text-2xl font-bold text-orange-600">{stats.partial}</p>
               </div>
-              <Clock className="w-8 h-8 text-orange-600" />
+              <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">En retard</p>
-                <p className="text-2xl font-bold text-red-600">{stats.late}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">En retard</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.late}</p>
               </div>
-              <AlertCircle className="w-8 h-8 text-red-600" />
+              <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filtres - FIXE */}
-      <Card className="mb-6 shrink-0">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+      <Card className="mb-4 sm:mb-6 shrink-0">
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="text-sm sm:text-lg flex items-center gap-2">
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             Suivi mensuel des paiements
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <CardContent className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {/* Recherche */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -193,27 +193,28 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
             <Button
               variant="outline"
               onClick={() => setFilters({ status: 'all', classId: '', month: 'all', searchQuery: '' })}
+              className="sm:col-span-2 lg:col-span-1"
             >
               Réinitialiser
             </Button>
           </div>
 
           {/* Légende */}
-          <div className="flex flex-wrap gap-3 pt-2 border-t">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          <div className="flex flex-wrap gap-2 sm:gap-3 pt-2 border-t">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-500"></div>
               <span className="text-muted-foreground">Payé</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-              <span className="text-muted-foreground">Partiellement payé</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-orange-500"></div>
+              <span className="text-muted-foreground">Partiel</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-muted-foreground">En retard</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-500"></div>
+              <span className="text-muted-foreground">Retard</span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 rounded-full bg-muted"></div>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-muted"></div>
               <span className="text-muted-foreground">À venir</span>
             </div>
           </div>
@@ -222,7 +223,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
 
       {/* Liste des élèves - SCROLLABLE */}
       <ScrollArea className="flex-1">
-        <div className="space-y-4 pr-4">
+        <div className="space-y-2 sm:space-y-4 pr-2 sm:pr-4">
           {filteredData.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -243,10 +244,8 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
       </TabsContent>
 
       {/* Onglet Statistiques détaillées */}
-      <TabsContent value="statistics" className="mt-0 pt-0">
-        <div className="space-y-4">
-          <MonthlyPaymentStats stats={globalStats} />
-        </div>
+      <TabsContent value="statistics" className="flex-1 overflow-hidden mt-0 pt-0">
+        <MonthlyPaymentStats stats={globalStats} />
       </TabsContent>
     </Tabs>
   );
