@@ -5023,6 +5023,10 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_school_join_request: {
+        Args: { p_request_id: string; p_reviewer_id: string }
+        Returns: Json
+      }
       approve_teacher_application: {
         Args: {
           p_application_id: string
@@ -5162,10 +5166,9 @@ export type Database = {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
       }
-      is_school_owner: {
-        Args: { _school_id: string; _user_id: string }
-        Returns: boolean
-      }
+      is_school_owner:
+        | { Args: { _school_id: string; _user_id: string }; Returns: boolean }
+        | { Args: { _school_id: string }; Returns: boolean }
       is_student_enrolled: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
@@ -5256,6 +5259,10 @@ export type Database = {
           student_row: Database["public"]["Tables"]["students_school"]["Row"]
         }
         Returns: number
+      }
+      reject_school_join_request: {
+        Args: { p_reason?: string; p_request_id: string; p_reviewer_id: string }
+        Returns: Json
       }
       reject_teacher_application: {
         Args: {
