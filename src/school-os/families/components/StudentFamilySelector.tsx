@@ -8,19 +8,25 @@ interface StudentFamilySelectorProps {
   studentId: string;
   schoolId: string;
   currentFamilyId?: string | null;
+  onFamilyLinked?: () => void;
 }
 
 export const StudentFamilySelector: React.FC<StudentFamilySelectorProps> = ({
   studentId,
   schoolId,
   currentFamilyId,
+  onFamilyLinked,
 }) => {
   const { data: families, isLoading } = useFamilies(schoolId);
   const linkMutation = useLinkStudentToFamily();
 
   const handleChange = (value: string) => {
     const familyId = value === 'none' ? null : value;
-    linkMutation.mutate({ studentId, familyId });
+    linkMutation.mutate({ studentId, familyId }, {
+      onSuccess: () => {
+        onFamilyLinked?.();
+      }
+    });
   };
 
   return (
