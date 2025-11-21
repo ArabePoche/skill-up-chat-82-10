@@ -39,7 +39,12 @@ export const Window: React.FC<WindowProps> = ({
         positionClasses[window.position]
       )}
       style={{ zIndex: window.zIndex }}
-      onClick={() => onFocus(window.id)}
+      onMouseDown={(e) => {
+        // Ne focus que si le clic est sur le fond de la fenêtre, pas sur le contenu
+        if (e.target === e.currentTarget) {
+          onFocus(window.id);
+        }
+      }}
     >
       {/* Barre de titre */}
       <div
