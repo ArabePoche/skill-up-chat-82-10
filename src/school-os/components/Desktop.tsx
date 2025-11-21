@@ -58,13 +58,13 @@ export const Desktop: React.FC = () => {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 10,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 5,
+        delay: 200,
+        tolerance: 8,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -95,9 +95,7 @@ export const Desktop: React.FC = () => {
   };
 
   const handleAppClick = (appId: string) => {
-    if (!activeId) {
-      openWindow(appId);
-    }
+    openWindow(appId);
   };
 
   const filteredApps = searchQuery
@@ -124,16 +122,32 @@ export const Desktop: React.FC = () => {
   };
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div className="h-screen w-full relative overflow-hidden">
-      {/* Fond d'écran */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${wallpaper})` }}
-      >
-        <div className="absolute inset-0 bg-black/20" />
-      </div>
+    <div className="h-screen w-full relative overflow-hidden">
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          {/* Fond d'écran */}
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${wallpaper})` }}
+          >
+            <div className="absolute inset-0 bg-black/20" />
+          </div>
+        </ContextMenuTrigger>
+
+        <ContextMenuContent className="w-64">
+          <ContextMenuItem
+            onClick={() => document.getElementById('wallpaper-upload')?.click()}
+            disabled={isUploading}
+          >
+            <ImageIcon className="w-4 h-4 mr-2" />
+            {isUploading ? 'Upload en cours...' : 'Changer le fond d\'écran'}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={resetWallpaper}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Réinitialiser le fond d'écran
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
       {/* Barre de recherche fixe en haut à droite */}
       <div className="absolute top-6 right-6 z-50">
@@ -215,22 +229,6 @@ export const Desktop: React.FC = () => {
         onClose={() => setQuickPanelOpen(false)}
         onOpenApp={openWindow}
       />
-    </div>
-      </ContextMenuTrigger>
-
-      <ContextMenuContent className="w-64">
-        <ContextMenuItem
-          onClick={() => document.getElementById('wallpaper-upload')?.click()}
-          disabled={isUploading}
-        >
-          <ImageIcon className="w-4 h-4 mr-2" />
-          {isUploading ? 'Upload en cours...' : 'Changer le fond d\'écran'}
-        </ContextMenuItem>
-        <ContextMenuItem onClick={resetWallpaper}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Réinitialiser le fond d'écran
-        </ContextMenuItem>
-      </ContextMenuContent>
 
       <input
         id="wallpaper-upload"
@@ -239,6 +237,6 @@ export const Desktop: React.FC = () => {
         className="hidden"
         onChange={handleWallpaperUpload}
       />
-    </ContextMenu>
+    </div>
   );
 };
