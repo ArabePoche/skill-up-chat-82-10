@@ -12,7 +12,7 @@ import { StudentDetailModal } from './components/StudentDetailModal';
 import { EditStudentDialog } from './components/EditStudentDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useUserSchool, useCurrentSchoolYear } from '@/school/hooks/useSchool';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
 import { FamilyManager, FamilyStudentsManager } from '@/school-os/families';
@@ -26,6 +26,7 @@ export const StudentsApp: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const deleteStudent = useDeleteStudent();
 
@@ -112,64 +113,91 @@ export const StudentsApp: React.FC = () => {
             </Button>
           </div>
 
-      {/* Filtres fixes */}
-      <Card className="p-4 mb-6 flex-shrink-0 relative z-10">
-        <div className="flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4" />
-          <span className="font-medium">Filtres</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
+      {/* Barre de recherche et bouton filtre - Compacte */}
+      <div className="mb-4 flex-shrink-0 space-y-2">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher un élève..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-9"
             />
           </div>
-
-          <Select value={selectedClass} onValueChange={setSelectedClass}>
-            <SelectTrigger>
-              <SelectValue placeholder="Toutes les classes" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les classes</SelectItem>
-              {classes?.map((cls) => (
-                <SelectItem key={cls.id} value={cls.id}>
-                  {cls.name} ({cls.cycle})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedGender} onValueChange={setSelectedGender}>
-            <SelectTrigger>
-              <SelectValue placeholder="Tous les genres" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les genres</SelectItem>
-              <SelectItem value="male">Garçons</SelectItem>
-              <SelectItem value="female">Filles</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger>
-              <SelectValue placeholder="Tous les statuts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="active">Actifs</SelectItem>
-              <SelectItem value="inactive">Inactifs</SelectItem>
-              <SelectItem value="transferred">Transférés</SelectItem>
-            </SelectContent>
-          </Select>
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="h-9 px-3"
+          >
+            {showFilters ? <Filter className="w-4 h-4 mr-2" /> : <Filter className="w-4 h-4 mr-2" />}
+            <span className="hidden sm:inline">{showFilters ? 'Masquer' : 'Filtres'}</span>
+          </Button>
         </div>
-      </Card>
+
+        {/* Filtres avancés - Masquables */}
+        {showFilters && (
+          <Card className="relative z-20">
+            <CardContent className="p-3 space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Classe" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50">
+                    <SelectItem value="all">Toutes les classes</SelectItem>
+                    {classes?.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedGender} onValueChange={setSelectedGender}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Genre" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50">
+                    <SelectItem value="all">Tous les genres</SelectItem>
+                    <SelectItem value="male">Garçons</SelectItem>
+                    <SelectItem value="female">Filles</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Statut" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50">
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="active">Actifs</SelectItem>
+                    <SelectItem value="inactive">Inactifs</SelectItem>
+                    <SelectItem value="transferred">Transférés</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSelectedClass('all');
+                  setSelectedGender('all');
+                  setSelectedStatus('all');
+                  setSearchQuery('');
+                }}
+                className="w-full h-8 text-xs"
+              >
+                Réinitialiser les filtres
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Liste des élèves scrollable */}
-      <div className="flex-1 overflow-y-auto relative">
+      <div className="flex-1 overflow-y-auto relative z-0">
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">
           Chargement des élèves...
