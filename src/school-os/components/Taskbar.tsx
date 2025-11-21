@@ -1,11 +1,8 @@
 // Composant barre de tâches avec apps ouvertes
 import React, { useState } from 'react';
-import { Grid3x3, Search, Image, Calendar, ChevronDown } from 'lucide-react';
+import { Grid3x3, Search, Calendar, ChevronDown } from 'lucide-react';
 import { WindowState } from '../types';
 import { getAppById } from '../apps';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -14,7 +11,6 @@ interface TaskbarProps {
   onRestore: (id: string) => void;
   onOpenQuickPanel: () => void;
   onSearch: () => void;
-  onChangeWallpaper: (url: string) => void;
 }
 
 export const Taskbar: React.FC<TaskbarProps> = ({
@@ -22,20 +18,9 @@ export const Taskbar: React.FC<TaskbarProps> = ({
   onRestore,
   onOpenQuickPanel,
   onSearch,
-  onChangeWallpaper,
 }) => {
-  const [wallpaperDialogOpen, setWallpaperDialogOpen] = useState(false);
-  const [wallpaperUrl, setWallpaperUrl] = useState('');
   const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
   const { activeSchoolYear, schoolYears, setActiveSchoolYear } = useSchoolYear();
-
-  const handleWallpaperChange = () => {
-    if (wallpaperUrl) {
-      onChangeWallpaper(wallpaperUrl);
-      setWallpaperDialogOpen(false);
-      setWallpaperUrl('');
-    }
-  };
 
   return (
     <>
@@ -78,18 +63,6 @@ export const Taskbar: React.FC<TaskbarProps> = ({
             </button>
           );
         })}
-
-        {/* Bouton fond d'écran */}
-        <button
-          onClick={() => setWallpaperDialogOpen(true)}
-          className="w-10 h-10 rounded-lg hover:bg-accent flex items-center justify-center transition-colors ml-auto"
-          title="Changer le fond d'écran"
-        >
-          <Image className="w-5 h-5" />
-        </button>
-
-        {/* Séparateur */}
-        <div className="w-px h-8 bg-border" />
 
         {/* Sélecteur d'année scolaire */}
         <Popover open={yearPopoverOpen} onOpenChange={setYearPopoverOpen}>
@@ -140,23 +113,6 @@ export const Taskbar: React.FC<TaskbarProps> = ({
         </Popover>
         </div>
       </div>
-
-      {/* Dialog pour changer le fond d'écran */}
-      <Dialog open={wallpaperDialogOpen} onOpenChange={setWallpaperDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Changer le fond d'écran</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <Input
-              placeholder="URL de l'image"
-              value={wallpaperUrl}
-              onChange={(e) => setWallpaperUrl(e.target.value)}
-            />
-            <Button onClick={handleWallpaperChange}>Appliquer</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
