@@ -122,9 +122,9 @@ export const Desktop: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-full relative overflow-hidden">
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="h-screen w-full relative overflow-hidden">
           {/* Fond d'écran */}
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -132,22 +132,6 @@ export const Desktop: React.FC = () => {
           >
             <div className="absolute inset-0 bg-black/20" />
           </div>
-        </ContextMenuTrigger>
-
-        <ContextMenuContent className="w-64">
-          <ContextMenuItem
-            onClick={() => document.getElementById('wallpaper-upload')?.click()}
-            disabled={isUploading}
-          >
-            <ImageIcon className="w-4 h-4 mr-2" />
-            {isUploading ? 'Upload en cours...' : 'Changer le fond d\'écran'}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={resetWallpaper}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Réinitialiser le fond d'écran
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
 
       {/* Barre de recherche fixe en haut à droite */}
       <div className="absolute top-6 right-6 z-50">
@@ -178,65 +162,81 @@ export const Desktop: React.FC = () => {
         )}
       </div>
 
-      {/* Grille d'icônes draggable */}
-      <div className="absolute inset-0 p-8 pb-24 overflow-auto">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-              {filteredApps.map((app) => (
-                <AppIcon key={app.id} app={app} onOpen={handleAppClick} />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+          {/* Grille d'icônes draggable */}
+          <div className="absolute inset-0 p-8 pb-24 overflow-auto pointer-events-none">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
+              <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pointer-events-auto">
+                  {filteredApps.map((app) => (
+                    <AppIcon key={app.id} app={app} onOpen={handleAppClick} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
 
-        {filteredApps.length === 0 && searchQuery && (
-          <div className="text-center text-white drop-shadow-lg mt-12">
-            Aucune application trouvée
+            {filteredApps.length === 0 && searchQuery && (
+              <div className="text-center text-white drop-shadow-lg mt-12 pointer-events-auto">
+                Aucune application trouvée
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Fenêtres ouvertes */}
-      {windows.map((window) => (
-        <Window
-          key={window.id}
-          window={window}
-          onClose={closeWindow}
-          onMinimize={minimizeWindow}
-          onSplit={splitWindow}
-          onFocus={focusWindow}
-        />
-      ))}
+          {/* Fenêtres ouvertes */}
+          {windows.map((window) => (
+            <Window
+              key={window.id}
+              window={window}
+              onClose={closeWindow}
+              onMinimize={minimizeWindow}
+              onSplit={splitWindow}
+              onFocus={focusWindow}
+            />
+          ))}
 
-      {/* Barre de tâches */}
-      <Taskbar
-        windows={windows}
-        onRestore={restoreWindow}
-        onOpenQuickPanel={() => setQuickPanelOpen(true)}
-        onSearch={() => setSearchOpen(true)}
-      />
+          {/* Barre de tâches */}
+          <Taskbar
+            windows={windows}
+            onRestore={restoreWindow}
+            onOpenQuickPanel={() => setQuickPanelOpen(true)}
+            onSearch={() => setSearchOpen(true)}
+          />
 
-      {/* Panneau d'accès rapide */}
-      <QuickPanel
-        isOpen={quickPanelOpen}
-        onClose={() => setQuickPanelOpen(false)}
-        onOpenApp={openWindow}
-      />
+          {/* Panneau d'accès rapide */}
+          <QuickPanel
+            isOpen={quickPanelOpen}
+            onClose={() => setQuickPanelOpen(false)}
+            onOpenApp={openWindow}
+          />
 
-      <input
-        id="wallpaper-upload"
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleWallpaperUpload}
-      />
-    </div>
+          <input
+            id="wallpaper-upload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleWallpaperUpload}
+          />
+        </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="w-64">
+        <ContextMenuItem
+          onClick={() => document.getElementById('wallpaper-upload')?.click()}
+          disabled={isUploading}
+        >
+          <ImageIcon className="w-4 h-4 mr-2" />
+          {isUploading ? 'Upload en cours...' : 'Changer le fond d\'écran'}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={resetWallpaper}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Réinitialiser le fond d'écran
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
