@@ -84,9 +84,9 @@ export const StudentsApp: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      <Tabs defaultValue="students" className="w-full flex flex-col h-full overflow-hidden">
-        <TabsList className="mb-6 flex-shrink-0">
+    <div className="p-6 h-full flex flex-col overflow-hidden relative">
+      <Tabs defaultValue="students" className="w-full flex flex-col flex-1 overflow-hidden">
+        <TabsList className="mb-6 flex-shrink-0 relative z-10">
           <TabsTrigger value="students">
             <Search className="w-4 h-4 mr-2" />
             Élèves
@@ -97,9 +97,9 @@ export const StudentsApp: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="students" className="flex flex-col h-full overflow-hidden">
+        <TabsContent value="students" className="flex flex-col flex-1 overflow-hidden mt-0">
           {/* Entête fixe */}
-          <div className="flex justify-between items-center mb-6 flex-shrink-0">
+          <div className="flex justify-between items-center mb-6 flex-shrink-0 relative z-10">
             <div>
               <h2 className="text-2xl font-bold">Gestion des Élèves</h2>
               <p className="text-muted-foreground mt-1">
@@ -113,7 +113,7 @@ export const StudentsApp: React.FC = () => {
           </div>
 
       {/* Filtres fixes */}
-      <Card className="p-4 mb-6 flex-shrink-0">
+      <Card className="p-4 mb-6 flex-shrink-0 relative z-10">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4" />
           <span className="font-medium">Filtres</span>
@@ -169,7 +169,7 @@ export const StudentsApp: React.FC = () => {
       </Card>
 
       {/* Liste des élèves scrollable */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative">
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">
           Chargement des élèves...
@@ -249,8 +249,8 @@ export const StudentsApp: React.FC = () => {
       )}
         </TabsContent>
 
-        <TabsContent value="families" className="flex flex-col h-full overflow-hidden mt-0 pt-0">
-          <Tabs defaultValue="list" className="w-full flex flex-col h-full overflow-hidden">
+        <TabsContent value="families" className="flex flex-col flex-1 overflow-hidden mt-0 pt-0">
+          <Tabs defaultValue="list" className="w-full flex flex-col flex-1 overflow-hidden">
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 flex-shrink-0">
               <TabsTrigger value="list">Liste des Familles</TabsTrigger>
               <TabsTrigger value="students">Élèves par Famille</TabsTrigger>
