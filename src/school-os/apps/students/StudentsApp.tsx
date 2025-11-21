@@ -85,9 +85,9 @@ export const StudentsApp: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden relative">
-      <Tabs defaultValue="students" className="w-full flex flex-col flex-1 overflow-hidden">
-        <TabsList className="mb-6 flex-shrink-0 relative z-10">
+    <div className="p-4 sm:p-6 h-full flex flex-col overflow-hidden">
+      <Tabs defaultValue="students" className="w-full h-full flex flex-col overflow-hidden">
+        <TabsList className="mb-4 sm:mb-6 flex-shrink-0">
           <TabsTrigger value="students">
             <Search className="w-4 h-4 mr-2" />
             Élèves
@@ -98,23 +98,23 @@ export const StudentsApp: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="students" className="flex flex-col flex-1 overflow-hidden mt-0">
+        <TabsContent value="students" className="flex-1 flex flex-col overflow-hidden mt-0 data-[state=active]:flex">
           {/* Entête fixe */}
-          <div className="flex justify-between items-center mb-6 flex-shrink-0 relative z-10">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 flex-shrink-0">
             <div>
-              <h2 className="text-2xl font-bold">Gestion des Élèves</h2>
-              <p className="text-muted-foreground mt-1">
+              <h2 className="text-xl sm:text-2xl font-bold">Gestion des Élèves</h2>
+              <p className="text-sm text-muted-foreground mt-1">
                 {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''} trouvé{filteredStudents.length > 1 ? 's' : ''}
               </p>
             </div>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Button onClick={() => setIsAddDialogOpen(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Ajouter un élève
             </Button>
           </div>
 
       {/* Barre de recherche et bouton filtre - Compacte */}
-      <div className="mb-4 flex-shrink-0 space-y-2">
+      <div className="mb-3 flex-shrink-0 space-y-2">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -197,7 +197,7 @@ export const StudentsApp: React.FC = () => {
       </div>
 
       {/* Liste des élèves scrollable */}
-      <div className="flex-1 overflow-y-auto relative z-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">
           Chargement des élèves...
@@ -277,8 +277,8 @@ export const StudentsApp: React.FC = () => {
       )}
         </TabsContent>
 
-        <TabsContent value="families" className="flex flex-col flex-1 overflow-hidden mt-0 pt-0">
-          <Tabs defaultValue="list" className="w-full flex flex-col flex-1 overflow-hidden">
+        <TabsContent value="families" className="flex-1 flex flex-col overflow-hidden mt-0 data-[state=active]:flex">
+          <Tabs defaultValue="list" className="w-full h-full flex flex-col overflow-hidden">
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 flex-shrink-0">
               <TabsTrigger value="list">Liste des Familles</TabsTrigger>
               <TabsTrigger value="students">Élèves par Famille</TabsTrigger>
