@@ -4,7 +4,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -15,7 +16,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Search } from 'lucide-react';
+import { Search, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { schoolApps } from '../apps';
 import { AppIcon } from './AppIcon';
 import { Window } from './Window';
@@ -24,12 +25,22 @@ import { QuickPanel } from './QuickPanel';
 import { useWindowManager } from '../hooks/useWindowManager';
 import { useWallpaper } from '../hooks/useWallpaper';
 import { Input } from '@/components/ui/input';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { toast } from 'sonner';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from '@/components/ui/context-menu';
 
 export const Desktop: React.FC = () => {
   const [apps, setApps] = useState(schoolApps);
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const {
     windows,
@@ -41,14 +52,29 @@ export const Desktop: React.FC = () => {
     focusWindow,
   } = useWindowManager();
 
-  const { wallpaper, changeWallpaper } = useWallpaper();
+  const { wallpaper, changeWallpaper, resetWallpaper } = useWallpaper();
+  const { uploadFile, isUploading } = useFileUpload();
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -60,14 +86,47 @@ export const Desktop: React.FC = () => {
         return arrayMove(items, oldIndex, newIndex);
       });
     }
+    
+    setActiveId(null);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+  };
+
+  const handleAppClick = (appId: string) => {
+    if (!activeId) {
+      openWindow(appId);
+    }
   };
 
   const filteredApps = searchQuery
     ? apps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : apps;
 
+  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+
+    try {
+      const result = await uploadFile(file, 'school_os_wallpapers');
+      changeWallpaper(result.fileUrl);
+      toast.success('Fond d\'écran modifié avec succès');
+    } catch (error) {
+      console.error('Erreur upload fond d\'écran:', error);
+      toast.error('Erreur lors du changement de fond d\'écran');
+    }
+  };
+
   return (
-    <div className="h-screen w-full relative overflow-hidden">
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="h-screen w-full relative overflow-hidden">
       {/* Fond d'écran */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -110,12 +169,14 @@ export const Desktop: React.FC = () => {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
               {filteredApps.map((app) => (
-                <AppIcon key={app.id} app={app} onOpen={openWindow} />
+                <AppIcon key={app.id} app={app} onOpen={handleAppClick} />
               ))}
             </div>
           </SortableContext>
@@ -146,7 +207,6 @@ export const Desktop: React.FC = () => {
         onRestore={restoreWindow}
         onOpenQuickPanel={() => setQuickPanelOpen(true)}
         onSearch={() => setSearchOpen(true)}
-        onChangeWallpaper={changeWallpaper}
       />
 
       {/* Panneau d'accès rapide */}
@@ -156,5 +216,29 @@ export const Desktop: React.FC = () => {
         onOpenApp={openWindow}
       />
     </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="w-64">
+        <ContextMenuItem
+          onClick={() => document.getElementById('wallpaper-upload')?.click()}
+          disabled={isUploading}
+        >
+          <ImageIcon className="w-4 h-4 mr-2" />
+          {isUploading ? 'Upload en cours...' : 'Changer le fond d\'écran'}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={resetWallpaper}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Réinitialiser le fond d'écran
+        </ContextMenuItem>
+      </ContextMenuContent>
+
+      <input
+        id="wallpaper-upload"
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleWallpaperUpload}
+      />
+    </ContextMenu>
   );
 };
