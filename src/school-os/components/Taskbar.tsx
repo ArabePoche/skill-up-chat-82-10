@@ -24,14 +24,14 @@ export const Taskbar: React.FC<TaskbarProps> = ({
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t shadow-2xl px-4 py-3 flex items-center justify-center gap-3 z-[9999]">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t shadow-2xl px-4 py-2 flex items-center justify-center gap-3 z-[9999]">
         <div className="flex items-center gap-3 max-w-7xl w-full">
         {/* Bouton menu principal */}
         <button
           onClick={onOpenQuickPanel}
-          className="w-12 h-12 rounded-xl bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
+          className="w-10 h-10 rounded-xl bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
         >
-          <Grid3x3 className="w-6 h-6 text-primary-foreground" />
+          <Grid3x3 className="w-5 h-5 text-primary-foreground" />
         </button>
 
         {/* Séparateur */}
@@ -48,7 +48,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({
             <button
               key={window.id}
               onClick={() => onRestore(window.id)}
-              className="h-12 px-4 rounded-xl hover:bg-accent transition-colors flex items-center gap-2"
+              className="h-10 px-3 rounded-xl hover:bg-accent transition-colors flex items-center gap-2"
               style={{
                 backgroundColor: window.isMinimized ? 'transparent' : 'hsl(var(--accent))',
               }}
@@ -67,15 +67,12 @@ export const Taskbar: React.FC<TaskbarProps> = ({
         {/* Sélecteur d'année scolaire */}
         <Popover open={yearPopoverOpen} onOpenChange={setYearPopoverOpen}>
           <PopoverTrigger asChild>
-            <button className="h-12 px-4 rounded-xl hover:bg-accent transition-colors flex items-center gap-2 min-w-[140px]">
+            <button className="h-10 px-3 rounded-xl hover:bg-accent transition-colors flex items-center gap-2 ml-auto">
               <Calendar className="w-4 h-4 text-muted-foreground" />
-              <div className="flex flex-col items-start">
-                <span className="text-xs text-muted-foreground">Année scolaire</span>
-                <span className="text-sm font-medium">
-                  {activeSchoolYear?.year_label || 'Aucune'}
-                </span>
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto" />
+              <span className="text-sm font-medium">
+                {activeSchoolYear?.year_label || 'Aucune'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
             </button>
           </PopoverTrigger>
           <PopoverContent 
