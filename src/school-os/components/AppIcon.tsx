@@ -28,13 +28,21 @@ export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen }) => {
 
   const IconComponent = (Icons as any)[app.icon] || Icons.Square;
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Empêcher le clic si on est en train de drag
+    if (!isDragging) {
+      onOpen(app.id);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-background/10 cursor-pointer transition-colors touch-none"
+      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-background/10 cursor-pointer transition-colors"
       {...attributes}
       {...listeners}
+      onClick={handleClick}
     >
       <div
         className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
