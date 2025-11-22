@@ -98,7 +98,7 @@ export const StudentsApp: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="students" className="flex-1 flex flex-col overflow-hidden mt-0 data-[state=active]:flex">
+        <TabsContent value="students" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
           {/* Entête fixe */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 flex-shrink-0">
             <div>
@@ -107,14 +107,15 @@ export const StudentsApp: React.FC = () => {
                 {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''} trouvé{filteredStudents.length > 1 ? 's' : ''}
               </p>
             </div>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="w-full sm:w-auto">
+            <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="w-full sm:w-auto h-9">
               <Plus className="w-4 h-4 mr-2" />
-              Ajouter un élève
+              <span className="hidden sm:inline">Ajouter un élève</span>
+              <span className="sm:hidden">Ajouter</span>
             </Button>
           </div>
 
       {/* Barre de recherche et bouton filtre - Compacte */}
-      <div className="mb-3 flex-shrink-0 space-y-2">
+      <div className={`mb-3 flex-shrink-0 ${showFilters ? "space-y-2" : ""}`}>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -277,7 +278,7 @@ export const StudentsApp: React.FC = () => {
       )}
         </TabsContent>
 
-        <TabsContent value="families" className="flex-1 flex flex-col overflow-hidden mt-0 data-[state=active]:flex">
+        <TabsContent value="families" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
           <Tabs defaultValue="list" className="w-full h-full flex flex-col overflow-hidden">
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 flex-shrink-0">
               <TabsTrigger value="list">Liste des Familles</TabsTrigger>
