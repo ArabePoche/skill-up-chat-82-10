@@ -5,11 +5,12 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { User, Users, Percent, CheckCircle2, AlertCircle, Clock, Circle, ChevronDown, ChevronUp, Edit } from 'lucide-react';
+import { Users, Percent, CheckCircle2, AlertCircle, Clock, Edit } from 'lucide-react';
 import { StudentMonthlyTracking, MonthlyPaymentStatus } from '../hooks/useMonthlyPaymentTracking';
 import { cn } from '@/lib/utils';
 import { EditDiscountDialog } from './EditDiscountDialog';
 import { MonthlyStatusBadges } from './MonthlyStatusBadges';
+import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
 
 interface MonthlyPaymentCardProps {
   tracking: StudentMonthlyTracking;
@@ -63,9 +64,13 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
       <CardHeader className="pb-2 sm:pb-3">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            </div>
+            <StudentAvatar
+              photoUrl={student.photo_url}
+              firstName={student.first_name}
+              lastName={student.last_name}
+              size="md"
+              className="shrink-0"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1">
                 <CardTitle className="text-sm sm:text-base">
