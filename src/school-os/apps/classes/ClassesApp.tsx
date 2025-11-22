@@ -3,13 +3,9 @@ import React from 'react';
 import { CreateClassModal } from '@/school/components/CreateClassModal';
 import { ClassesList } from '@/school/components/ClassesList';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserSchool } from '@/school/hooks/useSchool';
 
 export const ClassesApp: React.FC = () => {
-  const { user } = useAuth();
-  const { data: school } = useUserSchool(user?.id);
-  const { activeSchoolYear } = useSchoolYear();
+  const { school, activeSchoolYear } = useSchoolYear();
 
   if (!school?.id || !activeSchoolYear?.id) {
     return (
