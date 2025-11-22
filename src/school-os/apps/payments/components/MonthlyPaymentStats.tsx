@@ -50,15 +50,6 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
     year: 'numeric'
   }).format(new Date());
 
-  // Debug log
-  React.useEffect(() => {
-    console.log('📈 MonthlyPaymentStats rendered with:', {
-      totalStudents: stats.totalStudents,
-      totalExpectedMonthly: stats.totalExpectedMonthly,
-      classesListLength: stats.classesList.length
-    });
-  }, [stats]);
-
   return (
     <ScrollArea className="h-full">
       <div className="space-y-4 sm:space-y-6 pr-2 sm:pr-4 pb-4">
@@ -140,32 +131,32 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                 <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs sm:text-base">Mois actuel - {currentMonthName}</span>
+                <span className="text-xs sm:text-base">Progression globale</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Attendu ce mois</p>
-                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(stats.currentMonthExpected)}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Attendu par mois</p>
+                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(stats.totalExpectedMonthly)}</p>
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Déjà payé</p>
-                  <p className="text-lg sm:text-xl font-bold text-green-600">{formatCurrency(stats.currentMonthPaid)}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total payé</p>
+                  <p className="text-lg sm:text-xl font-bold text-green-600">{formatCurrency(stats.totalPaid)}</p>
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground mb-1">Reste à payer</p>
-                  <p className="text-lg sm:text-xl font-bold text-orange-600">{formatCurrency(stats.currentMonthRemaining)}</p>
+                  <p className="text-lg sm:text-xl font-bold text-orange-600">{formatCurrency(stats.totalRemaining)}</p>
                 </div>
               </div>
               
               {/* Barre de progression */}
               <div className="mt-3 sm:mt-4">
                 <div className="flex justify-between text-xs sm:text-sm mb-2">
-                  <span className="text-muted-foreground">Progression</span>
+                  <span className="text-muted-foreground">Progression annuelle</span>
                   <span className="font-medium">
-                    {stats.currentMonthExpected > 0 
-                      ? Math.round((stats.currentMonthPaid / stats.currentMonthExpected) * 100)
+                    {stats.totalPaid > 0 && (stats.totalPaid + stats.totalRemaining) > 0
+                      ? Math.round((stats.totalPaid / (stats.totalPaid + stats.totalRemaining)) * 100)
                       : 0}%
                   </span>
                 </div>
@@ -173,8 +164,8 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
                   <div 
                     className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-300"
                     style={{ 
-                      width: `${stats.currentMonthExpected > 0 
-                        ? Math.min((stats.currentMonthPaid / stats.currentMonthExpected) * 100, 100)
+                      width: `${stats.totalPaid > 0 && (stats.totalPaid + stats.totalRemaining) > 0
+                        ? Math.min((stats.totalPaid / (stats.totalPaid + stats.totalRemaining)) * 100, 100)
                         : 0}%` 
                     }}
                   />
@@ -190,9 +181,6 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
           <div className="space-y-2">
             {stats.classesList.map(classStats => {
               const isExpanded = expandedClasses.has(classStats.classId);
-              const progressPercent = classStats.currentMonthExpected > 0
-                ? (classStats.currentMonthPaid / classStats.currentMonthExpected) * 100
-                : 0;
 
               return (
                 <Card key={classStats.classId}>
@@ -215,9 +203,9 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-[10px] sm:text-sm text-muted-foreground">Mois actuel</p>
-                            <p className="font-semibold text-xs sm:text-sm">
-                              {formatCurrency(classStats.currentMonthPaid)} / {formatCurrency(classStats.currentMonthExpected)}
+                            <p className="text-[10px] sm:text-sm text-muted-foreground">Total payé</p>
+                            <p className="font-semibold text-xs sm:text-sm text-green-600">
+                              {formatCurrency(classStats.totalPaid)}
                             </p>
                           </div>
                         </div>
@@ -247,20 +235,20 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
                           </div>
                         </div>
                         
-                        {/* Progression mois actuel */}
+                        {/* Progression annuelle */}
                         <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-muted/30 rounded-lg">
                           <p className="text-xs sm:text-sm font-medium mb-2">
-                            Progression du mois actuel ({Math.round(progressPercent)}%)
+                            Progression annuelle ({Math.round((classStats.totalPaid / (classStats.totalPaid + classStats.totalRemaining)) * 100)}%)
                           </p>
                           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-300"
-                              style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                              style={{ width: `${Math.min((classStats.totalPaid / (classStats.totalPaid + classStats.totalRemaining)) * 100, 100)}%` }}
                             />
                           </div>
                           <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-muted-foreground">
-                            <span>Payé: {formatCurrency(classStats.currentMonthPaid)}</span>
-                            <span>Reste: {formatCurrency(classStats.currentMonthRemaining)}</span>
+                            <span>Payé: {formatCurrency(classStats.totalPaid)}</span>
+                            <span>Reste: {formatCurrency(classStats.totalRemaining)}</span>
                           </div>
                         </div>
                       </CardContent>
