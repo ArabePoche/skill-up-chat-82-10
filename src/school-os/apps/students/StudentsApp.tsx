@@ -92,10 +92,9 @@ export const StudentsApp: React.FC = () => {
                 {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''} trouvé{filteredStudents.length > 1 ? 's' : ''}
               </p>
             </div>
-            <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="w-full sm:w-auto h-9">
-              <Plus className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Ajouter un élève</span>
-              <span className="sm:hidden">Ajouter</span>
+            <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="w-full sm:w-auto h-8 px-3">
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Ajouter</span>
             </Button>
           </div>
 
