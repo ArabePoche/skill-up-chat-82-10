@@ -147,3 +147,72 @@ export const useUpdateStudentDiscount = () => {
     },
   });
 };
+
+export const useUpdatePayment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      paymentId,
+      updates,
+    }: {
+      paymentId: string;
+      updates: {
+        amount?: number;
+        payment_method?: string;
+        payment_type?: string;
+        payment_date?: string;
+        notes?: string;
+        reference_number?: string;
+        received_by?: string;
+      };
+    }) => {
+      const { data, error } = await supabase
+        .from('school_students_payment')
+        .update(updates)
+        .eq('id', paymentId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['school-students-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['student-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-payment-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['family-payments'] });
+      toast.success('Paiement modifié avec succès');
+    },
+    onError: (error) => {
+      console.error('Erreur lors de la modification du paiement:', error);
+      toast.error('Erreur lors de la modification du paiement');
+    },
+  });
+};
+
+export const useDeletePayment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (paymentId: string) => {
+      const { error } = await supabase
+        .from('school_students_payment')
+        .delete()
+        .eq('id', paymentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['school-students-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['student-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-payment-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['family-payments'] });
+      toast.success('Paiement supprimé avec succès');
+    },
+    onError: (error) => {
+      console.error('Erreur lors de la suppression du paiement:', error);
+      toast.error('Erreur lors de la suppression du paiement');
+    },
+  });
+};
