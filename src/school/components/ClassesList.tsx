@@ -95,11 +95,11 @@ export const ClassesList: React.FC<ClassesListProps> = ({
   return (
     <div className="space-y-6">
       {/* En-tête avec statistiques */}
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-start">
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Gestion des Classes</h2>
-            <p className="text-muted-foreground mt-1">
+            <h2 className="text-2xl font-bold">Gestion des Classes</h2>
+            <p className="text-sm text-muted-foreground">
               Gérez les classes de votre établissement
             </p>
           </div>
@@ -108,44 +108,44 @@ export const ClassesList: React.FC<ClassesListProps> = ({
 
         {/* Statistiques globales */}
         {classes && classes.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <GraduationCap className="h-5 w-5 text-primary" />
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-primary/10 rounded-lg">
+                    <GraduationCap className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Classes</p>
-                    <p className="text-2xl font-bold">{classes.length}</p>
+                    <p className="text-xs font-medium text-muted-foreground">Total Classes</p>
+                    <p className="text-xl font-bold">{classes.length}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <UserCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                    <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Élèves inscrits</p>
-                    <p className="text-2xl font-bold">{totalStudents}</p>
+                    <p className="text-xs font-medium text-muted-foreground">Élèves inscrits</p>
+                    <p className="text-xl font-bold">{totalStudents}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-500/10 rounded-lg">
-                    <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-green-500/10 rounded-lg">
+                    <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Taux d'occupation</p>
-                    <p className="text-2xl font-bold">{averageOccupancy.toFixed(0)}%</p>
+                    <p className="text-xs font-medium text-muted-foreground">Taux d'occupation</p>
+                    <p className="text-xl font-bold">{averageOccupancy.toFixed(0)}%</p>
                   </div>
                 </div>
               </CardContent>
