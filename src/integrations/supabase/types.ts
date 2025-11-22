@@ -3077,43 +3077,64 @@ export type Database = {
       }
       schools: {
         Row: {
+          address: string | null
+          city: string | null
           country: string | null
           created_at: string
           description: string | null
+          email: string | null
           founded_year: number | null
           id: string
+          logo_url: string | null
           name: string
           owner_id: string
           phone: string | null
+          primary_color: string | null
           school_type: Database["public"]["Enums"]["school_type"]
+          secondary_color: string | null
           teaching_language: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
           founded_year?: number | null
           id?: string
+          logo_url?: string | null
           name: string
           owner_id: string
           phone?: string | null
+          primary_color?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
+          secondary_color?: string | null
           teaching_language?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
           country?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
           founded_year?: number | null
           id?: string
+          logo_url?: string | null
           name?: string
           owner_id?: string
           phone?: string | null
+          primary_color?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
+          secondary_color?: string | null
           teaching_language?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: [
           {
