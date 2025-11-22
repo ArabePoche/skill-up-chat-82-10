@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, User, AlertCircle, CheckCircle, Clock, Users, Percent, Edit, History } from 'lucide-react';
+import { Plus, AlertCircle, CheckCircle, Clock, Users, Percent, Edit, History } from 'lucide-react';
 import { EditDiscountDialog } from './EditDiscountDialog';
 import { PaymentHistoryModal } from './PaymentHistoryModal';
+import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
 
 interface StudentPaymentCardProps {
   student: any;
@@ -74,9 +75,13 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
       <CardHeader className="pb-2 sm:pb-3">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-start gap-2 flex-1 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            </div>
+            <StudentAvatar
+              photoUrl={student.photo_url}
+              firstName={student.first_name}
+              lastName={student.last_name}
+              size="md"
+              className="shrink-0"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap mb-1">
                 <CardTitle className="text-sm sm:text-base">
