@@ -1,27 +1,23 @@
 // Application de gestion des paiements scolaires
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserSchool } from '@/school/hooks/useSchool';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { PaymentsView } from './components/PaymentsView';
 
 export const PaymentsApp: React.FC = () => {
-  // Récupérer l'utilisateur connecté
-  const { data: user } = useQuery({
-    queryKey: ['current-user'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-  });
+  const { school, isLoading } = useSchoolYear();
 
-  // Récupérer l'école de l'utilisateur
-  const { data: school } = useUserSchool(user?.id);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Chargement de l'école...</p>
+      </div>
+    );
+  }
 
   if (!school) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Chargement de l'école...</p>
+        <p className="text-muted-foreground">Aucune école trouvée</p>
       </div>
     );
   }
