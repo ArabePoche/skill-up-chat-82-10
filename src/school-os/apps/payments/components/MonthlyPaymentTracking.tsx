@@ -83,7 +83,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
       </TabsList>
 
       {/* Onglet Suivi des élèves */}
-      <TabsContent value="tracking" className="flex flex-col h-full mt-0 pt-0">
+      <TabsContent value="tracking" className="flex-col h-full mt-0 pt-0 hidden data-[state=active]:flex">
         <div className="flex flex-col h-full">
           {/* Statistiques compactes - FIXE */}
           <Card className="mb-2 shrink-0">
@@ -206,7 +206,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
       </TabsContent>
 
       {/* Onglet Statistiques détaillées */}
-      <TabsContent value="statistics" className="flex-1 overflow-hidden mt-0 pt-0">
+      <TabsContent value="statistics" className="flex-1 overflow-hidden mt-0 pt-0 hidden data-[state=active]:block">
         <MonthlyPaymentStats stats={globalStats} />
       </TabsContent>
     </Tabs>
