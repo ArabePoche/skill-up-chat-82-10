@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, User, AlertCircle, CheckCircle, Clock, Users, Percent, Edit } from 'lucide-react';
+import { Plus, User, AlertCircle, CheckCircle, Clock, Users, Percent, Edit, History } from 'lucide-react';
 import { EditDiscountDialog } from './EditDiscountDialog';
+import { PaymentHistoryModal } from './PaymentHistoryModal';
 
 interface StudentPaymentCardProps {
   student: any;
@@ -35,6 +36,7 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   onAddPayment,
 }) => {
   const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const totalDue = student.total_amount_due || 0;
   const totalPaid = student.total_amount_paid || 0;
   const remaining = student.remaining_amount || 0;
@@ -170,16 +172,29 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
           </p>
         )}
 
-        <Button onClick={onAddPayment} className="w-full" size="sm">
-          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-          <span className="text-xs sm:text-sm">Ajouter un paiement</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={onAddPayment} className="flex-1" size="sm">
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Ajouter</span>
+          </Button>
+          <Button onClick={() => setIsHistoryOpen(true)} variant="outline" className="flex-1" size="sm">
+            <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Historique</span>
+          </Button>
+        </div>
       </CardContent>
 
       <EditDiscountDialog
         open={isEditDiscountOpen}
         onOpenChange={setIsEditDiscountOpen}
         student={student}
+      />
+
+      <PaymentHistoryModal
+        open={isHistoryOpen}
+        onOpenChange={setIsHistoryOpen}
+        studentId={student.id}
+        studentName={`${student.first_name} ${student.last_name}`}
       />
     </Card>
   );
