@@ -207,3 +207,73 @@ export const useUpdateSchoolYear = () => {
     },
   });
 };
+
+// Hook pour mettre à jour les informations de l'école
+export const useUpdateSchool = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      name?: string;
+      description?: string;
+      school_type?: SchoolType;
+      country?: string;
+      city?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+      website?: string;
+      founded_year?: number;
+      teaching_language?: string;
+      logo_url?: string;
+      primary_color?: string;
+      secondary_color?: string;
+    }) => {
+      const { id, ...updates } = data;
+      const { data: school, error } = await supabase
+        .from('schools')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return school as School;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['user-school'] });
+      queryClient.invalidateQueries({ queryKey: ['user-schools'] });
+      toast.success('École mise à jour avec succès');
+    },
+    onError: (error) => {
+      console.error('Error updating school:', error);
+      toast.error('Erreur lors de la mise à jour de l\'école');
+    },
+  });
+};
+
+// Hook pour supprimer une année scolaire
+export const useDeleteSchoolYear = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: { id: string; school_id: string }) => {
+      const { error } = await supabase
+        .from('school_years')
+        .delete()
+        .eq('id', data.id);
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['school-years', data.school_id] });
+      toast.success('Année scolaire supprimée');
+    },
+    onError: (error) => {
+      console.error('Error deleting school year:', error);
+      toast.error('Erreur lors de la suppression');
+    },
+  });
+};
