@@ -5305,6 +5305,10 @@ export type Database = {
         Args: { p_message_id: string; p_teacher_id: string }
         Returns: Json
       }
+      update_student_payment_progress_for_student: {
+        Args: { p_school_id: string; p_student_id: string }
+        Returns: undefined
+      }
       update_user_streak_daily_minutes: { Args: never; Returns: undefined }
       validate_exercise_submission:
         | {
