@@ -1,0 +1,9 @@
+-- Ajouter les colonnes manquantes à la table schools
+ALTER TABLE schools
+ADD COLUMN IF NOT EXISTS country TEXT,
+ADD COLUMN IF NOT EXISTS city TEXT,
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS phone TEXT,
+ADD COLUMN IF NOT EXISTS email TEXT,
+ADD COLUMN IF NOT EXISTS founded_year INTEGER,
+ADD COLUMN IF NOT EXISTS website TEXT;
