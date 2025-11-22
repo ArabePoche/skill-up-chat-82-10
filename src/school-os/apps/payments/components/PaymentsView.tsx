@@ -36,15 +36,15 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ schoolId }) => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="monthly" className="flex-1 overflow-hidden mt-0">
+        <TabsContent value="monthly" className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex data-[state=active]:flex-col">
           <MonthlyPaymentTracking schoolId={schoolId} />
         </TabsContent>
 
-        <TabsContent value="students" className="flex-1 overflow-hidden mt-0">
+        <TabsContent value="students" className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex data-[state=active]:flex-col">
           <StudentPaymentList schoolId={schoolId} />
         </TabsContent>
 
-        <TabsContent value="families" className="flex-1 overflow-hidden mt-0">
+        <TabsContent value="families" className="flex-1 overflow-hidden mt-0 hidden data-[state=active]:flex data-[state=active]:flex-col">
           <FamilyPaymentList schoolId={schoolId} />
         </TabsContent>
       </Tabs>
