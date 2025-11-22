@@ -10,12 +10,10 @@ import { StudentCard } from './components/StudentCard';
 import { AddStudentDialog } from './components/AddStudentDialog';
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { EditStudentDialog } from './components/EditStudentDialog';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { useUserSchool, useCurrentSchoolYear } from '@/school/hooks/useSchool';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
 import { FamilyManager, FamilyStudentsManager } from '@/school-os/families';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 
 export const StudentsApp: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,20 +28,7 @@ export const StudentsApp: React.FC = () => {
 
   const deleteStudent = useDeleteStudent();
 
-  // Récupérer l'utilisateur connecté
-  const { data: user } = useQuery({
-    queryKey: ['current-user'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-  });
-
-  // Récupérer l'école de l'utilisateur
-  const { data: school } = useUserSchool(user?.id);
-
-  // Récupérer l'année scolaire courante
-  const { data: schoolYear } = useCurrentSchoolYear(school?.id);
+  const { school, activeSchoolYear: schoolYear } = useSchoolYear();
 
   // Récupérer les classes
   const { data: classes } = useSchoolClasses(school?.id, schoolYear?.id);
