@@ -22,18 +22,16 @@ interface MonthlyPaymentTrackingProps {
 
 export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ schoolId }) => {
   const { trackingData, isLoading, yearStart, schoolMonths } = useMonthlyPaymentTracking(schoolId);
-  
-  // Debug: Log données
+  const [schoolYearId, setSchoolYearId] = React.useState<string | undefined>();
+
+  // Récupérer l'ID de l'année scolaire active
   React.useEffect(() => {
-    console.log('📊 MonthlyPaymentTracking Debug:', {
-      trackingDataLength: trackingData.length,
-      schoolMonths,
-      isLoading,
-      firstStudent: trackingData[0]
-    });
-  }, [trackingData, schoolMonths, isLoading]);
+    if (trackingData.length > 0) {
+      setSchoolYearId(trackingData[0].student.school_year_id);
+    }
+  }, [trackingData]);
   
-  const globalStats = useMonthlyPaymentStats(trackingData, schoolMonths);
+  const { stats: globalStats, isLoading: statsLoading } = useMonthlyPaymentStats(schoolId, schoolYearId);
   
   const [filters, setFilters] = useState({
     status: 'all' as 'all' | 'up_to_date' | 'partial' | 'late',
@@ -64,7 +62,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
     })) || [];
   }, [trackingData]);
 
-  if (isLoading) {
+  if (isLoading || statsLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center space-y-2">
@@ -76,38 +74,20 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
   }
 
   return (
-    <Tabs defaultValue="tracking" className="flex flex-col h-full">
+    <Tabs defaultValue="statistics" className="flex flex-col h-full">
       <TabsList className="grid w-full max-w-md grid-cols-2 mb-3 sm:mb-4 shrink-0">
-        <TabsTrigger value="tracking" className="text-xs sm:text-sm">Suivi des élèves</TabsTrigger>
         <TabsTrigger value="statistics" className="text-xs sm:text-sm">Statistiques</TabsTrigger>
+        <TabsTrigger value="tracking" className="text-xs sm:text-sm">Suivi des élèves</TabsTrigger>
       </TabsList>
+
+      {/* Onglet Statistiques détaillées */}
+      <TabsContent value="statistics" className="flex-1 overflow-hidden mt-0 pt-0 hidden data-[state=active]:block">
+        <MonthlyPaymentStats stats={globalStats} />
+      </TabsContent>
 
       {/* Onglet Suivi des élèves */}
       <TabsContent value="tracking" className="flex-col h-full mt-0 pt-0 hidden data-[state=active]:flex">
         <div className="flex flex-col h-full">
-          {/* Statistiques compactes - FIXE */}
-          <Card className="mb-2 shrink-0">
-            <CardContent className="p-2 sm:p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <Users className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-xs font-semibold">{stats.total}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3 h-3 text-green-600" />
-                  <span className="text-xs font-semibold text-green-600">{stats.upToDate}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-orange-600" />
-                  <span className="text-xs font-semibold text-orange-600">{stats.partial}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <AlertCircle className="w-3 h-3 text-red-600" />
-                  <span className="text-xs font-semibold text-red-600">{stats.late}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Barre de recherche et filtre - FIXE */}
           <div className="mb-2 shrink-0 space-y-2">
@@ -203,11 +183,6 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
         </div>
       </ScrollArea>
         </div>
-      </TabsContent>
-
-      {/* Onglet Statistiques détaillées */}
-      <TabsContent value="statistics" className="flex-1 overflow-hidden mt-0 pt-0 hidden data-[state=active]:block">
-        <MonthlyPaymentStats stats={globalStats} />
       </TabsContent>
     </Tabs>
   );
