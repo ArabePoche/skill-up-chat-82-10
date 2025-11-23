@@ -60,7 +60,7 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
         <div className="flex-1 overflow-auto p-6">
           <div className="grid grid-cols-3 md:grid-cols-4 gap-6">
             {filteredApps.map((app) => {
-              const IconComponent = (Icons as any)[app.icon] || Icons.Square;
+              const IconComponent = app.icon;
               
               return (
                 <button
