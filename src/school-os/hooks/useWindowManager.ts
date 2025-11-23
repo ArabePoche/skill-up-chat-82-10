@@ -49,11 +49,17 @@ export const useWindowManager = () => {
 
   const restoreWindow = useCallback((windowId: string) => {
     setWindows(prev =>
-      prev.map(w =>
-        w.id === windowId
-          ? { ...w, isMinimized: false, zIndex: nextZIndex }
-          : w
-      )
+      prev.map(w => {
+        if (w.id === windowId) {
+          // Toggle entre minimize et restore
+          if (w.isMinimized) {
+            return { ...w, isMinimized: false, zIndex: nextZIndex };
+          } else {
+            return { ...w, isMinimized: true };
+          }
+        }
+        return w;
+      })
     );
     setNextZIndex(prev => prev + 1);
   }, [nextZIndex]);
