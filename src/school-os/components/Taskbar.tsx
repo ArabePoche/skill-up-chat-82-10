@@ -1,26 +1,44 @@
-// Composant barre de tâches avec apps ouvertes
+// Composant barre de tâches avec apps ouvertes et épinglées
 import React, { useState } from 'react';
-import { Grid3x3, Search, Calendar, ChevronDown } from 'lucide-react';
+import { Grid3x3, Search, Calendar, ChevronDown, X, Pin, PinOff } from 'lucide-react';
 import { WindowState } from '../types';
 import { getAppById } from '../apps';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+} from '@/components/ui/context-menu';
 
 interface TaskbarProps {
   windows: WindowState[];
+  pinnedApps: string[];
   onRestore: (id: string) => void;
+  onClose: (id: string) => void;
+  onTogglePin: (appId: string) => void;
+  isAppPinned: (appId: string) => boolean;
   onOpenQuickPanel: () => void;
   onSearch: () => void;
 }
 
 export const Taskbar: React.FC<TaskbarProps> = ({
   windows,
+  pinnedApps,
   onRestore,
+  onClose,
+  onTogglePin,
+  isAppPinned,
   onOpenQuickPanel,
   onSearch,
 }) => {
   const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
   const { activeSchoolYear, schoolYears, setActiveSchoolYear } = useSchoolYear();
+
+  // Combiner apps ouvertes et apps épinglées
+  const allAppIds = [...new Set([...pinnedApps, ...windows.map(w => w.appId)])];
 
   return (
     <>
@@ -35,35 +53,82 @@ export const Taskbar: React.FC<TaskbarProps> = ({
         </button>
 
         {/* Séparateur */}
-        {windows.length > 0 && (
+        {allAppIds.length > 0 && (
           <div className="w-px h-8 bg-border" />
         )}
 
-        {/* Apps ouvertes */}
-        {windows.map((window) => {
-          const app = getAppById(window.appId);
+        {/* Apps ouvertes et épinglées */}
+        {allAppIds.map((appId) => {
+          const app = getAppById(appId);
           if (!app) return null;
 
           const Icon = app.icon;
+          const window = windows.find(w => w.appId === appId);
+          const isPinned = isAppPinned(appId);
+          const isOpen = !!window;
 
           return (
-            <button
-              key={window.id}
-              onClick={() => onRestore(window.id)}
-              className="w-10 h-10 rounded-xl hover:bg-accent transition-colors flex items-center justify-center relative"
-              style={{
-                backgroundColor: window.isMinimized ? 'transparent' : 'hsl(var(--accent))',
-              }}
-              title={app.name}
-            >
-              <Icon size={20} color={app.color} />
-              {!window.isMinimized && (
-                <div
-                  className="absolute bottom-1 w-1 h-1 rounded-full"
-                  style={{ backgroundColor: app.color }}
-                />
-              )}
-            </button>
+            <ContextMenu key={appId}>
+              <ContextMenuTrigger asChild>
+                <button
+                  onClick={() => {
+                    if (window) {
+                      onRestore(window.id);
+                    } else {
+                      // Si l'app est épinglée mais pas ouverte, on pourrait l'ouvrir ici
+                      // Pour l'instant on ne fait rien
+                    }
+                  }}
+                  className="w-10 h-10 rounded-xl hover:bg-accent transition-colors flex items-center justify-center relative"
+                  style={{
+                    backgroundColor: window && !window.isMinimized ? 'hsl(var(--accent))' : 'transparent',
+                  }}
+                  title={app.name}
+                >
+                  <Icon size={20} color={app.color} />
+                  {window && !window.isMinimized && (
+                    <div
+                      className="absolute bottom-1 w-1 h-1 rounded-full"
+                      style={{ backgroundColor: app.color }}
+                    />
+                  )}
+                  {isPinned && !isOpen && (
+                    <div
+                      className="absolute bottom-1 w-1 h-1 rounded-full bg-muted-foreground"
+                    />
+                  )}
+                </button>
+              </ContextMenuTrigger>
+              
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => onTogglePin(appId)}>
+                  {isPinned ? (
+                    <>
+                      <PinOff className="w-4 h-4 mr-2" />
+                      Désépingler
+                    </>
+                  ) : (
+                    <>
+                      <Pin className="w-4 h-4 mr-2" />
+                      Épingler
+                    </>
+                  )}
+                </ContextMenuItem>
+                
+                {window && (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem 
+                      onClick={() => onClose(window.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Fermer
+                    </ContextMenuItem>
+                  </>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
 
