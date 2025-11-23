@@ -57,6 +57,16 @@ export const StudentsApp: React.FC = () => {
     });
   }, [students, searchQuery, selectedClass, selectedGender, selectedStatus]);
 
+  // Calculer le nombre de filles et garçons
+  const genderStats = useMemo(() => {
+    if (!filteredStudents) return { girls: 0, boys: 0, total: 0 };
+    
+    const girls = filteredStudents.filter(s => s.gender === 'female').length;
+    const boys = filteredStudents.filter(s => s.gender === 'male').length;
+    
+    return { girls, boys, total: filteredStudents.length };
+  }, [filteredStudents]);
+
   if (!school || !schoolYear) {
     return (
       <div className="p-6 h-full flex items-center justify-center">
@@ -88,9 +98,20 @@ export const StudentsApp: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 flex-shrink-0">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold">Gestion des Élèves</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''} trouvé{filteredStudents.length > 1 ? 's' : ''}
-              </p>
+              <div className="flex items-center gap-4 mt-1">
+                <p className="text-sm text-muted-foreground">
+                  {genderStats.total} élève{genderStats.total > 1 ? 's' : ''} trouvé{genderStats.total > 1 ? 's' : ''}
+                </p>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-pink-600 dark:text-pink-400 font-medium">
+                    {genderStats.girls} fille{genderStats.girls > 1 ? 's' : ''}
+                  </span>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    {genderStats.boys} garçon{genderStats.boys > 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
             </div>
             <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="w-full sm:w-auto h-8 px-3">
               <Plus className="w-4 h-4 sm:mr-2" />
