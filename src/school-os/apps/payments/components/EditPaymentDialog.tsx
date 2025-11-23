@@ -37,11 +37,9 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
     defaultValues: {
       amount: payment.amount,
       payment_method: payment.payment_method,
-      payment_type: payment.payment_type,
       payment_date: new Date(payment.payment_date).toISOString().split('T')[0],
       notes: payment.notes || '',
       reference_number: payment.reference_number || '',
-      received_by: payment.received_by || '',
     },
   });
 
@@ -55,7 +53,7 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifier le paiement</DialogTitle>
         </DialogHeader>
@@ -86,25 +84,6 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="payment_type">Type de paiement *</Label>
-            <Select
-              value={watch('payment_type')}
-              onValueChange={(value) => setValue('payment_type', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="monthly">Mensuel</SelectItem>
-                <SelectItem value="quarterly">Trimestriel</SelectItem>
-                <SelectItem value="annual">Annuel</SelectItem>
-                <SelectItem value="registration">Inscription</SelectItem>
-                <SelectItem value="other">Autre</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="payment_method">Méthode de paiement *</Label>
             <Select
               value={watch('payment_method')}
@@ -129,15 +108,6 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
               id="reference_number"
               {...register('reference_number')}
               placeholder="Ex: CHQ123456"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="received_by">Reçu par</Label>
-            <Input
-              id="received_by"
-              {...register('received_by')}
-              placeholder="Nom de la personne"
             />
           </div>
 
