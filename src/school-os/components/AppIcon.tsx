@@ -26,7 +26,7 @@ export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen }) => {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const IconComponent = (Icons as any)[app.icon] || Icons.Square;
+  const IconComponent = app.icon;
 
   const handleClick = (e: React.MouseEvent) => {
     // Empêcher le clic si on est en train de drag
