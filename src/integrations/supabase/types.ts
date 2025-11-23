@@ -2816,6 +2816,7 @@ export type Database = {
           school_id: string
           student_id: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           amount: number
@@ -2830,6 +2831,7 @@ export type Database = {
           school_id: string
           student_id: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           amount?: number
@@ -2844,6 +2846,7 @@ export type Database = {
           school_id?: string
           student_id?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
