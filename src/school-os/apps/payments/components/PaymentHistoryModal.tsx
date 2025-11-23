@@ -144,36 +144,34 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
                           {payment.received_by_profile && (
                              <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                 {payment.received_by_profile.avatar_url ? (
-                                   <img 
-                                     src={payment.received_by_profile.avatar_url} 
-                                     alt={payment.received_by_profile.full_name || payment.received_by_profile.first_name || ''} 
-                                     className="w-full h-full object-cover"
-                                   />
-                                 ) : (
-                                   <span className="text-sm font-semibold text-primary">
-                                     {(payment.received_by_profile.first_name?.[0] || payment.received_by_profile.full_name?.[0] || 'U').toUpperCase()}
-                                   </span>
-                                 )}
+                                  {payment.received_by_profile.avatar_url ? (
+                                    <img 
+                                      src={payment.received_by_profile.avatar_url} 
+                                      alt={`${payment.received_by_profile.first_name || ''} ${payment.received_by_profile.last_name || ''}`.trim()} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-sm font-semibold text-primary">
+                                      {(payment.received_by_profile.first_name?.[0] || 'U').toUpperCase()}
+                                    </span>
+                                  )}
                                </div>
                                <div className="flex-1 min-w-0">
                                  <p className="text-xs text-muted-foreground mb-0.5">Reçu par</p>
-                                 <p className="text-sm font-medium truncate">
-                                   {payment.received_by_profile.full_name || 
-                                    `${payment.received_by_profile.first_name || ''} ${payment.received_by_profile.last_name || ''}`.trim()}
-                                 </p>
+                                  <p className="text-sm font-medium truncate">
+                                    {`${payment.received_by_profile.first_name || ''} ${payment.received_by_profile.last_name || ''}`.trim()}
+                                  </p>
                                </div>
                              </div>
                            )}
 
                           {payment.updated_by_profile && (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>Modifié par:</span>
-                              <span className="font-medium">
-                                {payment.updated_by_profile.full_name || 
-                                 `${payment.updated_by_profile.first_name || ''} ${payment.updated_by_profile.last_name || ''}`.trim()}
-                              </span>
-                            </div>
+                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                               <span>Modifié par:</span>
+                               <span className="font-medium">
+                                 {`${payment.updated_by_profile.first_name || ''} ${payment.updated_by_profile.last_name || ''}`.trim()}
+                               </span>
+                             </div>
                           )}
                         </div>
                       </div>
