@@ -2850,6 +2850,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "school_students_payment_received_by_fkey1"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "school_students_payment_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
