@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { EditDiscountDialog } from './EditDiscountDialog';
 import { MonthlyStatusBadges } from './MonthlyStatusBadges';
 import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
+import { FamilyDetailsDialog } from '@/school-os/families/components/FamilyDetailsDialog';
 
 interface MonthlyPaymentCardProps {
   tracking: StudentMonthlyTracking;
@@ -19,6 +20,7 @@ interface MonthlyPaymentCardProps {
 export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking }) => {
   const { student, monthlyFee, months, totalMonthsPaid, totalMonthsLate, overallStatus } = tracking;
   const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
+  const [isFamilyDialogOpen, setIsFamilyDialogOpen] = useState(false);
 
   const getStatusColor = (status: MonthlyPaymentStatus['status']) => {
     switch (status) {
@@ -83,7 +85,11 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
                   </Badge>
                 )}
                 {student.is_family_member && (
-                  <Badge variant="outline" className="text-[9px] sm:text-[10px] py-0 px-1.5">
+                  <Badge 
+                    variant="outline" 
+                    className="text-[9px] sm:text-[10px] py-0 px-1.5 cursor-pointer hover:bg-accent transition-colors"
+                    onClick={() => setIsFamilyDialogOpen(true)}
+                  >
                     <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                     {student.family_name}
                   </Badge>
@@ -167,6 +173,16 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
         onOpenChange={setIsEditDiscountOpen}
         student={student}
       />
+
+      {student.family_id && (
+        <FamilyDetailsDialog
+          open={isFamilyDialogOpen}
+          onOpenChange={setIsFamilyDialogOpen}
+          familyId={student.family_id}
+          schoolId={student.school_id}
+          currentStudentId={student.id}
+        />
+      )}
     </Card>
   );
 };
