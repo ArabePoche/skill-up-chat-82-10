@@ -62,7 +62,11 @@ export const useStudentPayments = (studentId?: string) => {
 
       const { data, error } = await supabase
         .from('school_students_payment')
-        .select('*')
+        .select(`
+          *,
+          received_by_profile:received_by(full_name, email),
+          updated_by_profile:updated_by(full_name, email)
+        `)
         .eq('student_id', studentId)
         .order('payment_date', { ascending: false });
 
@@ -160,16 +164,20 @@ export const useUpdatePayment = () => {
       updates: {
         amount?: number;
         payment_method?: string;
-        payment_type?: string;
         payment_date?: string;
         notes?: string;
         reference_number?: string;
-        received_by?: string;
       };
     }) => {
+      // Récupérer l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('school_students_payment')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_by: user?.id || null,
+        })
         .eq('id', paymentId)
         .select()
         .single();
