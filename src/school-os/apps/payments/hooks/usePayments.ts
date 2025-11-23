@@ -83,7 +83,7 @@ export const useStudentPayments = (studentId?: string) => {
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, full_name, avatar_url, is_teacher, is_admin')
+        .select('id, first_name, last_name, avatar_url')
         .in('id', profileIds);
 
       if (profilesError) {
