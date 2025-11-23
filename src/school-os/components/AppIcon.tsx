@@ -8,9 +8,10 @@ import { SchoolApp } from '../types';
 interface AppIconProps {
   app: SchoolApp;
   onOpen: (appId: string) => void;
+  className?: string;
 }
 
-export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen }) => {
+export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen, className = 'w-20 h-24' }) => {
   const {
     attributes,
     listeners,
@@ -39,7 +40,7 @@ export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen }) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-background/10 cursor-pointer transition-colors"
+      className={`flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-background/10 cursor-pointer transition-colors ${className}`}
       {...attributes}
       {...listeners}
       onClick={handleClick}
