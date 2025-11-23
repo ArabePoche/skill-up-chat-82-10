@@ -16,7 +16,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Search, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { Search, Image as ImageIcon, RefreshCw, Eye, EyeOff, Maximize2, FolderPlus } from 'lucide-react';
 import { schoolApps } from '../apps';
 import { AppIcon } from './AppIcon';
 import { Window } from './Window';
@@ -24,6 +24,7 @@ import { Taskbar } from './Taskbar';
 import { QuickPanel } from './QuickPanel';
 import { useWindowManager } from '../hooks/useWindowManager';
 import { useWallpaper } from '../hooks/useWallpaper';
+import { useDesktopSettings } from '../hooks/useDesktopSettings';
 import { Input } from '@/components/ui/input';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
@@ -33,6 +34,9 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
 } from '@/components/ui/context-menu';
 
 export const Desktop: React.FC = () => {
@@ -54,6 +58,17 @@ export const Desktop: React.FC = () => {
 
   const { wallpaper, changeWallpaper, resetWallpaper } = useWallpaper();
   const { uploadFile, isUploading } = useFileUpload();
+  
+  const {
+    taskbarVisible,
+    toggleTaskbar,
+    iconSize,
+    changeIconSize,
+    pinnedApps,
+    togglePinApp,
+    isAppPinned,
+    getIconSizeClass,
+  } = useDesktopSettings();
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -101,6 +116,15 @@ export const Desktop: React.FC = () => {
   const filteredApps = searchQuery
     ? apps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : apps;
+
+  const handleResetLayout = () => {
+    setApps(schoolApps);
+    toast.success('Disposition du bureau réinitialisée');
+  };
+
+  const handleCreateFolder = () => {
+    toast.info('Création de dossier : fonctionnalité à venir');
+  };
 
   const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -174,7 +198,12 @@ export const Desktop: React.FC = () => {
               <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pointer-events-auto">
                   {filteredApps.map((app) => (
-                    <AppIcon key={app.id} app={app} onOpen={handleAppClick} />
+                    <AppIcon
+                      key={app.id}
+                      app={app}
+                      onOpen={handleAppClick}
+                      className={getIconSizeClass()}
+                    />
                   ))}
                 </div>
               </SortableContext>
@@ -200,12 +229,18 @@ export const Desktop: React.FC = () => {
           ))}
 
           {/* Barre de tâches */}
-          <Taskbar
-            windows={windows}
-            onRestore={restoreWindow}
-            onOpenQuickPanel={() => setQuickPanelOpen(true)}
-            onSearch={() => setSearchOpen(true)}
-          />
+          {taskbarVisible && (
+            <Taskbar
+              windows={windows}
+              pinnedApps={pinnedApps}
+              onRestore={restoreWindow}
+              onClose={closeWindow}
+              onTogglePin={togglePinApp}
+              isAppPinned={isAppPinned}
+              onOpenQuickPanel={() => setQuickPanelOpen(true)}
+              onSearch={() => setSearchOpen(true)}
+            />
+          )}
 
           {/* Panneau d'accès rapide */}
           <QuickPanel
@@ -235,6 +270,52 @@ export const Desktop: React.FC = () => {
         <ContextMenuItem onClick={resetWallpaper}>
           <RefreshCw className="w-4 h-4 mr-2" />
           Réinitialiser le fond d'écran
+        </ContextMenuItem>
+        
+        <ContextMenuSeparator />
+        
+        <ContextMenuItem onClick={toggleTaskbar}>
+          {taskbarVisible ? (
+            <>
+              <EyeOff className="w-4 h-4 mr-2" />
+              Masquer la barre de tâches
+            </>
+          ) : (
+            <>
+              <Eye className="w-4 h-4 mr-2" />
+              Afficher la barre de tâches
+            </>
+          )}
+        </ContextMenuItem>
+        
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <Maximize2 className="w-4 h-4 mr-2" />
+            Taille des icônes
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={() => changeIconSize('small')}>
+              {iconSize === 'small' && '✓ '}Petite
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => changeIconSize('medium')}>
+              {iconSize === 'medium' && '✓ '}Moyenne
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => changeIconSize('large')}>
+              {iconSize === 'large' && '✓ '}Grande
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        
+        <ContextMenuSeparator />
+        
+        <ContextMenuItem onClick={handleResetLayout}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Réinitialiser la disposition
+        </ContextMenuItem>
+        
+        <ContextMenuItem onClick={handleCreateFolder}>
+          <FolderPlus className="w-4 h-4 mr-2" />
+          Créer un dossier
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
