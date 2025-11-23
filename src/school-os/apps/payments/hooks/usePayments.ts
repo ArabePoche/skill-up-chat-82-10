@@ -60,18 +60,52 @@ export const useStudentPayments = (studentId?: string) => {
     queryFn: async () => {
       if (!studentId) return [];
 
-      const { data, error } = await supabase
+      // 1. Récupérer les paiements de l'élève
+      const { data: payments, error } = await supabase
         .from('school_students_payment')
-        .select(`
-          *,
-          received_by_profile:received_by(full_name, email),
-          updated_by_profile:updated_by(full_name, email)
-        `)
+        .select('*')
         .eq('student_id', studentId)
         .order('payment_date', { ascending: false });
 
       if (error) throw error;
-      return data;
+      if (!payments || payments.length === 0) return [];
+
+      // 2. Récupérer les profils liés (received_by / updated_by) depuis la table profiles
+      const profileIds = Array.from(
+        new Set(
+          payments.flatMap((p: any) => [p.received_by, p.updated_by]).filter(Boolean)
+        )
+      ) as string[];
+
+      if (profileIds.length === 0) {
+        return payments;
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, full_name, avatar_url, is_teacher, is_admin')
+        .in('id', profileIds);
+
+      if (profilesError) {
+        console.error('Erreur lors du chargement des profils liés aux paiements:', profilesError);
+        // On ne bloque pas l'affichage de l'historique si les profils ne sont pas accessibles
+        return payments;
+      }
+
+      const profilesMap = new Map(
+        (profiles || []).map((p: any) => [p.id, p])
+      );
+
+      // 3. Enrichir chaque paiement avec les infos de profil attendues par l'UI
+      return payments.map((payment: any) => ({
+        ...payment,
+        received_by_profile: payment.received_by
+          ? profilesMap.get(payment.received_by) || null
+          : null,
+        updated_by_profile: payment.updated_by
+          ? profilesMap.get(payment.updated_by) || null
+          : null,
+      }));
     },
     enabled: !!studentId,
   });
@@ -92,9 +126,15 @@ export const useAddPayment = () => {
       reference_number?: string;
       received_by?: string;
     }) => {
+      // Récupérer l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('school_students_payment')
-        .insert(payment)
+        .insert({
+          ...payment,
+          received_by: payment.received_by || user?.id || null,
+        })
         .select()
         .single();
 
