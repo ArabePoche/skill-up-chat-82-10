@@ -9,7 +9,7 @@ export { StudentPaymentCard } from './components/StudentPaymentCard';
 export { FamilyPaymentCard } from './components/FamilyPaymentCard';
 export { DiscountBadge } from './components/DiscountBadge';
 export { MonthlyStatusBadges } from './components/MonthlyStatusBadges';
-export { useSchoolStudents, useStudentPayments, useAddPayment } from './hooks/usePayments';
+export { useSchoolStudents, useStudentPayments, useAddPayment, useUpdatePayment, useDeletePayment } from './hooks/usePayments';
 export { 
   useFamiliesWithPayments, 
   useAddFamilyPayment, 
