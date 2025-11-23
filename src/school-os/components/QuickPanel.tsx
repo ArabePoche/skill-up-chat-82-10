@@ -59,27 +59,23 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
         {/* Grille d'apps */}
         <div className="flex-1 overflow-auto p-6">
           <div className="grid grid-cols-3 md:grid-cols-4 gap-6">
-            {filteredApps.map((app) => {
-              const IconComponent = app.icon;
-              
-              return (
-                <button
-                  key={app.id}
-                  onClick={() => handleAppClick(app.id)}
-                  className="flex flex-col items-center gap-3 p-4 rounded-xl hover:bg-accent transition-colors"
+            {filteredApps.map((app) => (
+              <button
+                key={app.id}
+                onClick={() => handleAppClick(app.id)}
+                className="flex flex-col items-center gap-3 p-4 rounded-xl hover:bg-accent transition-colors"
+              >
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
+                  style={{ backgroundColor: app.color }}
                 >
-                  <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
-                    style={{ backgroundColor: app.color }}
-                  >
-                    <IconComponent className="w-8 h-8 text-white" />
-                  </div>
-                  <span className="text-sm font-medium text-center">
-                    {app.name}
-                  </span>
-                </button>
-              );
-            })}
+                  {React.createElement(app.icon, { className: "w-8 h-8 text-white" })}
+                </div>
+                <span className="text-sm font-medium text-center">
+                  {app.name}
+                </span>
+              </button>
+            ))}
           </div>
 
           {filteredApps.length === 0 && (
