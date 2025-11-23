@@ -141,10 +141,22 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
                             </p>
                           )}
 
-                          {payment.received_by && (
-                            <p className="text-xs text-muted-foreground">
-                              Reçu par: {payment.received_by}
-                            </p>
+                          {payment.received_by_profile && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-muted-foreground">Reçu par:</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {payment.received_by_profile.full_name || payment.received_by_profile.email}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {payment.updated_by_profile && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-muted-foreground">Modifié par:</span>
+                              <Badge variant="outline" className="text-xs">
+                                {payment.updated_by_profile.full_name || payment.updated_by_profile.email}
+                              </Badge>
+                            </div>
                           )}
                         </div>
                       </div>
