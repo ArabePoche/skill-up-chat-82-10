@@ -44,22 +44,25 @@ export const Taskbar: React.FC<TaskbarProps> = ({
           const app = getAppById(window.appId);
           if (!app) return null;
 
+          const Icon = app.icon;
+
           return (
             <button
               key={window.id}
               onClick={() => onRestore(window.id)}
-              className="h-10 px-3 rounded-xl hover:bg-accent transition-colors flex items-center gap-2"
+              className="w-10 h-10 rounded-xl hover:bg-accent transition-colors flex items-center justify-center relative"
               style={{
                 backgroundColor: window.isMinimized ? 'transparent' : 'hsl(var(--accent))',
               }}
+              title={app.name}
             >
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: app.color }}
-              />
-              <span className="text-sm font-medium max-w-[100px] truncate">
-                {app.name}
-              </span>
+              <Icon size={20} color={app.color} />
+              {!window.isMinimized && (
+                <div
+                  className="absolute bottom-1 w-1 h-1 rounded-full"
+                  style={{ backgroundColor: app.color }}
+                />
+              )}
             </button>
           );
         })}
