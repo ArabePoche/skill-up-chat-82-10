@@ -3,7 +3,7 @@
 export interface SchoolApp {
   id: string;
   name: string;
-  icon: string;
+  icon: React.ComponentType<any>;
   color: string;
   component: React.ComponentType<any>;
 }
