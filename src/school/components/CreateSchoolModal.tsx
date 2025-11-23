@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreateSchool, SchoolType } from '../hooks/useSchool';
+import { useCreateSchool, useCreateSchoolYear, SchoolType } from '../hooks/useSchool';
 import { getData } from 'country-list';
 
 /**
@@ -24,6 +24,9 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
   const { user } = useAuth();
   const createSchool = useCreateSchool();
 
+  const [step, setStep] = useState(1); // Étape 1: école, Étape 2: année scolaire
+  const [createdSchoolId, setCreatedSchoolId] = useState<string | null>(null);
+
   const [schoolName, setSchoolName] = useState('');
   const [schoolDescription, setSchoolDescription] = useState('');
   const [schoolType, setSchoolType] = useState<SchoolType>('physical');
@@ -35,13 +38,20 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
   const [foundedYear, setFoundedYear] = useState('');
   const [website, setWebsite] = useState('');
 
+  // Champs pour l'année scolaire
+  const [yearLabel, setYearLabel] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
   const countryList = getData().sort((a, b) => a.name.localeCompare(b.name));
+
+  const createSchoolYear = useCreateSchoolYear();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
 
-    await createSchool.mutateAsync({
+    const result = await createSchool.mutateAsync({
       name: schoolName,
       description: schoolDescription,
       schoolType: schoolType,
@@ -55,7 +65,30 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
       website,
     });
 
-    // Reset form
+    // Passer à l'étape 2 avec l'ID de l'école créée
+    setCreatedSchoolId(result.id);
+    setStep(2);
+  };
+
+  const handleSchoolYearSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createdSchoolId) return;
+
+    await createSchoolYear.mutateAsync({
+      school_id: createdSchoolId,
+      year_label: yearLabel,
+      start_date: startDate,
+      end_date: endDate,
+    });
+
+    // Reset tout et fermer
+    resetForm();
+    onClose();
+  };
+
+  const resetForm = () => {
+    setStep(1);
+    setCreatedSchoolId(null);
     setSchoolName('');
     setSchoolDescription('');
     setSchoolType('physical');
@@ -66,7 +99,9 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
     setEmail('');
     setFoundedYear('');
     setWebsite('');
-    onClose();
+    setYearLabel('');
+    setStartDate('');
+    setEndDate('');
   };
 
   if (!isOpen) return null;
@@ -75,16 +110,24 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
     <>
       <div 
         className="fixed inset-0 bg-black/50 z-50 transition-opacity"
-        onClick={onClose}
+        onClick={() => {
+          resetForm();
+          onClose();
+        }}
       />
 
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-background rounded-lg shadow-xl z-50 overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-2xl font-bold">
-            {t('school.createSchool', { defaultValue: 'Créer une école' })}
+            {step === 1 
+              ? t('school.createSchool', { defaultValue: 'Créer une école' })
+              : 'Créer l\'année scolaire'}
           </h2>
           <button 
-            onClick={onClose}
+            onClick={() => {
+              resetForm();
+              onClose();
+            }}
             className="p-2 hover:bg-muted rounded-full transition-colors"
           >
             <X size={20} />
@@ -92,7 +135,8 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
         </div>
 
         <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {step === 1 ? (
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Informations de base */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">{t('school.basicInfo', { defaultValue: 'Informations de base' })}</h3>
@@ -241,16 +285,78 @@ const CreateSchoolModal: React.FC<CreateSchoolModalProps> = ({ isOpen, onClose }
             </div>
 
             <div className="flex gap-2 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              <Button type="button" variant="outline" onClick={() => {
+                resetForm();
+                onClose();
+              }} className="flex-1">
                 {t('common.cancel', { defaultValue: 'Annuler' })}
               </Button>
               <Button type="submit" className="flex-1" disabled={createSchool.isPending}>
                 {createSchool.isPending 
                   ? t('common.creating', { defaultValue: 'Création...' }) 
-                  : t('school.create', { defaultValue: 'Créer l\'école' })}
+                  : 'Suivant : Année scolaire'}
               </Button>
             </div>
           </form>
+          ) : (
+            <form onSubmit={handleSchoolYearSubmit} className="p-6 space-y-6">
+              <div className="space-y-4">
+                <div className="bg-muted/50 p-4 rounded-lg mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    École créée avec succès ! Créez maintenant votre première année scolaire.
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="yearLabel">Nom de l'année scolaire *</Label>
+                  <Input
+                    id="yearLabel"
+                    value={yearLabel}
+                    onChange={(e) => setYearLabel(e.target.value)}
+                    placeholder="Ex: 2024-2025"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="startDate">Date de début *</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="endDate">Date de fin *</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setStep(1)} 
+                  className="flex-1"
+                  disabled={createSchoolYear.isPending}
+                >
+                  Retour
+                </Button>
+                <Button type="submit" className="flex-1" disabled={createSchoolYear.isPending}>
+                  {createSchoolYear.isPending ? 'Création...' : 'Terminer'}
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </>
