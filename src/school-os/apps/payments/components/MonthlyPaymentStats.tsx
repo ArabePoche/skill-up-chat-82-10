@@ -70,39 +70,21 @@ export const MonthlyPaymentStats: React.FC<MonthlyPaymentStatsProps> = ({ stats 
             Statistiques Globales de l'École
           </h3>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-            {/* Montant mensuel attendu */}
-            <Card className="border-primary/20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            {/* Gain annuel attendu */}
+            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
               <CardContent className="pt-4 sm:pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Attendu par mois</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Gain annuel attendu</p>
                     <p className="text-xl sm:text-2xl font-bold text-primary">
-                      {formatCurrency(stats.totalExpectedMonthly)}
+                      {formatCurrency(stats.totalExpectedMonthly * 9)}
                     </p>
                     <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                      {stats.totalStudents} élèves
+                      {stats.totalStudents} élèves × 9 mois
                     </p>
                   </div>
                   <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary opacity-50" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total déjà payé */}
-            <Card className="border-green-500/20">
-              <CardContent className="pt-4 sm:pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total payé</p>
-                    <p className="text-xl sm:text-2xl font-bold text-green-600">
-                      {formatCurrency(stats.totalPaid)}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                      Tous mois confondus
-                    </p>
-                  </div>
-                  <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 opacity-50" />
                 </div>
               </CardContent>
             </Card>
