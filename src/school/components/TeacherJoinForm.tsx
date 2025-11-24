@@ -54,10 +54,10 @@ const TeacherJoinForm: React.FC<TeacherJoinFormProps> = ({ onSubmit, isPending, 
           </SelectTrigger>
           <SelectContent className="z-[70] bg-background">
             <SelectItem value="generalist">
-              {t('school.generalist', { defaultValue: 'Généraliste (professeur principal)' })}
+              {t('school.generalist', { defaultValue: 'Generalist (main teacher)' })}
             </SelectItem>
             <SelectItem value="specialist">
-              {t('school.specialist', { defaultValue: 'Spécialiste (matière spécifique)' })}
+              {t('school.specialist', { defaultValue: 'Specialist (specific subject)' })}
             </SelectItem>
           </SelectContent>
         </Select>
