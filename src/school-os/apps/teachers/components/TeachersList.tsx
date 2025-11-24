@@ -20,7 +20,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-export const TeachersList: React.FC = () => {
+interface TeachersListProps {
+  schoolId?: string;
+}
+
+export const TeachersList: React.FC<TeachersListProps> = ({ schoolId }) => {
   const { data: teachers = [], isLoading } = useTeachers();
   const { mutate: deleteTeacher } = useDeleteTeacher();
   const [dialogOpen, setDialogOpen] = useState(false);
