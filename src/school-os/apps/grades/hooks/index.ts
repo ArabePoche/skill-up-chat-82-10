@@ -1,0 +1,1 @@
+export { useClassSubjects } from './useClassSubjects';
