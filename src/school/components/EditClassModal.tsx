@@ -1,6 +1,6 @@
 // Composant modal pour modifier une classe
 import React, { useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,7 +30,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { useUpdateClass, CycleType, GenderType, Class } from '../hooks/useClasses';
+import { useTeachers } from '../hooks/useTeachers';
+import { useSubjects } from '../hooks/useSubjects';
+import { 
+  useClassSubjects, 
+  useAddClassSubject, 
+  useUpdateClassSubject,
+  useDeleteClassSubject 
+} from '../hooks/useClassSubjects';
+import {
+  useClassTeachers,
+  useAddClassTeacher,
+  useDeleteClassTeacher
+} from '../hooks/useClassTeachers';
 
 // Schéma de validation
 const editClassFormSchema = z.object({
@@ -72,7 +88,21 @@ const GENDER_TYPES: { value: GenderType; label: string }[] = [
 
 export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => {
   const [open, setOpen] = useState(false);
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [selectedClassTeacherId, setSelectedClassTeacherId] = useState('');
+  const [coefficient, setCoefficient] = useState<number>(1);
+  
   const updateClass = useUpdateClass();
+  const { data: teachers = [] } = useTeachers(classData.school_id);
+  const { data: subjects = [] } = useSubjects();
+  const { data: classSubjects = [] } = useClassSubjects(classData.id);
+  const { data: classTeachers = [] } = useClassTeachers(classData.id);
+  const addClassSubject = useAddClassSubject();
+  const updateClassSubject = useUpdateClassSubject();
+  const deleteClassSubject = useDeleteClassSubject();
+  const addClassTeacher = useAddClassTeacher();
+  const deleteClassTeacher = useDeleteClassTeacher();
 
   const form = useForm<EditClassFormValues>({
     resolver: zodResolver(editClassFormSchema),
@@ -93,6 +123,59 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
     setOpen(false);
   };
 
+  const handleAddSubject = async () => {
+    if (!selectedSubjectId) return;
+    
+    await addClassSubject.mutateAsync({
+      class_id: classData.id,
+      subject_id: selectedSubjectId,
+      teacher_id: selectedTeacherId === 'none' ? null : selectedTeacherId,
+      coefficient: coefficient,
+    });
+    
+    setSelectedSubjectId('');
+    setSelectedTeacherId('');
+    setCoefficient(1);
+  };
+
+  const handleUpdateSubject = async (subjectId: string, teacherId: string | null, coef: number) => {
+    await updateClassSubject.mutateAsync({
+      id: subjectId,
+      classId: classData.id,
+      updates: {
+        teacher_id: teacherId,
+        coefficient: coef,
+      },
+    });
+  };
+
+  const handleDeleteSubject = async (subjectId: string) => {
+    if (!confirm('Supprimer cette matière de la classe ?')) return;
+    await deleteClassSubject.mutateAsync({
+      id: subjectId,
+      classId: classData.id,
+    });
+  };
+
+  const handleAddClassTeacher = async () => {
+    if (!selectedClassTeacherId) return;
+    
+    await addClassTeacher.mutateAsync({
+      class_id: classData.id,
+      teacher_id: selectedClassTeacherId,
+    });
+    
+    setSelectedClassTeacherId('');
+  };
+
+  const handleDeleteClassTeacher = async (teacherId: string) => {
+    if (!confirm('Retirer ce professeur de la classe ?')) return;
+    await deleteClassTeacher.mutateAsync({
+      id: teacherId,
+      classId: classData.id,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -100,16 +183,24 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifier la classe</DialogTitle>
           <DialogDescription>
-            Modifiez les informations de la classe
+            Modifiez les informations, gérez les professeurs et les matières
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="info">Informations</TabsTrigger>
+            <TabsTrigger value="teachers">Professeurs</TabsTrigger>
+            <TabsTrigger value="subjects">Matières</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="info" className="space-y-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Nom de la classe */}
             <FormField
               control={form.control}
@@ -221,21 +312,189 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
               )}
             />
 
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Annuler
-              </Button>
-              <Button type="submit" disabled={updateClass.isPending}>
-                {updateClass.isPending ? 'Modification...' : 'Modifier'}
-              </Button>
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button type="submit" disabled={updateClass.isPending}>
+                    {updateClass.isPending ? 'Modification...' : 'Modifier'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </TabsContent>
+
+          <TabsContent value="teachers" className="space-y-4">
+            {/* Ajouter un professeur */}
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="font-semibold mb-4">Assigner un professeur à la classe</h3>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <Select value={selectedClassTeacherId} onValueChange={setSelectedClassTeacherId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un professeur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers
+                          .filter(t => !classTeachers.some(ct => ct.teacher_id === t.id))
+                          .map((teacher) => (
+                            <SelectItem key={teacher.id} value={teacher.id}>
+                              {teacher.first_name} {teacher.last_name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button 
+                    onClick={handleAddClassTeacher} 
+                    disabled={!selectedClassTeacherId || addClassTeacher.isPending}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Liste des professeurs */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Professeurs de la classe</h3>
+              {classTeachers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun professeur assigné</p>
+              ) : (
+                classTeachers.map((ct) => (
+                  <Card key={ct.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {ct.school_teachers?.first_name} {ct.school_teachers?.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{ct.school_teachers?.email}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClassTeacher(ct.id)}
+                          disabled={deleteClassTeacher.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
-          </form>
-        </Form>
+          </TabsContent>
+
+          <TabsContent value="subjects" className="space-y-4">
+            {/* Ajouter une matière */}
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="font-semibold mb-4">Ajouter une matière</h3>
+                <div className="grid gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Matière</label>
+                    <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une matière" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects
+                          .filter(s => !classSubjects.some(cs => cs.subject_id === s.id))
+                          .map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Professeur (optionnel)</label>
+                    <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un professeur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Aucun</SelectItem>
+                        {teachers.map((teacher) => (
+                          <SelectItem key={teacher.id} value={teacher.id}>
+                            {teacher.first_name} {teacher.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Coefficient</label>
+                    <Input
+                      type="number"
+                      min={0.5}
+                      max={10}
+                      step={0.5}
+                      value={coefficient}
+                      onChange={(e) => setCoefficient(parseFloat(e.target.value))}
+                    />
+                  </div>
+
+                  <Button 
+                    onClick={handleAddSubject} 
+                    disabled={!selectedSubjectId || addClassSubject.isPending}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter la matière
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Liste des matières */}
+            <div className="space-y-3">
+              <h3 className="font-semibold">Matières de la classe</h3>
+              {classSubjects.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucune matière configurée</p>
+              ) : (
+                classSubjects.map((cs) => (
+                  <Card key={cs.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium">{cs.subjects?.name}</h4>
+                            <Badge variant="outline">Coef. {cs.coefficient || 1}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {cs.profiles?.first_name && cs.profiles?.last_name
+                              ? `Prof: ${cs.profiles.first_name} ${cs.profiles.last_name}`
+                              : 'Aucun professeur assigné'}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteSubject(cs.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
