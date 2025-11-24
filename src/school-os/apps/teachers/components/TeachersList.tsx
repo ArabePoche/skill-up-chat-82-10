@@ -89,7 +89,7 @@ export const TeachersList: React.FC = () => {
                   <p className="text-sm text-muted-foreground">{teacher.profiles?.email}</p>
                   <div className="flex gap-2 mt-2">
                     <Badge variant={teacher.type === 'generalist' ? 'default' : 'secondary'}>
-                      {teacher.type === 'generalist' ? 'Généraliste' : 'Spécialiste'}
+                      {teacher.type === 'generalist' ? 'Generalist' : 'Specialist'}
                     </Badge>
                     {teacher.specialty && (
                       <Badge variant="outline">{teacher.specialty}</Badge>
