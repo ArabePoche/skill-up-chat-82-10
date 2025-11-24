@@ -1,14 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import type { Teacher } from '../types';
 
 /**
  * Hook pour récupérer les enseignants d'une école
  */
 export const useTeachers = () => {
-  const { id: schoolId } = useParams();
+  const [searchParams] = useSearchParams();
+  const schoolId = searchParams.get('id');
 
   return useQuery({
     queryKey: ['teachers', schoolId],
@@ -66,7 +67,8 @@ export const useTeachers = () => {
  */
 export const useCreateTeacher = () => {
   const queryClient = useQueryClient();
-  const { id: schoolId } = useParams();
+  const [searchParams] = useSearchParams();
+  const schoolId = searchParams.get('id');
 
   return useMutation({
     mutationFn: async (data: { 
