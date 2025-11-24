@@ -35,6 +35,7 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
       setFirstName(teacher.profiles?.first_name || '');
       setLastName(teacher.profiles?.last_name || '');
       setEmail(teacher.profiles?.email || '');
+      // Le type vient déjà avec les bonnes valeurs ('generaliste' ou 'specialiste')
       setType(teacher.type);
       setSpecialty(teacher.specialty || '');
     } else {
@@ -132,8 +133,8 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="generalist">Généraliste (Professeur principal)</SelectItem>
-                <SelectItem value="specialist">Spécialiste (Matière spécifique)</SelectItem>
+                <SelectItem value="generalist">Generalist (Main teacher)</SelectItem>
+                <SelectItem value="specialist">Specialist (Specific subject)</SelectItem>
               </SelectContent>
             </Select>
           </div>
