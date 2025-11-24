@@ -286,6 +286,58 @@ export type Database = {
         }
         Relationships: []
       }
+      class_subjects: {
+        Row: {
+          class_id: string
+          coefficient: number | null
+          created_at: string | null
+          id: string
+          subject_id: string
+          teacher_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          class_id: string
+          coefficient?: number | null
+          created_at?: string | null
+          id?: string
+          subject_id: string
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          class_id?: string
+          coefficient?: number | null
+          created_at?: string | null
+          id?: string
+          subject_id?: string
+          teacher_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_subjects_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_subjects_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           annual_fee: number | null
@@ -579,6 +631,94 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_types: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      evaluations: {
+        Row: {
+          class_subject_id: string
+          coefficient: number
+          created_at: string | null
+          description: string | null
+          evaluation_date: string | null
+          evaluation_type_id: string | null
+          grading_period_id: string | null
+          id: string
+          include_in_average: boolean | null
+          max_score: number
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          class_subject_id: string
+          coefficient?: number
+          created_at?: string | null
+          description?: string | null
+          evaluation_date?: string | null
+          evaluation_type_id?: string | null
+          grading_period_id?: string | null
+          id?: string
+          include_in_average?: boolean | null
+          max_score?: number
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          class_subject_id?: string
+          coefficient?: number
+          created_at?: string | null
+          description?: string | null
+          evaluation_date?: string | null
+          evaluation_type_id?: string | null
+          grading_period_id?: string | null
+          id?: string
+          include_in_average?: boolean | null
+          max_score?: number
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_evaluation_type_id_fkey"
+            columns: ["evaluation_type_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_grading_period_id_fkey"
+            columns: ["grading_period_id"]
+            isOneToOne: false
+            referencedRelation: "grading_periods"
             referencedColumns: ["id"]
           },
         ]
@@ -1030,6 +1170,156 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      grade_audit_log: {
+        Row: {
+          action: string
+          details: Json | null
+          grade_id: string | null
+          id: string
+          modified_at: string | null
+          modified_by: string | null
+          new_score: number | null
+          old_score: number | null
+        }
+        Insert: {
+          action: string
+          details?: Json | null
+          grade_id?: string | null
+          id?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          new_score?: number | null
+          old_score?: number | null
+        }
+        Update: {
+          action?: string
+          details?: Json | null
+          grade_id?: string | null
+          id?: string
+          modified_at?: string | null
+          modified_by?: string | null
+          new_score?: number | null
+          old_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_audit_log_grade_id_fkey"
+            columns: ["grade_id"]
+            isOneToOne: false
+            referencedRelation: "grades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_audit_log_modified_by_fkey"
+            columns: ["modified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grades: {
+        Row: {
+          comment: string | null
+          entered_at: string | null
+          entered_by: string | null
+          evaluation_id: string
+          id: string
+          is_absent: boolean | null
+          is_excused: boolean | null
+          score: number | null
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          comment?: string | null
+          entered_at?: string | null
+          entered_by?: string | null
+          evaluation_id: string
+          id?: string
+          is_absent?: boolean | null
+          is_excused?: boolean | null
+          score?: number | null
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          comment?: string | null
+          entered_at?: string | null
+          entered_by?: string | null
+          evaluation_id?: string
+          id?: string
+          is_absent?: boolean | null
+          is_excused?: boolean | null
+          score?: number | null
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grades_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grades_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grades_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grading_periods: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          is_active: boolean | null
+          name: string
+          school_year_id: string
+          start_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          school_year_id: string
+          start_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          school_year_id?: string
+          start_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grading_periods_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       interview_evaluations: {
         Row: {
@@ -3961,6 +4251,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subjects: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       teacher_application_files: {
         Row: {
