@@ -36,6 +36,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useUpdateClass, CycleType, GenderType, Class } from '../hooks/useClasses';
 import { useTeachers } from '../hooks/useTeachers';
 import { useSubjects } from '../hooks/useSubjects';
+import { CreateSubjectModal } from './CreateSubjectModal';
 import { 
   useClassSubjects, 
   useAddClassSubject, 
@@ -129,7 +130,7 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
     await addClassSubject.mutateAsync({
       class_id: classData.id,
       subject_id: selectedSubjectId,
-      teacher_id: selectedTeacherId === 'none' ? null : selectedTeacherId,
+      teacher_id: selectedTeacherId === 'none' || !selectedTeacherId ? null : selectedTeacherId,
       coefficient: coefficient,
     });
     
@@ -398,7 +399,10 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
             {/* Ajouter une matière */}
             <Card>
               <CardContent className="pt-6">
-                <h3 className="font-semibold mb-4">Ajouter une matière</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold">Ajouter une matière</h3>
+                  <CreateSubjectModal />
+                </div>
                 <div className="grid gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Matière</label>
