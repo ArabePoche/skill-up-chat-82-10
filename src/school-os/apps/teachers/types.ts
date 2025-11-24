@@ -1,10 +1,12 @@
 // Types pour la gestion des enseignants
 
+export type TeacherType = 'generalist' | 'specialist';
+
 export interface Teacher {
   id: string;
   user_id: string;
   school_id: string;
-  type: 'generalist' | 'specialist';
+  type: TeacherType;
   specialty?: string; // Pour les spécialistes
   is_active: boolean;
   created_at: string;
@@ -21,15 +23,15 @@ export interface Teacher {
 export interface TeacherAssignment {
   id: string;
   teacher_id: string;
-  class_id?: string; // Pour généraliste
-  subject_id?: string; // Pour spécialiste
+  class_id?: string; // Pour generalist
+  subject_id?: string; // Pour specialist
   created_at: string;
 }
 
 export interface TeacherFormData {
   user_id: string;
-  type: 'generalist' | 'specialist';
+  type: TeacherType;
   specialty?: string;
-  class_id?: string; // Si généraliste
-  subject_ids?: string[]; // Si spécialiste
+  class_id?: string; // Si generalist
+  subject_ids?: string[]; // Si specialist
 }
