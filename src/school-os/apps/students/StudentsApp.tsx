@@ -151,7 +151,7 @@ export const StudentsApp: React.FC = () => {
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Classe" />
                   </SelectTrigger>
-                  <SelectContent className="z-50">
+                  <SelectContent>
                     <SelectItem value="all">Toutes les classes</SelectItem>
                     {classes?.map((cls) => (
                       <SelectItem key={cls.id} value={cls.id}>
@@ -165,7 +165,7 @@ export const StudentsApp: React.FC = () => {
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Genre" />
                   </SelectTrigger>
-                  <SelectContent className="z-50">
+                  <SelectContent>
                     <SelectItem value="all">Tous les genres</SelectItem>
                     <SelectItem value="male">Garçons</SelectItem>
                     <SelectItem value="female">Filles</SelectItem>
@@ -176,7 +176,7 @@ export const StudentsApp: React.FC = () => {
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Statut" />
                   </SelectTrigger>
-                  <SelectContent className="z-50">
+                  <SelectContent>
                     <SelectItem value="all">Tous les statuts</SelectItem>
                     <SelectItem value="active">Actifs</SelectItem>
                     <SelectItem value="inactive">Inactifs</SelectItem>
