@@ -4444,6 +4444,50 @@ export type Database = {
           },
         ]
       }
+      subject_files: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          subject_id: string
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          subject_id: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          subject_id?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_files_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           code: string | null
@@ -5727,6 +5771,10 @@ export type Database = {
       is_school_owner:
         | { Args: { _school_id: string; _user_id: string }; Returns: boolean }
         | { Args: { _school_id: string }; Returns: boolean }
+      is_school_owner_or_teacher: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       is_student_enrolled: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: boolean
