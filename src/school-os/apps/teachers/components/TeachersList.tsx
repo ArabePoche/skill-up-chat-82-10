@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Pencil, Trash2, UserCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, UserCheck, Phone, Users2 } from 'lucide-react';
 import { TeacherDialog } from './TeacherDialog';
 import { AssignmentDialog } from './AssignmentDialog';
 import type { Teacher } from '../types';
@@ -86,14 +86,29 @@ export const TeachersList: React.FC<TeachersListProps> = ({ schoolId }) => {
                     {getInitials(teacher.profiles?.first_name, teacher.profiles?.last_name)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="space-y-2">
                   <h4 className="font-semibold">
                     {teacher.profiles?.first_name} {teacher.profiles?.last_name}
                   </h4>
                   <p className="text-sm text-muted-foreground">{teacher.profiles?.email}</p>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {teacher.phone_number && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Phone className="w-3 h-3" />
+                        {teacher.phone_number}
+                      </div>
+                    )}
+                    {teacher.gender && (
+                      <Badge variant="outline" className="text-xs">
+                        {teacher.gender === 'male' ? 'Homme' : teacher.gender === 'female' ? 'Femme' : 'Autre'}
+                      </Badge>
+                    )}
+                  </div>
+
                   <div className="flex gap-2 mt-2">
                     <Badge variant={teacher.type === 'generalist' ? 'default' : 'secondary'}>
-                      {teacher.type === 'generalist' ? 'Generalist' : 'Specialist'}
+                      {teacher.type === 'generalist' ? 'Généraliste' : 'Spécialiste'}
                     </Badge>
                     {teacher.specialty && (
                       <Badge variant="outline">{teacher.specialty}</Badge>
