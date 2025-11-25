@@ -5,11 +5,13 @@
 export { PaymentsApp } from './PaymentsApp';
 export { AddPaymentDialog } from './components/AddPaymentDialog';
 export { FamilyPaymentDialog } from './components/FamilyPaymentDialog';
+export { FamilyPaymentHistoryModal } from './components/FamilyPaymentHistoryModal';
 export { StudentPaymentCard } from './components/StudentPaymentCard';
 export { FamilyPaymentCard } from './components/FamilyPaymentCard';
 export { DiscountBadge } from './components/DiscountBadge';
 export { MonthlyStatusBadges } from './components/MonthlyStatusBadges';
 export { useSchoolStudents, useStudentPayments, useAddPayment, useUpdatePayment, useDeletePayment } from './hooks/usePayments';
+export { useFamilyPaymentHistory } from './hooks/useFamilyPaymentHistory';
 export { 
   useFamiliesWithPayments, 
   useAddFamilyPayment, 
