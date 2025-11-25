@@ -20,6 +20,8 @@ export interface FamilyWithStudents {
     discount_amount: number | null;
     class_name: string | null;
     annual_fee: number;
+    registration_fee: number;
+    registration_fee_paid_amount: number;
     total_amount_due: number;
     total_amount_paid: number;
     remaining_amount: number;
@@ -72,7 +74,7 @@ export const useFamiliesWithPayments = (schoolId?: string) => {
               student_code,
               discount_percentage,
               discount_amount,
-              classes:class_id(name, annual_fee)
+              classes:class_id(name, annual_fee, registration_fee)
             `)
             .eq('family_id', family.id)
             .eq('status', 'active');
@@ -81,6 +83,9 @@ export const useFamiliesWithPayments = (schoolId?: string) => {
 
           const formattedStudents = (students || []).map(student => {
             const progress: any = progressMap.get(student.id);
+            const registrationFee = student.classes?.registration_fee || 0;
+            const registrationFeePaid = progress?.registration_fee_paid_amount || 0;
+            
             return {
               id: student.id,
               first_name: student.first_name,
@@ -90,6 +95,8 @@ export const useFamiliesWithPayments = (schoolId?: string) => {
               discount_amount: student.discount_amount,
               class_name: student.classes?.name || null,
               annual_fee: student.classes?.annual_fee || 0,
+              registration_fee: registrationFee,
+              registration_fee_paid_amount: registrationFeePaid,
               total_amount_due: progress?.total_amount_due || 0,
               total_amount_paid: progress?.total_amount_paid || 0,
               remaining_amount: progress?.remaining_amount || 0,
