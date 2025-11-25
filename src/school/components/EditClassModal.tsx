@@ -64,6 +64,9 @@ const editClassFormSchema = z.object({
   gender_type: z.enum(['mixte', 'garçons', 'filles'], {
     required_error: 'Veuillez sélectionner un type',
   }),
+  registration_fee: z.coerce
+    .number()
+    .min(0, 'Le montant doit être positif'),
   annual_fee: z.coerce
     .number()
     .min(0, 'Le montant doit être positif'),
@@ -118,6 +121,7 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
       cycle: classData.cycle,
       max_students: classData.max_students,
       gender_type: classData.gender_type,
+      registration_fee: classData.registration_fee || 0,
       annual_fee: classData.annual_fee || 0,
     },
   });
@@ -299,13 +303,13 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
               )}
             />
 
-            {/* Somme annuelle */}
+            {/* Frais d'inscription */}
             <FormField
               control={form.control}
-              name="annual_fee"
+              name="registration_fee"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Somme annuelle (€)</FormLabel>
+                  <FormLabel>Frais d'inscription (optionnel)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -314,6 +318,32 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
                       {...field}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Montant des frais d'inscription en € (peut être payé plus tard)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Frais de scolarité annuels */}
+            <FormField
+              control={form.control}
+              name="annual_fee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Frais de scolarité annuels (optionnel)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Montant des frais de scolarité annuels en €
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
