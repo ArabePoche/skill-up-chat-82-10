@@ -3,34 +3,17 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, AlertCircle, CheckCircle, Clock, Users, Percent, Edit, History } from 'lucide-react';
+import { Plus, AlertCircle, CheckCircle, Clock, Users, Percent, Edit, History, CreditCard } from 'lucide-react';
 import { EditDiscountDialog } from './EditDiscountDialog';
 import { PaymentHistoryModal } from './PaymentHistoryModal';
 import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
+import { calculateDiscountedAmount } from '../utils/discountCalculations';
 
 interface StudentPaymentCardProps {
   student: any;
   onAddPayment: () => void;
 }
 
-// Helper pour calculer les montants avec remise
-const calculateDiscountedAmount = (
-  baseAmount: number,
-  discountPercentage: number | null,
-  discountAmount: number | null
-): number => {
-  let finalAmount = baseAmount;
-  
-  if (discountPercentage && discountPercentage > 0) {
-    finalAmount -= (baseAmount * discountPercentage) / 100;
-  }
-  
-  if (discountAmount && discountAmount > 0) {
-    finalAmount -= discountAmount;
-  }
-  
-  return Math.max(0, finalAmount);
-};
 
 export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   student,
@@ -44,18 +27,20 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   
   // Calculer les frais annuels avec remise appliquée
   const annualFee = student.annual_fee || 0;
-  const effectiveAnnualFee = calculateDiscountedAmount(
+  const { finalAmount: effectiveAnnualFee, discountApplied } = calculateDiscountedAmount(
     annualFee,
     student.discount_percentage,
     student.discount_amount
   );
   
-  // Calculer le montant de la remise
-  const discountAmount = annualFee - effectiveAnnualFee;
-  
   // Calculer les montants périodiques (9 mois pour l'année scolaire)
   const monthlyFee = effectiveAnnualFee / 9;
   const quarterlyFee = effectiveAnnualFee / 3;
+  
+  // Frais d'inscription
+  const registrationFee = student.registration_fee || 0;
+  const hasRegistrationFee = registrationFee > 0;
+  const isRegistrationPaid = student.registration_fee_paid || false;
 
   const getPaymentStatus = () => {
     if (remaining === 0 && totalPaid > 0) {
@@ -87,7 +72,7 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
                 <CardTitle className="text-sm sm:text-base">
                   {student.first_name} {student.last_name}
                 </CardTitle>
-                {(student.discount_percentage || student.discount_amount) && (
+                {discountApplied > 0 && (
                   <Badge variant="outline" className="text-[9px] sm:text-[10px] py-0 px-1.5">
                     <Percent className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                     {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
@@ -130,6 +115,32 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-2.5 sm:space-y-3">
+        {/* Frais d'inscription */}
+        {hasRegistrationFee && (
+          <div className="bg-muted/50 rounded-lg p-2 sm:p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="text-[10px] sm:text-xs font-medium">Frais d'inscription</p>
+                  <p className="text-xs sm:text-sm font-semibold">{registrationFee.toLocaleString('fr-FR')} FCFA</p>
+                </div>
+              </div>
+              {isRegistrationPaid ? (
+                <Badge variant="default" className="text-[9px] sm:text-[10px]">
+                  <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                  Payé
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="text-[9px] sm:text-[10px]">
+                  <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                  Non payé
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Frais périodiques */}
         <div className="bg-muted/50 rounded-lg p-2 sm:p-3 space-y-1 sm:space-y-1.5">
           <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1 sm:mb-2">Frais de scolarité (9 mois):</p>
@@ -145,10 +156,10 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
             <span className="text-muted-foreground">Annuel:</span>
             <span className="font-medium">{Math.round(effectiveAnnualFee).toLocaleString('fr-FR')} FCFA</span>
           </div>
-          {discountAmount > 0 && (
+          {discountApplied > 0 && (
             <div className="flex justify-between text-[10px] sm:text-xs pt-1 border-t mt-1">
               <span className="text-green-600">Remise accordée:</span>
-              <span className="font-medium text-green-600">-{Math.round(discountAmount).toLocaleString('fr-FR')} FCFA</span>
+              <span className="font-medium text-green-600">-{Math.round(discountApplied).toLocaleString('fr-FR')} FCFA</span>
             </div>
           )}
         </div>
@@ -156,7 +167,7 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
         {/* Progression du paiement */}
         <div className="space-y-1.5 sm:space-y-2">
           <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-muted-foreground">Montant dû:</span>
+            <span className="text-muted-foreground">Montant annuel:</span>
             <span className="font-medium">{totalDue.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between text-xs sm:text-sm">
