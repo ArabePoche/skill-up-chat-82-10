@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, AlertCircle, CheckCircle, Clock, Users, Percent, Edit, History, CreditCard } from 'lucide-react';
+import { Plus, AlertCircle, CheckCircle, Clock, Users, Percent, Edit, History, CreditCard, GraduationCap } from 'lucide-react';
 import { EditDiscountDialog } from './EditDiscountDialog';
 import { PaymentHistoryModal } from './PaymentHistoryModal';
 import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
@@ -12,12 +12,14 @@ import { calculateDiscountedAmount } from '../utils/discountCalculations';
 interface StudentPaymentCardProps {
   student: any;
   onAddPayment: () => void;
+  onAddRegistrationPayment?: () => void;
 }
 
 
 export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   student,
   onAddPayment,
+  onAddRegistrationPayment,
 }) => {
   const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -37,10 +39,23 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   const monthlyFee = effectiveAnnualFee / 9;
   const quarterlyFee = effectiveAnnualFee / 3;
   
-  // Frais d'inscription
+  // Frais d'inscription (séparé des paiements scolaires)
   const registrationFee = student.registration_fee || 0;
+  const registrationFeePaid = student.registration_fee_paid_amount || 0;
   const hasRegistrationFee = registrationFee > 0;
-  const isRegistrationPaid = student.registration_fee_paid || false;
+  
+  // Déterminer l'état du frais d'inscription
+  const getRegistrationStatus = () => {
+    if (registrationFeePaid === 0) {
+      return { type: 'unpaid', label: 'Non payé', variant: 'destructive' as const };
+    } else if (registrationFeePaid < registrationFee) {
+      return { type: 'partial', label: 'Partiellement payé', variant: 'secondary' as const };
+    } else {
+      return { type: 'paid', label: 'Payé', variant: 'default' as const };
+    }
+  };
+  
+  const registrationStatus = getRegistrationStatus();
 
   const getPaymentStatus = () => {
     if (remaining === 0 && totalPaid > 0) {
@@ -115,29 +130,49 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-2.5 sm:space-y-3">
-        {/* Frais d'inscription */}
-        {hasRegistrationFee && (
+        {/* Frais d'inscription - Affiché uniquement si non payé ou partiel */}
+        {hasRegistrationFee && registrationStatus.type !== 'paid' && (
           <div className="bg-muted/50 rounded-lg p-2 sm:p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-muted-foreground" />
-                <div>
+                <div className="flex-1">
                   <p className="text-[10px] sm:text-xs font-medium">Frais d'inscription</p>
                   <p className="text-xs sm:text-sm font-semibold">{registrationFee.toLocaleString('fr-FR')} FCFA</p>
+                  {registrationStatus.type === 'partial' && (
+                    <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
+                      <span className="text-green-600 font-medium">
+                        {registrationFeePaid.toLocaleString('fr-FR')} FCFA payés
+                      </span>
+                      {' • '}
+                      <span className="text-orange-600 font-medium">
+                        {(registrationFee - registrationFeePaid).toLocaleString('fr-FR')} FCFA restants
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-              {isRegistrationPaid ? (
-                <Badge variant="default" className="text-[9px] sm:text-[10px]">
-                  <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
-                  Payé
-                </Badge>
-              ) : (
-                <Badge variant="destructive" className="text-[9px] sm:text-[10px]">
+              <Badge variant={registrationStatus.variant} className="text-[9px] sm:text-[10px] shrink-0">
+                {registrationStatus.type === 'unpaid' ? (
                   <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
-                  Non payé
-                </Badge>
-              )}
+                ) : (
+                  <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                )}
+                {registrationStatus.label}
+              </Badge>
             </div>
+            {/* Bouton de paiement rapide pour frais d'inscription */}
+            {onAddRegistrationPayment && registrationStatus.type !== 'paid' && (
+              <Button 
+                onClick={onAddRegistrationPayment} 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 w-full"
+              >
+                <GraduationCap className="w-3 h-3 mr-1.5" />
+                <span className="text-xs">Payer frais d'inscription</span>
+              </Button>
+            )}
           </div>
         )}
 
@@ -164,8 +199,9 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
           )}
         </div>
 
-        {/* Progression du paiement */}
+        {/* Progression du paiement SCOLAIRE UNIQUEMENT (sans frais d'inscription) */}
         <div className="space-y-1.5 sm:space-y-2">
+          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">Paiements scolaires :</p>
           <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Montant annuel:</span>
             <span className="font-medium">{totalDue.toLocaleString('fr-FR')} FCFA</span>
