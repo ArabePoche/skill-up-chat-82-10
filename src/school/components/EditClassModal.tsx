@@ -1,6 +1,6 @@
 // Composant modal pour modifier une classe
 import React, { useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, Edit, FileText } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -35,8 +35,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useUpdateClass, CycleType, GenderType, Class } from '../hooks/useClasses';
 import { useTeachers } from '../hooks/useTeachers';
-import { useSubjects } from '../hooks/useSubjects';
+import { useSubjects, type Subject } from '../hooks/useSubjects';
 import { CreateSubjectModal } from './CreateSubjectModal';
+import SubjectEditDialog from './SubjectEditDialog';
+import SubjectFilesManager from './SubjectFilesManager';
 import { 
   useClassSubjects, 
   useAddClassSubject, 
@@ -93,6 +95,10 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [selectedClassTeacherId, setSelectedClassTeacherId] = useState('');
   const [coefficient, setCoefficient] = useState<number>(1);
+  
+  // États pour gérer les dialogs de modification de matière et gestion des supports
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+  const [managingFilesSubjectId, setManagingFilesSubjectId] = useState<string | null>(null);
   
   const updateClass = useUpdateClass();
   const { data: teachers = [] } = useTeachers(classData.school_id);
@@ -484,13 +490,35 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
                               : 'Aucun professeur assigné'}
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteSubject(cs.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Modifier la matière"
+                            onClick={() => {
+                              const subject = subjects.find(s => s.id === cs.subject_id);
+                              if (subject) setEditingSubject(subject);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Gérer les supports"
+                            onClick={() => setManagingFilesSubjectId(cs.subject_id)}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Supprimer"
+                            onClick={() => handleDeleteSubject(cs.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -500,6 +528,28 @@ export const EditClassModal: React.FC<EditClassModalProps> = ({ classData }) => 
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      {/* Dialog pour modifier une matière */}
+      <SubjectEditDialog
+        subject={editingSubject}
+        open={!!editingSubject}
+        onOpenChange={(open) => !open && setEditingSubject(null)}
+      />
+
+      {/* Dialog pour gérer les supports d'une matière */}
+      <Dialog 
+        open={!!managingFilesSubjectId} 
+        onOpenChange={(open) => !open && setManagingFilesSubjectId(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gérer les supports de cours</DialogTitle>
+          </DialogHeader>
+          {managingFilesSubjectId && (
+            <SubjectFilesManager subjectId={managingFilesSubjectId} />
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
