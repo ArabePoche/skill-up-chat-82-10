@@ -8,6 +8,7 @@ export interface Teacher {
   school_id: string;
   type: TeacherType;
   specialty?: string; // Pour les spécialistes
+  salary?: number; // Salaire mensuel
   is_active: boolean;
   created_at: string;
   updated_at: string;
