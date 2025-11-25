@@ -21,9 +21,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Calendar, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { Plus, Calendar, AlertCircle, CheckCircle, Info, Pencil, Trash2 } from 'lucide-react';
 import { useSchoolTeachers } from '@/school/hooks/useSchoolTeachers';
-import { useTeacherRemarks, useCreateTeacherRemark } from '../hooks/useTeacherRemarks';
+import { useTeacherRemarks, useCreateTeacherRemark, useUpdateTeacherRemark, useDeleteTeacherRemark } from '../hooks/useTeacherRemarks';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -37,26 +47,64 @@ export const TeacherRemarks: React.FC<TeacherRemarksProps> = ({ schoolId }) => {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [remarkType, setRemarkType] = useState<'positive' | 'negative' | 'neutral'>('neutral');
   const [content, setContent] = useState('');
+  const [editingRemark, setEditingRemark] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [remarkToDelete, setRemarkToDelete] = useState<string | null>(null);
 
   const { data: teachers, isLoading: loadingTeachers } = useSchoolTeachers(schoolId);
   const { data: remarks, isLoading: loadingRemarks } = useTeacherRemarks(schoolId);
   const createRemark = useCreateTeacherRemark();
+  const updateRemark = useUpdateTeacherRemark();
+  const deleteRemark = useDeleteTeacherRemark();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeacherId || !content || !schoolId) return;
 
-    await createRemark.mutateAsync({
-      school_id: schoolId,
-      teacher_id: selectedTeacherId,
-      remark_type: remarkType,
-      content: content,
-    });
+    if (editingRemark) {
+      await updateRemark.mutateAsync({
+        id: editingRemark.id,
+        data: {
+          teacher_id: selectedTeacherId,
+          remark_type: remarkType,
+          content: content,
+        }
+      });
+    } else {
+      await createRemark.mutateAsync({
+        school_id: schoolId,
+        teacher_id: selectedTeacherId,
+        remark_type: remarkType,
+        content: content,
+      });
+    }
 
     setOpen(false);
     setSelectedTeacherId('');
     setRemarkType('neutral');
     setContent('');
+    setEditingRemark(null);
+  };
+
+  const handleEdit = (remark: any) => {
+    setEditingRemark(remark);
+    setSelectedTeacherId(remark.teacher_id);
+    setRemarkType(remark.remark_type);
+    setContent(remark.content);
+    setOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setRemarkToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (remarkToDelete) {
+      deleteRemark.mutate(remarkToDelete);
+      setDeleteDialogOpen(false);
+      setRemarkToDelete(null);
+    }
   };
 
   const getRemarkTypeIcon = (type: string) => {
@@ -110,7 +158,7 @@ export const TeacherRemarks: React.FC<TeacherRemarksProps> = ({ schoolId }) => {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Ajouter une remarque</DialogTitle>
+              <DialogTitle>{editingRemark ? 'Modifier la remarque' : 'Ajouter une remarque'}</DialogTitle>
               <DialogDescription>
                 Enregistrez une observation concernant un enseignant
               </DialogDescription>
@@ -162,8 +210,8 @@ export const TeacherRemarks: React.FC<TeacherRemarksProps> = ({ schoolId }) => {
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Annuler
                 </Button>
-                <Button type="submit" disabled={createRemark.isPending}>
-                  {createRemark.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                <Button type="submit" disabled={createRemark.isPending || updateRemark.isPending}>
+                  {(createRemark.isPending || updateRemark.isPending) ? 'Enregistrement...' : 'Enregistrer'}
                 </Button>
               </div>
             </form>
@@ -193,6 +241,22 @@ export const TeacherRemarks: React.FC<TeacherRemarksProps> = ({ schoolId }) => {
                     {format(new Date(remark.created_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
                   </div>
                 </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(remark)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(remark.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -205,6 +269,23 @@ export const TeacherRemarks: React.FC<TeacherRemarksProps> = ({ schoolId }) => {
           </Card>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette remarque ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
