@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreVertical, Mail, Phone, MapPin, Users, ChevronDown } from 'lucide-react';
+import { ImageModal } from '@/components/ui/image-modal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +38,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
 }) => {
   const [showSiblings, setShowSiblings] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const { data: siblings } = useFamilySiblings(student.family_id, student.id);
 
   const getInitials = () => {
@@ -67,7 +69,15 @@ export const StudentCard: React.FC<StudentCardProps> = ({
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
-            <Avatar className="w-12 h-12 cursor-pointer" onClick={() => onClick?.(student)}>
+            <Avatar 
+              className="w-12 h-12 cursor-pointer" 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (student.photo_url) {
+                  setShowPhotoModal(true);
+                }
+              }}
+            >
               <AvatarImage src={student.photo_url} alt={`${student.first_name} ${student.last_name}`} />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {getInitials()}
@@ -224,6 +234,15 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {student.photo_url && (
+        <ImageModal
+          isOpen={showPhotoModal}
+          onClose={() => setShowPhotoModal(false)}
+          imageUrl={student.photo_url}
+          fileName={`${student.first_name} ${student.last_name}`}
+        />
+      )}
     </Card>
   );
 };
