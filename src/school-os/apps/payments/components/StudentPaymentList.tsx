@@ -21,13 +21,15 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
-  const filteredStudents = students.filter(student => {
-    const query = searchQuery.toLowerCase();
-    return (
-      `${student.first_name} ${student.last_name}`.toLowerCase().includes(query) ||
-      student.student_code?.toLowerCase().includes(query)
-    );
-  });
+  const filteredStudents = students
+    .filter(student => student.total_amount_due > 0) // Exclure les élèves avec montant dû = 0
+    .filter(student => {
+      const query = searchQuery.toLowerCase();
+      return (
+        `${student.first_name} ${student.last_name}`.toLowerCase().includes(query) ||
+        student.student_code?.toLowerCase().includes(query)
+      );
+    });
 
   if (isLoading) {
     return (
