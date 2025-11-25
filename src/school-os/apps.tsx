@@ -27,7 +27,7 @@ export const schoolApps: SchoolApp[] = [
     id: 'teachers',
     name: 'Enseignants',
     icon: GraduationCap,
-    color: 'hsl(var(--accent))',
+    color: '#6366F1',
     component: TeachersApp,
   },
   {
