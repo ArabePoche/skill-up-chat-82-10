@@ -46,6 +46,7 @@ export const useTeachers = () => {
         school_id: t.school_id,
         type: t.teacher_type || 'specialist',
         specialty: t.specialties?.[0] || undefined,
+        salary: t.base_salary || undefined,
         is_active: t.employment_status === 'active',
         created_at: t.created_at,
         updated_at: t.updated_at,
@@ -78,6 +79,7 @@ export const useCreateTeacher = () => {
       email: string;
       type: 'generalist' | 'specialist'; 
       specialty?: string;
+      salary?: number;
     }) => {
       if (!schoolId) throw new Error('No school selected');
 
@@ -92,6 +94,7 @@ export const useCreateTeacher = () => {
           teacher_type: data.type,
           specialties: data.specialty ? [data.specialty] : [],
           employment_status: 'active',
+          base_salary: data.salary || null,
         })
         .select()
         .single();
@@ -117,10 +120,11 @@ export const useUpdateTeacher = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, type, specialty }: { id: string; type?: 'generalist' | 'specialist'; specialty?: string }) => {
+    mutationFn: async ({ id, type, specialty, salary }: { id: string; type?: 'generalist' | 'specialist'; specialty?: string; salary?: number }) => {
       const updates: any = {};
       if (type) updates.teacher_type = type;
       if (specialty !== undefined) updates.specialties = specialty ? [specialty] : [];
+      if (salary !== undefined) updates.base_salary = salary;
 
       const { data, error } = await supabase
         .from('school_teachers')
