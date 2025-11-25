@@ -5,8 +5,10 @@ import React, { useState } from 'react';
 import { useFamiliesWithPayments, type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { FamilyPaymentCard } from './FamilyPaymentCard';
 import { FamilyPaymentDialog } from './FamilyPaymentDialog';
+import { AddFamilyRegistrationPaymentDialog } from './AddFamilyRegistrationPaymentDialog';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -18,6 +20,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
   const { data: families = [], isLoading, refetch } = useFamiliesWithPayments(schoolId);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
   const [selectedFamily, setSelectedFamily] = useState<FamilyWithStudents | undefined>();
 
   const handleAddPayment = (family: FamilyWithStudents) => {
@@ -57,15 +60,30 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Barre de recherche - FIXE */}
-      <div className="relative mb-4 sm:mb-6 shrink-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher une famille..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
+      {/* Barre de recherche style Google - FIXE */}
+      <div className="flex flex-col gap-3 mb-4 sm:mb-6 shrink-0">
+        <div className="relative w-full max-w-3xl mx-auto">
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 w-5 h-5 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher une famille ou un élève..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 pr-4 h-12 text-base rounded-full border-2 focus:border-primary shadow-sm hover:shadow-md transition-shadow"
+            />
+          </div>
+        </div>
+        
+        <div className="flex justify-center">
+          <Button 
+            onClick={() => setIsRegistrationDialogOpen(true)} 
+            variant="outline"
+            className="rounded-full border-2"
+          >
+            <GraduationCap className="w-4 h-4 mr-2" />
+            Frais d'inscription familial
+          </Button>
+        </div>
       </div>
 
       {/* Liste des familles - SCROLLABLE */}
@@ -83,6 +101,10 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
                 key={family.family_id} 
                 family={family} 
                 onAddPayment={() => handleAddPayment(family)}
+                onAddRegistrationPayment={() => {
+                  setSelectedFamily(family);
+                  setIsRegistrationDialogOpen(true);
+                }}
               />
             ))
           )}
@@ -90,13 +112,26 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
       </ScrollArea>
 
       {schoolId && (
-        <FamilyPaymentDialog
-          open={isDialogOpen}
-          onOpenChange={handleDialogClose}
-          schoolId={schoolId}
-          selectedFamily={selectedFamily}
-          onSuccess={handlePaymentSuccess}
-        />
+        <>
+          <FamilyPaymentDialog
+            open={isDialogOpen}
+            onOpenChange={handleDialogClose}
+            schoolId={schoolId}
+            selectedFamily={selectedFamily}
+            onSuccess={handlePaymentSuccess}
+          />
+          
+          <AddFamilyRegistrationPaymentDialog
+            open={isRegistrationDialogOpen}
+            onOpenChange={(open) => {
+              setIsRegistrationDialogOpen(open);
+              if (!open) setSelectedFamily(undefined);
+            }}
+            schoolId={schoolId}
+            selectedFamily={selectedFamily}
+            onSuccess={handlePaymentSuccess}
+          />
+        </>
       )}
     </div>
   );
