@@ -1,12 +1,13 @@
 /**
  * Carte affichant les informations de paiement d'une famille
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Users, AlertCircle, CheckCircle, Clock, History } from 'lucide-react';
 import { type FamilyWithStudents } from '../hooks/useFamilyPayments';
+import { FamilyPaymentHistoryModal } from './FamilyPaymentHistoryModal';
 
 interface FamilyPaymentCardProps {
   family: FamilyWithStudents;
@@ -17,6 +18,8 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
   family,
   onAddPayment,
 }) => {
+  const [showHistory, setShowHistory] = useState(false);
+
   const getPaymentStatus = () => {
     if (family.total_family_remaining === 0 && family.total_family_paid > 0) {
       return { label: 'Payé', variant: 'default' as const, icon: CheckCircle, color: 'text-green-600' };
@@ -95,11 +98,24 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
           </div>
         </div>
 
-        <Button onClick={onAddPayment} className="w-full" size="sm">
-          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-          <span className="text-xs sm:text-sm">Paiement familial</span>
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={onAddPayment} className="w-full" size="sm">
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Paiement</span>
+          </Button>
+          <Button onClick={() => setShowHistory(true)} variant="outline" className="w-full" size="sm">
+            <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Historique</span>
+          </Button>
+        </div>
       </CardContent>
+
+      <FamilyPaymentHistoryModal
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        familyId={family.family_id}
+        familyName={family.family_name}
+      />
     </Card>
   );
 };
