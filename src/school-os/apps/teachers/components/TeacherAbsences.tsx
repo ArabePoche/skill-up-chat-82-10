@@ -23,9 +23,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Calendar, FileText } from 'lucide-react';
+import { Plus, Calendar, FileText, Pencil, Trash2 } from 'lucide-react';
 import { useSchoolTeachers } from '@/school/hooks/useSchoolTeachers';
-import { useTeacherAbsences, useCreateTeacherAbsence } from '../hooks/useTeacherAbsences';
+import { useTeacherAbsences, useCreateTeacherAbsence, useUpdateTeacherAbsence, useDeleteTeacherAbsence } from '../hooks/useTeacherAbsences';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -40,28 +50,68 @@ export const TeacherAbsences: React.FC<TeacherAbsencesProps> = ({ schoolId }) =>
   const [absenceDate, setAbsenceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isJustified, setIsJustified] = useState(false);
   const [reason, setReason] = useState('');
+  const [editingAbsence, setEditingAbsence] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [absenceToDelete, setAbsenceToDelete] = useState<string | null>(null);
 
   const { data: teachers, isLoading: loadingTeachers } = useSchoolTeachers(schoolId);
   const { data: absences, isLoading: loadingAbsences } = useTeacherAbsences(schoolId);
   const createAbsence = useCreateTeacherAbsence();
+  const updateAbsence = useUpdateTeacherAbsence();
+  const deleteAbsence = useDeleteTeacherAbsence();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeacherId || !absenceDate || !schoolId) return;
 
-    await createAbsence.mutateAsync({
-      school_id: schoolId,
-      teacher_id: selectedTeacherId,
-      absence_date: absenceDate,
-      is_justified: isJustified,
-      reason: reason || undefined,
-    });
+    if (editingAbsence) {
+      await updateAbsence.mutateAsync({
+        id: editingAbsence.id,
+        data: {
+          teacher_id: selectedTeacherId,
+          absence_date: absenceDate,
+          is_justified: isJustified,
+          reason: reason || undefined,
+        }
+      });
+    } else {
+      await createAbsence.mutateAsync({
+        school_id: schoolId,
+        teacher_id: selectedTeacherId,
+        absence_date: absenceDate,
+        is_justified: isJustified,
+        reason: reason || undefined,
+      });
+    }
 
     setOpen(false);
     setSelectedTeacherId('');
     setAbsenceDate(format(new Date(), 'yyyy-MM-dd'));
     setIsJustified(false);
     setReason('');
+    setEditingAbsence(null);
+  };
+
+  const handleEdit = (absence: any) => {
+    setEditingAbsence(absence);
+    setSelectedTeacherId(absence.teacher_id);
+    setAbsenceDate(absence.absence_date);
+    setIsJustified(absence.is_justified);
+    setReason(absence.reason || '');
+    setOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setAbsenceToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (absenceToDelete) {
+      deleteAbsence.mutate(absenceToDelete);
+      setDeleteDialogOpen(false);
+      setAbsenceToDelete(null);
+    }
   };
 
   if (loadingTeachers || loadingAbsences) {
@@ -86,7 +136,7 @@ export const TeacherAbsences: React.FC<TeacherAbsencesProps> = ({ schoolId }) =>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Enregistrer une absence</DialogTitle>
+              <DialogTitle>{editingAbsence ? 'Modifier l\'absence' : 'Enregistrer une absence'}</DialogTitle>
               <DialogDescription>
                 Déclarez une absence d'enseignant
               </DialogDescription>
@@ -145,8 +195,8 @@ export const TeacherAbsences: React.FC<TeacherAbsencesProps> = ({ schoolId }) =>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Annuler
                 </Button>
-                <Button type="submit" disabled={createAbsence.isPending}>
-                  {createAbsence.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                <Button type="submit" disabled={createAbsence.isPending || updateAbsence.isPending}>
+                  {(createAbsence.isPending || updateAbsence.isPending) ? 'Enregistrement...' : 'Enregistrer'}
                 </Button>
               </div>
             </form>
@@ -162,8 +212,8 @@ export const TeacherAbsences: React.FC<TeacherAbsencesProps> = ({ schoolId }) =>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">
-                      {absence.school_teachers?.profiles?.first_name}{' '}
-                      {absence.school_teachers?.profiles?.last_name}
+                      {absence.school_teachers?.first_name}{' '}
+                      {absence.school_teachers?.last_name}
                     </span>
                     <Badge variant={absence.is_justified ? 'default' : 'destructive'}>
                       {absence.is_justified ? 'Justifiée' : 'Non justifiée'}
@@ -180,6 +230,22 @@ export const TeacherAbsences: React.FC<TeacherAbsencesProps> = ({ schoolId }) =>
                     </div>
                   )}
                 </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(absence)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(absence.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -192,6 +258,23 @@ export const TeacherAbsences: React.FC<TeacherAbsencesProps> = ({ schoolId }) =>
           </Card>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette absence ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
