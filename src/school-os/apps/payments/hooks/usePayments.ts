@@ -14,7 +14,7 @@ export const useSchoolStudents = (schoolId?: string) => {
         .from('students_school')
         .select(`
           *,
-          classes:class_id(name),
+          classes:class_id(name, annual_fee, registration_fee),
           school_student_families:family_id(family_name)
         `)
         .eq('school_id', schoolId)
@@ -40,6 +40,8 @@ export const useSchoolStudents = (schoolId?: string) => {
         const progress: any = progressMap.get(student.id);
         return {
           ...student,
+          annual_fee: student.classes?.annual_fee || 0,
+          registration_fee: student.classes?.registration_fee || 0,
           total_amount_due: progress?.total_amount_due || 0,
           total_amount_paid: progress?.total_amount_paid || 0,
           remaining_amount: progress?.remaining_amount || 0,
