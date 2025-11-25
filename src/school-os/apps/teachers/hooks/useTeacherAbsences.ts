@@ -75,3 +75,54 @@ export const useCreateTeacherAbsence = () => {
     },
   });
 };
+
+// Mettre à jour une absence
+export const useUpdateTeacherAbsence = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTeacherAbsenceData> }) => {
+      const { data: result, error } = await (supabase as any)
+        .from('school_teacher_absences')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-absences'] });
+      toast.success('Absence modifiée');
+    },
+    onError: (error) => {
+      console.error('Error updating absence:', error);
+      toast.error('Erreur lors de la modification de l\'absence');
+    },
+  });
+};
+
+// Supprimer une absence
+export const useDeleteTeacherAbsence = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('school_teacher_absences')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-absences'] });
+      toast.success('Absence supprimée');
+    },
+    onError: (error) => {
+      console.error('Error deleting absence:', error);
+      toast.error('Erreur lors de la suppression de l\'absence');
+    },
+  });
+};
