@@ -63,3 +63,57 @@ export const useCreateSubject = () => {
     },
   });
 };
+
+// Modifier une matière existante
+export const useUpdateSubject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateSubjectData }) => {
+      const { data: result, error } = await supabase
+        .from('subjects')
+        .update({
+          name: data.name,
+          code: data.code || null,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast.success('Matière modifiée avec succès');
+    },
+    onError: (error) => {
+      console.error('Error updating subject:', error);
+      toast.error('Erreur lors de la modification de la matière');
+    },
+  });
+};
+
+// Supprimer une matière
+export const useDeleteSubject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast.success('Matière supprimée avec succès');
+    },
+    onError: (error) => {
+      console.error('Error deleting subject:', error);
+      toast.error('Erreur lors de la suppression de la matière');
+    },
+  });
+};
