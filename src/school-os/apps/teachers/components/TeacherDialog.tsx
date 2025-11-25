@@ -25,6 +25,7 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
   const [email, setEmail] = useState('');
   const [type, setType] = useState<'generalist' | 'specialist'>('generalist');
   const [specialty, setSpecialty] = useState('');
+  const [salary, setSalary] = useState('');
 
   const { mutate: createTeacher, isPending: isCreating } = useCreateTeacher();
   const { mutate: updateTeacher, isPending: isUpdating } = useUpdateTeacher();
@@ -35,9 +36,9 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
       setFirstName(teacher.profiles?.first_name || '');
       setLastName(teacher.profiles?.last_name || '');
       setEmail(teacher.profiles?.email || '');
-      // Le type vient déjà avec les bonnes valeurs ('generaliste' ou 'specialiste')
       setType(teacher.type);
       setSpecialty(teacher.specialty || '');
+      setSalary(teacher.salary?.toString() || '');
     } else {
       setUserId('');
       setFirstName('');
@@ -45,6 +46,7 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
       setEmail('');
       setType('generalist');
       setSpecialty('');
+      setSalary('');
     }
   }, [teacher]);
 
@@ -53,7 +55,12 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
 
     if (teacher) {
       updateTeacher(
-        { id: teacher.id, type, specialty: type === 'specialist' ? specialty : undefined },
+        { 
+          id: teacher.id, 
+          type, 
+          specialty: type === 'specialist' ? specialty : undefined,
+          salary: salary ? parseFloat(salary) : undefined
+        },
         { onSuccess: () => onOpenChange(false) }
       );
     } else {
@@ -64,7 +71,8 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
           last_name: lastName,
           email,
           type,
-          specialty: type === 'specialist' ? specialty : undefined 
+          specialty: type === 'specialist' ? specialty : undefined,
+          salary: salary ? parseFloat(salary) : undefined
         },
         { onSuccess: () => onOpenChange(false) }
       );
@@ -151,6 +159,18 @@ export const TeacherDialog: React.FC<TeacherDialogProps> = ({
               />
             </div>
           )}
+
+          <div>
+            <Label htmlFor="salary">Salaire mensuel (€)</Label>
+            <Input
+              id="salary"
+              type="number"
+              step="0.01"
+              value={salary}
+              onChange={(e) => setSalary(e.target.value)}
+              placeholder="Ex: 2500"
+            />
+          </div>
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
