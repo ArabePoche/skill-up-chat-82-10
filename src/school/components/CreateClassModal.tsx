@@ -47,6 +47,9 @@ const classFormSchema = z.object({
       genderType: z.enum(['mixte', 'garçons', 'filles'], {
         required_error: 'Veuillez sélectionner un type',
       }),
+      registrationFee: z.coerce
+        .number()
+        .min(0, 'Le montant doit être positif'),
       annualFee: z.coerce
         .number()
         .min(0, 'Le montant doit être positif'),
@@ -86,7 +89,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
     resolver: zodResolver(classFormSchema),
     defaultValues: {
       cycle: 'primaire',
-      classes: [{ name: '', maxStudents: 30, genderType: 'mixte', annualFee: 0 }],
+      classes: [{ name: '', maxStudents: 30, genderType: 'mixte', registrationFee: 0, annualFee: 0 }],
     },
   });
 
@@ -103,6 +106,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       cycle: data.cycle,
       max_students: cls.maxStudents,
       gender_type: cls.genderType,
+      registration_fee: cls.registrationFee,
       annual_fee: cls.annualFee,
     }));
 
@@ -264,13 +268,13 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                       )}
                     />
 
-                    {/* Somme annuelle */}
+                    {/* Frais d'inscription */}
                     <FormField
                       control={form.control}
-                      name={`classes.${index}.annualFee`}
+                      name={`classes.${index}.registrationFee`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Somme annuelle (€)</FormLabel>
+                          <FormLabel>Frais d'inscription (optionnel)</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -279,6 +283,32 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                               {...field}
                             />
                           </FormControl>
+                          <FormDescription>
+                            Montant des frais d'inscription en € (peut être payé plus tard)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Frais de scolarité annuels */}
+                    <FormField
+                      control={form.control}
+                      name={`classes.${index}.annualFee`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Frais de scolarité annuels (optionnel)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="0"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Montant des frais de scolarité annuels en €
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
