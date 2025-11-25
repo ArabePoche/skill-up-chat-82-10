@@ -25,16 +25,26 @@ export const useSchoolTeachers = (schoolId?: string) => {
 
       const { data, error } = await supabase
         .from('school_teachers')
-        .select(`
-          *,
-          profiles(id, first_name, last_name, email, avatar_url)
-        `)
+        .select('*')
         .eq('school_id', schoolId)
-        .eq('is_active', true)
+        .eq('employment_status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as SchoolTeacher[];
+      return (data || []).map(t => ({
+        id: t.id,
+        school_id: t.school_id,
+        user_id: t.user_id,
+        is_active: t.employment_status === 'active',
+        created_at: t.created_at,
+        profiles: {
+          id: t.user_id,
+          first_name: t.first_name,
+          last_name: t.last_name,
+          email: t.email,
+          avatar_url: undefined,
+        }
+      })) as SchoolTeacher[];
     },
     enabled: !!schoolId,
   });
