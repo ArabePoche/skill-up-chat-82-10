@@ -348,6 +348,7 @@ export type Database = {
           id: string
           max_students: number
           name: string
+          registration_fee: number | null
           school_id: string
           school_year_id: string
           updated_at: string
@@ -361,6 +362,7 @@ export type Database = {
           id?: string
           max_students?: number
           name: string
+          registration_fee?: number | null
           school_id: string
           school_year_id: string
           updated_at?: string
@@ -374,6 +376,7 @@ export type Database = {
           id?: string
           max_students?: number
           name?: string
+          registration_fee?: number | null
           school_id?: string
           school_year_id?: string
           updated_at?: string
