@@ -22,9 +22,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Calendar, Clock, FileText } from 'lucide-react';
+import { Plus, Calendar, Clock, FileText, Pencil, Trash2 } from 'lucide-react';
 import { useSchoolTeachers } from '@/school/hooks/useSchoolTeachers';
-import { useTeacherLateArrivals, useCreateTeacherLateArrival } from '../hooks/useTeacherLateArrivals';
+import { useTeacherLateArrivals, useCreateTeacherLateArrival, useUpdateTeacherLateArrival, useDeleteTeacherLateArrival } from '../hooks/useTeacherLateArrivals';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -38,28 +48,68 @@ export const TeacherLateArrivals: React.FC<TeacherLateArrivalsProps> = ({ school
   const [lateDate, setLateDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [minutes, setMinutes] = useState('');
   const [reason, setReason] = useState('');
+  const [editingLateArrival, setEditingLateArrival] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [lateArrivalToDelete, setLateArrivalToDelete] = useState<string | null>(null);
 
   const { data: teachers, isLoading: loadingTeachers } = useSchoolTeachers(schoolId);
   const { data: lateArrivals, isLoading: loadingLateArrivals } = useTeacherLateArrivals(schoolId);
   const createLateArrival = useCreateTeacherLateArrival();
+  const updateLateArrival = useUpdateTeacherLateArrival();
+  const deleteLateArrival = useDeleteTeacherLateArrival();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeacherId || !lateDate || !minutes || !schoolId) return;
 
-    await createLateArrival.mutateAsync({
-      school_id: schoolId,
-      teacher_id: selectedTeacherId,
-      late_date: lateDate,
-      minutes_late: parseInt(minutes),
-      reason: reason || undefined,
-    });
+    if (editingLateArrival) {
+      await updateLateArrival.mutateAsync({
+        id: editingLateArrival.id,
+        data: {
+          teacher_id: selectedTeacherId,
+          late_date: lateDate,
+          minutes_late: parseInt(minutes),
+          reason: reason || undefined,
+        }
+      });
+    } else {
+      await createLateArrival.mutateAsync({
+        school_id: schoolId,
+        teacher_id: selectedTeacherId,
+        late_date: lateDate,
+        minutes_late: parseInt(minutes),
+        reason: reason || undefined,
+      });
+    }
 
     setOpen(false);
     setSelectedTeacherId('');
     setLateDate(format(new Date(), 'yyyy-MM-dd'));
     setMinutes('');
     setReason('');
+    setEditingLateArrival(null);
+  };
+
+  const handleEdit = (lateArrival: any) => {
+    setEditingLateArrival(lateArrival);
+    setSelectedTeacherId(lateArrival.teacher_id);
+    setLateDate(lateArrival.late_date);
+    setMinutes(lateArrival.minutes_late.toString());
+    setReason(lateArrival.reason || '');
+    setOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setLateArrivalToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (lateArrivalToDelete) {
+      deleteLateArrival.mutate(lateArrivalToDelete);
+      setDeleteDialogOpen(false);
+      setLateArrivalToDelete(null);
+    }
   };
 
   if (loadingTeachers || loadingLateArrivals) {
@@ -84,7 +134,7 @@ export const TeacherLateArrivals: React.FC<TeacherLateArrivalsProps> = ({ school
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Enregistrer un retard</DialogTitle>
+              <DialogTitle>{editingLateArrival ? 'Modifier le retard' : 'Enregistrer un retard'}</DialogTitle>
               <DialogDescription>
                 Déclarez un retard d'enseignant
               </DialogDescription>
@@ -145,8 +195,8 @@ export const TeacherLateArrivals: React.FC<TeacherLateArrivalsProps> = ({ school
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Annuler
                 </Button>
-                <Button type="submit" disabled={createLateArrival.isPending}>
-                  {createLateArrival.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                <Button type="submit" disabled={createLateArrival.isPending || updateLateArrival.isPending}>
+                  {(createLateArrival.isPending || updateLateArrival.isPending) ? 'Enregistrement...' : 'Enregistrer'}
                 </Button>
               </div>
             </form>
@@ -162,8 +212,8 @@ export const TeacherLateArrivals: React.FC<TeacherLateArrivalsProps> = ({ school
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">
-                      {late.school_teachers?.profiles?.first_name}{' '}
-                      {late.school_teachers?.profiles?.last_name}
+                      {late.school_teachers?.first_name}{' '}
+                      {late.school_teachers?.last_name}
                     </span>
                     <span className="text-sm font-medium text-orange-600">
                       {late.minutes_late} min
@@ -180,7 +230,22 @@ export const TeacherLateArrivals: React.FC<TeacherLateArrivalsProps> = ({ school
                     </div>
                   )}
                 </div>
-                <Clock className="w-5 h-5 text-orange-500" />
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(late)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(late.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -193,6 +258,23 @@ export const TeacherLateArrivals: React.FC<TeacherLateArrivalsProps> = ({ school
           </Card>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce retard ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
