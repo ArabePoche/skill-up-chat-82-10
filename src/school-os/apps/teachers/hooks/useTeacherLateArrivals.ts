@@ -12,10 +12,8 @@ export interface TeacherLateArrival {
   reason?: string;
   created_at: string;
   school_teachers?: {
-    profiles?: {
-      first_name: string;
-      last_name: string;
-    };
+    first_name: string;
+    last_name: string;
   };
 }
 
@@ -34,12 +32,12 @@ export const useTeacherLateArrivals = (schoolId?: string) => {
     queryFn: async () => {
       if (!schoolId) return [];
 
-      const { data, error } = await supabase
-        .from('teacher_late_arrivals')
+      const { data, error } = await (supabase as any)
+        .from('school_teacher_late_arrivals')
         .select(`
           *,
           school_teachers!inner(
-            profiles(first_name, last_name)
+            first_name, last_name
           )
         `)
         .eq('school_id', schoolId)
@@ -58,8 +56,8 @@ export const useCreateTeacherLateArrival = () => {
 
   return useMutation({
     mutationFn: async (data: CreateTeacherLateArrivalData) => {
-      const { data: result, error } = await supabase
-        .from('teacher_late_arrivals')
+      const { data: result, error } = await (supabase as any)
+        .from('school_teacher_late_arrivals')
         .insert(data)
         .select()
         .single();
