@@ -180,8 +180,8 @@ export const TeacherRemarks: React.FC<TeacherRemarksProps> = ({ schoolId }) => {
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">
-                      {remark.school_teachers?.profiles?.first_name}{' '}
-                      {remark.school_teachers?.profiles?.last_name}
+                      {remark.school_teachers?.first_name}{' '}
+                      {remark.school_teachers?.last_name}
                     </span>
                     <Badge className={getRemarkTypeColor(remark.remark_type)}>
                       {getRemarkTypeLabel(remark.remark_type)}
