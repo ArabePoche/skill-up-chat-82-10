@@ -38,10 +38,14 @@ export const useSchoolStudents = (schoolId?: string) => {
 
       return students.map(student => {
         const progress: any = progressMap.get(student.id);
+        const registrationFee = student.classes?.registration_fee || 0;
+        const registrationFeePaid = progress?.registration_fee_paid_amount || 0;
+        
         return {
           ...student,
           annual_fee: student.classes?.annual_fee || 0,
-          registration_fee: student.classes?.registration_fee || 0,
+          registration_fee: registrationFee,
+          registration_fee_paid_amount: registrationFeePaid,
           total_amount_due: progress?.total_amount_due || 0,
           total_amount_paid: progress?.total_amount_paid || 0,
           remaining_amount: progress?.remaining_amount || 0,
