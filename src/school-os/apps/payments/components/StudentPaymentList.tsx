@@ -5,9 +5,10 @@ import React, { useState } from 'react';
 import { useSchoolStudents } from '../hooks/usePayments';
 import { StudentPaymentCard } from './StudentPaymentCard';
 import { AddPaymentDialog } from './AddPaymentDialog';
+import { AddRegistrationPaymentDialog } from './AddRegistrationPaymentDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -19,6 +20,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
   const { data: students = [], isLoading } = useSchoolStudents(schoolId);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  const [isAddRegistrationPaymentOpen, setIsAddRegistrationPaymentOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   const filteredStudents = students
@@ -44,22 +46,34 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
 
   return (
     <div className="flex flex-col h-full">
-      {/* Barre de recherche et actions - FIXE */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4 sm:mb-6 shrink-0">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un élève..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      {/* Barre de recherche style Google - FIXE */}
+      <div className="flex flex-col gap-3 mb-4 sm:mb-6 shrink-0">
+        <div className="relative w-full max-w-3xl mx-auto">
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 w-5 h-5 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un élève par nom ou code..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 pr-4 h-12 text-base rounded-full border-2 focus:border-primary shadow-sm hover:shadow-md transition-shadow"
+            />
+          </div>
         </div>
-        <Button onClick={() => setIsAddPaymentOpen(true)} className="w-full sm:w-auto">
-          <Plus className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">Ajouter un paiement</span>
-          <span className="sm:hidden">Ajouter</span>
-        </Button>
+        
+        <div className="flex flex-wrap gap-2 justify-center">
+          <Button onClick={() => setIsAddPaymentOpen(true)} className="rounded-full">
+            <Plus className="w-4 h-4 mr-2" />
+            Paiement scolaire
+          </Button>
+          <Button 
+            onClick={() => setIsAddRegistrationPaymentOpen(true)} 
+            variant="outline"
+            className="rounded-full border-2"
+          >
+            <GraduationCap className="w-4 h-4 mr-2" />
+            Frais d'inscription
+          </Button>
+        </div>
       </div>
 
       {/* Liste des élèves - SCROLLABLE */}
@@ -80,17 +94,33 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
                   setSelectedStudent(student);
                   setIsAddPaymentOpen(true);
                 }}
+                onAddRegistrationPayment={() => {
+                  setSelectedStudent(student);
+                  setIsAddRegistrationPaymentOpen(true);
+                }}
               />
             ))
           )}
         </div>
       </ScrollArea>
 
-      {/* Dialog d'ajout de paiement */}
+      {/* Dialog d'ajout de paiement scolaire */}
       <AddPaymentDialog
         open={isAddPaymentOpen}
         onOpenChange={(open) => {
           setIsAddPaymentOpen(open);
+          if (!open) setSelectedStudent(null);
+        }}
+        schoolId={schoolId || ''}
+        selectedStudent={selectedStudent}
+        onSuccess={() => {}}
+      />
+
+      {/* Dialog d'ajout de paiement de frais d'inscription */}
+      <AddRegistrationPaymentDialog
+        open={isAddRegistrationPaymentOpen}
+        onOpenChange={(open) => {
+          setIsAddRegistrationPaymentOpen(open);
           if (!open) setSelectedStudent(null);
         }}
         schoolId={schoolId || ''}
