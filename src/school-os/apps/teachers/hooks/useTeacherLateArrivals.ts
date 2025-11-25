@@ -75,3 +75,54 @@ export const useCreateTeacherLateArrival = () => {
     },
   });
 };
+
+// Mettre à jour un retard
+export const useUpdateTeacherLateArrival = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTeacherLateArrivalData> }) => {
+      const { data: result, error } = await (supabase as any)
+        .from('school_teacher_late_arrivals')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-late-arrivals'] });
+      toast.success('Retard modifié');
+    },
+    onError: (error) => {
+      console.error('Error updating late arrival:', error);
+      toast.error('Erreur lors de la modification du retard');
+    },
+  });
+};
+
+// Supprimer un retard
+export const useDeleteTeacherLateArrival = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('school_teacher_late_arrivals')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-late-arrivals'] });
+      toast.success('Retard supprimé');
+    },
+    onError: (error) => {
+      console.error('Error deleting late arrival:', error);
+      toast.error('Erreur lors de la suppression du retard');
+    },
+  });
+};
