@@ -198,8 +198,8 @@ export const TeacherPayments: React.FC<TeacherPaymentsProps> = ({ schoolId }) =>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">
-                      {payment.school_teachers?.profiles?.first_name}{' '}
-                      {payment.school_teachers?.profiles?.last_name}
+                      {payment.school_teachers?.first_name}{' '}
+                      {payment.school_teachers?.last_name}
                     </span>
                     <Badge className={getPaymentMethodColor(payment.payment_method)}>
                       {getPaymentMethodLabel(payment.payment_method)}
