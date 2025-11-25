@@ -12,10 +12,8 @@ export interface TeacherAbsence {
   reason?: string;
   created_at: string;
   school_teachers?: {
-    profiles?: {
-      first_name: string;
-      last_name: string;
-    };
+    first_name: string;
+    last_name: string;
   };
 }
 
@@ -34,12 +32,12 @@ export const useTeacherAbsences = (schoolId?: string) => {
     queryFn: async () => {
       if (!schoolId) return [];
 
-      const { data, error } = await supabase
-        .from('teacher_absences')
+      const { data, error } = await (supabase as any)
+        .from('school_teacher_absences')
         .select(`
           *,
           school_teachers!inner(
-            profiles(first_name, last_name)
+            first_name, last_name
           )
         `)
         .eq('school_id', schoolId)
@@ -58,8 +56,8 @@ export const useCreateTeacherAbsence = () => {
 
   return useMutation({
     mutationFn: async (data: CreateTeacherAbsenceData) => {
-      const { data: result, error } = await supabase
-        .from('teacher_absences')
+      const { data: result, error } = await (supabase as any)
+        .from('school_teacher_absences')
         .insert(data)
         .select()
         .single();
