@@ -1,5 +1,5 @@
 /**
- * Dialog pour payer les frais d'inscription (familial)
+ * Dialog pour payer le frais d'inscription (individuel)
  */
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -8,182 +8,106 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useFamiliesWithPayments, type FamilyWithStudents } from '../hooks/useFamilyPayments';
+import { useSchoolStudents } from '../hooks/usePayments';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Users, GraduationCap, AlertCircle } from 'lucide-react';
+import { GraduationCap, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-interface AddFamilyRegistrationPaymentDialogProps {
+interface AddRegistrationPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   schoolId: string;
-  selectedFamily?: FamilyWithStudents;
+  selectedStudent?: any;
   onSuccess: () => void;
 }
 
-export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationPaymentDialogProps> = ({
+export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialogProps> = ({
   open,
   onOpenChange,
   schoolId,
-  selectedFamily,
+  selectedStudent,
   onSuccess,
 }) => {
-  const [familyId, setFamilyId] = useState('');
-  const [totalAmount, setTotalAmount] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
-  const [selectedStudents, setSelectedStudents] = useState<Record<string, boolean>>({});
-  const [studentAmounts, setStudentAmounts] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: families } = useFamiliesWithPayments(schoolId);
-  const currentFamily = selectedFamily || families?.find(f => f.family_id === familyId);
+  const { data: students } = useSchoolStudents(schoolId);
+
+  const selectedStudentData = students?.find(s => s.id === studentId);
+  const registrationFee = selectedStudentData?.registration_fee || 0;
+  const registrationFeePaid = selectedStudentData?.registration_fee_paid_amount || 0;
+  const registrationFeeRemaining = registrationFee - registrationFeePaid;
 
   useEffect(() => {
-    if (selectedFamily) {
-      setFamilyId(selectedFamily.family_id);
-      // Sélectionner uniquement les élèves avec frais d'inscription impayé
-      const initialSelection: Record<string, boolean> = {};
-      selectedFamily.students.forEach(student => {
-        const registrationFee = student.registration_fee || 0;
-        const registrationFeePaid = student.registration_fee_paid_amount || 0;
-        if (registrationFee > registrationFeePaid) {
-          initialSelection[student.id] = true;
-        }
-      });
-      setSelectedStudents(initialSelection);
+    if (selectedStudent) {
+      setStudentId(selectedStudent.id);
     }
-  }, [selectedFamily]);
-
-  // Répartir automatiquement le montant total selon les frais d'inscription restants
-  useEffect(() => {
-    if (!currentFamily || !totalAmount) return;
-
-    const amount = parseFloat(totalAmount);
-    if (isNaN(amount) || amount <= 0) return;
-
-    const selected = currentFamily.students.filter(s => selectedStudents[s.id]);
-    if (selected.length === 0) return;
-
-    // Calculer les frais d'inscription restants
-    const studentsWithRemaining = selected.map(student => {
-      const registrationFee = student.registration_fee || 0;
-      const registrationFeePaid = student.registration_fee_paid_amount || 0;
-      return {
-        ...student,
-        remaining: registrationFee - registrationFeePaid,
-      };
-    }).filter(s => s.remaining > 0);
-
-    if (studentsWithRemaining.length === 0) return;
-
-    const totalRemaining = studentsWithRemaining.reduce((sum, s) => sum + s.remaining, 0);
-
-    // Répartir proportionnellement
-    const newAmounts: Record<string, string> = {};
-    let distributed = 0;
-
-    studentsWithRemaining.forEach((student, index) => {
-      if (index === studentsWithRemaining.length - 1) {
-        // Dernier élève : donner le reste pour éviter les erreurs d'arrondi
-        const remaining = amount - distributed;
-        newAmounts[student.id] = Math.min(remaining, student.remaining).toFixed(2);
-      } else {
-        const proportion = student.remaining / totalRemaining;
-        const studentAmount = Math.min(amount * proportion, student.remaining);
-        newAmounts[student.id] = studentAmount.toFixed(2);
-        distributed += studentAmount;
-      }
-    });
-
-    setStudentAmounts(newAmounts);
-  }, [totalAmount, selectedStudents, currentFamily]);
-
-  const handleToggleStudent = (studentId: string) => {
-    setSelectedStudents(prev => ({
-      ...prev,
-      [studentId]: !prev[studentId],
-    }));
-  };
+  }, [selectedStudent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!currentFamily || !totalAmount) return;
-
-    const selected = currentFamily.students.filter(s => selectedStudents[s.id]);
-    if (selected.length === 0) {
-      toast.error('Veuillez sélectionner au moins un élève');
+    if (!studentId || !amount) {
       return;
     }
 
-    const students = selected.map(student => ({
-      student_id: student.id,
-      amount: parseFloat(studentAmounts[student.id] || '0'),
-    }));
+    const paymentAmount = parseFloat(amount);
+    if (paymentAmount <= 0) {
+      toast.error('Le montant doit être supérieur à 0');
+      return;
+    }
 
-    const totalDistributed = students.reduce((sum, s) => sum + s.amount, 0);
-    const totalPaid = parseFloat(totalAmount);
-
-    if (Math.abs(totalDistributed - totalPaid) > 0.01) {
-      toast.error('La somme des montants répartis ne correspond pas au montant total');
+    if (paymentAmount > registrationFeeRemaining) {
+      toast.error('Le montant dépasse le reste à payer des frais d\'inscription');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 1. Insérer les paiements dans school_students_payment
-      const payments = students.map(student => ({
-        student_id: student.student_id,
-        school_id: schoolId,
-        amount: student.amount,
-        payment_method: paymentMethod,
-        payment_type: 'registration',
-        payment_date: paymentDate,
-        notes: notes.trim() ? `${notes.trim()} (Paiement familial - Frais d'inscription)` : 'Paiement familial - Frais d\'inscription',
-        reference_number: referenceNumber.trim() || undefined,
-      }));
-
-      const { error: paymentsError } = await supabase
+      // 1. Insérer le paiement dans school_students_payment
+      const { error: paymentError } = await supabase
         .from('school_students_payment')
-        .insert(payments);
+        .insert({
+          student_id: studentId,
+          school_id: schoolId,
+          amount: paymentAmount,
+          payment_method: paymentMethod,
+          payment_type: 'registration',
+          payment_date: paymentDate,
+          notes: notes.trim() ? `${notes.trim()} (Frais d'inscription)` : 'Frais d\'inscription',
+          reference_number: referenceNumber.trim() || undefined,
+        });
 
-      if (paymentsError) throw paymentsError;
+      if (paymentError) throw paymentError;
 
-      // 2. Mettre à jour school_student_payment_progress pour chaque élève
-      for (const student of students) {
-        const studentData = currentFamily.students.find(s => s.id === student.student_id);
-        if (!studentData) continue;
+      // 2. Mettre à jour school_student_payment_progress.registration_fee_paid_amount
+      const newRegistrationFeePaid = registrationFeePaid + paymentAmount;
 
-        const currentPaid = studentData.registration_fee_paid_amount || 0;
-        const newPaid = currentPaid + student.amount;
+      const { error: progressError } = await supabase
+        .from('school_student_payment_progress')
+        .update({
+          registration_fee_paid_amount: newRegistrationFeePaid,
+        })
+        .eq('student_id', studentId);
 
-        const { error: progressError } = await supabase
-          .from('school_student_payment_progress')
-          .update({
-            registration_fee_paid_amount: newPaid,
-          })
-          .eq('student_id', student.student_id);
+      if (progressError) throw progressError;
 
-        if (progressError) throw progressError;
-      }
-
-      toast.success('Paiement familial de frais d\'inscription enregistré avec succès');
+      toast.success('Paiement de frais d\'inscription enregistré avec succès');
 
       // Reset form
-      setFamilyId('');
-      setTotalAmount('');
+      setStudentId(selectedStudent?.id || '');
+      setAmount('');
       setPaymentMethod('cash');
       setPaymentDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setReferenceNumber('');
-      setSelectedStudents({});
-      setStudentAmounts({});
       onSuccess();
       onOpenChange(false);
     } catch (error) {
@@ -194,240 +118,150 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
     }
   };
 
-  const totalDistributed = currentFamily?.students
-    .filter(s => selectedStudents[s.id])
-    .reduce((sum, s) => sum + parseFloat(studentAmounts[s.id] || '0'), 0) || 0;
-
-  // Calculer les totaux des frais d'inscription
-  const totalRegistrationFee = currentFamily?.students.reduce((sum, s) => sum + (s.registration_fee || 0), 0) || 0;
-  const totalRegistrationFeePaid = currentFamily?.students.reduce((sum, s) => sum + (s.registration_fee_paid_amount || 0), 0) || 0;
-  const totalRegistrationFeeRemaining = totalRegistrationFee - totalRegistrationFeePaid;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
             <GraduationCap className="w-5 h-5 text-primary" />
-            Paiement familial de frais d'inscription
+            Paiement de frais d'inscription
           </DialogTitle>
           <DialogDescription>
-            Enregistrez un paiement de frais d'inscription pour plusieurs élèves d'une même famille
+            Enregistrez un paiement pour les frais d'inscription d'un élève
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!selectedFamily && (
-            <div className="space-y-2">
-              <Label htmlFor="family">Famille *</Label>
-              <Select value={familyId} onValueChange={setFamilyId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une famille" />
-                </SelectTrigger>
-                <SelectContent>
-                  {families?.map((family) => (
-                    <SelectItem key={family.family_id} value={family.family_id}>
-                      {family.family_name} ({family.students.length} élève{family.students.length > 1 ? 's' : ''})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-2">
+            <Label htmlFor="student">Élève *</Label>
+            <Select value={studentId} onValueChange={setStudentId} required disabled={!!selectedStudent}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un élève" />
+              </SelectTrigger>
+              <SelectContent>
+                {students?.map((student) => (
+                  <SelectItem key={student.id} value={student.id}>
+                    {student.first_name} {student.last_name} - {student.student_code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedStudentData && (
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 rounded-lg p-4 space-y-2 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-2">
+                <GraduationCap className="w-4 h-4 text-blue-600" />
+                <span className="font-semibold text-blue-900 dark:text-blue-100">Frais d'inscription</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-blue-700 dark:text-blue-300">Frais d'inscription total :</span>
+                <span className="font-semibold text-blue-900 dark:text-blue-100">
+                  {registrationFee.toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-blue-700 dark:text-blue-300">Déjà payé :</span>
+                <span className="text-green-600 dark:text-green-400 font-medium">
+                  {registrationFeePaid.toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-blue-200 dark:border-blue-800 pt-2">
+                <span className="font-medium text-blue-700 dark:text-blue-300">Reste à payer :</span>
+                <span className="font-bold text-orange-600 dark:text-orange-400">
+                  {registrationFeeRemaining.toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
             </div>
           )}
 
-          {currentFamily && (
-            <>
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 p-4 rounded-lg space-y-2 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <GraduationCap className="w-4 h-4 text-blue-600" />
-                  <span className="font-semibold text-blue-900 dark:text-blue-100">
-                    Famille: {currentFamily.family_name}
-                  </span>
-                  <span className="text-sm text-blue-700 dark:text-blue-300 ml-auto">
-                    {currentFamily.students.length} élève{currentFamily.students.length > 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-blue-700 dark:text-blue-300">Frais d'inscription total</p>
-                    <p className="font-medium text-blue-900 dark:text-blue-100">
-                      {totalRegistrationFee.toLocaleString('fr-FR')} FCFA
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-blue-700 dark:text-blue-300">Déjà payé</p>
-                    <p className="font-medium text-green-600 dark:text-green-400">
-                      {totalRegistrationFeePaid.toLocaleString('fr-FR')} FCFA
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-blue-700 dark:text-blue-300">Reste</p>
-                    <p className="font-medium text-orange-600 dark:text-orange-400">
-                      {totalRegistrationFeeRemaining.toLocaleString('fr-FR')} FCFA
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {totalRegistrationFeeRemaining <= 0 && (
-                <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-                  <AlertCircle className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-700 dark:text-green-300">
-                    Les frais d'inscription ont été entièrement payés pour tous les élèves de cette famille.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="amount">Montant total du paiement (FCFA) *</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  min="0"
-                  step="1"
-                  max={totalRegistrationFeeRemaining}
-                  value={totalAmount}
-                  onChange={(e) => setTotalAmount(e.target.value)}
-                  placeholder={`Max: ${totalRegistrationFeeRemaining.toLocaleString('fr-FR')}`}
-                  required
-                  disabled={totalRegistrationFeeRemaining <= 0}
-                />
-              </div>
-
-              <div className="space-y-3">
-                <Label>Élèves concernés *</Label>
-                <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3">
-                  {currentFamily.students.map((student) => {
-                    const registrationFee = student.registration_fee || 0;
-                    const registrationFeePaid = student.registration_fee_paid_amount || 0;
-                    const registrationFeeRemaining = registrationFee - registrationFeePaid;
-
-                    return (
-                      <div key={student.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                        <Checkbox
-                          checked={selectedStudents[student.id] || false}
-                          onCheckedChange={() => handleToggleStudent(student.id)}
-                          disabled={registrationFeeRemaining <= 0}
-                        />
-                        <div className="flex-1 space-y-1">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{student.first_name} {student.last_name}</p>
-                              <p className="text-xs text-muted-foreground">{student.student_code}</p>
-                              {student.class_name && (
-                                <p className="text-xs text-muted-foreground">Classe: {student.class_name}</p>
-                              )}
-                            </div>
-                            <div className="text-right text-sm">
-                              <p className="text-muted-foreground">Frais d'inscription</p>
-                              <p className="text-xs text-blue-600">{registrationFee.toLocaleString('fr-FR')} FCFA</p>
-                              <p className="text-xs text-orange-600">
-                                Reste: {registrationFeeRemaining.toLocaleString('fr-FR')} FCFA
-                              </p>
-                            </div>
-                          </div>
-                          {selectedStudents[student.id] && registrationFeeRemaining > 0 && (
-                            <div className="mt-2">
-                              <Label htmlFor={`amount-${student.id}`} className="text-xs">
-                                Montant pour cet élève
-                              </Label>
-                              <Input
-                                id={`amount-${student.id}`}
-                                type="number"
-                                min="0"
-                                step="1"
-                                max={registrationFeeRemaining}
-                                value={studentAmounts[student.id] || ''}
-                                onChange={(e) => setStudentAmounts(prev => ({
-                                  ...prev,
-                                  [student.id]: e.target.value,
-                                }))}
-                                className="mt-1"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {totalAmount && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Répartition: {totalDistributed.toLocaleString('fr-FR')} FCFA / {parseFloat(totalAmount).toLocaleString('fr-FR')} FCFA
-                    {Math.abs(totalDistributed - parseFloat(totalAmount)) > 0.01 && (
-                      <span className="text-destructive ml-2">
-                        (Différence: {(parseFloat(totalAmount) - totalDistributed).toLocaleString('fr-FR')} FCFA)
-                      </span>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Mode de paiement *</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod} required>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Espèces</SelectItem>
-                      <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                      <SelectItem value="bank_transfer">Virement bancaire</SelectItem>
-                      <SelectItem value="check">Chèque</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="paymentDate">Date du paiement *</Label>
-                  <Input
-                    id="paymentDate"
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="referenceNumber">Numéro de référence</Label>
-                <Input
-                  id="referenceNumber"
-                  value={referenceNumber}
-                  onChange={(e) => setReferenceNumber(e.target.value)}
-                  placeholder="Ex: REF-2024-001"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Informations supplémentaires..."
-                  rows={3}
-                />
-              </div>
-            </>
+          {registrationFeeRemaining <= 0 && selectedStudentData && (
+            <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+              <AlertCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700 dark:text-green-300">
+                Les frais d'inscription ont été entièrement payés pour cet élève.
+              </AlertDescription>
+            </Alert>
           )}
 
-          <div className="flex justify-end gap-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Montant (FCFA) *</Label>
+              <Input
+                id="amount"
+                type="number"
+                min="0"
+                step="1"
+                max={registrationFeeRemaining}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder={registrationFeeRemaining > 0 ? `Max: ${registrationFeeRemaining.toLocaleString('fr-FR')}` : "0"}
+                required
+                disabled={registrationFeeRemaining <= 0}
+              />
+              {registrationFeeRemaining > 0 && parseFloat(amount || '0') > registrationFeeRemaining && (
+                <p className="text-xs text-destructive">
+                  ⚠️ Le montant dépasse le reste à payer
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="payment-date">Date de paiement *</Label>
+              <Input
+                id="payment-date"
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="payment-method">Méthode de paiement *</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">Espèces</SelectItem>
+                <SelectItem value="bank_transfer">Virement bancaire</SelectItem>
+                <SelectItem value="check">Chèque</SelectItem>
+                <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                <SelectItem value="card">Carte bancaire</SelectItem>
+                <SelectItem value="other">Autre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="reference">Référence / Numéro de transaction</Label>
+            <Input
+              id="reference"
+              value={referenceNumber}
+              onChange={(e) => setReferenceNumber(e.target.value)}
+              placeholder="Ex: TXN123456"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notes additionnelles sur ce paiement..."
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting || !currentFamily || totalRegistrationFeeRemaining <= 0}
-            >
-              {isSubmitting ? 'Enregistrement...' : 'Enregistrer le paiement'}
+            <Button type="submit" disabled={isSubmitting || registrationFeeRemaining <= 0}>
+              {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
             </Button>
           </div>
         </form>
