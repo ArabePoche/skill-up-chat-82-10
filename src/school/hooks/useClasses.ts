@@ -16,6 +16,7 @@ export interface Class {
   current_students: number;
   gender_type: GenderType;
   annual_fee: number;
+  registration_fee: number;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +29,7 @@ export interface CreateClassData {
   max_students: number;
   gender_type: GenderType;
   annual_fee: number;
+  registration_fee: number;
 }
 
 // Hook pour récupérer les classes d'une école
