@@ -73,3 +73,54 @@ export const useCreateTeacherRemark = () => {
     },
   });
 };
+
+// Mettre à jour une remarque
+export const useUpdateTeacherRemark = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTeacherRemarkData> }) => {
+      const { data: result, error } = await (supabase as any)
+        .from('school_teacher_remarks')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-remarks'] });
+      toast.success('Remarque modifiée');
+    },
+    onError: (error) => {
+      console.error('Error updating remark:', error);
+      toast.error('Erreur lors de la modification de la remarque');
+    },
+  });
+};
+
+// Supprimer une remarque
+export const useDeleteTeacherRemark = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('school_teacher_remarks')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-remarks'] });
+      toast.success('Remarque supprimée');
+    },
+    onError: (error) => {
+      console.error('Error deleting remark:', error);
+      toast.error('Erreur lors de la suppression de la remarque');
+    },
+  });
+};
