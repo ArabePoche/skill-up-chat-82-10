@@ -9,6 +9,8 @@ export interface Teacher {
   type: TeacherType;
   specialty?: string; // Pour les spécialistes
   salary?: number; // Salaire mensuel
+  phone_number?: string;
+  gender?: 'male' | 'female' | 'other';
   is_active: boolean;
   created_at: string;
   updated_at: string;
