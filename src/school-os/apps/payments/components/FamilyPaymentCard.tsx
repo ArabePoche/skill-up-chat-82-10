@@ -5,20 +5,40 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, AlertCircle, CheckCircle, Clock, History } from 'lucide-react';
+import { Plus, Users, AlertCircle, CheckCircle, Clock, History, GraduationCap } from 'lucide-react';
 import { type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { FamilyPaymentHistoryModal } from './FamilyPaymentHistoryModal';
 
 interface FamilyPaymentCardProps {
   family: FamilyWithStudents;
   onAddPayment: () => void;
+  onAddRegistrationPayment?: () => void;
 }
 
 export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
   family,
   onAddPayment,
+  onAddRegistrationPayment,
 }) => {
   const [showHistory, setShowHistory] = useState(false);
+
+  // Calculer les totaux des frais d'inscription pour la famille
+  const totalRegistrationFee = family.students.reduce((sum, s) => sum + (s.registration_fee || 0), 0);
+  const totalRegistrationFeePaid = family.students.reduce((sum, s) => sum + (s.registration_fee_paid_amount || 0), 0);
+  const hasAnyRegistrationFee = totalRegistrationFee > 0;
+  
+  // Déterminer l'état global des frais d'inscription de la famille
+  const getRegistrationStatus = () => {
+    if (totalRegistrationFeePaid === 0) {
+      return { type: 'unpaid', label: 'Non payé', variant: 'destructive' as const };
+    } else if (totalRegistrationFeePaid < totalRegistrationFee) {
+      return { type: 'partial', label: 'Partiellement payé', variant: 'secondary' as const };
+    } else {
+      return { type: 'paid', label: 'Payé', variant: 'default' as const };
+    }
+  };
+  
+  const registrationStatus = getRegistrationStatus();
 
   const getPaymentStatus = () => {
     if (family.total_family_remaining === 0 && family.total_family_paid > 0) {
@@ -58,7 +78,52 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-2.5 sm:space-y-3">
+        {/* Frais d'inscription famille - Affiché uniquement si non payé ou partiel */}
+        {hasAnyRegistrationFee && registrationStatus.type !== 'paid' && (
+          <div className="bg-muted/50 rounded-lg p-2 sm:p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] sm:text-xs font-medium">Frais d'inscription (famille)</p>
+              <Badge variant={registrationStatus.variant} className="text-[9px] sm:text-[10px]">
+                {registrationStatus.type === 'unpaid' ? (
+                  <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                ) : (
+                  <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                )}
+                {registrationStatus.label}
+              </Badge>
+            </div>
+            <div className="text-xs sm:text-sm">
+              <span className="font-semibold">{totalRegistrationFee.toLocaleString('fr-FR')} FCFA</span>
+              {registrationStatus.type === 'partial' && (
+                <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-1">
+                  <span className="text-green-600 font-medium">
+                    {totalRegistrationFeePaid.toLocaleString('fr-FR')} FCFA payés
+                  </span>
+                  {' • '}
+                  <span className="text-orange-600 font-medium">
+                    {(totalRegistrationFee - totalRegistrationFeePaid).toLocaleString('fr-FR')} FCFA restants
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Bouton de paiement rapide pour frais d'inscription familial */}
+            {onAddRegistrationPayment && registrationStatus.type !== 'paid' && (
+              <Button 
+                onClick={onAddRegistrationPayment} 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 w-full"
+              >
+                <GraduationCap className="w-3 h-3 mr-1.5" />
+                <span className="text-xs">Payer frais d'inscription</span>
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Paiements scolaires uniquement */}
         <div className="space-y-1.5 sm:space-y-2">
+          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">Paiements scolaires :</p>
           <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-muted-foreground">Montant dû:</span>
             <span className="font-medium">{family.total_family_due.toLocaleString('fr-FR')} FCFA</span>
