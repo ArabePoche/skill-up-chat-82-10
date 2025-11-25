@@ -11,10 +11,8 @@ export interface TeacherRemark {
   content: string;
   created_at: string;
   school_teachers?: {
-    profiles?: {
-      first_name: string;
-      last_name: string;
-    };
+    first_name: string;
+    last_name: string;
   };
 }
 
@@ -32,12 +30,12 @@ export const useTeacherRemarks = (schoolId?: string) => {
     queryFn: async () => {
       if (!schoolId) return [];
 
-      const { data, error } = await supabase
-        .from('teacher_remarks')
+      const { data, error } = await (supabase as any)
+        .from('school_teacher_remarks')
         .select(`
           *,
           school_teachers!inner(
-            profiles(first_name, last_name)
+            first_name, last_name
           )
         `)
         .eq('school_id', schoolId)
@@ -56,8 +54,8 @@ export const useCreateTeacherRemark = () => {
 
   return useMutation({
     mutationFn: async (data: CreateTeacherRemarkData) => {
-      const { data: result, error } = await supabase
-        .from('teacher_remarks')
+      const { data: result, error } = await (supabase as any)
+        .from('school_teacher_remarks')
         .insert(data)
         .select()
         .single();
