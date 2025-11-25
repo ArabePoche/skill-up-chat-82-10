@@ -230,6 +230,8 @@ export const useUpdatePayment = () => {
       queryClient.invalidateQueries({ queryKey: ['student-payments'] });
       queryClient.invalidateQueries({ queryKey: ['monthly-payment-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['family-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['family-payment-history'] });
+      queryClient.invalidateQueries({ queryKey: ['families-with-payments'] });
       toast.success('Paiement modifié avec succès');
     },
     onError: (error) => {
@@ -256,6 +258,8 @@ export const useDeletePayment = () => {
       queryClient.invalidateQueries({ queryKey: ['student-payments'] });
       queryClient.invalidateQueries({ queryKey: ['monthly-payment-tracking'] });
       queryClient.invalidateQueries({ queryKey: ['family-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['family-payment-history'] });
+      queryClient.invalidateQueries({ queryKey: ['families-with-payments'] });
       toast.success('Paiement supprimé avec succès');
     },
     onError: (error) => {
