@@ -3049,6 +3049,7 @@ export type Database = {
           created_at: string
           id: string
           last_payment_date: string | null
+          registration_fee_paid_amount: number | null
           remaining_amount: number
           school_id: string
           student_id: string
@@ -3060,6 +3061,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_payment_date?: string | null
+          registration_fee_paid_amount?: number | null
           remaining_amount?: number
           school_id: string
           student_id: string
@@ -3071,6 +3073,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_payment_date?: string | null
+          registration_fee_paid_amount?: number | null
           remaining_amount?: number
           school_id?: string
           student_id?: string
