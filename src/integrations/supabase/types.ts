@@ -3267,6 +3267,7 @@ export type Database = {
           hours_per_week: number | null
           id: string
           subject: string | null
+          subject_id: string | null
           teacher_id: string
         }
         Insert: {
@@ -3275,6 +3276,7 @@ export type Database = {
           hours_per_week?: number | null
           id?: string
           subject?: string | null
+          subject_id?: string | null
           teacher_id: string
         }
         Update: {
@@ -3283,6 +3285,7 @@ export type Database = {
           hours_per_week?: number | null
           id?: string
           subject?: string | null
+          subject_id?: string | null
           teacher_id?: string
         }
         Relationships: [
@@ -3291,6 +3294,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_teacher_classes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
           {
