@@ -1,6 +1,6 @@
 // Composant pour afficher la liste des classes
 import React, { useState } from 'react';
-import { Users, Trash2, GraduationCap, UserCheck, ChevronDown, BookOpen } from 'lucide-react';
+import { Users, Trash2, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { useSchoolClasses, useDeleteClass } from '../hooks/useClasses';
 import { CreateClassModal } from './CreateClassModal';
 import { EditClassModal } from './EditClassModal';
 import { AssignSubjectsToClassDialog } from '@/school-os/apps/subjects/components/AssignSubjectsToClassDialog';
+import { ClassSettingsMenu } from './ClassSettingsMenu';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -38,6 +39,7 @@ export const ClassesList: React.FC<ClassesListProps> = ({
   const { data: classes, isLoading } = useSchoolClasses(schoolId, schoolYearId);
   const deleteClass = useDeleteClass();
   const [assignSubjectsClass, setAssignSubjectsClass] = useState<{ id: string; name: string } | null>(null);
+  const [editingClass, setEditingClass] = useState<any>(null);
 
   // Récupérer le nombre réel d'élèves par classe
   const { data: studentCounts } = useQuery({
@@ -236,26 +238,11 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                                     </Badge>
                                   </div>
                                 </div>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setAssignSubjectsClass({ id: cls.id, name: cls.name })}
-                                    className="h-8 w-8"
-                                    title="Gérer les matières"
-                                  >
-                                    <BookOpen className="h-4 w-4" />
-                                  </Button>
-                                  <EditClassModal classData={cls} />
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDelete(cls.id)}
-                                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive transition-colors"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                <ClassSettingsMenu
+                                  onManageSubjects={() => setAssignSubjectsClass({ id: cls.id, name: cls.name })}
+                                  onEditClass={() => setEditingClass(cls)}
+                                  onDeleteClass={() => handleDelete(cls.id)}
+                                />
                               </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -301,6 +288,15 @@ export const ClassesList: React.FC<ClassesListProps> = ({
           classId={assignSubjectsClass.id}
           className={assignSubjectsClass.name}
           schoolId={schoolId}
+        />
+      )}
+
+      {/* Dialog pour modifier la classe */}
+      {editingClass && (
+        <EditClassModal 
+          classData={editingClass}
+          open={!!editingClass}
+          onOpenChange={(open) => !open && setEditingClass(null)}
         />
       )}
     </div>
