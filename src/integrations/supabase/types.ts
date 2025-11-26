@@ -286,6 +286,50 @@ export type Database = {
         }
         Relationships: []
       }
+      class_subject_files: {
+        Row: {
+          class_subject_id: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          class_subject_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          class_subject_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_subject_files_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_subjects: {
         Row: {
           class_id: string
@@ -4452,6 +4496,7 @@ export type Database = {
       }
       subject_files: {
         Row: {
+          class_id: string | null
           created_at: string | null
           file_name: string
           file_size: number | null
@@ -4463,6 +4508,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          class_id?: string | null
           created_at?: string | null
           file_name: string
           file_size?: number | null
@@ -4474,6 +4520,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          class_id?: string | null
           created_at?: string | null
           file_name?: string
           file_size?: number | null
@@ -4485,6 +4532,13 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "subject_files_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subject_files_subject_id_fkey"
             columns: ["subject_id"]
