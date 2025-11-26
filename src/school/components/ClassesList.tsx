@@ -15,6 +15,7 @@ import { useSchoolClasses, useDeleteClass } from '../hooks/useClasses';
 import { CreateClassModal } from './CreateClassModal';
 import { EditClassModal } from './EditClassModal';
 import { AssignSubjectsToClassDialog } from '@/school-os/apps/subjects/components/AssignSubjectsToClassDialog';
+import { AssignTeachersToClassDialog } from './AssignTeachersToClassDialog';
 import { ClassSettingsMenu } from './ClassSettingsMenu';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,6 +40,7 @@ export const ClassesList: React.FC<ClassesListProps> = ({
   const { data: classes, isLoading } = useSchoolClasses(schoolId, schoolYearId);
   const deleteClass = useDeleteClass();
   const [assignSubjectsClass, setAssignSubjectsClass] = useState<{ id: string; name: string } | null>(null);
+  const [assignTeachersClass, setAssignTeachersClass] = useState<{ id: string; name: string } | null>(null);
   const [editingClass, setEditingClass] = useState<any>(null);
 
   // Récupérer le nombre réel d'élèves par classe
@@ -240,6 +242,7 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                                 </div>
                                 <ClassSettingsMenu
                                   onManageSubjects={() => setAssignSubjectsClass({ id: cls.id, name: cls.name })}
+                                  onManageTeachers={() => setAssignTeachersClass({ id: cls.id, name: cls.name })}
                                   onEditClass={() => setEditingClass(cls)}
                                   onDeleteClass={() => handleDelete(cls.id)}
                                 />
@@ -287,6 +290,17 @@ export const ClassesList: React.FC<ClassesListProps> = ({
           onOpenChange={(open) => !open && setAssignSubjectsClass(null)}
           classId={assignSubjectsClass.id}
           className={assignSubjectsClass.name}
+          schoolId={schoolId}
+        />
+      )}
+
+      {/* Dialog pour assigner les professeurs */}
+      {assignTeachersClass && (
+        <AssignTeachersToClassDialog
+          open={!!assignTeachersClass}
+          onOpenChange={(open) => !open && setAssignTeachersClass(null)}
+          classId={assignTeachersClass.id}
+          className={assignTeachersClass.name}
           schoolId={schoolId}
         />
       )}
