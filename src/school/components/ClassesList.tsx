@@ -1,6 +1,6 @@
 // Composant pour afficher la liste des classes
-import React from 'react';
-import { Users, Trash2, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Trash2, GraduationCap, UserCheck, ChevronDown, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import {
 import { useSchoolClasses, useDeleteClass } from '../hooks/useClasses';
 import { CreateClassModal } from './CreateClassModal';
 import { EditClassModal } from './EditClassModal';
+import { AssignSubjectsToClassDialog } from '@/school-os/apps/subjects/components/AssignSubjectsToClassDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,6 +37,7 @@ export const ClassesList: React.FC<ClassesListProps> = ({
 }) => {
   const { data: classes, isLoading } = useSchoolClasses(schoolId, schoolYearId);
   const deleteClass = useDeleteClass();
+  const [assignSubjectsClass, setAssignSubjectsClass] = useState<{ id: string; name: string } | null>(null);
 
   // Récupérer le nombre réel d'élèves par classe
   const { data: studentCounts } = useQuery({
@@ -235,6 +237,15 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                                   </div>
                                 </div>
                                 <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setAssignSubjectsClass({ id: cls.id, name: cls.name })}
+                                    className="h-8 w-8"
+                                    title="Gérer les matières"
+                                  >
+                                    <BookOpen className="h-4 w-4" />
+                                  </Button>
                                   <EditClassModal classData={cls} />
                                   <Button
                                     variant="ghost"
@@ -280,6 +291,17 @@ export const ClassesList: React.FC<ClassesListProps> = ({
             })}
           </Accordion>
         </div>
+      )}
+
+      {/* Dialog pour assigner les matières */}
+      {assignSubjectsClass && (
+        <AssignSubjectsToClassDialog
+          open={!!assignSubjectsClass}
+          onOpenChange={(open) => !open && setAssignSubjectsClass(null)}
+          classId={assignSubjectsClass.id}
+          className={assignSubjectsClass.name}
+          schoolId={schoolId}
+        />
       )}
     </div>
   );
