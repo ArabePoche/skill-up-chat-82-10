@@ -60,7 +60,7 @@ export interface CreateTeacherNoteData {
   teacher_id: string;
   student_id: string;
   class_id: string;
-  subject_id: string;
+  subject_id: string | null;
   academic_level?: string;
   behavior?: string;
   progress?: string;
