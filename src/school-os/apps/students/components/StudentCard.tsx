@@ -33,7 +33,6 @@ interface StudentCardProps {
   showTeacherNotes?: boolean;
   currentTeacherId?: string;
   schoolId?: string;
-  subjects?: any[];
 }
 
 export const StudentCard: React.FC<StudentCardProps> = ({
@@ -43,7 +42,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   showTeacherNotes = false,
   currentTeacherId,
   schoolId,
-  subjects = [],
 }) => {
   const [showSiblings, setShowSiblings] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -267,7 +265,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           student={student}
           teacherId={currentTeacherId}
           schoolId={schoolId}
-          subjects={subjects}
         />
       )}
     </Card>
