@@ -1,6 +1,6 @@
 // Dialog pour assigner des matières à une classe avec coefficients et professeur
 import React, { useState } from 'react';
-import { Plus, Trash2, BookOpen, User } from 'lucide-react';
+import { Plus, Trash2, BookOpen, User, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ import {
   useRemoveSubjectFromClass,
 } from '../hooks/useClassSubjectAssignments';
 import { useSchoolTeachers } from '@/school/hooks/useSchoolTeachers';
+import ClassSubjectFilesManager from '@/school/components/ClassSubjectFilesManager';
 import type { Subject } from '../types';
 
 interface AssignSubjectsToClassDialogProps {
@@ -48,6 +49,7 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [coefficient, setCoefficient] = useState('1');
+  const [managingFilesForSubject, setManagingFilesForSubject] = useState<string | null>(null);
 
   const { data: allSubjects } = useSchoolSubjects(schoolId);
   const { data: teachers } = useSchoolTeachers(schoolId);
@@ -64,11 +66,15 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
   const handleAssign = async () => {
     if (!selectedSubjectId || !coefficient) return;
 
+    // CORRECTION: Utiliser user_id au lieu de teacher.id pour la foreign key
+    const teacher = teachers?.find(t => t.id === selectedTeacherId);
+    const teacherUserId = teacher?.user_id || null;
+
     await assignSubject.mutateAsync({
       class_id: classId,
       subject_id: selectedSubjectId,
       coefficient: parseFloat(coefficient),
-      teacher_id: selectedTeacherId || null,
+      teacher_id: teacherUserId,
     });
 
     setSelectedSubjectId('');
@@ -88,10 +94,14 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
   };
 
   const handleUpdateTeacher = async (assignmentId: string, teacherId: string) => {
+    // CORRECTION: Utiliser user_id au lieu de teacher.id pour la foreign key
+    const teacher = teachers?.find(t => t.id === teacherId);
+    const teacherUserId = teacher?.user_id || null;
+    
     await updateAssignment.mutateAsync({
       id: assignmentId,
       classId,
-      updates: { teacher_id: teacherId === 'none' ? null : teacherId },
+      updates: { teacher_id: teacherId === 'none' ? null : teacherUserId },
     });
   };
 
@@ -223,14 +233,25 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
                             )}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemove(assignment.id)}
-                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setManagingFilesForSubject(assignment.id)}
+                            className="h-8 w-8"
+                            title="Gérer les fichiers"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemove(assignment.id)}
+                            className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 pl-6">
                         <div className="flex items-center gap-1">
@@ -275,6 +296,21 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
           </Button>
         </div>
       </DialogContent>
+
+      {/* Dialog pour gérer les fichiers d'une matière */}
+      <Dialog open={!!managingFilesForSubject} onOpenChange={(open) => !open && setManagingFilesForSubject(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Fichiers de la matière</DialogTitle>
+            <DialogDescription>
+              Gérez les ressources audiovisuelles et documents de cette matière pour cette classe
+            </DialogDescription>
+          </DialogHeader>
+          {managingFilesForSubject && (
+            <ClassSubjectFilesManager classSubjectId={managingFilesForSubject} />
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
