@@ -4497,29 +4497,43 @@ export type Database = {
       subjects: {
         Row: {
           code: string | null
+          color: string | null
           created_at: string | null
           description: string | null
           id: string
           name: string
+          school_id: string | null
           updated_at: string | null
         }
         Insert: {
           code?: string | null
+          color?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
+          school_id?: string | null
           updated_at?: string | null
         }
         Update: {
           code?: string | null
+          color?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
+          school_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subjects_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teacher_application_files: {
         Row: {
