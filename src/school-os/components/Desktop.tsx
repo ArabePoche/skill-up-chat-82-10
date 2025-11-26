@@ -1,313 +1,181 @@
-// Composant bureau principal du système scolaire
+// Composant barre de tâches avec apps ouvertes et épinglées
 import React, { useState } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { Search, Image as ImageIcon, RefreshCw, Eye, EyeOff, Maximize2, FolderPlus } from 'lucide-react';
-import { schoolApps } from '../apps';
-import { AppIcon } from './AppIcon';
-import { Window } from './Window';
-import { Taskbar } from './Taskbar';
-import { QuickPanel } from './QuickPanel';
-import { useWindowManager } from '../hooks/useWindowManager';
-import { useWallpaper } from '../hooks/useWallpaper';
-import { useDesktopSettings } from '../hooks/useDesktopSettings';
-import { Input } from '@/components/ui/input';
-import { useFileUpload } from '@/hooks/useFileUpload';
-import { toast } from 'sonner';
+import { Grid3x3, Calendar, ChevronDown, X, Pin, PinOff } from 'lucide-react';
+import { WindowState } from '../types';
+import { getAppById } from '../apps';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
 } from '@/components/ui/context-menu';
 
-export const Desktop: React.FC = () => {
-  const [apps, setApps] = useState(schoolApps);
-  const [quickPanelOpen, setQuickPanelOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeId, setActiveId] = useState<string | null>(null);
+interface TaskbarProps {
+  windows: WindowState[];
+  pinnedApps: string[];
+  onRestore: (id: string) => void;
+  onClose: (id: string) => void;
+  onTogglePin: (appId: string) => void;
+  isAppPinned: (appId: string) => boolean;
+  onOpenQuickPanel: () => void;
+}
 
-  const {
-    windows,
-    openWindow,
-    closeWindow,
-    minimizeWindow,
-    restoreWindow,
-    splitWindow,
-    focusWindow,
-  } = useWindowManager();
+export const Taskbar: React.FC<TaskbarProps> = ({
+  windows,
+  pinnedApps,
+  onRestore,
+  onClose,
+  onTogglePin,
+  isAppPinned,
+  onOpenQuickPanel,
+}) => {
+  const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
+  const { activeSchoolYear, schoolYears, setActiveSchoolYear } = useSchoolYear();
 
-  const { wallpaper, changeWallpaper, resetWallpaper } = useWallpaper();
-  const { uploadFile, isUploading } = useFileUpload();
-  
-  const {
-    taskbarVisible,
-    toggleTaskbar,
-    iconSize,
-    changeIconSize,
-    pinnedApps,
-    togglePinApp,
-    isAppPinned,
-    getIconSizeClass,
-  } = useDesktopSettings();
-
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragStart = (event: any) => {
-    setActiveId(event.active.id);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setApps((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-    
-    setActiveId(null);
-  };
-
-  const handleDragCancel = () => {
-    setActiveId(null);
-  };
-
-  const handleAppClick = (appId: string) => {
-    openWindow(appId);
-  };
-
-  const filteredApps = searchQuery
-    ? apps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : apps;
-
-  const handleResetLayout = () => {
-    setApps(schoolApps);
-    toast.success('Disposition du bureau réinitialisée');
-  };
-
-  const handleCreateFolder = () => {
-    toast.info('Création de dossier : fonctionnalité à venir');
-  };
-
-  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Veuillez sélectionner une image');
-      return;
-    }
-
-    try {
-      const result = await uploadFile(file, 'school_os_wallpapers');
-      changeWallpaper(result.fileUrl);
-      toast.success('Fond d\'écran modifié avec succès');
-    } catch (error) {
-      console.error('Erreur upload fond d\'écran:', error);
-      toast.error('Erreur lors du changement de fond d\'écran');
-    }
-  };
+  // Combiner apps ouvertes et apps épinglées
+  const allAppIds = [...new Set([...pinnedApps, ...windows.map(w => w.appId)])];
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div className="h-screen w-full relative overflow-hidden">
-          {/* Fond d'écran */}
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${wallpaper})` }}
-          >
-            <div className="absolute inset-0 bg-black/20" />
-          </div>
+    <>
+      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t shadow-2xl px-4 py-2 flex items-center justify-center gap-3 z-[9999]">
+        <div className="flex items-center gap-3 max-w-7xl w-full">
+        {/* Bouton menu principal */}
+        <button
+          onClick={onOpenQuickPanel}
+          className="w-10 h-10 rounded-xl bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
+        >
+          <Grid3x3 className="w-5 h-5 text-primary-foreground" />
+        </button>
 
-      {/* Barre de recherche fixe style Google */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
-        <div className="bg-background/90 backdrop-blur-md border border-border/50 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center gap-3 px-5 py-3">
-          <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <Input
-            placeholder="Rechercher une application..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-muted-foreground/70 h-auto p-0"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="w-6 h-6 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
-            >
-              <span className="text-muted-foreground text-sm">✕</span>
+        {/* Séparateur */}
+        {allAppIds.length > 0 && (
+          <div className="w-px h-8 bg-border" />
+        )}
+
+        {/* Apps ouvertes et épinglées */}
+        {allAppIds.map((appId) => {
+          const app = getAppById(appId);
+          if (!app) return null;
+
+          const Icon = app.icon;
+          const window = windows.find(w => w.appId === appId);
+          const isPinned = isAppPinned(appId);
+          const isOpen = !!window;
+
+          return (
+            <ContextMenu key={appId}>
+              <ContextMenuTrigger asChild>
+                <button
+                  onClick={() => {
+                    if (window) {
+                      onRestore(window.id);
+                    } else {
+                      // Si l'app est épinglée mais pas ouverte, on pourrait l'ouvrir ici
+                      // Pour l'instant on ne fait rien
+                    }
+                  }}
+                  className="w-10 h-10 rounded-xl hover:bg-accent transition-colors flex items-center justify-center relative"
+                  style={{
+                    backgroundColor: window && !window.isMinimized ? 'hsl(var(--accent))' : 'transparent',
+                  }}
+                  title={app.name}
+                >
+                  <Icon size={20} color={app.color} />
+                  {window && !window.isMinimized && (
+                    <div
+                      className="absolute bottom-1 w-1 h-1 rounded-full"
+                      style={{ backgroundColor: app.color }}
+                    />
+                  )}
+                  {isPinned && !isOpen && (
+                    <div
+                      className="absolute bottom-1 w-1 h-1 rounded-full bg-muted-foreground"
+                    />
+                  )}
+                </button>
+              </ContextMenuTrigger>
+              
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => onTogglePin(appId)}>
+                  {isPinned ? (
+                    <>
+                      <PinOff className="w-4 h-4 mr-2" />
+                      Désépingler
+                    </>
+                  ) : (
+                    <>
+                      <Pin className="w-4 h-4 mr-2" />
+                      Épingler
+                    </>
+                  )}
+                </ContextMenuItem>
+                
+                {window && (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem 
+                      onClick={() => onClose(window.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Fermer
+                    </ContextMenuItem>
+                  </>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
+          );
+        })}
+
+        {/* Sélecteur d'année scolaire */}
+        <Popover open={yearPopoverOpen} onOpenChange={setYearPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button className="h-10 px-3 rounded-xl hover:bg-accent transition-colors flex items-center gap-2 ml-auto">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {activeSchoolYear?.year_label || 'Aucune'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
             </button>
-          )}
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-80 p-2 bg-background/95 backdrop-blur-md border shadow-xl z-[10000]" 
+            align="end"
+            sideOffset={8}
+          >
+            <div className="space-y-1">
+              {schoolYears.map((year) => (
+                <button
+                  key={year.id}
+                  onClick={() => {
+                    setActiveSchoolYear(year);
+                    setYearPopoverOpen(false);
+                  }}
+                  className={`w-full p-3 rounded-lg text-left transition-colors ${
+                    activeSchoolYear?.id === year.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-accent'
+                  }`}
+                >
+                  <div className="font-semibold">{year.year_label}</div>
+                  <div className="text-xs opacity-80 mt-1">
+                    {new Date(year.start_date).toLocaleDateString()} - {new Date(year.end_date).toLocaleDateString()}
+                  </div>
+                </button>
+              ))}
+              {schoolYears.length === 0 && (
+                <div className="text-center text-muted-foreground py-4 text-sm">
+                  Aucune année scolaire disponible
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
         </div>
       </div>
-
-          {/* Grille d'icônes draggable */}
-          <div className="absolute inset-0 pt-24 px-8 pb-24 overflow-auto pointer-events-none">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragCancel={handleDragCancel}
-            >
-              <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pointer-events-auto">
-                  {filteredApps.map((app) => (
-                    <AppIcon
-                      key={app.id}
-                      app={app}
-                      onOpen={handleAppClick}
-                      className={getIconSizeClass()}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-
-            {filteredApps.length === 0 && searchQuery && (
-              <div className="text-center text-white drop-shadow-lg mt-12 pointer-events-auto">
-                Aucune application trouvée
-              </div>
-            )}
-          </div>
-
-          {/* Fenêtres ouvertes */}
-          {windows.map((window) => (
-            <Window
-              key={window.id}
-              window={window}
-              onClose={closeWindow}
-              onMinimize={minimizeWindow}
-              onSplit={splitWindow}
-              onFocus={focusWindow}
-            />
-          ))}
-
-          {/* Barre de tâches */}
-          {taskbarVisible && (
-            <Taskbar
-              windows={windows}
-              pinnedApps={pinnedApps}
-              onRestore={restoreWindow}
-              onClose={closeWindow}
-              onTogglePin={togglePinApp}
-              isAppPinned={isAppPinned}
-              onOpenQuickPanel={() => setQuickPanelOpen(true)}
-            />
-          )}
-
-          {/* Panneau d'accès rapide */}
-          <QuickPanel
-            isOpen={quickPanelOpen}
-            onClose={() => setQuickPanelOpen(false)}
-            onOpenApp={openWindow}
-          />
-
-          <input
-            id="wallpaper-upload"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleWallpaperUpload}
-          />
-        </div>
-      </ContextMenuTrigger>
-
-      <ContextMenuContent className="w-64">
-        <ContextMenuItem
-          onClick={() => document.getElementById('wallpaper-upload')?.click()}
-          disabled={isUploading}
-        >
-          <ImageIcon className="w-4 h-4 mr-2" />
-          {isUploading ? 'Upload en cours...' : 'Changer le fond d\'écran'}
-        </ContextMenuItem>
-        <ContextMenuItem onClick={resetWallpaper}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Réinitialiser le fond d'écran
-        </ContextMenuItem>
-        
-        <ContextMenuSeparator />
-        
-        <ContextMenuItem onClick={toggleTaskbar}>
-          {taskbarVisible ? (
-            <>
-              <EyeOff className="w-4 h-4 mr-2" />
-              Masquer la barre de tâches
-            </>
-          ) : (
-            <>
-              <Eye className="w-4 h-4 mr-2" />
-              Afficher la barre de tâches
-            </>
-          )}
-        </ContextMenuItem>
-        
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
-            <Maximize2 className="w-4 h-4 mr-2" />
-            Taille des icônes
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent>
-            <ContextMenuItem onClick={() => changeIconSize('small')}>
-              {iconSize === 'small' && '✓ '}Petite
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => changeIconSize('medium')}>
-              {iconSize === 'medium' && '✓ '}Moyenne
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => changeIconSize('large')}>
-              {iconSize === 'large' && '✓ '}Grande
-            </ContextMenuItem>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-        
-        <ContextMenuSeparator />
-        
-        <ContextMenuItem onClick={handleResetLayout}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Réinitialiser la disposition
-        </ContextMenuItem>
-        
-        <ContextMenuItem onClick={handleCreateFolder}>
-          <FolderPlus className="w-4 h-4 mr-2" />
-          Créer un dossier
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+    </>
   );
 };
