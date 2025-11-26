@@ -42,7 +42,6 @@ import {
 export const Desktop: React.FC = () => {
   const [apps, setApps] = useState(schoolApps);
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -157,37 +156,29 @@ export const Desktop: React.FC = () => {
             <div className="absolute inset-0 bg-black/20" />
           </div>
 
-      {/* Barre de recherche fixe en haut à droite */}
-      <div className="absolute top-6 right-6 z-50">
-        {searchOpen ? (
-          <div className="bg-background/80 backdrop-blur-md border rounded-xl shadow-xl p-2 flex items-center gap-2 w-48">
-            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <Input
-              autoFocus
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
-              onBlur={() => {
-                setTimeout(() => {
-                  setSearchOpen(false);
-                  setSearchQuery('');
-                }, 200);
-              }}
-            />
-          </div>
-        ) : (
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="w-10 h-10 bg-background/80 backdrop-blur-md border rounded-xl shadow-xl hover:bg-background/90 transition-colors flex items-center justify-center"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-        )}
+      {/* Barre de recherche fixe style Google */}
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
+        <div className="bg-background/90 backdrop-blur-md border border-border/50 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center gap-3 px-5 py-3">
+          <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <Input
+            placeholder="Rechercher une application..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-muted-foreground/70 h-auto p-0"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="w-6 h-6 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
+            >
+              <span className="text-muted-foreground text-sm">✕</span>
+            </button>
+          )}
+        </div>
       </div>
 
           {/* Grille d'icônes draggable */}
-          <div className="absolute inset-0 p-8 pb-24 overflow-auto pointer-events-none">
+          <div className="absolute inset-0 pt-24 px-8 pb-24 overflow-auto pointer-events-none">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -238,7 +229,6 @@ export const Desktop: React.FC = () => {
               onTogglePin={togglePinApp}
               isAppPinned={isAppPinned}
               onOpenQuickPanel={() => setQuickPanelOpen(true)}
-              onSearch={() => setSearchOpen(true)}
             />
           )}
 
