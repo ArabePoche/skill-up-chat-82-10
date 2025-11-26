@@ -249,7 +249,6 @@ export const StudentsApp: React.FC = () => {
               showTeacherNotes={canViewTeacherNotes}
               currentTeacherId={user?.id}
               schoolId={school?.id}
-              subjects={subjects || []}
             />
           ))}
         </div>
