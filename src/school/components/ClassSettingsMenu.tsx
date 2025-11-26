@@ -2,7 +2,7 @@
  * Menu unifié pour les actions de gestion d'une classe
  */
 import React from 'react';
-import { Settings, BookOpen, Pencil, Trash2 } from 'lucide-react';
+import { Settings, BookOpen, Pencil, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,12 +14,14 @@ import {
 
 interface ClassSettingsMenuProps {
   onManageSubjects: () => void;
+  onManageTeachers: () => void;
   onEditClass: () => void;
   onDeleteClass: () => void;
 }
 
 export const ClassSettingsMenu: React.FC<ClassSettingsMenuProps> = ({
   onManageSubjects,
+  onManageTeachers,
   onEditClass,
   onDeleteClass,
 }) => {
@@ -30,10 +32,14 @@ export const ClassSettingsMenu: React.FC<ClassSettingsMenuProps> = ({
           <Settings className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-56 bg-background">
         <DropdownMenuItem onClick={onManageSubjects}>
           <BookOpen className="h-4 w-4 mr-2" />
           Gérer les matières
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onManageTeachers}>
+          <Users className="h-4 w-4 mr-2" />
+          Assigner des professeurs
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onEditClass}>
           <Pencil className="h-4 w-4 mr-2" />
