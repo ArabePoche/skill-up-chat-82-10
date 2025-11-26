@@ -19,12 +19,71 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpen, Users, TrendingUp, AlertCircle, Lightbulb, Loader2 } from 'lucide-react';
-import { useCreateTeacherNote, useUpdateTeacherNote, useTeacherNotes } from '../hooks/useTeacherNotes';
+import { Loader2, Trash2 } from 'lucide-react';
+import { useCreateTeacherNote, useUpdateTeacherNote, useTeacherNotes, useDeleteTeacherNote } from '../hooks/useTeacherNotes';
 import { CreateTeacherNoteData, TeacherStudentNote } from '../types';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+// Types de notes prédéfinies
+const NOTE_TYPES = [
+  { value: 'behavior', label: 'Comportement' },
+  { value: 'participation', label: 'Participation' },
+  { value: 'progress', label: 'Progrès académique' },
+  { value: 'homework', label: 'Travail personnel' },
+  { value: 'attitude', label: 'Attitude en classe' },
+  { value: 'other', label: 'Autre' },
+];
+
+// Options prédéfinies pour chaque type
+const PREDEFINED_OPTIONS: Record<string, string[]> = {
+  behavior: [
+    'Excellent comportement, respectueux et attentif',
+    'Bon comportement général',
+    'Comportement satisfaisant avec quelques rappels nécessaires',
+    'Comportement perturbateur, nécessite un suivi',
+    'Comportement très problématique, entretien urgent requis',
+  ],
+  participation: [
+    'Participation exemplaire et spontanée',
+    'Bonne participation en classe',
+    'Participation moyenne, peut faire mieux',
+    'Participation faible, doit s\'impliquer davantage',
+    'Ne participe pas, très passif en classe',
+  ],
+  progress: [
+    'Excellents progrès, dépasse les attentes',
+    'Bons progrès constants',
+    'Progrès satisfaisants',
+    'Progrès lents, nécessite plus de travail',
+    'Aucun progrès visible, besoin d\'aide urgente',
+  ],
+  homework: [
+    'Travail personnel exemplaire, toujours à jour',
+    'Bon suivi du travail personnel',
+    'Travail personnel irrégulier',
+    'Travail personnel souvent non fait',
+    'Ne fait jamais son travail personnel',
+  ],
+  attitude: [
+    'Attitude positive et motivée',
+    'Bonne attitude générale',
+    'Attitude neutre',
+    'Attitude négative, démotivé',
+    'Attitude très problématique',
+  ],
+};
 
 interface TeacherFollowUpNotesModalProps {
   isOpen: boolean;
@@ -32,7 +91,6 @@ interface TeacherFollowUpNotesModalProps {
   student: any;
   teacherId: string;
   schoolId: string;
-  subjects: any[];
 }
 
 export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps> = ({
@@ -41,27 +99,24 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
   student,
   teacherId,
   schoolId,
-  subjects,
 }) => {
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [academicLevel, setAcademicLevel] = useState('');
-  const [behavior, setBehavior] = useState('');
-  const [progress, setProgress] = useState('');
-  const [difficulties, setDifficulties] = useState('');
-  const [recommendations, setRecommendations] = useState('');
+  const [noteType, setNoteType] = useState<string>('');
+  const [rating, setRating] = useState<number>(0);
+  const [useCustomComment, setUseCustomComment] = useState(false);
+  const [comment, setComment] = useState('');
   const [editingNote, setEditingNote] = useState<TeacherStudentNote | null>(null);
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
   const { data: existingNotes, isLoading: notesLoading } = useTeacherNotes(student?.id, teacherId);
   const createNote = useCreateTeacherNote();
   const updateNote = useUpdateTeacherNote();
+  const deleteNote = useDeleteTeacherNote();
 
   const resetForm = () => {
-    setSelectedSubjectId('');
-    setAcademicLevel('');
-    setBehavior('');
-    setProgress('');
-    setDifficulties('');
-    setRecommendations('');
+    setNoteType('');
+    setRating(0);
+    setUseCustomComment(false);
+    setComment('');
     setEditingNote(null);
   };
 
@@ -72,8 +127,14 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    if (!selectedSubjectId) {
+    if (!noteType || rating === 0) {
       return;
+    }
+
+    // Construire le commentaire final
+    let finalComment = comment;
+    if (!useCustomComment && noteType !== 'other' && rating > 0) {
+      finalComment = PREDEFINED_OPTIONS[noteType]?.[rating - 1] || comment;
     }
 
     const noteData: CreateTeacherNoteData = {
@@ -81,12 +142,12 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
       teacher_id: teacherId,
       student_id: student.id,
       class_id: student.class_id,
-      subject_id: selectedSubjectId,
-      academic_level: academicLevel || undefined,
-      behavior: behavior || undefined,
-      progress: progress || undefined,
-      difficulties: difficulties || undefined,
-      recommendations: recommendations || undefined,
+      subject_id: null, // Plus de lien avec une matière
+      behavior: noteType === 'behavior' ? finalComment : undefined,
+      progress: noteType === 'progress' ? finalComment : undefined,
+      academic_level: noteType === 'progress' ? `Note: ${rating}/5` : undefined,
+      difficulties: noteType === 'homework' || noteType === 'participation' ? finalComment : undefined,
+      recommendations: noteType === 'attitude' || noteType === 'other' ? finalComment : undefined,
     };
 
     if (editingNote) {
@@ -100,21 +161,53 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
 
   const loadNoteForEdit = (note: TeacherStudentNote) => {
     setEditingNote(note);
-    setSelectedSubjectId(note.subject_id);
-    setAcademicLevel(note.academic_level || '');
-    setBehavior(note.behavior || '');
-    setProgress(note.progress || '');
-    setDifficulties(note.difficulties || '');
-    setRecommendations(note.recommendations || '');
+    
+    // Déterminer le type de note basé sur les champs remplis
+    if (note.behavior) {
+      setNoteType('behavior');
+      setComment(note.behavior);
+    } else if (note.progress) {
+      setNoteType('progress');
+      setComment(note.progress);
+    } else if (note.difficulties) {
+      setNoteType(note.difficulties.includes('participation') ? 'participation' : 'homework');
+      setComment(note.difficulties);
+    } else if (note.recommendations) {
+      setNoteType('other');
+      setComment(note.recommendations);
+    }
+    
+    setRating(3); // Valeur par défaut pour l'édition
+    setUseCustomComment(true);
   };
 
-  const isLoading = createNote.isPending || updateNote.isPending;
+  const handleDeleteNote = async (noteId: string) => {
+    await deleteNote.mutateAsync(noteId);
+    setNoteToDelete(null);
+  };
+
+  const isLoading = createNote.isPending || updateNote.isPending || deleteNote.isPending;
+
+  // Obtenir le label du type de note
+  const getNoteTypeLabel = (note: TeacherStudentNote) => {
+    if (note.behavior) return 'Comportement';
+    if (note.progress) return 'Progrès';
+    if (note.difficulties?.includes('participation')) return 'Participation';
+    if (note.difficulties) return 'Travail personnel';
+    if (note.recommendations) return 'Autre';
+    return 'Note';
+  };
+
+  // Obtenir le contenu de la note
+  const getNoteContent = (note: TeacherStudentNote) => {
+    return note.behavior || note.progress || note.difficulties || note.recommendations || '';
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
+          <DialogTitle className="text-lg sm:text-2xl font-bold">
             Notes de suivi - {student?.first_name} {student?.last_name}
           </DialogTitle>
           <DialogDescription>
@@ -128,113 +221,115 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
 
         <Tabs defaultValue="new" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="new">
-              {editingNote ? 'Modifier la note' : 'Nouvelle note'}
+            <TabsTrigger value="new" className="text-xs sm:text-sm">
+              {editingNote ? 'Modifier' : 'Nouvelle note'}
             </TabsTrigger>
-            <TabsTrigger value="history">Historique</TabsTrigger>
+            <TabsTrigger value="history" className="text-xs sm:text-sm">Historique</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="new" className="space-y-4 mt-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="subject">Matière *</Label>
-                <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une matière" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjects.map((subject) => (
-                      <SelectItem key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <TabsContent value="new" className="space-y-3 sm:space-y-4 mt-4">
+            <ScrollArea className="h-[calc(90vh-280px)] sm:h-auto pr-4">
+              <div className="space-y-4">
+                {/* Type de note */}
+                <div className="space-y-2">
+                  <Label htmlFor="noteType">Type de note *</Label>
+                  <Select value={noteType} onValueChange={setNoteType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un type de note" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NOTE_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Échelle de notation */}
+                {noteType && (
+                  <div className="space-y-2">
+                    <Label>Échelle de notation *</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <Button
+                          key={value}
+                          type="button"
+                          variant={rating === value ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setRating(value)}
+                          className="flex-1 min-w-[60px]"
+                        >
+                          {value}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      1 = Très insatisfaisant | 5 = Excellent
+                    </p>
+                  </div>
+                )}
+
+                {/* Options prédéfinies ou personnalisées */}
+                {noteType && rating > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Commentaire</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setUseCustomComment(!useCustomComment)}
+                      >
+                        {useCustomComment ? 'Utiliser suggestion' : 'Personnaliser'}
+                      </Button>
+                    </div>
+
+                    {useCustomComment || noteType === 'other' ? (
+                      <Textarea
+                        placeholder="Saisir un commentaire personnalisé..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="min-h-[100px] resize-none text-sm"
+                      />
+                    ) : (
+                      <div className="p-3 rounded-md border bg-muted/50">
+                        <p className="text-sm">
+                          {PREDEFINED_OPTIONS[noteType]?.[rating - 1] || 'Pas de suggestion disponible'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+            </ScrollArea>
 
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                    <Label htmlFor="academic">Niveau académique</Label>
-                  </div>
-                  <Textarea
-                    id="academic"
-                    placeholder="Évaluation du niveau académique de l'élève dans cette matière..."
-                    value={academicLevel}
-                    onChange={(e) => setAcademicLevel(e.target.value)}
-                    className="min-h-[80px] resize-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-primary" />
-                    <Label htmlFor="behavior">Comportement</Label>
-                  </div>
-                  <Textarea
-                    id="behavior"
-                    placeholder="Observations sur le comportement en classe..."
-                    value={behavior}
-                    onChange={(e) => setBehavior(e.target.value)}
-                    className="min-h-[80px] resize-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    <Label htmlFor="progress">Progrès</Label>
-                  </div>
-                  <Textarea
-                    id="progress"
-                    placeholder="Évolution et progrès constatés..."
-                    value={progress}
-                    onChange={(e) => setProgress(e.target.value)}
-                    className="min-h-[80px] resize-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                    <Label htmlFor="difficulties">Difficultés</Label>
-                  </div>
-                  <Textarea
-                    id="difficulties"
-                    placeholder="Difficultés rencontrées par l'élève..."
-                    value={difficulties}
-                    onChange={(e) => setDifficulties(e.target.value)}
-                    className="min-h-[80px] resize-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Lightbulb className="h-4 w-4 text-primary" />
-                    <Label htmlFor="recommendations">Recommandations</Label>
-                  </div>
-                  <Textarea
-                    id="recommendations"
-                    placeholder="Recommandations et pistes d'amélioration..."
-                    value={recommendations}
-                    onChange={(e) => setRecommendations(e.target.value)}
-                    className="min-h-[80px] resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4 border-t">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
               {editingNote && (
-                <Button variant="outline" onClick={resetForm}>
-                  Annuler la modification
+                <Button 
+                  variant="outline" 
+                  onClick={resetForm}
+                  className="w-full sm:w-auto"
+                  size="sm"
+                >
+                  Annuler
                 </Button>
               )}
-              <Button onClick={onClose} variant="outline">
+              <Button 
+                onClick={onClose} 
+                variant="outline"
+                className="w-full sm:w-auto"
+                size="sm"
+              >
                 Fermer
               </Button>
-              <Button onClick={handleSubmit} disabled={!selectedSubjectId || isLoading}>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={!noteType || rating === 0 || isLoading}
+                className="w-full sm:w-auto"
+                size="sm"
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingNote ? 'Mettre à jour' : 'Enregistrer'}
               </Button>
@@ -248,93 +343,43 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : existingNotes && existingNotes.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {existingNotes.map((note: any) => (
                     <div
                       key={note.id}
-                      className="p-4 border rounded-lg space-y-3 hover:bg-accent/50 transition-colors"
+                      className="p-4 border rounded-lg space-y-2 hover:bg-accent/50 transition-colors"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{note.subjects?.name}</Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {format(new Date(note.created_at), 'dd MMMM yyyy', { locale: fr })}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">{getNoteTypeLabel(note)}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(note.created_at), 'dd MMM yyyy', { locale: fr })}
                           </span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => loadNoteForEdit(note)}
-                        >
-                          Modifier
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => loadNoteForEdit(note)}
+                          >
+                            Modifier
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setNoteToDelete(note.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
 
-                      {note.academic_level && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <BookOpen className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Niveau académique
-                            </span>
-                          </div>
-                          <p className="text-sm pl-5">{note.academic_level}</p>
-                        </div>
-                      )}
-
-                      {note.behavior && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Users className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Comportement
-                            </span>
-                          </div>
-                          <p className="text-sm pl-5">{note.behavior}</p>
-                        </div>
-                      )}
-
-                      {note.progress && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Progrès
-                            </span>
-                          </div>
-                          <p className="text-sm pl-5">{note.progress}</p>
-                        </div>
-                      )}
-
-                      {note.difficulties && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <AlertCircle className="h-3 w-3 text-destructive" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Difficultés
-                            </span>
-                          </div>
-                          <p className="text-sm pl-5">{note.difficulties}</p>
-                        </div>
-                      )}
-
-                      {note.recommendations && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Lightbulb className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Recommandations
-                            </span>
-                          </div>
-                          <p className="text-sm pl-5">{note.recommendations}</p>
-                        </div>
-                      )}
+                      <p className="text-sm">{getNoteContent(note)}</p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">
                     Aucune note de suivi pour cet élève
                   </p>
@@ -343,6 +388,27 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
             </ScrollArea>
           </TabsContent>
         </Tabs>
+
+        {/* Dialog de confirmation de suppression */}
+        <AlertDialog open={!!noteToDelete} onOpenChange={() => setNoteToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+              <AlertDialogDescription>
+                Êtes-vous sûr de vouloir supprimer cette note de suivi ? Cette action est irréversible.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => noteToDelete && handleDeleteNote(noteToDelete)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
