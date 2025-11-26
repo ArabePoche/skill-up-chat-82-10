@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Mail, Phone, MapPin, Users, ChevronDown } from 'lucide-react';
+import { MoreVertical, Mail, Phone, MapPin, Users, ChevronDown, FileText } from 'lucide-react';
 import { ImageModal } from '@/components/ui/image-modal';
 import {
   DropdownMenu,
@@ -24,21 +24,31 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useFamilySiblings } from '@/school-os/families/hooks/useFamilies';
+import { TeacherFollowUpNotesModal } from '@/school-os/apps/teachers/components/TeacherFollowUpNotesModal';
 
 interface StudentCardProps {
   student: any;
   onEdit?: (student: any) => void;
   onClick?: (student: any) => void;
+  showTeacherNotes?: boolean;
+  currentTeacherId?: string;
+  schoolId?: string;
+  subjects?: any[];
 }
 
 export const StudentCard: React.FC<StudentCardProps> = ({
   student,
   onEdit,
   onClick,
+  showTeacherNotes = false,
+  currentTeacherId,
+  schoolId,
+  subjects = [],
 }) => {
   const [showSiblings, setShowSiblings] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
   const { data: siblings } = useFamilySiblings(student.family_id, student.id);
 
   const getInitials = () => {
@@ -131,6 +141,12 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                       <DropdownMenuItem onClick={() => onEdit?.(student)}>
                         Modifier
                       </DropdownMenuItem>
+                      {showTeacherNotes && currentTeacherId && schoolId && (
+                        <DropdownMenuItem onClick={() => setShowNotesModal(true)}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Notes de suivi
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -241,6 +257,17 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           onClose={() => setShowPhotoModal(false)}
           imageUrl={student.photo_url}
           fileName={`${student.first_name} ${student.last_name}`}
+        />
+      )}
+
+      {showTeacherNotes && currentTeacherId && schoolId && (
+        <TeacherFollowUpNotesModal
+          isOpen={showNotesModal}
+          onClose={() => setShowNotesModal(false)}
+          student={student}
+          teacherId={currentTeacherId}
+          schoolId={schoolId}
+          subjects={subjects}
         />
       )}
     </Card>
