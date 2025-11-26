@@ -3456,6 +3456,90 @@ export type Database = {
           },
         ]
       }
+      school_teacher_student_notes: {
+        Row: {
+          academic_level: string | null
+          behavior: string | null
+          class_id: string
+          created_at: string
+          difficulties: string | null
+          id: string
+          progress: string | null
+          recommendations: string | null
+          school_id: string
+          student_id: string
+          subject_id: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_level?: string | null
+          behavior?: string | null
+          class_id: string
+          created_at?: string
+          difficulties?: string | null
+          id?: string
+          progress?: string | null
+          recommendations?: string | null
+          school_id: string
+          student_id: string
+          subject_id: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_level?: string | null
+          behavior?: string | null
+          class_id?: string
+          created_at?: string
+          difficulties?: string | null
+          id?: string
+          progress?: string | null
+          recommendations?: string | null
+          school_id?: string
+          student_id?: string
+          subject_id?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_teacher_student_notes_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_teacher_student_notes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_teacher_student_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_school"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_teacher_student_notes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_teacher_student_notes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_teachers: {
         Row: {
           application_status: string | null
