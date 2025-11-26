@@ -14,6 +14,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
 import { FamilyManager, FamilyStudentsManager } from '@/school-os/families';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useSubjects } from '@/school/hooks/useSubjects';
 
 export const StudentsApp: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,13 +29,19 @@ export const StudentsApp: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const deleteStudent = useDeleteStudent();
-
+  const { user, profile } = useAuth();
   const { school, activeSchoolYear: schoolYear } = useSchoolYear();
 
   // Récupérer les classes
   const { data: classes } = useSchoolClasses(school?.id, schoolYear?.id);
+  
+  // Récupérer les matières
+  const { data: subjects } = useSubjects();
 
   const { data: students, isLoading } = useStudents(school?.id);
+
+  // Vérifier si l'utilisateur peut voir les notes de suivi
+  const canViewTeacherNotes = profile?.is_teacher || profile?.role === 'admin';
 
   const filteredStudents = useMemo(() => {
     if (!students) return [];
@@ -234,6 +242,14 @@ export const StudentsApp: React.FC = () => {
                 setSelectedStudent(student);
                 setIsDetailModalOpen(true);
               }}
+              onEdit={(student) => {
+                setSelectedStudent(student);
+                setIsEditDialogOpen(true);
+              }}
+              showTeacherNotes={canViewTeacherNotes}
+              currentTeacherId={user?.id}
+              schoolId={school?.id}
+              subjects={subjects || []}
             />
           ))}
         </div>
