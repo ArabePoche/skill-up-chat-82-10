@@ -38,3 +38,32 @@ export interface TeacherFormData {
   class_id?: string; // Si generalist
   subject_ids?: string[]; // Si specialist
 }
+
+export interface TeacherStudentNote {
+  id: string;
+  school_id: string;
+  teacher_id: string;
+  student_id: string;
+  class_id: string;
+  subject_id: string;
+  academic_level?: string;
+  behavior?: string;
+  progress?: string;
+  difficulties?: string;
+  recommendations?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTeacherNoteData {
+  school_id: string;
+  teacher_id: string;
+  student_id: string;
+  class_id: string;
+  subject_id: string;
+  academic_level?: string;
+  behavior?: string;
+  progress?: string;
+  difficulties?: string;
+  recommendations?: string;
+}
