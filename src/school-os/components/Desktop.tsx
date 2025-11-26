@@ -229,6 +229,7 @@ export const Desktop: React.FC = () => {
               onTogglePin={togglePinApp}
               isAppPinned={isAppPinned}
               onOpenQuickPanel={() => setQuickPanelOpen(true)}
+              onSearch={() => setQuickPanelOpen(true)}
             />
           )}
 
