@@ -8,6 +8,7 @@ export interface ClassTeacher {
   class_id: string;
   teacher_id: string;
   subject: string | null;
+  subject_id: string | null;
   hours_per_week: number | null;
   created_at: string | null;
   school_teachers?: {
@@ -56,6 +57,7 @@ export const useAddClassTeacher = () => {
       class_id: string;
       teacher_id: string;
       subject?: string;
+      subject_id?: string;
       hours_per_week?: number;
     }) => {
       const { data: result, error } = await supabase
