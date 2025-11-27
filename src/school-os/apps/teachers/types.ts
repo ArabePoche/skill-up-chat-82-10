@@ -66,4 +66,6 @@ export interface CreateTeacherNoteData {
   progress?: string;
   difficulties?: string;
   recommendations?: string;
+  custom_title?: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
 }
