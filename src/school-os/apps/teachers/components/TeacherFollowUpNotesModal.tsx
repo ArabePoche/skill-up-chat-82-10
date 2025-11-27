@@ -104,6 +104,8 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
   const [rating, setRating] = useState<number>(0);
   const [useCustomComment, setUseCustomComment] = useState(false);
   const [comment, setComment] = useState('');
+  const [customTitle, setCustomTitle] = useState('');
+  const [sentiment, setSentiment] = useState<'positive' | 'negative' | 'neutral' | ''>('');
   const [editingNote, setEditingNote] = useState<TeacherStudentNote | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
@@ -117,6 +119,8 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
     setRating(0);
     setUseCustomComment(false);
     setComment('');
+    setCustomTitle('');
+    setSentiment('');
     setEditingNote(null);
   };
 
@@ -127,7 +131,11 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    if (!noteType || rating === 0) {
+    if (!noteType || rating === 0 || !sentiment) {
+      return;
+    }
+
+    if (noteType === 'other' && !customTitle.trim()) {
       return;
     }
 
@@ -142,12 +150,14 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
       teacher_id: teacherId,
       student_id: student.id,
       class_id: student.class_id,
-      subject_id: null, // Plus de lien avec une matière
+      subject_id: null,
       behavior: noteType === 'behavior' ? finalComment : undefined,
       progress: noteType === 'progress' ? finalComment : undefined,
       academic_level: noteType === 'progress' ? `Note: ${rating}/5` : undefined,
       difficulties: noteType === 'homework' || noteType === 'participation' ? finalComment : undefined,
       recommendations: noteType === 'attitude' || noteType === 'other' ? finalComment : undefined,
+      custom_title: noteType === 'other' ? customTitle : undefined,
+      sentiment: sentiment,
     };
 
     if (editingNote) {
@@ -175,9 +185,11 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
     } else if (note.recommendations) {
       setNoteType('other');
       setComment(note.recommendations);
+      setCustomTitle((note as any).custom_title || '');
     }
     
-    setRating(3); // Valeur par défaut pour l'édition
+    setSentiment((note as any).sentiment || 'neutral');
+    setRating(3);
     setUseCustomComment(true);
   };
 
@@ -194,8 +206,36 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
     if (note.progress) return 'Progrès';
     if (note.difficulties?.includes('participation')) return 'Participation';
     if (note.difficulties) return 'Travail personnel';
-    if (note.recommendations) return 'Autre';
+    if (note.recommendations) return (note as any).custom_title || 'Autre';
     return 'Note';
+  };
+
+  // Obtenir la couleur du sentiment
+  const getSentimentColor = (sentiment?: string) => {
+    switch (sentiment) {
+      case 'positive':
+        return 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20';
+      case 'negative':
+        return 'bg-destructive/10 text-destructive border-destructive/20';
+      case 'neutral':
+        return 'bg-muted text-muted-foreground border-border';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
+  // Obtenir l'emoji du sentiment
+  const getSentimentEmoji = (sentiment?: string) => {
+    switch (sentiment) {
+      case 'positive':
+        return '🙂';
+      case 'negative':
+        return '😔';
+      case 'neutral':
+        return '😑';
+      default:
+        return '😑';
+    }
   };
 
   // Obtenir le contenu de la note
@@ -247,6 +287,21 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
                   </Select>
                 </div>
 
+                {/* Titre personnalisé pour "Autre" */}
+                {noteType === 'other' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="customTitle">Titre de la note *</Label>
+                    <input
+                      id="customTitle"
+                      type="text"
+                      placeholder="Ex: Retard, Tenue, Attitude envers les autres..."
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background"
+                    />
+                  </div>
+                )}
+
                 {/* Échelle de notation */}
                 {noteType && (
                   <div className="space-y-2">
@@ -271,8 +326,44 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
                   </div>
                 )}
 
-                {/* Options prédéfinies ou personnalisées */}
+                {/* État émotionnel */}
                 {noteType && rating > 0 && (
+                  <div className="space-y-2">
+                    <Label>État de l'élève *</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        type="button"
+                        variant={sentiment === 'positive' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSentiment('positive')}
+                        className="flex-1 min-w-[100px]"
+                      >
+                        🙂 Positif
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={sentiment === 'neutral' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSentiment('neutral')}
+                        className="flex-1 min-w-[100px]"
+                      >
+                        😑 Neutre
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={sentiment === 'negative' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSentiment('negative')}
+                        className="flex-1 min-w-[100px]"
+                      >
+                        😔 Négatif
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Options prédéfinies ou personnalisées */}
+                {noteType && rating > 0 && sentiment && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>Commentaire</Label>
@@ -326,7 +417,7 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
               </Button>
               <Button 
                 onClick={handleSubmit} 
-                disabled={!noteType || rating === 0 || isLoading}
+                disabled={!noteType || rating === 0 || !sentiment || (noteType === 'other' && !customTitle.trim()) || isLoading}
                 className="w-full sm:w-auto"
                 size="sm"
               >
@@ -352,6 +443,9 @@ export const TeacherFollowUpNotesModal: React.FC<TeacherFollowUpNotesModalProps>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline">{getNoteTypeLabel(note)}</Badge>
+                          <Badge className={getSentimentColor(note.sentiment)}>
+                            {getSentimentEmoji(note.sentiment)} {note.sentiment === 'positive' ? 'Positif' : note.sentiment === 'negative' ? 'Négatif' : 'Neutre'}
+                          </Badge>
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(note.created_at), 'dd MMM yyyy', { locale: fr })}
                           </span>
