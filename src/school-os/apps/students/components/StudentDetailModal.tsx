@@ -36,6 +36,7 @@ interface StudentDetailModalProps {
   onClose: () => void;
   onEdit?: (student: any) => void;
   onDelete?: (studentId: string) => void;
+  readOnly?: boolean; // Mode lecture seule pour les enseignants
 }
 
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
@@ -44,6 +45,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onClose,
   onEdit,
   onDelete,
+  readOnly = false,
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -302,7 +304,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           {/* Actions */}
           <div className="flex justify-between gap-2">
             <div>
-              {onDelete && (
+              {!readOnly && onDelete && (
                 <Button 
                   variant="destructive"
                   onClick={() => setShowDeleteDialog(true)}
@@ -316,7 +318,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               <Button variant="outline" onClick={onClose}>
                 Fermer
               </Button>
-              {onEdit && (
+              {!readOnly && onEdit && (
                 <Button onClick={() => onEdit(student)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Modifier
