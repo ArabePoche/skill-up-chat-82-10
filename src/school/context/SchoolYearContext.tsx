@@ -46,12 +46,15 @@ export const SchoolYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [activeSchoolYear, setActiveSchoolYear] = useState<SchoolYear | null>(null);
 
   useEffect(() => {
-    // Définir l'année active par défaut (la plus récente avec is_active = true)
-    if (schoolYears.length > 0 && !activeSchoolYear) {
+    // Toujours définir l'année active par défaut quand les années scolaires changent
+    if (schoolYears.length > 0) {
+      // Priorité: année active (is_active = true), sinon la plus récente
       const active = schoolYears.find(y => y.is_active) || schoolYears[0];
       setActiveSchoolYear(active);
+    } else {
+      setActiveSchoolYear(null);
     }
-  }, [schoolYears, activeSchoolYear]);
+  }, [schoolYears, school?.id]);
 
   return (
     <SchoolYearContext.Provider
