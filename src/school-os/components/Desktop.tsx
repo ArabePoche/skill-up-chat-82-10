@@ -1,5 +1,5 @@
 // Composant bureau principal du système scolaire
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Search, Image as ImageIcon, RefreshCw, Eye, EyeOff, Maximize2, FolderPlus } from 'lucide-react';
 import { schoolApps } from '../apps';
+import { teacherApps } from '../teacherApps';
 import { AppIcon } from './AppIcon';
 import { Window } from './Window';
 import { Taskbar } from './Taskbar';
@@ -25,9 +26,12 @@ import { QuickPanel } from './QuickPanel';
 import { useWindowManager } from '../hooks/useWindowManager';
 import { useWallpaper } from '../hooks/useWallpaper';
 import { useDesktopSettings } from '../hooks/useDesktopSettings';
+import { useSchoolUserRole } from '../hooks/useSchoolUserRole';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { Input } from '@/components/ui/input';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
+
 import {
   ContextMenu,
   ContextMenuContent,
@@ -38,9 +42,20 @@ import {
   ContextMenuSubTrigger,
   ContextMenuSubContent,
 } from '@/components/ui/context-menu';
+import { SchoolApp } from '../types';
 
 export const Desktop: React.FC = () => {
-  const [apps, setApps] = useState(schoolApps);
+  const { school } = useSchoolYear();
+  const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
+  
+  // Sélectionner les applications selon le rôle
+  const baseApps = roleData?.isTeacher ? teacherApps : schoolApps;
+  const [apps, setApps] = useState<SchoolApp[]>(baseApps);
+  
+  // Mettre à jour les apps quand le rôle change
+  useEffect(() => {
+    setApps(roleData?.isTeacher ? teacherApps : schoolApps);
+  }, [roleData?.isTeacher]);
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -117,7 +132,7 @@ export const Desktop: React.FC = () => {
     : apps;
 
   const handleResetLayout = () => {
-    setApps(schoolApps);
+    setApps(roleData?.isTeacher ? teacherApps : schoolApps);
     toast.success('Disposition du bureau réinitialisée');
   };
 
@@ -155,6 +170,7 @@ export const Desktop: React.FC = () => {
           >
             <div className="absolute inset-0 bg-black/20" />
           </div>
+
 
       {/* Barre de recherche fixe style Google */}
       <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
