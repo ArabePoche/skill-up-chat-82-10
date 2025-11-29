@@ -2978,6 +2978,117 @@ export type Database = {
           },
         ]
       }
+      school_permissions: {
+        Row: {
+          category: string | null
+          code: string
+          created_at: string | null
+          description: string | null
+          name: string
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          created_at?: string | null
+          description?: string | null
+          name: string
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      school_role_permissions: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          permission_code: string
+          role_id: string
+          school_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          permission_code: string
+          role_id: string
+          school_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          permission_code?: string
+          role_id?: string
+          school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_role_permissions_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "school_permissions"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "school_role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "school_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_role_permissions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          school_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          school_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          school_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_roles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_staff: {
         Row: {
           created_at: string
@@ -3462,13 +3573,15 @@ export type Database = {
           behavior: string | null
           class_id: string
           created_at: string
+          custom_title: string | null
           difficulties: string | null
           id: string
           progress: string | null
           recommendations: string | null
           school_id: string
+          sentiment: string | null
           student_id: string
-          subject_id: string
+          subject_id: string | null
           teacher_id: string
           updated_at: string
         }
@@ -3477,13 +3590,15 @@ export type Database = {
           behavior?: string | null
           class_id: string
           created_at?: string
+          custom_title?: string | null
           difficulties?: string | null
           id?: string
           progress?: string | null
           recommendations?: string | null
           school_id: string
+          sentiment?: string | null
           student_id: string
-          subject_id: string
+          subject_id?: string | null
           teacher_id: string
           updated_at?: string
         }
@@ -3492,13 +3607,15 @@ export type Database = {
           behavior?: string | null
           class_id?: string
           created_at?: string
+          custom_title?: string | null
           difficulties?: string | null
           id?: string
           progress?: string | null
           recommendations?: string | null
           school_id?: string
+          sentiment?: string | null
           student_id?: string
-          subject_id?: string
+          subject_id?: string | null
           teacher_id?: string
           updated_at?: string
         }
@@ -3663,6 +3780,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "school_transactions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_user_roles: {
+        Row: {
+          assigned_by: string | null
+          created_at: string | null
+          id: string
+          role_id: string
+          school_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string | null
+          id?: string
+          role_id: string
+          school_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string | null
+          id?: string
+          role_id?: string
+          school_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_user_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "school_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_user_roles_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -5898,6 +6060,20 @@ export type Database = {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: string
       }
+      get_user_roles_in_school: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: {
+          is_system: boolean
+          role_id: string
+          role_name: string
+        }[]
+      }
+      get_user_school_permissions: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: {
+          permission_code: string
+        }[]
+      }
       get_user_usage: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: {
@@ -5917,6 +6093,10 @@ export type Database = {
         Returns: undefined
       }
       has_role: { Args: { role: string; user_id: string }; Returns: boolean }
+      has_school_permission: {
+        Args: { _permission_code: string; _school_id: string; _user_id: string }
+        Returns: boolean
+      }
       increment_messages_sent:
         | {
             Args: { p_date?: string; p_formation_id: string; p_user_id: string }
@@ -5932,6 +6112,10 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: { user_id: string }; Returns: boolean }
+      is_school_admin_or_owner: {
+        Args: { _school_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_school_member: {
         Args: { _school_id: string; _user_id: string }
         Returns: boolean
