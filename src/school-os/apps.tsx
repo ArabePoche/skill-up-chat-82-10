@@ -1,6 +1,6 @@
 // Configuration des applications disponibles dans le système scolaire
 import { lazy } from 'react';
-import { Users, GraduationCap, BookOpen, Calendar, FileText, Settings, BarChart, Mail, CreditCard, Wallet, Library } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, Calendar, FileText, Settings, BarChart, Mail, CreditCard, Wallet, Library, Shield } from 'lucide-react';
 import { SchoolApp } from './types';
 
 // Lazy loading des applications pour optimiser les performances
@@ -15,6 +15,7 @@ const GradesApp = lazy(() => import('./apps/grades/GradesApp').then(m => ({ defa
 const ReportsApp = lazy(() => import('./apps/reports/ReportsApp').then(m => ({ default: m.ReportsApp })));
 const MessagesApp = lazy(() => import('./apps/messages/MessagesApp').then(m => ({ default: m.MessagesApp })));
 const SettingsApp = lazy(() => import('./apps/settings/SettingsApp').then(m => ({ default: m.SettingsApp })));
+const PersonnelApp = lazy(() => import('./apps/personnel/PersonnelApp').then(m => ({ default: m.PersonnelApp })));
 
 export const schoolApps: SchoolApp[] = [
   {
@@ -86,6 +87,13 @@ export const schoolApps: SchoolApp[] = [
     icon: Mail,
     color: '#06B6D4',
     component: MessagesApp,
+  },
+  {
+    id: 'personnel',
+    name: 'Personnel',
+    icon: Shield,
+    color: '#8B5CF6',
+    component: PersonnelApp,
   },
   {
     id: 'settings',
