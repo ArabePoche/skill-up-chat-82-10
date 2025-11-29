@@ -11,7 +11,8 @@ import { useUserSchool, School } from '@/school/hooks/useSchool';
 import { GeneralSettings } from './components/GeneralSettings';
 import { SchoolYearsSettings } from './components/SchoolYearsSettings';
 import { CustomizationSettings } from './components/CustomizationSettings';
-import { Settings, Calendar, Palette } from 'lucide-react';
+import { RolesSettings } from './components/RolesSettings';
+import { Settings, Calendar, Palette, Shield } from 'lucide-react';
 
 export const SettingsApp: React.FC = () => {
   const { user } = useAuth();
@@ -56,7 +57,7 @@ export const SettingsApp: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             <span className="hidden sm:inline">Général</span>
@@ -64,6 +65,10 @@ export const SettingsApp: React.FC = () => {
           <TabsTrigger value="years" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             <span className="hidden sm:inline">Années</span>
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">Rôles</span>
           </TabsTrigger>
           <TabsTrigger value="customization" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
@@ -77,6 +82,10 @@ export const SettingsApp: React.FC = () => {
 
         <TabsContent value="years" className="space-y-4">
           <SchoolYearsSettings schoolId={school.id} />
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-4">
+          <RolesSettings schoolId={school.id} />
         </TabsContent>
 
         <TabsContent value="customization" className="space-y-4">
