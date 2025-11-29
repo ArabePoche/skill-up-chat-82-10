@@ -286,23 +286,87 @@ export const RolesSettings: React.FC<RolesSettingsProps> = ({ schoolId }) => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Rôles et permissions
-            </CardTitle>
-            <CardDescription>
-              Gérez les rôles et leurs permissions pour votre école
-            </CardDescription>
+        <CardHeader className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Rôles et permissions
+              </CardTitle>
+              <CardDescription className="mt-1.5">
+                Gérez les rôles et leurs permissions pour votre école
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsCreateModalOpen(true)} className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              Nouveau rôle
+            </Button>
           </div>
-          <Button onClick={() => setIsCreateModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nouveau rôle
-          </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          {/* Vue mobile */}
+          <div className="block lg:hidden space-y-4">
+            {roles.map((role) => (
+              <Card key={role.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      {role.is_system ? (
+                        <Lock className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Shield className="w-5 h-5 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-medium">{getRoleLabel(role)}</h4>
+                        {role.is_system && (
+                          <Badge variant="secondary" className="text-xs">
+                            Système
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {getRoleDescription(role)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedRole(role);
+                        setIsPermissionsModalOpen(true);
+                      }}
+                      className="flex-1"
+                    >
+                      <Edit2 className="w-3 h-3 mr-1" />
+                      Permissions
+                    </Button>
+                    {!role.is_system && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          if (confirm(`Supprimer le rôle "${getRoleLabel(role)}" ?`)) {
+                            deleteRoleMutation.mutate(role.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Vue desktop */}
+          <div className="hidden lg:block space-y-4">
             {roles.map((role) => (
               <div
                 key={role.id}
