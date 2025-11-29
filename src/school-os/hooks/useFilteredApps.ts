@@ -16,6 +16,7 @@ const APP_PERMISSION_MAP: Record<string, string> = {
   subjects: 'app.subjects',
   reports: 'app.reports',
   messages: 'app.messages',
+  personnel: 'app.personnel',
   settings: 'app.settings',
 };
 
