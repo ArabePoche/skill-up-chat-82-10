@@ -17,8 +17,6 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Search, Image as ImageIcon, RefreshCw, Eye, EyeOff, Maximize2, FolderPlus } from 'lucide-react';
-import { schoolApps } from '../apps';
-import { teacherApps } from '../teacherApps';
 import { AppIcon } from './AppIcon';
 import { Window } from './Window';
 import { Taskbar } from './Taskbar';
@@ -26,8 +24,8 @@ import { QuickPanel } from './QuickPanel';
 import { useWindowManager } from '../hooks/useWindowManager';
 import { useWallpaper } from '../hooks/useWallpaper';
 import { useDesktopSettings } from '../hooks/useDesktopSettings';
-import { useSchoolUserRole } from '../hooks/useSchoolUserRole';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { useFilteredApps } from '../hooks/useFilteredApps';
 import { Input } from '@/components/ui/input';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
@@ -46,16 +44,10 @@ import { SchoolApp } from '../types';
 
 export const Desktop: React.FC = () => {
   const { school } = useSchoolYear();
-  const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
   
-  // Sélectionner les applications selon le rôle
-  const baseApps = roleData?.isTeacher ? teacherApps : schoolApps;
-  const [apps, setApps] = useState<SchoolApp[]>(baseApps);
-  
-  // Mettre à jour les apps quand le rôle change
-  useEffect(() => {
-    setApps(roleData?.isTeacher ? teacherApps : schoolApps);
-  }, [roleData?.isTeacher]);
+  // Utiliser les applications filtrées par permissions
+  const { apps: permittedApps, isLoading: isLoadingApps } = useFilteredApps(school?.id);
+  const [apps, setApps] = useState<SchoolApp[]>([]);
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -83,6 +75,13 @@ export const Desktop: React.FC = () => {
     isAppPinned,
     getIconSizeClass,
   } = useDesktopSettings();
+
+  // Mettre à jour les apps quand les permissions changent
+  useEffect(() => {
+    if (permittedApps.length > 0) {
+      setApps(permittedApps);
+    }
+  }, [permittedApps]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -132,7 +131,7 @@ export const Desktop: React.FC = () => {
     : apps;
 
   const handleResetLayout = () => {
-    setApps(roleData?.isTeacher ? teacherApps : schoolApps);
+    setApps(permittedApps);
     toast.success('Disposition du bureau réinitialisée');
   };
 
