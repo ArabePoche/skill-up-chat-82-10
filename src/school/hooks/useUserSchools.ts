@@ -22,24 +22,7 @@ export const useUserSchools = (userId?: string) => {
         throw ownedError;
       }
 
-      // Récupérer les écoles où l'utilisateur est membre
-      const { data: memberSchools, error: memberError } = await supabase
-        .from('school_members')
-        .select(`
-          role,
-          schools:school_id (
-            id,
-            name,
-            description,
-            school_type
-          )
-        `)
-        .eq('user_id', userId);
-
-      if (memberError) {
-        console.error('Error fetching member schools:', memberError);
-        throw memberError;
-      }
+      // Note: school_members table doesn't exist, skipping
 
       // Récupérer les écoles où l'utilisateur est enseignant
       const { data: teacherSchools, error: teacherError } = await supabase
@@ -67,12 +50,7 @@ export const useUserSchools = (userId?: string) => {
         role: 'owner' as const
       }));
 
-      const member = (memberSchools || [])
-        .filter(m => m.schools)
-        .map(m => ({
-          ...(m.schools as any),
-          role: m.role
-        }));
+      const member: any[] = []; // school_members table doesn't exist
 
       const teacher = (teacherSchools || [])
         .filter(t => t.schools)
@@ -96,3 +74,4 @@ export const useUserSchools = (userId?: string) => {
     enabled: !!userId,
   });
 };
+ 
