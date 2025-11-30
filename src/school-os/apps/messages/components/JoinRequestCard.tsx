@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Clock } from 'lucide-react';
+import { Check, X, Clock, GraduationCap, BookOpen, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -17,6 +17,7 @@ interface JoinRequestCardProps {
 
 /**
  * Carte pour afficher une demande d'adhésion à l'école
+ * Affiche les détails spécifiques selon le rôle (enseignant généraliste/spécialiste, etc.)
  */
 export const JoinRequestCard: React.FC<JoinRequestCardProps> = ({
   request,
@@ -51,9 +52,72 @@ export const JoinRequestCard: React.FC<JoinRequestCardProps> = ({
         return 'Enseignant';
       case 'student':
         return 'Élève';
+      case 'parent':
+        return 'Parent';
       default:
-        return 'Inconnu';
+        return role || 'Inconnu';
     }
+  };
+
+  const getTeacherTypeLabel = (type: string) => {
+    switch (type) {
+      case 'generalist':
+        return 'Généraliste';
+      case 'specialist':
+        return 'Spécialiste';
+      default:
+        return type;
+    }
+  };
+
+  // Afficher les informations spécifiques pour un enseignant
+  const renderTeacherDetails = () => {
+    if (role !== 'teacher') return null;
+    
+    const teacherType = formData.teacherType;
+    const className = formData.className;
+    const subjectName = formData.subjectName;
+    const specialty = formData.specialty;
+
+    return (
+      <div className="space-y-2">
+        {teacherType && (
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">
+              <span className="font-medium">Type :</span>{' '}
+              <Badge variant="outline" className="ml-1">
+                {getTeacherTypeLabel(teacherType)}
+              </Badge>
+            </span>
+          </div>
+        )}
+        
+        {teacherType === 'generalist' && className && (
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">
+              <span className="font-medium">Classe demandée :</span>{' '}
+              <Badge variant="secondary" className="ml-1">
+                {className}
+              </Badge>
+            </span>
+          </div>
+        )}
+        
+        {teacherType === 'specialist' && (subjectName || specialty) && (
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">
+              <span className="font-medium">Matière :</span>{' '}
+              <Badge variant="secondary" className="ml-1">
+                {subjectName || specialty}
+              </Badge>
+            </span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -89,10 +153,17 @@ export const JoinRequestCard: React.FC<JoinRequestCardProps> = ({
             </div>
           </div>
 
+          {/* Détails spécifiques enseignant */}
+          {role === 'teacher' && (
+            <div className="rounded-md bg-muted/50 p-3 text-sm">
+              {renderTeacherDetails()}
+            </div>
+          )}
+
           {/* Informations supplémentaires du formulaire */}
-          {Object.keys(formData).length > 0 && (
+          {(formData.class || formData.message) && (
             <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-              {formData.class && (
+              {formData.class && role !== 'teacher' && (
                 <div>
                   <span className="font-medium">Classe :</span> {formData.class}
                 </div>
