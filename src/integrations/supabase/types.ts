@@ -2939,45 +2939,6 @@ export type Database = {
           },
         ]
       }
-      school_members: {
-        Row: {
-          created_at: string
-          id: string
-          role: string
-          school_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: string
-          school_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: string
-          school_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "school_members_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "school_members_user_id_fkey1"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       school_permissions: {
         Row: {
           category: string | null
