@@ -40,18 +40,22 @@ interface MemberPermissionsDialogProps {
   onClose: () => void;
   member: {
     id: string;
-    user_id: string;
-    role_id: string;
-    profiles: {
+    user_id?: string | null;
+    role_id?: string;
+    profiles?: {
       first_name: string | null;
       last_name: string | null;
     } | null;
-    school_roles: {
+    school_roles?: {
       id: string;
       name: string;
       description: string | null;
       is_system: boolean;
     } | null;
+    // Support direct staff data
+    first_name?: string;
+    last_name?: string;
+    position?: string | null;
   };
   schoolId: string;
 }
@@ -201,10 +205,10 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            Permissions - {member.profiles?.first_name} {member.profiles?.last_name}
+            Permissions - {member.profiles?.first_name || member.first_name} {member.profiles?.last_name || member.last_name}
           </DialogTitle>
           <DialogDescription>
-            Rôle: <Badge variant="secondary" className="ml-2">{ROLE_LABELS[member.school_roles?.name || ''] || member.school_roles?.name || 'N/A'}</Badge>
+            Poste: <Badge variant="secondary" className="ml-2">{member.school_roles?.name || member.position || 'N/A'}</Badge>
           </DialogDescription>
         </DialogHeader>
 
