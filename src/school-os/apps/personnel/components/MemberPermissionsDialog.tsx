@@ -200,20 +200,29 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
     return found?.enabled ?? false;
   };
 
+  const hasRole = !!roleData?.id;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col p-4 sm:p-6">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-base sm:text-lg">
             Permissions - {member.profiles?.first_name || member.first_name} {member.profiles?.last_name || member.last_name}
           </DialogTitle>
-          <DialogDescription>
-            Poste: <Badge variant="secondary" className="ml-2">{member.school_roles?.name || member.position || 'N/A'}</Badge>
+          <DialogDescription className="flex flex-wrap items-center gap-2">
+            <span>Rôle:</span>
+            <Badge variant="secondary">{member.school_roles?.name || member.position || 'Aucun rôle'}</Badge>
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          {isLoading ? (
+        <ScrollArea className="flex-1 min-h-0 pr-2 sm:pr-4">
+          {!hasRole ? (
+            <div className="flex items-center justify-center py-8 px-4 text-center">
+              <p className="text-muted-foreground">
+                Ce membre n'a pas de rôle attribué. Veuillez d'abord lui assigner un rôle pour gérer ses permissions.
+              </p>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">Chargement...</p>
             </div>
@@ -231,11 +240,11 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="space-y-3 pl-6">
+                    <div className="space-y-2 pl-2 sm:pl-6">
                       {perms.map((perm) => (
                         <div
                           key={perm.code}
-                          className="flex items-start gap-3 p-2 rounded hover:bg-muted/50"
+                          className="flex items-start gap-2 sm:gap-3 p-2 rounded hover:bg-muted/50"
                         >
                           <Checkbox
                             id={perm.code}
@@ -246,16 +255,17 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
                                 enabled: !!checked,
                               });
                             }}
+                            className="mt-0.5"
                           />
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <Label 
                               htmlFor={perm.code} 
-                              className="cursor-pointer font-medium text-sm"
+                              className="cursor-pointer font-medium text-xs sm:text-sm leading-tight"
                             >
                               {perm.name}
                             </Label>
                             {perm.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                                 {perm.description}
                               </p>
                             )}
@@ -273,3 +283,4 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
     </Dialog>
   );
 };
+ 
