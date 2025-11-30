@@ -7,6 +7,8 @@ export interface Subject {
   id: string;
   name: string;
   code: string | null;
+  school_id?: string | null;
+  color?: string | null;
   created_at: string;
 }
 
@@ -32,6 +34,30 @@ export const useSubjects = () => {
       
       return data as Subject[];
     },
+  });
+};
+
+// Récupérer les matières d'une école spécifique
+export const useSchoolSubjects = (schoolId?: string) => {
+  return useQuery({
+    queryKey: ['school-subjects', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching school subjects:', error);
+        throw error;
+      }
+      
+      return data as Subject[];
+    },
+    enabled: !!schoolId,
   });
 };
 
