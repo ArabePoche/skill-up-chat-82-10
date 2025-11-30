@@ -1,26 +1,27 @@
-// Composant panneau d'accès rapide aux applications
+// Composant panneau d'accès rapide aux applications - filtré par permissions
 import React, { useState } from 'react';
 import { X, Search } from 'lucide-react';
-import * as Icons from 'lucide-react';
-import { schoolApps } from '../apps';
 import { Input } from '@/components/ui/input';
+import { SchoolApp } from '../types';
 
 interface QuickPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenApp: (appId: string) => void;
+  apps: SchoolApp[]; // Apps filtrées par permissions
 }
 
 export const QuickPanel: React.FC<QuickPanelProps> = ({
   isOpen,
   onClose,
   onOpenApp,
+  apps,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   if (!isOpen) return null;
 
-  const filteredApps = schoolApps.filter(app =>
+  const filteredApps = apps.filter(app =>
     app.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
