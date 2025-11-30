@@ -1,8 +1,9 @@
 /**
- * Dialog de gestion des permissions d'un membre
+ * Dialog de gestion des permissions spécifiques à un membre
+ * Toutes les permissions sont modifiables (ajout, retrait, exclusion du rôle)
  */
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -15,15 +16,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { toast } from 'sonner';
-import { ROLE_LABELS } from '@/school/hooks/useSchoolRoles';
+import {
+  useUserExtraPermissions,
+  useAddUserExtraPermission,
+  useRemoveUserExtraPermission,
+} from '@/school-os/hooks/useUserExtraPermissions';
+import {
+  useUserPermissionExclusions,
+  useAddPermissionExclusion,
+  useRemovePermissionExclusion,
+} from '@/school-os/hooks/useUserPermissionExclusions';
 import {
   Settings,
   Users,
@@ -52,7 +60,6 @@ interface MemberPermissionsDialogProps {
       description: string | null;
       is_system: boolean;
     } | null;
-    // Support direct staff data
     first_name?: string;
     last_name?: string;
     position?: string | null;
@@ -65,11 +72,6 @@ interface Permission {
   name: string;
   description: string | null;
   category: string;
-}
-
-interface RolePermission {
-  permission_code: string;
-  enabled: boolean;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -108,10 +110,11 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
   member,
   schoolId,
 }) => {
-  const queryClient = useQueryClient();
+  const userId = member.user_id;
+  const roleId = member.school_roles?.id;
 
-  // Récupérer toutes les permissions
-  const { data: permissions = [] } = useQuery({
+  // Récupérer toutes les permissions disponibles
+  const { data: allPermissions = [] } = useQuery({
     queryKey: ['school-permissions'],
     queryFn: async (): Promise<Permission[]> => {
       const { data, error } = await supabase
@@ -125,69 +128,42 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
     },
   });
 
-  // Le rôle est déjà chargé dans member.school_roles
-  const roleData = member.school_roles ? { id: member.school_roles.id } : null;
-
-  // Récupérer les permissions du rôle
-  const { data: rolePermissions = [], isLoading } = useQuery({
-    queryKey: ['role-permissions-member', roleData?.id, schoolId],
-    queryFn: async (): Promise<RolePermission[]> => {
-      if (!roleData?.id) return [];
+  // Récupérer les permissions héritées du rôle
+  const { data: rolePermissions = [] } = useQuery({
+    queryKey: ['role-permissions-inherited', roleId, schoolId],
+    queryFn: async () => {
+      if (!roleId) return [];
 
       const { data, error } = await supabase
         .from('school_role_permissions')
-        .select('permission_code, enabled')
-        .eq('role_id', roleData.id)
+        .select('permission_code')
+        .eq('role_id', roleId)
+        .eq('enabled', true)
         .or(`school_id.is.null,school_id.eq.${schoolId}`);
 
       if (error) throw error;
-      return data || [];
+      return data?.map(p => p.permission_code) || [];
     },
-    enabled: !!roleData?.id && isOpen,
+    enabled: !!roleId && isOpen,
   });
 
-  // Mutation pour mettre à jour une permission
-  const updatePermissionMutation = useMutation({
-    mutationFn: async ({ permissionCode, enabled }: { permissionCode: string; enabled: boolean }) => {
-      if (!roleData?.id) throw new Error('Rôle non trouvé');
+  // Récupérer les permissions supplémentaires de l'utilisateur
+  const { data: extraPermissions = [], isLoading: loadingExtra } = useUserExtraPermissions(schoolId, userId || undefined);
+  const extraPermissionCodes = extraPermissions.map(p => p.permission_code);
 
-      const { data: existing } = await supabase
-        .from('school_role_permissions')
-        .select('id')
-        .eq('role_id', roleData.id)
-        .eq('permission_code', permissionCode)
-        .eq('school_id', schoolId)
-        .maybeSingle();
+  // Récupérer les exclusions de permissions de l'utilisateur
+  const { data: exclusions = [], isLoading: loadingExclusions } = useUserPermissionExclusions(schoolId, userId || undefined);
+  const excludedPermissionCodes = exclusions.map(e => e.permission_code);
 
-      if (existing) {
-        const { error } = await supabase
-          .from('school_role_permissions')
-          .update({ enabled })
-          .eq('id', existing.id);
+  // Mutations
+  const addExtraPermission = useAddUserExtraPermission();
+  const removeExtraPermission = useRemoveUserExtraPermission();
+  const addExclusion = useAddPermissionExclusion();
+  const removeExclusion = useRemovePermissionExclusion();
 
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('school_role_permissions')
-          .insert({
-            role_id: roleData.id,
-            permission_code: permissionCode,
-            enabled,
-            school_id: schoolId,
-          });
+  const isLoading = loadingExtra || loadingExclusions;
 
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['role-permissions-member'] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erreur lors de la mise à jour');
-    },
-  });
-
-  const permissionsByCategory = permissions.reduce((acc, perm) => {
+  const permissionsByCategory = allPermissions.reduce((acc, perm) => {
     if (!acc[perm.category]) {
       acc[perm.category] = [];
     }
@@ -195,12 +171,63 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
     return acc;
   }, {} as Record<string, Permission[]>);
 
-  const isPermissionEnabled = (code: string): boolean => {
-    const found = rolePermissions.find(rp => rp.permission_code === code);
-    return found?.enabled ?? false;
+  // Vérifie si une permission est héritée du rôle (et non exclue)
+  const isInheritedFromRole = (code: string): boolean => {
+    return rolePermissions.includes(code);
   };
 
-  const hasRole = !!roleData?.id;
+  // Vérifie si une permission est exclue
+  const isExcluded = (code: string): boolean => {
+    return excludedPermissionCodes.includes(code);
+  };
+
+  // Vérifie si une permission est accordée en extra
+  const isExtraPermission = (code: string): boolean => {
+    return extraPermissionCodes.includes(code);
+  };
+
+  // Vérifie si la permission est active (héritée non-exclue OU extra)
+  const isPermissionEnabled = (code: string): boolean => {
+    const inherited = isInheritedFromRole(code);
+    const excluded = isExcluded(code);
+    const extra = isExtraPermission(code);
+    
+    // Active si: (héritée ET non-exclue) OU extra
+    return (inherited && !excluded) || extra;
+  };
+
+  const handleTogglePermission = (permissionCode: string) => {
+    if (!userId) return;
+
+    const inherited = isInheritedFromRole(permissionCode);
+    const excluded = isExcluded(permissionCode);
+    const extra = isExtraPermission(permissionCode);
+    const currentlyEnabled = isPermissionEnabled(permissionCode);
+
+    if (currentlyEnabled) {
+      // Désactiver la permission
+      if (extra) {
+        // Si c'est une extra, on la retire
+        removeExtraPermission.mutate({ schoolId, userId, permissionCode });
+      }
+      if (inherited && !excluded) {
+        // Si c'est héritée du rôle, on ajoute une exclusion
+        addExclusion.mutate({ schoolId, userId, permissionCode });
+      }
+    } else {
+      // Activer la permission
+      if (excluded) {
+        // Si exclue, on retire l'exclusion
+        removeExclusion.mutate({ schoolId, userId, permissionCode });
+      }
+      if (!inherited) {
+        // Si pas héritée, on ajoute en extra
+        addExtraPermission.mutate({ schoolId, userId, permissionCode });
+      }
+    }
+  };
+
+  const hasUser = !!userId;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -216,10 +243,10 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
         </DialogHeader>
 
         <ScrollArea className="flex-1 min-h-0 pr-2 sm:pr-4">
-          {!hasRole ? (
+          {!hasUser ? (
             <div className="flex items-center justify-center py-8 px-4 text-center">
               <p className="text-muted-foreground">
-                Ce membre n'a pas de rôle attribué. Veuillez d'abord lui assigner un rôle pour gérer ses permissions.
+                Ce membre n'a pas de compte utilisateur lié. Impossible de gérer ses permissions individuelles.
               </p>
             </div>
           ) : isLoading ? (
@@ -228,54 +255,77 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
             </div>
           ) : (
             <Accordion type="multiple" className="w-full">
-              {Object.entries(permissionsByCategory).map(([category, perms]) => (
-                <AccordionItem key={category} value={category}>
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2">
-                      {CATEGORY_ICONS[category] || <Settings className="w-4 h-4" />}
-                      <span>{CATEGORY_LABELS[category] || category}</span>
-                      <Badge variant="outline" className="ml-2">
-                        {perms.filter(p => isPermissionEnabled(p.code)).length}/{perms.length}
-                      </Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-2 pl-2 sm:pl-6">
-                      {perms.map((perm) => (
-                        <div
-                          key={perm.code}
-                          className="flex items-start gap-2 sm:gap-3 p-2 rounded hover:bg-muted/50"
-                        >
-                          <Checkbox
-                            id={perm.code}
-                            checked={isPermissionEnabled(perm.code)}
-                            onCheckedChange={(checked) => {
-                              updatePermissionMutation.mutate({
-                                permissionCode: perm.code,
-                                enabled: !!checked,
-                              });
-                            }}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <Label 
-                              htmlFor={perm.code} 
-                              className="cursor-pointer font-medium text-xs sm:text-sm leading-tight"
+              {Object.entries(permissionsByCategory).map(([category, perms]) => {
+                const enabledCount = perms.filter(p => isPermissionEnabled(p.code)).length;
+
+                return (
+                  <AccordionItem key={category} value={category}>
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-2">
+                        {CATEGORY_ICONS[category] || <Settings className="w-4 h-4" />}
+                        <span>{CATEGORY_LABELS[category] || category}</span>
+                        <Badge variant="outline" className="ml-2">
+                          {enabledCount}/{perms.length}
+                        </Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2 pl-2 sm:pl-6">
+                        {perms.map((perm) => {
+                          const enabled = isPermissionEnabled(perm.code);
+                          const inherited = isInheritedFromRole(perm.code);
+                          const excluded = isExcluded(perm.code);
+                          const extra = isExtraPermission(perm.code);
+
+                          return (
+                            <div
+                              key={perm.code}
+                              className="flex items-start gap-2 sm:gap-3 p-2 rounded hover:bg-muted/50"
                             >
-                              {perm.name}
-                            </Label>
-                            {perm.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                {perm.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
+                              <Checkbox
+                                id={perm.code}
+                                checked={enabled}
+                                onCheckedChange={() => handleTogglePermission(perm.code)}
+                                className="mt-0.5"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Label
+                                    htmlFor={perm.code}
+                                    className="cursor-pointer font-medium text-xs sm:text-sm leading-tight"
+                                  >
+                                    {perm.name}
+                                  </Label>
+                                  {inherited && !excluded && (
+                                    <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                      Rôle
+                                    </Badge>
+                                  )}
+                                  {excluded && (
+                                    <Badge variant="destructive" className="text-[10px] px-1 py-0">
+                                      Exclu
+                                    </Badge>
+                                  )}
+                                  {extra && (
+                                    <Badge className="text-[10px] px-1 py-0 bg-primary/20 text-primary">
+                                      Extra
+                                    </Badge>
+                                  )}
+                                </div>
+                                {perm.description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                    {perm.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
             </Accordion>
           )}
         </ScrollArea>
@@ -283,4 +333,3 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
     </Dialog>
   );
 };
- 
