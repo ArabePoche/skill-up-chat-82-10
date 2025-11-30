@@ -3796,6 +3796,51 @@ export type Database = {
           },
         ]
       }
+      school_user_permission_exclusions: {
+        Row: {
+          created_at: string | null
+          excluded_at: string | null
+          excluded_by: string | null
+          id: string
+          permission_code: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          excluded_at?: string | null
+          excluded_by?: string | null
+          id?: string
+          permission_code: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          excluded_at?: string | null
+          excluded_by?: string | null
+          id?: string
+          permission_code?: string
+          school_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_user_permission_exclusions_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "school_permissions"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "school_user_permission_exclusions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_user_roles: {
         Row: {
           assigned_by: string | null
