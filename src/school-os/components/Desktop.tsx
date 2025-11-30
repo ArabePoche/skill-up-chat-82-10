@@ -248,11 +248,12 @@ export const Desktop: React.FC = () => {
             />
           )}
 
-          {/* Panneau d'accès rapide */}
+          {/* Panneau d'accès rapide - filtré par permissions */}
           <QuickPanel
             isOpen={quickPanelOpen}
             onClose={() => setQuickPanelOpen(false)}
             onOpenApp={openWindow}
+            apps={apps}
           />
 
           <input
