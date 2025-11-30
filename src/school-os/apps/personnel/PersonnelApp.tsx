@@ -11,7 +11,7 @@ export const PersonnelApp: React.FC = () => {
   const schoolId = searchParams.get('id') || undefined;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden">
       <div className="p-4 sm:p-6 shrink-0">
         <h2 className="text-xl sm:text-2xl font-bold">Gestion du Personnel</h2>
         <p className="text-sm text-muted-foreground mt-1">
