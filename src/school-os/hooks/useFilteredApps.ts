@@ -10,6 +10,7 @@ const APP_PERMISSION_MAP: Record<string, string> = {
   students: 'app.students',
   teachers: 'app.teachers',
   grades: 'app.grades',
+  evaluations: 'evaluation.view',
   payments: 'app.payments',
   accounting: 'app.accounting',
   schedule: 'app.schedule',
