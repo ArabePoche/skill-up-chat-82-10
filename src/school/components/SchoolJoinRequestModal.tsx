@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useSchoolJoinRequest } from '../hooks/useSchoolJoinRequest';
 import { useAuth } from '@/hooks/useAuth';
 import { useSchoolClasses } from '../hooks/useClasses';
+import { useSchoolSubjects } from '../hooks/useSubjects';
 import { useAssignableRoles, ROLE_LABELS, ROLE_DESCRIPTIONS } from '../hooks/useSchoolRoles';
 import ParentJoinForm from './ParentJoinForm';
 import TeacherJoinForm from './TeacherJoinForm';
@@ -34,6 +35,7 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
   const { user } = useAuth();
   const sendRequest = useSchoolJoinRequest();
   const { data: classes = [] } = useSchoolClasses(school.id);
+  const { data: subjects = [] } = useSchoolSubjects(school.id);
   const { data: roles = [], isLoading: rolesLoading } = useAssignableRoles(school.id);
   
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
@@ -46,6 +48,12 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
   const availableClasses = classes.map(cls => ({
     id: cls.id,
     name: cls.name
+  }));
+
+  // Préparer la liste des matières disponibles
+  const availableSubjects = subjects.map(sub => ({
+    id: sub.id,
+    name: sub.name
   }));
 
   // Obtenir le label traduit pour un rôle
@@ -209,6 +217,7 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
                 onSubmit={handleTeacherSubmit} 
                 isPending={sendRequest.isPending}
                 availableClasses={availableClasses}
+                availableSubjects={availableSubjects}
               />
             </div>
           )}
