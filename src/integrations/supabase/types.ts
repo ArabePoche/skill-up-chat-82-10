@@ -682,27 +682,6 @@ export type Database = {
           },
         ]
       }
-      evaluation_types: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
       evaluations: {
         Row: {
           class_subject_id: string
@@ -758,7 +737,7 @@ export type Database = {
             foreignKeyName: "evaluations_evaluation_type_id_fkey"
             columns: ["evaluation_type_id"]
             isOneToOne: false
-            referencedRelation: "evaluation_types"
+            referencedRelation: "school_evaluation_types"
             referencedColumns: ["id"]
           },
           {
@@ -2871,6 +2850,310 @@ export type Database = {
             columns: ["video_id"]
             isOneToOne: false
             referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_evaluation_class_configs: {
+        Row: {
+          class_id: string
+          created_at: string | null
+          end_time: string
+          evaluation_date: string
+          evaluation_id: string
+          external_location: string | null
+          id: string
+          location_type: string | null
+          room: string | null
+          start_time: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string | null
+          end_time: string
+          evaluation_date: string
+          evaluation_id: string
+          external_location?: string | null
+          id?: string
+          location_type?: string | null
+          room?: string | null
+          start_time: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string | null
+          end_time?: string
+          evaluation_date?: string
+          evaluation_id?: string
+          external_location?: string | null
+          id?: string
+          location_type?: string | null
+          room?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_evaluation_class_configs_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluation_class_configs_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "school_evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_evaluation_class_subjects: {
+        Row: {
+          class_config_id: string
+          created_at: string | null
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          class_config_id: string
+          created_at?: string | null
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          class_config_id?: string
+          created_at?: string | null
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_evaluation_class_subjects_class_config_id_fkey"
+            columns: ["class_config_id"]
+            isOneToOne: false
+            referencedRelation: "school_evaluation_class_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluation_class_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_evaluation_excluded_students: {
+        Row: {
+          class_config_id: string
+          created_at: string | null
+          id: string
+          student_id: string
+        }
+        Insert: {
+          class_config_id: string
+          created_at?: string | null
+          id?: string
+          student_id: string
+        }
+        Update: {
+          class_config_id?: string
+          created_at?: string | null
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_evaluation_excluded_students_class_config_id_fkey"
+            columns: ["class_config_id"]
+            isOneToOne: false
+            referencedRelation: "school_evaluation_class_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluation_excluded_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_evaluation_questionnaires: {
+        Row: {
+          class_config_id: string
+          created_at: string | null
+          file_url: string | null
+          id: string
+          instructions: string | null
+          subject_id: string
+          title: string | null
+          total_points: number
+        }
+        Insert: {
+          class_config_id: string
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          instructions?: string | null
+          subject_id: string
+          title?: string | null
+          total_points?: number
+        }
+        Update: {
+          class_config_id?: string
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          instructions?: string | null
+          subject_id?: string
+          title?: string | null
+          total_points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_evaluation_questionnaires_class_config_id_fkey"
+            columns: ["class_config_id"]
+            isOneToOne: false
+            referencedRelation: "school_evaluation_class_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluation_questionnaires_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_evaluation_supervisors: {
+        Row: {
+          class_config_id: string
+          created_at: string | null
+          id: string
+          supervisor_id: string
+        }
+        Insert: {
+          class_config_id: string
+          created_at?: string | null
+          id?: string
+          supervisor_id: string
+        }
+        Update: {
+          class_config_id?: string
+          created_at?: string | null
+          id?: string
+          supervisor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_evaluation_supervisors_class_config_id_fkey"
+            columns: ["class_config_id"]
+            isOneToOne: false
+            referencedRelation: "school_evaluation_class_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluation_supervisors_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_evaluation_types: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          school_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          school_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_evaluation_types_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_evaluations: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          evaluation_type_id: string | null
+          id: string
+          school_id: string
+          school_year_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          evaluation_type_id?: string | null
+          id?: string
+          school_id: string
+          school_year_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          evaluation_type_id?: string | null
+          id?: string
+          school_id?: string
+          school_year_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_evaluations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluations_evaluation_type_id_fkey"
+            columns: ["evaluation_type_id"]
+            isOneToOne: false
+            referencedRelation: "school_evaluation_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluations_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_evaluations_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
             referencedColumns: ["id"]
           },
         ]
