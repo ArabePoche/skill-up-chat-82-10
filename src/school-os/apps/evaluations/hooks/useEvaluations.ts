@@ -55,7 +55,7 @@ export const useEvaluations = (schoolId?: string, schoolYearId?: string) => {
           grading_period_id,
           description,
           created_at,
-          evaluation_types(name),
+          school_evaluation_types(name),
           class_subjects(
             id,
             classes(name),
