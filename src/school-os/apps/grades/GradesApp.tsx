@@ -170,7 +170,7 @@ export const GradesApp: React.FC = () => {
       </div>
 
       {/* Filtres */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 flex-shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 flex-shrink-0">
         <div>
           <label className="text-sm font-medium mb-2 block">Classe</label>
           <Select 
