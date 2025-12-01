@@ -1,15 +1,23 @@
-// Application de gestion des notes - Unifiée pour tous les rôles
+/**
+ * Application de gestion des notes
+ * Affiche les évaluations par classe avec saisie des notes et export Excel
+ */
 import React, { useState } from 'react';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 import { useTeacherClasses } from '@/school-os/hooks/useTeacherClasses';
-import { useTeacherStudents } from '@/school-os/hooks/useTeacherStudents';
+import { useSchoolClasses } from '@/school/hooks/useClasses';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Users, FileText, GraduationCap } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BookOpen, Users, FileText, GraduationCap, Download, Filter } from 'lucide-react';
+import { EvaluationsListView } from './components/EvaluationsListView';
+import { GradeEntryView } from './components/GradeEntryView';
+import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
+import { useEvaluationGrades } from './hooks/useGrades';
+import { exportClassGradesToExcel } from './utils/exportGrades';
 
 export const GradesApp: React.FC = () => {
   const { school, activeSchoolYear } = useSchoolYear();
@@ -17,15 +25,73 @@ export const GradesApp: React.FC = () => {
   const isTeacher = roleData?.isTeacher ?? false;
   const isOwner = roleData?.isOwner ?? false;
 
-  const { data: teacherClasses, isLoading: isLoadingClasses } = useTeacherClasses(school?.id, activeSchoolYear?.id);
-  const { data: students } = useTeacherStudents(school?.id, activeSchoolYear?.id);
-  
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
+  // Classes selon le rôle
+  const { data: teacherClasses, isLoading: isLoadingTeacherClasses } = useTeacherClasses(
+    school?.id, 
+    activeSchoolYear?.id
+  );
+  const { data: allClasses, isLoading: isLoadingAllClasses } = useSchoolClasses(
+    school?.id, 
+    activeSchoolYear?.id
+  );
 
-  const selectedClass = teacherClasses?.find(c => c.id === selectedClassId);
-  const availableSubjects = selectedClass?.subjects || [];
-  const classStudents = students?.filter(s => s.class_id === selectedClassId) || [];
+  // Pour les admins, on utilise toutes les classes, pour les enseignants leurs classes assignées
+  const availableClasses = isOwner && !isTeacher 
+    ? allClasses?.map(c => ({
+        id: c.id,
+        name: c.name,
+        cycle: c.cycle,
+        current_students: c.current_students,
+        max_students: c.max_students,
+        subjects: [] // Les matières seront chargées séparément
+      })) || []
+    : teacherClasses || [];
+
+  const isLoadingClasses = isOwner && !isTeacher ? isLoadingAllClasses : isLoadingTeacherClasses;
+
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
+  const [selectedEvaluation, setSelectedEvaluation] = useState<ClassEvaluation | null>(null);
+
+  // Récupérer les évaluations de la classe pour l'export
+  const { data: classEvaluations } = useClassEvaluations(selectedClassId);
+
+  const selectedClass = availableClasses.find(c => c.id === selectedClassId);
+  
+  // Pour les enseignants, on utilise leurs matières assignées
+  const availableSubjects = isTeacher 
+    ? teacherClasses?.find(c => c.id === selectedClassId)?.subjects || []
+    : []; // Pour les admins, les matières viennent des évaluations
+
+  // Extraire les matières uniques des évaluations pour les admins
+  const subjectsFromEvaluations = React.useMemo(() => {
+    if (!classEvaluations) return [];
+    const uniqueSubjects = new Map();
+    classEvaluations.forEach(e => {
+      if (!uniqueSubjects.has(e.subject.id)) {
+        uniqueSubjects.set(e.subject.id, e.subject);
+      }
+    });
+    return Array.from(uniqueSubjects.values());
+  }, [classEvaluations]);
+
+  const displaySubjects = isTeacher ? availableSubjects : subjectsFromEvaluations;
+
+  const handleExportClass = async () => {
+    if (!classEvaluations || !selectedClass) return;
+    
+    // On devrait charger les notes pour chaque évaluation
+    // Pour simplifier, on exporte les évaluations avec leurs infos de base
+    exportClassGradesToExcel({
+      className: selectedClass.name,
+      evaluations: classEvaluations.map(e => ({
+        name: e.name,
+        subjectName: e.subject.name,
+        maxScore: e.max_score,
+        grades: [], // Les notes seront chargées au clic sur chaque évaluation
+      })),
+    });
+  };
 
   if (!school?.id || !activeSchoolYear?.id) {
     return (
@@ -47,74 +113,87 @@ export const GradesApp: React.FC = () => {
     );
   }
 
-  // Vue administrateur : tableau de bord des notes (TODO: implémenter)
-  if (isOwner && !isTeacher) {
-    return (
-      <div className="p-6 h-full overflow-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold">Gestion des Notes</h2>
-            <p className="text-muted-foreground mt-1">
-              Vue d'ensemble des notes et évaluations
-            </p>
-          </div>
-        </div>
-        
-        <Card className="p-12 text-center">
-          <GraduationCap className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Tableau de bord administrateur</h3>
-          <p className="text-muted-foreground">
-            La vue d'ensemble des notes sera disponible prochainement.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
-  // Vue enseignant : saisie des notes par classe et matière
-  if (!teacherClasses || teacherClasses.length === 0) {
+  // Si aucune classe disponible
+  if (availableClasses.length === 0) {
     return (
       <div className="p-6 h-full overflow-auto">
         <div className="text-center py-12">
           <GraduationCap className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Aucune classe assignée</h3>
+          <h3 className="text-lg font-semibold mb-2">
+            {isTeacher ? 'Aucune classe assignée' : 'Aucune classe disponible'}
+          </h3>
           <p className="text-muted-foreground">
-            Vous devez être assigné à des classes pour saisir des notes.
+            {isTeacher 
+              ? 'Vous devez être assigné à des classes pour saisir des notes.'
+              : 'Créez d\'abord des classes et des évaluations.'
+            }
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Vue de saisie des notes pour une évaluation
+  if (selectedEvaluation && selectedClass) {
+    return (
+      <div className="p-6 h-full overflow-hidden flex flex-col">
+        <GradeEntryView
+          evaluation={selectedEvaluation}
+          className={selectedClass.name}
+          onBack={() => setSelectedEvaluation(null)}
+        />
       </div>
     );
   }
 
   return (
     <div className="p-6 h-full flex flex-col overflow-hidden">
+      {/* Header */}
       <div className="mb-6 flex-shrink-0">
-        <h2 className="text-2xl font-bold">
-          {isTeacher ? 'Saisie des Notes' : 'Gestion des Notes'}
-        </h2>
-        <p className="text-muted-foreground mt-1">
-          {isTeacher 
-            ? 'Gérez les notes de vos élèves par classe et matière'
-            : 'Consultez et gérez les notes de l\'école'
-          }
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Gestion des Notes</h2>
+            <p className="text-muted-foreground mt-1">
+              {isTeacher 
+                ? 'Saisissez les notes de vos élèves par évaluation'
+                : 'Consultez et gérez les notes de l\'école'
+              }
+            </p>
+          </div>
+          {selectedClassId && classEvaluations && classEvaluations.length > 0 && (
+            <Button variant="outline" onClick={handleExportClass}>
+              <Download className="h-4 w-4 mr-2" />
+              Exporter la classe
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Sélecteurs */}
+      {/* Filtres */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 flex-shrink-0">
         <div>
           <label className="text-sm font-medium mb-2 block">Classe</label>
-          <Select value={selectedClassId} onValueChange={(value) => {
-            setSelectedClassId(value);
-            setSelectedSubjectId('');
-          }}>
+          <Select 
+            value={selectedClassId} 
+            onValueChange={(value) => {
+              setSelectedClassId(value);
+              setSelectedSubjectId('all');
+              setSelectedEvaluation(null);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner une classe" />
             </SelectTrigger>
             <SelectContent>
-              {teacherClasses.map((cls) => (
+              {availableClasses.map((cls) => (
                 <SelectItem key={cls.id} value={cls.id}>
-                  {cls.name}
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    {cls.name}
+                    <Badge variant="outline" className="ml-2">
+                      {cls.current_students} élèves
+                    </Badge>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -122,19 +201,25 @@ export const GradesApp: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-2 block">Matière</label>
+          <label className="text-sm font-medium mb-2 block">Matière (filtre)</label>
           <Select 
             value={selectedSubjectId} 
             onValueChange={setSelectedSubjectId}
-            disabled={!selectedClassId}
+            disabled={!selectedClassId || displaySubjects.length === 0}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Sélectionner une matière" />
+              <SelectValue placeholder="Toutes les matières" />
             </SelectTrigger>
             <SelectContent>
-              {availableSubjects.map((subject) => (
+              <SelectItem value="all">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Toutes les matières
+                </div>
+              </SelectItem>
+              {displaySubjects.map((subject) => (
                 <SelectItem key={subject.id} value={subject.id}>
-                  {subject.name} (coef. {subject.coefficient})
+                  {subject.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -147,98 +232,35 @@ export const GradesApp: React.FC = () => {
         <Card className="flex-1 flex items-center justify-center">
           <div className="text-center py-12">
             <BookOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Sélectionnez une classe</h3>
             <p className="text-muted-foreground">
-              Sélectionnez une classe pour commencer
-            </p>
-          </div>
-        </Card>
-      ) : !selectedSubjectId ? (
-        <Card className="flex-1 flex items-center justify-center">
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              Sélectionnez une matière pour saisir les notes
+              Choisissez une classe pour voir ses évaluations et saisir les notes
             </p>
           </div>
         </Card>
       ) : (
-        <Tabs defaultValue="evaluations" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="flex-shrink-0">
-            <TabsTrigger value="evaluations">Évaluations</TabsTrigger>
-            <TabsTrigger value="grades">Saisie des notes</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="evaluations" className="flex-1 overflow-hidden mt-4">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Évaluations - {availableSubjects.find(s => s.id === selectedSubjectId)?.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">
-                    Aucune évaluation créée pour cette matière
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    La création d'évaluations sera disponible prochainement
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="grades" className="flex-1 overflow-hidden mt-4">
-            <Card className="h-full flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Élèves de {selectedClass?.name}
-                  </div>
-                  <Badge variant="outline">
-                    {classStudents.length} élève{classStudents.length > 1 ? 's' : ''}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full">
-                  {classStudents.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Aucun élève dans cette classe
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {classStudents.map((student, index) => (
-                        <div 
-                          key={student.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                        >
-                          <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1">
-                            <p className="font-medium">
-                              {student.last_name} {student.first_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.student_code}
-                            </p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-muted-foreground">Note</p>
-                            <p className="font-semibold text-lg">--</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <Card className="flex-1 overflow-hidden flex flex-col">
+          <CardHeader className="flex-shrink-0 pb-2">
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Évaluations - {selectedClass?.name}
+              </div>
+              {classEvaluations && (
+                <Badge variant="outline">
+                  {classEvaluations.length} évaluation{classEvaluations.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-hidden pt-0">
+            <EvaluationsListView
+              classId={selectedClassId}
+              subjectId={selectedSubjectId === 'all' ? undefined : selectedSubjectId}
+              onSelectEvaluation={setSelectedEvaluation}
+            />
+          </CardContent>
+        </Card>
       )}
     </div>
   );
