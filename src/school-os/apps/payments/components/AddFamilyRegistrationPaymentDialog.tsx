@@ -149,29 +149,12 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
         reference_number: referenceNumber.trim() || undefined,
       }));
 
+      // Insérer les paiements - le trigger se charge automatiquement de mettre à jour registration_fee_paid_amount
       const { error: paymentsError } = await supabase
         .from('school_students_payment')
         .insert(payments);
 
       if (paymentsError) throw paymentsError;
-
-      // 2. Mettre à jour school_student_payment_progress pour chaque élève
-      for (const student of students) {
-        const studentData = currentFamily.students.find(s => s.id === student.student_id);
-        if (!studentData) continue;
-
-        const currentPaid = studentData.registration_fee_paid_amount || 0;
-        const newPaid = currentPaid + student.amount;
-
-        const { error: progressError } = await supabase
-          .from('school_student_payment_progress')
-          .update({
-            registration_fee_paid_amount: newPaid,
-          })
-          .eq('student_id', student.student_id);
-
-        if (progressError) throw progressError;
-      }
 
       toast.success('Paiement familial de frais d\'inscription enregistré avec succès');
 
