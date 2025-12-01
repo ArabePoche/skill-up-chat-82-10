@@ -20,8 +20,9 @@ export const useEvaluationTypes = (schoolId?: string) => {
 
       // Récupérer les types d'évaluations
       const { data, error } = await supabase
-        .from('evaluation_types')
+        .from('school_evaluation_types')
         .select('*')
+        .eq('school_id', schoolId)
         .order('name');
 
       if (error) throw error;
@@ -37,10 +38,11 @@ export const useCreateEvaluationType = () => {
   return useMutation({
     mutationFn: async ({ name, description, schoolId }: { name: string; description?: string; schoolId: string }) => {
       const { data, error } = await supabase
-        .from('evaluation_types')
+        .from('school_evaluation_types')
         .insert({
           name,
           description: description || null,
+          school_id: schoolId,
         })
         .select()
         .single();
