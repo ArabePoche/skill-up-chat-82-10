@@ -1,27 +1,42 @@
 /**
  * Hook pour regrouper les évaluations par classe avec statistiques
  * Fournit les données organisées pour l'affichage en cartes pliables
+ * 
+ * IMPORTANT: Une évaluation peut contenir plusieurs matières.
+ * Ce hook regroupe les enregistrements DB par (name + date + type + class) 
+ * pour afficher une seule évaluation avec ses matières.
  */
 import { useMemo } from 'react';
 import { useEvaluations } from './useEvaluations';
 
+export interface SubjectInfo {
+  subject_id: string;
+  subject_name: string;
+  class_subject_id: string;
+  evaluation_record_id: string; // ID de l'enregistrement DB pour cette matière
+}
+
 export interface EvaluationWithStatus {
-  id: string;
+  id: string; // ID du premier enregistrement (pour compatibilité)
+  evaluation_ids: string[]; // Tous les IDs des enregistrements DB
   name: string;
   description?: string;
   evaluation_date: string | null;
   max_score: number;
   coefficient: number;
   include_in_average: boolean;
-  class_subject_id: string;
   evaluation_type_id: string | null;
   evaluation_type_name: string;
-  subject_id: string;
-  subject_name: string;
   class_id: string;
   class_name: string;
   status: 'ongoing' | 'upcoming' | 'past';
   daysUntil: number | null;
+  // Liste des matières incluses dans cette évaluation
+  subjects: SubjectInfo[];
+  // Champs legacy pour compatibilité
+  class_subject_id: string;
+  subject_id: string;
+  subject_name: string;
   // TODO: Ces champs seront ajoutés quand les tables seront disponibles
   room?: string;
   start_time?: string;
@@ -66,40 +81,83 @@ const getEvaluationStatus = (evaluationDate: string | null): { status: 'ongoing'
   }
 };
 
+/**
+ * Génère une clé unique pour identifier une évaluation logique
+ * basée sur: nom + date + type + classe
+ */
+const generateEvaluationKey = (item: any): string => {
+  const classId = item.class_subjects?.classes?.id || '';
+  const name = item.name || '';
+  const date = item.evaluation_date || 'no-date';
+  const typeId = item.evaluation_type_id || 'no-type';
+  
+  return `${classId}|${name}|${date}|${typeId}`;
+};
+
 export const useEvaluationsGroupedByClass = (schoolId?: string, schoolYearId?: string) => {
   const { data: evaluations = [], isLoading, error } = useEvaluations(schoolId, schoolYearId);
 
   const groupedEvaluations = useMemo(() => {
     if (!evaluations.length) return [];
 
-    // Transformer les évaluations avec leur statut
-    const evaluationsWithStatus: EvaluationWithStatus[] = evaluations.map((item: any) => {
-      const { status, daysUntil } = getEvaluationStatus(item.evaluation_date);
-      
-      return {
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        evaluation_date: item.evaluation_date,
-        max_score: item.max_score,
-        coefficient: item.coefficient,
-        include_in_average: item.include_in_average,
-        class_subject_id: item.class_subject_id,
-        evaluation_type_id: item.evaluation_type_id,
-        evaluation_type_name: item.school_evaluation_types?.name || 'Type inconnu',
-        subject_id: item.class_subjects?.subjects?.id || '',
-        subject_name: item.class_subjects?.subjects?.name || 'Matière inconnue',
-        class_id: item.class_subjects?.classes?.id || '',
-        class_name: item.class_subjects?.classes?.name || 'Classe inconnue',
-        status,
-        daysUntil,
-      };
+    // Étape 1: Regrouper les enregistrements DB par évaluation logique
+    const evaluationMap = new Map<string, any[]>();
+    
+    evaluations.forEach((item: any) => {
+      const key = generateEvaluationKey(item);
+      if (!evaluationMap.has(key)) {
+        evaluationMap.set(key, []);
+      }
+      evaluationMap.get(key)!.push(item);
     });
 
-    // Grouper par classe
+    // Étape 2: Transformer chaque groupe en une seule évaluation avec ses matières
+    const mergedEvaluations: EvaluationWithStatus[] = [];
+    
+    evaluationMap.forEach((records) => {
+      if (records.length === 0) return;
+      
+      const firstRecord = records[0];
+      const { status, daysUntil } = getEvaluationStatus(firstRecord.evaluation_date);
+      
+      // Collecter toutes les matières
+      const subjects: SubjectInfo[] = records.map((record: any) => ({
+        subject_id: record.class_subjects?.subjects?.id || '',
+        subject_name: record.class_subjects?.subjects?.name || 'Matière inconnue',
+        class_subject_id: record.class_subject_id,
+        evaluation_record_id: record.id,
+      }));
+      
+      // Collecter tous les IDs des enregistrements
+      const evaluationIds = records.map((r: any) => r.id);
+      
+      mergedEvaluations.push({
+        id: firstRecord.id,
+        evaluation_ids: evaluationIds,
+        name: firstRecord.name,
+        description: firstRecord.description,
+        evaluation_date: firstRecord.evaluation_date,
+        max_score: firstRecord.max_score,
+        coefficient: firstRecord.coefficient,
+        include_in_average: firstRecord.include_in_average,
+        evaluation_type_id: firstRecord.evaluation_type_id,
+        evaluation_type_name: firstRecord.school_evaluation_types?.name || 'Type inconnu',
+        class_id: firstRecord.class_subjects?.classes?.id || '',
+        class_name: firstRecord.class_subjects?.classes?.name || 'Classe inconnue',
+        status,
+        daysUntil,
+        subjects,
+        // Champs legacy (premier enregistrement pour compatibilité)
+        class_subject_id: firstRecord.class_subject_id,
+        subject_id: firstRecord.class_subjects?.subjects?.id || '',
+        subject_name: subjects.map(s => s.subject_name).join(', '),
+      });
+    });
+
+    // Étape 3: Grouper par classe
     const groupedMap = new Map<string, EvaluationWithStatus[]>();
     
-    evaluationsWithStatus.forEach((evaluation) => {
+    mergedEvaluations.forEach((evaluation) => {
       const key = evaluation.class_id;
       if (!groupedMap.has(key)) {
         groupedMap.set(key, []);
@@ -107,7 +165,7 @@ export const useEvaluationsGroupedByClass = (schoolId?: string, schoolYearId?: s
       groupedMap.get(key)!.push(evaluation);
     });
 
-    // Créer les groupes avec statistiques
+    // Étape 4: Créer les groupes avec statistiques
     const groups: ClassEvaluationGroup[] = Array.from(groupedMap.entries()).map(([classId, evals]) => {
       // Trier : en cours > à venir > passées
       const sortedEvals = [...evals].sort((a, b) => {
@@ -147,10 +205,16 @@ export const useEvaluationsGroupedByClass = (schoolId?: string, schoolYearId?: s
     return groups.sort((a, b) => a.class_name.localeCompare(b.class_name));
   }, [evaluations]);
 
+  // Compter le nombre total d'évaluations logiques (pas d'enregistrements DB)
+  const totalLogicalEvaluations = groupedEvaluations.reduce(
+    (sum, group) => sum + group.evaluations.length, 
+    0
+  );
+
   return {
     groupedEvaluations,
     isLoading,
     error,
-    totalEvaluations: evaluations.length,
+    totalEvaluations: totalLogicalEvaluations,
   };
 };
