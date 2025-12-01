@@ -55,6 +55,25 @@ export const useEvaluationGrades = (evaluationId?: string) => {
       const classId = (evaluation.class_subjects as any)?.class_id;
       if (!classId) return [];
 
+      // Récupérer les élèves exclus pour cette évaluation
+      const { data: excludedStudentsData } = await supabase
+        .from('school_evaluation_class_configs')
+        .select(`
+          id,
+          school_evaluation_excluded_students(student_id)
+        `)
+        .eq('evaluation_id', evaluationId);
+
+      // Créer un Set des IDs d'élèves exclus
+      const excludedStudentIds = new Set<string>();
+      excludedStudentsData?.forEach((config: any) => {
+        config.school_evaluation_excluded_students?.forEach((excluded: any) => {
+          if (excluded.student_id) {
+            excludedStudentIds.add(excluded.student_id);
+          }
+        });
+      });
+
       // Récupérer les élèves de la classe
       const { data: students, error: studentsError } = await supabase
         .from('students_school')
@@ -67,6 +86,11 @@ export const useEvaluationGrades = (evaluationId?: string) => {
         console.error('Error fetching students:', studentsError);
         throw studentsError;
       }
+
+      // Filtrer les élèves exclus
+      const filteredStudents = (students || []).filter(
+        (student: any) => !excludedStudentIds.has(student.id)
+      );
 
       // Récupérer les notes existantes
       const { data: grades, error: gradesError } = await supabase
@@ -82,7 +106,7 @@ export const useEvaluationGrades = (evaluationId?: string) => {
       // Mapper les notes aux élèves
       const gradesMap = new Map(grades?.map((g: any) => [g.student_id, g]) || []);
 
-      return (students || []).map((student: any) => {
+      return filteredStudents.map((student: any) => {
         const grade = gradesMap.get(student.id);
         return {
           id: grade?.id || '',
