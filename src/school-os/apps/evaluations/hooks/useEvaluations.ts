@@ -126,6 +126,44 @@ export const useCreateEvaluation = () => {
 
           createdEvaluations.push(result);
           console.log('✅ Evaluation created:', result);
+
+          // Sauvegarder les élèves exclus si présents
+          if (classConfig.excluded_students && classConfig.excluded_students.length > 0) {
+            // Créer une config de classe pour stocker les exclusions
+            const { data: classConfigResult, error: configError } = await supabase
+              .from('school_evaluation_class_configs')
+              .insert({
+                evaluation_id: result.id,
+                class_id: classConfig.class_id,
+                room: classConfig.room || null,
+                location_type: classConfig.location_type || 'room',
+                external_location: classConfig.external_location || null,
+                evaluation_date: classConfig.date || null,
+                start_time: classConfig.start_time || null,
+                end_time: classConfig.end_time || null,
+              })
+              .select()
+              .single();
+
+            if (configError) {
+              console.error('❌ Error creating class config:', configError);
+              // Continue même si la config échoue
+            } else if (classConfigResult) {
+              // Sauvegarder les élèves exclus
+              const excludedStudentsData = classConfig.excluded_students.map(studentId => ({
+                class_config_id: classConfigResult.id,
+                student_id: studentId,
+              }));
+
+              const { error: excludedError } = await supabase
+                .from('school_evaluation_excluded_students')
+                .insert(excludedStudentsData);
+
+              if (excludedError) {
+                console.error('❌ Error saving excluded students:', excludedError);
+              }
+            }
+          }
         }
       }
 
