@@ -181,61 +181,63 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h3 className="font-semibold text-lg">{evaluation.name}</h3>
-            <p className="text-sm text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-base sm:text-lg truncate">{evaluation.name}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               {evaluation.subject.name} • {className} • /{evaluation.max_score}
             </p>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Excel
+          <Button variant="outline" size="sm" onClick={handleExport} className="flex-1 sm:flex-initial">
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Excel</span>
           </Button>
           <Button 
             size="sm" 
             onClick={handleSave}
             disabled={!hasChanges || saveMutation.isPending}
+            className="flex-1 sm:flex-initial"
           >
-            <Save className="h-4 w-4 mr-2" />
-            {saveMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+            <Save className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{saveMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}</span>
+            <span className="sm:hidden">Sauver</span>
           </Button>
         </div>
       </div>
 
       {/* Statistiques */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-4 flex-shrink-0">
-          <Card className="p-3 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4 flex-shrink-0">
+          <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Élèves</p>
-            <p className="text-lg font-bold">{stats.total}</p>
+            <p className="text-base sm:text-lg font-bold">{stats.total}</p>
           </Card>
-          <Card className="p-3 text-center">
+          <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Saisis</p>
-            <p className="text-lg font-bold text-primary">{stats.entered}</p>
+            <p className="text-base sm:text-lg font-bold text-primary">{stats.entered}</p>
           </Card>
-          <Card className="p-3 text-center">
+          <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Absents</p>
-            <p className="text-lg font-bold text-orange-500">{stats.absent}</p>
+            <p className="text-base sm:text-lg font-bold text-orange-500">{stats.absent}</p>
           </Card>
-          <Card className="p-3 text-center">
+          <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Moyenne</p>
-            <p className="text-lg font-bold">{stats.average}</p>
+            <p className="text-base sm:text-lg font-bold">{stats.average}</p>
           </Card>
-          <Card className="p-3 text-center">
+          <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Max</p>
-            <p className="text-lg font-bold text-green-500">{stats.max}</p>
+            <p className="text-base sm:text-lg font-bold text-green-500">{stats.max}</p>
           </Card>
-          <Card className="p-3 text-center">
+          <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Min</p>
-            <p className="text-lg font-bold text-red-500">{stats.min}</p>
+            <p className="text-base sm:text-lg font-bold text-red-500">{stats.min}</p>
           </Card>
         </div>
       )}
@@ -264,102 +266,206 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
                 return (
                   <div 
                     key={grade.student_id}
-                    className="flex items-center gap-3 p-3 hover:bg-muted/50"
+                    className="p-3 hover:bg-muted/50"
                   >
-                    {/* Numéro */}
-                    <span className="w-8 text-center text-sm text-muted-foreground font-medium">
-                      {index + 1}
-                    </span>
-                    
-                    {/* Avatar */}
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={grade.student.photo_url || undefined} />
-                      <AvatarFallback>
-                        {grade.student.first_name[0]}{grade.student.last_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    {/* Nom */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {grade.student.last_name} {grade.student.first_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {grade.student.student_code}
-                      </p>
-                    </div>
-                    
-                    {/* Note */}
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max={evaluation.max_score}
-                        step="0.5"
-                        placeholder="-"
-                        value={localGrade?.score || ''}
-                        onChange={(e) => updateGrade(grade.student_id, 'score', e.target.value)}
-                        disabled={localGrade?.is_absent}
-                        className="w-20 text-center"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        /{evaluation.max_score}
+                    {/* Desktop: disposition horizontale */}
+                    <div className="hidden lg:flex items-center gap-3">
+                      {/* Numéro */}
+                      <span className="w-8 text-center text-sm text-muted-foreground font-medium">
+                        {index + 1}
                       </span>
+                      
+                      {/* Avatar */}
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={grade.student.photo_url || undefined} />
+                        <AvatarFallback>
+                          {grade.student.first_name[0]}{grade.student.last_name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      {/* Nom */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {grade.student.last_name} {grade.student.first_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {grade.student.student_code}
+                        </p>
+                      </div>
+                      
+                      {/* Note */}
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          max={evaluation.max_score}
+                          step="0.5"
+                          placeholder="-"
+                          value={localGrade?.score || ''}
+                          onChange={(e) => updateGrade(grade.student_id, 'score', e.target.value)}
+                          disabled={localGrade?.is_absent}
+                          className="w-20 text-center"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          /{evaluation.max_score}
+                        </span>
+                      </div>
+                      
+                      {/* Absent */}
+                      <div className="flex items-center gap-1">
+                        <Checkbox
+                          checked={localGrade?.is_absent || false}
+                          onCheckedChange={(checked) => 
+                            updateGrade(grade.student_id, 'is_absent', checked)
+                          }
+                        />
+                        <span className="text-xs text-muted-foreground">Abs</span>
+                      </div>
+                      
+                      {/* Excusé */}
+                      <div className="flex items-center gap-1">
+                        <Checkbox
+                          checked={localGrade?.is_excused || false}
+                          onCheckedChange={(checked) => 
+                            updateGrade(grade.student_id, 'is_excused', checked)
+                          }
+                          disabled={!localGrade?.is_absent}
+                        />
+                        <span className="text-xs text-muted-foreground">Exc</span>
+                      </div>
+                      
+                      {/* Commentaire */}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className={localGrade?.comment ? 'text-primary' : ''}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80">
+                          <div className="space-y-2">
+                            <h4 className="font-medium">Commentaire</h4>
+                            <Textarea
+                              placeholder="Ajouter un commentaire..."
+                              value={localGrade?.comment || ''}
+                              onChange={(e) => 
+                                updateGrade(grade.student_id, 'comment', e.target.value)
+                              }
+                              rows={3}
+                            />
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      
+                      {/* Indicateur de saisie */}
+                      {(localGrade?.score || localGrade?.is_absent) && (
+                        <Check className="h-4 w-4 text-green-500" />
+                      )}
                     </div>
-                    
-                    {/* Absent */}
-                    <div className="flex items-center gap-1">
-                      <Checkbox
-                        checked={localGrade?.is_absent || false}
-                        onCheckedChange={(checked) => 
-                          updateGrade(grade.student_id, 'is_absent', checked)
-                        }
-                      />
-                      <span className="text-xs text-muted-foreground">Abs</span>
-                    </div>
-                    
-                    {/* Excusé */}
-                    <div className="flex items-center gap-1">
-                      <Checkbox
-                        checked={localGrade?.is_excused || false}
-                        onCheckedChange={(checked) => 
-                          updateGrade(grade.student_id, 'is_excused', checked)
-                        }
-                        disabled={!localGrade?.is_absent}
-                      />
-                      <span className="text-xs text-muted-foreground">Exc</span>
-                    </div>
-                    
-                    {/* Commentaire */}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className={localGrade?.comment ? 'text-primary' : ''}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80">
-                        <div className="space-y-2">
-                          <h4 className="font-medium">Commentaire</h4>
-                          <Textarea
-                            placeholder="Ajouter un commentaire..."
-                            value={localGrade?.comment || ''}
-                            onChange={(e) => 
-                              updateGrade(grade.student_id, 'comment', e.target.value)
-                            }
-                            rows={3}
-                          />
+
+                    {/* Mobile/Tablet: disposition verticale empilée */}
+                    <div className="lg:hidden space-y-3">
+                      {/* En-tête élève */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-muted-foreground font-medium">
+                          #{index + 1}
+                        </span>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={grade.student.photo_url || undefined} />
+                          <AvatarFallback>
+                            {grade.student.first_name[0]}{grade.student.last_name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {grade.student.last_name} {grade.student.first_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {grade.student.student_code}
+                          </p>
                         </div>
-                      </PopoverContent>
-                    </Popover>
-                    
-                    {/* Indicateur de saisie */}
-                    {(localGrade?.score || localGrade?.is_absent) && (
-                      <Check className="h-4 w-4 text-green-500" />
-                    )}
+                        {(localGrade?.score || localGrade?.is_absent) && (
+                          <Check className="h-5 w-5 text-green-500" />
+                        )}
+                      </div>
+
+                      {/* Saisie note */}
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium min-w-[60px]">Note:</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={evaluation.max_score}
+                          step="0.5"
+                          placeholder="-"
+                          value={localGrade?.score || ''}
+                          onChange={(e) => updateGrade(grade.student_id, 'score', e.target.value)}
+                          disabled={localGrade?.is_absent}
+                          className="flex-1 text-center h-11 text-base"
+                        />
+                        <span className="text-sm text-muted-foreground min-w-[50px]">
+                          / {evaluation.max_score}
+                        </span>
+                      </div>
+
+                      {/* Options */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                              checked={localGrade?.is_absent || false}
+                              onCheckedChange={(checked) => 
+                                updateGrade(grade.student_id, 'is_absent', checked)
+                              }
+                              className="h-5 w-5"
+                            />
+                            <span className="text-sm">Absent</span>
+                          </label>
+                          
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                              checked={localGrade?.is_excused || false}
+                              onCheckedChange={(checked) => 
+                                updateGrade(grade.student_id, 'is_excused', checked)
+                              }
+                              disabled={!localGrade?.is_absent}
+                              className="h-5 w-5"
+                            />
+                            <span className="text-sm">Excusé</span>
+                          </label>
+                        </div>
+
+                        {/* Commentaire */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className={localGrade?.comment ? 'text-primary border-primary' : ''}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Commentaire
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[calc(100vw-2rem)] sm:w-80" side="top">
+                            <div className="space-y-2">
+                              <h4 className="font-medium">Commentaire</h4>
+                              <Textarea
+                                placeholder="Ajouter un commentaire..."
+                                value={localGrade?.comment || ''}
+                                onChange={(e) => 
+                                  updateGrade(grade.student_id, 'comment', e.target.value)
+                                }
+                                rows={3}
+                              />
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
