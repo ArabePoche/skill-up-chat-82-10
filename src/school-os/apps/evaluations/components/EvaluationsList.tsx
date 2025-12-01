@@ -1,14 +1,14 @@
 /**
- * Liste des évaluations existantes
+ * Liste des évaluations organisée par classes
+ * Utilise des cartes pliables avec statistiques et tri intelligent
  */
 import React from 'react';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
-import { useEvaluations, useDeleteEvaluation } from '../hooks/useEvaluations';
+import { useEvaluationsGroupedByClass } from '../hooks/useEvaluationsGroupedByClass';
+import { useDeleteEvaluation } from '../hooks/useEvaluations';
 import { useHasPermission } from '@/school-os/hooks/useSchoolUserRole';
-import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Calendar, FileText } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { ClassEvaluationCard } from './list/ClassEvaluationCard';
+import { FileText, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +26,7 @@ interface EvaluationsListProps {
 
 export const EvaluationsList: React.FC<EvaluationsListProps> = ({ onEdit }) => {
   const { school, activeSchoolYear } = useSchoolYear();
-  const { data: evaluations = [], isLoading } = useEvaluations(
+  const { groupedEvaluations, isLoading, totalEvaluations } = useEvaluationsGroupedByClass(
     school?.id,
     activeSchoolYear?.id
   );
@@ -42,83 +42,77 @@ export const EvaluationsList: React.FC<EvaluationsListProps> = ({ onEdit }) => {
   };
 
   if (isLoading) {
-    return <div className="text-center py-12 text-muted-foreground">Chargement...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin mb-4" />
+        <p>Chargement des évaluations...</p>
+      </div>
+    );
   }
 
-  if (evaluations.length === 0) {
+  if (totalEvaluations === 0) {
     return (
-      <div className="text-center py-12">
-        <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Aucune évaluation créée</p>
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="p-4 rounded-full bg-muted/50 mb-4">
+          <FileText className="h-12 w-12 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-medium text-foreground mb-1">
+          Aucune évaluation
+        </h3>
+        <p className="text-muted-foreground text-center max-w-md">
+          Créez votre première évaluation pour commencer à gérer les devoirs, 
+          interrogations et examens de vos classes.
+        </p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="grid gap-4">
-        {evaluations.map((evaluation: any) => (
-          <div
-            key={evaluation.id}
-            className="border border-border rounded-lg p-4 bg-card hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg text-foreground">{evaluation.name}</h3>
-                <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    {evaluation.evaluation_types?.name || 'Type inconnu'}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {evaluation.evaluation_date
-                      ? format(new Date(evaluation.evaluation_date), 'dd MMMM yyyy', { locale: fr })
-                      : 'Date non définie'}
-                  </div>
-                  {evaluation.class_subjects && (
-                    <div>
-                      {evaluation.class_subjects.classes?.name} - {evaluation.class_subjects.subjects?.name}
-                    </div>
-                  )}
-                </div>
-                {evaluation.description && (
-                  <p className="mt-2 text-sm text-muted-foreground">{evaluation.description}</p>
-                )}
-              </div>
+      {/* Résumé global */}
+      <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <span className="font-medium text-foreground">
+            {totalEvaluations} évaluation{totalEvaluations > 1 ? 's' : ''}
+          </span>
+          <span className="text-muted-foreground">•</span>
+          <span className="text-muted-foreground">
+            {groupedEvaluations.length} classe{groupedEvaluations.length > 1 ? 's' : ''}
+          </span>
+        </div>
+      </div>
 
-              <div className="flex gap-2 ml-4">
-                {canUpdate && (
-                  <Button variant="outline" size="sm" onClick={() => onEdit(evaluation.id)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDeleteId(evaluation.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+      {/* Liste des classes avec leurs évaluations */}
+      <div className="space-y-4">
+        {groupedEvaluations.map((group) => (
+          <ClassEvaluationCard
+            key={group.class_id}
+            group={group}
+            onEdit={onEdit}
+            onDelete={setDeleteId}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            defaultOpen={group.stats.ongoing > 0}
+          />
         ))}
       </div>
 
+      {/* Dialog de confirmation de suppression */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer cette évaluation ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer cette évaluation ? 
+              Cette action est irréversible et supprimera également toutes les notes associées.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive">
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
