@@ -71,7 +71,7 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
     setIsSubmitting(true);
 
     try {
-      // 1. Insérer le paiement dans school_students_payment
+      // Insérer le paiement - le trigger se charge automatiquement de mettre à jour registration_fee_paid_amount
       const { error: paymentError } = await supabase
         .from('school_students_payment')
         .insert({
@@ -86,18 +86,6 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
         });
 
       if (paymentError) throw paymentError;
-
-      // 2. Mettre à jour school_student_payment_progress.registration_fee_paid_amount
-      const newRegistrationFeePaid = registrationFeePaid + paymentAmount;
-
-      const { error: progressError } = await supabase
-        .from('school_student_payment_progress')
-        .update({
-          registration_fee_paid_amount: newRegistrationFeePaid,
-        })
-        .eq('student_id', studentId);
-
-      if (progressError) throw progressError;
 
       toast.success('Paiement de frais d\'inscription enregistré avec succès');
 
