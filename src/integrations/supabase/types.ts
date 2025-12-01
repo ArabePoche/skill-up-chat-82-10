@@ -1297,13 +1297,6 @@ export type Database = {
             referencedRelation: "evaluations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "grades_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       grading_periods: {
