@@ -29,7 +29,7 @@ import {
   useAddClassTeacher,
   useDeleteClassTeacher,
 } from '../hooks/useClassTeachers';
-import { useTeachers } from '@/school/hooks/useTeachers';
+import { useSchoolTeachers } from '@/school/hooks/useSchoolTeachers';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -59,7 +59,7 @@ export const AssignTeachersToClassDialog: React.FC<AssignTeachersToClassDialogPr
   const { data: classTeachers = [], isLoading: isLoadingTeachers } = useClassTeachers(classId);
   
   // Récupérer tous les professeurs de l'école
-  const { data: allTeachers = [], isLoading: isLoadingAllTeachers } = useTeachers(effectiveSchoolId);
+  const { data: allTeachers = [], isLoading: isLoadingAllTeachers } = useSchoolTeachers(effectiveSchoolId);
   
   // Récupérer les matières de la classe
   const { data: classSubjects = [] } = useQuery({

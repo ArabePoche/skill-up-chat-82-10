@@ -1,4 +1,4 @@
-// Hook pour récupérer les enseignants d'une école
+// Hook consolidé pour récupérer les enseignants d'une école
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -6,6 +6,9 @@ export interface SchoolTeacher {
   id: string;
   school_id: string;
   user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
   is_active: boolean;
   created_at: string;
   profiles?: {
@@ -28,13 +31,17 @@ export const useSchoolTeachers = (schoolId?: string) => {
         .select('*')
         .eq('school_id', schoolId)
         .eq('employment_status', 'active')
-        .order('created_at', { ascending: false });
+        .order('last_name', { ascending: true });
 
       if (error) throw error;
+      
       return (data || []).map(t => ({
         id: t.id,
         school_id: t.school_id,
         user_id: t.user_id,
+        first_name: t.first_name,
+        last_name: t.last_name,
+        email: t.email,
         is_active: t.employment_status === 'active',
         created_at: t.created_at,
         profiles: {
