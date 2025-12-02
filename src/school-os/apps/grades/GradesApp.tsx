@@ -77,9 +77,12 @@ export const GradesApp: React.FC = () => {
     if (!classEvaluations) return [];
     const uniqueSubjects = new Map();
     classEvaluations.forEach(e => {
-      if (!uniqueSubjects.has(e.subject.id)) {
-        uniqueSubjects.set(e.subject.id, e.subject);
-      }
+      // Utiliser le tableau subjects qui contient toutes les matières de l'évaluation
+      e.subjects.forEach(subject => {
+        if (!uniqueSubjects.has(subject.id)) {
+          uniqueSubjects.set(subject.id, subject);
+        }
+      });
     });
     return Array.from(uniqueSubjects.values());
   }, [classEvaluations]);
