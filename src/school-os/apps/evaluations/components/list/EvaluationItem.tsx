@@ -10,7 +10,6 @@ import {
   Calendar, 
   Clock, 
   MapPin, 
-  Users, 
   UserMinus, 
   Settings, 
   BookOpen,
@@ -180,7 +179,7 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                   <div className="space-y-2">
                     {evaluation.subjects.map((subject) => (
                       <div 
-                        key={subject.class_subject_id}
+                        key={subject.subject_id}
                         className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border/50"
                       >
                         <div className="flex items-center gap-3">
@@ -201,7 +200,7 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                               className="h-8 w-8"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onEditSubject?.(evaluation.id, subject.class_subject_id);
+                                onEditSubject?.(evaluation.id, subject.subject_id);
                               }}
                               title="Modifier"
                             >
@@ -213,7 +212,7 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                               className="h-8 w-8"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onEditSubjectDateTime?.(evaluation.id, subject.class_subject_id);
+                                onEditSubjectDateTime?.(evaluation.id, subject.subject_id);
                               }}
                               title="Modifier date/heure"
                             >
@@ -225,7 +224,7 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                               className="h-8 w-8"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onReplaceSubject?.(evaluation.id, subject.class_subject_id);
+                                onReplaceSubject?.(evaluation.id, subject.subject_id);
                               }}
                               title="Remplacer"
                             >
@@ -238,7 +237,7 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                                 className="h-8 w-8 text-destructive hover:text-destructive"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onDeleteSubject?.(evaluation.id, subject.class_subject_id);
+                                  onDeleteSubject?.(evaluation.id, subject.subject_id);
                                 }}
                                 title="Supprimer cette matière"
                               >
@@ -267,21 +266,13 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                 </div>
               )}
 
-              {/* Participants */}
-              {(evaluation.participants_count !== undefined || evaluation.excluded_count !== undefined) && (
+              {/* Élèves exclus */}
+              {evaluation.excluded_students && evaluation.excluded_students.length > 0 && (
                 <div className="flex items-center gap-4 text-sm">
-                  {evaluation.participants_count !== undefined && (
-                    <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
-                      <Users className="h-4 w-4" />
-                      <span>{evaluation.participants_count} participants</span>
-                    </div>
-                  )}
-                  {evaluation.excluded_count !== undefined && evaluation.excluded_count > 0 && (
-                    <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
-                      <UserMinus className="h-4 w-4" />
-                      <span>{evaluation.excluded_count} exclus</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
+                    <UserMinus className="h-4 w-4" />
+                    <span>{evaluation.excluded_students.length} élève(s) exclu(s)</span>
+                  </div>
                 </div>
               )}
 
