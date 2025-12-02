@@ -1,6 +1,9 @@
 /**
  * Application de gestion des notes
  * Affiche les évaluations par classe avec saisie des notes et export Excel
+ * Supporte deux méthodes de saisie :
+ * 1. Par évaluation complète (toutes les matières)
+ * 2. Par matière directe (une seule matière à la fois)
  */
 import React, { useState } from 'react';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
@@ -12,10 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Users, FileText, GraduationCap, Download, Filter } from 'lucide-react';
+import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked } from 'lucide-react';
 import { EvaluationsListView } from './components/EvaluationsListView';
 import { GradeEntryView } from './components/GradeEntryView';
+import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListView';
+import { SubjectGradeEntryView } from './components/SubjectGradeEntryView';
 import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
+import { SubjectEvaluation } from './hooks/useSubjectEvaluations';
 import { useEvaluationGrades } from './hooks/useGrades';
 import { exportClassGradesToExcel } from './utils/exportGrades';
 
@@ -52,6 +58,9 @@ export const GradesApp: React.FC = () => {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
   const [selectedEvaluation, setSelectedEvaluation] = useState<ClassEvaluation | null>(null);
+  const [entryMethod, setEntryMethod] = useState<'evaluation' | 'subject'>('evaluation');
+  const [selectedSubjectForEntry, setSelectedSubjectForEntry] = useState<string>('');
+  const [selectedSubjectEvaluation, setSelectedSubjectEvaluation] = useState<SubjectEvaluation | null>(null);
 
   // Récupérer les évaluations de la classe pour l'export
   const { data: classEvaluations } = useClassEvaluations(selectedClassId);
@@ -133,7 +142,7 @@ export const GradesApp: React.FC = () => {
     );
   }
 
-  // Vue de saisie des notes pour une évaluation
+  // Vue de saisie des notes pour une évaluation (méthode 1)
   if (selectedEvaluation && selectedClass) {
     return (
       <div className="p-6 h-full overflow-hidden flex flex-col">
@@ -141,6 +150,24 @@ export const GradesApp: React.FC = () => {
           evaluation={selectedEvaluation}
           className={selectedClass.name}
           onBack={() => setSelectedEvaluation(null)}
+        />
+      </div>
+    );
+  }
+
+  // Vue de saisie des notes par matière (méthode 2)
+  if (selectedSubjectEvaluation && selectedClass && selectedSubjectForEntry) {
+    const selectedSubjectInfo = displaySubjects.find(s => s.id === selectedSubjectForEntry);
+    return (
+      <div className="p-6 h-full overflow-hidden flex flex-col">
+        <SubjectGradeEntryView
+          evaluationId={selectedSubjectEvaluation.id}
+          evaluationName={selectedSubjectEvaluation.name}
+          subjectId={selectedSubjectForEntry}
+          subjectName={selectedSubjectInfo?.name || ''}
+          className={selectedClass.name}
+          maxScore={selectedSubjectEvaluation.max_score}
+          onBack={() => setSelectedSubjectEvaluation(null)}
         />
       </div>
     );
@@ -241,24 +268,91 @@ export const GradesApp: React.FC = () => {
       ) : (
         <Card className="flex-1 overflow-hidden flex flex-col">
           <CardHeader className="flex-shrink-0 pb-2">
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between mb-4">
+              <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Évaluations - {selectedClass?.name}
-              </div>
+                {selectedClass?.name}
+              </CardTitle>
               {classEvaluations && (
                 <Badge variant="outline">
                   {classEvaluations.length} évaluation{classEvaluations.length !== 1 ? 's' : ''}
                 </Badge>
               )}
-            </CardTitle>
+            </div>
+            
+            {/* Onglets pour les deux méthodes */}
+            <Tabs value={entryMethod} onValueChange={(v) => setEntryMethod(v as 'evaluation' | 'subject')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="evaluation" className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Par évaluation</span>
+                  <span className="sm:hidden">Évaluation</span>
+                </TabsTrigger>
+                <TabsTrigger value="subject" className="flex items-center gap-2">
+                  <BookMarked className="h-4 w-4" />
+                  <span className="hidden sm:inline">Par matière</span>
+                  <span className="sm:hidden">Matière</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardHeader>
+          
           <CardContent className="flex-1 overflow-hidden pt-0">
-            <EvaluationsListView
-              classId={selectedClassId}
-              subjectId={selectedSubjectId === 'all' ? undefined : selectedSubjectId}
-              onSelectEvaluation={setSelectedEvaluation}
-            />
+            {entryMethod === 'evaluation' ? (
+              // Méthode 1 : Par évaluation complète
+              <EvaluationsListView
+                classId={selectedClassId}
+                subjectId={selectedSubjectId === 'all' ? undefined : selectedSubjectId}
+                onSelectEvaluation={setSelectedEvaluation}
+              />
+            ) : (
+              // Méthode 2 : Par matière directe
+              <div className="h-full flex flex-col">
+                {/* Sélecteur de matière */}
+                <div className="mb-4">
+                  <label className="text-sm font-medium mb-2 block">Sélectionner une matière</label>
+                  <Select 
+                    value={selectedSubjectForEntry} 
+                    onValueChange={setSelectedSubjectForEntry}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir une matière" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {displaySubjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          <div className="flex items-center gap-2">
+                            <BookMarked className="h-4 w-4" />
+                            {subject.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Liste des évaluations pour cette matière */}
+                {selectedSubjectForEntry ? (
+                  <div className="flex-1 overflow-hidden">
+                    <SubjectEvaluationsListView
+                      classId={selectedClassId}
+                      subjectId={selectedSubjectForEntry}
+                      subjectName={displaySubjects.find(s => s.id === selectedSubjectForEntry)?.name || ''}
+                      onSelectEvaluation={setSelectedSubjectEvaluation}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center py-8">
+                      <BookMarked className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        Sélectionnez une matière pour voir ses évaluations
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
