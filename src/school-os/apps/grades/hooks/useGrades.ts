@@ -44,11 +44,7 @@ export const useEvaluationGrades = (evaluationId?: string) => {
       // Récupérer les configurations de classe pour cette évaluation
       const { data: configs, error: configError } = await supabase
         .from('school_evaluation_class_configs')
-        .select(`
-          id,
-          class_id,
-          school_evaluation_excluded_students(student_id)
-        `)
+        .select('id, class_id')
         .eq('evaluation_id', evaluationId);
 
       if (configError) {
@@ -61,15 +57,18 @@ export const useEvaluationGrades = (evaluationId?: string) => {
         return await fetchGradesFromOldTable(evaluationId);
       }
 
-      // Récupérer les élèves exclus
-      const excludedStudentIds = new Set<string>();
-      configs.forEach((config: any) => {
-        config.school_evaluation_excluded_students?.forEach((excluded: any) => {
-          if (excluded.student_id) {
-            excludedStudentIds.add(excluded.student_id);
-          }
-        });
-      });
+      // Récupérer les IDs des configs
+      const configIds = configs.map((c: any) => c.id);
+
+      // Récupérer les élèves exclus via une requête séparée
+      const { data: excludedData } = await supabase
+        .from('school_evaluation_excluded_students')
+        .select('student_id')
+        .in('class_config_id', configIds);
+
+      const excludedStudentIds = new Set<string>(
+        (excludedData || []).map((e: any) => e.student_id)
+      );
 
       // Récupérer les IDs des classes
       const classIds = configs.map((c: any) => c.class_id);
