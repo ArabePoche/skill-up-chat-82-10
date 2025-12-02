@@ -31,6 +31,7 @@ export const ClassConfigBlock: React.FC<ClassConfigBlockProps> = ({
     config || {
       class_id: classData.id,
       subjects: [],
+      subject_schedules: [],
       excluded_students: [],
       supervisors: [],
       room: '',
