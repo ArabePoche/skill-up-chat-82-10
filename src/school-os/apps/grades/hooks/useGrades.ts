@@ -1,5 +1,6 @@
 /**
  * Hook pour gérer les notes des élèves
+ * Compatible avec school_evaluations
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,33 +41,29 @@ export const useEvaluationGrades = (evaluationId?: string) => {
     queryFn: async (): Promise<StudentGrade[]> => {
       if (!evaluationId) return [];
 
-      // D'abord récupérer la classe de l'évaluation
-      const { data: evaluation, error: evalError } = await supabase
-        .from('evaluations')
-        .select('class_subject_id, class_subjects(class_id)')
-        .eq('id', evaluationId)
-        .single();
-
-      if (evalError || !evaluation) {
-        console.error('Error fetching evaluation:', evalError);
-        throw evalError;
-      }
-
-      const classId = (evaluation.class_subjects as any)?.class_id;
-      if (!classId) return [];
-
-      // Récupérer les élèves exclus pour cette évaluation
-      const { data: excludedStudentsData } = await supabase
+      // Récupérer les configurations de classe pour cette évaluation
+      const { data: configs, error: configError } = await supabase
         .from('school_evaluation_class_configs')
         .select(`
           id,
+          class_id,
           school_evaluation_excluded_students(student_id)
         `)
         .eq('evaluation_id', evaluationId);
 
-      // Créer un Set des IDs d'élèves exclus
+      if (configError) {
+        console.error('Error fetching evaluation configs:', configError);
+        throw configError;
+      }
+
+      if (!configs || configs.length === 0) {
+        // Fallback: essayer avec l'ancienne table evaluations
+        return await fetchGradesFromOldTable(evaluationId);
+      }
+
+      // Récupérer les élèves exclus
       const excludedStudentIds = new Set<string>();
-      excludedStudentsData?.forEach((config: any) => {
+      configs.forEach((config: any) => {
         config.school_evaluation_excluded_students?.forEach((excluded: any) => {
           if (excluded.student_id) {
             excludedStudentIds.add(excluded.student_id);
@@ -74,11 +71,14 @@ export const useEvaluationGrades = (evaluationId?: string) => {
         });
       });
 
-      // Récupérer les élèves de la classe
+      // Récupérer les IDs des classes
+      const classIds = configs.map((c: any) => c.class_id);
+
+      // Récupérer les élèves des classes
       const { data: students, error: studentsError } = await supabase
         .from('students_school')
         .select('id, first_name, last_name, student_code, photo_url')
-        .eq('class_id', classId)
+        .in('class_id', classIds)
         .eq('status', 'active')
         .order('last_name');
 
@@ -131,6 +131,71 @@ export const useEvaluationGrades = (evaluationId?: string) => {
     enabled: !!evaluationId,
   });
 };
+
+// Fallback pour l'ancienne table evaluations (compatibilité)
+async function fetchGradesFromOldTable(evaluationId: string): Promise<StudentGrade[]> {
+  const { data: evaluation, error: evalError } = await supabase
+    .from('evaluations')
+    .select('class_subject_id, class_subjects(class_id)')
+    .eq('id', evaluationId)
+    .single();
+
+  if (evalError || !evaluation) {
+    console.error('Error fetching evaluation:', evalError);
+    return [];
+  }
+
+  const classId = (evaluation.class_subjects as any)?.class_id;
+  if (!classId) return [];
+
+  // Récupérer les élèves de la classe
+  const { data: students, error: studentsError } = await supabase
+    .from('students_school')
+    .select('id, first_name, last_name, student_code, photo_url')
+    .eq('class_id', classId)
+    .eq('status', 'active')
+    .order('last_name');
+
+  if (studentsError) {
+    console.error('Error fetching students:', studentsError);
+    return [];
+  }
+
+  // Récupérer les notes existantes
+  const { data: grades, error: gradesError } = await supabase
+    .from('grades')
+    .select('*')
+    .eq('evaluation_id', evaluationId);
+
+  if (gradesError) {
+    console.error('Error fetching grades:', gradesError);
+    return [];
+  }
+
+  const gradesMap = new Map(grades?.map((g: any) => [g.student_id, g]) || []);
+
+  return (students || []).map((student: any) => {
+    const grade = gradesMap.get(student.id);
+    return {
+      id: grade?.id || '',
+      student_id: student.id,
+      evaluation_id: evaluationId,
+      score: grade?.score ?? null,
+      is_absent: grade?.is_absent ?? false,
+      is_excused: grade?.is_excused ?? false,
+      comment: grade?.comment ?? null,
+      entered_at: grade?.entered_at ?? null,
+      entered_by: grade?.entered_by ?? null,
+      student: {
+        id: student.id,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        student_code: student.student_code,
+        photo_url: student.photo_url,
+      },
+    };
+  });
+}
 
 export const useSaveGrades = () => {
   const queryClient = useQueryClient();
