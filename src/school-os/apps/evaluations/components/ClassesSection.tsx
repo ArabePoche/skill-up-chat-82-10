@@ -34,11 +34,33 @@ export const ClassesSection: React.FC<ClassesSectionProps> = ({
 
     form.setValue('selected_classes', updated);
 
-    // Supprimer la config si la classe est décochée
-    if (!checked && classesConfig[classId]) {
-      const newConfig = { ...classesConfig };
-      delete newConfig[classId];
-      onConfigChange(newConfig);
+    if (checked) {
+      // Initialiser une config par défaut quand une classe est cochée
+      if (!classesConfig[classId]) {
+        onConfigChange({
+          ...classesConfig,
+          [classId]: {
+            class_id: classId,
+            subjects: [],
+            subject_schedules: [],
+            excluded_students: [],
+            supervisors: [],
+            room: '',
+            location_type: 'room',
+            date: '',
+            start_time: '',
+            end_time: '',
+            questionnaires: [],
+          },
+        });
+      }
+    } else {
+      // Supprimer la config si la classe est décochée
+      if (classesConfig[classId]) {
+        const newConfig = { ...classesConfig };
+        delete newConfig[classId];
+        onConfigChange(newConfig);
+      }
     }
   };
 
