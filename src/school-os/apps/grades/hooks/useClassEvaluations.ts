@@ -1,5 +1,6 @@
 /**
  * Hook pour récupérer les évaluations d'une classe par matière
+ * Utilise la table school_evaluations
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +13,7 @@ export interface ClassEvaluation {
   coefficient: number;
   include_in_average: boolean;
   description: string | null;
-  class_subject_id: string;
+  class_id: string;
   evaluation_type: {
     id: string;
     name: string;
@@ -21,6 +22,10 @@ export interface ClassEvaluation {
     id: string;
     name: string;
   };
+  subjects: {
+    id: string;
+    name: string;
+  }[];
   grades_count: number;
 }
 
@@ -30,51 +35,54 @@ export const useClassEvaluations = (classId?: string, subjectId?: string) => {
     queryFn: async (): Promise<ClassEvaluation[]> => {
       if (!classId) return [];
 
-      // Récupérer les class_subjects pour cette classe
-      let classSubjectsQuery = supabase
-        .from('class_subjects')
-        .select('id, subject_id, subjects(id, name)')
-        .eq('class_id', classId);
-
-      if (subjectId) {
-        classSubjectsQuery = classSubjectsQuery.eq('subject_id', subjectId);
-      }
-
-      const { data: classSubjects, error: csError } = await classSubjectsQuery;
-
-      if (csError) {
-        console.error('Error fetching class subjects:', csError);
-        throw csError;
-      }
-
-      if (!classSubjects || classSubjects.length === 0) return [];
-
-      const classSubjectIds = classSubjects.map(cs => cs.id);
-
-      // Récupérer les évaluations
-      const { data: evaluations, error } = await supabase
-        .from('evaluations')
+      // Récupérer les configurations de classe pour cette classe
+      let configQuery = supabase
+        .from('school_evaluation_class_configs')
         .select(`
           id,
-          name,
+          class_id,
           evaluation_date,
-          max_score,
-          coefficient,
-          include_in_average,
-          description,
-          class_subject_id,
-          school_evaluation_types(id, name)
+          school_evaluations(
+            id,
+            title,
+            description,
+            max_score,
+            coefficient,
+            include_in_average,
+            evaluation_date,
+            school_evaluation_types(id, name)
+          ),
+          school_evaluation_class_subjects(
+            subject_id,
+            subjects(id, name)
+          )
         `)
-        .in('class_subject_id', classSubjectIds)
-        .order('evaluation_date', { ascending: false, nullsFirst: false });
+        .eq('class_id', classId);
 
-      if (error) {
-        console.error('Error fetching evaluations:', error);
-        throw error;
+      const { data: configs, error: configError } = await configQuery;
+
+      if (configError) {
+        console.error('Error fetching class configs:', configError);
+        throw configError;
       }
 
-      // Compter les notes pour chaque évaluation
-      const evaluationIds = evaluations?.map(e => e.id) || [];
+      if (!configs || configs.length === 0) return [];
+
+      // Filtrer par matière si spécifié
+      let filteredConfigs = configs;
+      if (subjectId) {
+        filteredConfigs = configs.filter((config: any) => 
+          config.school_evaluation_class_subjects?.some(
+            (cs: any) => cs.subject_id === subjectId
+          )
+        );
+      }
+
+      // Récupérer le nombre de notes pour chaque évaluation
+      const evaluationIds = filteredConfigs
+        .map((c: any) => c.school_evaluations?.id)
+        .filter(Boolean);
+
       const { data: gradesCount } = await supabase
         .from('grades')
         .select('evaluation_id')
@@ -85,21 +93,29 @@ export const useClassEvaluations = (classId?: string, subjectId?: string) => {
         gradesCountMap.set(g.evaluation_id, (gradesCountMap.get(g.evaluation_id) || 0) + 1);
       });
 
-      // Mapper les évaluations avec leurs matières
-      return (evaluations || []).map((evaluation: any) => {
-        const classSubject = classSubjects.find(cs => cs.id === evaluation.class_subject_id);
+      // Mapper les évaluations
+      return filteredConfigs.map((config: any) => {
+        const evaluation = config.school_evaluations;
+        const subjects = config.school_evaluation_class_subjects?.map(
+          (cs: any) => cs.subjects
+        ).filter(Boolean) || [];
+
+        // Prendre la première matière comme matière principale (compatibilité)
+        const primarySubject = subjects[0] || { id: '', name: 'Inconnue' };
+
         return {
-          id: evaluation.id,
-          name: evaluation.name,
-          evaluation_date: evaluation.evaluation_date,
-          max_score: evaluation.max_score,
-          coefficient: evaluation.coefficient,
-          include_in_average: evaluation.include_in_average,
-          description: evaluation.description,
-          class_subject_id: evaluation.class_subject_id,
-          evaluation_type: evaluation.school_evaluation_types,
-          subject: classSubject?.subjects || { id: '', name: 'Inconnue' },
-          grades_count: gradesCountMap.get(evaluation.id) || 0,
+          id: evaluation?.id || config.id,
+          name: evaluation?.title || 'Sans titre',
+          evaluation_date: config.evaluation_date || evaluation?.evaluation_date,
+          max_score: evaluation?.max_score || 20,
+          coefficient: evaluation?.coefficient || 1,
+          include_in_average: evaluation?.include_in_average ?? true,
+          description: evaluation?.description,
+          class_id: config.class_id,
+          evaluation_type: evaluation?.school_evaluation_types || null,
+          subject: primarySubject,
+          subjects,
+          grades_count: gradesCountMap.get(evaluation?.id) || 0,
         };
       });
     },
