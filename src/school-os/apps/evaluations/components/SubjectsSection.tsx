@@ -24,7 +24,8 @@ export const SubjectsSection: React.FC<SubjectsSectionProps> = ({
 
   const handleToggleAll = (checked: boolean) => {
     if (checked) {
-      onSubjectsChange(classSubjects.map((cs: any) => cs.id));
+      // Utiliser subject_id (ID de la matière réelle) et non l'ID de la relation
+      onSubjectsChange(classSubjects.map((cs: any) => cs.subject_id));
     } else {
       onSubjectsChange([]);
     }
@@ -38,7 +39,8 @@ export const SubjectsSection: React.FC<SubjectsSectionProps> = ({
     }
   };
 
-  const allSelected = classSubjects.length > 0 && selectedSubjects.length === classSubjects.length;
+  const allSelected = classSubjects.length > 0 && 
+    classSubjects.every((cs: any) => selectedSubjects.includes(cs.subject_id));
 
   return (
     <div className="space-y-3">
@@ -82,9 +84,9 @@ export const SubjectsSection: React.FC<SubjectsSectionProps> = ({
             {classSubjects.map((classSubject: any) => (
               <div key={classSubject.id} className="flex items-center space-x-2">
                 <Checkbox
-                  checked={selectedSubjects.includes(classSubject.id)}
+                  checked={selectedSubjects.includes(classSubject.subject_id)}
                   onCheckedChange={(checked) =>
-                    handleToggleSubject(classSubject.id, checked as boolean)
+                    handleToggleSubject(classSubject.subject_id, checked as boolean)
                   }
                 />
                 <label className="text-sm cursor-pointer">
