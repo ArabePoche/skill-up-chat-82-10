@@ -682,76 +682,6 @@ export type Database = {
           },
         ]
       }
-      evaluations: {
-        Row: {
-          class_subject_id: string
-          coefficient: number
-          created_at: string | null
-          description: string | null
-          evaluation_date: string | null
-          evaluation_type_id: string | null
-          excluded_students: string[] | null
-          grading_period_id: string | null
-          id: string
-          include_in_average: boolean | null
-          max_score: number
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          class_subject_id: string
-          coefficient?: number
-          created_at?: string | null
-          description?: string | null
-          evaluation_date?: string | null
-          evaluation_type_id?: string | null
-          excluded_students?: string[] | null
-          grading_period_id?: string | null
-          id?: string
-          include_in_average?: boolean | null
-          max_score?: number
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          class_subject_id?: string
-          coefficient?: number
-          created_at?: string | null
-          description?: string | null
-          evaluation_date?: string | null
-          evaluation_type_id?: string | null
-          excluded_students?: string[] | null
-          grading_period_id?: string | null
-          id?: string
-          include_in_average?: boolean | null
-          max_score?: number
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evaluations_class_subject_id_fkey"
-            columns: ["class_subject_id"]
-            isOneToOne: false
-            referencedRelation: "class_subjects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evaluations_evaluation_type_id_fkey"
-            columns: ["evaluation_type_id"]
-            isOneToOne: false
-            referencedRelation: "school_evaluation_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evaluations_grading_period_id_fkey"
-            columns: ["grading_period_id"]
-            isOneToOne: false
-            referencedRelation: "grading_periods"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       exercise_files: {
         Row: {
           created_at: string
@@ -1291,13 +1221,6 @@ export type Database = {
             columns: ["entered_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grades_evaluation_id_fkey"
-            columns: ["evaluation_id"]
-            isOneToOne: false
-            referencedRelation: "evaluations"
             referencedColumns: ["id"]
           },
         ]

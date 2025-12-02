@@ -134,7 +134,7 @@ export const useEvaluationGrades = (evaluationId?: string) => {
 
 // Fallback pour l'ancienne table evaluations (compatibilité)
 async function fetchGradesFromOldTable(evaluationId: string): Promise<StudentGrade[]> {
-  const { data: evaluation, error: evalError } = await supabase
+  const { data: evaluation, error: evalError } = await (supabase as any)
     .from('evaluations')
     .select('class_subject_id, class_subjects(class_id)')
     .eq('id', evaluationId)
