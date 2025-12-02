@@ -21,9 +21,17 @@ export interface EvaluationData {
   classes_config: ClassConfig[];
 }
 
+export interface SubjectSchedule {
+  subject_id: string;
+  evaluation_date: string;
+  start_time: string;
+  end_time: string;
+}
+
 export interface ClassConfig {
   class_id: string;
   subjects: string[]; // subject_ids
+  subject_schedules: SubjectSchedule[]; // planning par matière
   excluded_students: string[];
   supervisors: string[];
   room: string;
@@ -168,12 +176,19 @@ export const useCreateEvaluation = () => {
 
         console.log('✅ Class config created:', config);
 
-        // 3. Ajouter les matières pour cette classe
+        // 3. Ajouter les matières pour cette classe avec leur planning
         if (classConfig.subjects && classConfig.subjects.length > 0) {
-          const subjectsData = classConfig.subjects.map(subjectId => ({
-            class_config_id: config.id,
-            subject_id: subjectId,
-          }));
+          const subjectsData = classConfig.subjects.map(subjectId => {
+            // Chercher le planning de cette matière
+            const schedule = classConfig.subject_schedules?.find(s => s.subject_id === subjectId);
+            return {
+              class_config_id: config.id,
+              subject_id: subjectId,
+              evaluation_date: schedule?.evaluation_date || null,
+              start_time: schedule?.start_time || null,
+              end_time: schedule?.end_time || null,
+            };
+          });
 
           const { error: subjectsError } = await supabase
             .from('school_evaluation_class_subjects')
