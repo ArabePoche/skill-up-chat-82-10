@@ -2,12 +2,13 @@
  * Liste des évaluations organisée par classes
  * Utilise des cartes pliables avec statistiques et tri intelligent
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useEvaluationsGroupedByClass } from '../hooks/useEvaluationsGroupedByClass';
 import { useDeleteEvaluation } from '../hooks/useEvaluations';
 import { useHasPermission } from '@/school-os/hooks/useSchoolUserRole';
 import { ClassEvaluationCard } from './list/ClassEvaluationCard';
+import { SubjectConfigModal } from './SubjectConfigModal';
 import { FileText, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -24,6 +25,14 @@ interface EvaluationsListProps {
   onEdit: (id: string) => void;
 }
 
+interface SubjectConfigState {
+  evaluationId: string;
+  subjectId: string;
+  subjectName: string;
+  classId: string;
+  evaluationDate?: string | null;
+}
+
 export const EvaluationsList: React.FC<EvaluationsListProps> = ({ onEdit }) => {
   const { school, activeSchoolYear } = useSchoolYear();
   const { groupedEvaluations, isLoading, totalEvaluations } = useEvaluationsGroupedByClass(
@@ -33,7 +42,18 @@ export const EvaluationsList: React.FC<EvaluationsListProps> = ({ onEdit }) => {
   const { hasPermission: canUpdate } = useHasPermission(school?.id, 'evaluation.update');
   const { hasPermission: canDelete } = useHasPermission(school?.id, 'evaluation.delete');
   const deleteMutation = useDeleteEvaluation();
-  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [subjectConfig, setSubjectConfig] = useState<SubjectConfigState | null>(null);
+
+  const handleConfigureSubject = (
+    evaluationId: string,
+    subjectId: string,
+    subjectName: string,
+    classId: string,
+    evaluationDate?: string | null
+  ) => {
+    setSubjectConfig({ evaluationId, subjectId, subjectName, classId, evaluationDate });
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -90,12 +110,26 @@ export const EvaluationsList: React.FC<EvaluationsListProps> = ({ onEdit }) => {
             group={group}
             onEdit={onEdit}
             onDelete={setDeleteId}
+            onConfigureSubject={handleConfigureSubject}
             canUpdate={canUpdate}
             canDelete={canDelete}
             defaultOpen={group.stats.ongoing > 0}
           />
         ))}
       </div>
+
+      {/* Modal de configuration d'une matière */}
+      {subjectConfig && (
+        <SubjectConfigModal
+          open={!!subjectConfig}
+          onOpenChange={(open) => !open && setSubjectConfig(null)}
+          evaluationId={subjectConfig.evaluationId}
+          subjectId={subjectConfig.subjectId}
+          subjectName={subjectConfig.subjectName}
+          classId={subjectConfig.classId}
+          evaluationDate={subjectConfig.evaluationDate}
+        />
+      )}
 
       {/* Dialog de confirmation de suppression */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
