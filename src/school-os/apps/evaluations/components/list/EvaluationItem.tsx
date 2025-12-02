@@ -15,10 +15,7 @@ import {
   BookOpen,
   Trash2,
   ChevronDown,
-  ChevronUp,
-  Edit,
-  Replace,
-  CalendarClock
+  ChevronUp
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -28,10 +25,13 @@ interface EvaluationItemProps {
   evaluation: EvaluationWithStatus;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  onEditSubject?: (evaluationId: string, subjectId: string) => void;
-  onReplaceSubject?: (evaluationId: string, subjectId: string) => void;
-  onDeleteSubject?: (evaluationId: string, subjectId: string) => void;
-  onEditSubjectDateTime?: (evaluationId: string, subjectId: string) => void;
+  onConfigureSubject?: (
+    evaluationId: string,
+    subjectId: string,
+    subjectName: string,
+    classId: string,
+    evaluationDate?: string | null
+  ) => void;
   canUpdate?: boolean;
   canDelete?: boolean;
 }
@@ -40,10 +40,7 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
   evaluation,
   onEdit,
   onDelete,
-  onEditSubject,
-  onReplaceSubject,
-  onDeleteSubject,
-  onEditSubjectDateTime,
+  onConfigureSubject,
   canUpdate = true,
   canDelete = true,
 }) => {
@@ -193,58 +190,24 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
 
                         {/* Actions pour chaque matière */}
                         {canUpdate && (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onEditSubject?.(evaluation.id, subject.subject_id);
-                              }}
-                              title="Modifier"
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onEditSubjectDateTime?.(evaluation.id, subject.subject_id);
-                              }}
-                              title="Modifier date/heure"
-                            >
-                              <CalendarClock className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onReplaceSubject?.(evaluation.id, subject.subject_id);
-                              }}
-                              title="Remplacer"
-                            >
-                              <Replace className="h-3.5 w-3.5" />
-                            </Button>
-                            {canDelete && evaluation.subjects && evaluation.subjects.length > 1 && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeleteSubject?.(evaluation.id, subject.subject_id);
-                                }}
-                                title="Supprimer cette matière"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onConfigureSubject?.(
+                                evaluation.id,
+                                subject.subject_id,
+                                subject.subject_name,
+                                evaluation.class_id,
+                                evaluation.evaluation_date
+                              );
+                            }}
+                          >
+                            <Settings className="h-3.5 w-3.5" />
+                            Configurer
+                          </Button>
                         )}
                       </div>
                     ))}
