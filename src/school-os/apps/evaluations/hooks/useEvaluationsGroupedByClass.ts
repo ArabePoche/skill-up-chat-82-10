@@ -2,23 +2,21 @@
  * Hook pour regrouper les évaluations par classe avec statistiques
  * Fournit les données organisées pour l'affichage en cartes pliables
  * 
- * IMPORTANT: Une évaluation peut contenir plusieurs matières.
- * Ce hook regroupe les enregistrements DB par (name + date + type + class) 
- * pour afficher une seule évaluation avec ses matières.
+ * IMPORTANT: Une évaluation peut contenir plusieurs classes et matières.
+ * Ce hook transforme les données de school_evaluations + school_evaluation_class_configs
+ * pour afficher les évaluations groupées par classe.
  */
 import { useMemo } from 'react';
 import { useEvaluations } from './useEvaluations';
+import { useSchoolSubjects } from '../../subjects/hooks/useSchoolSubjects';
 
 export interface SubjectInfo {
   subject_id: string;
   subject_name: string;
-  class_subject_id: string;
-  evaluation_record_id: string; // ID de l'enregistrement DB pour cette matière
 }
 
 export interface EvaluationWithStatus {
-  id: string; // ID du premier enregistrement (pour compatibilité)
-  evaluation_ids: string[]; // Tous les IDs des enregistrements DB
+  id: string;
   name: string;
   description?: string;
   evaluation_date: string | null;
@@ -31,18 +29,13 @@ export interface EvaluationWithStatus {
   class_name: string;
   status: 'ongoing' | 'upcoming' | 'past';
   daysUntil: number | null;
-  // Liste des matières incluses dans cette évaluation
   subjects: SubjectInfo[];
-  // Champs legacy pour compatibilité
-  class_subject_id: string;
-  subject_id: string;
-  subject_name: string;
-  // TODO: Ces champs seront ajoutés quand les tables seront disponibles
+  // Config spécifique à la classe
   room?: string;
   start_time?: string;
   end_time?: string;
-  participants_count?: number;
-  excluded_count?: number;
+  excluded_students?: string[];
+  supervisors?: string[];
 }
 
 export interface ClassEvaluationGroup {
@@ -81,83 +74,81 @@ const getEvaluationStatus = (evaluationDate: string | null): { status: 'ongoing'
   }
 };
 
-/**
- * Génère une clé unique pour identifier une évaluation logique
- * basée sur: nom + date + type + classe
- */
-const generateEvaluationKey = (item: any): string => {
-  const classId = item.class_subjects?.classes?.id || '';
-  const name = item.name || '';
-  const date = item.evaluation_date || 'no-date';
-  const typeId = item.evaluation_type_id || 'no-type';
-  
-  return `${classId}|${name}|${date}|${typeId}`;
-};
-
 export const useEvaluationsGroupedByClass = (schoolId?: string, schoolYearId?: string) => {
   const { data: evaluations = [], isLoading, error } = useEvaluations(schoolId, schoolYearId);
+  const { data: schoolSubjects = [] } = useSchoolSubjects(schoolId);
+
+  // Créer un map pour accéder rapidement aux noms des matières
+  const subjectsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    schoolSubjects.forEach((s: any) => {
+      map.set(s.id, s.name);
+    });
+    return map;
+  }, [schoolSubjects]);
 
   const groupedEvaluations = useMemo(() => {
     if (!evaluations.length) return [];
 
-    // Étape 1: Regrouper les enregistrements DB par évaluation logique
-    const evaluationMap = new Map<string, any[]>();
-    
-    evaluations.forEach((item: any) => {
-      const key = generateEvaluationKey(item);
-      if (!evaluationMap.has(key)) {
-        evaluationMap.set(key, []);
-      }
-      evaluationMap.get(key)!.push(item);
-    });
+    // Transformer chaque évaluation en une ou plusieurs entrées par classe
+    const evaluationsByClass: EvaluationWithStatus[] = [];
 
-    // Étape 2: Transformer chaque groupe en une seule évaluation avec ses matières
-    const mergedEvaluations: EvaluationWithStatus[] = [];
-    
-    evaluationMap.forEach((records) => {
-      if (records.length === 0) return;
+    evaluations.forEach((evaluation: any) => {
+      const classConfigs = evaluation.school_evaluation_class_configs || [];
       
-      const firstRecord = records[0];
-      const { status, daysUntil } = getEvaluationStatus(firstRecord.evaluation_date);
-      
-      // Collecter toutes les matières
-      const subjects: SubjectInfo[] = records.map((record: any) => ({
-        subject_id: record.class_subjects?.subjects?.id || '',
-        subject_name: record.class_subjects?.subjects?.name || 'Matière inconnue',
-        class_subject_id: record.class_subject_id,
-        evaluation_record_id: record.id,
-      }));
-      
-      // Collecter tous les IDs des enregistrements
-      const evaluationIds = records.map((r: any) => r.id);
-      
-      mergedEvaluations.push({
-        id: firstRecord.id,
-        evaluation_ids: evaluationIds,
-        name: firstRecord.name,
-        description: firstRecord.description,
-        evaluation_date: firstRecord.evaluation_date,
-        max_score: firstRecord.max_score,
-        coefficient: firstRecord.coefficient,
-        include_in_average: firstRecord.include_in_average,
-        evaluation_type_id: firstRecord.evaluation_type_id,
-        evaluation_type_name: firstRecord.school_evaluation_types?.name || 'Type inconnu',
-        class_id: firstRecord.class_subjects?.classes?.id || '',
-        class_name: firstRecord.class_subjects?.classes?.name || 'Classe inconnue',
-        status,
-        daysUntil,
-        subjects,
-        // Champs legacy (premier enregistrement pour compatibilité)
-        class_subject_id: firstRecord.class_subject_id,
-        subject_id: firstRecord.class_subjects?.subjects?.id || '',
-        subject_name: subjects.map(s => s.subject_name).join(', '),
+      classConfigs.forEach((config: any) => {
+        const classData = config.classes;
+        if (!classData) return;
+
+        // Récupérer les matières depuis school_evaluation_class_subjects
+        // Utiliser le subjectsMap pour obtenir les noms
+        const subjects: SubjectInfo[] = (config.school_evaluation_class_subjects || [])
+          .map((cs: any) => ({
+            subject_id: cs.subject_id,
+            subject_name: subjectsMap.get(cs.subject_id) || 'Matière inconnue',
+          }))
+          .filter((s: SubjectInfo) => s.subject_id);
+
+        // Date de l'évaluation (priorité: config > evaluation)
+        const evalDate = config.evaluation_date || evaluation.evaluation_date;
+        const { status, daysUntil } = getEvaluationStatus(evalDate);
+
+        // Récupérer les élèves exclus
+        const excludedStudents = (config.school_evaluation_excluded_students || [])
+          .map((e: any) => e.student_id);
+
+        // Récupérer les surveillants
+        const supervisors = (config.school_evaluation_supervisors || [])
+          .map((s: any) => s.supervisor_id);
+
+        evaluationsByClass.push({
+          id: evaluation.id,
+          name: evaluation.title,
+          description: evaluation.description,
+          evaluation_date: evalDate,
+          max_score: evaluation.max_score || 20,
+          coefficient: evaluation.coefficient || 1,
+          include_in_average: evaluation.include_in_average ?? true,
+          evaluation_type_id: evaluation.evaluation_type_id,
+          evaluation_type_name: evaluation.school_evaluation_types?.name || 'Type inconnu',
+          class_id: classData.id,
+          class_name: classData.name || 'Classe inconnue',
+          status,
+          daysUntil,
+          subjects,
+          room: config.room,
+          start_time: config.start_time,
+          end_time: config.end_time,
+          excluded_students: excludedStudents,
+          supervisors,
+        });
       });
     });
 
-    // Étape 3: Grouper par classe
+    // Grouper par classe
     const groupedMap = new Map<string, EvaluationWithStatus[]>();
     
-    mergedEvaluations.forEach((evaluation) => {
+    evaluationsByClass.forEach((evaluation) => {
       const key = evaluation.class_id;
       if (!groupedMap.has(key)) {
         groupedMap.set(key, []);
@@ -165,7 +156,7 @@ export const useEvaluationsGroupedByClass = (schoolId?: string, schoolYearId?: s
       groupedMap.get(key)!.push(evaluation);
     });
 
-    // Étape 4: Créer les groupes avec statistiques
+    // Créer les groupes avec statistiques
     const groups: ClassEvaluationGroup[] = Array.from(groupedMap.entries()).map(([classId, evals]) => {
       // Trier : en cours > à venir > passées
       const sortedEvals = [...evals].sort((a, b) => {
@@ -203,9 +194,9 @@ export const useEvaluationsGroupedByClass = (schoolId?: string, schoolYearId?: s
 
     // Trier les groupes par nom de classe
     return groups.sort((a, b) => a.class_name.localeCompare(b.class_name));
-  }, [evaluations]);
+  }, [evaluations, subjectsMap]);
 
-  // Compter le nombre total d'évaluations logiques (pas d'enregistrements DB)
+  // Compter le nombre total d'évaluations
   const totalLogicalEvaluations = groupedEvaluations.reduce(
     (sum, group) => sum + group.evaluations.length, 
     0
