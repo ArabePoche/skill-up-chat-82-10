@@ -2831,19 +2831,28 @@ export type Database = {
         Row: {
           class_config_id: string
           created_at: string | null
+          end_time: string | null
+          evaluation_date: string | null
           id: string
+          start_time: string | null
           subject_id: string
         }
         Insert: {
           class_config_id: string
           created_at?: string | null
+          end_time?: string | null
+          evaluation_date?: string | null
           id?: string
+          start_time?: string | null
           subject_id: string
         }
         Update: {
           class_config_id?: string
           created_at?: string | null
+          end_time?: string | null
+          evaluation_date?: string | null
           id?: string
+          start_time?: string | null
           subject_id?: string
         }
         Relationships: [
