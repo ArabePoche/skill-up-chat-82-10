@@ -173,27 +173,49 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                 </h5>
                 
                 {evaluation.subjects && evaluation.subjects.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="grid gap-2">
                     {evaluation.subjects.map((subject) => (
                       <div 
                         key={subject.subject_id}
-                        className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border/50"
+                        className="group flex items-center gap-3 p-3 bg-muted/40 hover:bg-muted/60 rounded-lg border border-border/40 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <BookOpen className="h-4 w-4 text-primary" />
-                          </div>
-                          <p className="font-medium text-foreground text-sm">
-                            {subject.subject_name}
-                          </p>
+                        {/* Icône */}
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <BookOpen className="h-4 w-4 text-primary" />
                         </div>
 
-                        {/* Actions pour chaque matière */}
+                        {/* Contenu principal */}
+                        <div className="flex-1 min-w-0 grid sm:grid-cols-[1fr_auto] gap-y-1 gap-x-4 items-center">
+                          <p className="font-medium text-foreground text-sm truncate">
+                            {subject.subject_name}
+                          </p>
+                          
+                          {/* Badges date/heure */}
+                          <div className="flex items-center gap-2 text-xs">
+                            {subject.evaluation_date && (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border border-border text-muted-foreground">
+                                <Calendar className="h-3 w-3 text-primary/70" />
+                                {format(new Date(subject.evaluation_date), 'EEE dd MMM', { locale: fr })}
+                              </span>
+                            )}
+                            {subject.start_time && subject.end_time && (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border border-border text-muted-foreground">
+                                <Clock className="h-3 w-3 text-primary/70" />
+                                {subject.start_time} - {subject.end_time}
+                              </span>
+                            )}
+                            {!subject.evaluation_date && !subject.start_time && (
+                              <span className="text-muted-foreground/60 italic">Non planifiée</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action */}
                         {canUpdate && (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 gap-1.5"
+                            className="h-8 px-2.5 gap-1.5 shrink-0 text-xs"
                             onClick={(e) => {
                               e.stopPropagation();
                               onConfigureSubject?.(
@@ -206,7 +228,7 @@ export const EvaluationItem: React.FC<EvaluationItemProps> = ({
                             }}
                           >
                             <Settings className="h-3.5 w-3.5" />
-                            Configurer
+                            <span className="hidden sm:inline">Configurer</span>
                           </Button>
                         )}
                       </div>
