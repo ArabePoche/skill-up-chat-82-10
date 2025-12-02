@@ -690,6 +690,7 @@ export type Database = {
           description: string | null
           evaluation_date: string | null
           evaluation_type_id: string | null
+          excluded_students: string[] | null
           grading_period_id: string | null
           id: string
           include_in_average: boolean | null
@@ -704,6 +705,7 @@ export type Database = {
           description?: string | null
           evaluation_date?: string | null
           evaluation_type_id?: string | null
+          excluded_students?: string[] | null
           grading_period_id?: string | null
           id?: string
           include_in_average?: boolean | null
@@ -718,6 +720,7 @@ export type Database = {
           description?: string | null
           evaluation_date?: string | null
           evaluation_type_id?: string | null
+          excluded_students?: string[] | null
           grading_period_id?: string | null
           id?: string
           include_in_average?: boolean | null
@@ -3091,30 +3094,45 @@ export type Database = {
       }
       school_evaluations: {
         Row: {
+          coefficient: number | null
           created_at: string | null
           created_by: string | null
+          description: string | null
+          evaluation_date: string | null
           evaluation_type_id: string | null
           id: string
+          include_in_average: boolean | null
+          max_score: number | null
           school_id: string
           school_year_id: string
           title: string
           updated_at: string | null
         }
         Insert: {
+          coefficient?: number | null
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
+          evaluation_date?: string | null
           evaluation_type_id?: string | null
           id?: string
+          include_in_average?: boolean | null
+          max_score?: number | null
           school_id: string
           school_year_id: string
           title: string
           updated_at?: string | null
         }
         Update: {
+          coefficient?: number | null
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
+          evaluation_date?: string | null
           evaluation_type_id?: string | null
           id?: string
+          include_in_average?: boolean | null
+          max_score?: number | null
           school_id?: string
           school_year_id?: string
           title?: string
@@ -6309,6 +6327,22 @@ export type Database = {
         }
         Returns: number
       }
+      can_create_evaluation_for_subject: {
+        Args: { _class_subject_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_class_config: {
+        Args: { class_config_id_param: string }
+        Returns: boolean
+      }
+      can_manage_evaluation: {
+        Args: { _evaluation_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_school_evaluation: {
+        Args: { evaluation_id_param: string }
+        Returns: boolean
+      }
       can_student_access_lesson: {
         Args: { p_lesson_id: string; p_student_id: string }
         Returns: boolean
@@ -6319,6 +6353,14 @@ export type Database = {
       }
       can_user_view_promotion: {
         Args: { p_promotion_id: string }
+        Returns: boolean
+      }
+      can_view_class_config: {
+        Args: { class_config_id_param: string }
+        Returns: boolean
+      }
+      can_view_school_evaluation: {
+        Args: { evaluation_id_param: string }
         Returns: boolean
       }
       check_all_exercise_submissions_approved: {
