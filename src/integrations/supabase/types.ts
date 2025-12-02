@@ -1189,6 +1189,7 @@ export type Database = {
           is_excused: boolean | null
           score: number | null
           student_id: string
+          subject_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1201,6 +1202,7 @@ export type Database = {
           is_excused?: boolean | null
           score?: number | null
           student_id: string
+          subject_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1213,6 +1215,7 @@ export type Database = {
           is_excused?: boolean | null
           score?: number | null
           student_id?: string
+          subject_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1221,6 +1224,13 @@ export type Database = {
             columns: ["entered_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grades_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
