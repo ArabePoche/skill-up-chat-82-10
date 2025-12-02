@@ -14,6 +14,13 @@ interface ClassEvaluationCardProps {
   group: ClassEvaluationGroup;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onConfigureSubject?: (
+    evaluationId: string,
+    subjectId: string,
+    subjectName: string,
+    classId: string,
+    evaluationDate?: string | null
+  ) => void;
   canUpdate?: boolean;
   canDelete?: boolean;
   defaultOpen?: boolean;
@@ -23,6 +30,7 @@ export const ClassEvaluationCard: React.FC<ClassEvaluationCardProps> = ({
   group,
   onEdit,
   onDelete,
+  onConfigureSubject,
   canUpdate = true,
   canDelete = true,
   defaultOpen = false,
@@ -99,6 +107,7 @@ export const ClassEvaluationCard: React.FC<ClassEvaluationCardProps> = ({
                             evaluation={evaluation}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            onConfigureSubject={onConfigureSubject}
                             canUpdate={canUpdate}
                             canDelete={canDelete}
                           />
@@ -121,6 +130,7 @@ export const ClassEvaluationCard: React.FC<ClassEvaluationCardProps> = ({
                             evaluation={evaluation}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            onConfigureSubject={onConfigureSubject}
                             canUpdate={canUpdate}
                             canDelete={canDelete}
                           />
@@ -143,6 +153,7 @@ export const ClassEvaluationCard: React.FC<ClassEvaluationCardProps> = ({
                             evaluation={evaluation}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            onConfigureSubject={onConfigureSubject}
                             canUpdate={canUpdate}
                             canDelete={canDelete}
                           />
