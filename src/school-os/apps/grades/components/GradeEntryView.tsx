@@ -1,6 +1,6 @@
 /**
  * Vue de saisie des notes pour une évaluation
- * Permet la saisie en masse ou individuelle
+ * Supporte la notation par matière (une note par matière par élève)
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,12 +22,12 @@ import {
   Save, 
   Download, 
   Users, 
-  Calculator,
   MessageSquare,
-  Check
+  Check,
+  BookOpen
 } from 'lucide-react';
 import { ClassEvaluation } from '../hooks/useClassEvaluations';
-import { useEvaluationGrades, useSaveGrades, GradeInput } from '../hooks/useGrades';
+import { useEvaluationGrades, useSaveGrades, GradeInput, SubjectInfo } from '../hooks/useGrades';
 import { exportGradesToExcel } from '../utils/exportGrades';
 import { toast } from 'sonner';
 
@@ -39,46 +39,86 @@ interface GradeEntryViewProps {
 
 interface LocalGrade {
   student_id: string;
+  subject_id: string | null;
   score: string;
   is_absent: boolean;
   is_excused: boolean;
   comment: string;
 }
 
+// Clé unique pour une note (student + subject)
+const getGradeKey = (studentId: string, subjectId: string | null) => 
+  `${studentId}_${subjectId || 'default'}`;
+
 export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
   evaluation,
   className,
   onBack,
 }) => {
-  const { data: grades, isLoading } = useEvaluationGrades(evaluation.id);
+  const { data: gradesData, isLoading } = useEvaluationGrades(evaluation.id);
   const saveMutation = useSaveGrades();
   
   const [localGrades, setLocalGrades] = useState<Map<string, LocalGrade>>(new Map());
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Récupérer les étudiants et matières
+  const students = gradesData?.students || [];
+  const subjects = gradesData?.subjects || [];
+  const gradesMap = gradesData?.gradesMap || new Map();
+
   // Initialiser les notes locales quand les données arrivent
   useEffect(() => {
-    if (grades) {
+    if (gradesData) {
       const map = new Map<string, LocalGrade>();
-      grades.forEach(grade => {
-        map.set(grade.student_id, {
-          student_id: grade.student_id,
-          score: grade.score !== null ? String(grade.score) : '',
-          is_absent: grade.is_absent,
-          is_excused: grade.is_excused,
-          comment: grade.comment || '',
-        });
+      
+      // Pour chaque étudiant
+      students.forEach(student => {
+        const studentGrades = gradesMap.get(student.student_id);
+        
+        // Si l'évaluation a des matières
+        if (subjects.length > 0) {
+          subjects.forEach(subject => {
+            const key = getGradeKey(student.student_id, subject.id);
+            const existingGrade = studentGrades?.get(subject.id);
+            
+            map.set(key, {
+              student_id: student.student_id,
+              subject_id: subject.id,
+              score: existingGrade?.score != null ? String(existingGrade.score) : '',
+              is_absent: existingGrade?.is_absent ?? false,
+              is_excused: existingGrade?.is_excused ?? false,
+              comment: existingGrade?.comment || '',
+            });
+          });
+        } else {
+          // Pas de matière spécifique (évaluation simple)
+          const key = getGradeKey(student.student_id, null);
+          const existingGrade = studentGrades?.get('default');
+          
+          map.set(key, {
+            student_id: student.student_id,
+            subject_id: null,
+            score: existingGrade?.score != null ? String(existingGrade.score) : '',
+            is_absent: existingGrade?.is_absent ?? false,
+            is_excused: existingGrade?.is_excused ?? false,
+            comment: existingGrade?.comment || '',
+          });
+        }
       });
+      
       setLocalGrades(map);
       setHasChanges(false);
     }
-  }, [grades]);
+  }, [gradesData, students, subjects, gradesMap]);
 
-  const updateGrade = (studentId: string, field: keyof LocalGrade, value: any) => {
+  const updateGrade = (studentId: string, subjectId: string | null, field: keyof LocalGrade, value: any) => {
+    const key = getGradeKey(studentId, subjectId);
+    
     setLocalGrades(prev => {
       const newMap = new Map(prev);
-      const existing = newMap.get(studentId) || {
+      const existing = newMap.get(key) || {
         student_id: studentId,
+        subject_id: subjectId,
         score: '',
         is_absent: false,
         is_excused: false,
@@ -87,9 +127,9 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
       
       // Si on coche absent, on efface la note
       if (field === 'is_absent' && value === true) {
-        newMap.set(studentId, { ...existing, [field]: value, score: '' });
+        newMap.set(key, { ...existing, [field]: value, score: '' });
       } else {
-        newMap.set(studentId, { ...existing, [field]: value });
+        newMap.set(key, { ...existing, [field]: value });
       }
       
       return newMap;
@@ -100,18 +140,19 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
   const handleSave = async () => {
     const gradesToSave: GradeInput[] = [];
 
-    localGrades.forEach((localGrade, studentId) => {
+    localGrades.forEach((localGrade) => {
       const score = localGrade.score === '' ? null : parseFloat(localGrade.score);
       
       // Validation
       if (score !== null && (isNaN(score) || score < 0 || score > evaluation.max_score)) {
-        toast.error(`Note invalide pour un élève (doit être entre 0 et ${evaluation.max_score})`);
+        toast.error(`Note invalide (doit être entre 0 et ${evaluation.max_score})`);
         return;
       }
 
       gradesToSave.push({
-        student_id: studentId,
+        student_id: localGrade.student_id,
         evaluation_id: evaluation.id,
+        subject_id: localGrade.subject_id,
         score,
         is_absent: localGrade.is_absent,
         is_excused: localGrade.is_excused,
@@ -124,48 +165,65 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
   };
 
   const handleExport = () => {
-    if (!grades) return;
+    if (!students.length) return;
     
+    // Adapter l'export pour le nouveau format
+    const gradesForExport = students.map(student => {
+      const key = getGradeKey(student.student_id, subjects[0]?.id || null);
+      const localGrade = localGrades.get(key);
+      
+      return {
+        ...student,
+        score: localGrade?.score ? parseFloat(localGrade.score) : null,
+        is_absent: localGrade?.is_absent ?? false,
+        is_excused: localGrade?.is_excused ?? false,
+        comment: localGrade?.comment ?? null,
+      };
+    });
+
     exportGradesToExcel({
       className,
-      subjectName: evaluation.subject.name,
+      subjectName: subjects.length > 0 ? subjects.map(s => s.name).join(', ') : evaluation.subject.name,
       evaluationName: evaluation.name,
       maxScore: evaluation.max_score,
-      grades: grades.map(g => ({
-        ...g,
-        score: localGrades.get(g.student_id)?.score 
-          ? parseFloat(localGrades.get(g.student_id)!.score)
-          : g.score,
-        is_absent: localGrades.get(g.student_id)?.is_absent ?? g.is_absent,
-        is_excused: localGrades.get(g.student_id)?.is_excused ?? g.is_excused,
-        comment: localGrades.get(g.student_id)?.comment ?? g.comment,
-      })),
+      grades: gradesForExport,
     });
   };
 
   // Statistiques
   const stats = useMemo(() => {
-    if (!grades) return null;
+    if (!students.length) return null;
     
-    const validGrades = Array.from(localGrades.values())
-      .filter(g => g.score !== '' && !g.is_absent)
-      .map(g => parseFloat(g.score))
-      .filter(n => !isNaN(n));
+    const allScores: number[] = [];
+    let absentCount = 0;
+    let enteredCount = 0;
+    
+    localGrades.forEach(g => {
+      if (g.is_absent) absentCount++;
+      if (g.score !== '' || g.is_absent) enteredCount++;
+      if (g.score !== '' && !g.is_absent) {
+        const score = parseFloat(g.score);
+        if (!isNaN(score)) allScores.push(score);
+      }
+    });
 
-    const absentCount = Array.from(localGrades.values()).filter(g => g.is_absent).length;
-    const enteredCount = Array.from(localGrades.values()).filter(g => g.score !== '' || g.is_absent).length;
+    const totalExpected = subjects.length > 0 
+      ? students.length * subjects.length 
+      : students.length;
 
     return {
-      total: grades.length,
+      total: students.length,
+      subjects: subjects.length,
+      totalNotes: totalExpected,
       entered: enteredCount,
       absent: absentCount,
-      average: validGrades.length > 0 
-        ? (validGrades.reduce((a, b) => a + b, 0) / validGrades.length).toFixed(2)
+      average: allScores.length > 0 
+        ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(2)
         : '-',
-      max: validGrades.length > 0 ? Math.max(...validGrades) : '-',
-      min: validGrades.length > 0 ? Math.min(...validGrades) : '-',
+      max: allScores.length > 0 ? Math.max(...allScores) : '-',
+      min: allScores.length > 0 ? Math.min(...allScores) : '-',
     };
-  }, [grades, localGrades]);
+  }, [students, subjects, localGrades]);
 
   if (isLoading) {
     return (
@@ -178,6 +236,8 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
     );
   }
 
+  const hasMultipleSubjects = subjects.length > 1;
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -189,7 +249,10 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-base sm:text-lg truncate">{evaluation.name}</h3>
             <p className="text-xs sm:text-sm text-muted-foreground truncate">
-              {evaluation.subject.name} • {className} • /{evaluation.max_score}
+              {hasMultipleSubjects 
+                ? `${subjects.length} matières • ${className} • /${evaluation.max_score}`
+                : `${evaluation.subject.name} • ${className} • /${evaluation.max_score}`
+              }
             </p>
           </div>
         </div>
@@ -214,14 +277,20 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
 
       {/* Statistiques */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4 flex-shrink-0">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-4 flex-shrink-0">
           <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Élèves</p>
             <p className="text-base sm:text-lg font-bold">{stats.total}</p>
           </Card>
+          {hasMultipleSubjects && (
+            <Card className="p-2 sm:p-3 text-center">
+              <p className="text-xs text-muted-foreground">Matières</p>
+              <p className="text-base sm:text-lg font-bold text-blue-500">{stats.subjects}</p>
+            </Card>
+          )}
           <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Saisis</p>
-            <p className="text-base sm:text-lg font-bold text-primary">{stats.entered}</p>
+            <p className="text-base sm:text-lg font-bold text-primary">{stats.entered}/{stats.totalNotes}</p>
           </Card>
           <Card className="p-2 sm:p-3 text-center">
             <p className="text-xs text-muted-foreground">Absents</p>
@@ -249,6 +318,12 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="h-4 w-4" />
               Liste des élèves
+              {hasMultipleSubjects && (
+                <Badge variant="secondary" className="ml-2">
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  Notes par matière
+                </Badge>
+              )}
             </CardTitle>
             {hasChanges && (
               <Badge variant="outline" className="text-orange-500 border-orange-500">
@@ -260,212 +335,162 @@ export const GradeEntryView: React.FC<GradeEntryViewProps> = ({
         <CardContent className="p-0 flex-1 overflow-hidden">
           <ScrollArea className="h-[calc(100vh-400px)]">
             <div className="divide-y divide-border">
-              {grades?.map((grade, index) => {
-                const localGrade = localGrades.get(grade.student_id);
+              {students.map((student, index) => {
+                // Vérifier si toutes les notes sont saisies pour cet élève
+                const allGradesFilled = subjects.length > 0
+                  ? subjects.every(s => {
+                      const key = getGradeKey(student.student_id, s.id);
+                      const lg = localGrades.get(key);
+                      return lg?.score !== '' || lg?.is_absent;
+                    })
+                  : (() => {
+                      const key = getGradeKey(student.student_id, null);
+                      const lg = localGrades.get(key);
+                      return lg?.score !== '' || lg?.is_absent;
+                    })();
                 
                 return (
                   <div 
-                    key={grade.student_id}
+                    key={student.student_id}
                     className="p-3 hover:bg-muted/50"
                   >
-                    {/* Desktop: disposition horizontale */}
-                    <div className="hidden lg:flex items-center gap-3">
-                      {/* Numéro */}
+                    {/* En-tête élève */}
+                    <div className="flex items-center gap-3 mb-3">
                       <span className="w-8 text-center text-sm text-muted-foreground font-medium">
                         {index + 1}
                       </span>
-                      
-                      {/* Avatar */}
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={grade.student.photo_url || undefined} />
+                        <AvatarImage src={student.student.photo_url || undefined} />
                         <AvatarFallback>
-                          {grade.student.first_name[0]}{grade.student.last_name[0]}
+                          {student.student.first_name[0]}{student.student.last_name[0]}
                         </AvatarFallback>
                       </Avatar>
-                      
-                      {/* Nom */}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
-                          {grade.student.last_name} {grade.student.first_name}
+                          {student.student.last_name} {student.student.first_name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {grade.student.student_code}
+                          {student.student.student_code}
                         </p>
                       </div>
-                      
-                      {/* Note */}
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          max={evaluation.max_score}
-                          step="0.5"
-                          placeholder="-"
-                          value={localGrade?.score || ''}
-                          onChange={(e) => updateGrade(grade.student_id, 'score', e.target.value)}
-                          disabled={localGrade?.is_absent}
-                          className="w-20 text-center"
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          /{evaluation.max_score}
-                        </span>
-                      </div>
-                      
-                      {/* Absent */}
-                      <div className="flex items-center gap-1">
-                        <Checkbox
-                          checked={localGrade?.is_absent || false}
-                          onCheckedChange={(checked) => 
-                            updateGrade(grade.student_id, 'is_absent', checked)
-                          }
-                        />
-                        <span className="text-xs text-muted-foreground">Abs</span>
-                      </div>
-                      
-                      {/* Excusé */}
-                      <div className="flex items-center gap-1">
-                        <Checkbox
-                          checked={localGrade?.is_excused || false}
-                          onCheckedChange={(checked) => 
-                            updateGrade(grade.student_id, 'is_excused', checked)
-                          }
-                          disabled={!localGrade?.is_absent}
-                        />
-                        <span className="text-xs text-muted-foreground">Exc</span>
-                      </div>
-                      
-                      {/* Commentaire */}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className={localGrade?.comment ? 'text-primary' : ''}
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
-                          <div className="space-y-2">
-                            <h4 className="font-medium">Commentaire</h4>
-                            <Textarea
-                              placeholder="Ajouter un commentaire..."
-                              value={localGrade?.comment || ''}
-                              onChange={(e) => 
-                                updateGrade(grade.student_id, 'comment', e.target.value)
-                              }
-                              rows={3}
-                            />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      
-                      {/* Indicateur de saisie */}
-                      {(localGrade?.score || localGrade?.is_absent) && (
-                        <Check className="h-4 w-4 text-green-500" />
+                      {allGradesFilled && (
+                        <Check className="h-5 w-5 text-green-500" />
                       )}
                     </div>
 
-                    {/* Mobile/Tablet: disposition verticale empilée */}
-                    <div className="lg:hidden space-y-3">
-                      {/* En-tête élève */}
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground font-medium">
-                          #{index + 1}
-                        </span>
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={grade.student.photo_url || undefined} />
-                          <AvatarFallback>
-                            {grade.student.first_name[0]}{grade.student.last_name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {grade.student.last_name} {grade.student.first_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {grade.student.student_code}
-                          </p>
-                        </div>
-                        {(localGrade?.score || localGrade?.is_absent) && (
-                          <Check className="h-5 w-5 text-green-500" />
-                        )}
-                      </div>
-
-                      {/* Saisie note */}
-                      <div className="flex items-center gap-3">
-                        <label className="text-sm font-medium min-w-[60px]">Note:</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max={evaluation.max_score}
-                          step="0.5"
-                          placeholder="-"
-                          value={localGrade?.score || ''}
-                          onChange={(e) => updateGrade(grade.student_id, 'score', e.target.value)}
-                          disabled={localGrade?.is_absent}
-                          className="flex-1 text-center h-11 text-base"
-                        />
-                        <span className="text-sm text-muted-foreground min-w-[50px]">
-                          / {evaluation.max_score}
-                        </span>
-                      </div>
-
-                      {/* Options */}
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox
-                              checked={localGrade?.is_absent || false}
-                              onCheckedChange={(checked) => 
-                                updateGrade(grade.student_id, 'is_absent', checked)
-                              }
-                              className="h-5 w-5"
-                            />
-                            <span className="text-sm">Absent</span>
-                          </label>
+                    {/* Grille des notes par matière */}
+                    {hasMultipleSubjects ? (
+                      <div className="ml-11 grid gap-2">
+                        {subjects.map(subject => {
+                          const key = getGradeKey(student.student_id, subject.id);
+                          const localGrade = localGrades.get(key);
                           
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox
-                              checked={localGrade?.is_excused || false}
-                              onCheckedChange={(checked) => 
-                                updateGrade(grade.student_id, 'is_excused', checked)
-                              }
-                              disabled={!localGrade?.is_absent}
-                              className="h-5 w-5"
-                            />
-                            <span className="text-sm">Excusé</span>
-                          </label>
-                        </div>
-
-                        {/* Commentaire */}
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className={localGrade?.comment ? 'text-primary border-primary' : ''}
-                            >
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Commentaire
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[calc(100vw-2rem)] sm:w-80" side="top">
-                            <div className="space-y-2">
-                              <h4 className="font-medium">Commentaire</h4>
-                              <Textarea
-                                placeholder="Ajouter un commentaire..."
-                                value={localGrade?.comment || ''}
-                                onChange={(e) => 
-                                  updateGrade(grade.student_id, 'comment', e.target.value)
-                                }
-                                rows={3}
+                          return (
+                            <div key={subject.id} className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
+                              <span className="text-sm font-medium min-w-[100px] truncate">
+                                {subject.name}
+                              </span>
+                              <Input
+                                type="number"
+                                min="0"
+                                max={evaluation.max_score}
+                                step="0.5"
+                                placeholder="-"
+                                value={localGrade?.score || ''}
+                                onChange={(e) => updateGrade(student.student_id, subject.id, 'score', e.target.value)}
+                                disabled={localGrade?.is_absent}
+                                className="w-20 text-center"
                               />
+                              <span className="text-sm text-muted-foreground">
+                                /{evaluation.max_score}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <Checkbox
+                                  checked={localGrade?.is_absent || false}
+                                  onCheckedChange={(checked) => 
+                                    updateGrade(student.student_id, subject.id, 'is_absent', checked)
+                                  }
+                                />
+                                <span className="text-xs text-muted-foreground">Abs</span>
+                              </div>
+                              {(localGrade?.score || localGrade?.is_absent) && (
+                                <Check className="h-4 w-4 text-green-500" />
+                              )}
                             </div>
-                          </PopoverContent>
-                        </Popover>
+                          );
+                        })}
                       </div>
-                    </div>
+                    ) : (
+                      // Une seule matière - affichage simplifié
+                      <div className="ml-11 flex items-center gap-3">
+                        {(() => {
+                          const key = getGradeKey(student.student_id, subjects[0]?.id || null);
+                          const localGrade = localGrades.get(key);
+                          
+                          return (
+                            <>
+                              <Input
+                                type="number"
+                                min="0"
+                                max={evaluation.max_score}
+                                step="0.5"
+                                placeholder="-"
+                                value={localGrade?.score || ''}
+                                onChange={(e) => updateGrade(student.student_id, subjects[0]?.id || null, 'score', e.target.value)}
+                                disabled={localGrade?.is_absent}
+                                className="w-20 text-center"
+                              />
+                              <span className="text-sm text-muted-foreground">
+                                /{evaluation.max_score}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={localGrade?.is_absent || false}
+                                  onCheckedChange={(checked) => 
+                                    updateGrade(student.student_id, subjects[0]?.id || null, 'is_absent', checked)
+                                  }
+                                />
+                                <span className="text-xs text-muted-foreground">Absent</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={localGrade?.is_excused || false}
+                                  onCheckedChange={(checked) => 
+                                    updateGrade(student.student_id, subjects[0]?.id || null, 'is_excused', checked)
+                                  }
+                                  disabled={!localGrade?.is_absent}
+                                />
+                                <span className="text-xs text-muted-foreground">Excusé</span>
+                              </div>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    className={localGrade?.comment ? 'text-primary' : ''}
+                                  >
+                                    <MessageSquare className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80">
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium">Commentaire</h4>
+                                    <Textarea
+                                      placeholder="Ajouter un commentaire..."
+                                      value={localGrade?.comment || ''}
+                                      onChange={(e) => 
+                                        updateGrade(student.student_id, subjects[0]?.id || null, 'comment', e.target.value)
+                                      }
+                                      rows={3}
+                                    />
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 );
               })}
