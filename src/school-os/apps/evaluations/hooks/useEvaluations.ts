@@ -87,6 +87,9 @@ export const useEvaluations = (schoolId?: string, schoolYearId?: string) => {
             school_evaluation_class_subjects(
               id,
               subject_id,
+              evaluation_date,
+              start_time,
+              end_time,
               subjects(id, name)
             ),
             school_evaluation_excluded_students(student_id),
