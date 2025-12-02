@@ -13,6 +13,9 @@ import { useSchoolSubjects } from '../../subjects/hooks/useSchoolSubjects';
 export interface SubjectInfo {
   subject_id: string;
   subject_name: string;
+  evaluation_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
 }
 
 export interface EvaluationWithStatus {
@@ -101,11 +104,14 @@ export const useEvaluationsGroupedByClass = (schoolId?: string, schoolYearId?: s
         if (!classData) return;
 
         // Récupérer les matières depuis school_evaluation_class_subjects
-        // Utiliser le subjectsMap pour obtenir les noms
+        // Utiliser le subjectsMap pour obtenir les noms et inclure date/heure
         const subjects: SubjectInfo[] = (config.school_evaluation_class_subjects || [])
           .map((cs: any) => ({
             subject_id: cs.subject_id,
             subject_name: subjectsMap.get(cs.subject_id) || 'Matière inconnue',
+            evaluation_date: cs.evaluation_date,
+            start_time: cs.start_time,
+            end_time: cs.end_time,
           }))
           .filter((s: SubjectInfo) => s.subject_id);
 
