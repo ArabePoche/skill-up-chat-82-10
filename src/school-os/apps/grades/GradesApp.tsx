@@ -15,17 +15,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked } from 'lucide-react';
+import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked, ScrollText, BarChart3 } from 'lucide-react';
 import { EvaluationsListView } from './components/EvaluationsListView';
 import { GradeEntryView } from './components/GradeEntryView';
 import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListView';
 import { SubjectGradeEntryView } from './components/SubjectGradeEntryView';
+import { BulletinsSection } from './components/BulletinsSection';
 import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
 import { SubjectEvaluation } from './hooks/useSubjectEvaluations';
 import { useEvaluationGrades } from './hooks/useGrades';
 import { exportClassGradesToExcel } from './utils/exportGrades';
 
 export const GradesApp: React.FC = () => {
+  const [mainTab, setMainTab] = useState<'grades' | 'bulletins' | 'stats'>('grades');
   const { school, activeSchoolYear } = useSchoolYear();
   const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
   const isTeacher = roleData?.isTeacher ?? false;
@@ -179,186 +181,228 @@ export const GradesApp: React.FC = () => {
   return (
     <div className="p-6 h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="mb-6 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Gestion des Notes</h2>
-            <p className="text-muted-foreground mt-1">
-              {isTeacher 
-                ? 'Saisissez les notes de vos élèves par évaluation'
-                : 'Consultez et gérez les notes de l\'école'
-              }
-            </p>
-          </div>
-          {selectedClassId && classEvaluations && classEvaluations.length > 0 && (
-            <Button variant="outline" onClick={handleExportClass}>
-              <Download className="h-4 w-4 mr-2" />
-              Exporter la classe
-            </Button>
-          )}
-        </div>
+      <div className="mb-4 flex-shrink-0">
+        <h2 className="text-2xl font-bold">Gestion des Notes & Bulletins</h2>
+        <p className="text-muted-foreground mt-1">
+          {isTeacher 
+            ? 'Saisissez les notes et générez les bulletins'
+            : 'Consultez et gérez les notes et bulletins de l\'école'
+          }
+        </p>
       </div>
 
-      {/* Filtres */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 flex-shrink-0">
-        <div>
-          <label className="text-sm font-medium mb-2 block">Classe</label>
-          <Select 
-            value={selectedClassId} 
-            onValueChange={(value) => {
-              setSelectedClassId(value);
-              setSelectedSubjectId('all');
-              setSelectedEvaluation(null);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner une classe" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableClasses.map((cls) => (
-                <SelectItem key={cls.id} value={cls.id}>
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    {cls.name}
-                    <Badge variant="outline" className="ml-2">
-                      {cls.current_students} élèves
-                    </Badge>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Onglets principaux */}
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="grid w-full grid-cols-3 mb-4 flex-shrink-0">
+          <TabsTrigger value="grades" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Saisie des Notes</span>
+            <span className="sm:hidden">Notes</span>
+          </TabsTrigger>
+          <TabsTrigger value="bulletins" className="flex items-center gap-2">
+            <ScrollText className="h-4 w-4" />
+            <span className="hidden sm:inline">Bulletins</span>
+            <span className="sm:hidden">Bulletins</span>
+          </TabsTrigger>
+          <TabsTrigger value="stats" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Statistiques</span>
+            <span className="sm:hidden">Stats</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <div>
-          <label className="text-sm font-medium mb-2 block">Matière (filtre)</label>
-          <Select 
-            value={selectedSubjectId} 
-            onValueChange={setSelectedSubjectId}
-            disabled={!selectedClassId || displaySubjects.length === 0}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Toutes les matières" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4" />
-                  Toutes les matières
-                </div>
-              </SelectItem>
-              {displaySubjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id}>
-                  {subject.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Contenu principal */}
-      {!selectedClassId ? (
-        <Card className="flex-1 flex items-center justify-center">
-          <div className="text-center py-12">
-            <BookOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Sélectionnez une classe</h3>
-            <p className="text-muted-foreground">
-              Choisissez une classe pour voir ses évaluations et saisir les notes
-            </p>
-          </div>
-        </Card>
-      ) : (
-        <Card className="flex-1 overflow-hidden flex flex-col">
-          <CardHeader className="flex-shrink-0 pb-2">
-            <div className="flex items-center justify-between mb-4">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                {selectedClass?.name}
-              </CardTitle>
-              {classEvaluations && (
-                <Badge variant="outline">
-                  {classEvaluations.length} évaluation{classEvaluations.length !== 1 ? 's' : ''}
-                </Badge>
-              )}
+        {/* Onglet Saisie des Notes */}
+        <TabsContent value="grades" className="flex-1 overflow-hidden m-0 flex flex-col">
+          {/* Filtres */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 flex-shrink-0">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Classe</label>
+              <Select 
+                value={selectedClassId} 
+                onValueChange={(value) => {
+                  setSelectedClassId(value);
+                  setSelectedSubjectId('all');
+                  setSelectedEvaluation(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une classe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableClasses.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        {cls.name}
+                        <Badge variant="outline" className="ml-2">
+                          {cls.current_students} élèves
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            {/* Onglets pour les deux méthodes */}
-            <Tabs value={entryMethod} onValueChange={(v) => setEntryMethod(v as 'evaluation' | 'subject')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="evaluation" className="flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  <span className="hidden sm:inline">Par évaluation</span>
-                  <span className="sm:hidden">Évaluation</span>
-                </TabsTrigger>
-                <TabsTrigger value="subject" className="flex items-center gap-2">
-                  <BookMarked className="h-4 w-4" />
-                  <span className="hidden sm:inline">Par matière</span>
-                  <span className="sm:hidden">Matière</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </CardHeader>
-          
-          <CardContent className="flex-1 overflow-hidden pt-0">
-            {entryMethod === 'evaluation' ? (
-              // Méthode 1 : Par évaluation complète
-              <EvaluationsListView
-                classId={selectedClassId}
-                subjectId={selectedSubjectId === 'all' ? undefined : selectedSubjectId}
-                onSelectEvaluation={setSelectedEvaluation}
-              />
-            ) : (
-              // Méthode 2 : Par matière directe
-              <div className="h-full flex flex-col">
-                {/* Sélecteur de matière */}
-                <div className="mb-4">
-                  <label className="text-sm font-medium mb-2 block">Sélectionner une matière</label>
-                  <Select 
-                    value={selectedSubjectForEntry} 
-                    onValueChange={setSelectedSubjectForEntry}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choisir une matière" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {displaySubjects.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          <div className="flex items-center gap-2">
-                            <BookMarked className="h-4 w-4" />
-                            {subject.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Matière (filtre)</label>
+              <Select 
+                value={selectedSubjectId} 
+                onValueChange={setSelectedSubjectId}
+                disabled={!selectedClassId || displaySubjects.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Toutes les matières" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      Toutes les matières
+                    </div>
+                  </SelectItem>
+                  {displaySubjects.map((subject) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Bouton export */}
+          {selectedClassId && classEvaluations && classEvaluations.length > 0 && (
+            <div className="flex justify-end mb-4 flex-shrink-0">
+              <Button variant="outline" onClick={handleExportClass}>
+                <Download className="h-4 w-4 mr-2" />
+                Exporter la classe
+              </Button>
+            </div>
+          )}
+
+          {/* Contenu principal notes */}
+          {!selectedClassId ? (
+            <Card className="flex-1 flex items-center justify-center">
+              <div className="text-center py-12">
+                <BookOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Sélectionnez une classe</h3>
+                <p className="text-muted-foreground">
+                  Choisissez une classe pour voir ses évaluations et saisir les notes
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <Card className="flex-1 overflow-hidden flex flex-col">
+              <CardHeader className="flex-shrink-0 pb-2">
+                <div className="flex items-center justify-between mb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    {selectedClass?.name}
+                  </CardTitle>
+                  {classEvaluations && (
+                    <Badge variant="outline">
+                      {classEvaluations.length} évaluation{classEvaluations.length !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
                 </div>
                 
-                {/* Liste des évaluations pour cette matière */}
-                {selectedSubjectForEntry ? (
-                  <div className="flex-1 overflow-hidden">
-                    <SubjectEvaluationsListView
-                      classId={selectedClassId}
-                      subjectId={selectedSubjectForEntry}
-                      subjectName={displaySubjects.find(s => s.id === selectedSubjectForEntry)?.name || ''}
-                      onSelectEvaluation={setSelectedSubjectEvaluation}
-                    />
-                  </div>
+                {/* Onglets pour les deux méthodes */}
+                <Tabs value={entryMethod} onValueChange={(v) => setEntryMethod(v as 'evaluation' | 'subject')}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="evaluation" className="flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4" />
+                      <span className="hidden sm:inline">Par évaluation</span>
+                      <span className="sm:hidden">Évaluation</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="subject" className="flex items-center gap-2">
+                      <BookMarked className="h-4 w-4" />
+                      <span className="hidden sm:inline">Par matière</span>
+                      <span className="sm:hidden">Matière</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </CardHeader>
+              
+              <CardContent className="flex-1 overflow-hidden pt-0">
+                {entryMethod === 'evaluation' ? (
+                  <EvaluationsListView
+                    classId={selectedClassId}
+                    subjectId={selectedSubjectId === 'all' ? undefined : selectedSubjectId}
+                    onSelectEvaluation={setSelectedEvaluation}
+                  />
                 ) : (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center py-8">
-                      <BookMarked className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">
-                        Sélectionnez une matière pour voir ses évaluations
-                      </p>
+                  <div className="h-full flex flex-col">
+                    <div className="mb-4">
+                      <label className="text-sm font-medium mb-2 block">Sélectionner une matière</label>
+                      <Select 
+                        value={selectedSubjectForEntry} 
+                        onValueChange={setSelectedSubjectForEntry}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choisir une matière" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {displaySubjects.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                              <div className="flex items-center gap-2">
+                                <BookMarked className="h-4 w-4" />
+                                {subject.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+                    
+                    {selectedSubjectForEntry ? (
+                      <div className="flex-1 overflow-hidden">
+                        <SubjectEvaluationsListView
+                          classId={selectedClassId}
+                          subjectId={selectedSubjectForEntry}
+                          subjectName={displaySubjects.find(s => s.id === selectedSubjectForEntry)?.name || ''}
+                          onSelectEvaluation={setSelectedSubjectEvaluation}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center py-8">
+                          <BookMarked className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground">
+                            Sélectionnez une matière pour voir ses évaluations
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Onglet Bulletins */}
+        <TabsContent value="bulletins" className="flex-1 overflow-hidden m-0">
+          <BulletinsSection 
+            availableClasses={availableClasses}
+            schoolId={school?.id || ''}
+            schoolYearId={activeSchoolYear?.id || ''}
+          />
+        </TabsContent>
+
+        {/* Onglet Statistiques */}
+        <TabsContent value="stats" className="flex-1 overflow-hidden m-0">
+          <Card className="h-full flex items-center justify-center">
+            <div className="text-center py-12">
+              <BarChart3 className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Statistiques</h3>
+              <p className="text-muted-foreground">
+                Les statistiques des notes seront bientôt disponibles
+              </p>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
