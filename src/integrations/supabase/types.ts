@@ -2783,6 +2783,213 @@ export type Database = {
           },
         ]
       }
+      school_bulletin_appreciation_templates: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          max_average: number | null
+          min_average: number | null
+          school_id: string
+          text: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          max_average?: number | null
+          min_average?: number | null
+          school_id: string
+          text: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          max_average?: number | null
+          min_average?: number | null
+          school_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_bulletin_appreciation_templates_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_bulletin_mentions: {
+        Row: {
+          color: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          max_average: number
+          min_average: number
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          max_average: number
+          min_average: number
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          max_average?: number
+          min_average?: number
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_bulletin_mentions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_bulletin_settings: {
+        Row: {
+          created_at: string
+          footer_text: string | null
+          grading_scale: number
+          header_text: string | null
+          id: string
+          passing_grade: number
+          school_id: string
+          school_year_id: string
+          show_absences: boolean | null
+          show_appreciation: boolean | null
+          show_class_average: boolean | null
+          show_conduct: boolean | null
+          show_rank: boolean | null
+          signature_title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          footer_text?: string | null
+          grading_scale?: number
+          header_text?: string | null
+          id?: string
+          passing_grade?: number
+          school_id: string
+          school_year_id: string
+          show_absences?: boolean | null
+          show_appreciation?: boolean | null
+          show_class_average?: boolean | null
+          show_conduct?: boolean | null
+          show_rank?: boolean | null
+          signature_title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          footer_text?: string | null
+          grading_scale?: number
+          header_text?: string | null
+          id?: string
+          passing_grade?: number
+          school_id?: string
+          school_year_id?: string
+          show_absences?: boolean | null
+          show_appreciation?: boolean | null
+          show_class_average?: boolean | null
+          show_conduct?: boolean | null
+          show_rank?: boolean | null
+          signature_title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_bulletin_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_bulletin_settings_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_bulletin_templates: {
+        Row: {
+          config: Json | null
+          created_at: string
+          font_family: string | null
+          id: string
+          is_default: boolean | null
+          layout_type: string
+          logo_position: string | null
+          name: string
+          primary_color: string | null
+          school_id: string
+          secondary_color: string | null
+          show_photo: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          font_family?: string | null
+          id?: string
+          is_default?: boolean | null
+          layout_type?: string
+          logo_position?: string | null
+          name: string
+          primary_color?: string | null
+          school_id: string
+          secondary_color?: string | null
+          show_photo?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          font_family?: string | null
+          id?: string
+          is_default?: boolean | null
+          layout_type?: string
+          logo_position?: string | null
+          name?: string
+          primary_color?: string | null
+          school_id?: string
+          secondary_color?: string | null
+          show_photo?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_bulletin_templates_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_evaluation_class_configs: {
         Row: {
           class_id: string
@@ -3198,6 +3405,125 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      school_report_card_history: {
+        Row: {
+          absences_count: number | null
+          class_id: string
+          conduct_grade: string | null
+          created_at: string
+          general_average: number | null
+          generated_at: string
+          generated_by: string | null
+          grading_period_id: string
+          id: string
+          late_count: number | null
+          mention: string | null
+          pdf_url: string | null
+          principal_appreciation: string | null
+          rank: number | null
+          school_id: string
+          school_year_id: string
+          student_id: string
+          teacher_appreciation: string | null
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          absences_count?: number | null
+          class_id: string
+          conduct_grade?: string | null
+          created_at?: string
+          general_average?: number | null
+          generated_at?: string
+          generated_by?: string | null
+          grading_period_id: string
+          id?: string
+          late_count?: number | null
+          mention?: string | null
+          pdf_url?: string | null
+          principal_appreciation?: string | null
+          rank?: number | null
+          school_id: string
+          school_year_id: string
+          student_id: string
+          teacher_appreciation?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          absences_count?: number | null
+          class_id?: string
+          conduct_grade?: string | null
+          created_at?: string
+          general_average?: number | null
+          generated_at?: string
+          generated_by?: string | null
+          grading_period_id?: string
+          id?: string
+          late_count?: number | null
+          mention?: string | null
+          pdf_url?: string | null
+          principal_appreciation?: string | null
+          rank?: number | null
+          school_id?: string
+          school_year_id?: string
+          student_id?: string
+          teacher_appreciation?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_report_card_history_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_report_card_history_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_report_card_history_grading_period_id_fkey"
+            columns: ["grading_period_id"]
+            isOneToOne: false
+            referencedRelation: "grading_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_report_card_history_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_report_card_history_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_report_card_history_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_school"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_report_card_history_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "school_bulletin_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       school_role_permissions: {
         Row: {
@@ -3921,6 +4247,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "school_teachers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_transaction_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          school_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          school_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          school_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_transaction_categories_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
