@@ -69,7 +69,7 @@ export const BulletinsSection: React.FC<BulletinsSectionProps> = ({
           </TabsContent>
 
           <TabsContent value="settings" className="h-full m-0">
-            <BulletinSettingsTab schoolId={schoolId} />
+            <BulletinSettingsTab schoolId={schoolId} schoolYearId={schoolYearId} />
           </TabsContent>
 
           <TabsContent value="templates" className="h-full m-0">
