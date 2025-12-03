@@ -382,7 +382,7 @@ export const GradesApp: React.FC = () => {
         </TabsContent>
 
         {/* Onglet Bulletins */}
-        <TabsContent value="bulletins" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="bulletins" className="overflow-auto m-0">
           <BulletinsSection 
             availableClasses={availableClasses}
             schoolId={school?.id || ''}
