@@ -1,7 +1,7 @@
 /**
  * Dialog pour ajouter une transaction
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Settings2 } from 'lucide-react';
 import { useAddTransaction } from '../hooks/useAccounting';
+import { useTransactionCategories } from '../hooks/useTransactionCategories';
+import { ManageCategoriesDialog } from './ManageCategoriesDialog';
 
 interface AddTransactionDialogProps {
   schoolId?: string;
@@ -27,40 +30,6 @@ interface TransactionForm {
   payment_method?: string;
 }
 
-const INCOME_CATEGORIES = [
-  'Frais de scolarité',
-  'Inscription',
-  'Réinscription',
-  'Activités parascolaires',
-  'Cantine',
-  'Transport',
-  'Uniforme',
-  'Fournitures',
-  'Donations',
-  'Subventions',
-  'Autres revenus',
-];
-
-const EXPENSE_CATEGORIES = [
-  'Salaires Personnel',
-  'Charges sociales',
-  'Loyer',
-  'Électricité',
-  'Eau',
-  'Internet',
-  'Téléphone',
-  'Fournitures bureau',
-  'Matériel pédagogique',
-  'Maintenance',
-  'Assurances',
-  'Impôts et taxes',
-  'Transport',
-  'Alimentation cantine',
-  'Marketing',
-  'Formation',
-  'Autres dépenses',
-];
-
 const PAYMENT_METHODS = [
   'Espèces',
   'Chèque',
@@ -74,6 +43,8 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
   open,
   onOpenChange,
 }) => {
+  const [showManageCategories, setShowManageCategories] = useState(false);
+  
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<TransactionForm>({
     defaultValues: {
       type: 'income',
@@ -83,6 +54,7 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
   });
 
   const addTransaction = useAddTransaction();
+  const { data: categoriesData } = useTransactionCategories(schoolId);
   const transactionType = watch('type');
 
   const onSubmit = async (data: TransactionForm) => {
@@ -97,13 +69,27 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
     onOpenChange(false);
   };
 
-  const categories = transactionType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const categories = transactionType === 'income' 
+    ? (categoriesData?.income || []) 
+    : (categoriesData?.expense || []);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nouvelle transaction</DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
+            <span>Nouvelle transaction</span>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowManageCategories(true)}
+            >
+              <Settings2 className="h-4 w-4 mr-1" />
+              Catégories
+            </Button>
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -223,5 +209,12 @@ export const AddTransactionDialog: React.FC<AddTransactionDialogProps> = ({
         </form>
       </DialogContent>
     </Dialog>
+    
+    <ManageCategoriesDialog
+      schoolId={schoolId}
+      open={showManageCategories}
+      onOpenChange={setShowManageCategories}
+    />
+    </>
   );
 };
