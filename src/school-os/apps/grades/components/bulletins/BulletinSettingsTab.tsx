@@ -2,78 +2,174 @@
  * Onglet Paramètres des bulletins
  * Coefficients, appréciations, mentions
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Settings, Award, MessageSquare, Scale, Plus, Trash2 } from 'lucide-react';
+import { Settings, Award, MessageSquare, Scale, Plus, Trash2, Loader2 } from 'lucide-react';
+import { 
+  useBulletinSettings, 
+  useSaveBulletinSettings,
+  useBulletinMentions,
+  useSaveBulletinMention,
+  useDeleteBulletinMention,
+  useBulletinAppreciations,
+  useSaveBulletinAppreciation,
+  useDeleteBulletinAppreciation,
+  type BulletinMention,
+} from '../../hooks/useBulletins';
 
 interface BulletinSettingsTabProps {
   schoolId: string;
+  schoolYearId: string;
 }
 
-interface Mention {
-  id: string;
+interface LocalMention {
+  id?: string;
   name: string;
-  minScore: number;
-  maxScore: number;
+  min_average: number;
+  max_average: number;
+  color?: string;
+  display_order: number;
+  isNew?: boolean;
 }
 
-export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ schoolId }) => {
-  // États pour les paramètres
-  const [showCoefficients, setShowCoefficients] = useState(true);
-  const [showAppreciations, setShowAppreciations] = useState(true);
-  const [showClassAverage, setShowClassAverage] = useState(true);
-  const [showRanking, setShowRanking] = useState(false);
-  
-  const [mentions, setMentions] = useState<Mention[]>([
-    { id: '1', name: 'Félicitations', minScore: 16, maxScore: 20 },
-    { id: '2', name: 'Compliments', minScore: 14, maxScore: 15.99 },
-    { id: '3', name: 'Encouragements', minScore: 12, maxScore: 13.99 },
-    { id: '4', name: 'Tableau d\'honneur', minScore: 10, maxScore: 11.99 },
-  ]);
+export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ schoolId, schoolYearId }) => {
+  // Fetch data
+  const { data: settings, isLoading: loadingSettings } = useBulletinSettings(schoolId, schoolYearId);
+  const { data: mentions = [], isLoading: loadingMentions } = useBulletinMentions(schoolId);
+  const { data: appreciations = [], isLoading: loadingAppreciations } = useBulletinAppreciations(schoolId);
 
-  const [appreciationTemplates, setAppreciationTemplates] = useState([
-    'Excellent travail, continuez ainsi !',
-    'Bon trimestre, des progrès notables.',
-    'Travail satisfaisant, peut mieux faire.',
-    'Des difficultés persistent, efforts à fournir.',
-  ]);
+  // Mutations
+  const saveSettings = useSaveBulletinSettings();
+  const saveMention = useSaveBulletinMention();
+  const deleteMention = useDeleteBulletinMention();
+  const saveAppreciation = useSaveBulletinAppreciation();
+  const deleteAppreciation = useDeleteBulletinAppreciation();
+
+  // Local state
+  const [showClassAverage, setShowClassAverage] = useState(true);
+  const [showRank, setShowRank] = useState(false);
+  const [showAppreciation, setShowAppreciation] = useState(true);
+  const [showConduct, setShowConduct] = useState(true);
+  const [showAbsences, setShowAbsences] = useState(true);
+  
+  const [localMentions, setLocalMentions] = useState<LocalMention[]>([]);
+  const [appreciationText, setAppreciationText] = useState('');
+
+  // Initialize state from fetched data
+  useEffect(() => {
+    if (settings) {
+      setShowClassAverage(settings.show_class_average);
+      setShowRank(settings.show_rank);
+      setShowAppreciation(settings.show_appreciation);
+      setShowConduct(settings.show_conduct);
+      setShowAbsences(settings.show_absences);
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    if (mentions.length > 0) {
+      setLocalMentions(mentions.map(m => ({
+        id: m.id,
+        name: m.name,
+        min_average: m.min_average,
+        max_average: m.max_average,
+        color: m.color || undefined,
+        display_order: m.display_order,
+      })));
+    } else if (!loadingMentions && mentions.length === 0) {
+      // Default mentions
+      setLocalMentions([
+        { name: 'Félicitations', min_average: 16, max_average: 20, display_order: 0 },
+        { name: 'Compliments', min_average: 14, max_average: 15.99, display_order: 1 },
+        { name: 'Encouragements', min_average: 12, max_average: 13.99, display_order: 2 },
+        { name: 'Tableau d\'honneur', min_average: 10, max_average: 11.99, display_order: 3 },
+      ]);
+    }
+  }, [mentions, loadingMentions]);
+
+  useEffect(() => {
+    if (appreciations.length > 0) {
+      setAppreciationText(appreciations.map(a => a.text).join('\n'));
+    }
+  }, [appreciations]);
 
   const addMention = () => {
-    const newMention: Mention = {
-      id: Date.now().toString(),
-      name: 'Nouvelle mention',
-      minScore: 0,
-      maxScore: 10,
-    };
-    setMentions([...mentions, newMention]);
+    setLocalMentions([
+      ...localMentions,
+      { name: 'Nouvelle mention', min_average: 0, max_average: 10, display_order: localMentions.length, isNew: true },
+    ]);
   };
 
-  const removeMention = (id: string) => {
-    setMentions(mentions.filter(m => m.id !== id));
+  const removeMention = async (index: number) => {
+    const mention = localMentions[index];
+    if (mention.id) {
+      deleteMention.mutate({ id: mention.id, schoolId });
+    }
+    setLocalMentions(localMentions.filter((_, i) => i !== index));
   };
 
-  const updateMention = (id: string, field: keyof Mention, value: string | number) => {
-    setMentions(mentions.map(m => 
-      m.id === id ? { ...m, [field]: value } : m
+  const updateMention = (index: number, field: keyof LocalMention, value: string | number) => {
+    setLocalMentions(localMentions.map((m, i) => 
+      i === index ? { ...m, [field]: value } : m
     ));
   };
 
-  const handleSave = () => {
-    // TODO: Sauvegarder les paramètres
-    console.log('Saving settings:', {
-      showCoefficients,
-      showAppreciations,
-      showClassAverage,
-      showRanking,
-      mentions,
-      appreciationTemplates,
+  const handleSave = async () => {
+    // Save settings
+    await saveSettings.mutateAsync({
+      school_id: schoolId,
+      school_year_id: schoolYearId,
+      show_class_average: showClassAverage,
+      show_rank: showRank,
+      show_appreciation: showAppreciation,
+      show_conduct: showConduct,
+      show_absences: showAbsences,
     });
+
+    // Save mentions
+    for (const mention of localMentions) {
+      await saveMention.mutateAsync({
+        id: mention.id,
+        school_id: schoolId,
+        name: mention.name,
+        min_average: mention.min_average,
+        max_average: mention.max_average,
+        color: mention.color,
+        display_order: mention.display_order,
+      });
+    }
+
+    // Save appreciations
+    const appreciationLines = appreciationText.split('\n').filter(t => t.trim());
+    // Delete old ones
+    for (const app of appreciations) {
+      await deleteAppreciation.mutateAsync({ id: app.id, schoolId });
+    }
+    // Create new ones
+    for (const text of appreciationLines) {
+      await saveAppreciation.mutateAsync({
+        school_id: schoolId,
+        category: 'general',
+        text: text.trim(),
+      });
+    }
   };
+
+  const isLoading = loadingSettings || loadingMentions || loadingAppreciations;
+  const isSaving = saveSettings.isPending || saveMention.isPending || deleteAppreciation.isPending;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-auto space-y-4">
@@ -87,28 +183,6 @@ export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ school
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label htmlFor="showCoeff" className="flex items-center gap-2">
-              <Scale className="w-4 h-4 text-muted-foreground" />
-              Afficher les coefficients
-            </Label>
-            <Switch 
-              id="showCoeff"
-              checked={showCoefficients}
-              onCheckedChange={setShowCoefficients}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="showAppre" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-muted-foreground" />
-              Afficher les appréciations
-            </Label>
-            <Switch 
-              id="showAppre"
-              checked={showAppreciations}
-              onCheckedChange={setShowAppreciations}
-            />
-          </div>
-          <div className="flex items-center justify-between">
             <Label htmlFor="showAvg">Afficher la moyenne de classe</Label>
             <Switch 
               id="showAvg"
@@ -120,8 +194,35 @@ export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ school
             <Label htmlFor="showRank">Afficher le classement</Label>
             <Switch 
               id="showRank"
-              checked={showRanking}
-              onCheckedChange={setShowRanking}
+              checked={showRank}
+              onCheckedChange={setShowRank}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="showAppre" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              Afficher les appréciations
+            </Label>
+            <Switch 
+              id="showAppre"
+              checked={showAppreciation}
+              onCheckedChange={setShowAppreciation}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="showConduct">Afficher la conduite</Label>
+            <Switch 
+              id="showConduct"
+              checked={showConduct}
+              onCheckedChange={setShowConduct}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="showAbsences">Afficher les absences</Label>
+            <Switch 
+              id="showAbsences"
+              checked={showAbsences}
+              onCheckedChange={setShowAbsences}
             />
           </div>
         </CardContent>
@@ -143,19 +244,19 @@ export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ school
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {mentions.map((mention) => (
-              <div key={mention.id} className="flex items-center gap-3 p-3 border rounded-lg">
+            {localMentions.map((mention, index) => (
+              <div key={mention.id || `new-${index}`} className="flex items-center gap-3 p-3 border rounded-lg">
                 <Input
                   value={mention.name}
-                  onChange={(e) => updateMention(mention.id, 'name', e.target.value)}
+                  onChange={(e) => updateMention(index, 'name', e.target.value)}
                   placeholder="Nom de la mention"
                   className="flex-1"
                 />
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
-                    value={mention.minScore}
-                    onChange={(e) => updateMention(mention.id, 'minScore', parseFloat(e.target.value))}
+                    value={mention.min_average}
+                    onChange={(e) => updateMention(index, 'min_average', parseFloat(e.target.value) || 0)}
                     className="w-20"
                     min={0}
                     max={20}
@@ -164,8 +265,8 @@ export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ school
                   <span className="text-muted-foreground">à</span>
                   <Input
                     type="number"
-                    value={mention.maxScore}
-                    onChange={(e) => updateMention(mention.id, 'maxScore', parseFloat(e.target.value))}
+                    value={mention.max_average}
+                    onChange={(e) => updateMention(index, 'max_average', parseFloat(e.target.value) || 0)}
                     className="w-20"
                     min={0}
                     max={20}
@@ -175,7 +276,7 @@ export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ school
                 <Button 
                   size="icon" 
                   variant="ghost"
-                  onClick={() => removeMention(mention.id)}
+                  onClick={() => removeMention(index)}
                 >
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
@@ -195,8 +296,8 @@ export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ school
         </CardHeader>
         <CardContent>
           <Textarea
-            value={appreciationTemplates.join('\n')}
-            onChange={(e) => setAppreciationTemplates(e.target.value.split('\n').filter(t => t.trim()))}
+            value={appreciationText}
+            onChange={(e) => setAppreciationText(e.target.value)}
             placeholder="Une appréciation par ligne..."
             rows={6}
           />
@@ -208,7 +309,8 @@ export const BulletinSettingsTab: React.FC<BulletinSettingsTabProps> = ({ school
 
       {/* Bouton de sauvegarde */}
       <div className="sticky bottom-0 pt-4 bg-background">
-        <Button onClick={handleSave} className="w-full">
+        <Button onClick={handleSave} className="w-full" disabled={isSaving}>
+          {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Enregistrer les paramètres
         </Button>
       </div>
