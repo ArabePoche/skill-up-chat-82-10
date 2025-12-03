@@ -2,7 +2,6 @@
  * Section Bulletins - Génération et gestion des bulletins scolaires
  */
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Settings, Layout, History } from 'lucide-react';
 import { BulletinGenerationTab } from './bulletins/BulletinGenerationTab';
@@ -31,59 +30,48 @@ export const BulletinsSection: React.FC<BulletinsSectionProps> = ({
   const [activeTab, setActiveTab] = useState('generation');
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold">Bulletins Scolaires</h3>
-        <p className="text-sm text-muted-foreground">
-          Générez et gérez les bulletins de notes
-        </p>
-      </div>
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <TabsList className="grid w-full grid-cols-4 mb-4">
+        <TabsTrigger value="generation" className="flex items-center gap-2">
+          <FileText className="h-4 w-4" />
+          <span className="hidden sm:inline">Génération</span>
+        </TabsTrigger>
+        <TabsTrigger value="settings" className="flex items-center gap-2">
+          <Settings className="h-4 w-4" />
+          <span className="hidden sm:inline">Paramètres</span>
+        </TabsTrigger>
+        <TabsTrigger value="templates" className="flex items-center gap-2">
+          <Layout className="h-4 w-4" />
+          <span className="hidden sm:inline">Templates</span>
+        </TabsTrigger>
+        <TabsTrigger value="history" className="flex items-center gap-2">
+          <History className="h-4 w-4" />
+          <span className="hidden sm:inline">Historique</span>
+        </TabsTrigger>
+      </TabsList>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-4 mb-4">
-          <TabsTrigger value="generation" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Génération</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">Paramètres</span>
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="flex items-center gap-2">
-            <Layout className="h-4 w-4" />
-            <span className="hidden sm:inline">Templates</span>
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <History className="h-4 w-4" />
-            <span className="hidden sm:inline">Historique</span>
-          </TabsTrigger>
-        </TabsList>
+      <TabsContent value="generation" className="mt-0">
+        <BulletinGenerationTab 
+          availableClasses={availableClasses}
+          schoolId={schoolId}
+          schoolYearId={schoolYearId}
+        />
+      </TabsContent>
 
-        <div className="flex-1 overflow-hidden">
-          <TabsContent value="generation" className="h-full m-0">
-            <BulletinGenerationTab 
-              availableClasses={availableClasses}
-              schoolId={schoolId}
-              schoolYearId={schoolYearId}
-            />
-          </TabsContent>
+      <TabsContent value="settings" className="mt-0">
+        <BulletinSettingsTab schoolId={schoolId} schoolYearId={schoolYearId} />
+      </TabsContent>
 
-          <TabsContent value="settings" className="h-full m-0">
-            <BulletinSettingsTab schoolId={schoolId} schoolYearId={schoolYearId} />
-          </TabsContent>
+      <TabsContent value="templates" className="mt-0">
+        <BulletinTemplatesTab schoolId={schoolId} />
+      </TabsContent>
 
-          <TabsContent value="templates" className="h-full m-0">
-            <BulletinTemplatesTab schoolId={schoolId} />
-          </TabsContent>
-
-          <TabsContent value="history" className="h-full m-0">
-            <BulletinHistoryTab 
-              schoolId={schoolId}
-              schoolYearId={schoolYearId}
-            />
-          </TabsContent>
-        </div>
-      </Tabs>
-    </div>
+      <TabsContent value="history" className="mt-0">
+        <BulletinHistoryTab 
+          schoolId={schoolId}
+          schoolYearId={schoolYearId}
+        />
+      </TabsContent>
+    </Tabs>
   );
 };
