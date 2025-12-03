@@ -39,11 +39,13 @@ export const Window: React.FC<WindowProps> = ({
         positionClasses[window.position]
       )}
       style={{ zIndex: window.zIndex }}
-      onMouseDown={(e) => {
-        // Ne focus que si le clic est sur le fond de la fenêtre, pas sur le contenu
-        if (e.target === e.currentTarget) {
-          onFocus(window.id);
-        }
+      onMouseDownCapture={() => {
+        // Toujours focus la fenêtre quand on clique n'importe où dedans
+        onFocus(window.id);
+      }}
+      onClick={(e) => {
+        // Empêcher les clics de passer à travers vers les éléments en dessous
+        e.stopPropagation();
       }}
     >
       {/* Barre de titre */}
