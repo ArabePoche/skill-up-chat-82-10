@@ -9,8 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useBulletinTemplates } from '../../hooks/useBulletins';
+import { useBulletinTemplates, BulletinTemplate } from '../../hooks/useBulletins';
 import { StudentBulletinCard, StudentBulletinData, SubjectGrade } from './StudentBulletinCard';
+import { exportBulletinsToPdf } from '../../utils/bulletinPdfExport';
+import { toast } from 'sonner';
 
 interface BulletinGenerationTabProps {
   availableClasses: Array<{
@@ -282,6 +284,37 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     }
   }, [templates, selectedTemplate]);
 
+  // Get selected template object
+  const currentTemplate = useMemo(() => {
+    return templates.find(t => t.id === selectedTemplate) || null;
+  }, [templates, selectedTemplate]);
+
+  // Export PDF function with template support and Arabic handling
+  const handleExportPDF = async () => {
+    if (bulletinsData.length === 0) {
+      toast.error('Aucun bulletin à exporter');
+      return;
+    }
+
+    try {
+      const selectedClass = availableClasses.find(c => c.id === selectedClassId);
+      const className = selectedClass?.name || 'Classe';
+      const evaluationTitle = selectedEvaluation?.title || 'Évaluation';
+
+      await exportBulletinsToPdf({
+        className,
+        evaluationTitle,
+        template: currentTemplate,
+        bulletins: bulletinsData,
+      });
+
+      toast.success('PDF exporté avec succès');
+    } catch (error) {
+      console.error('Export PDF error:', error);
+      toast.error("Erreur lors de l'export PDF");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Sélecteurs */}
@@ -378,7 +411,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
                 {expandedAll ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 {expandedAll ? 'Réduire tout' : 'Déplier tout'}
               </Button>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={handleExportPDF}>
                 <Download className="h-4 w-4" />
                 Exporter PDF
               </Button>
