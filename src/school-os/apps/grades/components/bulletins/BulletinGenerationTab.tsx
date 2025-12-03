@@ -1,18 +1,16 @@
 /**
- * Onglet Génération de bulletins
+ * Onglet Génération de bulletins - Utilise les évaluations comme périodes
  */
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { BookOpen, FileText, Download, Users, Printer, Loader2, Search, X } from 'lucide-react';
+import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useBulletinTemplates, useSaveReportCard } from '../../hooks/useBulletins';
-import { toast } from 'sonner';
+import { useBulletinTemplates } from '../../hooks/useBulletins';
+import { StudentBulletinCard, StudentBulletinData, SubjectGrade } from './StudentBulletinCard';
 
 interface BulletinGenerationTabProps {
   availableClasses: Array<{
@@ -30,6 +28,30 @@ interface Student {
   id: string;
   first_name: string;
   last_name: string;
+  student_code?: string;
+  photo_url?: string;
+}
+
+interface Evaluation {
+  id: string;
+  title: string;
+  evaluation_type_name: string;
+  evaluation_date: string;
+}
+
+interface Grade {
+  id: string;
+  student_id: string;
+  subject_id: string;
+  score: number | null;
+  is_absent: boolean;
+  comment: string | null;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  coefficient: number;
 }
 
 export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({ 
@@ -38,29 +60,49 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   schoolYearId 
 }) => {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('');
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [selectAll, setSelectAll] = useState(false);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [expandedAll, setExpandedAll] = useState(true);
 
-  const selectedClass = availableClasses.find(c => c.id === selectedClassId);
-
-  // Fetch grading periods
-  const { data: periods = [] } = useQuery({
-    queryKey: ['grading-periods', schoolYearId],
+  // Fetch evaluations for selected class
+  const { data: evaluations = [], isLoading: loadingEvaluations } = useQuery({
+    queryKey: ['class-evaluations-periods', selectedClassId, schoolYearId],
     queryFn: async () => {
-      if (!schoolYearId) return [];
+      if (!selectedClassId || !schoolYearId) return [];
+      
+      // Get evaluations that have this class configured
+      const { data: classConfigs, error: configError } = await supabase
+        .from('school_evaluation_class_configs')
+        .select('evaluation_id')
+        .eq('class_id', selectedClassId);
+      
+      if (configError) throw configError;
+      if (!classConfigs || classConfigs.length === 0) return [];
+      
+      const evaluationIds = classConfigs.map(c => c.evaluation_id);
+      
       const { data, error } = await supabase
-        .from('grading_periods')
-        .select('*')
+        .from('school_evaluations')
+        .select(`
+          id,
+          title,
+          evaluation_date,
+          school_evaluation_types (name)
+        `)
+        .in('id', evaluationIds)
         .eq('school_year_id', schoolYearId)
-        .order('start_date', { ascending: true });
+        .order('evaluation_date', { ascending: false });
+      
       if (error) throw error;
-      return data;
+      
+      return (data || []).map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        evaluation_type_name: e.school_evaluation_types?.name || 'Non défini',
+        evaluation_date: e.evaluation_date,
+      })) as Evaluation[];
     },
-    enabled: !!schoolYearId,
+    enabled: !!selectedClassId && !!schoolYearId,
   });
 
   // Fetch templates
@@ -68,12 +110,12 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
 
   // Fetch students for selected class
   const { data: students = [], isLoading: loadingStudents } = useQuery({
-    queryKey: ['class-students', selectedClassId],
+    queryKey: ['class-students-bulletins', selectedClassId],
     queryFn: async () => {
       if (!selectedClassId) return [];
       const { data, error } = await supabase
         .from('students_school')
-        .select('id, first_name, last_name')
+        .select('id, first_name, last_name, student_code, photo_url')
         .eq('class_id', selectedClassId)
         .order('last_name', { ascending: true });
       if (error) throw error;
@@ -82,81 +124,153 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     enabled: !!selectedClassId,
   });
 
-  const saveReportCard = useSaveReportCard();
+  // Fetch grades for selected evaluation
+  const { data: grades = [], isLoading: loadingGrades } = useQuery({
+    queryKey: ['evaluation-grades-bulletins', selectedEvaluationId],
+    queryFn: async () => {
+      if (!selectedEvaluationId) return [];
+      const { data, error } = await supabase
+        .from('grades')
+        .select('id, student_id, subject_id, score, is_absent, comment')
+        .eq('evaluation_id', selectedEvaluationId);
+      if (error) throw error;
+      return data as Grade[];
+    },
+    enabled: !!selectedEvaluationId,
+  });
 
-  // Filter students based on search
-  const filteredStudents = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
-    return students.filter(s => 
-      !selectedStudents.includes(s.id) &&
-      (`${s.last_name} ${s.first_name}`.toLowerCase().includes(query) ||
-       `${s.first_name} ${s.last_name}`.toLowerCase().includes(query))
-    );
-  }, [students, searchQuery, selectedStudents]);
+  // Fetch subjects with coefficients for the class
+  const { data: classSubjects = [] } = useQuery({
+    queryKey: ['class-subjects-bulletins', selectedClassId],
+    queryFn: async () => {
+      if (!selectedClassId) return [];
+      const { data, error } = await supabase
+        .from('class_subjects')
+        .select(`
+          subject_id,
+          coefficient,
+          subjects (id, name)
+        `)
+        .eq('class_id', selectedClassId);
+      if (error) throw error;
+      return (data || []).map((cs: any) => ({
+        id: cs.subject_id,
+        name: cs.subjects?.name || 'Matière inconnue',
+        coefficient: cs.coefficient || 1,
+      })) as Subject[];
+    },
+    enabled: !!selectedClassId,
+  });
 
-  // Get selected student objects
-  const selectedStudentObjects = useMemo(() => {
-    return students.filter(s => selectedStudents.includes(s.id));
-  }, [students, selectedStudents]);
-
-  const addStudent = (studentId: string) => {
-    setSelectedStudents(prev => [...prev, studentId]);
-    setSearchQuery('');
-  };
-
-  const removeStudent = (studentId: string) => {
-    setSelectedStudents(prev => prev.filter(id => id !== studentId));
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    setSelectAll(checked);
-    if (checked) {
-      setSelectedStudents([]);
-    }
-  };
-
-  const handleGenerateBulletins = async () => {
-    if (!selectedClassId || !selectedPeriod) {
-      toast.error('Veuillez sélectionner une classe et une période');
-      return;
-    }
-
-    const studentsToGenerate = selectAll ? students : students.filter(s => selectedStudents.includes(s.id));
-    
-    if (studentsToGenerate.length === 0) {
-      toast.error('Veuillez sélectionner au moins un élève');
-      return;
+  // Calculate bulletins data for all students
+  const bulletinsData = useMemo((): StudentBulletinData[] => {
+    if (!selectedEvaluationId || students.length === 0 || classSubjects.length === 0) {
+      return [];
     }
 
-    setIsGenerating(true);
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
+    // Calculate data for each student
+    const studentData = students.map(student => {
+      const studentGrades = grades.filter(g => g.student_id === student.id);
       
-      for (const student of studentsToGenerate) {
-        await saveReportCard.mutateAsync({
-          school_id: schoolId,
-          school_year_id: schoolYearId,
-          grading_period_id: selectedPeriod,
-          class_id: selectedClassId,
-          student_id: student.id,
-          template_id: selectedTemplate || undefined,
-          generated_by: user?.id,
-          general_average: undefined,
-          rank: undefined,
-          mention: undefined,
-        });
+      let totalPoints = 0;
+      let totalCoefficients = 0;
+      let totalMaxPoints = 0;
+
+      const gradesList: SubjectGrade[] = classSubjects.map(subject => {
+        const grade = studentGrades.find(g => g.subject_id === subject.id);
+        const score = grade?.score ?? null;
+        const isAbsent = grade?.is_absent ?? false;
+        const maxScore = 20;
+
+        if (score !== null && !isAbsent) {
+          totalPoints += score * subject.coefficient;
+          totalCoefficients += subject.coefficient;
+        }
+        totalMaxPoints += maxScore * subject.coefficient;
+
+        return {
+          subjectId: subject.id,
+          subjectName: subject.name,
+          score,
+          maxScore,
+          coefficient: subject.coefficient,
+          isAbsent,
+        };
+      });
+
+      const average = totalCoefficients > 0 ? totalPoints / totalCoefficients : null;
+
+      return {
+        studentId: student.id,
+        studentName: `${student.last_name} ${student.first_name}`,
+        studentCode: student.student_code || '-',
+        photoUrl: student.photo_url,
+        grades: gradesList,
+        average,
+        totalPoints,
+        totalMaxPoints,
+        rank: 0,
+        totalStudents: students.length,
+        classAverage: 0,
+        firstAverage: 0,
+        appreciation: '',
+        mention: '',
+      };
+    });
+
+    // Calculate class average
+    const validAverages = studentData.filter(d => d.average !== null).map(d => d.average as number);
+    const classAverage = validAverages.length > 0 
+      ? validAverages.reduce((sum, avg) => sum + avg, 0) / validAverages.length 
+      : 0;
+
+    // Sort by average descending to calculate ranks
+    const sorted = [...studentData]
+      .filter(d => d.average !== null)
+      .sort((a, b) => (b.average || 0) - (a.average || 0));
+    
+    const firstAverage = sorted.length > 0 ? (sorted[0].average || 0) : 0;
+
+    // Assign ranks, mentions, appreciations, and class stats
+    sorted.forEach((data, index) => {
+      data.rank = index + 1;
+      data.classAverage = classAverage;
+      data.firstAverage = firstAverage;
+      data.mention = getMention(data.average);
+      data.appreciation = getAppreciation(data.average);
+    });
+
+    // Handle students without grades
+    studentData.forEach(data => {
+      if (data.average === null) {
+        data.rank = students.length;
+        data.classAverage = classAverage;
+        data.firstAverage = firstAverage;
+        data.mention = 'Non évalué';
+        data.appreciation = 'Aucune note disponible pour cette évaluation.';
       }
-      
-      toast.success(`${studentsToGenerate.length} bulletin(s) généré(s)`);
-    } catch (error) {
-      console.error('Error generating bulletins:', error);
-      toast.error('Erreur lors de la génération des bulletins');
-    } finally {
-      setIsGenerating(false);
+    });
+
+    return studentData;
+  }, [students, grades, classSubjects, selectedEvaluationId]);
+
+  // Calculate class statistics
+  const classStats = useMemo(() => {
+    if (bulletinsData.length === 0) {
+      return { classAverage: 0, bestAverage: 0 };
     }
-  };
+
+    const validAverages = bulletinsData.filter(b => b.average !== null).map(b => b.average as number);
+    const classAverage = validAverages.length > 0 
+      ? validAverages.reduce((sum, avg) => sum + avg, 0) / validAverages.length 
+      : 0;
+    const bestAverage = validAverages.length > 0 ? Math.max(...validAverages) : 0;
+
+    return { classAverage, bestAverage };
+  }, [bulletinsData]);
+
+  const selectedEvaluation = evaluations.find(e => e.id === selectedEvaluationId);
+  const isLoading = loadingStudents || loadingGrades || loadingEvaluations;
 
   // Set default template
   React.useEffect(() => {
@@ -169,174 +283,203 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   }, [templates, selectedTemplate]);
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="w-5 h-5" />
-          Générer des Bulletins
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-auto">
-        <div className="space-y-6">
-          {/* Sélection classe */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Classe</label>
-            <Select value={selectedClassId} onValueChange={(v) => { setSelectedClassId(v); setSelectedStudents([]); setSelectAll(false); setSearchQuery(''); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une classe" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableClasses.map((cls) => (
-                  <SelectItem key={cls.id} value={cls.id}>
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4" />
-                      {cls.name}
-                      <Badge variant="outline" className="ml-2">
-                        {cls.current_students} élèves
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Sélection période */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Période</label>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une période" />
-              </SelectTrigger>
-              <SelectContent>
-                {periods.map((period) => (
-                  <SelectItem key={period.id} value={period.id}>
-                    {period.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Sélection template */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Template</label>
-            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un template" />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    {template.name} {template.is_default && '(par défaut)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Sélection élèves */}
-          {selectedClassId && (
+    <div className="space-y-6">
+      {/* Sélecteurs */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Générer des Bulletins
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Sélection classe */}
             <div>
-              <label className="text-sm font-medium mb-2 block">Élèves</label>
-              <Card className="p-4">
-                {/* Checkbox sélectionner tous */}
-                <div className="flex items-center gap-2 mb-4">
-                  <Checkbox 
-                    id="selectAll"
-                    checked={selectAll}
-                    onCheckedChange={handleSelectAll}
-                  />
-                  <label htmlFor="selectAll" className="text-sm font-medium cursor-pointer">
-                    Sélectionner tous les élèves ({students.length})
-                  </label>
-                </div>
-
-                {/* Recherche d'élèves (masqué si "tous" est coché) */}
-                {!selectAll && (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Rechercher un élève..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                    
-                    {/* Résultats de recherche */}
-                    {filteredStudents.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-auto">
-                        {filteredStudents.map((student) => (
-                          <button
-                            key={student.id}
-                            onClick={() => addStudent(student.id)}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                          >
-                            {student.last_name} {student.first_name}
-                          </button>
-                        ))}
+              <label className="text-sm font-medium mb-2 block">Classe</label>
+              <Select 
+                value={selectedClassId} 
+                onValueChange={(v) => { 
+                  setSelectedClassId(v); 
+                  setSelectedEvaluationId(''); 
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une classe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableClasses.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        {cls.name}
+                        <Badge variant="outline" className="ml-2">
+                          {cls.current_students} élèves
+                        </Badge>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Élèves sélectionnés */}
-                {!selectAll && selectedStudentObjects.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {selectedStudentObjects.map((student) => (
-                      <Badge key={student.id} variant="secondary" className="flex items-center gap-1 pr-1">
-                        {student.last_name} {student.first_name}
-                        <button
-                          onClick={() => removeStudent(student.id)}
-                          className="ml-1 hover:bg-muted rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                {/* Compteur */}
-                {!selectAll && selectedStudents.length > 0 && (
-                  <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-                    {selectedStudents.length} élève(s) sélectionné(s)
-                  </div>
-                )}
-
-                {loadingStudents && (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-              </Card>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
+
+            {/* Sélection évaluation (période) */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Évaluation (Période)</label>
+              <Select 
+                value={selectedEvaluationId} 
+                onValueChange={setSelectedEvaluationId}
+                disabled={!selectedClassId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une évaluation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {evaluations.map((evaluation) => (
+                    <SelectItem key={evaluation.id} value={evaluation.id}>
+                      <div className="flex items-center gap-2">
+                        {evaluation.title}
+                        <Badge variant="secondary" className="ml-2">
+                          {evaluation.evaluation_type_name}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sélection template */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Template</label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name} {template.is_default && '(par défaut)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t">
-            <Button 
-              onClick={handleGenerateBulletins}
-              disabled={!selectedClassId || !selectedPeriod || isGenerating || (!selectAll && selectedStudents.length === 0)}
-              className="flex-1"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              Générer PDF
-            </Button>
-            <Button 
-              variant="outline"
-              disabled={!selectedClassId || !selectedPeriod || isGenerating}
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Imprimer
-            </Button>
-          </div>
+          {selectedEvaluationId && bulletinsData.length > 0 && (
+            <div className="flex gap-3 mt-4 pt-4 border-t">
+              <Button 
+                variant="outline"
+                onClick={() => setExpandedAll(!expandedAll)}
+                className="gap-2"
+              >
+                {expandedAll ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {expandedAll ? 'Réduire tout' : 'Déplier tout'}
+              </Button>
+              <Button className="gap-2">
+                <Download className="h-4 w-4" />
+                Exporter PDF
+              </Button>
+              <Button variant="outline" className="gap-2">
+                <Printer className="h-4 w-4" />
+                Imprimer
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Statistiques de classe */}
+      {selectedEvaluationId && bulletinsData.length > 0 && (
+        <Card>
+          <CardContent className="py-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Effectif</p>
+                <p className="text-2xl font-bold">{bulletinsData.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Moyenne de classe</p>
+                <p className="text-2xl font-bold">{classStats.classAverage.toFixed(2)}/20</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Meilleure moyenne</p>
+                <p className="text-2xl font-bold text-green-600">{classStats.bestAverage.toFixed(2)}/20</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Période</p>
+                <p className="text-lg font-semibold">{selectedEvaluation?.title}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Loading state */}
+      {isLoading && selectedEvaluationId && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      {/* Bulletins automatiques */}
+      {!isLoading && selectedEvaluationId && bulletinsData.length > 0 && (
+        <div className="space-y-4">
+          {bulletinsData.map((data) => (
+            <StudentBulletinCard
+              key={data.studentId}
+              data={data}
+              defaultOpen={expandedAll}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && selectedEvaluationId && bulletinsData.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Aucun élève trouvé dans cette classe.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Prompt to select */}
+      {!selectedEvaluationId && selectedClassId && !loadingEvaluations && (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            {evaluations.length === 0 ? (
+              <p>Aucune évaluation trouvée pour cette classe.</p>
+            ) : (
+              <p>Sélectionnez une évaluation pour générer les bulletins.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
+
+// Helper functions
+function getMention(average: number | null): string {
+  if (average === null) return 'Non évalué';
+  if (average >= 16) return 'Très Bien';
+  if (average >= 14) return 'Bien';
+  if (average >= 12) return 'Assez Bien';
+  if (average >= 10) return 'Passable';
+  return 'Insuffisant';
+}
+
+function getAppreciation(average: number | null): string {
+  if (average === null) return 'Aucune note disponible.';
+  if (average >= 18) return 'Excellent travail ! Continuez ainsi.';
+  if (average >= 16) return 'Très bon travail. Félicitations !';
+  if (average >= 14) return 'Bon travail. Continuez vos efforts.';
+  if (average >= 12) return 'Travail satisfaisant. Peut mieux faire.';
+  if (average >= 10) return 'Résultats justes. Des efforts sont nécessaires.';
+  return 'Résultats insuffisants. Un travail plus soutenu est indispensable.';
+}
