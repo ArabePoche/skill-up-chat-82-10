@@ -1,18 +1,25 @@
 /**
- * Fenêtre affichant le contenu d'un dossier (fichiers uniquement)
+ * Fenêtre affichant le contenu d'un dossier (fichiers et sous-dossiers)
+ * Supporte la navigation dans la hiérarchie
  */
-import React, { useRef } from 'react';
-import { X, Folder, Trash2, Upload, FileText, FileImage, File, Download } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { X, Folder, Trash2, Upload, FileText, FileImage, File, Download, ChevronRight, Home, FolderPlus } from 'lucide-react';
 import { DesktopFolder, FolderFile } from '../types/folder';
 import { Button } from '@/components/ui/button';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
+import { CreateFolderDialog } from './CreateFolderDialog';
 
 interface FolderWindowProps {
   folder: DesktopFolder;
+  allFolders: DesktopFolder[];
   onClose: () => void;
   onAddFile: (file: Omit<FolderFile, 'id' | 'uploadedAt'>) => void;
   onRemoveFile: (fileId: string) => void;
+  onNavigate: (folderId: string) => void;
+  onCreateSubfolder: (name: string, color: string, isPublic: boolean) => void;
+  onDeleteFolder: (folderId: string) => void;
+  getFolderPath: (folderId: string) => DesktopFolder[];
 }
 
 const getFileIcon = (type: string) => {
@@ -29,19 +36,28 @@ const formatFileSize = (bytes: number) => {
 
 export const FolderWindow: React.FC<FolderWindowProps> = ({
   folder,
+  allFolders,
   onClose,
   onAddFile,
   onRemoveFile,
+  onNavigate,
+  onCreateSubfolder,
+  onDeleteFolder,
+  getFolderPath,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading } = useFileUpload();
+  const [createSubfolderOpen, setCreateSubfolderOpen] = useState(false);
+
+  // Récupérer les sous-dossiers du dossier actuel
+  const childFolders = allFolders.filter(f => f.parentId === folder.id);
+  const folderPath = getFolderPath(folder.id);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     for (const file of Array.from(files)) {
-      // Bloquer les vidéos
       if (file.type.startsWith('video/')) {
         toast.error(`Les vidéos ne sont pas autorisées: ${file.name}`);
         continue;
@@ -62,7 +78,6 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
       }
     }
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -72,10 +87,17 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
     window.open(file.url, '_blank');
   };
 
+  const handleCreateSubfolder = (name: string, color: string, isPublic: boolean) => {
+    onCreateSubfolder(name, color, isPublic);
+    setCreateSubfolderOpen(false);
+  };
+
+  const totalItems = folder.files.length + childFolders.length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div 
-        className="bg-background/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden border border-border/50"
+        className="bg-background/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden border border-border/50"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -83,38 +105,123 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
           className="flex items-center justify-between px-4 py-3 border-b border-border/50"
           style={{ backgroundColor: `${folder.color}15` }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <Folder 
-              className="w-6 h-6" 
+              className="w-6 h-6 flex-shrink-0" 
               style={{ color: folder.color }}
               fill={folder.color}
               fillOpacity={0.3}
             />
-            <span className="font-medium text-foreground">{folder.name}</span>
-            <span className="text-xs text-muted-foreground">
-              {folder.files.length} fichier{folder.files.length > 1 ? 's' : ''}
+            <span className="font-medium text-foreground truncate">{folder.name}</span>
+            <span className="text-xs text-muted-foreground flex-shrink-0">
+              {totalItems} élément{totalItems > 1 ? 's' : ''}
             </span>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-8 w-8 rounded-full"
+            className="h-8 w-8 rounded-full flex-shrink-0"
           >
             <X className="w-4 h-4" />
           </Button>
         </div>
 
+        {/* Breadcrumb */}
+        {folderPath.length > 1 && (
+          <div className="flex items-center gap-1 px-4 py-2 bg-muted/30 border-b border-border/30 overflow-x-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => onNavigate(folderPath[0].id)}
+            >
+              <Home className="w-3 h-3" />
+            </Button>
+            {folderPath.map((pathFolder, index) => (
+              <React.Fragment key={pathFolder.id}>
+                <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <Button
+                  variant={index === folderPath.length - 1 ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => onNavigate(pathFolder.id)}
+                  disabled={index === folderPath.length - 1}
+                >
+                  {pathFolder.name}
+                </Button>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+
         {/* Content */}
-        <div className="p-4 min-h-[200px] max-h-[400px] overflow-auto">
-          {folder.files.length === 0 ? (
+        <div className="p-4 min-h-[250px] max-h-[400px] overflow-auto">
+          {totalItems === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
               <Folder className="w-12 h-12 mb-2 opacity-50" />
               <p className="text-sm">Ce dossier est vide</p>
-              <p className="text-xs mt-1">Cliquez sur "Ajouter" pour importer des fichiers</p>
+              <p className="text-xs mt-1">Ajoutez des fichiers ou créez des sous-dossiers</p>
             </div>
           ) : (
             <div className="space-y-2">
+              {/* Sous-dossiers */}
+              {childFolders.map((childFolder) => {
+                const childCount = allFolders.filter(f => f.parentId === childFolder.id).length + childFolder.files.length;
+                return (
+                  <div
+                    key={childFolder.id}
+                    className="group flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
+                    onDoubleClick={() => onNavigate(childFolder.id)}
+                  >
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${childFolder.color}20` }}
+                    >
+                      <Folder 
+                        className="w-5 h-5" 
+                        style={{ color: childFolder.color }}
+                        fill={childFolder.color}
+                        fillOpacity={0.3}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {childFolder.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {childCount} élément{childCount > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigate(childFolder.id);
+                        }}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteFolder(childFolder.id);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Fichiers */}
               {folder.files.map((file) => {
                 const IconComponent = getFileIcon(file.type);
                 return (
@@ -161,19 +268,29 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
           )}
         </div>
 
-        {/* Footer avec bouton d'ajout */}
-        <div className="px-4 py-3 border-t border-border/50 bg-muted/30 flex justify-between items-center">
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-border/50 bg-muted/30 flex justify-between items-center gap-2">
           <p className="text-xs text-muted-foreground">
             Tous types de fichiers sauf vidéos
           </p>
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            size="sm"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            {isUploading ? 'Upload...' : 'Ajouter'}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCreateSubfolderOpen(true)}
+            >
+              <FolderPlus className="w-4 h-4 mr-2" />
+              Sous-dossier
+            </Button>
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              size="sm"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {isUploading ? 'Upload...' : 'Ajouter'}
+            </Button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -184,6 +301,13 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
           />
         </div>
       </div>
+
+      {/* Dialog création sous-dossier */}
+      <CreateFolderDialog
+        open={createSubfolderOpen}
+        onOpenChange={setCreateSubfolderOpen}
+        onCreateFolder={handleCreateSubfolder}
+      />
     </div>
   );
 };
