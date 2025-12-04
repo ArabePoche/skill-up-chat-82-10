@@ -21,6 +21,7 @@ export interface DesktopFolder {
   isOwner?: boolean; // Indique si l'utilisateur courant est propriétaire du dossier
   createdAt: string;
   parentId?: string; // ID du dossier parent (undefined = dossier racine)
+  positionX?: number; // Position pour le tri dans le drag-drop
 }
 
 export interface FolderContextMenuProps {
