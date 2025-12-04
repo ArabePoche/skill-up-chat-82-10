@@ -88,8 +88,8 @@ export const Desktop: React.FC = () => {
     deleteFolder,
     renameFolder,
     changeFolderColor,
-    removeAppFromFolder,
-    getAppsInFolders,
+    addFileToFolder,
+    removeFileFromFolder,
   } = useDesktopFolders();
 
   // Mettre à jour les apps quand les permissions changent
@@ -231,7 +231,6 @@ export const Desktop: React.FC = () => {
                     <DesktopFolderIcon
                       key={folder.id}
                       folder={folder}
-                      appCount={folder.appIds.length}
                       onOpen={setOpenFolderId}
                       onRename={renameFolder}
                       onDelete={deleteFolder}
@@ -374,10 +373,9 @@ export const Desktop: React.FC = () => {
       {openFolder && (
         <FolderWindow
           folder={openFolder}
-          apps={apps}
           onClose={() => setOpenFolderId(null)}
-          onOpenApp={openWindow}
-          onRemoveApp={(appId) => removeAppFromFolder(openFolder.id, appId)}
+          onAddFile={(file) => addFileToFolder(openFolder.id, file)}
+          onRemoveFile={(fileId) => removeFileFromFolder(openFolder.id, fileId)}
         />
       )}
     </ContextMenu>
