@@ -95,40 +95,60 @@ export const Desktop: React.FC = () => {
     updateFolderPositions,
   } = useDesktopFolders();
 
-  // State local pour l'ordre des dossiers (permet la réorganisation drag-drop)
-  const [orderedFolderIds, setOrderedFolderIds] = useState<string[]>([]);
+  // Clé localStorage pour persister l'ordre
+  const storageKey = `desktop-order-${school?.id || 'default'}`;
+  
+  // State local pour l'ordre unifié (dossiers + apps)
+  const [orderedItemIds, setOrderedItemIds] = useState<string[]>(() => {
+    // Charger depuis localStorage au montage
+    const saved = localStorage.getItem(storageKey);
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  // Synchroniser l'ordre des dossiers quand les dossiers changent
+  // Sauvegarder dans localStorage quand l'ordre change
+  useEffect(() => {
+    if (orderedItemIds.length > 0) {
+      localStorage.setItem(storageKey, JSON.stringify(orderedItemIds));
+    }
+  }, [orderedItemIds, storageKey]);
+
+  // Synchroniser l'ordre quand les dossiers ou apps changent
   useEffect(() => {
     const rootFolders = getRootFolders();
+    const folderIds = rootFolders.map(f => `folder-${f.id}`);
+    const appIds = apps.map(app => app.id);
+    const allCurrentIds = [...folderIds, ...appIds];
     
-    // Trier par positionX (de la base de données) puis par date de création
-    const sortedFolders = [...rootFolders].sort((a, b) => {
-      const posA = a.positionX ?? 999;
-      const posB = b.positionX ?? 999;
-      if (posA !== posB) return posA - posB;
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    });
+    if (allCurrentIds.length === 0) return;
     
-    const sortedIds = sortedFolders.map(f => f.id);
-    
-    // Garder l'ordre existant seulement s'il y a déjà des IDs (évite de réinitialiser après un drag)
-    setOrderedFolderIds(prev => {
-      if (prev.length === 0) return sortedIds;
+    setOrderedItemIds(prev => {
+      // Filtrer les IDs qui n'existent plus
+      const validPrev = prev.filter(id => allCurrentIds.includes(id));
+      // Ajouter les nouveaux IDs à la fin
+      const newIds = allCurrentIds.filter(id => !validPrev.includes(id));
       
-      // Ajouter les nouveaux dossiers à la fin
-      const existingIds = prev.filter(id => sortedIds.includes(id));
-      const newIds = sortedIds.filter(id => !prev.includes(id));
-      return [...existingIds, ...newIds];
+      // Si l'ordre sauvegardé est vide, utiliser l'ordre par défaut
+      if (validPrev.length === 0) {
+        return allCurrentIds;
+      }
+      
+      return [...validPrev, ...newIds];
     });
-  }, [folders]);
+  }, [folders, apps, getRootFolders]);
 
-  // Obtenir les dossiers racine ordonnés
-  const getOrderedRootFolders = () => {
+  // Obtenir les éléments ordonnés
+  const getOrderedItems = () => {
     const rootFolders = getRootFolders();
-    return orderedFolderIds
-      .map(id => rootFolders.find(f => f.id === id))
-      .filter(Boolean) as typeof rootFolders;
+    return orderedItemIds.map(id => {
+      if (id.startsWith('folder-')) {
+        const folderId = id.replace('folder-', '');
+        const folder = rootFolders.find(f => f.id === folderId);
+        return folder ? { type: 'folder' as const, data: folder } : null;
+      } else {
+        const app = apps.find(a => a.id === id);
+        return app ? { type: 'app' as const, data: app } : null;
+      }
+    }).filter(Boolean);
   };
 
   // Mettre à jour les apps quand les permissions changent
@@ -166,43 +186,31 @@ export const Desktop: React.FC = () => {
       const activeId = String(active.id);
       const overId = String(over.id);
       
-      // Vérifier si ce sont des dossiers ou des apps
-      const isActiveFolder = activeId.startsWith('folder-');
-      const isOverFolder = overId.startsWith('folder-');
-      
-      // Réorganisation des dossiers entre eux
-      if (isActiveFolder && isOverFolder) {
-        const activeFolderId = activeId.replace('folder-', '');
-        const overFolderId = overId.replace('folder-', '');
+      setOrderedItemIds((items) => {
+        const oldIndex = items.findIndex((id) => id === activeId);
+        const newIndex = items.findIndex((id) => id === overId);
         
-        setOrderedFolderIds((items) => {
-          const oldIndex = items.findIndex((id) => id === activeFolderId);
-          const newIndex = items.findIndex((id) => id === overFolderId);
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const newOrder = arrayMove(items, oldIndex, newIndex);
-            // Persister les nouvelles positions en base
-            const updates = newOrder.map((id, index) => ({
-              id,
-              position_x: index,
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newOrder = arrayMove(items, oldIndex, newIndex);
+          
+          // Persister les positions des dossiers (position = index global dans la liste)
+          const folderUpdates = newOrder
+            .map((id, globalIndex) => ({ id, globalIndex }))
+            .filter(item => item.id.startsWith('folder-'))
+            .map(item => ({
+              id: item.id.replace('folder-', ''),
+              position_x: item.globalIndex,
               position_y: 0,
             }));
-            updateFolderPositions(updates);
-            return newOrder;
+          
+          if (folderUpdates.length > 0) {
+            updateFolderPositions(folderUpdates);
           }
-          return items;
-        });
-      }
-      // Réorganisation des apps entre elles
-      else if (!isActiveFolder && !isOverFolder) {
-        setApps((items) => {
-          const oldIndex = items.findIndex((item) => item.id === activeId);
-          const newIndex = items.findIndex((item) => item.id === overId);
-          if (oldIndex !== -1 && newIndex !== -1) {
-            return arrayMove(items, oldIndex, newIndex);
-          }
-          return items;
-        });
-      }
+          
+          return newOrder;
+        }
+        return items;
+      });
     }
     
     setActiveId(null);
@@ -299,34 +307,45 @@ export const Desktop: React.FC = () => {
               onDragCancel={handleDragCancel}
             >
               <SortableContext 
-                items={[
-                  ...orderedFolderIds.map(id => `folder-${id}`),
-                  ...apps.map(app => app.id)
-                ]} 
+                items={orderedItemIds} 
                 strategy={rectSortingStrategy}
               >
                 <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pointer-events-auto">
-                  {/* Dossiers racine ordonnés */}
-                  {getOrderedRootFolders().map((folder) => (
-                    <DesktopFolderIcon
-                      key={folder.id}
-                      folder={folder}
-                      onOpen={setOpenFolderId}
-                      onRename={renameFolder}
-                      onDelete={deleteFolder}
-                      onChangeColor={changeFolderColor}
-                      className={getIconSizeClass()}
-                    />
-                  ))}
-                  {/* Applications */}
-                  {filteredApps.map((app) => (
-                    <AppIcon
-                      key={app.id}
-                      app={app}
-                      onOpen={handleAppClick}
-                      className={getIconSizeClass()}
-                    />
-                  ))}
+                  {/* Éléments ordonnés (dossiers + apps mélangés) */}
+                  {getOrderedItems().map((item) => {
+                    if (!item) return null;
+                    
+                    if (item.type === 'folder') {
+                      // Filtrer si recherche active
+                      if (searchQuery && !item.data.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+                        return null;
+                      }
+                      return (
+                        <DesktopFolderIcon
+                          key={item.data.id}
+                          folder={item.data}
+                          onOpen={setOpenFolderId}
+                          onRename={renameFolder}
+                          onDelete={deleteFolder}
+                          onChangeColor={changeFolderColor}
+                          className={getIconSizeClass()}
+                        />
+                      );
+                    } else {
+                      // Filtrer si recherche active
+                      if (searchQuery && !item.data.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+                        return null;
+                      }
+                      return (
+                        <AppIcon
+                          key={item.data.id}
+                          app={item.data}
+                          onOpen={handleAppClick}
+                          className={getIconSizeClass()}
+                        />
+                      );
+                    }
+                  })}
                 </div>
               </SortableContext>
             </DndContext>
