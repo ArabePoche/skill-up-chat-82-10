@@ -92,7 +92,44 @@ export const Desktop: React.FC = () => {
     removeFileFromFolder,
     getRootFolders,
     getFolderPath,
+    updateFolderPositions,
   } = useDesktopFolders();
+
+  // State local pour l'ordre des dossiers (permet la réorganisation drag-drop)
+  const [orderedFolderIds, setOrderedFolderIds] = useState<string[]>([]);
+
+  // Synchroniser l'ordre des dossiers quand les dossiers changent
+  useEffect(() => {
+    const rootFolders = getRootFolders();
+    
+    // Trier par positionX (de la base de données) puis par date de création
+    const sortedFolders = [...rootFolders].sort((a, b) => {
+      const posA = a.positionX ?? 999;
+      const posB = b.positionX ?? 999;
+      if (posA !== posB) return posA - posB;
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+    
+    const sortedIds = sortedFolders.map(f => f.id);
+    
+    // Garder l'ordre existant seulement s'il y a déjà des IDs (évite de réinitialiser après un drag)
+    setOrderedFolderIds(prev => {
+      if (prev.length === 0) return sortedIds;
+      
+      // Ajouter les nouveaux dossiers à la fin
+      const existingIds = prev.filter(id => sortedIds.includes(id));
+      const newIds = sortedIds.filter(id => !prev.includes(id));
+      return [...existingIds, ...newIds];
+    });
+  }, [folders]);
+
+  // Obtenir les dossiers racine ordonnés
+  const getOrderedRootFolders = () => {
+    const rootFolders = getRootFolders();
+    return orderedFolderIds
+      .map(id => rootFolders.find(f => f.id === id))
+      .filter(Boolean) as typeof rootFolders;
+  };
 
   // Mettre à jour les apps quand les permissions changent
   useEffect(() => {
@@ -126,11 +163,46 @@ export const Desktop: React.FC = () => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setApps((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
+      const activeId = String(active.id);
+      const overId = String(over.id);
+      
+      // Vérifier si ce sont des dossiers ou des apps
+      const isActiveFolder = activeId.startsWith('folder-');
+      const isOverFolder = overId.startsWith('folder-');
+      
+      // Réorganisation des dossiers entre eux
+      if (isActiveFolder && isOverFolder) {
+        const activeFolderId = activeId.replace('folder-', '');
+        const overFolderId = overId.replace('folder-', '');
+        
+        setOrderedFolderIds((items) => {
+          const oldIndex = items.findIndex((id) => id === activeFolderId);
+          const newIndex = items.findIndex((id) => id === overFolderId);
+          if (oldIndex !== -1 && newIndex !== -1) {
+            const newOrder = arrayMove(items, oldIndex, newIndex);
+            // Persister les nouvelles positions en base
+            const updates = newOrder.map((id, index) => ({
+              id,
+              position_x: index,
+              position_y: 0,
+            }));
+            updateFolderPositions(updates);
+            return newOrder;
+          }
+          return items;
+        });
+      }
+      // Réorganisation des apps entre elles
+      else if (!isActiveFolder && !isOverFolder) {
+        setApps((items) => {
+          const oldIndex = items.findIndex((item) => item.id === activeId);
+          const newIndex = items.findIndex((item) => item.id === overId);
+          if (oldIndex !== -1 && newIndex !== -1) {
+            return arrayMove(items, oldIndex, newIndex);
+          }
+          return items;
+        });
+      }
     }
     
     setActiveId(null);
@@ -226,10 +298,16 @@ export const Desktop: React.FC = () => {
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
             >
-              <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
+              <SortableContext 
+                items={[
+                  ...orderedFolderIds.map(id => `folder-${id}`),
+                  ...apps.map(app => app.id)
+                ]} 
+                strategy={rectSortingStrategy}
+              >
                 <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pointer-events-auto">
-                  {/* Dossiers racine uniquement */}
-                  {getRootFolders().map((folder) => (
+                  {/* Dossiers racine ordonnés */}
+                  {getOrderedRootFolders().map((folder) => (
                     <DesktopFolderIcon
                       key={folder.id}
                       folder={folder}
