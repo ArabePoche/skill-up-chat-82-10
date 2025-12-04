@@ -21,9 +21,13 @@ import { AppIcon } from './AppIcon';
 import { Window } from './Window';
 import { Taskbar } from './Taskbar';
 import { QuickPanel } from './QuickPanel';
+import { CreateFolderDialog } from './CreateFolderDialog';
+import { DesktopFolderIcon } from './DesktopFolder';
+import { FolderWindow } from './FolderWindow';
 import { useWindowManager } from '../hooks/useWindowManager';
 import { useWallpaper } from '../hooks/useWallpaper';
 import { useDesktopSettings } from '../hooks/useDesktopSettings';
+import { useDesktopFolders } from '../hooks/useDesktopFolders';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useFilteredApps } from '../hooks/useFilteredApps';
 import { Input } from '@/components/ui/input';
@@ -51,6 +55,8 @@ export const Desktop: React.FC = () => {
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
 
   const {
     windows,
@@ -75,6 +81,16 @@ export const Desktop: React.FC = () => {
     isAppPinned,
     getIconSizeClass,
   } = useDesktopSettings();
+
+  const {
+    folders,
+    createFolder,
+    deleteFolder,
+    renameFolder,
+    changeFolderColor,
+    removeAppFromFolder,
+    getAppsInFolders,
+  } = useDesktopFolders();
 
   // Mettre à jour les apps quand les permissions changent
   useEffect(() => {
@@ -136,8 +152,15 @@ export const Desktop: React.FC = () => {
   };
 
   const handleCreateFolder = () => {
-    toast.info('Création de dossier : fonctionnalité à venir');
+    setCreateFolderOpen(true);
   };
+
+  const handleFolderCreate = (name: string, color: string) => {
+    createFolder(name, color);
+    toast.success(`Dossier "${name}" créé`);
+  };
+
+  const openFolder = folders.find(f => f.id === openFolderId);
 
   const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,6 +226,20 @@ export const Desktop: React.FC = () => {
             >
               <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pointer-events-auto">
+                  {/* Dossiers */}
+                  {folders.map((folder) => (
+                    <DesktopFolderIcon
+                      key={folder.id}
+                      folder={folder}
+                      appCount={folder.appIds.length}
+                      onOpen={setOpenFolderId}
+                      onRename={renameFolder}
+                      onDelete={deleteFolder}
+                      onChangeColor={changeFolderColor}
+                      className={getIconSizeClass()}
+                    />
+                  ))}
+                  {/* Applications */}
                   {filteredApps.map((app) => (
                     <AppIcon
                       key={app.id}
@@ -325,6 +362,24 @@ export const Desktop: React.FC = () => {
           Créer un dossier
         </ContextMenuItem>
       </ContextMenuContent>
+
+      {/* Dialog création de dossier */}
+      <CreateFolderDialog
+        open={createFolderOpen}
+        onOpenChange={setCreateFolderOpen}
+        onCreateFolder={handleFolderCreate}
+      />
+
+      {/* Fenêtre de dossier ouvert */}
+      {openFolder && (
+        <FolderWindow
+          folder={openFolder}
+          apps={apps}
+          onClose={() => setOpenFolderId(null)}
+          onOpenApp={openWindow}
+          onRemoveApp={(appId) => removeAppFromFolder(openFolder.id, appId)}
+        />
+      )}
     </ContextMenu>
   );
 };
