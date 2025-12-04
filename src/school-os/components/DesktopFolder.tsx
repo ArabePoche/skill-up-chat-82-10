@@ -1,8 +1,10 @@
 /**
- * Composant dossier affichable sur le bureau
+ * Composant dossier affichable sur le bureau avec support drag-and-drop
  */
 import React, { useState } from 'react';
 import { Folder, Trash2, Edit2, Palette } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { DesktopFolder } from '../types/folder';
 import {
   ContextMenu,
@@ -50,6 +52,22 @@ export const DesktopFolderIcon: React.FC<DesktopFolderProps> = ({
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState(folder.name);
 
+  // Support drag-and-drop avec préfixe pour différencier des apps
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `folder-${folder.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   const handleRename = () => {
     if (newName.trim()) {
       onRename(folder.id, newName.trim());
@@ -62,9 +80,13 @@ export const DesktopFolderIcon: React.FC<DesktopFolderProps> = ({
       <ContextMenu>
         <ContextMenuTrigger>
           <div
+            ref={setNodeRef}
+            style={style}
             className={`flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer
               hover:bg-white/10 transition-all duration-200 group ${className}`}
-            onDoubleClick={() => onOpen(folder.id)}
+            {...attributes}
+            {...listeners}
+            onDoubleClick={() => !isDragging && onOpen(folder.id)}
           >
             <div 
               className="relative w-16 h-16 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105"
