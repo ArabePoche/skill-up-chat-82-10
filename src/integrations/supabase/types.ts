@@ -624,6 +624,91 @@ export type Database = {
           },
         ]
       }
+      desktop_folder_files: {
+        Row: {
+          folder_id: string
+          id: string
+          name: string
+          size: number
+          type: string
+          uploaded_at: string
+          url: string
+        }
+        Insert: {
+          folder_id: string
+          id?: string
+          name: string
+          size?: number
+          type: string
+          uploaded_at?: string
+          url: string
+        }
+        Update: {
+          folder_id?: string
+          id?: string
+          name?: string
+          size?: number
+          type?: string
+          uploaded_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desktop_folder_files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "desktop_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      desktop_folders: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_public: boolean
+          name: string
+          parent_id: string | null
+          position_x: number
+          position_y: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name: string
+          parent_id?: string | null
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          name?: string
+          parent_id?: string | null
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desktop_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "desktop_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollment_requests: {
         Row: {
           created_at: string | null
@@ -2635,6 +2720,7 @@ export type Database = {
           subscribers_count: number | null
           updated_at: string | null
           username: string | null
+          wallpaper_url: string | null
         }
         Insert: {
           age?: number | null
@@ -2659,6 +2745,7 @@ export type Database = {
           subscribers_count?: number | null
           updated_at?: string | null
           username?: string | null
+          wallpaper_url?: string | null
         }
         Update: {
           age?: number | null
@@ -2683,6 +2770,7 @@ export type Database = {
           subscribers_count?: number | null
           updated_at?: string | null
           username?: string | null
+          wallpaper_url?: string | null
         }
         Relationships: []
       }
