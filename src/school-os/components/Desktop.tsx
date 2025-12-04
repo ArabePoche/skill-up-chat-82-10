@@ -28,6 +28,7 @@ import { useWindowManager } from '../hooks/useWindowManager';
 import { useWallpaper } from '../hooks/useWallpaper';
 import { useDesktopSettings } from '../hooks/useDesktopSettings';
 import { useDesktopFolders } from '../hooks/useDesktopFolders';
+import { useDesktopAppPositions } from '../hooks/useDesktopAppPositions';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useFilteredApps } from '../hooks/useFilteredApps';
 import { Input } from '@/components/ui/input';
@@ -95,46 +96,44 @@ export const Desktop: React.FC = () => {
     updateFolderPositions,
   } = useDesktopFolders();
 
-  // Clé localStorage pour persister l'ordre
-  const storageKey = `desktop-order-${school?.id || 'default'}`;
+  // Hook pour les positions des apps en DB
+  const { getAppPosition, updateAppPositions, isLoading: isLoadingPositions } = useDesktopAppPositions(school?.id || null);
   
   // State local pour l'ordre unifié (dossiers + apps)
-  const [orderedItemIds, setOrderedItemIds] = useState<string[]>(() => {
-    // Charger depuis localStorage au montage
-    const saved = localStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [orderedItemIds, setOrderedItemIds] = useState<string[]>([]);
 
-  // Sauvegarder dans localStorage quand l'ordre change
-  useEffect(() => {
-    if (orderedItemIds.length > 0) {
-      localStorage.setItem(storageKey, JSON.stringify(orderedItemIds));
-    }
-  }, [orderedItemIds, storageKey]);
-
-  // Synchroniser l'ordre quand les dossiers ou apps changent
+  // Reconstruire l'ordre à partir des positions en DB
   useEffect(() => {
     const rootFolders = getRootFolders();
-    const folderIds = rootFolders.map(f => `folder-${f.id}`);
-    const appIds = apps.map(app => app.id);
-    const allCurrentIds = [...folderIds, ...appIds];
+    if (rootFolders.length === 0 && apps.length === 0) return;
     
-    if (allCurrentIds.length === 0) return;
+    // Créer une liste avec toutes les positions
+    const itemsWithPositions: { id: string; position: number }[] = [];
     
-    setOrderedItemIds(prev => {
-      // Filtrer les IDs qui n'existent plus
-      const validPrev = prev.filter(id => allCurrentIds.includes(id));
-      // Ajouter les nouveaux IDs à la fin
-      const newIds = allCurrentIds.filter(id => !validPrev.includes(id));
-      
-      // Si l'ordre sauvegardé est vide, utiliser l'ordre par défaut
-      if (validPrev.length === 0) {
-        return allCurrentIds;
-      }
-      
-      return [...validPrev, ...newIds];
+    // Ajouter les dossiers avec leur position_x depuis la DB
+    rootFolders.forEach(folder => {
+      itemsWithPositions.push({
+        id: `folder-${folder.id}`,
+        position: folder.positionX ?? 999,
+      });
     });
-  }, [folders, apps, getRootFolders]);
+    
+    // Ajouter les apps avec leur position depuis la DB
+    apps.forEach(app => {
+      itemsWithPositions.push({
+        id: app.id,
+        position: getAppPosition(app.id),
+      });
+    });
+    
+    // Trier par position puis par id pour les éléments sans position
+    itemsWithPositions.sort((a, b) => {
+      if (a.position !== b.position) return a.position - b.position;
+      return a.id.localeCompare(b.id);
+    });
+    
+    setOrderedItemIds(itemsWithPositions.map(item => item.id));
+  }, [folders, apps, getRootFolders, getAppPosition, isLoadingPositions]);
 
   // Obtenir les éléments ordonnés
   const getOrderedItems = () => {
@@ -193,7 +192,7 @@ export const Desktop: React.FC = () => {
         if (oldIndex !== -1 && newIndex !== -1) {
           const newOrder = arrayMove(items, oldIndex, newIndex);
           
-          // Persister les positions des dossiers (position = index global dans la liste)
+          // Persister les positions des dossiers en DB
           const folderUpdates = newOrder
             .map((id, globalIndex) => ({ id, globalIndex }))
             .filter(item => item.id.startsWith('folder-'))
@@ -205,6 +204,19 @@ export const Desktop: React.FC = () => {
           
           if (folderUpdates.length > 0) {
             updateFolderPositions(folderUpdates);
+          }
+          
+          // Persister les positions des apps en DB
+          const appUpdates = newOrder
+            .map((id, globalIndex) => ({ id, globalIndex }))
+            .filter(item => !item.id.startsWith('folder-'))
+            .map(item => ({
+              app_id: item.id,
+              position_index: item.globalIndex,
+            }));
+          
+          if (appUpdates.length > 0) {
+            updateAppPositions(appUpdates);
           }
           
           return newOrder;
