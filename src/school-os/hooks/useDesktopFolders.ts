@@ -66,7 +66,8 @@ export const useDesktopFolders = () => {
           isOwner: f.user_id === user.id, // Marquer si l'utilisateur est propriétaire
           parentId: f.parent_id || undefined,
           createdAt: f.created_at,
-          positionX: f.position_x ?? 0, // Inclure la position pour le tri
+          positionX: f.position_x ?? 999, // Position X pour le tri (999 = pas encore positionné)
+          positionY: f.position_y ?? 0, // Position Y pour le tri
           files: filesData
             .filter(file => file.folder_id === f.id)
             .map(file => ({
@@ -315,8 +316,17 @@ export const useDesktopFolders = () => {
   // Mettre à jour les positions de plusieurs dossiers (pour le drag-drop)
   const updateFolderPositions = useCallback(async (updates: { id: string; position_x: number; position_y: number }[]) => {
     try {
-      // Mettre à jour chaque dossier en parallèle
-      await Promise.all(
+      // Mettre à jour l'état local immédiatement pour une UX fluide
+      setFolders(prev => prev.map(folder => {
+        const update = updates.find(u => u.id === folder.id);
+        if (update) {
+          return { ...folder, positionX: update.position_x, positionY: update.position_y };
+        }
+        return folder;
+      }));
+
+      // Mettre à jour chaque dossier en base en parallèle
+      const results = await Promise.all(
         updates.map(update =>
           supabase
             .from('desktop_folders')
@@ -324,6 +334,14 @@ export const useDesktopFolders = () => {
             .eq('id', update.id)
         )
       );
+      
+      // Vérifier si toutes les mises à jour ont réussi
+      const hasError = results.some(r => r.error);
+      if (hasError) {
+        console.error('Some folder position updates failed:', results.filter(r => r.error));
+        return false;
+      }
+      
       return true;
     } catch (e) {
       console.error('Error updating folder positions:', e);
