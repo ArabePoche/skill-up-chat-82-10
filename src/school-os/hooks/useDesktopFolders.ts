@@ -1,8 +1,10 @@
 /**
  * Hook pour gérer les dossiers du bureau School OS avec persistance Supabase
  * Supporte une hiérarchie illimitée de sous-dossiers
+ * Les dossiers publics sont visibles par tous les membres de l'école
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { DesktopFolder, FolderFile } from '../types/folder';
@@ -20,10 +22,12 @@ const FOLDER_COLORS = [
 
 export const useDesktopFolders = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const schoolId = searchParams.get('id');
   const [folders, setFolders] = useState<DesktopFolder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Charger les dossiers depuis Supabase
+  // Charger les dossiers depuis Supabase (propres + publics de l'école)
   useEffect(() => {
     const loadFolders = async () => {
       if (!user?.id) {
@@ -32,11 +36,10 @@ export const useDesktopFolders = () => {
       }
 
       try {
-        // Charger les dossiers
+        // La politique RLS gère l'accès : propres dossiers + dossiers publics de l'école
         const { data: foldersData, error: foldersError } = await supabase
           .from('desktop_folders')
           .select('*')
-          .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
         if (foldersError) throw foldersError;
@@ -60,6 +63,7 @@ export const useDesktopFolders = () => {
           name: f.name,
           color: f.color,
           isPublic: f.is_public,
+          isOwner: f.user_id === user.id, // Marquer si l'utilisateur est propriétaire
           parentId: f.parent_id || undefined,
           createdAt: f.created_at,
           files: filesData
@@ -83,7 +87,7 @@ export const useDesktopFolders = () => {
     };
 
     loadFolders();
-  }, [user?.id]);
+  }, [user?.id, schoolId]);
 
   const createFolder = useCallback(async (name: string, color?: string, isPublic: boolean = false, parentId?: string) => {
     if (!user?.id) return null;
@@ -95,6 +99,7 @@ export const useDesktopFolders = () => {
         .from('desktop_folders')
         .insert({
           user_id: user.id,
+          school_id: schoolId, // Associer à l'école courante
           name,
           color: folderColor,
           is_public: isPublic,
@@ -112,6 +117,7 @@ export const useDesktopFolders = () => {
         name: data.name,
         color: data.color,
         isPublic: data.is_public,
+        isOwner: true, // L'utilisateur est propriétaire du dossier qu'il crée
         parentId: data.parent_id || undefined,
         createdAt: data.created_at,
         files: [],
@@ -123,7 +129,7 @@ export const useDesktopFolders = () => {
       console.error('Error creating folder:', e);
       return null;
     }
-  }, [user?.id]);
+  }, [user?.id, schoolId]);
 
   const toggleFolderVisibility = useCallback(async (folderId: string) => {
     const folder = folders.find(f => f.id === folderId);
