@@ -1,8 +1,9 @@
 /**
  * Hook pour gérer les dossiers du bureau School OS
+ * Les dossiers contiennent des fichiers uniquement (pas d'applications)
  */
 import { useState, useEffect, useCallback } from 'react';
-import { DesktopFolder } from '../types/folder';
+import { DesktopFolder, FolderFile } from '../types/folder';
 
 const STORAGE_KEY = 'school-os-desktop-folders';
 
@@ -25,7 +26,15 @@ export const useDesktopFolders = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setFolders(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // Migration: convertir appIds en files et ajouter isPublic si nécessaire
+        const migrated = parsed.map((f: any) => ({
+          ...f,
+          files: f.files || [],
+          isPublic: f.isPublic ?? false,
+          appIds: undefined,
+        }));
+        setFolders(migrated);
       } catch (e) {
         console.error('Error loading folders:', e);
       }
@@ -37,16 +46,23 @@ export const useDesktopFolders = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(folders));
   }, [folders]);
 
-  const createFolder = useCallback((name: string, color?: string) => {
+  const createFolder = useCallback((name: string, color?: string, isPublic: boolean = false) => {
     const newFolder: DesktopFolder = {
       id: `folder-${Date.now()}`,
       name,
       color: color || FOLDER_COLORS[Math.floor(Math.random() * FOLDER_COLORS.length)],
-      appIds: [],
+      files: [],
+      isPublic,
       createdAt: new Date().toISOString(),
     };
     setFolders(prev => [...prev, newFolder]);
     return newFolder;
+  }, []);
+
+  const toggleFolderVisibility = useCallback((folderId: string) => {
+    setFolders(prev => prev.map(f => 
+      f.id === folderId ? { ...f, isPublic: !f.isPublic } : f
+    ));
   }, []);
 
   const deleteFolder = useCallback((folderId: string) => {
@@ -65,24 +81,31 @@ export const useDesktopFolders = () => {
     ));
   }, []);
 
-  const addAppToFolder = useCallback((folderId: string, appId: string) => {
+  const addFileToFolder = useCallback((folderId: string, file: Omit<FolderFile, 'id' | 'uploadedAt'>) => {
+    const newFile: FolderFile = {
+      ...file,
+      id: `file-${Date.now()}`,
+      uploadedAt: new Date().toISOString(),
+    };
     setFolders(prev => prev.map(f => 
       f.id === folderId 
-        ? { ...f, appIds: [...new Set([...f.appIds, appId])] }
+        ? { ...f, files: [...f.files, newFile] }
+        : f
+    ));
+    return newFile;
+  }, []);
+
+  const removeFileFromFolder = useCallback((folderId: string, fileId: string) => {
+    setFolders(prev => prev.map(f => 
+      f.id === folderId 
+        ? { ...f, files: f.files.filter(file => file.id !== fileId) }
         : f
     ));
   }, []);
 
-  const removeAppFromFolder = useCallback((folderId: string, appId: string) => {
-    setFolders(prev => prev.map(f => 
-      f.id === folderId 
-        ? { ...f, appIds: f.appIds.filter(id => id !== appId) }
-        : f
-    ));
-  }, []);
-
-  const getAppsInFolders = useCallback(() => {
-    return folders.flatMap(f => f.appIds);
+  const getFilesCount = useCallback((folderId: string) => {
+    const folder = folders.find(f => f.id === folderId);
+    return folder?.files.length || 0;
   }, [folders]);
 
   return {
@@ -91,9 +114,10 @@ export const useDesktopFolders = () => {
     deleteFolder,
     renameFolder,
     changeFolderColor,
-    addAppToFolder,
-    removeAppFromFolder,
-    getAppsInFolders,
+    toggleFolderVisibility,
+    addFileToFolder,
+    removeFileFromFolder,
+    getFilesCount,
     folderColors: FOLDER_COLORS,
   };
 };
