@@ -18,6 +18,7 @@ export interface DesktopFolder {
   color: string;
   files: FolderFile[];
   isPublic: boolean;
+  isOwner?: boolean; // Indique si l'utilisateur courant est propriétaire du dossier
   createdAt: string;
   parentId?: string; // ID du dossier parent (undefined = dossier racine)
 }
