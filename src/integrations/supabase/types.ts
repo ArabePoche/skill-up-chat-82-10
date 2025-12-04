@@ -3088,6 +3088,44 @@ export type Database = {
           },
         ]
       }
+      school_desktop_app_positions: {
+        Row: {
+          app_id: string
+          created_at: string
+          id: string
+          position_index: number
+          school_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_id: string
+          created_at?: string
+          id?: string
+          position_index?: number
+          school_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_id?: string
+          created_at?: string
+          id?: string
+          position_index?: number
+          school_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_desktop_app_positions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_evaluation_class_configs: {
         Row: {
           class_id: string
