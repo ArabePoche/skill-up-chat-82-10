@@ -31,7 +31,6 @@ const FOLDER_COLORS = [
 
 interface DesktopFolderProps {
   folder: DesktopFolder;
-  appCount: number;
   onOpen: (folderId: string) => void;
   onRename: (folderId: string, newName: string) => void;
   onDelete: (folderId: string) => void;
@@ -41,13 +40,13 @@ interface DesktopFolderProps {
 
 export const DesktopFolderIcon: React.FC<DesktopFolderProps> = ({
   folder,
-  appCount,
   onOpen,
   onRename,
   onDelete,
   onChangeColor,
   className,
 }) => {
+  const fileCount = folder.files?.length || 0;
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState(folder.name);
 
@@ -77,12 +76,12 @@ export const DesktopFolderIcon: React.FC<DesktopFolderProps> = ({
                 fill={folder.color}
                 fillOpacity={0.3}
               />
-              {appCount > 0 && (
+              {fileCount > 0 && (
                 <span 
                   className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white text-xs flex items-center justify-center font-medium"
                   style={{ backgroundColor: folder.color }}
                 >
-                  {appCount}
+                  {fileCount}
                 </span>
               )}
             </div>
