@@ -1,29 +1,66 @@
-// Hook pour la gestion du fond d'écran personnalisable
-import { useState, useEffect } from 'react';
+// Hook pour la gestion du fond d'écran personnalisable avec persistance Supabase
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 const DEFAULT_WALLPAPER = 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1920&q=80';
-const WALLPAPER_KEY = 'school-os-wallpaper';
 
 export const useWallpaper = () => {
-  const [wallpaper, setWallpaper] = useState<string>(() => {
-    return localStorage.getItem(WALLPAPER_KEY) || DEFAULT_WALLPAPER;
-  });
+  const { user } = useAuth();
+  const [wallpaper, setWallpaper] = useState<string>(DEFAULT_WALLPAPER);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Charger le fond d'écran depuis Supabase
   useEffect(() => {
-    localStorage.setItem(WALLPAPER_KEY, wallpaper);
-  }, [wallpaper]);
+    const loadWallpaper = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
 
-  const changeWallpaper = (url: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('wallpaper_url')
+          .eq('id', user.id)
+          .single();
+
+        if (!error && data?.wallpaper_url) {
+          setWallpaper(data.wallpaper_url);
+        }
+      } catch (e) {
+        console.error('Error loading wallpaper:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadWallpaper();
+  }, [user?.id]);
+
+  const changeWallpaper = useCallback(async (url: string) => {
     setWallpaper(url);
-  };
+    
+    if (!user?.id) return;
 
-  const resetWallpaper = () => {
-    setWallpaper(DEFAULT_WALLPAPER);
-  };
+    try {
+      await supabase
+        .from('profiles')
+        .update({ wallpaper_url: url })
+        .eq('id', user.id);
+    } catch (e) {
+      console.error('Error saving wallpaper:', e);
+    }
+  }, [user?.id]);
+
+  const resetWallpaper = useCallback(async () => {
+    await changeWallpaper(DEFAULT_WALLPAPER);
+  }, [changeWallpaper]);
 
   return {
     wallpaper,
     changeWallpaper,
     resetWallpaper,
+    isLoading,
   };
 };
