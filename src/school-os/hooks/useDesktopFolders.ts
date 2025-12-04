@@ -66,6 +66,7 @@ export const useDesktopFolders = () => {
           isOwner: f.user_id === user.id, // Marquer si l'utilisateur est propriétaire
           parentId: f.parent_id || undefined,
           createdAt: f.created_at,
+          positionX: f.position_x ?? 0, // Inclure la position pour le tri
           files: filesData
             .filter(file => file.folder_id === f.id)
             .map(file => ({
@@ -311,6 +312,25 @@ export const useDesktopFolders = () => {
     return (folder?.files.length || 0) + childFolders.length;
   }, [folders]);
 
+  // Mettre à jour les positions de plusieurs dossiers (pour le drag-drop)
+  const updateFolderPositions = useCallback(async (updates: { id: string; position_x: number; position_y: number }[]) => {
+    try {
+      // Mettre à jour chaque dossier en parallèle
+      await Promise.all(
+        updates.map(update =>
+          supabase
+            .from('desktop_folders')
+            .update({ position_x: update.position_x, position_y: update.position_y })
+            .eq('id', update.id)
+        )
+      );
+      return true;
+    } catch (e) {
+      console.error('Error updating folder positions:', e);
+      return false;
+    }
+  }, []);
+
   return {
     folders,
     isLoading,
@@ -327,6 +347,7 @@ export const useDesktopFolders = () => {
     getRootFolders,
     getFolderPath,
     moveFolder,
+    updateFolderPositions,
     folderColors: FOLDER_COLORS,
   };
 };
