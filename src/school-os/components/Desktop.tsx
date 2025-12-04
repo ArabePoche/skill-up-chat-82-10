@@ -90,6 +90,8 @@ export const Desktop: React.FC = () => {
     changeFolderColor,
     addFileToFolder,
     removeFileFromFolder,
+    getRootFolders,
+    getFolderPath,
   } = useDesktopFolders();
 
   // Mettre à jour les apps quand les permissions changent
@@ -155,9 +157,9 @@ export const Desktop: React.FC = () => {
     setCreateFolderOpen(true);
   };
 
-  const handleFolderCreate = (name: string, color: string) => {
-    createFolder(name, color);
-    toast.success(`Dossier "${name}" créé`);
+  const handleFolderCreate = (name: string, color: string, isPublic: boolean) => {
+    createFolder(name, color, isPublic);
+    toast.success(`Dossier "${name}" créé (${isPublic ? 'public' : 'privé'})`);
   };
 
   const openFolder = folders.find(f => f.id === openFolderId);
@@ -226,8 +228,8 @@ export const Desktop: React.FC = () => {
             >
               <SortableContext items={apps.map(app => app.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 pointer-events-auto">
-                  {/* Dossiers */}
-                  {folders.map((folder) => (
+                  {/* Dossiers racine uniquement */}
+                  {getRootFolders().map((folder) => (
                     <DesktopFolderIcon
                       key={folder.id}
                       folder={folder}
@@ -373,9 +375,14 @@ export const Desktop: React.FC = () => {
       {openFolder && (
         <FolderWindow
           folder={openFolder}
+          allFolders={folders}
           onClose={() => setOpenFolderId(null)}
           onAddFile={(file) => addFileToFolder(openFolder.id, file)}
           onRemoveFile={(fileId) => removeFileFromFolder(openFolder.id, fileId)}
+          onNavigate={setOpenFolderId}
+          onCreateSubfolder={(name, color, isPublic) => createFolder(name, color, isPublic, openFolder.id)}
+          onDeleteFolder={deleteFolder}
+          getFolderPath={getFolderPath}
         />
       )}
     </ContextMenu>
