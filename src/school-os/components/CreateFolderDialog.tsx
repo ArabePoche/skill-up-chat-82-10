@@ -1,5 +1,6 @@
 /**
  * Dialog pour créer un nouveau dossier sur le bureau
+ * Permet de choisir le nom, la couleur et la visibilité (privé/public)
  */
 import React, { useState } from 'react';
 import {
@@ -12,7 +13,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Folder } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Folder, Lock, Globe } from 'lucide-react';
 
 const FOLDER_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
@@ -22,7 +24,7 @@ const FOLDER_COLORS = [
 interface CreateFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateFolder: (name: string, color: string) => void;
+  onCreateFolder: (name: string, color: string, isPublic: boolean) => void;
 }
 
 export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
@@ -32,12 +34,14 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
 }) => {
   const [name, setName] = useState('Nouveau dossier');
   const [selectedColor, setSelectedColor] = useState(FOLDER_COLORS[0]);
+  const [isPublic, setIsPublic] = useState(false);
 
   const handleCreate = () => {
     if (name.trim()) {
-      onCreateFolder(name.trim(), selectedColor);
+      onCreateFolder(name.trim(), selectedColor, isPublic);
       setName('Nouveau dossier');
       setSelectedColor(FOLDER_COLORS[0]);
+      setIsPublic(false);
       onOpenChange(false);
     }
   };
@@ -83,17 +87,54 @@ export const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
             </div>
           </div>
 
+          {/* Option visibilité */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+            <div className="flex items-center gap-3">
+              {isPublic ? (
+                <Globe className="w-5 h-5 text-green-500" />
+              ) : (
+                <Lock className="w-5 h-5 text-orange-500" />
+              )}
+              <div>
+                <p className="font-medium text-sm">
+                  {isPublic ? 'Dossier public' : 'Dossier privé'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isPublic 
+                    ? 'Visible par tous les membres' 
+                    : 'Visible uniquement par vous'}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={isPublic}
+              onCheckedChange={setIsPublic}
+            />
+          </div>
+
           <div className="flex justify-center pt-4">
-            <div 
-              className="w-20 h-20 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${selectedColor}20` }}
-            >
-              <Folder 
-                className="w-12 h-12" 
-                style={{ color: selectedColor }}
-                fill={selectedColor}
-                fillOpacity={0.3}
-              />
+            <div className="relative">
+              <div 
+                className="w-20 h-20 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${selectedColor}20` }}
+              >
+                <Folder 
+                  className="w-12 h-12" 
+                  style={{ color: selectedColor }}
+                  fill={selectedColor}
+                  fillOpacity={0.3}
+                />
+              </div>
+              {/* Badge visibilité */}
+              <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ${
+                isPublic ? 'bg-green-500' : 'bg-orange-500'
+              }`}>
+                {isPublic ? (
+                  <Globe className="w-3.5 h-3.5 text-white" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5 text-white" />
+                )}
+              </div>
             </div>
           </div>
         </div>
