@@ -1,12 +1,23 @@
 /**
  * Types pour les dossiers du bureau School OS
+ * Les dossiers contiennent uniquement des fichiers (pas d'applications)
  */
+
+export interface FolderFile {
+  id: string;
+  name: string;
+  url: string;
+  type: string; // mime type
+  size: number; // en bytes
+  uploadedAt: string;
+}
 
 export interface DesktopFolder {
   id: string;
   name: string;
   color: string;
-  appIds: string[];
+  files: FolderFile[];
+  isPublic: boolean;
   createdAt: string;
 }
 
