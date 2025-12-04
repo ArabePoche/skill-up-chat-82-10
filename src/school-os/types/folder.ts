@@ -1,6 +1,6 @@
 /**
  * Types pour les dossiers du bureau School OS
- * Les dossiers contiennent uniquement des fichiers (pas d'applications)
+ * Les dossiers supportent une hiérarchie illimitée de sous-dossiers
  */
 
 export interface FolderFile {
@@ -19,6 +19,7 @@ export interface DesktopFolder {
   files: FolderFile[];
   isPublic: boolean;
   createdAt: string;
+  parentId?: string; // ID du dossier parent (undefined = dossier racine)
 }
 
 export interface FolderContextMenuProps {
