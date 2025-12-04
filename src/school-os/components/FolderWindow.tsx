@@ -1,28 +1,76 @@
 /**
- * Fenêtre affichant le contenu d'un dossier
+ * Fenêtre affichant le contenu d'un dossier (fichiers uniquement)
  */
-import React from 'react';
-import { X, Folder, Trash2 } from 'lucide-react';
-import { DesktopFolder } from '../types/folder';
-import { SchoolApp } from '../types';
+import React, { useRef } from 'react';
+import { X, Folder, Trash2, Upload, FileText, FileImage, File, Download } from 'lucide-react';
+import { DesktopFolder, FolderFile } from '../types/folder';
 import { Button } from '@/components/ui/button';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { toast } from 'sonner';
 
 interface FolderWindowProps {
   folder: DesktopFolder;
-  apps: SchoolApp[];
   onClose: () => void;
-  onOpenApp: (appId: string) => void;
-  onRemoveApp: (appId: string) => void;
+  onAddFile: (file: Omit<FolderFile, 'id' | 'uploadedAt'>) => void;
+  onRemoveFile: (fileId: string) => void;
 }
+
+const getFileIcon = (type: string) => {
+  if (type.startsWith('image/')) return FileImage;
+  if (type.includes('pdf') || type.includes('document') || type.includes('text')) return FileText;
+  return File;
+};
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 export const FolderWindow: React.FC<FolderWindowProps> = ({
   folder,
-  apps,
   onClose,
-  onOpenApp,
-  onRemoveApp,
+  onAddFile,
+  onRemoveFile,
 }) => {
-  const folderApps = apps.filter(app => folder.appIds.includes(app.id));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading } = useFileUpload();
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      // Bloquer les vidéos
+      if (file.type.startsWith('video/')) {
+        toast.error(`Les vidéos ne sont pas autorisées: ${file.name}`);
+        continue;
+      }
+
+      try {
+        const result = await uploadFile(file, 'school_os_folders');
+        onAddFile({
+          name: file.name,
+          url: result.fileUrl,
+          type: file.type,
+          size: file.size,
+        });
+        toast.success(`Fichier "${file.name}" ajouté`);
+      } catch (error) {
+        console.error('Erreur upload fichier:', error);
+        toast.error(`Erreur lors de l'upload de ${file.name}`);
+      }
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDownload = (file: FolderFile) => {
+    window.open(file.url, '_blank');
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -44,7 +92,7 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
             />
             <span className="font-medium text-foreground">{folder.name}</span>
             <span className="text-xs text-muted-foreground">
-              {folderApps.length} application{folderApps.length > 1 ? 's' : ''}
+              {folder.files.length} fichier{folder.files.length > 1 ? 's' : ''}
             </span>
           </div>
           <Button
@@ -59,46 +107,53 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
 
         {/* Content */}
         <div className="p-4 min-h-[200px] max-h-[400px] overflow-auto">
-          {folderApps.length === 0 ? (
+          {folder.files.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
               <Folder className="w-12 h-12 mb-2 opacity-50" />
               <p className="text-sm">Ce dossier est vide</p>
-              <p className="text-xs mt-1">Glissez des applications ici</p>
+              <p className="text-xs mt-1">Cliquez sur "Ajouter" pour importer des fichiers</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-4">
-              {folderApps.map((app) => {
-                const IconComponent = app.icon;
+            <div className="space-y-2">
+              {folder.files.map((file) => {
+                const IconComponent = getFileIcon(file.type);
                 return (
                   <div
-                    key={app.id}
-                    className="relative group flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
-                    onDoubleClick={() => {
-                      onOpenApp(app.id);
-                      onClose();
-                    }}
+                    key={file.id}
+                    className="group flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
                   >
                     <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: `${app.color}20` }}
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${folder.color}20` }}
                     >
-                      <IconComponent className="w-6 h-6" style={{ color: app.color }} />
+                      <IconComponent className="w-5 h-5" style={{ color: folder.color }} />
                     </div>
-                    <span className="text-xs text-center text-foreground truncate max-w-full">
-                      {app.name}
-                    </span>
-                    
-                    {/* Remove button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveApp(app.id);
-                      }}
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground 
-                        opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleDownload(file)}
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => onRemoveFile(file.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
@@ -106,11 +161,27 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
           )}
         </div>
 
-        {/* Footer hint */}
-        <div className="px-4 py-2 border-t border-border/50 bg-muted/30">
-          <p className="text-xs text-muted-foreground text-center">
-            Double-cliquez pour ouvrir une application
+        {/* Footer avec bouton d'ajout */}
+        <div className="px-4 py-3 border-t border-border/50 bg-muted/30 flex justify-between items-center">
+          <p className="text-xs text-muted-foreground">
+            Tous types de fichiers sauf vidéos
           </p>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            size="sm"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {isUploading ? 'Upload...' : 'Ajouter'}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="*/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
         </div>
       </div>
     </div>
