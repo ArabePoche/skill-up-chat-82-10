@@ -672,6 +672,7 @@ export type Database = {
           parent_id: string | null
           position_x: number
           position_y: number
+          school_id: string | null
           updated_at: string
           user_id: string
         }
@@ -684,6 +685,7 @@ export type Database = {
           parent_id?: string | null
           position_x?: number
           position_y?: number
+          school_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -696,6 +698,7 @@ export type Database = {
           parent_id?: string | null
           position_x?: number
           position_y?: number
+          school_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -705,6 +708,13 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "desktop_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desktop_folders_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
