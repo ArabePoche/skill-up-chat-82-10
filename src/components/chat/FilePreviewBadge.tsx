@@ -1,6 +1,9 @@
-
+/**
+ * FilePreviewBadge - Badge de prévisualisation de fichier avec icônes officielles
+ * Utilise file-icon-vectors pour afficher les vraies icônes de Word, Excel, PDF, etc.
+ */
 import React from 'react';
-import { FileText, Image, Video, Volume2, Download } from 'lucide-react';
+import FileIcon from '@/components/ui/FileIcon';
 
 interface FilePreviewBadgeProps {
   fileName: string;
@@ -15,13 +18,6 @@ const FilePreviewBadge: React.FC<FilePreviewBadgeProps> = ({
   isNew = false,
   context = 'shared'
 }) => {
-  const getIcon = () => {
-    if (fileType?.startsWith('image/')) return <Image size={16} />;
-    if (fileType?.startsWith('video/')) return <Video size={16} />;
-    if (fileType?.startsWith('audio/')) return <Volume2 size={16} />;
-    return <FileText size={16} />;
-  };
-
   const getBadgeText = () => {
     switch (context) {
       case 'shared': return 'Fichier partagé';
@@ -42,8 +38,8 @@ const FilePreviewBadge: React.FC<FilePreviewBadgeProps> = ({
 
   return (
     <div className="flex items-center gap-2 text-xs">
-      <div className={`flex items-center gap-1 px-2 py-1 rounded border ${getBadgeColor()}`}>
-        {getIcon()}
+      <div className={`flex items-center gap-1.5 px-2 py-1 rounded border ${getBadgeColor()}`}>
+        <FileIcon fileName={fileName} fileType={fileType} size="sm" />
         <span>{getBadgeText()}</span>
       </div>
       {isNew && (
