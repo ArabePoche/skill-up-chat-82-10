@@ -16,6 +16,7 @@ export interface SubjectGrade {
   maxScore: number;
   coefficient: number;
   isAbsent?: boolean;
+  classGradeScore?: number | null; // Note de classe (facultatif)
 }
 
 export interface StudentBulletinData {
@@ -33,6 +34,7 @@ export interface StudentBulletinData {
   firstAverage: number;
   appreciation: string;
   mention?: string;
+  hasClassGrades?: boolean; // Indique si les notes de classe sont incluses
 }
 
 interface StudentBulletinCardProps {
@@ -107,23 +109,46 @@ export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({
               <div>
                 <h4 className="text-sm font-medium mb-2">Notes par matière</h4>
                 <div className="grid gap-2">
+                  {/* En-tête si notes de classe présentes */}
+                  {data.hasClassGrades && data.grades.some(g => g.classGradeScore !== null && g.classGradeScore !== undefined) && (
+                    <div className="flex items-center justify-between py-1 px-3 text-xs text-muted-foreground border-b border-border/50">
+                      <span>Matière</span>
+                      <div className="flex items-center gap-4">
+                        <span className="w-16 text-center">Note classe</span>
+                        <span className="w-16 text-center">Note examen</span>
+                        <span className="w-8"></span>
+                      </div>
+                    </div>
+                  )}
                   {data.grades.map((grade) => (
                     <div 
                       key={grade.subjectId} 
                       className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md"
                     >
-                      <span className="text-sm">{grade.subjectName}</span>
+                      <span className="text-sm flex-1">{grade.subjectName}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
                           (coef. {grade.coefficient})
                         </span>
+                        {/* Note de classe si disponible */}
+                        {data.hasClassGrades && (
+                          <Badge 
+                            variant="outline" 
+                            className="font-mono w-16 justify-center text-xs"
+                          >
+                            {grade.classGradeScore !== null && grade.classGradeScore !== undefined
+                              ? grade.classGradeScore 
+                              : '-'}
+                          </Badge>
+                        )}
+                        {/* Note d'examen */}
                         {grade.isAbsent ? (
-                          <Badge variant="outline" className="text-xs">Absent</Badge>
+                          <Badge variant="outline" className="text-xs w-16 justify-center">Absent</Badge>
                         ) : (
                           <Badge 
                             variant="secondary" 
                             className={cn(
-                              "font-mono",
+                              "font-mono w-16 justify-center",
                               grade.score !== null && grade.score >= grade.maxScore / 2 
                                 ? "bg-green-500/20 text-green-700 dark:text-green-400" 
                                 : "bg-red-500/20 text-red-700 dark:text-red-400"
