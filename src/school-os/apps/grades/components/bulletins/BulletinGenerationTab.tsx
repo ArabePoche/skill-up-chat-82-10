@@ -1,5 +1,6 @@
 /**
  * Onglet Génération de bulletins - Utilise les évaluations comme périodes
+ * Supporte l'intégration optionnelle des notes de classe
  */
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBulletinTemplates, BulletinTemplate } from '../../hooks/useBulletins';
 import { StudentBulletinCard, StudentBulletinData, SubjectGrade } from './StudentBulletinCard';
+import { ClassGradesSection, ClassGradesConfig, ClassGradeEntry } from './ClassGradesSection';
 import { exportBulletinsToPdf } from '../../utils/bulletinPdfExport';
 import { toast } from 'sonner';
 
@@ -65,6 +67,13 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   const [selectedEvaluationId, setSelectedEvaluationId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [expandedAll, setExpandedAll] = useState(true);
+  
+  // Configuration des notes de classe (facultatif)
+  const [classGradesConfig, setClassGradesConfig] = useState<ClassGradesConfig>({
+    enabled: false,
+    method: 'evaluation',
+    manualGrades: [],
+  });
 
   // Fetch evaluations for selected class
   const { data: evaluations = [], isLoading: loadingEvaluations } = useQuery({
@@ -164,11 +173,55 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     enabled: !!selectedClassId,
   });
 
+  // Fetch class grades from selected evaluation (if method is 'evaluation')
+  const { data: classGradesFromEval = [] } = useQuery({
+    queryKey: ['class-grades-evaluation', classGradesConfig.selectedEvaluationId],
+    queryFn: async () => {
+      if (!classGradesConfig.selectedEvaluationId) return [];
+      const { data, error } = await supabase
+        .from('grades')
+        .select('id, student_id, subject_id, score, is_absent')
+        .eq('evaluation_id', classGradesConfig.selectedEvaluationId);
+      if (error) throw error;
+      return data as Grade[];
+    },
+    enabled: !!classGradesConfig.selectedEvaluationId && classGradesConfig.enabled && classGradesConfig.method === 'evaluation',
+  });
+
+  // Reset class grades config when class changes
+  React.useEffect(() => {
+    setClassGradesConfig(prev => ({
+      ...prev,
+      selectedEvaluationId: undefined,
+      manualGrades: classSubjects.map(s => ({
+        subjectId: s.id,
+        subjectName: s.name,
+        score: null,
+      })),
+    }));
+  }, [selectedClassId, classSubjects.length]);
+
   // Calculate bulletins data for all students
   const bulletinsData = useMemo((): StudentBulletinData[] => {
     if (!selectedEvaluationId || students.length === 0 || classSubjects.length === 0) {
       return [];
     }
+
+    // Get class grades data based on config
+    const getClassGradeForSubject = (studentId: string, subjectId: string): number | null => {
+      if (!classGradesConfig.enabled) return null;
+      
+      if (classGradesConfig.method === 'evaluation') {
+        const grade = classGradesFromEval.find(
+          g => g.student_id === studentId && g.subject_id === subjectId && !g.is_absent
+        );
+        return grade?.score ?? null;
+      } else {
+        // Manual mode: same value for all students
+        const manualGrade = classGradesConfig.manualGrades.find(g => g.subjectId === subjectId);
+        return manualGrade?.score ?? null;
+      }
+    };
 
     // Calculate data for each student
     const studentData = students.map(student => {
@@ -183,6 +236,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         const score = grade?.score ?? null;
         const isAbsent = grade?.is_absent ?? false;
         const maxScore = 20;
+        const classGradeScore = getClassGradeForSubject(student.id, subject.id);
 
         if (score !== null && !isAbsent) {
           totalPoints += score * subject.coefficient;
@@ -197,6 +251,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
           maxScore,
           coefficient: subject.coefficient,
           isAbsent,
+          classGradeScore,
         };
       });
 
@@ -217,6 +272,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         firstAverage: 0,
         appreciation: '',
         mention: '',
+        hasClassGrades: classGradesConfig.enabled,
       };
     });
 
@@ -254,7 +310,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     });
 
     return studentData;
-  }, [students, grades, classSubjects, selectedEvaluationId]);
+  }, [students, grades, classSubjects, selectedEvaluationId, classGradesConfig, classGradesFromEval]);
 
   // Calculate class statistics
   const classStats = useMemo(() => {
@@ -423,6 +479,17 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Section Notes de Classe (facultatif) */}
+      {selectedClassId && selectedEvaluationId && (
+        <ClassGradesSection
+          evaluations={evaluations.filter(e => e.id !== selectedEvaluationId)}
+          subjects={classSubjects}
+          config={classGradesConfig}
+          onConfigChange={setClassGradesConfig}
+          loadingEvaluations={loadingEvaluations}
+        />
+      )}
 
       {/* Statistiques de classe */}
       {selectedEvaluationId && bulletinsData.length > 0 && (
