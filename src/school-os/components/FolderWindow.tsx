@@ -3,12 +3,13 @@
  * Supporte la navigation dans la hiérarchie
  */
 import React, { useRef, useState } from 'react';
-import { X, Folder, Trash2, Upload, FileText, FileImage, File, Download, ChevronRight, Home, FolderPlus } from 'lucide-react';
+import { X, Folder, Trash2, Upload, Download, ChevronRight, Home, FolderPlus } from 'lucide-react';
 import { DesktopFolder, FolderFile } from '../types/folder';
 import { Button } from '@/components/ui/button';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
 import { CreateFolderDialog } from './CreateFolderDialog';
+import FileIcon from '@/components/ui/FileIcon';
 
 interface FolderWindowProps {
   folder: DesktopFolder;
@@ -21,12 +22,6 @@ interface FolderWindowProps {
   onDeleteFolder: (folderId: string) => void;
   getFolderPath: (folderId: string) => DesktopFolder[];
 }
-
-const getFileIcon = (type: string) => {
-  if (type.startsWith('image/')) return FileImage;
-  if (type.includes('pdf') || type.includes('document') || type.includes('text')) return FileText;
-  return File;
-};
 
 const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -222,18 +217,15 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
               })}
 
               {/* Fichiers */}
-              {folder.files.map((file) => {
-                const IconComponent = getFileIcon(file.type);
-                return (
+              {folder.files.map((file) => (
                   <div
                     key={file.id}
                     className="group flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
                   >
                     <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${folder.color}20` }}
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50"
                     >
-                      <IconComponent className="w-5 h-5" style={{ color: folder.color }} />
+                      <FileIcon fileName={file.name} fileType={file.type} size="md" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
@@ -262,8 +254,7 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
                       </Button>
                     </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
           )}
         </div>
