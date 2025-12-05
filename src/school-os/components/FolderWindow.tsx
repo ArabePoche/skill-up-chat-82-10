@@ -3,13 +3,16 @@
  * Supporte la navigation dans la hiérarchie
  */
 import React, { useRef, useState } from 'react';
-import { X, Folder, Trash2, Upload, Download, ChevronRight, Home, FolderPlus } from 'lucide-react';
+import { X, Folder, Trash2, Upload, Download, ChevronRight, Home, FolderPlus, Maximize2 } from 'lucide-react';
 import { DesktopFolder, FolderFile } from '../types/folder';
 import { Button } from '@/components/ui/button';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
 import { CreateFolderDialog } from './CreateFolderDialog';
 import FileIcon from '@/components/ui/FileIcon';
+import { ImageModal } from '@/components/ui/image-modal';
+
+const isImageFile = (type: string) => type.startsWith('image/');
 
 interface FolderWindowProps {
   folder: DesktopFolder;
@@ -43,6 +46,7 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile, isUploading } = useFileUpload();
   const [createSubfolderOpen, setCreateSubfolderOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
 
   // Récupérer les sous-dossiers du dossier actuel
   const childFolders = allFolders.filter(f => f.parentId === folder.id);
@@ -222,11 +226,27 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
                     key={file.id}
                     className="group flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
                   >
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50"
-                    >
-                      <FileIcon fileName={file.name} fileType={file.type} size="md" />
-                    </div>
+                    {isImageFile(file.type) ? (
+                      <div 
+                        className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden cursor-pointer relative group/img"
+                        onClick={() => setPreviewImage({ url: file.url, name: file.name })}
+                      >
+                        <img 
+                          src={file.url} 
+                          alt={file.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                          <Maximize2 className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-muted/50"
+                      >
+                        <FileIcon fileName={file.name} fileType={file.type} size="md" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
                         {file.name}
@@ -236,6 +256,16 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
                       </p>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {isImageFile(file.type) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setPreviewImage({ url: file.url, name: file.name })}
+                        >
+                          <Maximize2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -299,6 +329,16 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
         onOpenChange={setCreateSubfolderOpen}
         onCreateFolder={handleCreateSubfolder}
       />
+
+      {/* Modal prévisualisation image */}
+      {previewImage && (
+        <ImageModal
+          isOpen={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+          imageUrl={previewImage.url}
+          fileName={previewImage.name}
+        />
+      )}
     </div>
   );
 };
