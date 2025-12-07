@@ -22,7 +22,25 @@ export const useUserSchools = (userId?: string) => {
         throw ownedError;
       }
 
-      // Note: school_members table doesn't exist, skipping
+      // Récupérer les écoles où l'utilisateur est membre du personnel (school_staff)
+      const { data: staffSchools, error: staffError } = await supabase
+        .from('school_staff')
+        .select(`
+          status,
+          schools:school_id (
+            id,
+            name,
+            description,
+            school_type
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+      if (staffError) {
+        console.error('Error fetching staff schools:', staffError);
+        throw staffError;
+      }
 
       // Récupérer les écoles où l'utilisateur est enseignant
       const { data: teacherSchools, error: teacherError } = await supabase
@@ -50,7 +68,12 @@ export const useUserSchools = (userId?: string) => {
         role: 'owner' as const
       }));
 
-      const member: any[] = []; // school_members table doesn't exist
+      const staff = (staffSchools || [])
+        .filter(s => s.schools)
+        .map(s => ({
+          ...(s.schools as any),
+          role: 'staff' as const
+        }));
 
       const teacher = (teacherSchools || [])
         .filter(t => t.schools)
@@ -59,13 +82,13 @@ export const useUserSchools = (userId?: string) => {
           role: 'teacher' as const
         }));
 
-      // Fusionner et dédupliquer par id (priorité: owner > member > teacher)
+      // Fusionner et dédupliquer par id (priorité: owner > staff > teacher)
       const schoolMap = new Map();
       
       // Ajouter les écoles enseignant d'abord (priorité la plus basse)
       teacher.forEach(s => schoolMap.set(s.id, s));
-      // Puis les écoles membre
-      member.forEach(s => schoolMap.set(s.id, s));
+      // Puis les écoles staff
+      staff.forEach(s => schoolMap.set(s.id, s));
       // Puis les écoles propriétaire (priorité la plus haute)
       owned.forEach(s => schoolMap.set(s.id, s));
 

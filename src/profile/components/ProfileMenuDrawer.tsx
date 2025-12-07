@@ -45,8 +45,8 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
     icon: School,
     label: t('school.title', { defaultValue: 'École' }),
     action: () => {
-      onClose();
       setShowSchoolModal(true);
+      onClose();
     }
   });
 
