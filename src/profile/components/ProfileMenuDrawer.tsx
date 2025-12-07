@@ -72,97 +72,100 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
     });
   }
 
-  if (!isOpen) return null;
-
   return (
     <>
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background shadow-xl z-50 overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold">{t('common.menu', { defaultValue: 'Menu' })}</h2>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-muted rounded-full transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Menu Items */}
-        <div className="py-2">
-          {menuItems.map((item, index) => {
-            const Icon = item.icon;
-            const isVerificationButton = item.label === 'Demander la certification';
-            
-            return (
-              <button
-                key={index}
-                onClick={() => {
-                  item.action();
-                  if (item.label !== 'Notifications') onClose();
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors ${
-                  item.label === 'Administration' ? 'bg-red-50 dark:bg-red-950/20' : ''
-                }`}
-              >
-                {isVerificationButton ? (
-                  <VerifiedBadge size={20} showTooltip={false} />
-                ) : (
-                  Icon && <Icon 
-                    size={20} 
-                    className={item.label === 'Administration' ? 'text-red-600' : 'text-muted-foreground'} 
-                  />
-                )}
-                <span className={`flex-1 text-left ${
-                  item.label === 'Administration' ? 'text-red-600 font-medium' : ''
-                }`}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-          
-          {/* Sélecteur de langue */}
-          <div className="px-4 py-3 border-t border-border mt-2">
-            <div className="flex items-center gap-3">
-              <Globe size={20} className="text-muted-foreground" />
-              <div className="flex-1">
-                <LanguageSwitcher />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Logout */}
-        <div className="p-4 border-t border-border mt-auto">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
-          >
-            <LogOut size={20} />
-            <span>{t('common.logout')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Modal de demande de certification */}
+      {/* Modal de demande de certification - toujours monté */}
       <VerificationRequestModal
         isOpen={showVerificationModal}
         onClose={() => setShowVerificationModal(false)}
       />
 
-      {/* Modal de gestion d'école */}
+      {/* Modal de gestion d'école - toujours monté */}
       <SchoolManagementModal
         isOpen={showSchoolModal}
         onClose={() => setShowSchoolModal(false)}
       />
+
+      {/* Drawer - conditionnel */}
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+            onClick={onClose}
+          />
+
+          {/* Drawer */}
+          <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background shadow-xl z-50 overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h2 className="text-lg font-semibold">{t('common.menu', { defaultValue: 'Menu' })}</h2>
+              <button 
+                onClick={onClose}
+                className="p-2 hover:bg-muted rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Menu Items */}
+            <div className="py-2">
+              {menuItems.map((item, index) => {
+                const Icon = item.icon;
+                const isVerificationButton = item.label === 'Demander la certification';
+                
+                return (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      item.action();
+                      if (item.label !== 'Notifications') onClose();
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors ${
+                      item.label === 'Administration' ? 'bg-red-50 dark:bg-red-950/20' : ''
+                    }`}
+                  >
+                    {isVerificationButton ? (
+                      <VerifiedBadge size={20} showTooltip={false} />
+                    ) : (
+                      Icon && <Icon 
+                        size={20} 
+                        className={item.label === 'Administration' ? 'text-red-600' : 'text-muted-foreground'} 
+                      />
+                    )}
+                    <span className={`flex-1 text-left ${
+                      item.label === 'Administration' ? 'text-red-600 font-medium' : ''
+                    }`}>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+              
+              {/* Sélecteur de langue */}
+              <div className="px-4 py-3 border-t border-border mt-2">
+                <div className="flex items-center gap-3">
+                  <Globe size={20} className="text-muted-foreground" />
+                  <div className="flex-1">
+                    <LanguageSwitcher />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Logout */}
+            <div className="p-4 border-t border-border mt-auto">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 border border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
+              >
+                <LogOut size={20} />
+                <span>{t('common.logout')}</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 };
