@@ -4,17 +4,20 @@
  */
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, ClipboardList, BookOpen } from 'lucide-react';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useHasPermission } from '@/school-os/hooks/useSchoolUserRole';
 import { EvaluationModal } from './components/EvaluationModal';
 import { EvaluationsList } from './components/EvaluationsList';
+import { CompositionsTab } from './compositions/CompositionsTab';
 
 export const EvaluationsApp: React.FC = () => {
   const { school, activeSchoolYear } = useSchoolYear();
   const { hasPermission: canCreate } = useHasPermission(school?.id, 'evaluation.create');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvaluation, setSelectedEvaluation] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('evaluations');
 
   const handleCreate = () => {
     setSelectedEvaluation(null);
@@ -37,18 +40,41 @@ export const EvaluationsApp: React.FC = () => {
               Gestion des devoirs, interrogations, compositions et examens
             </p>
           </div>
-          {canCreate && (
-            <Button onClick={handleCreate} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nouvelle évaluation
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Content */}
+      {/* Tabs */}
       <div className="flex-1 overflow-auto p-6">
-        <EvaluationsList onEdit={handleEdit} />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="evaluations" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Évaluations
+            </TabsTrigger>
+            <TabsTrigger value="compositions" className="gap-2">
+              <BookOpen className="h-4 w-4" />
+              Compositions & Examens
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="evaluations" className="mt-0">
+            <div className="space-y-4">
+              {canCreate && (
+                <div className="flex justify-end">
+                  <Button onClick={handleCreate} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Nouvelle évaluation
+                  </Button>
+                </div>
+              )}
+              <EvaluationsList onEdit={handleEdit} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="compositions" className="mt-0">
+            <CompositionsTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Modal */}
