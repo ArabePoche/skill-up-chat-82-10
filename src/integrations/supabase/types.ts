@@ -3088,6 +3088,318 @@ export type Database = {
           },
         ]
       }
+      school_composition_class_note_config: {
+        Row: {
+          class_id: string
+          composition_id: string
+          created_at: string
+          id: string
+          source_evaluation_id: string | null
+          source_type: string
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          composition_id: string
+          created_at?: string
+          id?: string
+          source_evaluation_id?: string | null
+          source_type?: string
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          composition_id?: string
+          created_at?: string
+          id?: string
+          source_evaluation_id?: string | null
+          source_type?: string
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_composition_class_note_config_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_class_note_config_composition_id_fkey"
+            columns: ["composition_id"]
+            isOneToOne: false
+            referencedRelation: "school_compositions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_class_note_config_source_evaluation_id_fkey"
+            columns: ["source_evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "school_evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_class_note_config_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_composition_classes: {
+        Row: {
+          class_id: string
+          composition_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          class_id: string
+          composition_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          class_id?: string
+          composition_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_composition_classes_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_classes_composition_id_fkey"
+            columns: ["composition_id"]
+            isOneToOne: false
+            referencedRelation: "school_compositions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_composition_excluded_students: {
+        Row: {
+          composition_id: string
+          created_at: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          composition_id: string
+          created_at?: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          composition_id?: string
+          created_at?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_composition_excluded_students_composition_id_fkey"
+            columns: ["composition_id"]
+            isOneToOne: false
+            referencedRelation: "school_compositions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_excluded_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_school"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_composition_excluded_subjects: {
+        Row: {
+          class_id: string
+          composition_id: string
+          created_at: string
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          class_id: string
+          composition_id: string
+          created_at?: string
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          class_id?: string
+          composition_id?: string
+          created_at?: string
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_composition_excluded_subjects_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_excluded_subjects_composition_id_fkey"
+            columns: ["composition_id"]
+            isOneToOne: false
+            referencedRelation: "school_compositions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_excluded_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_composition_notes: {
+        Row: {
+          class_id: string
+          class_note: number | null
+          comment: string | null
+          composition_id: string
+          composition_note: number | null
+          created_at: string
+          entered_by: string | null
+          id: string
+          student_id: string
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          class_note?: number | null
+          comment?: string | null
+          composition_id: string
+          composition_note?: number | null
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          student_id: string
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          class_note?: number | null
+          comment?: string | null
+          composition_id?: string
+          composition_note?: number | null
+          created_at?: string
+          entered_by?: string | null
+          id?: string
+          student_id?: string
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_composition_notes_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_notes_composition_id_fkey"
+            columns: ["composition_id"]
+            isOneToOne: false
+            referencedRelation: "school_compositions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_notes_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_school"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_composition_notes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_compositions: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          include_class_notes: boolean | null
+          school_id: string
+          school_year_id: string
+          start_date: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          include_class_notes?: boolean | null
+          school_id: string
+          school_year_id: string
+          start_date?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          include_class_notes?: boolean | null
+          school_id?: string
+          school_year_id?: string
+          start_date?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_compositions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_compositions_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_desktop_app_positions: {
         Row: {
           app_id: string
