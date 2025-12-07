@@ -71,7 +71,7 @@ const AvailableFormationsCarousel: React.FC<AvailableFormationsCarouselProps> = 
       >
         <CarouselContent className="-ml-2 md:-ml-4">
           {sortedFormations.map((formation) => (
-            <CarouselItem key={formation.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
+            <CarouselItem key={formation.id} className="pl-2 md:pl-4 basis-[85%] sm:basis-[75%] md:basis-[48%] lg:basis-[32%]">
               <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full">
                 <div className="relative h-48 bg-gradient-to-br from-primary/10 to-primary/5">
                   {formation.image_url || formation.thumbnail_url ? (
