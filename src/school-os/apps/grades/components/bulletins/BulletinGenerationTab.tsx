@@ -1,18 +1,29 @@
 /**
- * Onglet Génération de bulletins - Utilise les évaluations comme périodes
- * Supporte l'intégration optionnelle des notes de classe
+ * Onglet Génération de bulletins - Basé sur les Compositions/Examens
+ * 
+ * Nouvelle logique:
+ * 1. Sélection d'une Composition/Examen comme source principale
+ * 2. Note de composition (obligatoire) = provient de la composition
+ * 3. Note de classe (optionnelle) = depuis évaluation existante OU saisie manuelle
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useBulletinTemplates, BulletinTemplate } from '../../hooks/useBulletins';
 import { StudentBulletinCard, StudentBulletinData, SubjectGrade } from './StudentBulletinCard';
-import { ClassGradesSection, ClassGradesConfig, ClassGradeEntry } from './ClassGradesSection';
+import { CompositionSelector } from './CompositionSelector';
+import { ClassNotesSection, ClassNotesConfig } from './ClassNotesSection';
+import { 
+  useCompositionsForClass, 
+  useBulletinFromComposition,
+  useEvaluationsForClassNotes 
+} from '../../hooks/useBulletinFromComposition';
 import { exportBulletinsToPdf } from '../../utils/bulletinPdfExport';
 import { toast } from 'sonner';
 
@@ -28,34 +39,10 @@ interface BulletinGenerationTabProps {
   schoolYearId: string;
 }
 
-interface Student {
-  id: string;
-  first_name: string;
-  last_name: string;
-  student_code?: string;
-  photo_url?: string;
-}
-
-interface Evaluation {
-  id: string;
-  title: string;
-  evaluation_type_name: string;
-  evaluation_date: string;
-}
-
-interface Grade {
-  id: string;
-  student_id: string;
-  subject_id: string;
+interface ManualClassNote {
+  studentId: string;
+  subjectId: string;
   score: number | null;
-  is_absent: boolean;
-  comment: string | null;
-}
-
-interface Subject {
-  id: string;
-  name: string;
-  coefficient: number;
 }
 
 export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({ 
@@ -63,183 +50,141 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   schoolId,
   schoolYearId 
 }) => {
+  // Sélections principales
   const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [selectedEvaluationId, setSelectedEvaluationId] = useState<string>('');
+  const [selectedCompositionId, setSelectedCompositionId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [expandedAll, setExpandedAll] = useState(true);
   
-  // Configuration des notes de classe (facultatif)
-  const [classGradesConfig, setClassGradesConfig] = useState<ClassGradesConfig>({
-    enabled: false,
-    method: 'evaluation',
-    manualGrades: [],
+  // Configuration des notes de classe
+  const [classNotesConfig, setClassNotesConfig] = useState<ClassNotesConfig>({
+    method: 'manual',
+    selectedEvaluationId: undefined,
   });
 
-  // Fetch evaluations for selected class
-  const { data: evaluations = [], isLoading: loadingEvaluations } = useQuery({
-    queryKey: ['class-evaluations-periods', selectedClassId, schoolYearId],
+  // Notes de classe saisies manuellement (studentId-subjectId -> score)
+  const [manualClassNotes, setManualClassNotes] = useState<Map<string, number | null>>(new Map());
+
+  // Récupérer les compositions pour la classe sélectionnée
+  const { data: compositions = [], isLoading: loadingCompositions } = useCompositionsForClass(
+    schoolId,
+    schoolYearId,
+    selectedClassId
+  );
+
+  // Récupérer les données du bulletin
+  const { data: bulletinData, isLoading: loadingBulletin } = useBulletinFromComposition(
+    selectedCompositionId,
+    selectedClassId
+  );
+
+  // Récupérer les évaluations pour les notes de classe
+  const { data: evaluationsForClassNotes = [], isLoading: loadingEvaluations } = useEvaluationsForClassNotes(
+    selectedClassId,
+    schoolYearId
+  );
+
+  // Récupérer les notes de l'évaluation source (si méthode "evaluation")
+  const { data: evaluationGrades = [] } = useQuery({
+    queryKey: ['evaluation-grades-for-class-notes', classNotesConfig.selectedEvaluationId],
     queryFn: async () => {
-      if (!selectedClassId || !schoolYearId) return [];
-      
-      // Get evaluations that have this class configured
-      const { data: classConfigs, error: configError } = await supabase
-        .from('school_evaluation_class_configs')
-        .select('evaluation_id')
-        .eq('class_id', selectedClassId);
-      
-      if (configError) throw configError;
-      if (!classConfigs || classConfigs.length === 0) return [];
-      
-      const evaluationIds = classConfigs.map(c => c.evaluation_id);
-      
+      if (!classNotesConfig.selectedEvaluationId) return [];
       const { data, error } = await supabase
-        .from('school_evaluations')
-        .select(`
-          id,
-          title,
-          evaluation_date,
-          school_evaluation_types (name)
-        `)
-        .in('id', evaluationIds)
-        .eq('school_year_id', schoolYearId)
-        .order('evaluation_date', { ascending: false });
-      
+        .from('grades')
+        .select('student_id, subject_id, score, is_absent')
+        .eq('evaluation_id', classNotesConfig.selectedEvaluationId);
       if (error) throw error;
-      
-      return (data || []).map((e: any) => ({
-        id: e.id,
-        title: e.title,
-        evaluation_type_name: e.school_evaluation_types?.name || 'Non défini',
-        evaluation_date: e.evaluation_date,
-      })) as Evaluation[];
+      return data || [];
     },
-    enabled: !!selectedClassId && !!schoolYearId,
+    enabled: !!classNotesConfig.selectedEvaluationId && classNotesConfig.method === 'evaluation',
   });
 
-  // Fetch templates
+  // Templates
   const { data: templates = [] } = useBulletinTemplates(schoolId);
 
-  // Fetch students for selected class
-  const { data: students = [], isLoading: loadingStudents } = useQuery({
-    queryKey: ['class-students-bulletins', selectedClassId],
-    queryFn: async () => {
-      if (!selectedClassId) return [];
-      const { data, error } = await supabase
-        .from('students_school')
-        .select('id, first_name, last_name, student_code, photo_url')
-        .eq('class_id', selectedClassId)
-        .order('last_name', { ascending: true });
-      if (error) throw error;
-      return data as Student[];
-    },
-    enabled: !!selectedClassId,
-  });
+  // Composition sélectionnée
+  const selectedComposition = compositions.find(c => c.id === selectedCompositionId);
 
-  // Fetch grades for selected evaluation
-  const { data: grades = [], isLoading: loadingGrades } = useQuery({
-    queryKey: ['evaluation-grades-bulletins', selectedEvaluationId],
-    queryFn: async () => {
-      if (!selectedEvaluationId) return [];
-      const { data, error } = await supabase
-        .from('grades')
-        .select('id, student_id, subject_id, score, is_absent, comment')
-        .eq('evaluation_id', selectedEvaluationId);
-      if (error) throw error;
-      return data as Grade[];
-    },
-    enabled: !!selectedEvaluationId,
-  });
+  // Réinitialiser quand la classe change
+  useEffect(() => {
+    setSelectedCompositionId('');
+    setManualClassNotes(new Map());
+    setClassNotesConfig({ method: 'manual', selectedEvaluationId: undefined });
+  }, [selectedClassId]);
 
-  // Fetch subjects with coefficients for the class
-  const { data: classSubjects = [] } = useQuery({
-    queryKey: ['class-subjects-bulletins', selectedClassId],
-    queryFn: async () => {
-      if (!selectedClassId) return [];
-      const { data, error } = await supabase
-        .from('class_subjects')
-        .select(`
-          subject_id,
-          coefficient,
-          subjects (id, name)
-        `)
-        .eq('class_id', selectedClassId);
-      if (error) throw error;
-      return (data || []).map((cs: any) => ({
-        id: cs.subject_id,
-        name: cs.subjects?.name || 'Matière inconnue',
-        coefficient: cs.coefficient || 1,
-      })) as Subject[];
-    },
-    enabled: !!selectedClassId,
-  });
+  // Réinitialiser les notes manuelles quand la composition change
+  useEffect(() => {
+    setManualClassNotes(new Map());
+  }, [selectedCompositionId]);
 
-  // Fetch class grades from selected evaluation (if method is 'evaluation')
-  const { data: classGradesFromEval = [] } = useQuery({
-    queryKey: ['class-grades-evaluation', classGradesConfig.selectedEvaluationId],
-    queryFn: async () => {
-      if (!classGradesConfig.selectedEvaluationId) return [];
-      const { data, error } = await supabase
-        .from('grades')
-        .select('id, student_id, subject_id, score, is_absent')
-        .eq('evaluation_id', classGradesConfig.selectedEvaluationId);
-      if (error) throw error;
-      return data as Grade[];
-    },
-    enabled: !!classGradesConfig.selectedEvaluationId && classGradesConfig.enabled && classGradesConfig.method === 'evaluation',
-  });
-
-  // Reset class grades config when class changes
-  React.useEffect(() => {
-    setClassGradesConfig(prev => ({
-      ...prev,
-      selectedEvaluationId: undefined,
-      manualGrades: classSubjects.map(s => ({
-        subjectId: s.id,
-        subjectName: s.name,
-        score: null,
-      })),
-    }));
-  }, [selectedClassId, classSubjects.length]);
-
-  // Calculate bulletins data for all students
-  const bulletinsData = useMemo((): StudentBulletinData[] => {
-    if (!selectedEvaluationId || students.length === 0 || classSubjects.length === 0) {
-      return [];
-    }
-
-    // Get class grades data based on config
-    const getClassGradeForSubject = (studentId: string, subjectId: string): number | null => {
-      if (!classGradesConfig.enabled) return null;
-      
-      if (classGradesConfig.method === 'evaluation') {
-        const grade = classGradesFromEval.find(
-          g => g.student_id === studentId && g.subject_id === subjectId && !g.is_absent
-        );
-        return grade?.score ?? null;
-      } else {
-        // Manual mode: same value for all students
-        const manualGrade = classGradesConfig.manualGrades.find(g => g.subjectId === subjectId);
-        return manualGrade?.score ?? null;
+  // Template par défaut
+  useEffect(() => {
+    if (templates.length > 0 && !selectedTemplate) {
+      const defaultTemplate = templates.find(t => t.is_default);
+      if (defaultTemplate) {
+        setSelectedTemplate(defaultTemplate.id);
       }
-    };
+    }
+  }, [templates, selectedTemplate]);
 
-    // Calculate data for each student
+  // Récupérer la note de classe pour un étudiant et une matière
+  const getClassNoteScore = (studentId: string, subjectId: string): number | null => {
+    if (!bulletinData?.includeClassNotes) return null;
+
+    if (classNotesConfig.method === 'evaluation') {
+      // Depuis l'évaluation source
+      const grade = evaluationGrades.find(
+        g => g.student_id === studentId && g.subject_id === subjectId && !g.is_absent
+      );
+      return grade?.score ?? null;
+    } else {
+      // Saisie manuelle
+      const key = `${studentId}-${subjectId}`;
+      return manualClassNotes.get(key) ?? null;
+    }
+  };
+
+  // Mettre à jour une note de classe manuelle
+  const handleManualClassNoteChange = (studentId: string, subjectId: string, value: string) => {
+    const key = `${studentId}-${subjectId}`;
+    const numValue = value === '' ? null : parseFloat(value);
+    const validValue = numValue !== null && !isNaN(numValue) 
+      ? Math.min(20, Math.max(0, numValue)) 
+      : null;
+    
+    setManualClassNotes(prev => {
+      const newMap = new Map(prev);
+      newMap.set(key, validValue);
+      return newMap;
+    });
+  };
+
+  // Calculer les données des bulletins
+  const bulletinsData = useMemo((): StudentBulletinData[] => {
+    if (!bulletinData || !selectedCompositionId) return [];
+
+    const { students, subjects, notes, includeClassNotes } = bulletinData;
+
+    if (students.length === 0 || subjects.length === 0) return [];
+
+    // Calculer les données pour chaque élève
     const studentData = students.map(student => {
-      const studentGrades = grades.filter(g => g.student_id === student.id);
+      const studentNotes = notes.filter(n => n.student_id === student.id);
       
       let totalPoints = 0;
       let totalCoefficients = 0;
       let totalMaxPoints = 0;
 
-      const gradesList: SubjectGrade[] = classSubjects.map(subject => {
-        const grade = studentGrades.find(g => g.subject_id === subject.id);
-        const score = grade?.score ?? null;
-        const isAbsent = grade?.is_absent ?? false;
+      const gradesList: SubjectGrade[] = subjects.map(subject => {
+        const note = studentNotes.find(n => n.subject_id === subject.id);
+        const compositionScore = note?.composition_note ?? null;
+        const classNoteScore = includeClassNotes 
+          ? (note?.class_note ?? getClassNoteScore(student.id, subject.id))
+          : null;
         const maxScore = 20;
-        const classGradeScore = getClassGradeForSubject(student.id, subject.id);
 
-        if (score !== null && !isAbsent) {
-          totalPoints += score * subject.coefficient;
+        if (compositionScore !== null) {
+          totalPoints += compositionScore * subject.coefficient;
           totalCoefficients += subject.coefficient;
         }
         totalMaxPoints += maxScore * subject.coefficient;
@@ -247,11 +192,11 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         return {
           subjectId: subject.id,
           subjectName: subject.name,
-          score,
+          score: compositionScore,
           maxScore,
           coefficient: subject.coefficient,
-          isAbsent,
-          classGradeScore,
+          isAbsent: compositionScore === null,
+          classGradeScore: classNoteScore,
         };
       });
 
@@ -272,24 +217,24 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         firstAverage: 0,
         appreciation: '',
         mention: '',
-        hasClassGrades: classGradesConfig.enabled,
+        hasClassGrades: includeClassNotes,
       };
     });
 
-    // Calculate class average
+    // Calculer la moyenne de classe
     const validAverages = studentData.filter(d => d.average !== null).map(d => d.average as number);
     const classAverage = validAverages.length > 0 
       ? validAverages.reduce((sum, avg) => sum + avg, 0) / validAverages.length 
       : 0;
 
-    // Sort by average descending to calculate ranks
+    // Trier par moyenne pour calculer les rangs
     const sorted = [...studentData]
       .filter(d => d.average !== null)
       .sort((a, b) => (b.average || 0) - (a.average || 0));
     
     const firstAverage = sorted.length > 0 ? (sorted[0].average || 0) : 0;
 
-    // Assign ranks, mentions, appreciations, and class stats
+    // Assigner les rangs et statistiques
     sorted.forEach((data, index) => {
       data.rank = index + 1;
       data.classAverage = classAverage;
@@ -298,21 +243,21 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
       data.appreciation = getAppreciation(data.average);
     });
 
-    // Handle students without grades
+    // Gérer les élèves sans notes
     studentData.forEach(data => {
       if (data.average === null) {
         data.rank = students.length;
         data.classAverage = classAverage;
         data.firstAverage = firstAverage;
         data.mention = 'Non évalué';
-        data.appreciation = 'Aucune note disponible pour cette évaluation.';
+        data.appreciation = 'Aucune note disponible pour cette composition.';
       }
     });
 
     return studentData;
-  }, [students, grades, classSubjects, selectedEvaluationId, classGradesConfig, classGradesFromEval]);
+  }, [bulletinData, selectedCompositionId, evaluationGrades, manualClassNotes, classNotesConfig]);
 
-  // Calculate class statistics
+  // Statistiques de classe
   const classStats = useMemo(() => {
     if (bulletinsData.length === 0) {
       return { classAverage: 0, bestAverage: 0 };
@@ -327,25 +272,14 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     return { classAverage, bestAverage };
   }, [bulletinsData]);
 
-  const selectedEvaluation = evaluations.find(e => e.id === selectedEvaluationId);
-  const isLoading = loadingStudents || loadingGrades || loadingEvaluations;
-
-  // Set default template
-  React.useEffect(() => {
-    if (templates.length > 0 && !selectedTemplate) {
-      const defaultTemplate = templates.find(t => t.is_default);
-      if (defaultTemplate) {
-        setSelectedTemplate(defaultTemplate.id);
-      }
-    }
-  }, [templates, selectedTemplate]);
-
-  // Get selected template object
+  // Template sélectionné
   const currentTemplate = useMemo(() => {
     return templates.find(t => t.id === selectedTemplate) || null;
   }, [templates, selectedTemplate]);
 
-  // Export PDF function with template support and Arabic handling
+  const isLoading = loadingCompositions || loadingBulletin;
+
+  // Export PDF
   const handleExportPDF = async () => {
     if (bulletinsData.length === 0) {
       toast.error('Aucun bulletin à exporter');
@@ -355,11 +289,11 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     try {
       const selectedClass = availableClasses.find(c => c.id === selectedClassId);
       const className = selectedClass?.name || 'Classe';
-      const evaluationTitle = selectedEvaluation?.title || 'Évaluation';
+      const compositionTitle = selectedComposition?.title || 'Composition';
 
       await exportBulletinsToPdf({
         className,
-        evaluationTitle,
+        evaluationTitle: compositionTitle,
         template: currentTemplate,
         bulletins: bulletinsData,
       });
@@ -388,10 +322,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
               <label className="text-sm font-medium mb-2 block">Classe</label>
               <Select 
                 value={selectedClassId} 
-                onValueChange={(v) => { 
-                  setSelectedClassId(v); 
-                  setSelectedEvaluationId(''); 
-                }}
+                onValueChange={setSelectedClassId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner une classe" />
@@ -412,30 +343,16 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
               </Select>
             </div>
 
-            {/* Sélection évaluation (période) */}
+            {/* Sélection Composition/Examen */}
             <div>
-              <label className="text-sm font-medium mb-2 block">Évaluation (Période)</label>
-              <Select 
-                value={selectedEvaluationId} 
-                onValueChange={setSelectedEvaluationId}
+              <label className="text-sm font-medium mb-2 block">Composition / Examen</label>
+              <CompositionSelector
+                compositions={compositions}
+                selectedCompositionId={selectedCompositionId}
+                onSelect={setSelectedCompositionId}
+                isLoading={loadingCompositions}
                 disabled={!selectedClassId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une évaluation" />
-                </SelectTrigger>
-                <SelectContent>
-                  {evaluations.map((evaluation) => (
-                    <SelectItem key={evaluation.id} value={evaluation.id}>
-                      <div className="flex items-center gap-2">
-                        {evaluation.title}
-                        <Badge variant="secondary" className="ml-2">
-                          {evaluation.evaluation_type_name}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
 
             {/* Sélection template */}
@@ -457,7 +374,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
           </div>
 
           {/* Actions */}
-          {selectedEvaluationId && bulletinsData.length > 0 && (
+          {selectedCompositionId && bulletinsData.length > 0 && (
             <div className="flex gap-3 mt-4 pt-4 border-t">
               <Button 
                 variant="outline"
@@ -480,19 +397,33 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Section Notes de Classe (facultatif) */}
-      {selectedClassId && selectedEvaluationId && (
-        <ClassGradesSection
-          evaluations={evaluations.filter(e => e.id !== selectedEvaluationId)}
-          subjects={classSubjects}
-          config={classGradesConfig}
-          onConfigChange={setClassGradesConfig}
-          loadingEvaluations={loadingEvaluations}
+      {/* Section Notes de Classe (si activée dans la composition) */}
+      {selectedCompositionId && bulletinData?.includeClassNotes && (
+        <ClassNotesSection
+          evaluations={evaluationsForClassNotes}
+          config={classNotesConfig}
+          onConfigChange={setClassNotesConfig}
+          isLoading={loadingEvaluations}
         />
       )}
 
+      {/* Info si notes de classe désactivées */}
+      {selectedCompositionId && bulletinData && !bulletinData.includeClassNotes && (
+        <Card className="bg-muted/30">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <AlertCircle className="h-5 w-5" />
+              <p className="text-sm">
+                Les notes de classe ne sont pas activées pour cette composition.
+                Le bulletin affichera uniquement les notes de composition.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Statistiques de classe */}
-      {selectedEvaluationId && bulletinsData.length > 0 && (
+      {selectedCompositionId && bulletinsData.length > 0 && (
         <Card>
           <CardContent className="py-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -510,7 +441,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Période</p>
-                <p className="text-lg font-semibold">{selectedEvaluation?.title}</p>
+                <p className="text-lg font-semibold">{selectedComposition?.title}</p>
               </div>
             </div>
           </CardContent>
@@ -518,14 +449,14 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
       )}
 
       {/* Loading state */}
-      {isLoading && selectedEvaluationId && (
+      {isLoading && selectedCompositionId && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      {/* Bulletins automatiques */}
-      {!isLoading && selectedEvaluationId && bulletinsData.length > 0 && (
+      {/* Bulletins */}
+      {!isLoading && selectedCompositionId && bulletinsData.length > 0 && (
         <div className="space-y-4">
           {bulletinsData.map((data) => (
             <StudentBulletinCard
@@ -537,26 +468,41 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         </div>
       )}
 
-      {/* Empty state */}
-      {!isLoading && selectedEvaluationId && bulletinsData.length === 0 && (
+      {/* Empty state - pas d'élèves */}
+      {!isLoading && selectedCompositionId && bulletinsData.length === 0 && bulletinData && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Aucun élève trouvé dans cette classe.</p>
+            <p>Aucun élève trouvé pour cette composition.</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Prompt to select */}
-      {!selectedEvaluationId && selectedClassId && !loadingEvaluations && (
+      {/* Empty state - pas de composition sélectionnée */}
+      {!selectedCompositionId && selectedClassId && !loadingCompositions && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            {evaluations.length === 0 ? (
-              <p>Aucune évaluation trouvée pour cette classe.</p>
+            {compositions.length === 0 ? (
+              <>
+                <p className="font-medium">Aucune composition trouvée pour cette classe.</p>
+                <p className="text-sm mt-2">
+                  Créez d'abord une composition dans le module Évaluations → Compositions & Examens.
+                </p>
+              </>
             ) : (
-              <p>Sélectionnez une évaluation pour générer les bulletins.</p>
+              <p>Sélectionnez une composition pour générer les bulletins.</p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty state - pas de classe */}
+      {!selectedClassId && (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Sélectionnez une classe pour commencer.</p>
           </CardContent>
         </Card>
       )}
