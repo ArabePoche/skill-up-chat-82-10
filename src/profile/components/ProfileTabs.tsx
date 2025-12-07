@@ -1,9 +1,9 @@
 import React from 'react';
-import { Video, FileText, CheckCircle, Heart, Bookmark, Store } from 'lucide-react';
+import { Video, FileText, Heart, Bookmark, Store, School } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useI18nReady } from '@/hooks/useI18nReady';
 
-type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites' | 'shop';
+type TabType = 'videos' | 'posts' | 'school' | 'likes' | 'favorites' | 'shop';
 
 interface ProfileTabsProps {
   activeTab: TabType;
@@ -22,7 +22,7 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, onTabChange, showS
   const baseTabs = [
     { id: 'videos' as const, label: t('profile.videos'), icon: Video },
     { id: 'posts' as const, label: t('profile.posts'), icon: FileText },
-    { id: 'exercises' as const, label: t('profile.exercises'), icon: CheckCircle },
+    { id: 'school' as const, label: t('school.title', { defaultValue: 'École' }), icon: School },
     { id: 'likes' as const, label: t('profile.likes'), icon: Heart },
     { id: 'favorites' as const, label: t('profile.favorites'), icon: Bookmark },
   ];
