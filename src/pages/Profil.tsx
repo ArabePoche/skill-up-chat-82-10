@@ -27,13 +27,13 @@ import AvatarUploadModal from '@/profile/components/AvatarUploadModal';
 import FriendRequestsPanel from '@/friends/components/FriendRequestsPanel';
 import VideosTab from '@/profile/components/tabs/VideosTab';
 import PostsTab from '@/profile/components/tabs/PostsTab';
-import ExercisesTab from '@/profile/components/tabs/ExercisesTab';
+import SchoolTab from '@/profile/components/tabs/SchoolTab';
 import LikesTab from '@/profile/components/tabs/LikesTab';
 import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
 import ShopTab from '@/profile/components/tabs/ShopTab';
-import { StreakBadge } from '@/streak';
 
-type TabType = 'videos' | 'posts' | 'exercises' | 'likes' | 'favorites' | 'shop';
+
+type TabType = 'videos' | 'posts' | 'school' | 'likes' | 'favorites' | 'shop';
 
 const Profil = () => {
   const { t } = useTranslation();
@@ -129,8 +129,8 @@ const Profil = () => {
         return <VideosTab userId={viewedUserId} />;
       case 'posts':
         return <PostsTab userId={viewedUserId} />;
-      case 'exercises':
-        return <ExercisesTab userId={viewedUserId} />;
+      case 'school':
+        return <SchoolTab userId={viewedUserId} />;
       case 'likes':
         return <LikesTab userId={viewedUserId} />;
       case 'favorites':
@@ -279,12 +279,6 @@ const Profil = () => {
           userId={viewedUserId}
         />
 
-        {/* Badge de streak */}
-        {viewedUserId && (
-          <div className="px-4 pb-4">
-            <StreakBadge userId={viewedUserId} variant="compact" />
-          </div>
-        )}
       </div>
 
       {/* Onglets */}
