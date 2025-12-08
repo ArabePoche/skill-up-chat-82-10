@@ -2,7 +2,7 @@
  * Composant principal pour le suivi mensuel des paiements
  * Affiche le statut de paiement par mois pour chaque élève
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,6 +62,20 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
     })) || [];
   }, [trackingData]);
 
+  // Générer les classes disponibles depuis les données des élèves
+  const classOptions = useMemo(() => {
+    const classMap = new Map<string, { id: string; name: string }>();
+    trackingData.forEach(t => {
+      if (t.student.class_id && t.student.classes?.name) {
+        classMap.set(t.student.class_id, {
+          id: t.student.class_id,
+          name: t.student.classes.name
+        });
+      }
+    });
+    return Array.from(classMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [trackingData]);
+
   if (isLoading || statsLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -115,7 +129,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
             {showFilters && (
               <Card>
                 <CardContent className="p-2 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {/* Filtre par statut */}
                     <Select
                       value={filters.status}
@@ -129,6 +143,24 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
                         <SelectItem value="up_to_date">À jour</SelectItem>
                         <SelectItem value="partial">Partiel</SelectItem>
                         <SelectItem value="late">Retard</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Filtre par classe */}
+                    <Select
+                      value={filters.classId || 'all'}
+                      onValueChange={(value) => setFilters({ ...filters, classId: value === 'all' ? '' : value })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Classe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Toutes les classes</SelectItem>
+                        {classOptions.map(cls => (
+                          <SelectItem key={cls.id} value={cls.id}>
+                            {cls.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
