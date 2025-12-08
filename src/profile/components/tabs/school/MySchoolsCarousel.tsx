@@ -2,19 +2,21 @@
  * MySchoolsCarousel - Carousel horizontal des écoles de l'utilisateur
  * Style inspiré de Google Workspace apps
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserSchools } from '@/school/hooks/useUserSchools';
 import { useAuth } from '@/hooks/useAuth';
-import { School, Crown, Users, GraduationCap, Plus } from 'lucide-react';
+import { Crown, Users, GraduationCap, Plus } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useTranslation } from 'react-i18next';
+import CreateSchoolModal from '@/school/components/CreateSchoolModal';
 
 const MySchoolsCarousel: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: schools, isLoading } = useUserSchools(user?.id);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -79,42 +81,14 @@ const MySchoolsCarousel: React.FC = () => {
   }
 
   if (!schools || schools.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="py-2">
-      <h3 className="text-sm font-medium text-muted-foreground mb-3 px-1">
-        {t('school.mySchools', { defaultValue: 'Mes écoles' })}
-      </h3>
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex gap-3 pb-2">
-          {schools.map((school) => (
-            <button
-              key={school.id}
-              onClick={() => navigate('/school')}
-              className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-muted/50 transition-colors min-w-[80px] group"
-            >
-              <div className={`w-12 h-12 rounded-full ${getRandomColor(school.id)} flex items-center justify-center text-white font-medium text-sm shadow-sm group-hover:scale-105 transition-transform`}>
-                {getInitials(school.name)}
-              </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-xs font-medium text-foreground truncate max-w-[70px]">
-                  {school.name}
-                </span>
-                <div className="flex items-center gap-1">
-                  {getRoleIcon(school.role)}
-                  <span className="text-[10px] text-muted-foreground">
-                    {getRoleLabel(school.role)}
-                  </span>
-                </div>
-              </div>
-            </button>
-          ))}
-          
-          {/* Bouton Créer une école */}
+    return (
+      <>
+        <div className="py-2">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3 px-1">
+            {t('school.mySchools', { defaultValue: 'Mes écoles' })}
+          </h3>
           <button
-            onClick={() => navigate('/school')}
+            onClick={() => setIsCreateModalOpen(true)}
             className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-muted/50 transition-colors min-w-[80px] group"
           >
             <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center group-hover:border-primary group-hover:scale-105 transition-all">
@@ -125,9 +99,66 @@ const MySchoolsCarousel: React.FC = () => {
             </span>
           </button>
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-    </div>
+        <CreateSchoolModal 
+          isOpen={isCreateModalOpen} 
+          onClose={() => setIsCreateModalOpen(false)} 
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="py-2">
+        <h3 className="text-sm font-medium text-muted-foreground mb-3 px-1">
+          {t('school.mySchools', { defaultValue: 'Mes écoles' })}
+        </h3>
+        <ScrollArea className="w-full whitespace-nowrap">
+          <div className="flex gap-3 pb-2">
+            {schools.map((school) => (
+              <button
+                key={school.id}
+                onClick={() => navigate(`/school?id=${school.id}`)}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-muted/50 transition-colors min-w-[80px] group"
+              >
+                <div className={`w-12 h-12 rounded-full ${getRandomColor(school.id)} flex items-center justify-center text-white font-medium text-sm shadow-sm group-hover:scale-105 transition-transform`}>
+                  {getInitials(school.name)}
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-xs font-medium text-foreground truncate max-w-[70px]">
+                    {school.name}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {getRoleIcon(school.role)}
+                    <span className="text-[10px] text-muted-foreground">
+                      {getRoleLabel(school.role)}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            ))}
+            
+            {/* Bouton Créer une école */}
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-muted/50 transition-colors min-w-[80px] group"
+            >
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center group-hover:border-primary group-hover:scale-105 transition-all">
+                <Plus size={20} className="text-muted-foreground group-hover:text-primary" />
+              </div>
+              <span className="text-xs text-muted-foreground group-hover:text-primary">
+                {t('school.create', { defaultValue: 'Créer' })}
+              </span>
+            </button>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </div>
+      <CreateSchoolModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+      />
+    </>
   );
 };
 
