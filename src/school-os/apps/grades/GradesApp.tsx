@@ -21,7 +21,7 @@ import { GradeEntryView } from './components/GradeEntryView';
 import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListView';
 import { SubjectGradeEntryView } from './components/SubjectGradeEntryView';
 import { BulletinsSection } from './components/BulletinsSection';
-import { CompositionsGradeEntry } from './components/CompositionsGradeEntry';
+import { CompositionsGradeEntry } from './components/CompositionsGradesEntry';
 import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
 import { SubjectEvaluation } from './hooks/useSubjectEvaluations';
 import { useEvaluationGrades } from './hooks/useGrades';
