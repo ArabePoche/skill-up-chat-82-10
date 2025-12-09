@@ -6,6 +6,7 @@
  * 2. Par matière directe (une seule matière à la fois)
  */
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 import { useTeacherClasses } from '@/school-os/hooks/useTeacherClasses';
@@ -28,6 +29,7 @@ import { useEvaluationGrades } from './hooks/useGrades';
 import { exportClassGradesToExcel } from './utils/exportGrades';
 
 export const GradesApp: React.FC = () => {
+  const { t } = useTranslation();
   const [mainTab, setMainTab] = useState<'grades' | 'bulletins' | 'stats'>('grades');
   const [gradeSubTab, setGradeSubTab] = useState<'evaluations' | 'compositions'>('evaluations');
   const { school, activeSchoolYear } = useSchoolYear();
@@ -114,7 +116,7 @@ export const GradesApp: React.FC = () => {
       <div className="p-6 h-full flex items-center justify-center">
         <Card className="p-6">
           <p className="text-muted-foreground">
-            Veuillez sélectionner une école avec une année scolaire active.
+            {t('schoolOS.common.noData')}
           </p>
         </Card>
       </div>
@@ -124,7 +126,7 @@ export const GradesApp: React.FC = () => {
   if (isLoadingRole || isLoadingClasses) {
     return (
       <div className="p-6 h-full flex items-center justify-center">
-        <p className="text-muted-foreground">Chargement...</p>
+        <p className="text-muted-foreground">{t('schoolOS.common.loading')}</p>
       </div>
     );
   }
@@ -136,13 +138,10 @@ export const GradesApp: React.FC = () => {
         <div className="text-center py-12">
           <GraduationCap className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
-            {isTeacher ? 'Aucune classe assignée' : 'Aucune classe disponible'}
+            {t('schoolOS.classes.noClasses')}
           </h3>
           <p className="text-muted-foreground">
-            {isTeacher 
-              ? 'Vous devez être assigné à des classes pour saisir des notes.'
-              : 'Créez d\'abord des classes et des évaluations.'
-            }
+            {t('schoolOS.classes.noClasses')}
           </p>
         </div>
       </div>
