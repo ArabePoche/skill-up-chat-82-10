@@ -2,8 +2,8 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import * as Icons from 'lucide-react';
 import { SchoolApp } from '../types';
+import { useTranslatedApps } from '../hooks/useTranslatedApps';
 
 interface AppIconProps {
   app: SchoolApp;
@@ -12,6 +12,8 @@ interface AppIconProps {
 }
 
 export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen, className = 'w-20 h-24' }) => {
+  const { getAppName } = useTranslatedApps();
+  
   const {
     attributes,
     listeners,
@@ -28,6 +30,7 @@ export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen, className = 'w-20
   };
 
   const IconComponent = app.icon;
+  const translatedName = getAppName(app.id);
 
   const handleClick = (e: React.MouseEvent) => {
     // Empêcher le clic si on est en train de drag
@@ -52,7 +55,7 @@ export const AppIcon: React.FC<AppIconProps> = ({ app, onOpen, className = 'w-20
         <IconComponent className="w-7 h-7 text-white" />
       </div>
       <span className="text-xs font-medium text-white drop-shadow-lg text-center max-w-[80px] truncate">
-        {app.name}
+        {translatedName}
       </span>
     </div>
   );
