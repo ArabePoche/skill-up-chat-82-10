@@ -5,6 +5,8 @@ import { WindowState } from '../types';
 import { getAppById } from '../apps';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useTranslation } from 'react-i18next';
+import { useTranslatedApps } from '../hooks/useTranslatedApps';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -34,6 +36,8 @@ export const Taskbar: React.FC<TaskbarProps> = ({
   onOpenQuickPanel,
   onSearch,
 }) => {
+  const { t } = useTranslation();
+  const { getAppName } = useTranslatedApps();
   const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
   const { activeSchoolYear, schoolYears, setActiveSchoolYear } = useSchoolYear();
 
@@ -66,6 +70,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({
           const window = windows.find(w => w.appId === appId);
           const isPinned = isAppPinned(appId);
           const isOpen = !!window;
+          const translatedName = getAppName(appId);
 
           return (
             <ContextMenu key={appId}>
@@ -74,16 +79,13 @@ export const Taskbar: React.FC<TaskbarProps> = ({
                   onClick={() => {
                     if (window) {
                       onRestore(window.id);
-                    } else {
-                      // Si l'app est épinglée mais pas ouverte, on pourrait l'ouvrir ici
-                      // Pour l'instant on ne fait rien
                     }
                   }}
                   className="w-10 h-10 rounded-xl hover:bg-accent transition-colors flex items-center justify-center relative"
                   style={{
                     backgroundColor: window && !window.isMinimized ? 'hsl(var(--accent))' : 'transparent',
                   }}
-                  title={app.name}
+                  title={translatedName}
                 >
                   <Icon size={20} color={app.color} />
                   {window && !window.isMinimized && (
@@ -105,12 +107,12 @@ export const Taskbar: React.FC<TaskbarProps> = ({
                   {isPinned ? (
                     <>
                       <PinOff className="w-4 h-4 mr-2" />
-                      Désépingler
+                      {t('schoolOS.taskbar.unpin', 'Désépingler')}
                     </>
                   ) : (
                     <>
                       <Pin className="w-4 h-4 mr-2" />
-                      Épingler
+                      {t('schoolOS.taskbar.pin', 'Épingler')}
                     </>
                   )}
                 </ContextMenuItem>
@@ -123,7 +125,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({
                       className="text-destructive focus:text-destructive"
                     >
                       <X className="w-4 h-4 mr-2" />
-                      Fermer
+                      {t('schoolOS.common.close', 'Fermer')}
                     </ContextMenuItem>
                   </>
                 )}
@@ -138,7 +140,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({
             <button className="h-10 px-3 rounded-xl hover:bg-accent transition-colors flex items-center gap-2 ml-auto">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">
-                {activeSchoolYear?.year_label || 'Aucune'}
+                {activeSchoolYear?.year_label || t('schoolOS.common.none', 'Aucune')}
               </span>
               <ChevronDown className="w-3 h-3 text-muted-foreground" />
             </button>
@@ -170,7 +172,7 @@ export const Taskbar: React.FC<TaskbarProps> = ({
               ))}
               {schoolYears.length === 0 && (
                 <div className="text-center text-muted-foreground py-4 text-sm">
-                  Aucune année scolaire disponible
+                  {t('schoolOS.common.noSchoolYear', 'Aucune année scolaire disponible')}
                 </div>
               )}
             </div>
