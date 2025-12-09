@@ -31,9 +31,11 @@ import { useDesktopFolders } from '../hooks/useDesktopFolders';
 import { useDesktopAppPositions } from '../hooks/useDesktopAppPositions';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useFilteredApps } from '../hooks/useFilteredApps';
+import { useTranslatedApps } from '../hooks/useTranslatedApps';
 import { Input } from '@/components/ui/input';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 import {
   ContextMenu,
@@ -48,6 +50,8 @@ import {
 import { SchoolApp } from '../types';
 
 export const Desktop: React.FC = () => {
+  const { t } = useTranslation();
+  const { getAppName } = useTranslatedApps();
   const { school } = useSchoolYear();
   
   // Utiliser les applications filtrées par permissions
@@ -237,12 +241,15 @@ export const Desktop: React.FC = () => {
   };
 
   const filteredApps = searchQuery
-    ? apps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? apps.filter(app => {
+        const translatedName = getAppName(app.id);
+        return translatedName.toLowerCase().includes(searchQuery.toLowerCase());
+      })
     : apps;
 
   const handleResetLayout = () => {
     setApps(permittedApps);
-    toast.success('Disposition du bureau réinitialisée');
+    toast.success(t('schoolOS.desktop.layoutReset', 'Disposition du bureau réinitialisée'));
   };
 
   const handleCreateFolder = () => {
@@ -251,7 +258,8 @@ export const Desktop: React.FC = () => {
 
   const handleFolderCreate = (name: string, color: string, isPublic: boolean) => {
     createFolder(name, color, isPublic);
-    toast.success(`Dossier "${name}" créé (${isPublic ? 'public' : 'privé'})`);
+    const visibility = isPublic ? t('schoolOS.common.public', 'public') : t('schoolOS.common.private', 'privé');
+    toast.success(t('schoolOS.desktop.folderCreated', { name, visibility, defaultValue: `Dossier "${name}" créé (${visibility})` }));
   };
 
   const openFolder = folders.find(f => f.id === openFolderId);
@@ -293,7 +301,7 @@ export const Desktop: React.FC = () => {
         <div className="bg-background/90 backdrop-blur-md border border-border/50 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center gap-3 px-5 py-3">
           <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <Input
-            placeholder="Rechercher une application..."
+            placeholder={t('schoolOS.common.searchApp', 'Rechercher une application...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-muted-foreground/70 h-auto p-0"
@@ -364,7 +372,7 @@ export const Desktop: React.FC = () => {
 
             {filteredApps.length === 0 && searchQuery && (
               <div className="text-center text-white drop-shadow-lg mt-12 pointer-events-auto">
-                Aucune application trouvée
+                {t('schoolOS.common.noAppFound', 'Aucune application trouvée')}
               </div>
             )}
           </div>
@@ -419,11 +427,11 @@ export const Desktop: React.FC = () => {
           disabled={isUploading}
         >
           <ImageIcon className="w-4 h-4 mr-2" />
-          {isUploading ? 'Upload en cours...' : 'Changer le fond d\'écran'}
+          {isUploading ? t('schoolOS.desktop.uploading', 'Upload en cours...') : t('schoolOS.desktop.changeWallpaper', "Changer le fond d'écran")}
         </ContextMenuItem>
         <ContextMenuItem onClick={resetWallpaper}>
           <RefreshCw className="w-4 h-4 mr-2" />
-          Réinitialiser le fond d'écran
+          {t('schoolOS.desktop.resetWallpaper', "Réinitialiser le fond d'écran")}
         </ContextMenuItem>
         
         <ContextMenuSeparator />
@@ -432,12 +440,12 @@ export const Desktop: React.FC = () => {
           {taskbarVisible ? (
             <>
               <EyeOff className="w-4 h-4 mr-2" />
-              Masquer la barre de tâches
+              {t('schoolOS.desktop.hideTaskbar', 'Masquer la barre de tâches')}
             </>
           ) : (
             <>
               <Eye className="w-4 h-4 mr-2" />
-              Afficher la barre de tâches
+              {t('schoolOS.desktop.showTaskbar', 'Afficher la barre de tâches')}
             </>
           )}
         </ContextMenuItem>
@@ -445,17 +453,17 @@ export const Desktop: React.FC = () => {
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <Maximize2 className="w-4 h-4 mr-2" />
-            Taille des icônes
+            {t('schoolOS.desktop.iconSize', 'Taille des icônes')}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
             <ContextMenuItem onClick={() => changeIconSize('small')}>
-              {iconSize === 'small' && '✓ '}Petite
+              {iconSize === 'small' && '✓ '}{t('schoolOS.desktop.small', 'Petite')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => changeIconSize('medium')}>
-              {iconSize === 'medium' && '✓ '}Moyenne
+              {iconSize === 'medium' && '✓ '}{t('schoolOS.desktop.medium', 'Moyenne')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => changeIconSize('large')}>
-              {iconSize === 'large' && '✓ '}Grande
+              {iconSize === 'large' && '✓ '}{t('schoolOS.desktop.large', 'Grande')}
             </ContextMenuItem>
           </ContextMenuSubContent>
         </ContextMenuSub>
@@ -464,12 +472,12 @@ export const Desktop: React.FC = () => {
         
         <ContextMenuItem onClick={handleResetLayout}>
           <RefreshCw className="w-4 h-4 mr-2" />
-          Réinitialiser la disposition
+          {t('schoolOS.desktop.resetLayout', 'Réinitialiser la disposition')}
         </ContextMenuItem>
         
         <ContextMenuItem onClick={handleCreateFolder}>
           <FolderPlus className="w-4 h-4 mr-2" />
-          Créer un dossier
+          {t('schoolOS.desktop.createFolder', 'Créer un dossier')}
         </ContextMenuItem>
       </ContextMenuContent>
 
