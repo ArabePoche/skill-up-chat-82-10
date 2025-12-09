@@ -1,5 +1,6 @@
 // Application de messagerie pour l'école - Unifiée pour tous les rôles
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSchoolMessages } from './hooks/useSchoolMessages';
 import { JoinRequestCard } from './components/JoinRequestCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +12,7 @@ import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 
 export const MessagesApp: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { school } = useSchoolYear();
   const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
@@ -43,7 +45,7 @@ export const MessagesApp: React.FC = () => {
   if (!school) {
     return (
       <div className="p-6 h-full flex items-center justify-center">
-        <p className="text-muted-foreground">Aucune école sélectionnée</p>
+        <p className="text-muted-foreground">{t('schoolOS.common.noData')}</p>
       </div>
     );
   }
@@ -51,7 +53,7 @@ export const MessagesApp: React.FC = () => {
   if (isLoadingRole) {
     return (
       <div className="p-6 h-full flex items-center justify-center">
-        <p className="text-muted-foreground">Chargement...</p>
+        <p className="text-muted-foreground">{t('schoolOS.common.loading')}</p>
       </div>
     );
   }
@@ -66,9 +68,9 @@ export const MessagesApp: React.FC = () => {
               <Mail className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">Messages</h2>
+              <h2 className="text-2xl font-bold">{t('schoolOS.apps.messages')}</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Communiquez avec l'administration et les parents
+                {t('schoolOS.apps.messages')}
               </p>
             </div>
           </div>
@@ -133,9 +135,9 @@ export const MessagesApp: React.FC = () => {
             <Inbox className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold">Messages</h2>
+            <h2 className="text-2xl font-bold">{t('schoolOS.apps.messages')}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Gérez les demandes et communiquez avec votre école
+              {t('schoolOS.apps.messages')}
             </p>
           </div>
         </div>
