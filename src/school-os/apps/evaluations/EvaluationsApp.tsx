@@ -3,6 +3,7 @@
  * Permet de créer et gérer différents types d'évaluations : devoirs, interrogations, compositions, examens, etc.
  */
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, ClipboardList, BookOpen } from 'lucide-react';
@@ -13,6 +14,7 @@ import { EvaluationsList } from './components/EvaluationsList';
 import { CompositionsTab } from './compositions/CompositionsTab';
 
 export const EvaluationsApp: React.FC = () => {
+  const { t } = useTranslation();
   const { school, activeSchoolYear } = useSchoolYear();
   const { hasPermission: canCreate } = useHasPermission(school?.id, 'evaluation.create');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,9 +37,9 @@ export const EvaluationsApp: React.FC = () => {
       <div className="border-b border-border bg-card p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Évaluations</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('schoolOS.evaluations.title')}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Gestion des devoirs, interrogations, compositions et examens
+              {t('schoolOS.evaluations.title')}
             </p>
           </div>
         </div>
@@ -49,11 +51,11 @@ export const EvaluationsApp: React.FC = () => {
           <TabsList className="mb-6">
             <TabsTrigger value="evaluations" className="gap-2">
               <ClipboardList className="h-4 w-4" />
-              Évaluations
+              {t('schoolOS.apps.evaluations')}
             </TabsTrigger>
             <TabsTrigger value="compositions" className="gap-2">
               <BookOpen className="h-4 w-4" />
-              Compositions & Examens
+              {t('schoolOS.grades.composition')}
             </TabsTrigger>
           </TabsList>
 
@@ -63,7 +65,7 @@ export const EvaluationsApp: React.FC = () => {
                 <div className="flex justify-end">
                   <Button onClick={handleCreate} className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Nouvelle évaluation
+                    {t('schoolOS.evaluations.addEvaluation')}
                   </Button>
                 </div>
               )}
