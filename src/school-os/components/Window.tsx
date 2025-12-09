@@ -4,6 +4,7 @@ import { X, Minus, Maximize2, Loader2 } from 'lucide-react';
 import { WindowState } from '../types';
 import { getAppById } from '../apps';
 import { cn } from '@/lib/utils';
+import { useTranslatedApps } from '../hooks/useTranslatedApps';
 
 interface WindowProps {
   window: WindowState;
@@ -20,11 +21,13 @@ export const Window: React.FC<WindowProps> = ({
   onSplit,
   onFocus,
 }) => {
+  const { getAppName } = useTranslatedApps();
   const app = getAppById(window.appId);
 
   if (!app || window.isMinimized) return null;
 
   const AppComponent = app.component;
+  const translatedName = getAppName(app.id);
 
   const positionClasses = {
     full: 'left-4 right-4 top-4 bottom-20',
@@ -40,11 +43,9 @@ export const Window: React.FC<WindowProps> = ({
       )}
       style={{ zIndex: window.zIndex }}
       onMouseDownCapture={() => {
-        // Toujours focus la fenêtre quand on clique n'importe où dedans
         onFocus(window.id);
       }}
       onClick={(e) => {
-        // Empêcher les clics de passer à travers vers les éléments en dessous
         e.stopPropagation();
       }}
     >
@@ -53,7 +54,7 @@ export const Window: React.FC<WindowProps> = ({
         className="h-12 px-4 flex items-center justify-between border-b"
         style={{ backgroundColor: app.color }}
       >
-        <span className="text-white font-semibold">{app.name}</span>
+        <span className="text-white font-semibold">{translatedName}</span>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onMinimize(window.id)}
