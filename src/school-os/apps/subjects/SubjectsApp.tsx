@@ -1,5 +1,6 @@
 // Application de gestion des matières (globales à l'école)
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BookOpen, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { EditSubjectDialog } from './components/EditSubjectDialog';
 import { Subject } from './types';
 
 export const SubjectsApp: React.FC = () => {
+  const { t } = useTranslation();
   const { school } = useSchoolYear();
   const [searchQuery, setSearchQuery] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -25,7 +27,7 @@ export const SubjectsApp: React.FC = () => {
       <div className="p-6 h-full overflow-auto">
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            Veuillez créer une école pour gérer les matières
+            {t('schoolOS.subjects.noSubjects')}
           </p>
         </div>
       </div>
@@ -37,7 +39,7 @@ export const SubjectsApp: React.FC = () => {
   ) || [];
 
   const handleDelete = async (id: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette matière ?')) {
+    if (confirm(t('schoolOS.common.confirm'))) {
       await deleteSubject.mutateAsync(id);
     }
   };
@@ -49,14 +51,14 @@ export const SubjectsApp: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-bold">Gestion des Matières</h2>
+              <h2 className="text-2xl font-bold">{t('schoolOS.subjects.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Créez et gérez les matières de votre établissement
+                {t('schoolOS.subjects.title')}
               </p>
             </div>
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Nouvelle matière
+              {t('schoolOS.subjects.addSubject')}
             </Button>
           </div>
 
@@ -64,7 +66,7 @@ export const SubjectsApp: React.FC = () => {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher une matière..."
+              placeholder={t('schoolOS.common.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -81,7 +83,7 @@ export const SubjectsApp: React.FC = () => {
                   <BookOpen className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">Total Matières</p>
+                  <p className="text-xs font-medium text-muted-foreground">{t('schoolOS.common.total')}</p>
                   <p className="text-xl font-bold">{subjects?.length || 0}</p>
                 </div>
               </div>
@@ -101,18 +103,18 @@ export const SubjectsApp: React.FC = () => {
                 <BookOpen className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">
-                {searchQuery ? 'Aucune matière trouvée' : 'Aucune matière'}
+                {searchQuery ? t('schoolOS.common.noData') : t('schoolOS.subjects.noSubjects')}
               </h3>
               <p className="text-muted-foreground mb-6 text-center max-w-sm">
                 {searchQuery
-                  ? 'Modifiez votre recherche pour trouver des matières'
-                  : 'Commencez par créer vos premières matières pour les assigner aux classes'
+                  ? t('schoolOS.common.noData')
+                  : t('schoolOS.subjects.noSubjects')
                 }
               </p>
               {!searchQuery && (
                 <Button onClick={() => setCreateDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Créer une matière
+                  {t('schoolOS.subjects.addSubject')}
                 </Button>
               )}
             </CardContent>
