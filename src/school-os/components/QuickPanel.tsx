@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { X, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { SchoolApp } from '../types';
+import { useTranslation } from 'react-i18next';
+import { useTranslatedApps } from '../hooks/useTranslatedApps';
 
 interface QuickPanelProps {
   isOpen: boolean;
@@ -17,13 +19,16 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
   onOpenApp,
   apps,
 }) => {
+  const { t } = useTranslation();
+  const { getAppName } = useTranslatedApps();
   const [searchQuery, setSearchQuery] = useState('');
 
   if (!isOpen) return null;
 
-  const filteredApps = apps.filter(app =>
-    app.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredApps = apps.filter(app => {
+    const translatedName = getAppName(app.id);
+    return translatedName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const handleAppClick = (appId: string) => {
     onOpenApp(appId);
@@ -35,7 +40,7 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
       <div className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-xl font-bold">Applications</h2>
+          <h2 className="text-xl font-bold">{t('schoolOS.common.applications', 'Applications')}</h2>
           <button
             onClick={onClose}
             className="w-10 h-10 rounded-lg hover:bg-accent flex items-center justify-center transition-colors"
@@ -49,7 +54,7 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
-              placeholder="Rechercher une application..."
+              placeholder={t('schoolOS.common.searchApp', 'Rechercher une application...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -73,7 +78,7 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
                   {React.createElement(app.icon, { className: "w-8 h-8 text-white" })}
                 </div>
                 <span className="text-sm font-medium text-center">
-                  {app.name}
+                  {getAppName(app.id)}
                 </span>
               </button>
             ))}
@@ -81,7 +86,7 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
 
           {filteredApps.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              Aucune application trouvée
+              {t('schoolOS.common.noAppFound', 'Aucune application trouvée')}
             </div>
           )}
         </div>
