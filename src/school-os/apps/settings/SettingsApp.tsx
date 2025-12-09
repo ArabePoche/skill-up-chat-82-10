@@ -2,6 +2,7 @@
  * Application de paramètres de l'école
  */
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -15,6 +16,7 @@ import { RolesSettings } from './components/RolesSettings';
 import { Settings, Calendar, Palette, Shield } from 'lucide-react';
 
 export const SettingsApp: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const schoolIdFromUrl = searchParams.get('id');
@@ -42,7 +44,7 @@ export const SettingsApp: React.FC = () => {
   if (!school) {
     return (
       <div className="p-6 h-full flex items-center justify-center">
-        <p className="text-muted-foreground">Chargement des paramètres...</p>
+        <p className="text-muted-foreground">{t('schoolOS.common.loading')}</p>
       </div>
     );
   }
@@ -50,9 +52,9 @@ export const SettingsApp: React.FC = () => {
   return (
     <div className="p-6 h-full overflow-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold">Paramètres</h2>
+        <h2 className="text-2xl font-bold">{t('schoolOS.settings.title')}</h2>
         <p className="text-muted-foreground mt-1">
-          Configurez votre établissement et vos préférences
+          {t('schoolOS.settings.title')}
         </p>
       </div>
 
@@ -60,19 +62,19 @@ export const SettingsApp: React.FC = () => {
         <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">Général</span>
+            <span className="hidden sm:inline">{t('schoolOS.settings.general')}</span>
           </TabsTrigger>
           <TabsTrigger value="years" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Années</span>
+            <span className="hidden sm:inline">{t('schoolOS.settings.academicYear')}</span>
           </TabsTrigger>
           <TabsTrigger value="roles" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            <span className="hidden sm:inline">Rôles</span>
+            <span className="hidden sm:inline">{t('schoolOS.settings.security')}</span>
           </TabsTrigger>
           <TabsTrigger value="customization" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
-            <span className="hidden sm:inline">Apparence</span>
+            <span className="hidden sm:inline">{t('schoolOS.settings.theme')}</span>
           </TabsTrigger>
         </TabsList>
 
