@@ -448,7 +448,32 @@
       "success": "نجاح",
       "selectAll": "تحديد الكل",
       "deselectAll": "إلغاء تحديد الكل",
-      "refresh": "تحديث"
+      "refresh": "تحديث",
+      "applications": "التطبيقات",
+      "searchApp": "البحث عن تطبيق...",
+      "noAppFound": "لم يتم العثور على تطبيق",
+      "noSchoolYear": "لا توجد سنة دراسية متاحة",
+      "public": "عام",
+      "private": "خاص"
+    },
+    "desktop": {
+      "changeWallpaper": "تغيير الخلفية",
+      "resetWallpaper": "إعادة تعيين الخلفية",
+      "uploading": "جاري الرفع...",
+      "hideTaskbar": "إخفاء شريط المهام",
+      "showTaskbar": "إظهار شريط المهام",
+      "iconSize": "حجم الأيقونات",
+      "small": "صغير",
+      "medium": "متوسط",
+      "large": "كبير",
+      "resetLayout": "إعادة تعيين التخطيط",
+      "layoutReset": "تم إعادة تعيين تخطيط سطح المكتب",
+      "createFolder": "إنشاء مجلد",
+      "folderCreated": "تم إنشاء المجلد \"{{name}}\" ({{visibility}})"
+    },
+    "taskbar": {
+      "pin": "تثبيت",
+      "unpin": "إلغاء التثبيت"
     },
     "classes": {
       "title": "إدارة الفصول",
