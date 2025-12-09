@@ -1,15 +1,17 @@
 // Application de gestion des paiements scolaires
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { PaymentsView } from './components/PaymentsView';
 
 export const PaymentsApp: React.FC = () => {
+  const { t } = useTranslation();
   const { school, isLoading } = useSchoolYear();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Chargement de l'école...</p>
+        <p className="text-muted-foreground">{t('schoolOS.common.loading')}</p>
       </div>
     );
   }
@@ -17,7 +19,7 @@ export const PaymentsApp: React.FC = () => {
   if (!school) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Aucune école trouvée</p>
+        <p className="text-muted-foreground">{t('schoolOS.common.noData')}</p>
       </div>
     );
   }
