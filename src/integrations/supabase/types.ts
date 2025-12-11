@@ -7024,20 +7024,20 @@ export type Database = {
       add_time_used:
         | {
             Args: {
+              p_formation_id: string
+              p_minutes: number
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
               p_date?: string
               p_formation_id: string
               p_minutes: number
               p_user_id: string
             }
             Returns: Record<string, unknown>
-          }
-        | {
-            Args: {
-              p_formation_id: string
-              p_minutes: number
-              p_user_id: string
-            }
-            Returns: undefined
           }
       approve_enrollment: {
         Args: {
@@ -7225,12 +7225,12 @@ export type Database = {
       }
       increment_messages_sent:
         | {
-            Args: { p_date?: string; p_formation_id: string; p_user_id: string }
-            Returns: number
-          }
-        | {
             Args: { p_formation_id: string; p_user_id: string }
             Returns: undefined
+          }
+        | {
+            Args: { p_date?: string; p_formation_id: string; p_user_id: string }
+            Returns: number
           }
       increment_post_comments: { Args: { post_id: string }; Returns: undefined }
       initialize_first_lesson: {
@@ -7247,8 +7247,8 @@ export type Database = {
         Returns: boolean
       }
       is_school_owner:
-        | { Args: { _school_id: string; _user_id: string }; Returns: boolean }
         | { Args: { _school_id: string }; Returns: boolean }
+        | { Args: { _school_id: string; _user_id: string }; Returns: boolean }
       is_school_owner_or_teacher: {
         Args: { user_id: string }
         Returns: boolean
