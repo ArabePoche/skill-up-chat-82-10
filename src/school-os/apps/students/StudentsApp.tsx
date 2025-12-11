@@ -1,5 +1,6 @@
 // Application de gestion des élèves - Unifiée pour tous les rôles
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -23,6 +24,7 @@ import { useTeacherClasses } from '@/school-os/hooks/useTeacherClasses';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export const StudentsApp: React.FC = () => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedGender, setSelectedGender] = useState<string>('all');
@@ -98,7 +100,7 @@ export const StudentsApp: React.FC = () => {
       <div className="p-6 h-full flex items-center justify-center">
         <Card className="p-6">
           <p className="text-muted-foreground">
-            Veuillez d'abord créer une école et une année scolaire active.
+            {t('schoolOS.students.noSchoolYear')}
           </p>
         </Card>
       </div>
@@ -108,7 +110,7 @@ export const StudentsApp: React.FC = () => {
   if (isLoadingRole) {
     return (
       <div className="p-6 h-full flex items-center justify-center">
-        <p className="text-muted-foreground">Chargement...</p>
+        <p className="text-muted-foreground">{t('schoolOS.common.loading')}</p>
       </div>
     );
   }
@@ -120,18 +122,18 @@ export const StudentsApp: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 flex-shrink-0">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold">Mes Élèves</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">{t('schoolOS.students.myStudents')}</h2>
             <div className="flex items-center gap-4 mt-1">
               <p className="text-sm text-muted-foreground">
-                {genderStats.total} élève{genderStats.total > 1 ? 's' : ''}
+                {t('schoolOS.students.studentCount', { count: genderStats.total })}
               </p>
               <div className="flex items-center gap-3 text-sm">
                 <span className="text-pink-600 dark:text-pink-400 font-medium">
-                  {genderStats.girls} fille{genderStats.girls > 1 ? 's' : ''}
+                  {t('schoolOS.students.girlCount', { count: genderStats.girls })}
                 </span>
                 <span className="text-muted-foreground">•</span>
                 <span className="text-blue-600 dark:text-blue-400 font-medium">
-                  {genderStats.boys} garçon{genderStats.boys > 1 ? 's' : ''}
+                  {t('schoolOS.students.boyCount', { count: genderStats.boys })}
                 </span>
               </div>
             </div>
@@ -144,7 +146,7 @@ export const StudentsApp: React.FC = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un élève..."
+                placeholder={t('schoolOS.students.searchStudents')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-9"
@@ -157,7 +159,7 @@ export const StudentsApp: React.FC = () => {
               className="h-9 px-3"
             >
               <Filter className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">{showFilters ? 'Masquer' : 'Filtres'}</span>
+              <span className="hidden sm:inline">{showFilters ? t('schoolOS.students.hide') : t('schoolOS.students.filters')}</span>
             </Button>
           </div>
 
@@ -167,10 +169,10 @@ export const StudentsApp: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Select value={selectedClass} onValueChange={setSelectedClass}>
                     <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Classe" />
+                      <SelectValue placeholder={t('schoolOS.students.class')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toutes mes classes</SelectItem>
+                      <SelectItem value="all">{t('schoolOS.students.myClasses')}</SelectItem>
                       {classes?.map((cls: any) => (
                         <SelectItem key={cls.id} value={cls.id}>
                           {cls.name}
@@ -181,12 +183,12 @@ export const StudentsApp: React.FC = () => {
 
                   <Select value={selectedGender} onValueChange={setSelectedGender}>
                     <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Genre" />
+                      <SelectValue placeholder={t('schoolOS.students.gender')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous les genres</SelectItem>
-                      <SelectItem value="male">Garçons</SelectItem>
-                      <SelectItem value="female">Filles</SelectItem>
+                      <SelectItem value="all">{t('schoolOS.students.allGenders')}</SelectItem>
+                      <SelectItem value="male">{t('schoolOS.students.boys')}</SelectItem>
+                      <SelectItem value="female">{t('schoolOS.students.girls')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -200,7 +202,7 @@ export const StudentsApp: React.FC = () => {
                   }}
                   className="w-full h-8 text-xs"
                 >
-                  Réinitialiser les filtres
+                  {t('schoolOS.students.resetFilters')}
                 </Button>
               </CardContent>
             </Card>
@@ -211,17 +213,17 @@ export const StudentsApp: React.FC = () => {
         <ScrollArea className="flex-1">
           {isLoading ? (
             <div className="text-center py-12 text-muted-foreground">
-              Chargement des élèves...
+              {t('schoolOS.students.loadingStudents')}
             </div>
           ) : filteredStudents.length === 0 ? (
             <Card className="p-12 text-center">
               <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-4">
-                Aucun élève trouvé
+                {t('schoolOS.students.noStudentFound')}
               </p>
               {(searchQuery || selectedClass !== 'all' || selectedGender !== 'all') && (
                 <p className="text-sm text-muted-foreground">
-                  Essayez de modifier vos filtres
+                  {t('schoolOS.students.tryModifyFilters')}
                 </p>
               )}
             </Card>
@@ -258,18 +260,18 @@ export const StudentsApp: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <Badge variant="outline" className="text-xs">
-                          {student.class_name || 'Non assigné'}
-                        </Badge>
-                        <Badge 
-                          variant={student.gender === 'male' ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {student.gender === 'male' ? 'M' : 'F'}
-                        </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {student.class_name || t('schoolOS.students.notAssigned')}
+                          </Badge>
+                          <Badge 
+                            variant={student.gender === 'male' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {student.gender === 'male' ? 'M' : 'F'}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
+                    </CardContent>
                 </Card>
               ))}
             </div>
@@ -301,11 +303,11 @@ export const StudentsApp: React.FC = () => {
         <TabsList className="mb-4 sm:mb-6 flex-shrink-0">
           <TabsTrigger value="students">
             <Search className="w-4 h-4 mr-2" />
-            Élèves
+            {t('schoolOS.students.studentsTab')}
           </TabsTrigger>
           <TabsTrigger value="families">
             <Users className="w-4 h-4 mr-2" />
-            Familles
+            {t('schoolOS.students.familiesTab')}
           </TabsTrigger>
         </TabsList>
 
@@ -313,18 +315,18 @@ export const StudentsApp: React.FC = () => {
           {/* Entête fixe */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 flex-shrink-0">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold">Gestion des Élèves</h2>
+              <h2 className="text-xl sm:text-2xl font-bold">{t('schoolOS.students.title')}</h2>
               <div className="flex items-center gap-4 mt-1">
                 <p className="text-sm text-muted-foreground">
-                  {genderStats.total} élève{genderStats.total > 1 ? 's' : ''} trouvé{genderStats.total > 1 ? 's' : ''}
+                  {t('schoolOS.students.studentFound', { count: genderStats.total })}
                 </p>
                 <div className="flex items-center gap-3 text-sm">
                   <span className="text-pink-600 dark:text-pink-400 font-medium">
-                    {genderStats.girls} fille{genderStats.girls > 1 ? 's' : ''}
+                    {t('schoolOS.students.girlCount', { count: genderStats.girls })}
                   </span>
                   <span className="text-muted-foreground">•</span>
                   <span className="text-blue-600 dark:text-blue-400 font-medium">
-                    {genderStats.boys} garçon{genderStats.boys > 1 ? 's' : ''}
+                    {t('schoolOS.students.boyCount', { count: genderStats.boys })}
                   </span>
                 </div>
               </div>
@@ -332,7 +334,7 @@ export const StudentsApp: React.FC = () => {
             {canManageStudents && (
               <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="w-full sm:w-auto h-8 px-3">
                 <Plus className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Ajouter</span>
+                <span className="hidden sm:inline">{t('schoolOS.common.add')}</span>
               </Button>
             )}
           </div>
@@ -343,7 +345,7 @@ export const StudentsApp: React.FC = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher un élève..."
+                  placeholder={t('schoolOS.students.searchStudents')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 h-9"
@@ -356,7 +358,7 @@ export const StudentsApp: React.FC = () => {
                 className="h-9 px-3"
               >
                 <Filter className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">{showFilters ? 'Masquer' : 'Filtres'}</span>
+                <span className="hidden sm:inline">{showFilters ? t('schoolOS.students.hide') : t('schoolOS.students.filters')}</span>
               </Button>
             </div>
 
@@ -367,10 +369,10 @@ export const StudentsApp: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Select value={selectedClass} onValueChange={setSelectedClass}>
                       <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Classe" />
+                        <SelectValue placeholder={t('schoolOS.students.class')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Toutes les classes</SelectItem>
+                        <SelectItem value="all">{t('schoolOS.students.allClasses')}</SelectItem>
                         {classes?.map((cls: any) => (
                           <SelectItem key={cls.id} value={cls.id}>
                             {cls.name}
@@ -381,24 +383,24 @@ export const StudentsApp: React.FC = () => {
 
                     <Select value={selectedGender} onValueChange={setSelectedGender}>
                       <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Genre" />
+                        <SelectValue placeholder={t('schoolOS.students.gender')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tous les genres</SelectItem>
-                        <SelectItem value="male">Garçons</SelectItem>
-                        <SelectItem value="female">Filles</SelectItem>
+                        <SelectItem value="all">{t('schoolOS.students.allGenders')}</SelectItem>
+                        <SelectItem value="male">{t('schoolOS.students.boys')}</SelectItem>
+                        <SelectItem value="female">{t('schoolOS.students.girls')}</SelectItem>
                       </SelectContent>
                     </Select>
 
                     <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                       <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Statut" />
+                        <SelectValue placeholder={t('schoolOS.students.status')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tous les statuts</SelectItem>
-                        <SelectItem value="active">Actifs</SelectItem>
-                        <SelectItem value="inactive">Inactifs</SelectItem>
-                        <SelectItem value="transferred">Transférés</SelectItem>
+                        <SelectItem value="all">{t('schoolOS.students.allStatuses')}</SelectItem>
+                        <SelectItem value="active">{t('schoolOS.students.actives')}</SelectItem>
+                        <SelectItem value="inactive">{t('schoolOS.students.inactives')}</SelectItem>
+                        <SelectItem value="transferred">{t('schoolOS.students.transferred')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -413,7 +415,7 @@ export const StudentsApp: React.FC = () => {
                     }}
                     className="w-full h-8 text-xs"
                   >
-                    Réinitialiser les filtres
+                    {t('schoolOS.students.resetFilters')}
                   </Button>
                 </CardContent>
               </Card>
@@ -424,21 +426,21 @@ export const StudentsApp: React.FC = () => {
           <div className="flex-1 min-h-0 overflow-y-auto">
             {isLoading ? (
               <div className="text-center py-12 text-muted-foreground">
-                Chargement des élèves...
+                {t('schoolOS.students.loadingStudents')}
               </div>
             ) : filteredStudents.length === 0 ? (
               <Card className="p-12 text-center">
                 <p className="text-muted-foreground mb-4">
-                  Aucun élève trouvé
+                  {t('schoolOS.students.noStudentFound')}
                 </p>
                 {searchQuery || selectedClass !== 'all' || selectedGender !== 'all' || selectedStatus !== 'all' ? (
                   <p className="text-sm text-muted-foreground">
-                    Essayez de modifier vos filtres
+                    {t('schoolOS.students.tryModifyFilters')}
                   </p>
                 ) : canManageStudents ? (
                   <Button onClick={() => setIsAddDialogOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Ajouter votre premier élève
+                    {t('schoolOS.students.addFirstStudent')}
                   </Button>
                 ) : null}
               </Card>
@@ -514,8 +516,8 @@ export const StudentsApp: React.FC = () => {
         <TabsContent value="families" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
           <Tabs defaultValue="list" className="w-full h-full flex flex-col overflow-hidden">
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 flex-shrink-0">
-              <TabsTrigger value="list">Liste des Familles</TabsTrigger>
-              <TabsTrigger value="students">Élèves par Famille</TabsTrigger>
+              <TabsTrigger value="list">{t('schoolOS.students.familyList')}</TabsTrigger>
+              <TabsTrigger value="students">{t('schoolOS.students.studentsByFamily')}</TabsTrigger>
             </TabsList>
             
             <TabsContent value="list" className="flex-1 overflow-y-auto mt-0 pt-0">
