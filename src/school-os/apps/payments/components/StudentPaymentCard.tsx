@@ -247,6 +247,8 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
         onOpenChange={setIsHistoryOpen}
         studentId={student.id}
         studentName={`${student.first_name} ${student.last_name}`}
+        studentCode={student.student_code}
+        className={student.classes?.name}
       />
     </Card>
   );
