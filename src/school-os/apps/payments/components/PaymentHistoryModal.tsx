@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useStudentPayments, useDeletePayment } from '../hooks/usePayments';
-import { Edit2, Trash2, Calendar, DollarSign, FileText } from 'lucide-react';
+import { Edit2, Trash2, Calendar, DollarSign, FileText, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -23,12 +23,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EditPaymentDialog } from './EditPaymentDialog';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface PaymentHistoryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   studentId: string;
   studentName: string;
+  studentCode?: string;
+  className?: string;
 }
 
 export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
@@ -36,11 +39,14 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
   onOpenChange,
   studentId,
   studentName,
+  studentCode,
+  className,
 }) => {
   const { data: payments = [], isLoading } = useStudentPayments(studentId);
   const deletePayment = useDeletePayment();
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
   const [editingPayment, setEditingPayment] = useState<any>(null);
+  const [receiptPayment, setReceiptPayment] = useState<any>(null);
 
   const handleDelete = async () => {
     if (paymentToDelete) {
@@ -180,6 +186,15 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => setReceiptPayment(payment)}
+                          className="h-8 w-8 p-0 text-primary hover:text-primary"
+                          title="Voir le reçu"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setEditingPayment(payment)}
                           className="h-8 w-8 p-0"
                         >
@@ -228,6 +243,18 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({
           open={!!editingPayment}
           onOpenChange={(open) => !open && setEditingPayment(null)}
           payment={editingPayment}
+        />
+      )}
+
+      {/* Modal du reçu */}
+      {receiptPayment && (
+        <PaymentReceiptModal
+          open={!!receiptPayment}
+          onOpenChange={(open) => !open && setReceiptPayment(null)}
+          payment={receiptPayment}
+          studentName={studentName}
+          studentCode={studentCode}
+          className={className}
         />
       )}
     </>
