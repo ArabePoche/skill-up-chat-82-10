@@ -1,16 +1,18 @@
 /**
  * Liste des paiements par élève (vue existante)
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSchoolStudents } from '../hooks/usePayments';
+import { useMonthlyPaymentTracking } from '../hooks/useMonthlyPaymentTracking';
 import { StudentPaymentCard } from './StudentPaymentCard';
 import { AddPaymentDialog } from './AddPaymentDialog';
 import { AddRegistrationPaymentDialog } from './AddRegistrationPaymentDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Plus, GraduationCap } from 'lucide-react';
+import { Search, Plus, GraduationCap, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 interface StudentPaymentListProps {
   schoolId?: string;
@@ -18,20 +20,29 @@ interface StudentPaymentListProps {
 
 export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId }) => {
   const { data: students = [], isLoading } = useSchoolStudents(schoolId);
+  const { trackingData } = useMonthlyPaymentTracking(schoolId);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isAddRegistrationPaymentOpen, setIsAddRegistrationPaymentOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
-  const filteredStudents = students
-    .filter(student => student.total_amount_due > 0) // Exclure les élèves avec montant dû = 0
-    .filter(student => {
-      const query = searchQuery.toLowerCase();
-      return (
-        `${student.first_name} ${student.last_name}`.toLowerCase().includes(query) ||
-        student.student_code?.toLowerCase().includes(query)
-      );
-    });
+  const studentsWithDebt = students.filter(student => student.total_amount_due > 0);
+
+  // Statistiques basées sur le statut du mois précédent (calculé par useMonthlyPaymentTracking)
+  const stats = useMemo(() => {
+    const upToDate = trackingData.filter(t => t.overallStatus === 'up_to_date').length;
+    const partial = trackingData.filter(t => t.overallStatus === 'partial').length;
+    const late = trackingData.filter(t => t.overallStatus === 'late').length;
+    return { upToDate, partial, late };
+  }, [trackingData]);
+
+  const filteredStudents = studentsWithDebt.filter(student => {
+    const query = searchQuery.toLowerCase();
+    return (
+      `${student.first_name} ${student.last_name}`.toLowerCase().includes(query) ||
+      student.student_code?.toLowerCase().includes(query)
+    );
+  });
 
   if (isLoading) {
     return (
@@ -45,7 +56,23 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
+      {/* Statistiques minimales */}
+      <div className="flex flex-wrap gap-2 justify-center mb-3 shrink-0">
+        <Badge variant="outline" className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 border-green-200">
+          <CheckCircle2 className="w-3 h-3" />
+          <span className="text-xs font-medium">{stats.upToDate} à jour</span>
+        </Badge>
+        <Badge variant="outline" className="flex items-center gap-1 px-3 py-1 bg-yellow-50 text-yellow-700 border-yellow-200">
+          <Clock className="w-3 h-3" />
+          <span className="text-xs font-medium">{stats.partial} partiels</span>
+        </Badge>
+        <Badge variant="outline" className="flex items-center gap-1 px-3 py-1 bg-red-50 text-red-700 border-red-200">
+          <AlertCircle className="w-3 h-3" />
+          <span className="text-xs font-medium">{stats.late} en retard</span>
+        </Badge>
+      </div>
+
       {/* Barre de recherche style Google - FIXE */}
       <div className="flex flex-col gap-3 mb-4 sm:mb-6 shrink-0">
         <div className="relative w-full max-w-3xl mx-auto">
@@ -77,8 +104,8 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
       </div>
 
       {/* Liste des élèves - SCROLLABLE */}
-      <ScrollArea className="flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 pr-2 sm:pr-4">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 pr-2 sm:pr-4 pb-16">
           {filteredStudents.length === 0 ? (
             <Card className="col-span-full">
               <CardContent className="py-8 text-center text-muted-foreground">
@@ -130,3 +157,4 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
     </div>
   );
 };
+ 
