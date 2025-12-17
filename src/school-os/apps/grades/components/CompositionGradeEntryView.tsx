@@ -241,7 +241,7 @@ export const CompositionGradeEntryView: React.FC<CompositionGradeEntryViewProps>
       )}
 
       {/* Liste des élèves */}
-      <Card className="flex-1 overflow-hidden">
+      <Card className="flex-1 overflow-hidden flex flex-col min-h-0">
         <CardHeader className="py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
@@ -259,9 +259,8 @@ export const CompositionGradeEntryView: React.FC<CompositionGradeEntryViewProps>
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-hidden">
-          <ScrollArea className="h-[calc(100vh-400px)]">
-            <div className="divide-y divide-border">
+        <CardContent className="p-0 flex-1 overflow-auto min-h-0">
+            <div className="divide-y divide-border pb-4">
               {students.map((student, index) => {
                 const allGradesFilled = subjects.every(s => {
                   const key = getNoteKey(student.id, s.id);
@@ -353,7 +352,6 @@ export const CompositionGradeEntryView: React.FC<CompositionGradeEntryViewProps>
                 );
               })}
             </div>
-          </ScrollArea>
         </CardContent>
       </Card>
     </div>
