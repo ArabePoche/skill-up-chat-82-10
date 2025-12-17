@@ -157,4 +157,3 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
     </div>
   );
 };
- 
