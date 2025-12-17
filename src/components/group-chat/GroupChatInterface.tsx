@@ -1,9 +1,8 @@
-
 /**
  * Interface de chat groupe qui réutilise les composants de ChatInterface
  * Spécialisée pour la progression par niveau avec logique de promotion
  */
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { ArrowLeft, Phone, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +13,7 @@ import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useLevelExercises } from '@/hooks/group-chat/useLevelExercises';
+import { ExerciseModalProvider } from '@/contexts/ExerciseModalContext';
 
 // Hooks spécifiques au chat de groupe
 import { useChatMode } from '@/hooks/chat/useChatMode';
@@ -30,6 +30,7 @@ import VideoMessageSwitch from '../video/VideoMessageSwitch';
 import { LessonVideoPlayerWithTimer } from '../video/LessonVideoPlayerWithTimer';
 import { Button } from '../ui/button';
 import { GroupInfoDrawer } from './GroupInfoDrawer';
+import { GroupChatFilters, GroupFilterType } from './GroupChatFilters';
 import { toast } from 'sonner';
 
 // Types
@@ -74,6 +75,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<GroupFilterType>('all');
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   
@@ -103,6 +105,42 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const exercises = levelExercises;
   
   const { data: userRole } = useUserRole(formation.id);
+
+  // Filtrage des messages selon le filtre actif (pour les élèves - basé sur currentUser)
+  const filteredMessages = useMemo(() => {
+    if (activeFilter === 'all') return messages;
+    
+    const userId = user?.id;
+    if (!userId) return messages;
+    
+    return messages.filter((message: any) => {
+      switch (activeFilter) {
+        case 'videos':
+          // Vidéos de leçon (item_type) ou vidéos partagées (message_type)
+          const isVideo = message.item_type === 'lesson_video' || 
+                          message.message_type === 'video' || 
+                          message.message_type === 'lesson_video';
+          return isVideo;
+        case 'exercises':
+          // Cartes d'exercice (système) - pas les soumissions
+          const isExerciseCard = (message.is_system_message && message.exercise_id) || 
+                                  message.item_type === 'exercise';
+          return isExerciseCard;
+        case 'submissions':
+          // Toutes les soumissions de l'utilisateur (tous statuts)
+          return message.is_exercise_submission && message.sender_id === userId;
+        case 'messages':
+          // Messages texte/audio de/pour l'utilisateur (hors soumissions et systèmes)
+          const isTextOrAudio = message.message_type === 'text' || message.message_type === 'audio';
+          return isTextOrAudio && 
+            !message.is_exercise_submission && 
+            !message.is_system_message &&
+            (message.sender_id === userId || message.receiver_id === userId || message.receiver_id === null);
+        default:
+          return true;
+      }
+    });
+  }, [messages, activeFilter, user?.id]);
   
   // Déterminer le bon lessonId pour le chat de groupe
   const { data: groupLessonId, isLoading: isLoadingLessonId } = useGroupLessonId(level.id.toString(), formation.id);
@@ -350,6 +388,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   }
 
   return (
+    <ExerciseModalProvider>
     <div className="min-h-screen bg-[#e5ddd5] flex flex-col relative">
       {/* Notifications d'appels entrants - réutilisé de ChatInterface */}
       {incomingCall && userRole?.role === 'teacher' && (
@@ -467,9 +506,18 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       {/* Messages - réutilise MessageList de ChatInterface */}
       <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[100px] pb-[80px] px-2 md:px-4">
         
+        {/* Filtres pour les élèves */}
+        {userRole?.role === 'student' && (
+          <div className="sticky top-[100px] z-40 bg-[#e5ddd5] py-2">
+            <GroupChatFilters
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+            />
+          </div>
+        )}
 
         <MessageList
-          messages={messages}
+          messages={filteredMessages}
           exercises={exercises}
           formationId={formation.id}
           lessonId={level.id.toString()}
@@ -501,5 +549,6 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         />
       </div>
     </div>
+    </ExerciseModalProvider>
   );
 };
