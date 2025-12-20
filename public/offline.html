@@ -2,8 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1f37">
   <title>Mode hors ligne - EducaTok</title>
+  <link rel="icon" type="image/png" href="/icon-192.png">
   <style>
     * {
       margin: 0;
@@ -13,91 +15,402 @@
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1a1f37 0%, #2d1b4e 50%, #1a1f37 100%);
+      min-height: 100vh;
+      color: #fff;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      color: #333;
       padding: 20px;
     }
     
     .container {
-      background: white;
-      border-radius: 20px;
-      padding: 40px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 40px 32px;
       text-align: center;
-      max-width: 400px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
     
-    .icon {
-      font-size: 64px;
-      margin-bottom: 20px;
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #8B5CF6, #EC4899);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 10px 40px rgba(139, 92, 246, 0.3);
     }
     
     h1 {
-      font-size: 24px;
+      font-size: 28px;
+      font-weight: 700;
       margin-bottom: 12px;
-      color: #1a1f37;
+      background: linear-gradient(135deg, #fff, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     
-    p {
-      color: #666;
+    .subtitle {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 16px;
       line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    
+    .status-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 20px;
       margin-bottom: 24px;
     }
     
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #EF4444;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-dot.online {
+      background: #10B981;
+      animation: none;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.9); }
+    }
+    
+    .status-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .status-text.offline { color: #FCA5A5; }
+    .status-text.online { color: #6EE7B7; }
+    
     .btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #8B5CF6, #EC4899);
       color: white;
       border: none;
-      padding: 12px 32px;
-      border-radius: 8px;
+      padding: 14px 32px;
+      border-radius: 12px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      transition: transform 0.2s;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-bottom: 12px;
     }
     
     .btn:hover {
       transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
     }
     
-    .status {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #999;
+    .btn:active {
+      transform: translateY(0);
     }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: none;
+    }
+    
+    .offline-content {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .offline-content h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .formation-list {
+      text-align: left;
+    }
+    
+    .formation-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .formation-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .formation-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #8B5CF6, #6366F1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .formation-info {
+      flex: 1;
+    }
+    
+    .formation-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    
+    .formation-meta {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .empty-state {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      padding: 20px;
+    }
+    
+    .tips {
+      margin-top: 32px;
+      padding: 16px;
+      background: rgba(139, 92, 246, 0.1);
+      border-radius: 12px;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    
+    .tips h3 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #A78BFA;
+    }
+    
+    .tips p {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      line-height: 1.5;
+    }
+    
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading .spinner { display: block; }
+    .loading .btn-text { display: none; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="icon">📚</div>
+    <div class="logo">📚</div>
     <h1>Mode hors ligne</h1>
-    <p>Vous êtes actuellement hors ligne. Certaines fonctionnalités nécessitent une connexion Internet.</p>
-    <button class="btn" onclick="window.location.reload()">Réessayer</button>
-    <div class="status" id="status">Vérification de la connexion...</div>
+    <p class="subtitle">Vous êtes actuellement hors ligne. Reconnectez-vous pour accéder à toutes les fonctionnalités.</p>
+    
+    <div class="status-card">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text offline" id="statusText">Vérification...</span>
+      </div>
+    </div>
+    
+    <button class="btn" id="retryBtn" onclick="retryConnection()">
+      <span class="spinner" id="spinner"></span>
+      <span class="btn-text">🔄 Réessayer la connexion</span>
+    </button>
+    
+    <button class="btn btn-secondary" onclick="goHome()">
+      🏠 Retour à l'accueil
+    </button>
+    
+    <div class="offline-content">
+      <h2>📥 Contenus disponibles hors ligne</h2>
+      <div class="formation-list" id="formationList">
+        <div class="empty-state" id="emptyState">
+          Chargement des formations téléchargées...
+        </div>
+      </div>
+    </div>
+    
+    <div class="tips">
+      <h3>💡 Astuce</h3>
+      <p>Pour profiter de l'app hors ligne, téléchargez vos formations favorites depuis la page de la formation quand vous êtes connecté.</p>
+    </div>
   </div>
   
   <script>
+    const DB_NAME = 'offline_content';
+    const FORMATIONS_STORE = 'formations';
+    
+    // Vérifier la connexion
     function checkOnline() {
-      const status = document.getElementById('status');
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      
       if (navigator.onLine) {
-        status.textContent = '✓ Connexion détectée';
-        status.style.color = '#10B981';
-        setTimeout(() => window.location.reload(), 1000);
+        statusDot.classList.add('online');
+        statusText.textContent = '✓ Connexion détectée';
+        statusText.className = 'status-text online';
+        
+        // Attendre un peu puis recharger
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
       } else {
-        status.textContent = '✗ Aucune connexion Internet';
-        status.style.color = '#EF4444';
+        statusDot.classList.remove('online');
+        statusText.textContent = '✗ Aucune connexion Internet';
+        statusText.className = 'status-text offline';
       }
     }
     
+    // Réessayer la connexion
+    function retryConnection() {
+      const btn = document.getElementById('retryBtn');
+      btn.classList.add('loading');
+      
+      // Test de connexion réel
+      fetch('https://www.google.com/generate_204', { mode: 'no-cors', cache: 'no-store' })
+        .then(() => {
+          window.location.href = '/';
+        })
+        .catch(() => {
+          btn.classList.remove('loading');
+          checkOnline();
+        });
+      
+      setTimeout(() => {
+        btn.classList.remove('loading');
+      }, 3000);
+    }
+    
+    // Retour à l'accueil
+    function goHome() {
+      window.location.href = '/';
+    }
+    
+    // Charger les formations offline depuis IndexedDB
+    async function loadOfflineFormations() {
+      const listEl = document.getElementById('formationList');
+      const emptyEl = document.getElementById('emptyState');
+      
+      try {
+        const db = await openDB();
+        const formations = await getAllFormations(db);
+        
+        if (formations.length === 0) {
+          emptyEl.textContent = 'Aucune formation téléchargée. Téléchargez des formations quand vous êtes connecté pour y accéder hors ligne.';
+          return;
+        }
+        
+        emptyEl.style.display = 'none';
+        
+        formations.forEach(formation => {
+          const item = document.createElement('div');
+          item.className = 'formation-item';
+          item.onclick = () => openFormation(formation.id);
+          
+          item.innerHTML = `
+            <div class="formation-icon">📖</div>
+            <div class="formation-info">
+              <div class="formation-title">${formation.data?.title || 'Formation'}</div>
+              <div class="formation-meta">Téléchargé le ${new Date(formation.downloadedAt).toLocaleDateString('fr-FR')}</div>
+            </div>
+            <span>→</span>
+          `;
+          
+          listEl.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Erreur chargement formations:', error);
+        emptyEl.textContent = 'Impossible de charger les formations hors ligne.';
+      }
+    }
+    
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(FORMATIONS_STORE)) {
+            db.createObjectStore(FORMATIONS_STORE, { keyPath: 'id' });
+          }
+        };
+      });
+    }
+    
+    function getAllFormations(db) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([FORMATIONS_STORE], 'readonly');
+        const store = transaction.objectStore(FORMATIONS_STORE);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    function openFormation(formationId) {
+      // Tenter d'ouvrir la formation (le SW devrait servir depuis le cache)
+      window.location.href = '/formation/' + formationId;
+    }
+    
+    // Initialisation
     window.addEventListener('online', checkOnline);
     window.addEventListener('offline', checkOnline);
     
-    setInterval(checkOnline, 3000);
+    // Vérification initiale
     checkOnline();
+    loadOfflineFormations();
+    
+    // Vérifier périodiquement
+    setInterval(checkOnline, 5000);
   </script>
 </body>
 </html>
