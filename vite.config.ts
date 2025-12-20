@@ -18,11 +18,14 @@ export default defineConfig(({ mode }) => ({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      injectRegister: 'auto',
+      injectRegister: false,
       injectManifest: {
-        injectionPoint: undefined,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        sourcemap: true,
       },
       devOptions: {
         enabled: true,
