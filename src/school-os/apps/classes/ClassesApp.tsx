@@ -4,7 +4,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
-import { AccountingView } from './components/AccountingView';
+import AccountingView from "../accounting/components/AccountingView";
 
 export const AccountingApp: React.FC = () => {
   const { t } = useTranslation();
