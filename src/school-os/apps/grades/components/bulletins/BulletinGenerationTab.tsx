@@ -463,6 +463,9 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
               key={data.studentId}
               data={data}
               defaultOpen={expandedAll}
+              className={availableClasses.find(c => c.id === selectedClassId)?.name}
+              evaluationTitle={selectedComposition?.title}
+              template={currentTemplate}
             />
           ))}
         </div>
