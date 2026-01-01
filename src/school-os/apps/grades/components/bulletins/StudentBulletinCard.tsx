@@ -1,13 +1,18 @@
 /**
  * Carte bulletin pliable pour un élève
  * Affiche: notes par matière, moyenne, total, rang, moyenne classe, appréciation
+ * Actions: télécharger PDF individuel, envoyer par WhatsApp
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, User, Award, TrendingUp, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp, User, Award, TrendingUp, Users, Download, MessageCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportSingleBulletinToPdf } from '../../utils/bulletinPdfExport';
+import { BulletinTemplate } from '../../hooks/useBulletins';
+import { toast } from 'sonner';
 
 export interface SubjectGrade {
   subjectId: string;
@@ -16,7 +21,7 @@ export interface SubjectGrade {
   maxScore: number;
   coefficient: number;
   isAbsent?: boolean;
-  classGradeScore?: number | null; // Note de classe (facultatif)
+  classGradeScore?: number | null;
 }
 
 export interface StudentBulletinData {
@@ -34,19 +39,29 @@ export interface StudentBulletinData {
   firstAverage: number;
   appreciation: string;
   mention?: string;
-  hasClassGrades?: boolean; // Indique si les notes de classe sont incluses
+  hasClassGrades?: boolean;
+  parentPhone?: string | null;
 }
 
 interface StudentBulletinCardProps {
   data: StudentBulletinData;
   defaultOpen?: boolean;
+  className?: string;
+  evaluationTitle?: string;
+  template?: BulletinTemplate | null;
+  schoolName?: string;
 }
 
 export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({ 
   data, 
-  defaultOpen = false 
+  defaultOpen = false,
+  className: classNameProp,
+  evaluationTitle = '',
+  template,
+  schoolName,
 }) => {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const getMentionColor = (average: number | null) => {
     if (average === null) return 'bg-muted text-muted-foreground';
@@ -62,6 +77,84 @@ export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({
     if (rank === 2) return 'bg-gray-300/30 text-gray-700 dark:text-gray-300 border-gray-400/50';
     if (rank === 3) return 'bg-orange-400/20 text-orange-700 dark:text-orange-400 border-orange-400/50';
     return 'bg-muted text-muted-foreground';
+  };
+
+  // Télécharger le bulletin PDF individuel
+  const handleDownloadPdf = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDownloading(true);
+    
+    try {
+      await exportSingleBulletinToPdf({
+        className: classNameProp || 'Classe',
+        evaluationTitle: evaluationTitle || 'Évaluation',
+        schoolName,
+        template,
+        bulletin: {
+          studentId: data.studentId,
+          studentName: data.studentName,
+          studentCode: data.studentCode,
+          photoUrl: data.photoUrl || undefined,
+          grades: data.grades,
+          average: data.average,
+          totalPoints: data.totalPoints,
+          totalMaxPoints: data.totalMaxPoints,
+          rank: data.rank,
+          totalStudents: data.totalStudents,
+          classAverage: data.classAverage,
+          firstAverage: data.firstAverage,
+          appreciation: data.appreciation,
+          mention: data.mention,
+          hasClassGrades: data.hasClassGrades,
+        },
+      });
+      toast.success('Bulletin téléchargé');
+    } catch (error) {
+      console.error('Erreur export PDF:', error);
+      toast.error('Erreur lors du téléchargement');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Envoyer par WhatsApp
+  const handleSendWhatsApp = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!data.parentPhone) {
+      toast.error('Aucun numéro de téléphone du parent renseigné');
+      return;
+    }
+
+    // Formater le numéro de téléphone (enlever espaces et caractères spéciaux)
+    let phoneNumber = data.parentPhone.replace(/[\s\-\(\)]/g, '');
+    
+    // Ajouter le préfixe si nécessaire
+    if (!phoneNumber.startsWith('+')) {
+      // Par défaut, ajouter le préfixe français si pas de préfixe
+      if (phoneNumber.startsWith('0')) {
+        phoneNumber = '+33' + phoneNumber.substring(1);
+      }
+    }
+
+    // Créer le message
+    const avgText = data.average !== null ? data.average.toFixed(2) : 'N/A';
+    const message = `📋 *Bulletin de ${data.studentName}*
+
+📚 Période: ${evaluationTitle || 'Évaluation'}
+📊 Moyenne: ${avgText}/20
+🏆 Rang: ${data.rank}/${data.totalStudents}
+${data.mention ? `🎖️ Mention: ${data.mention}` : ''}
+
+${data.appreciation ? `📝 Appréciation: ${data.appreciation}` : ''}
+
+_Bulletin disponible au téléchargement dans l'application._`;
+
+    // Ouvrir WhatsApp avec le message
+    const whatsappUrl = `https://wa.me/${phoneNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    
+    toast.success('Ouverture de WhatsApp...');
   };
 
   return (
@@ -105,6 +198,36 @@ export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 px-4">
             <div className="border-t pt-4 space-y-4">
+              {/* Actions individuelles */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloading}
+                  className="gap-2"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Télécharger PDF
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendWhatsApp}
+                  className="gap-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Envoyer WhatsApp
+                  {!data.parentPhone && (
+                    <span className="text-xs text-muted-foreground">(pas de n°)</span>
+                  )}
+                </Button>
+              </div>
+
               {/* Notes par matière */}
               <div>
                 <h4 className="text-sm font-medium mb-2">Notes par matière</h4>
