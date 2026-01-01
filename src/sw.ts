@@ -34,8 +34,8 @@ self.addEventListener('install', (event) => {
       console.log('📦 Caching offline assets...');
       return cache.addAll([
         '/offline.html',
-        '/icon-192.png',
-        '/icon-512.png',
+        '/icon-192x192.png',
+        '/icon-512x512.png',
       ]);
     })
   );
@@ -196,8 +196,8 @@ try {
     const notificationTitle = payload.notification?.title || 'EducaTok';
     const notificationOptions = {
       body: payload.notification?.body || 'Vous avez une nouvelle notification',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
       tag: 'educatok-notification',
       data: payload.data || {},
     };
