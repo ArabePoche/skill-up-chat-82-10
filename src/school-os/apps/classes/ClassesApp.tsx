@@ -1,233 +1,176 @@
-/**
- * Application de gestion des classes de l'école
- */
+// Application de gestion des classes - Unifiée pour tous les rôles
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { BookOpen, Plus, Search, Pencil, Trash2, Users } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { CreateClassModal } from '@/school/components/CreateClassModal';
+import { ClassesList } from '@/school/components/ClassesList';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
-import { useSchoolClasses, useDeleteClass, Class } from '@/school/hooks/useClasses';
-import { CreateClassDialog } from './components/CreateClassDialog';
-import { EditClassDialog } from './components/EditClassDialog';
+import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
+import { useTeacherClasses, TeacherClass } from '@/school-os/hooks/useTeacherClasses';
+import { useTeacherStudents } from '@/school-os/hooks/useTeacherStudents';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Users, BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export const ClassesApp: React.FC = () => {
-  const { t } = useTranslation();
   const { school, activeSchoolYear } = useSchoolYear();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editClass, setEditClass] = useState<Class | null>(null);
+  const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
+  const isTeacher = roleData?.isTeacher ?? false;
+  const isOwner = roleData?.isOwner ?? false;
 
-  const { data: classes, isLoading } = useSchoolClasses(school?.id, activeSchoolYear?.id);
-  const deleteClass = useDeleteClass();
+  // Hooks pour les enseignants
+  const { data: teacherClasses, isLoading: isLoadingTeacherClasses } = useTeacherClasses(school?.id, activeSchoolYear?.id);
+  const { data: teacherStudents } = useTeacherStudents(school?.id, activeSchoolYear?.id);
+  const [selectedClass, setSelectedClass] = useState<TeacherClass | null>(null);
 
-  if (!school?.id) {
+  if (!school?.id || !activeSchoolYear?.id) {
     return (
       <div className="p-6 h-full overflow-auto">
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            {t('schoolOS.common.noData')}
+            Veuillez créer une école et une année scolaire pour gérer les classes
           </p>
         </div>
       </div>
     );
   }
 
-  const filteredClasses = classes?.filter(cls =>
-    cls.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  if (isLoadingRole) {
+    return (
+      <div className="p-6 h-full flex items-center justify-center">
+        <p className="text-muted-foreground">Chargement...</p>
+      </div>
+    );
+  }
 
-  const handleDelete = async (id: string) => {
-    if (confirm(t('schoolOS.common.confirm'))) {
-      await deleteClass.mutateAsync({ id, schoolId: school.id });
+  // Vue enseignant : afficher uniquement ses classes avec les matières qu'il enseigne
+  if (isTeacher) {
+    if (isLoadingTeacherClasses) {
+      return (
+        <div className="p-6 h-full flex items-center justify-center">
+          <p className="text-muted-foreground">Chargement de vos classes...</p>
+        </div>
+      );
     }
-  };
 
-  const getCycleColor = (cycle: string) => {
-    const colors: Record<string, string> = {
-      maternel: '#F59E0B',
-      primaire: '#10B981',
-      collège: '#3B82F6',
-      lycée: '#8B5CF6',
-      université: '#EC4899',
-    };
-    return colors[cycle] || '#6B7280';
-  };
-
-  return (
-    <div className="p-6 h-full overflow-auto">
-      <div className="space-y-6">
-        {/* En-tête */}
-        <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold">{t('schoolOS.classes.title')}</h2>
-              <p className="text-sm text-muted-foreground">
-                {t('schoolOS.classes.subtitle')}
-              </p>
-            </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('schoolOS.classes.addClass')}
-            </Button>
-          </div>
-
-          {/* Barre de recherche */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('schoolOS.common.search')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+    if (!teacherClasses || teacherClasses.length === 0) {
+      return (
+        <div className="p-6 h-full overflow-auto">
+          <div className="text-center py-12">
+            <GraduationCap className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucune classe assignée</h3>
+            <p className="text-muted-foreground">
+              Vous n'êtes assigné à aucune classe pour cette année scolaire.
+            </p>
           </div>
         </div>
+      );
+    }
 
-        {/* Statistiques */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-primary/10 rounded-lg">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">{t('schoolOS.common.total')}</p>
-                  <p className="text-xl font-bold">{classes?.length || 0}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-green-500/10 rounded-lg">
-                  <Users className="h-4 w-4 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">{t('schoolOS.classes.totalStudents')}</p>
-                  <p className="text-xl font-bold">
-                    {classes?.reduce((sum, cls) => sum + (cls.current_students || 0), 0) || 0}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    const classStudents = selectedClass 
+      ? teacherStudents?.filter(s => s.class_id === selectedClass.id) || []
+      : [];
+
+    return (
+      <div className="p-6 h-full flex flex-col overflow-hidden">
+        <div className="mb-6 flex-shrink-0">
+          <h2 className="text-2xl font-bold">Mes Classes</h2>
+          <p className="text-muted-foreground mt-1">
+            {teacherClasses.length} classe{teacherClasses.length > 1 ? 's' : ''} assignée{teacherClasses.length > 1 ? 's' : ''}
+          </p>
         </div>
 
-        {/* Liste des classes */}
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        ) : filteredClasses.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="p-4 bg-muted rounded-full mb-4">
-                <BookOpen className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">
-                {searchQuery ? t('schoolOS.common.noData') : t('schoolOS.classes.noClasses')}
-              </h3>
-              <p className="text-muted-foreground mb-6 text-center max-w-sm">
-                {searchQuery
-                  ? t('schoolOS.common.noData')
-                  : t('schoolOS.classes.noClasses')
-                }
-              </p>
-              {!searchQuery && (
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('schoolOS.classes.addClass')}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredClasses.map((cls) => (
-              <Card
-                key={cls.id}
-                className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+        <ScrollArea className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {teacherClasses.map((cls) => (
+              <Card 
+                key={cls.id} 
+                className="hover:shadow-lg transition-all cursor-pointer group"
+                onClick={() => setSelectedClass(cls)}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="p-2 rounded-lg"
-                        style={{ backgroundColor: `${getCycleColor(cls.cycle)}20` }}
-                      >
-                        <BookOpen
-                          className="h-5 w-5"
-                          style={{ color: getCycleColor(cls.cycle) }}
-                        />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">{cls.name}</CardTitle>
-                        <Badge 
-                          variant="outline" 
-                          className="mt-1 text-xs capitalize"
-                          style={{ borderColor: getCycleColor(cls.cycle), color: getCycleColor(cls.cycle) }}
-                        >
-                          {cls.cycle}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditClass(cls)}
-                        className="h-8 w-8"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(cls.id)}
-                        className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{cls.name}</CardTitle>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
+                  <Badge variant="outline" className="w-fit">{cls.cycle}</Badge>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>{cls.current_students} / {cls.max_students}</span>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      {cls.current_students}/{cls.max_students} élèves
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Mes matières:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {cls.subjects.map((subject) => (
+                        <Badge key={subject.id} variant="secondary" className="text-xs">
+                          <BookOpen className="w-3 h-3 mr-1" />
+                          {subject.name}
+                        </Badge>
+                      ))}
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {cls.gender_type}
-                    </Badge>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
-        )}
+        </ScrollArea>
+
+        {/* Modal pour voir les élèves de la classe */}
+        <Dialog open={!!selectedClass} onOpenChange={() => setSelectedClass(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Élèves de {selectedClass?.name}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <ScrollArea className="max-h-[60vh]">
+              {classStudents.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Aucun élève dans cette classe
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {classStudents.map((student, index) => (
+                    <div 
+                      key={student.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {student.last_name} {student.first_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {student.student_code}
+                        </p>
+                      </div>
+                      <Badge variant={student.gender === 'male' ? 'default' : 'secondary'}>
+                        {student.gender === 'male' ? 'M' : 'F'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </div>
+    );
+  }
 
-      {/* Dialogs */}
-      <CreateClassDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        schoolId={school.id}
-        schoolYearId={activeSchoolYear?.id}
-      />
-
-      {editClass && (
-        <EditClassDialog
-          classData={editClass}
-          open={!!editClass}
-          onOpenChange={(open) => !open && setEditClass(null)}
-        />
-      )}
+  // Vue propriétaire/administrateur : gestion complète des classes
+  return (
+    <div className="p-6 h-full overflow-auto">
+      <ClassesList schoolId={school.id} schoolYearId={activeSchoolYear.id} />
     </div>
   );
 };
