@@ -32,7 +32,7 @@ import UploadVideo from '@/pages/UploadVideo';
 import School from '@/pages/School';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
-import { OfflineIndicator, OfflineGate } from '@/offline';
+import { OfflineIndicator, OfflineGate, ConversationSyncProvider } from '@/offline';
 
 
 // Créer une instance unique du QueryClient
@@ -118,20 +118,22 @@ const App: React.FC = () => {
       <OfflineGate>
         <BrowserRouter>
           <AuthProvider>
-            <PresenceProvider>
-              <NavigationProvider>
-                <TabScrollProvider>
-                  {showLanguageOnboarding ? (
-                    <LanguageOnboarding onComplete={() => setShowLanguageOnboarding(false)} />
-                  ) : (
-                    <>
-                      <AppWithRouter />
-                      <Toaster />
-                    </>
-                  )}
-                </TabScrollProvider>
-              </NavigationProvider>
-            </PresenceProvider>
+            <ConversationSyncProvider>
+              <PresenceProvider>
+                <NavigationProvider>
+                  <TabScrollProvider>
+                    {showLanguageOnboarding ? (
+                      <LanguageOnboarding onComplete={() => setShowLanguageOnboarding(false)} />
+                    ) : (
+                      <>
+                        <AppWithRouter />
+                        <Toaster />
+                      </>
+                    )}
+                  </TabScrollProvider>
+                </NavigationProvider>
+              </PresenceProvider>
+            </ConversationSyncProvider>
           </AuthProvider>
         </BrowserRouter>
       </OfflineGate>
