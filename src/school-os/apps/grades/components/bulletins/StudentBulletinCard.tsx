@@ -21,7 +21,7 @@ export interface SubjectGrade {
   maxScore: number;
   coefficient: number;
   isAbsent?: boolean;
-  classGradeScore?: number | null;
+  classGradeScore?: number | null; // Note de classe (facultatif) 
 }
 
 export interface StudentBulletinData {
@@ -39,7 +39,7 @@ export interface StudentBulletinData {
   firstAverage: number;
   appreciation: string;
   mention?: string;
-  hasClassGrades?: boolean;
+  hasClassGrades?: boolean; // Indique si les notes de classe sont incluses
   parentPhone?: string | null;
 }
 
