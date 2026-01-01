@@ -20,9 +20,11 @@ export { useOfflineFormations } from './hooks/useOfflineFormations';
 export { useOfflineQuery, useOfflineData } from './hooks/useOfflineQuery';
 export { useOfflineMutation, useSyncPendingMutations } from './hooks/useOfflineMutation';
 export { useFirstRun } from './hooks/useFirstRun';
+export { useOfflineConversations } from './hooks/useOfflineConversations';
 
 // Composants
 export { OfflineIndicator } from './components/OfflineIndicator';
 export { OfflineDownloadButton } from './components/OfflineDownloadButton';
 export { OfflineGate } from './components/OfflineGate';
 export { ConnectionRequiredScreen } from './components/ConnectionRequiredScreen';
+export { ConversationSyncProvider } from './components/ConversationSyncProvider';
