@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, BookOpen, Users, Clock, Star } from 'lucide-react';
 import PrivateLevelsList from './PrivateLevelsList';
@@ -13,6 +12,7 @@ import PaymentHistoryList from '@/components/payments/PaymentHistoryList';
 import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
 import { GroupChatInterface } from '@/components/group-chat/GroupChatInterface';
 import { useTranslation } from 'react-i18next';
+import { OfflineDownloadButton } from '@/offline';
 
 interface Lesson {
   id: number | string;
@@ -148,6 +148,14 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
                 </div>
               )}
             </div>
+          </div>
+          
+          {/* Bouton téléchargement offline */}
+          <div className="ml-2">
+            <OfflineDownloadButton 
+              formationId={String(formation.id)} 
+              formationTitle={formation.title}
+            />
           </div>
         </div>
       </div>
