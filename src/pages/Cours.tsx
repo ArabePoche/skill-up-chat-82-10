@@ -20,7 +20,7 @@ const Cours = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { isOnline } = useOfflineSync();
-  const { offlineFormations, isLoading: offlineLoading } = useOfflineFormations();
+  const { data: offlineFormations = [], isLoading: offlineLoading, hasOfflineData } = useOfflineFormations();
   
   const { data: allFormations, isLoading: formationsLoading } = useFormations();
   const { data: userEnrollments, isLoading: enrollmentsLoading, error: enrollmentsError } = useUserEnrollments(user?.id);
