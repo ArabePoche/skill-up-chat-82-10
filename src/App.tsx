@@ -32,7 +32,7 @@ import UploadVideo from '@/pages/UploadVideo';
 import School from '@/pages/School';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
-import { OfflineIndicator } from '@/offline';
+import { OfflineIndicator, OfflineGate } from '@/offline';
 
 
 // Créer une instance unique du QueryClient
@@ -115,24 +115,26 @@ const App: React.FC = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <PresenceProvider>
-            <NavigationProvider>
-              <TabScrollProvider>
-                {showLanguageOnboarding ? (
-                  <LanguageOnboarding onComplete={() => setShowLanguageOnboarding(false)} />
-                ) : (
-                  <>
-                    <AppWithRouter />
-                    <Toaster />
-                  </>
-                )}
-              </TabScrollProvider>
-            </NavigationProvider>
-          </PresenceProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <OfflineGate>
+        <BrowserRouter>
+          <AuthProvider>
+            <PresenceProvider>
+              <NavigationProvider>
+                <TabScrollProvider>
+                  {showLanguageOnboarding ? (
+                    <LanguageOnboarding onComplete={() => setShowLanguageOnboarding(false)} />
+                  ) : (
+                    <>
+                      <AppWithRouter />
+                      <Toaster />
+                    </>
+                  )}
+                </TabScrollProvider>
+              </NavigationProvider>
+            </PresenceProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </OfflineGate>
     </QueryClientProvider>
   );
 };
