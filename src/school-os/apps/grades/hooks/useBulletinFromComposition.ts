@@ -21,6 +21,7 @@ export interface StudentWithGrades {
   last_name: string;
   student_code?: string;
   photo_url?: string;
+  parent_phone?: string;
 }
 
 export interface ClassSubject {
@@ -128,7 +129,7 @@ export const useBulletinFromComposition = (compositionId?: string, classId?: str
       // 4. Récupérer les élèves de la classe (non exclus)
       const { data: students, error: studentsError } = await supabase
         .from('students_school')
-        .select('id, first_name, last_name, student_code, photo_url')
+        .select('id, first_name, last_name, student_code, photo_url, parent_phone')
         .eq('class_id', classId)
         .order('last_name', { ascending: true });
 
