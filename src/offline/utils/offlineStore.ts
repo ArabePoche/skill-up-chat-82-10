@@ -1,14 +1,19 @@
 /**
- * Stockage IndexedDB pour les formations et leçons offline
- * Gère le téléchargement et la mise en cache des contenus
+ * Stockage IndexedDB étendu pour l'architecture offline-first
+ * Gère le cache de toutes les données de l'application
  */
 
 const DB_NAME = 'offline_content';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incrémenté pour supporter les nouveaux stores
 const FORMATIONS_STORE = 'formations';
 const LESSONS_STORE = 'lessons';
 const AUDIO_FILES_STORE = 'audio_files';
+const MESSAGES_STORE = 'messages';
+const PROFILES_STORE = 'profiles';
+const QUERY_CACHE_STORE = 'query_cache';
+const PENDING_MUTATIONS_STORE = 'pending_mutations';
 
+// Interfaces
 interface OfflineFormation {
   id: string;
   data: any;
@@ -25,22 +30,54 @@ interface OfflineLesson {
   downloadedAt: number;
 }
 
-interface OfflineAudioFile {
-  url: string;
-  blob: Blob;
-  downloadedAt: number;
+interface OfflineMessage {
+  id: string;
+  lessonId: string;
+  formationId: string;
+  data: any;
+  isPending: boolean;
+  createdAt: number;
+}
+
+interface OfflineProfile {
+  id: string;
+  data: any;
+  updatedAt: number;
+}
+
+interface CachedQuery {
+  key: string;
+  data: any;
+  timestamp: number;
+  expiresAt: number;
+}
+
+interface PendingMutation {
+  id: string;
+  type: 'message' | 'reaction' | 'progress' | 'profile';
+  payload: any;
+  createdAt: number;
+  retryCount: number;
 }
 
 class OfflineStore {
   private db: IDBDatabase | null = null;
+  private initPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    if (this.initPromise) return this.initPromise;
+    
+    this.initPromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        console.error('Failed to open IndexedDB:', request.error);
+        reject(request.error);
+      };
+      
       request.onsuccess = () => {
         this.db = request.result;
+        console.log('📦 IndexedDB initialized');
         resolve();
       };
 
@@ -61,10 +98,39 @@ class OfflineStore {
 
         // Store pour les fichiers audio
         if (!db.objectStoreNames.contains(AUDIO_FILES_STORE)) {
-          const audioStore = db.createObjectStore(AUDIO_FILES_STORE, { keyPath: 'url' });
+          db.createObjectStore(AUDIO_FILES_STORE, { keyPath: 'url' });
+        }
+
+        // Store pour les messages
+        if (!db.objectStoreNames.contains(MESSAGES_STORE)) {
+          const messageStore = db.createObjectStore(MESSAGES_STORE, { keyPath: 'id' });
+          messageStore.createIndex('lessonId', 'lessonId', { unique: false });
+          messageStore.createIndex('formationId', 'formationId', { unique: false });
+          messageStore.createIndex('isPending', 'isPending', { unique: false });
+        }
+
+        // Store pour les profils
+        if (!db.objectStoreNames.contains(PROFILES_STORE)) {
+          const profileStore = db.createObjectStore(PROFILES_STORE, { keyPath: 'id' });
+          profileStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        }
+
+        // Store pour le cache des requêtes React Query
+        if (!db.objectStoreNames.contains(QUERY_CACHE_STORE)) {
+          const queryStore = db.createObjectStore(QUERY_CACHE_STORE, { keyPath: 'key' });
+          queryStore.createIndex('expiresAt', 'expiresAt', { unique: false });
+        }
+
+        // Store pour les mutations en attente
+        if (!db.objectStoreNames.contains(PENDING_MUTATIONS_STORE)) {
+          const mutationStore = db.createObjectStore(PENDING_MUTATIONS_STORE, { keyPath: 'id' });
+          mutationStore.createIndex('type', 'type', { unique: false });
+          mutationStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
       };
     });
+
+    return this.initPromise;
   }
 
   private async ensureDB(): Promise<IDBDatabase> {
@@ -73,9 +139,308 @@ class OfflineStore {
     return this.db;
   }
 
+  // ==================== QUERY CACHE ====================
+
   /**
-   * Sauvegarde une formation pour l'accès offline
+   * Sauvegarde le résultat d'une requête dans le cache
    */
+  async cacheQuery(key: string, data: any, ttlMs: number = 1000 * 60 * 60): Promise<void> {
+    const db = await this.ensureDB();
+    const cached: CachedQuery = {
+      key,
+      data,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + ttlMs,
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([QUERY_CACHE_STORE], 'readwrite');
+      const store = transaction.objectStore(QUERY_CACHE_STORE);
+      const request = store.put(cached);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Récupère une requête depuis le cache
+   */
+  async getCachedQuery(key: string): Promise<any | null> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([QUERY_CACHE_STORE], 'readonly');
+      const store = transaction.objectStore(QUERY_CACHE_STORE);
+      const request = store.get(key);
+
+      request.onsuccess = () => {
+        const result = request.result as CachedQuery | undefined;
+        // Retourne les données même si expirées (stale-while-revalidate)
+        resolve(result?.data || null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Vérifie si une requête du cache est encore fraîche
+   */
+  async isQueryFresh(key: string): Promise<boolean> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([QUERY_CACHE_STORE], 'readonly');
+      const store = transaction.objectStore(QUERY_CACHE_STORE);
+      const request = store.get(key);
+
+      request.onsuccess = () => {
+        const result = request.result as CachedQuery | undefined;
+        resolve(result ? result.expiresAt > Date.now() : false);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Supprime les requêtes expirées du cache
+   */
+  async cleanExpiredQueries(): Promise<number> {
+    const db = await this.ensureDB();
+    const now = Date.now();
+    let deletedCount = 0;
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([QUERY_CACHE_STORE], 'readwrite');
+      const store = transaction.objectStore(QUERY_CACHE_STORE);
+      const index = store.index('expiresAt');
+      const range = IDBKeyRange.upperBound(now);
+      const request = index.openCursor(range);
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          deletedCount++;
+          cursor.continue();
+        }
+      };
+
+      transaction.oncomplete = () => {
+        console.log(`🧹 Cleaned ${deletedCount} expired queries`);
+        resolve(deletedCount);
+      };
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  // ==================== PENDING MUTATIONS ====================
+
+  /**
+   * Ajoute une mutation en attente (pour sync offline)
+   */
+  async addPendingMutation(mutation: Omit<PendingMutation, 'id' | 'createdAt' | 'retryCount'>): Promise<string> {
+    const db = await this.ensureDB();
+    const id = `mutation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const pending: PendingMutation = {
+      id,
+      ...mutation,
+      createdAt: Date.now(),
+      retryCount: 0,
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_MUTATIONS_STORE], 'readwrite');
+      const store = transaction.objectStore(PENDING_MUTATIONS_STORE);
+      const request = store.put(pending);
+
+      request.onsuccess = () => {
+        console.log('📝 Pending mutation added:', id);
+        resolve(id);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Récupère toutes les mutations en attente
+   */
+  async getPendingMutations(): Promise<PendingMutation[]> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_MUTATIONS_STORE], 'readonly');
+      const store = transaction.objectStore(PENDING_MUTATIONS_STORE);
+      const index = store.index('createdAt');
+      const request = index.getAll();
+
+      request.onsuccess = () => resolve(request.result as PendingMutation[]);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Supprime une mutation après synchronisation réussie
+   */
+  async removePendingMutation(id: string): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_MUTATIONS_STORE], 'readwrite');
+      const store = transaction.objectStore(PENDING_MUTATIONS_STORE);
+      const request = store.delete(id);
+
+      request.onsuccess = () => {
+        console.log('✅ Pending mutation completed:', id);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Incrémente le compteur de retry
+   */
+  async incrementMutationRetry(id: string): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PENDING_MUTATIONS_STORE], 'readwrite');
+      const store = transaction.objectStore(PENDING_MUTATIONS_STORE);
+      const getRequest = store.get(id);
+
+      getRequest.onsuccess = () => {
+        const mutation = getRequest.result as PendingMutation;
+        if (mutation) {
+          mutation.retryCount++;
+          store.put(mutation);
+        }
+      };
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  // ==================== MESSAGES ====================
+
+  /**
+   * Sauvegarde des messages pour accès offline
+   */
+  async saveMessages(lessonId: string, formationId: string, messages: any[]): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([MESSAGES_STORE], 'readwrite');
+      const store = transaction.objectStore(MESSAGES_STORE);
+
+      messages.forEach(msg => {
+        const offlineMsg: OfflineMessage = {
+          id: msg.id,
+          lessonId,
+          formationId,
+          data: msg,
+          isPending: false,
+          createdAt: new Date(msg.created_at).getTime(),
+        };
+        store.put(offlineMsg);
+      });
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  /**
+   * Récupère les messages d'une leçon depuis le cache
+   */
+  async getMessagesByLesson(lessonId: string): Promise<any[]> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([MESSAGES_STORE], 'readonly');
+      const store = transaction.objectStore(MESSAGES_STORE);
+      const index = store.index('lessonId');
+      const request = index.getAll(lessonId);
+
+      request.onsuccess = () => {
+        const results = request.result as OfflineMessage[];
+        resolve(results.map(r => r.data).sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        ));
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Ajoute un message en attente d'envoi
+   */
+  async addPendingMessage(message: any, lessonId: string, formationId: string): Promise<void> {
+    const db = await this.ensureDB();
+    const offlineMsg: OfflineMessage = {
+      id: message.id || `pending_${Date.now()}`,
+      lessonId,
+      formationId,
+      data: { ...message, is_pending: true },
+      isPending: true,
+      createdAt: Date.now(),
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([MESSAGES_STORE], 'readwrite');
+      const store = transaction.objectStore(MESSAGES_STORE);
+      const request = store.put(offlineMsg);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==================== PROFILES ====================
+
+  /**
+   * Sauvegarde un profil pour accès offline
+   */
+  async saveProfile(profile: any): Promise<void> {
+    const db = await this.ensureDB();
+    const offlineProfile: OfflineProfile = {
+      id: profile.id,
+      data: profile,
+      updatedAt: Date.now(),
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PROFILES_STORE], 'readwrite');
+      const store = transaction.objectStore(PROFILES_STORE);
+      const request = store.put(offlineProfile);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Récupère un profil depuis le cache
+   */
+  async getProfile(profileId: string): Promise<any | null> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([PROFILES_STORE], 'readonly');
+      const store = transaction.objectStore(PROFILES_STORE);
+      const request = store.get(profileId);
+
+      request.onsuccess = () => {
+        const result = request.result as OfflineProfile | undefined;
+        resolve(result?.data || null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==================== FORMATIONS (existing) ====================
+
   async saveFormation(formation: any): Promise<void> {
     const db = await this.ensureDB();
     const offlineFormation: OfflineFormation = {
@@ -90,17 +455,11 @@ class OfflineStore {
       const store = transaction.objectStore(FORMATIONS_STORE);
       const request = store.put(offlineFormation);
 
-      request.onsuccess = () => {
-        console.log('📦 Formation saved offline:', formation.id);
-        resolve();
-      };
+      request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
   }
 
-  /**
-   * Récupère une formation depuis le cache offline
-   */
   async getFormation(formationId: string): Promise<any | null> {
     const db = await this.ensureDB();
 
@@ -117,9 +476,6 @@ class OfflineStore {
     });
   }
 
-  /**
-   * Récupère toutes les formations offline
-   */
   async getAllFormations(): Promise<any[]> {
     const db = await this.ensureDB();
 
@@ -136,14 +492,13 @@ class OfflineStore {
     });
   }
 
-  /**
-   * Sauvegarde une leçon avec son audio
-   */
+  // ==================== LESSONS (existing) ====================
+
   async saveLesson(lesson: any, audioBlob?: Blob): Promise<void> {
     const db = await this.ensureDB();
     const offlineLesson: OfflineLesson = {
       id: lesson.id,
-      formationId: lesson.formation_id,
+      formationId: lesson.formation_id || lesson.level?.formation_id,
       data: lesson,
       audioBlob,
       audioUrl: lesson.audio_url,
@@ -155,17 +510,11 @@ class OfflineStore {
       const store = transaction.objectStore(LESSONS_STORE);
       const request = store.put(offlineLesson);
 
-      request.onsuccess = () => {
-        console.log('📦 Lesson saved offline:', lesson.id);
-        resolve();
-      };
+      request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
   }
 
-  /**
-   * Récupère une leçon depuis le cache offline
-   */
   async getLesson(lessonId: string): Promise<any | null> {
     const db = await this.ensureDB();
 
@@ -176,8 +525,7 @@ class OfflineStore {
 
       request.onsuccess = () => {
         const result = request.result as OfflineLesson | undefined;
-        if (result && result.audioBlob) {
-          // Créer une URL blob pour l'audio
+        if (result?.audioBlob) {
           result.data.offlineAudioUrl = URL.createObjectURL(result.audioBlob);
         }
         resolve(result?.data || null);
@@ -186,9 +534,6 @@ class OfflineStore {
     });
   }
 
-  /**
-   * Récupère toutes les leçons d'une formation
-   */
   async getLessonsByFormation(formationId: string): Promise<any[]> {
     const db = await this.ensureDB();
 
@@ -212,9 +557,6 @@ class OfflineStore {
     });
   }
 
-  /**
-   * Télécharge et sauvegarde un fichier audio
-   */
   async downloadAudio(url: string): Promise<Blob | null> {
     try {
       const response = await fetch(url);
@@ -232,10 +574,7 @@ class OfflineStore {
           downloadedAt: Date.now(),
         });
 
-        request.onsuccess = () => {
-          console.log('🎵 Audio downloaded:', url);
-          resolve(blob);
-        };
+        request.onsuccess = () => resolve(blob);
         request.onerror = () => reject(request.error);
       });
     } catch (error) {
@@ -244,15 +583,11 @@ class OfflineStore {
     }
   }
 
-  /**
-   * Supprime une formation et ses leçons du cache
-   */
   async deleteFormation(formationId: string): Promise<void> {
     const db = await this.ensureDB();
 
     return new Promise(async (resolve, reject) => {
       try {
-        // Supprimer toutes les leçons de la formation
         const lessons = await this.getLessonsByFormation(formationId);
         const transaction = db.transaction([FORMATIONS_STORE, LESSONS_STORE], 'readwrite');
         
@@ -262,10 +597,7 @@ class OfflineStore {
         const lessonStore = transaction.objectStore(LESSONS_STORE);
         lessons.forEach(lesson => lessonStore.delete(lesson.id));
 
-        transaction.oncomplete = () => {
-          console.log('🗑️ Formation deleted from offline:', formationId);
-          resolve();
-        };
+        transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
       } catch (error) {
         reject(error);
@@ -273,21 +605,24 @@ class OfflineStore {
     });
   }
 
-  /**
-   * Vérifie si une formation est disponible offline
-   */
   async isFormationOffline(formationId: string): Promise<boolean> {
     const formation = await this.getFormation(formationId);
     return formation !== null;
   }
 
-  /**
-   * Récupère la taille totale du cache
-   */
   async getCacheSize(): Promise<number> {
     if (!navigator.storage || !navigator.storage.estimate) return 0;
     const estimate = await navigator.storage.estimate();
     return estimate.usage || 0;
+  }
+
+  /**
+   * Nettoie toutes les données périmées
+   */
+  async cleanupOldData(maxAgeDays: number = 30): Promise<void> {
+    await this.cleanExpiredQueries();
+    // Pourrait aussi nettoyer les vieilles formations non synchronisées
+    console.log('🧹 Cleanup completed');
   }
 }
 
