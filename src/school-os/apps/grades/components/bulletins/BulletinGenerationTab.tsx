@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useBulletinTemplates, BulletinTemplate } from '../../hooks/useBulletins';
+import { useBulletinTemplates, useBulletinAppreciations, BulletinTemplate, BulletinAppreciationTemplate } from '../../hooks/useBulletins';
 import { StudentBulletinCard, StudentBulletinData, SubjectGrade } from './StudentBulletinCard';
 import { CompositionSelector } from './CompositionSelector';
 import { ClassNotesSection, ClassNotesConfig } from './ClassNotesSection';
@@ -26,6 +26,7 @@ import {
 } from '../../hooks/useBulletinFromComposition';
 import { exportBulletinsToPdf } from '../../utils/bulletinPdfExport';
 import { toast } from 'sonner';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 
 interface BulletinGenerationTabProps {
   availableClasses: Array<{
@@ -99,8 +100,9 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     enabled: !!classNotesConfig.selectedEvaluationId && classNotesConfig.method === 'evaluation',
   });
 
-  // Templates
+  // Templates et appréciations
   const { data: templates = [] } = useBulletinTemplates(schoolId);
+  const { data: appreciationTemplates = [] } = useBulletinAppreciations(schoolId);
 
   // Composition sélectionnée
   const selectedComposition = compositions.find(c => c.id === selectedCompositionId);
@@ -207,6 +209,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         studentName: `${student.last_name} ${student.first_name}`,
         studentCode: student.student_code || '-',
         photoUrl: student.photo_url,
+        parentPhone: student.parent_phone || null,
         grades: gradesList,
         average,
         totalPoints,
@@ -239,8 +242,8 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
       data.rank = index + 1;
       data.classAverage = classAverage;
       data.firstAverage = firstAverage;
-      data.mention = getMention(data.average);
-      data.appreciation = getAppreciation(data.average);
+      data.mention = getMentionFromTemplates(data.average, appreciationTemplates);
+      data.appreciation = getAppreciationFromTemplates(data.average, appreciationTemplates);
     });
 
     // Gérer les élèves sans notes
@@ -255,7 +258,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     });
 
     return studentData;
-  }, [bulletinData, selectedCompositionId, evaluationGrades, manualClassNotes, classNotesConfig]);
+  }, [bulletinData, selectedCompositionId, evaluationGrades, manualClassNotes, classNotesConfig, appreciationTemplates]);
 
   // Statistiques de classe
   const classStats = useMemo(() => {
@@ -513,7 +516,62 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   );
 };
 
-// Helper functions
+// Helper functions - Version avec templates depuis la base de données
+function getMentionFromTemplates(average: number | null, templates: BulletinAppreciationTemplate[]): string {
+  if (average === null) return 'Non évalué';
+  
+  // Mapping des catégories vers les mentions
+  const categoryToMention: Record<string, string> = {
+    'excellent': 'Excellent',
+    'good': 'Très Bien',
+    'average': 'Assez Bien',
+    'below_average': 'Passable',
+    'poor': 'Insuffisant'
+  };
+  
+  // Trouver le template qui correspond à la moyenne
+  const matchingTemplate = templates.find(t => {
+    const min = t.min_average ?? 0;
+    const max = t.max_average ?? 20;
+    return average >= min && average <= max;
+  });
+  
+  if (matchingTemplate) {
+    return categoryToMention[matchingTemplate.category] || matchingTemplate.category;
+  }
+  
+  // Fallback si pas de template trouvé
+  if (average >= 16) return 'Très Bien';
+  if (average >= 14) return 'Bien';
+  if (average >= 12) return 'Assez Bien';
+  if (average >= 10) return 'Passable';
+  return 'Insuffisant';
+}
+
+function getAppreciationFromTemplates(average: number | null, templates: BulletinAppreciationTemplate[]): string {
+  if (average === null) return 'Aucune note disponible.';
+  
+  // Trouver le template qui correspond à la moyenne
+  const matchingTemplate = templates.find(t => {
+    const min = t.min_average ?? 0;
+    const max = t.max_average ?? 20;
+    return average >= min && average <= max;
+  });
+  
+  if (matchingTemplate) {
+    return matchingTemplate.text;
+  }
+  
+  // Fallback si pas de template trouvé - avec plus de variété
+  if (average >= 18) return 'Excellent travail ! Continuez ainsi.';
+  if (average >= 16) return 'Très bon travail. Félicitations !';
+  if (average >= 14) return 'Bon travail. Continuez vos efforts.';
+  if (average >= 12) return 'Travail satisfaisant. Peut mieux faire.';
+  if (average >= 10) return 'Résultats justes. Des efforts sont nécessaires.';
+  return 'Résultats insuffisants. Un travail plus soutenu est indispensable.';
+}
+
+// Fonctions obsolètes gardées pour compatibilité
 function getMention(average: number | null): string {
   if (average === null) return 'Non évalué';
   if (average >= 16) return 'Très Bien';
