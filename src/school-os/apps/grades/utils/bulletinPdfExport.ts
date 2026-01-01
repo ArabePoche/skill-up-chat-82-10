@@ -1,7 +1,9 @@
 /**
  * Utilitaire pour exporter les bulletins en PDF avec support RTL/Arabe
  * 
- * Corrections:
+ * Fonctionnalités:
+ * - Export de tous les bulletins d'une classe
+ * - Export individuel d'un bulletin élève
  * - Support complet de l'arabe avec la police Amiri
  * - Inclusion des notes de classe dans le PDF
  */
@@ -21,7 +23,7 @@ export interface BulletinPdfData {
     maxScore: number;
     coefficient: number;
     isAbsent?: boolean;
-    classGradeScore?: number | null; // Note de classe
+    classGradeScore?: number | null;
   }[];
   average: number | null;
   totalPoints: number;
@@ -32,7 +34,7 @@ export interface BulletinPdfData {
   firstAverage: number;
   appreciation?: string;
   mention?: string;
-  hasClassGrades?: boolean; // Indique si les notes de classe sont incluses
+  hasClassGrades?: boolean;
 }
 
 export interface BulletinPdfOptions {
@@ -96,14 +98,16 @@ const loadArabicFont = async (): Promise<string | null> => {
   }
 };
 
-export const exportBulletinsToPdf = async ({
+/**
+ * Génère un PDF de bulletins et retourne le document et blob
+ */
+const generateBulletinPdfCore = async ({
   className,
   evaluationTitle,
   schoolName,
-  schoolYearName,
   template,
   bulletins,
-}: BulletinPdfOptions): Promise<void> => {
+}: BulletinPdfOptions): Promise<{ doc: jsPDF; blob: Blob }> => {
   if (bulletins.length === 0) {
     throw new Error('Aucun bulletin à exporter');
   }
@@ -130,15 +134,12 @@ export const exportBulletinsToPdf = async ({
   // Get template colors or use defaults
   const primaryColor = template?.primary_color 
     ? hexToRgb(template.primary_color) 
-    : { r: 59, g: 130, b: 246 }; // Default blue
+    : { r: 59, g: 130, b: 246 };
   const secondaryColor = template?.secondary_color 
     ? hexToRgb(template.secondary_color) 
-    : { r: 100, g: 116, b: 139 }; // Default slate
+    : { r: 100, g: 116, b: 139 };
 
-  // Layout settings based on template
   const layoutType = template?.layout_type || 'classic';
-
-  // Check if bulletins include class grades
   const includeClassGrades = bulletins.some(b => b.hasClassGrades && b.grades.some(g => g.classGradeScore !== null && g.classGradeScore !== undefined));
 
   bulletins.forEach((student, index) => {
@@ -146,7 +147,6 @@ export const exportBulletinsToPdf = async ({
 
     let y = 15;
 
-    // Helper function to set appropriate font
     const setFont = (text: string, style: 'normal' | 'bold' = 'normal') => {
       if (arabicFontLoaded && containsArabic(text)) {
         doc.setFont('Amiri', 'normal');
@@ -157,7 +157,6 @@ export const exportBulletinsToPdf = async ({
 
     // Header with school info
     if (layoutType === 'modern') {
-      // Modern layout - colored header bar
       doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
       doc.rect(0, 0, 210, 30, 'F');
       doc.setTextColor(255, 255, 255);
@@ -167,7 +166,6 @@ export const exportBulletinsToPdf = async ({
       y = 40;
       doc.setTextColor(0, 0, 0);
     } else if (layoutType === 'compact') {
-      // Compact layout
       doc.setFontSize(14);
       doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
       setFont('BULLETIN DE NOTES', 'bold');
@@ -175,7 +173,6 @@ export const exportBulletinsToPdf = async ({
       y += 8;
       doc.setTextColor(0, 0, 0);
     } else {
-      // Classic layout
       doc.setFontSize(18);
       doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
       setFont('BULLETIN DE NOTES', 'bold');
@@ -211,18 +208,16 @@ export const exportBulletinsToPdf = async ({
     doc.text(`Code: ${student.studentCode}`, 150, y);
     y += 10;
 
-    // Table header - adjust columns based on whether class grades are included
+    // Table header
     doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
     doc.rect(15, y - 5, 180, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
 
-    // Check if subjects contain Arabic to adjust layout
     const hasArabicSubjects = student.grades.some(g => containsArabic(g.subjectName));
     
     if (includeClassGrades) {
-      // Layout with class grades
       if (hasArabicSubjects) {
         doc.text('Appreciation', 17, y);
         doc.text('Moy.', 48, y);
@@ -239,7 +234,6 @@ export const exportBulletinsToPdf = async ({
         doc.text('Appreciation', 145, y);
       }
     } else {
-      // Layout without class grades
       if (hasArabicSubjects) {
         doc.text('Appreciation', 17, y);
         doc.text('/20', 55, y);
@@ -267,7 +261,6 @@ export const exportBulletinsToPdf = async ({
         y = 20;
       }
 
-      // Alternate row colors
       if (rowIndex % 2 === 0) {
         doc.setFillColor(248, 250, 252);
         doc.rect(15, y - 4, 180, 7, 'F');
@@ -279,7 +272,6 @@ export const exportBulletinsToPdf = async ({
         ? grade.classGradeScore.toString() 
         : '-';
       
-      // Calculate average if both scores exist
       let avgScoreText = '-';
       if (includeClassGrades && grade.score !== null && grade.classGradeScore !== null && grade.classGradeScore !== undefined) {
         const avg = (grade.score + grade.classGradeScore) / 2;
@@ -292,7 +284,6 @@ export const exportBulletinsToPdf = async ({
       doc.setTextColor(0, 0, 0);
 
       if (includeClassGrades) {
-        // With class grades
         if (hasArabicSubjects && containsArabic(grade.subjectName)) {
           doc.text(subjectAppreciation, 17, y);
           doc.text(avgScoreText, 50, y);
@@ -312,7 +303,6 @@ export const exportBulletinsToPdf = async ({
           doc.text(subjectAppreciation, 145, y);
         }
       } else {
-        // Without class grades
         if (hasArabicSubjects && containsArabic(grade.subjectName)) {
           doc.text(subjectAppreciation, 17, y);
           doc.text('20', 57, y);
@@ -381,7 +371,76 @@ export const exportBulletinsToPdf = async ({
     doc.text(`Document genere le ${today}`, 105, 285, { align: 'center' });
   });
 
-  // Save the PDF
+  const blob = doc.output('blob');
+  return { doc, blob };
+};
+
+/**
+ * Exporte un bulletin individuel en PDF
+ * @param returnBlob Si true, retourne le blob au lieu de télécharger
+ */
+export const exportSingleBulletinToPdf = async ({
+  className,
+  evaluationTitle,
+  schoolName,
+  schoolYearName,
+  template,
+  bulletin,
+  returnBlob = false,
+}: {
+  className: string;
+  evaluationTitle: string;
+  schoolName?: string;
+  schoolYearName?: string;
+  template?: BulletinTemplate | null;
+  bulletin: BulletinPdfData;
+  returnBlob?: boolean;
+}): Promise<{ blob: Blob; fileName: string } | void> => {
+  const { blob } = await generateBulletinPdfCore({
+    className,
+    evaluationTitle,
+    schoolName,
+    schoolYearName,
+    template,
+    bulletins: [bulletin],
+  });
+
+  const fileName = `Bulletin_${bulletin.studentName.replace(/\s+/g, '_')}_${evaluationTitle.replace(/\s+/g, '_')}.pdf`
+    .replace(/[^\w.-]/g, '');
+
+  if (returnBlob) {
+    return { blob, fileName };
+  }
+  
+  // Download directly
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Exporte tous les bulletins d'une classe en PDF
+ */
+export const exportBulletinsToPdf = async ({
+  className,
+  evaluationTitle,
+  schoolName,
+  schoolYearName,
+  template,
+  bulletins,
+}: BulletinPdfOptions): Promise<void> => {
+  const { doc } = await generateBulletinPdfCore({
+    className,
+    evaluationTitle,
+    schoolName,
+    schoolYearName,
+    template,
+    bulletins,
+  });
+
   const fileName = `Bulletins_${className}_${evaluationTitle}.pdf`
     .replace(/\s+/g, '_')
     .replace(/[^\w.-]/g, '');
