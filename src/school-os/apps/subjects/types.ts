@@ -31,6 +31,7 @@ export interface ClassSubjectAssignment {
   subject_id: string;
   teacher_id: string | null;
   coefficient: number;
+  max_score: number;
   created_at: string;
   updated_at: string;
   subjects?: Subject;
@@ -44,5 +45,6 @@ export interface AssignSubjectToClassData {
   class_id: string;
   subject_id: string;
   coefficient: number;
+  max_score: number;
   teacher_id?: string | null;
 }
