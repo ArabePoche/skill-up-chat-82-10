@@ -183,19 +183,22 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         const classNoteScore = includeClassNotes 
           ? (note?.class_note ?? getClassNoteScore(student.id, subject.id))
           : null;
-        const maxScore = 20;
+        // Utiliser le barème de la matière depuis la base de données
+        const maxScore = subject.maxScore || 20;
 
         if (compositionScore !== null) {
-          totalPoints += compositionScore * subject.coefficient;
+          // Normaliser le score sur 20 pour le calcul de la moyenne pondérée
+          const normalizedScore = (compositionScore / maxScore) * 20;
+          totalPoints += normalizedScore * subject.coefficient;
           totalCoefficients += subject.coefficient;
         }
-        totalMaxPoints += maxScore * subject.coefficient;
+        totalMaxPoints += 20 * subject.coefficient; // Total max toujours sur base 20 pour la moyenne
 
         return {
           subjectId: subject.id,
           subjectName: subject.name,
           score: compositionScore,
-          maxScore,
+          maxScore, // Barème dynamique depuis la base
           coefficient: subject.coefficient,
           isAbsent: compositionScore === null,
           classGradeScore: classNoteScore,
@@ -437,11 +440,11 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Moyenne de classe</p>
-                <p className="text-2xl font-bold">{classStats.classAverage.toFixed(2)}/20</p>
+                <p className="text-2xl font-bold">{classStats.classAverage.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Meilleure moyenne</p>
-                <p className="text-2xl font-bold text-green-600">{classStats.bestAverage.toFixed(2)}/20</p>
+                <p className="text-2xl font-bold text-green-600">{classStats.bestAverage.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Période</p>
