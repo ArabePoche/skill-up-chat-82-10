@@ -54,7 +54,21 @@
     "loginSuccess": "Login successful",
     "signupSuccess": "Signup successful",
     "loginError": "Login error",
-    "signupError": "Signup error"
+    "signupError": "Signup error",
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "emailNotConfirmed": "Please confirm your email before logging in",
+      "userAlreadyExists": "An account already exists with this email",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "invalidPassword": "Invalid password",
+      "invalidEmail": "Invalid email format",
+      "rateLimited": "Too many attempts. Please try again later",
+      "emailRateLimited": "Too many emails sent. Please try again later",
+      "sessionExpired": "Your session has expired. Please log in again",
+      "networkError": "Network connection error. Check your internet connection",
+      "timeout": "Request timed out. Please try again",
+      "generic": "An error occurred. Please try again"
+    }
   },
   "courses": {
     "myCourses": "My Courses",
