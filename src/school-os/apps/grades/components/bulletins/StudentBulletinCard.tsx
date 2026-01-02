@@ -49,7 +49,16 @@ interface StudentBulletinCardProps {
   className?: string;
   evaluationTitle?: string;
   template?: BulletinTemplate | null;
+
+  // Infos école (injectées dans le PDF)
   schoolName?: string;
+  schoolYearName?: string;
+  schoolAddress?: string;
+  schoolCity?: string;
+  schoolCountry?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
+  schoolLogoUrl?: string;
 }
 
 export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({ 
@@ -59,6 +68,13 @@ export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({
   evaluationTitle = '',
   template,
   schoolName,
+  schoolYearName,
+  schoolAddress,
+  schoolCity,
+  schoolCountry,
+  schoolPhone,
+  schoolEmail,
+  schoolLogoUrl,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -89,6 +105,13 @@ export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({
         className: classNameProp || 'Classe',
         evaluationTitle: evaluationTitle || 'Évaluation',
         schoolName,
+        schoolYearName,
+        schoolAddress,
+        schoolCity,
+        schoolCountry,
+        schoolPhone,
+        schoolEmail,
+        schoolLogoUrl,
         template,
         bulletin: {
           studentId: data.studentId,
@@ -293,7 +316,7 @@ _Bulletin disponible au téléchargement dans l'application._`;
                   <TrendingUp className="h-4 w-4 text-primary" />
                   <div>
                     <p className="text-xs text-muted-foreground">Total points</p>
-                    <p className="font-mono font-medium">{data.totalPoints}/{data.totalMaxPoints}</p>
+                    <p className="font-mono font-medium">{data.totalPoints.toFixed(2)}/{data.totalMaxPoints.toFixed(2)}</p>
                   </div>
                 </div>
                 
