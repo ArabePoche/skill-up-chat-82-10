@@ -52,16 +52,18 @@ const containsArabic = (text: string): boolean => {
   return arabicPattern.test(text);
 };
 
-// Get appreciation based on score
-const getSubjectAppreciation = (score: number | null, isAbsent: boolean): string => {
+// Get appreciation based on score - normalized to percentage
+const getSubjectAppreciation = (score: number | null, maxScore: number, isAbsent: boolean): string => {
   if (isAbsent) return 'Absent';
   if (score === null) return '-';
-  if (score >= 18) return 'Excellent';
-  if (score >= 16) return 'Très bien';
-  if (score >= 14) return 'Bien';
-  if (score >= 12) return 'Assez bien';
-  if (score >= 10) return 'Passable';
-  if (score >= 8) return 'Insuffisant';
+  // Normaliser le score en pourcentage pour l'appréciation
+  const percentage = (score / maxScore) * 100;
+  if (percentage >= 90) return 'Excellent';
+  if (percentage >= 80) return 'Très bien';
+  if (percentage >= 70) return 'Bien';
+  if (percentage >= 60) return 'Assez bien';
+  if (percentage >= 50) return 'Passable';
+  if (percentage >= 40) return 'Insuffisant';
   return 'Très insuffisant';
 };
 
@@ -265,24 +267,24 @@ const generateBulletinPdfCore = async ({
         doc.text('Matiere', 175, y, { align: 'right' });
       } else {
         doc.text('Matiere', 17, y);
-        doc.text('Coef.', 65, y);
-        doc.text('Classe', 85, y);
-        doc.text('Examen', 105, y);
-        doc.text('Moy.', 125, y);
+        doc.text('Coef.', 60, y);
+        doc.text('Classe', 78, y);
+        doc.text('Examen', 98, y);
+        doc.text('Bareme', 118, y);
         doc.text('Appreciation', 145, y);
       }
     } else {
       if (hasArabicSubjects) {
         doc.text('Appreciation', 17, y);
-        doc.text('/20', 55, y);
+        doc.text('Bareme', 55, y);
         doc.text('Coef.', 70, y);
         doc.text('Note', 90, y);
         doc.text('Matiere', 175, y, { align: 'right' });
       } else {
         doc.text('Matiere', 17, y);
-        doc.text('Note', 85, y);
-        doc.text('Coef.', 105, y);
-        doc.text('/20', 125, y);
+        doc.text('Note', 78, y);
+        doc.text('Coef.', 98, y);
+        doc.text('Bareme', 118, y);
         doc.text('Appreciation', 145, y);
       }
     }
@@ -304,11 +306,12 @@ const generateBulletinPdfCore = async ({
         doc.rect(15, y - 4, 180, 7, 'F');
       }
 
-      const subjectAppreciation = getSubjectAppreciation(grade.score, !!grade.isAbsent);
+      const subjectAppreciation = getSubjectAppreciation(grade.score, grade.maxScore, !!grade.isAbsent);
       const examScoreText = grade.isAbsent ? 'ABS' : (grade.score !== null ? grade.score.toString() : '-');
       const classScoreText = grade.classGradeScore !== null && grade.classGradeScore !== undefined 
         ? grade.classGradeScore.toString() 
         : '-';
+      const baremeText = `/${grade.maxScore}`;
       
       let avgScoreText = '-';
       if (includeClassGrades && grade.score !== null && grade.classGradeScore !== null && grade.classGradeScore !== undefined) {
@@ -325,36 +328,36 @@ const generateBulletinPdfCore = async ({
         if (hasArabicSubjects && containsArabic(grade.subjectName)) {
           doc.text(subjectAppreciation, 17, y);
           doc.text(avgScoreText, 50, y);
-          doc.text(examScoreText, 68, y);
+          doc.text(`${examScoreText}${baremeText}`, 68, y);
           doc.text(classScoreText, 88, y);
           doc.text(grade.coefficient.toString(), 108, y);
           setFont(grade.subjectName);
           doc.text(grade.subjectName.substring(0, 25), 175, y, { align: 'right' });
         } else {
           setFont(grade.subjectName);
-          doc.text(grade.subjectName.substring(0, 25), 17, y);
+          doc.text(grade.subjectName.substring(0, 22), 17, y);
           doc.setFont('helvetica', 'normal');
-          doc.text(grade.coefficient.toString(), 68, y);
-          doc.text(classScoreText, 88, y);
-          doc.text(examScoreText, 108, y);
-          doc.text(avgScoreText, 127, y);
+          doc.text(grade.coefficient.toString(), 63, y);
+          doc.text(classScoreText, 82, y);
+          doc.text(examScoreText, 100, y);
+          doc.text(baremeText, 118, y);
           doc.text(subjectAppreciation, 145, y);
         }
       } else {
         if (hasArabicSubjects && containsArabic(grade.subjectName)) {
           doc.text(subjectAppreciation, 17, y);
-          doc.text('20', 57, y);
+          doc.text(baremeText, 57, y);
           doc.text(grade.coefficient.toString(), 73, y);
           doc.text(examScoreText, 92, y);
           setFont(grade.subjectName);
           doc.text(grade.subjectName.substring(0, 30), 175, y, { align: 'right' });
         } else {
           setFont(grade.subjectName);
-          doc.text(grade.subjectName.substring(0, 28), 17, y);
+          doc.text(grade.subjectName.substring(0, 25), 17, y);
           doc.setFont('helvetica', 'normal');
-          doc.text(examScoreText, 88, y);
-          doc.text(grade.coefficient.toString(), 108, y);
-          doc.text('20', 127, y);
+          doc.text(examScoreText, 82, y);
+          doc.text(grade.coefficient.toString(), 100, y);
+          doc.text(baremeText, 118, y);
           doc.text(subjectAppreciation, 145, y);
         }
       }
@@ -379,14 +382,14 @@ const generateBulletinPdfCore = async ({
     doc.setFont('helvetica', 'bold');
     
     const avgText = student.average !== null ? student.average.toFixed(2) : '-';
-    doc.text(`Moyenne: ${avgText}/20`, 25, y + 5);
-    doc.text(`Rang: ${student.rank}/${student.totalStudents}`, 85, y + 5);
-    doc.text(`Mention: ${student.mention || '-'}`, 140, y + 5);
+    doc.text(`Moyenne: ${avgText}`, 25, y + 5);
+    doc.text(`Rang: ${student.rank}/${student.totalStudents}`, 80, y + 5);
+    doc.text(`Mention: ${student.mention || '-'}`, 130, y + 5);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Moyenne de classe: ${student.classAverage.toFixed(2)}/20`, 25, y + 15);
-    doc.text(`Meilleure moyenne: ${student.firstAverage.toFixed(2)}/20`, 115, y + 15);
+    doc.text(`Moyenne de classe: ${student.classAverage.toFixed(2)}`, 25, y + 15);
+    doc.text(`Meilleure moyenne: ${student.firstAverage.toFixed(2)}`, 110, y + 15);
     
     y += 30;
 

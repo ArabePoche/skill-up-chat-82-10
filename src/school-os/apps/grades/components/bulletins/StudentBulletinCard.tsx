@@ -189,7 +189,7 @@ _Bulletin disponible au téléchargement dans l'application._`;
                 {data.rank}<sup>e</sup>/{data.totalStudents}
               </Badge>
               <Badge className={cn("font-mono text-sm", getMentionColor(data.average))}>
-                {data.average !== null ? data.average.toFixed(2) : 'N/A'}/20
+                {data.average !== null ? data.average.toFixed(2) : 'N/A'}
               </Badge>
               {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </div>
@@ -309,7 +309,7 @@ _Bulletin disponible au téléchargement dans l'application._`;
                   <Users className="h-4 w-4 text-primary" />
                   <div>
                     <p className="text-xs text-muted-foreground">Moy. classe</p>
-                    <p className="font-mono font-medium">{data.classAverage.toFixed(2)}/20</p>
+                    <p className="font-mono font-medium">{data.classAverage.toFixed(2)}</p>
                   </div>
                 </div>
                 
@@ -317,7 +317,7 @@ _Bulletin disponible au téléchargement dans l'application._`;
                   <Award className="h-4 w-4 text-yellow-500" />
                   <div>
                     <p className="text-xs text-muted-foreground">Moy. 1er</p>
-                    <p className="font-mono font-medium">{data.firstAverage.toFixed(2)}/20</p>
+                    <p className="font-mono font-medium">{data.firstAverage.toFixed(2)}</p>
                   </div>
                 </div>
               </div>

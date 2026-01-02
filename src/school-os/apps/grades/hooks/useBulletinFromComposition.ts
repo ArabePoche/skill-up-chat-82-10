@@ -28,6 +28,7 @@ export interface ClassSubject {
   id: string;
   name: string;
   coefficient: number;
+  maxScore: number; // Barème de la matière (depuis class_subjects.max_score)
 }
 
 export interface CompositionBulletinData {
@@ -138,12 +139,13 @@ export const useBulletinFromComposition = (compositionId?: string, classId?: str
       // Filtrer les élèves exclus
       const activeStudents = (students || []).filter(s => !excludedStudentIds.includes(s.id));
 
-      // 5. Récupérer les matières de la classe (non exclues)
+      // 5. Récupérer les matières de la classe (non exclues) avec le barème
       const { data: classSubjects, error: subjectsError } = await supabase
         .from('class_subjects')
         .select(`
           subject_id,
           coefficient,
+          max_score,
           subjects(id, name)
         `)
         .eq('class_id', classId);
@@ -156,6 +158,7 @@ export const useBulletinFromComposition = (compositionId?: string, classId?: str
           id: cs.subject_id,
           name: cs.subjects?.name || 'Matière inconnue',
           coefficient: cs.coefficient || 1,
+          maxScore: cs.max_score || 20, // Utiliser le barème de la base ou 20 par défaut
         }));
 
       // 6. Récupérer les notes de composition
