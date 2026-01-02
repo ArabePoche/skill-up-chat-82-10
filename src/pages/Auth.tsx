@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
@@ -7,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
+import { translateAuthError } from '@/utils/authErrorMessages';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -99,9 +99,10 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
+      const errorMessage = translateAuthError(error.message || '');
       toast({
-        title: t('common.error'),
-        description: error.message || "Une erreur est survenue",
+        title: isLogin ? t('auth.loginError') : t('auth.signupError'),
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
