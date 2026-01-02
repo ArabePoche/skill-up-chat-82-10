@@ -1,13 +1,16 @@
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useStudentPromotion } from '@/hooks/usePromotion';
+import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
+import { offlineStore } from '@/offline/utils/offlineStore';
+import { toast } from 'sonner';
 
 export const useSendMessage = (lessonId: string, formationId: string) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: studentPromotion } = useStudentPromotion(formationId);
+  const { isOnline } = useOfflineSync();
 
   return useMutation({
     mutationFn: async ({ 
@@ -25,6 +28,57 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
     }) => {
       if (!user?.id) {
         throw new Error('User not authenticated');
+      }
+
+      // Mode hors ligne : sauvegarder le message localement
+      if (!isOnline) {
+        console.log('📴 Offline - queuing message for later');
+        
+        const pendingMessage = {
+          id: `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          lesson_id: lessonId,
+          formation_id: formationId,
+          promotion_id: studentPromotion?.promotion_id || null,
+          sender_id: user.id,
+          content,
+          message_type: messageType,
+          file_url: null, // Les fichiers ne peuvent pas être envoyés hors ligne
+          file_name: null,
+          file_type: null,
+          is_exercise_submission: false,
+          replied_to_message_id: repliedToMessageId || null,
+          created_at: new Date().toISOString(),
+          is_pending: true, // Marqueur pour les messages en attente
+          profiles: {
+            id: user.id,
+            first_name: user.user_metadata?.first_name || 'Vous',
+            last_name: user.user_metadata?.last_name || '',
+            username: user.email?.split('@')[0] || 'user'
+          }
+        };
+
+        // Sauvegarder dans IndexedDB
+        await offlineStore.addPendingMessage(pendingMessage, lessonId, formationId);
+        
+        // Ajouter une mutation en attente pour la synchronisation
+        await offlineStore.addPendingMutation({
+          type: 'message',
+          payload: {
+            lessonId,
+            formationId,
+            promotionId: studentPromotion?.promotion_id,
+            senderId: user.id,
+            content,
+            messageType,
+            repliedToMessageId
+          }
+        });
+
+        toast.info('Message enregistré', {
+          description: 'Il sera envoyé automatiquement quand vous serez en ligne'
+        });
+
+        return pendingMessage;
       }
 
       let fileUrl = null;
