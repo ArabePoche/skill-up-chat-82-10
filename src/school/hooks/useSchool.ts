@@ -13,6 +13,18 @@ export interface School {
   owner_id: string;
   created_at: string;
   updated_at: string;
+  // Informations complémentaires
+  country?: string | null;
+  city?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  founded_year?: number | null;
+  teaching_language?: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
 }
 
 export interface SchoolYear {
