@@ -42,6 +42,12 @@ export interface BulletinPdfOptions {
   evaluationTitle: string;
   schoolName?: string;
   schoolYearName?: string;
+  schoolAddress?: string;
+  schoolCity?: string;
+  schoolCountry?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
+  schoolLogoUrl?: string;
   template?: BulletinTemplate | null;
   bulletins: BulletinPdfData[];
 }
@@ -132,6 +138,12 @@ const generateBulletinPdfCore = async ({
   className,
   evaluationTitle,
   schoolName,
+  schoolYearName,
+  schoolAddress,
+  schoolCity,
+  schoolCountry,
+  schoolPhone,
+  schoolEmail,
   template,
   bulletins,
 }: BulletinPdfOptions): Promise<{ doc: jsPDF; blob: Blob }> => {
@@ -225,18 +237,57 @@ const generateBulletinPdfCore = async ({
       doc.setTextColor(0, 0, 0);
     }
 
-    // School and class info
+    // School and class info - Section enrichie avec plus d'informations
     doc.setFontSize(11);
     doc.setTextColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
     setFont(schoolName || '');
     
+    // Ligne 1: Nom de l'école (en gras)
     if (schoolName) {
-      doc.text(`Etablissement: ${schoolName}`, 20, y);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      doc.text(schoolName, 105, y, { align: 'center' });
       y += 6;
     }
     
+    // Ligne 2: Adresse de l'école
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
+    const addressParts: string[] = [];
+    if (schoolAddress) addressParts.push(schoolAddress);
+    if (schoolCity) addressParts.push(schoolCity);
+    if (schoolCountry) addressParts.push(schoolCountry);
+    if (addressParts.length > 0) {
+      doc.text(addressParts.join(', '), 105, y, { align: 'center' });
+      y += 5;
+    }
+    
+    // Ligne 3: Contact (téléphone et email)
+    const contactParts: string[] = [];
+    if (schoolPhone) contactParts.push(`Tél: ${schoolPhone}`);
+    if (schoolEmail) contactParts.push(`Email: ${schoolEmail}`);
+    if (contactParts.length > 0) {
+      doc.text(contactParts.join(' | '), 105, y, { align: 'center' });
+      y += 5;
+    }
+    
+    // Ligne séparatrice
+    y += 2;
+    doc.setDrawColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
+    doc.setLineWidth(0.2);
+    doc.line(20, y, 190, y);
+    y += 6;
+
+    // Ligne 4: Classe, Période et Année scolaire
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
     doc.text(`Classe: ${className}`, 20, y);
-    doc.text(`Periode: ${evaluationTitle}`, 110, y);
+    doc.text(`Période: ${evaluationTitle}`, 80, y);
+    if (schoolYearName) {
+      doc.text(`Année: ${schoolYearName}`, 150, y);
+    }
     y += 8;
 
     // Student info
@@ -449,6 +500,12 @@ export const exportSingleBulletinToPdf = async ({
   evaluationTitle,
   schoolName,
   schoolYearName,
+  schoolAddress,
+  schoolCity,
+  schoolCountry,
+  schoolPhone,
+  schoolEmail,
+  schoolLogoUrl,
   template,
   bulletin,
   returnBlob = false,
@@ -457,6 +514,12 @@ export const exportSingleBulletinToPdf = async ({
   evaluationTitle: string;
   schoolName?: string;
   schoolYearName?: string;
+  schoolAddress?: string;
+  schoolCity?: string;
+  schoolCountry?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
+  schoolLogoUrl?: string;
   template?: BulletinTemplate | null;
   bulletin: BulletinPdfData;
   returnBlob?: boolean;
@@ -466,6 +529,12 @@ export const exportSingleBulletinToPdf = async ({
     evaluationTitle,
     schoolName,
     schoolYearName,
+    schoolAddress,
+    schoolCity,
+    schoolCountry,
+    schoolPhone,
+    schoolEmail,
+    // schoolLogoUrl est gardé en option (pas encore dessiné dans le PDF)
     template,
     bulletins: [bulletin],
   });
@@ -483,22 +552,9 @@ export const exportSingleBulletinToPdf = async ({
 /**
  * Exporte tous les bulletins d'une classe en PDF
  */
-export const exportBulletinsToPdf = async ({
-  className,
-  evaluationTitle,
-  schoolName,
-  schoolYearName,
-  template,
-  bulletins,
-}: BulletinPdfOptions): Promise<void> => {
-  const { blob } = await generateBulletinPdfCore({
-    className,
-    evaluationTitle,
-    schoolName,
-    schoolYearName,
-    template,
-    bulletins,
-  });
+export const exportBulletinsToPdf = async (options: BulletinPdfOptions): Promise<void> => {
+  const { className, evaluationTitle } = options;
+  const { blob } = await generateBulletinPdfCore(options);
 
   const fileName = `Bulletins_${className}_${evaluationTitle}.pdf`
     .replace(/\s+/g, '_')
