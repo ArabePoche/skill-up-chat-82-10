@@ -27,6 +27,7 @@ import {
 import { exportBulletinsToPdf } from '../../utils/bulletinPdfExport';
 import { toast } from 'sonner';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { useSchoolCycleByName } from '@/school/hooks/useSchoolCycles';
 
 interface BulletinGenerationTabProps {
   availableClasses: Array<{
@@ -106,6 +107,13 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
 
   // Composition sélectionnée
   const selectedComposition = compositions.find(c => c.id === selectedCompositionId);
+  
+  // Récupérer le cycle de la classe sélectionnée pour obtenir la base de notation
+  const selectedClass = availableClasses.find(c => c.id === selectedClassId);
+  const { data: cycleData } = useSchoolCycleByName(schoolId, selectedClass?.cycle);
+  
+  // Base de notation configurable (par défaut 20 si non configurée)
+  const gradeBase = cycleData?.grade_base || 20;
 
   // Réinitialiser quand la classe change
   useEffect(() => {
@@ -162,6 +170,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   };
 
   // Calculer les données des bulletins
+  // gradeBase est récupéré du cycle de la classe (ex: 10 pour maternel/primaire, 20 pour les autres)
   const bulletinsData = useMemo((): StudentBulletinData[] => {
     if (!bulletinData || !selectedCompositionId) return [];
 
@@ -195,8 +204,8 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         rawPointsMax += maxScore * subject.coefficient;
 
         if (compositionScore !== null) {
-          // Normaliser le score sur 20 pour le calcul de la moyenne pondérée
-          const normalizedScore = (compositionScore / maxScore) * 20;
+          // Normaliser le score sur la base de notation du cycle (gradeBase)
+          const normalizedScore = (compositionScore / maxScore) * gradeBase;
           totalWeightedPoints += normalizedScore * subject.coefficient;
           totalCoefficients += subject.coefficient;
           
@@ -215,17 +224,15 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         };
       });
 
-      // Calculer la moyenne sur 20 en utilisant les coefficients des matières avec note
+      // Calculer la moyenne sur la base de notation du cycle (gradeBase)
+      // Moyenne = Σ(note normalisée × coeff) / Σ coeff
+      // La normalisation ramène déjà les scores sur gradeBase, donc pas besoin de diviser
       const average = totalCoefficients > 0 ? totalWeightedPoints / totalCoefficients : null;
 
-      // Total points (pondéré) ramené à la somme des coefficients (demandé)
-      // -> équivaut à une moyenne pondérée sur le barème "brut".
-      const totalPointsByCoefficients = totalAllCoefficients > 0
-        ? rawPointsObtained / totalAllCoefficients
-        : 0;
-      const totalMaxPointsByCoefficients = totalAllCoefficients > 0
-        ? rawPointsMax / totalAllCoefficients
-        : 0;
+      // Total des points = somme brute des (note × coefficient), SANS division
+      // La division par la somme des coefficients se fait UNIQUEMENT pour la moyenne
+      const totalPoints = rawPointsObtained;
+      const totalMaxPoints = rawPointsMax;
 
       return {
         studentId: student.id,
@@ -235,8 +242,8 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         parentPhone: student.parent_phone || null,
         grades: gradesList,
         average,
-        totalPoints: totalPointsByCoefficients,
-        totalMaxPoints: totalMaxPointsByCoefficients,
+        totalPoints,
+        totalMaxPoints,
         rank: 0,
         totalStudents: students.length,
         classAverage: 0,
@@ -281,7 +288,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     });
 
     return studentData;
-  }, [bulletinData, selectedCompositionId, evaluationGrades, manualClassNotes, classNotesConfig, appreciationTemplates]);
+  }, [bulletinData, selectedCompositionId, evaluationGrades, manualClassNotes, classNotesConfig, appreciationTemplates, gradeBase]);
 
   // Statistiques de classe
   const classStats = useMemo(() => {
