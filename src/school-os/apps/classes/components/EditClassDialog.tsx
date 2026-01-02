@@ -29,8 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUpdateClass, CycleType, GenderType, Class } from '../hooks/useClasses';
-import { useSchoolCycles } from '../hooks/useSchoolCycles';
+import { useUpdateClass, CycleType, GenderType, Class } from '@/school/hooks/useClasses';
+import { useSchoolCycles } from '@/school/hooks/useSchoolCycles';
 
 // Schéma de validation dynamique
 const createEditClassFormSchema = (allowedCycles: string[]) => z.object({
