@@ -3403,6 +3403,50 @@ export type Database = {
           },
         ]
       }
+      school_cycles: {
+        Row: {
+          created_at: string
+          grade_base: number
+          id: string
+          is_active: boolean
+          label: string
+          name: string
+          order_index: number
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          grade_base?: number
+          id?: string
+          is_active?: boolean
+          label: string
+          name: string
+          order_index?: number
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          grade_base?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          name?: string
+          order_index?: number
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_cycles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_desktop_app_positions: {
         Row: {
           app_id: string
