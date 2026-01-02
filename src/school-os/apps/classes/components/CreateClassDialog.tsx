@@ -1,8 +1,9 @@
 /**
  * Dialog pour créer une nouvelle classe
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCreateClasses, CycleType, GenderType } from '@/school/hooks/useClasses';
+import { useSchoolCycles } from '@/school/hooks/useSchoolCycles';
 
 interface CreateClassDialogProps {
   open: boolean;
@@ -36,15 +38,25 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const createClasses = useCreateClasses();
+  const { data: cycles, isLoading: cyclesLoading } = useSchoolCycles(schoolId);
+
+  const defaultCycle = useMemo(() => cycles?.[0]?.name || 'primaire', [cycles]);
 
   const [formData, setFormData] = useState({
     name: '',
-    cycle: 'primaire' as CycleType,
+    cycle: defaultCycle as CycleType,
     max_students: 30,
     gender_type: 'mixte' as GenderType,
     annual_fee: 0,
     registration_fee: 0,
   });
+
+  // Mettre à jour le cycle par défaut quand les cycles sont chargés
+  useEffect(() => {
+    if (cycles && cycles.length > 0 && formData.cycle === 'primaire') {
+      setFormData(prev => ({ ...prev, cycle: cycles[0].name as CycleType }));
+    }
+  }, [cycles]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,11 +110,17 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="maternel">Maternel</SelectItem>
-                  <SelectItem value="primaire">Primaire</SelectItem>
-                  <SelectItem value="collège">Collège</SelectItem>
-                  <SelectItem value="lycée">Lycée</SelectItem>
-                  <SelectItem value="université">Université</SelectItem>
+                  {cyclesLoading ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  ) : (
+                    cycles?.map((c) => (
+                      <SelectItem key={c.name} value={c.name}>
+                        {c.label} (/{c.grade_base})
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
