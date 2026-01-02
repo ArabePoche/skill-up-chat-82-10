@@ -173,8 +173,9 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
     const studentData = students.map(student => {
       const studentNotes = notes.filter(n => n.student_id === student.id);
       
-      let totalPoints = 0;
-      let totalCoefficients = 0;
+      let totalWeightedPoints = 0; // Points pondérés (score * coef)
+      let totalCoefficients = 0;   // Somme des coefficients des matières AVEC note
+      let totalAllCoefficients = 0; // Somme de TOUS les coefficients
       // Pour le calcul du total points réel (somme des scores bruts obtenus)
       let rawPointsObtained = 0;
       let rawPointsMax = 0;
@@ -187,18 +188,21 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
           : null;
         // Utiliser le barème de la matière depuis la base de données
         const maxScore = subject.maxScore || 20;
+        
+        // Ajouter le coefficient au total global (toutes matières)
+        totalAllCoefficients += subject.coefficient;
+        // Ajouter au total max des points bruts
+        rawPointsMax += maxScore * subject.coefficient;
 
         if (compositionScore !== null) {
           // Normaliser le score sur 20 pour le calcul de la moyenne pondérée
           const normalizedScore = (compositionScore / maxScore) * 20;
-          totalPoints += normalizedScore * subject.coefficient;
+          totalWeightedPoints += normalizedScore * subject.coefficient;
           totalCoefficients += subject.coefficient;
           
-          // Accumuler les points bruts (score réel obtenu)
-          rawPointsObtained += compositionScore;
+          // Accumuler les points bruts pondérés (score réel obtenu * coefficient)
+          rawPointsObtained += compositionScore * subject.coefficient;
         }
-        // Total max = somme des barèmes de toutes les matières
-        rawPointsMax += maxScore;
 
         return {
           subjectId: subject.id,
@@ -211,7 +215,17 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         };
       });
 
-      const average = totalCoefficients > 0 ? totalPoints / totalCoefficients : null;
+      // Calculer la moyenne sur 20 en utilisant les coefficients des matières avec note
+      const average = totalCoefficients > 0 ? totalWeightedPoints / totalCoefficients : null;
+
+      // Total points (pondéré) ramené à la somme des coefficients (demandé)
+      // -> équivaut à une moyenne pondérée sur le barème "brut".
+      const totalPointsByCoefficients = totalAllCoefficients > 0
+        ? rawPointsObtained / totalAllCoefficients
+        : 0;
+      const totalMaxPointsByCoefficients = totalAllCoefficients > 0
+        ? rawPointsMax / totalAllCoefficients
+        : 0;
 
       return {
         studentId: student.id,
@@ -221,8 +235,8 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         parentPhone: student.parent_phone || null,
         grades: gradesList,
         average,
-        totalPoints: rawPointsObtained, // Points réels obtenus (somme des scores)
-        totalMaxPoints: rawPointsMax, // Points max possibles (somme des barèmes)
+        totalPoints: totalPointsByCoefficients,
+        totalMaxPoints: totalMaxPointsByCoefficients,
         rank: 0,
         totalStudents: students.length,
         classAverage: 0,
@@ -290,6 +304,9 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   }, [templates, selectedTemplate]);
 
   const isLoading = loadingCompositions || loadingBulletin;
+  
+  // Récupérer les informations de l'école
+  const { school, activeSchoolYear } = useSchoolYear();
 
   // Export PDF
   const handleExportPDF = async () => {
@@ -306,6 +323,14 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
       await exportBulletinsToPdf({
         className,
         evaluationTitle: compositionTitle,
+        schoolName: school?.name,
+        schoolYearName: activeSchoolYear?.year_label,
+        schoolAddress: school?.address || undefined,
+        schoolCity: school?.city || undefined,
+        schoolCountry: school?.country || undefined,
+        schoolPhone: school?.phone || undefined,
+        schoolEmail: school?.email || undefined,
+        schoolLogoUrl: school?.logo_url || undefined,
         template: currentTemplate,
         bulletins: bulletinsData,
       });
@@ -479,6 +504,14 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
               className={availableClasses.find(c => c.id === selectedClassId)?.name}
               evaluationTitle={selectedComposition?.title}
               template={currentTemplate}
+              schoolName={school?.name || undefined}
+              schoolYearName={activeSchoolYear?.year_label || undefined}
+              schoolAddress={school?.address || undefined}
+              schoolCity={school?.city || undefined}
+              schoolCountry={school?.country || undefined}
+              schoolPhone={school?.phone || undefined}
+              schoolEmail={school?.email || undefined}
+              schoolLogoUrl={school?.logo_url || undefined}
             />
           ))}
         </div>
