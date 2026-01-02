@@ -175,7 +175,9 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
       
       let totalPoints = 0;
       let totalCoefficients = 0;
-      let totalMaxPoints = 0;
+      // Pour le calcul du total points réel (somme des scores bruts obtenus)
+      let rawPointsObtained = 0;
+      let rawPointsMax = 0;
 
       const gradesList: SubjectGrade[] = subjects.map(subject => {
         const note = studentNotes.find(n => n.subject_id === subject.id);
@@ -191,8 +193,12 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
           const normalizedScore = (compositionScore / maxScore) * 20;
           totalPoints += normalizedScore * subject.coefficient;
           totalCoefficients += subject.coefficient;
+          
+          // Accumuler les points bruts (score réel obtenu)
+          rawPointsObtained += compositionScore;
         }
-        totalMaxPoints += 20 * subject.coefficient; // Total max toujours sur base 20 pour la moyenne
+        // Total max = somme des barèmes de toutes les matières
+        rawPointsMax += maxScore;
 
         return {
           subjectId: subject.id,
@@ -215,8 +221,8 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         parentPhone: student.parent_phone || null,
         grades: gradesList,
         average,
-        totalPoints,
-        totalMaxPoints,
+        totalPoints: rawPointsObtained, // Points réels obtenus (somme des scores)
+        totalMaxPoints: rawPointsMax, // Points max possibles (somme des barèmes)
         rank: 0,
         totalStudents: students.length,
         classAverage: 0,
