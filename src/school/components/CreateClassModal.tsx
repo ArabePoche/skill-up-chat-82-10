@@ -1,6 +1,7 @@
 // Composant modal pour créer des classes
+// Permet de configurer le cycle (avec sa base de notation) et les paramètres des classes
 import React, { useState, useMemo } from 'react';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Plus, X, Loader2, Settings, Info } from 'lucide-react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,8 +31,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useCreateClasses, CycleType, GenderType, CreateClassData } from '../hooks/useClasses';
 import { useSchoolCycles } from '../hooks/useSchoolCycles';
+import { CycleSettingsDialog } from '@/school-os/apps/classes/components/CycleSettingsDialog';
 
 // Schéma de validation dynamique
 const createClassFormSchema = (allowedCycles: string[]) => z.object({
@@ -76,6 +84,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
   schoolYearId,
 }) => {
   const [open, setOpen] = useState(false);
+  const [showCycleSettings, setShowCycleSettings] = useState(false);
   const createClasses = useCreateClasses();
   const { data: cycles, isLoading: cyclesLoading } = useSchoolCycles(schoolId);
 
@@ -90,6 +99,13 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       classes: [{ name: '', maxStudents: 30, genderType: 'mixte', registrationFee: 0, annualFee: 0 }],
     },
   });
+  
+  // Cycle sélectionné pour afficher ses détails
+  const selectedCycleValue = form.watch('cycle');
+  const selectedCycle = useMemo(() => 
+    cycles?.find(c => c.name === selectedCycleValue), 
+    [cycles, selectedCycleValue]
+  );
 
   // Mettre à jour le cycle par défaut quand les cycles sont chargés
   React.useEffect(() => {
@@ -144,7 +160,36 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
               name="cycle"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cycle d'enseignement</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FormLabel>Cycle d'enseignement</FormLabel>
+                      {selectedCycle && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{selectedCycle.label}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Base de notation: /{selectedCycle.grade_base}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => setShowCycleSettings(true)}
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      Personnaliser
+                    </Button>
+                  </div>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -172,6 +217,19 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                 </FormItem>
               )}
             />
+
+            {/* Affichage de la base de notation du cycle sélectionné */}
+            {selectedCycle && (
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Base de notation pour ce cycle:</span>
+                  <span className="font-semibold text-primary">/{selectedCycle.grade_base}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Les moyennes seront calculées sur {selectedCycle.grade_base} points
+                </p>
+              </div>
+            )}
 
             {/* Liste des noms de classes */}
             <div className="space-y-4">
@@ -347,6 +405,13 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
             </div>
           </form>
         </Form>
+
+        {/* Dialog pour personnaliser les cycles */}
+        <CycleSettingsDialog
+          open={showCycleSettings}
+          onOpenChange={setShowCycleSettings}
+          schoolId={schoolId}
+        />
       </DialogContent>
     </Dialog>
   );
