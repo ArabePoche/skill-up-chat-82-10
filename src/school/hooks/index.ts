@@ -6,3 +6,4 @@ export * from './useSubjects';
 export * from './useSubjectFiles';
 export * from './useClassSubjects';
 export * from './useClassTeachers';
+export * from './useSchoolCycles';
