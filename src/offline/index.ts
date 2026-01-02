@@ -21,6 +21,7 @@ export { useOfflineQuery, useOfflineData } from './hooks/useOfflineQuery';
 export { useOfflineMutation, useSyncPendingMutations } from './hooks/useOfflineMutation';
 export { useFirstRun } from './hooks/useFirstRun';
 export { useOfflineConversations } from './hooks/useOfflineConversations';
+export { useOfflineGroupChat } from './hooks/useOfflineGroupChat';
 
 // Composants
 export { OfflineIndicator } from './components/OfflineIndicator';
