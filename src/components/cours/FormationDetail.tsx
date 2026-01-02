@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, BookOpen, Users, Clock, Star } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Clock, Star, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import PrivateLevelsList from './PrivateLevelsList';
 import GroupLevelsList from './GroupLevelsList';
 import TeacherView from '../TeacherView';
@@ -151,7 +152,7 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
           </div>
           
           {/* Bouton téléchargement offline */}
-          <div className="ml-2">
+          <div className="ml-2 [&_button]:bg-white [&_button]:text-[#25d366] [&_button]:border-white [&_button]:hover:bg-white/90">
             <OfflineDownloadButton 
               formationId={String(formation.id)} 
               formationTitle={formation.title}
@@ -193,9 +194,19 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
         </div>
       </div>
 
-      {/* Historique des paiements */}
-      <div className="bg-transparent px-4 mb-2">
-        <PaymentHistoryList formationId={String(formation.id)} />
+      {/* Historique des paiements - Toggle */}
+      <div className="bg-white px-4 py-3 mb-2 shadow-sm">
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center justify-between w-full group">
+            <h3 className="font-semibold text-gray-800 flex items-center">
+              📜 {t('formation.paymentHistory', 'Historique des paiements')}
+            </h3>
+            <ChevronDown className="h-5 w-5 text-gray-500 transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3">
+            <PaymentHistoryList formationId={String(formation.id)} />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* Lessons List - Affichage conditionnel selon le plan */}
