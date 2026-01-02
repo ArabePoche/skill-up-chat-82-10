@@ -57,9 +57,11 @@ export const useFirstRun = () => {
     });
 
     // Si en ligne et première fois, marquer comme initialisé
+    // NOTE: On ne marque PAS le cache comme prêt ici, on attend que OfflineGate le fasse
+    // après que le SW ait eu le temps de cacher les assets
     if (isOnline && isFirstRun) {
       localStorage.setItem(FIRST_RUN_KEY, Date.now().toString());
-      localStorage.setItem(CACHE_INITIALIZED_KEY, 'true');
+      // Ne pas marquer le cache comme prêt immédiatement - sera fait par markCacheReady()
     }
   }, []);
 
