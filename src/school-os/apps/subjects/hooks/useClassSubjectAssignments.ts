@@ -60,6 +60,7 @@ export const useAssignSubjectToClass = () => {
           class_id: data.class_id,
           subject_id: data.subject_id,
           coefficient: data.coefficient,
+          max_score: data.max_score,
           teacher_id: data.teacher_id || null,
         })
         .select()
@@ -100,6 +101,7 @@ export const useUpdateClassSubjectAssignment = () => {
         .from('class_subjects')
         .update({
           coefficient: updates.coefficient,
+          max_score: updates.max_score,
           teacher_id: updates.teacher_id,
         })
         .eq('id', id)
