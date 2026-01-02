@@ -15,25 +15,56 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'sw.ts',
+      strategies: 'generateSW',
       injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'icon-192x192.png', 'icon-512x512.png', 'offline.html'],
-      injectManifest: {
+      workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-      },
-      workbox: {
         cleanupOutdatedCaches: true,
-        sourcemap: true,
-        navigateFallback: '/index.html',
+        navigateFallback: '/offline.html',
         navigateFallbackDenylist: [/^\/api/, /^\/supabase/],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24
+              },
+              networkTimeoutSeconds: 10
+            }
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              }
+            }
+          },
+          {
+            urlPattern: /\.(?:woff|woff2|ttf|eot)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fonts-cache',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              }
+            }
+          }
+        ]
       },
       devOptions: {
         enabled: true,
         type: 'module',
-        navigateFallback: 'index.html',
+        navigateFallback: '/offline.html'
       },
       manifest: {
         name: 'EducaTok - Plateforme éducative interactive',
