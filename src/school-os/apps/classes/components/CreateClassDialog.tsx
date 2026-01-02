@@ -1,9 +1,10 @@
 /**
  * Dialog pour créer une nouvelle classe
+ * Permet de configurer le cycle (avec sa base de notation) et les paramètres de la classe
  */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Info, Settings } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,8 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useCreateClasses, CycleType, GenderType } from '@/school/hooks/useClasses';
 import { useSchoolCycles } from '@/school/hooks/useSchoolCycles';
+import { CycleSettingsDialog } from './CycleSettingsDialog';
 
 interface CreateClassDialogProps {
   open: boolean;
@@ -39,6 +47,7 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
   const { t } = useTranslation();
   const createClasses = useCreateClasses();
   const { data: cycles, isLoading: cyclesLoading } = useSchoolCycles(schoolId);
+  const [showCycleSettings, setShowCycleSettings] = useState(false);
 
   const defaultCycle = useMemo(() => cycles?.[0]?.name || 'primaire', [cycles]);
 
@@ -50,6 +59,12 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
     annual_fee: 0,
     registration_fee: 0,
   });
+
+  // Récupérer le cycle sélectionné pour afficher ses détails
+  const selectedCycle = useMemo(() => 
+    cycles?.find(c => c.name === formData.cycle), 
+    [cycles, formData.cycle]
+  );
 
   // Mettre à jour le cycle par défaut quand les cycles sont chargés
   useEffect(() => {
@@ -71,7 +86,7 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
 
     setFormData({
       name: '',
-      cycle: 'primaire',
+      cycle: defaultCycle as CycleType,
       max_students: 30,
       gender_type: 'mixte',
       annual_fee: 0,
@@ -101,7 +116,36 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>{t('schoolOS.classes.cycle')}</Label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label>{t('schoolOS.classes.cycle')}</Label>
+                  {selectedCycle && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-medium">{selectedCycle.label}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Base de notation: /{selectedCycle.grade_base}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => setShowCycleSettings(true)}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Personnaliser
+                </Button>
+              </div>
               <Select
                 value={formData.cycle}
                 onValueChange={(value: CycleType) => setFormData({ ...formData, cycle: value })}
@@ -117,7 +161,10 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
                   ) : (
                     cycles?.map((c) => (
                       <SelectItem key={c.name} value={c.name}>
-                        {c.label} (/{c.grade_base})
+                        <span className="flex items-center gap-2">
+                          {c.label}
+                          <span className="text-xs text-muted-foreground">/{c.grade_base}</span>
+                        </span>
                       </SelectItem>
                     ))
                   )}
@@ -142,6 +189,19 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
               </Select>
             </div>
           </div>
+
+          {/* Affichage de la base de notation du cycle sélectionné */}
+          {selectedCycle && (
+            <div className="rounded-lg border bg-muted/50 p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Base de notation pour ce cycle:</span>
+                <span className="font-semibold text-primary">/{selectedCycle.grade_base}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Les moyennes seront calculées sur {selectedCycle.grade_base} points
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="max_students">{t('schoolOS.classes.maxStudents')}</Label>
@@ -187,6 +247,13 @@ export const CreateClassDialog: React.FC<CreateClassDialogProps> = ({
             </Button>
           </div>
         </form>
+
+        {/* Dialog pour personnaliser les cycles */}
+        <CycleSettingsDialog
+          open={showCycleSettings}
+          onOpenChange={setShowCycleSettings}
+          schoolId={schoolId}
+        />
       </DialogContent>
     </Dialog>
   );
