@@ -46,9 +46,28 @@ src/offline/
 │   └── registerSW.ts         # Enregistrement Service Worker
 ├── hooks/
 │   ├── useOfflineSync.ts     # État de connexion
-│   └── useOfflineFormation.ts # Accès aux formations offline
+│   ├── useOfflineFormation.ts # Accès aux formations offline
+│   └── useOfflineGroupChat.ts # Accès au chat de groupe offline
 ├── components/
 │   ├── OfflineIndicator.tsx  # Indicateur visuel
 │   └── OfflineDownloadButton.tsx # Bouton téléchargement
 └── index.ts
 ```
+
+## 🎓 Chat de groupe hors ligne
+
+Le hook `useOfflineGroupChat` permet d'accéder aux données du chat de groupe même hors connexion :
+
+```tsx
+import { useOfflineGroupChat } from '@/offline';
+
+const { 
+  messages, 
+  promotionId, 
+  isOfflineMode, 
+  lessons, 
+  exercises 
+} = useOfflineGroupChat(levelId, formationId);
+```
+
+Les données sont automatiquement mises en cache lors de la navigation en ligne et récupérées depuis le cache lorsque l'utilisateur est hors ligne.
