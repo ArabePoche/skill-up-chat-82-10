@@ -1,6 +1,6 @@
 // Composant modal pour créer des classes
-import React, { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, X, Loader2 } from 'lucide-react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -31,11 +31,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCreateClasses, CycleType, GenderType, CreateClassData } from '../hooks/useClasses';
+import { useSchoolCycles } from '../hooks/useSchoolCycles';
 
-// Schéma de validation
-const classFormSchema = z.object({
-  cycle: z.enum(['maternel', 'primaire', 'collège', 'lycée', 'université'], {
-    required_error: 'Veuillez sélectionner un cycle',
+// Schéma de validation dynamique
+const createClassFormSchema = (allowedCycles: string[]) => z.object({
+  cycle: z.string().refine(val => allowedCycles.length === 0 || allowedCycles.includes(val), {
+    message: 'Veuillez sélectionner un cycle valide',
   }),
   classes: z.array(
     z.object({
@@ -57,20 +58,12 @@ const classFormSchema = z.object({
   ).min(1, 'Au moins une classe est requise').max(20, 'Maximum 20 classes'),
 });
 
-type ClassFormValues = z.infer<typeof classFormSchema>;
+type ClassFormValues = z.infer<ReturnType<typeof createClassFormSchema>>;
 
 interface CreateClassModalProps {
   schoolId: string;
   schoolYearId: string;
 }
-
-const CYCLES: { value: CycleType; label: string }[] = [
-  { value: 'maternel', label: 'Maternel' },
-  { value: 'primaire', label: 'Primaire' },
-  { value: 'collège', label: 'Collège' },
-  { value: 'lycée', label: 'Lycée' },
-  { value: 'université', label: 'Université' },
-];
 
 const GENDER_TYPES: { value: GenderType; label: string }[] = [
   { value: 'mixte', label: 'Mixte' },
@@ -84,14 +77,26 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const createClasses = useCreateClasses();
+  const { data: cycles, isLoading: cyclesLoading } = useSchoolCycles(schoolId);
+
+  // Liste des cycles valides
+  const allowedCycles = useMemo(() => cycles?.map(c => c.name) || [], [cycles]);
+  const defaultCycle = cycles?.[0]?.name || 'primaire';
 
   const form = useForm<ClassFormValues>({
-    resolver: zodResolver(classFormSchema),
+    resolver: zodResolver(createClassFormSchema(allowedCycles)),
     defaultValues: {
-      cycle: 'primaire',
+      cycle: defaultCycle,
       classes: [{ name: '', maxStudents: 30, genderType: 'mixte', registrationFee: 0, annualFee: 0 }],
     },
   });
+
+  // Mettre à jour le cycle par défaut quand les cycles sont chargés
+  React.useEffect(() => {
+    if (cycles && cycles.length > 0 && !form.getValues('cycle')) {
+      form.setValue('cycle', cycles[0].name);
+    }
+  }, [cycles, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -103,7 +108,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       school_id: schoolId,
       school_year_id: schoolYearId,
       name: cls.name,
-      cycle: data.cycle,
+      cycle: data.cycle as CycleType,
       max_students: cls.maxStudents,
       gender_type: cls.genderType,
       registration_fee: cls.registrationFee,
@@ -147,11 +152,17 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {CYCLES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
+                      {cyclesLoading ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : (
+                        cycles?.map((c) => (
+                          <SelectItem key={c.name} value={c.name}>
+                            {c.label} (/{c.grade_base})
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormDescription>
