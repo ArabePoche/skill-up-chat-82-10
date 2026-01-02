@@ -74,14 +74,17 @@ class SyncManager {
     console.log('🔄 Starting sync...');
 
     try {
-      // Synchroniser les formations offline
+      // 1. D'abord synchroniser les messages en attente
+      await this.syncPendingMessages();
+
+      // 2. Synchroniser les formations offline
       const offlineFormations = await offlineStore.getAllFormations();
       
       for (const formation of offlineFormations) {
         await this.syncFormation(formation.id);
       }
 
-      // Nettoyer les caches expirés
+      // 3. Nettoyer les caches expirés
       await localMessageStore.cleanExpiredCache();
 
       console.log('✅ Sync completed');
@@ -89,6 +92,52 @@ class SyncManager {
       console.error('❌ Sync failed:', error);
     } finally {
       this.syncInProgress = false;
+    }
+  }
+
+  /**
+   * Synchronise les messages en attente vers Supabase
+   */
+  private async syncPendingMessages(): Promise<void> {
+    const pendingMutations = await offlineStore.getPendingMutations();
+    const messageMutations = pendingMutations.filter(m => m.type === 'message');
+
+    console.log(`📤 Syncing ${messageMutations.length} pending messages...`);
+
+    for (const mutation of messageMutations) {
+      try {
+        const { lessonId, formationId, promotionId, senderId, content, messageType, repliedToMessageId } = mutation.payload;
+
+        const { error } = await supabase
+          .from('lesson_messages')
+          .insert({
+            lesson_id: lessonId,
+            formation_id: formationId,
+            promotion_id: promotionId || null,
+            sender_id: senderId,
+            content,
+            message_type: messageType || 'text',
+            replied_to_message_id: repliedToMessageId || null,
+            is_exercise_submission: false
+          });
+
+        if (error) {
+          console.error('Failed to sync message:', error);
+          await offlineStore.incrementMutationRetry(mutation.id);
+          
+          // Si trop de tentatives, supprimer la mutation
+          if (mutation.retryCount >= 5) {
+            await offlineStore.removePendingMutation(mutation.id);
+            console.warn('Message sync abandoned after 5 retries');
+          }
+        } else {
+          // Succès : supprimer la mutation en attente
+          await offlineStore.removePendingMutation(mutation.id);
+          console.log('✅ Pending message synced');
+        }
+      } catch (error) {
+        console.error('Error syncing pending message:', error);
+      }
     }
   }
 
