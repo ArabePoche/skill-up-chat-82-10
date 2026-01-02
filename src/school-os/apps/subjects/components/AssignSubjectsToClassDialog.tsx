@@ -49,6 +49,7 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [coefficient, setCoefficient] = useState('1');
+  const [maxScore, setMaxScore] = useState('20');
   const [managingFilesForSubject, setManagingFilesForSubject] = useState<string | null>(null);
 
   const { data: allSubjects } = useSchoolSubjects(schoolId);
@@ -64,7 +65,7 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
   ) || [];
 
   const handleAssign = async () => {
-    if (!selectedSubjectId || !coefficient) return;
+    if (!selectedSubjectId || !coefficient || !maxScore) return;
 
     // CORRECTION: Utiliser user_id au lieu de teacher.id pour la foreign key
     const teacher = teachers?.find(t => t.id === selectedTeacherId);
@@ -74,12 +75,14 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
       class_id: classId,
       subject_id: selectedSubjectId,
       coefficient: parseFloat(coefficient),
+      max_score: parseFloat(maxScore),
       teacher_id: teacherUserId,
     });
 
     setSelectedSubjectId('');
     setSelectedTeacherId('');
     setCoefficient('1');
+    setMaxScore('20');
   };
 
   const handleUpdateCoefficient = async (assignmentId: string, newCoefficient: string) => {
@@ -90,6 +93,17 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
       id: assignmentId,
       classId,
       updates: { coefficient: value },
+    });
+  };
+
+  const handleUpdateMaxScore = async (assignmentId: string, newMaxScore: string) => {
+    const value = parseFloat(newMaxScore);
+    if (isNaN(value) || value <= 0) return;
+
+    await updateAssignment.mutateAsync({
+      id: assignmentId,
+      classId,
+      updates: { max_score: value },
     });
   };
 
@@ -168,6 +182,17 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
                   value={coefficient}
                   onChange={(e) => setCoefficient(e.target.value)}
                   className="w-20"
+                  title="Coefficient"
+                />
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Barème"
+                  value={maxScore}
+                  onChange={(e) => setMaxScore(e.target.value)}
+                  className="w-20"
+                  title="Barème (ex: 20, 10, 100)"
                 />
               </div>
               <div className="flex gap-2">
@@ -253,7 +278,7 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
                           </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 pl-6">
+                      <div className="flex items-center gap-3 pl-6 flex-wrap">
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-muted-foreground">Coef:</span>
                           <Input
@@ -262,6 +287,17 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
                             step="0.5"
                             value={assignment.coefficient}
                             onChange={(e) => handleUpdateCoefficient(assignment.id, e.target.value)}
+                            className="w-16 h-8 text-center"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-muted-foreground">Barème:</span>
+                          <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={assignment.max_score || 20}
+                            onChange={(e) => handleUpdateMaxScore(assignment.id, e.target.value)}
                             className="w-16 h-8 text-center"
                           />
                         </div>
