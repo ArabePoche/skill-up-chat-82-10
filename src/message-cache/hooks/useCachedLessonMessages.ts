@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsTeacherInFormation } from '@/hooks/useIsTeacherInFormation';
 import { getUsersProgressMap, getCurrentUserProgress } from '@/utils/progressionUtils';
 import { localMessageStore } from '../utils/localMessageStore';
+import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
+import { offlineStore } from '@/offline/utils/offlineStore';
 import { useState, useEffect } from 'react';
 
 /**
@@ -16,10 +18,11 @@ export const useCachedLessonMessages = (
 ) => {
   const { user } = useAuth();
   const { data: isTeacher = false } = useIsTeacherInFormation(formationId);
+  const { isOnline } = useOfflineSync();
   const [cachedMessages, setCachedMessages] = useState<any[] | null>(null);
   const [isLoadingCache, setIsLoadingCache] = useState(true);
 
-  // Charger depuis le cache au montage
+  // Charger depuis le cache au montage (ou en mode offline)
   useEffect(() => {
     if (!lessonId || !formationId || !user?.id) {
       setIsLoadingCache(false);
@@ -27,18 +30,39 @@ export const useCachedLessonMessages = (
     }
 
     const loadCache = async () => {
-      const cached = await localMessageStore.getMessages(lessonId, formationId, user.id);
-      setCachedMessages(cached);
+      // Charger depuis localMessageStore (cache principal des messages)
+      const cached = await localMessageStore.getMessages(lessonId, formationId, user.id, !isOnline);
+      
+      // Si hors ligne, aussi charger les messages en attente depuis offlineStore
+      if (!isOnline) {
+        const pendingMessages = await offlineStore.getMessagesByLesson(lessonId);
+        if (pendingMessages.length > 0) {
+          const allMessages = [...(cached || []), ...pendingMessages];
+          // Trier par date
+          allMessages.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          setCachedMessages(allMessages);
+        } else {
+          setCachedMessages(cached);
+        }
+      } else {
+        setCachedMessages(cached);
+      }
       setIsLoadingCache(false);
     };
 
     loadCache();
-  }, [lessonId, formationId, user?.id]);
+  }, [lessonId, formationId, user?.id, isOnline]);
 
   const query = useQuery({
-    queryKey: ['lesson-messages', lessonId, formationId, user?.id, isTeacher],
+    queryKey: ['lesson-messages', lessonId, formationId, user?.id, isTeacher, isOnline],
     queryFn: async () => {
       if (!lessonId || !formationId || !user?.id) return [];
+
+      // Mode hors ligne : retourner le cache
+      if (!isOnline) {
+        console.log('📴 Offline - returning cached messages for lesson:', lessonId);
+        return cachedMessages || [];
+      }
 
       console.log('🔄 Fetching messages from server...');
 
@@ -214,15 +238,16 @@ export const useCachedLessonMessages = (
     enabled: !!lessonId && !!formationId && !!user?.id,
     // Utiliser le cache comme données initiales
     initialData: cachedMessages || undefined,
-    // Refetch en arrière-plan toutes les 5 secondes
-    refetchInterval: 5000,
-    // Considérer les données comme fraîches pendant 3 secondes
-    staleTime: 3000,
+    // Refetch en arrière-plan toutes les 5 secondes (seulement si en ligne)
+    refetchInterval: isOnline ? 5000 : false,
+    // Considérer les données comme fraîches pendant 3 secondes (ou indéfiniment si hors ligne)
+    staleTime: isOnline ? 3000 : Infinity,
   });
 
   return {
     ...query,
     isLoadingFromCache: isLoadingCache,
     hasCachedData: cachedMessages !== null,
+    isOffline: !isOnline,
   };
 };
