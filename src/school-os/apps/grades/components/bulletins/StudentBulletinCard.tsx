@@ -110,8 +110,9 @@ export const StudentBulletinCard: React.FC<StudentBulletinCardProps> = ({
       });
       toast.success('Bulletin téléchargé');
     } catch (error) {
+      const details = (error as any)?.message ? String((error as any).message) : String(error);
       console.error('Erreur export PDF:', error);
-      toast.error('Erreur lors du téléchargement');
+      toast.error('Erreur lors du téléchargement', { description: details });
     } finally {
       setIsDownloading(false);
     }
