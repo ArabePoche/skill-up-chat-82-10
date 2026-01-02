@@ -303,8 +303,9 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
 
       toast.success('PDF exporté avec succès');
     } catch (error) {
+      const details = (error as any)?.message ? String((error as any).message) : String(error);
       console.error('Export PDF error:', error);
-      toast.error("Erreur lors de l'export PDF");
+      toast.error("Erreur lors de l'export PDF", { description: details });
     }
   };
 
