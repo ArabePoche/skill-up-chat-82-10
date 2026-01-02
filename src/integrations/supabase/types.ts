@@ -336,6 +336,7 @@ export type Database = {
           coefficient: number | null
           created_at: string | null
           id: string
+          max_score: number | null
           subject_id: string
           teacher_id: string | null
           updated_at: string | null
@@ -345,6 +346,7 @@ export type Database = {
           coefficient?: number | null
           created_at?: string | null
           id?: string
+          max_score?: number | null
           subject_id: string
           teacher_id?: string | null
           updated_at?: string | null
@@ -354,6 +356,7 @@ export type Database = {
           coefficient?: number | null
           created_at?: string | null
           id?: string
+          max_score?: number | null
           subject_id?: string
           teacher_id?: string | null
           updated_at?: string | null
