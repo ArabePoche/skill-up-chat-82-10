@@ -77,25 +77,50 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
     : { r: 0, g: 0, b: 0 };
 };
 
-// Load Arabic font (Amiri) as base64
-const loadArabicFont = async (): Promise<string | null> => {
-  try {
-    const response = await fetch('/fonts/Amiri-Regular.ttf');
-    if (!response.ok) {
-      console.warn('Arabic font not found, falling back to default');
-      return null;
+/**
+ * Convertit un ArrayBuffer en base64 de façon performante (évite les erreurs sur gros fichiers)
+ */
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x2000;
+  let binary = '';
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    let chunkStr = '';
+    const end = Math.min(i + chunkSize, bytes.length);
+    for (let j = i; j < end; j++) {
+      chunkStr += String.fromCharCode(bytes[j]);
     }
-    const arrayBuffer = await response.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    let binary = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-      binary += String.fromCharCode(uint8Array[i]);
-    }
-    return btoa(binary);
-  } catch (error) {
-    console.warn('Failed to load Arabic font:', error);
-    return null;
+    binary += chunkStr;
   }
+
+  return btoa(binary);
+};
+
+// Load Arabic font (Noto Sans Arabic) as base64
+const loadArabicFont = async (): Promise<{ base64: string; fontName: string } | null> => {
+  // Try multiple font options in order of preference
+  const fontOptions = [
+    { path: '/fonts/Amiri-Regular.ttf', name: 'Amiri' },
+    { path: '/fonts/NotoSansArabic-Regular.ttf', name: 'NotoSansArabic' },
+  ];
+
+  for (const font of fontOptions) {
+    try {
+      const response = await fetch(font.path);
+      if (!response.ok) continue;
+
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = arrayBufferToBase64(arrayBuffer);
+      return { base64, fontName: font.name };
+    } catch (error) {
+      console.warn(`Failed to load font ${font.name}:`, error);
+      continue;
+    }
+  }
+
+  console.warn('No Arabic font available, falling back to default');
+  return null;
 };
 
 /**
@@ -122,12 +147,25 @@ const generateBulletinPdfCore = async ({
 
   // Load and register Arabic font if needed
   let arabicFontLoaded = false;
+  let arabicFontName = 'Amiri';
   if (hasArabicContent) {
-    const amiriBase64 = await loadArabicFont();
-    if (amiriBase64) {
-      doc.addFileToVFS('Amiri-Regular.ttf', amiriBase64);
-      doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-      arabicFontLoaded = true;
+    const fontData = await loadArabicFont();
+    if (fontData) {
+      try {
+        const fileName = `${fontData.fontName}-Regular.ttf`;
+        doc.addFileToVFS(fileName, fontData.base64);
+        doc.addFont(fileName, fontData.fontName, 'normal');
+
+        // Validation: certaines polices sans Unicode cmap font planter jsPDF (widths undefined)
+        doc.setFont(fontData.fontName, 'normal');
+        doc.getTextWidth('ا');
+
+        arabicFontName = fontData.fontName;
+        arabicFontLoaded = true;
+      } catch (fontError) {
+        console.warn('Failed to register Arabic font:', fontError);
+        arabicFontLoaded = false;
+      }
     }
   }
   
@@ -149,7 +187,7 @@ const generateBulletinPdfCore = async ({
 
     const setFont = (text: string, style: 'normal' | 'bold' = 'normal') => {
       if (arabicFontLoaded && containsArabic(text)) {
-        doc.setFont('Amiri', 'normal');
+        doc.setFont(arabicFontName, 'normal');
       } else {
         doc.setFont('helvetica', style);
       }
@@ -376,6 +414,30 @@ const generateBulletinPdfCore = async ({
 };
 
 /**
+ * Télécharge un blob côté navigateur (compatible iframe / PWA)
+ */
+const downloadBlob = (blob: Blob, fileName: string) => {
+  if (!blob) throw new Error('PDF blob introuvable');
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName || 'bulletin.pdf';
+
+  document.body.appendChild(link);
+  try {
+    link.click();
+  } catch (err) {
+    // Fallback (Safari / environnements bridés): ouvrir le PDF dans un nouvel onglet
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } finally {
+    link.remove();
+    // Laisser le temps au navigateur de démarrer le download avant de révoquer
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+};
+
+/**
  * Exporte un bulletin individuel en PDF
  * @param returnBlob Si true, retourne le blob au lieu de télécharger
  */
@@ -411,14 +473,8 @@ export const exportSingleBulletinToPdf = async ({
   if (returnBlob) {
     return { blob, fileName };
   }
-  
-  // Download directly
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
+
+  downloadBlob(blob, fileName);
 };
 
 /**
@@ -432,7 +488,7 @@ export const exportBulletinsToPdf = async ({
   template,
   bulletins,
 }: BulletinPdfOptions): Promise<void> => {
-  const { doc } = await generateBulletinPdfCore({
+  const { blob } = await generateBulletinPdfCore({
     className,
     evaluationTitle,
     schoolName,
@@ -444,6 +500,6 @@ export const exportBulletinsToPdf = async ({
   const fileName = `Bulletins_${className}_${evaluationTitle}.pdf`
     .replace(/\s+/g, '_')
     .replace(/[^\w.-]/g, '');
-  
-  doc.save(fileName);
+
+  downloadBlob(blob, fileName);
 };
