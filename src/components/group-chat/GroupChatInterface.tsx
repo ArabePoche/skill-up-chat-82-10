@@ -1,9 +1,10 @@
 /**
  * Interface de chat groupe qui réutilise les composants de ChatInterface
  * Spécialisée pour la progression par niveau avec logique de promotion
+ * Supporte le mode offline pour afficher les vidéos et exercices cachés
  */
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { ArrowLeft, Phone, Video } from 'lucide-react';
+import { ArrowLeft, Phone, Video, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -21,6 +22,10 @@ import { usePromotionMessages } from '@/hooks/lesson-messages/usePromotionMessag
 import { useSendPromotionMessage } from '@/hooks/group-chat/useSendPromotionMessage';
 import { useProgressionLogic } from '@/hooks/group-chat/useProgressionLogic';
 import { useGroupLessonId } from '@/hooks/group-chat/useGroupLessonId';
+
+// Hook offline
+import { useOfflineGroupChat } from '@/offline/hooks/useOfflineGroupChat';
+import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 
 // Réutilisation des composants existants de ChatInterface
 import ChatInputBar from '../chat/ChatInputBar';
@@ -66,6 +71,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { isOnline } = useOfflineSync();
   const [replyingTo, setReplyingTo] = useState<{
     id: string;
     content: string;
@@ -79,27 +85,39 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   
-  // Détection automatique du mode de chat
-  const { mode, isLoading: chatModeLoading, promotionId } = useChatMode(formation.id);
+  // Hook offline pour récupérer les données cachées
+  const offlineData = useOfflineGroupChat(level.id.toString(), formation.id);
   
-  // Si ce n'est pas un mode groupe, rediriger vers ChatInterface
+  // Détection automatique du mode de chat (seulement si en ligne)
+  const { mode, isLoading: chatModeLoading, promotionId: onlinePromotionId } = useChatMode(formation.id);
+  
+  // Utiliser les données offline si pas de connexion
+  const promotionId = isOnline ? onlinePromotionId : offlineData.promotionId;
+  const isLoadingChatMode = isOnline ? chatModeLoading : offlineData.isLoading;
+  
+  // Si ce n'est pas un mode groupe, rediriger vers ChatInterface (seulement en ligne)
   useEffect(() => {
-    if (!chatModeLoading && mode === 'private') {
+    if (isOnline && !chatModeLoading && mode === 'private') {
       console.log('🔄 Redirecting to private chat mode');
       toast.info('Vous êtes en mode formation privée');
     }
-  }, [mode, chatModeLoading]);
+  }, [mode, chatModeLoading, isOnline]);
   
-  // Récupération des messages avec logique de groupe
-  const { data: messages = [], isLoading } = usePromotionMessages(
+  // Récupération des messages avec logique de groupe (ou depuis le cache offline)
+  const { data: onlineMessages = [], isLoading: isLoadingOnline } = usePromotionMessages(
     level.id.toString(),
     formation.id,
     promotionId || '',
     'level'
   );
   
+  // Utiliser les messages en ligne ou offline
+  const messages = isOnline ? onlineMessages : offlineData.messages;
+  const isLoading = isOnline ? isLoadingOnline : offlineData.isLoading;
+  
   // Récupérer les exercices du niveau avec le hook spécialisé
-  const { data: levelExercises = [] } = useLevelExercises(level.id.toString());
+  const { data: onlineLevelExercises = [] } = useLevelExercises(level.id.toString());
+  const levelExercises = isOnline ? onlineLevelExercises : offlineData.exercises;
   
   // Utiliser les exercices récupérés depuis la base de données
   const exercises = levelExercises;
@@ -324,7 +342,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     }
   };
 
-  if (authLoading || chatModeLoading) {
+  if (authLoading || isLoadingChatMode) {
     return (
       <div className="min-h-screen bg-[#e5ddd5] flex items-center justify-center">
         <div className="text-center">
@@ -339,15 +357,25 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
     return null;
   }
 
-  if (isLoading || !promotionId) {
+  // En mode offline, on affiche le contenu même sans promotionId
+  // On utilise le promotionId offline si disponible
+  const showOfflineMode = !isOnline && offlineData.promotionId;
+  
+  if (isLoading && !showOfflineMode) {
     return (
       <div className="min-h-screen bg-[#e5ddd5] flex items-center justify-center">
         <div className="text-center">
+          {!isOnline && (
+            <div className="flex items-center justify-center gap-2 mb-4 text-amber-600">
+              <WifiOff size={24} />
+              <span>Mode hors ligne</span>
+            </div>
+          )}
           <div className="text-lg font-semibold mb-2">
-            {!promotionId ? 'Configuration en cours...' : 'Chargement...'}
+            {!promotionId && isOnline ? 'Configuration en cours...' : 'Chargement...'}
           </div>
           <p className="text-gray-600">
-            {!promotionId 
+            {!promotionId && isOnline
               ? 'Veuillez patienter pendant que nous configurons votre accès au groupe.'
               : 'Récupération des messages du groupe'
             }
@@ -441,7 +469,15 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
               <span className="text-white font-bold text-xs sm:text-sm">🎓</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="font-semibold text-sm sm:text-base md:text-lg truncate">Niveau: {level.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-semibold text-sm sm:text-base md:text-lg truncate">Niveau: {level.title}</h1>
+                {!isOnline && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 rounded-full text-xs">
+                    <WifiOff size={12} />
+                    Hors ligne
+                  </span>
+                )}
+              </div>
               <p className="text-xs sm:text-sm text-white/80 truncate">
                 Formation: {formation.title} 
               </p>
