@@ -1,17 +1,27 @@
-/**
- * Dialog pour modifier une classe
- */
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+// Composant modal pour modifier les informations de base d'une classe
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
@@ -19,153 +29,250 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUpdateClass, Class, CycleType, GenderType } from '@/school/hooks/useClasses';
+import { useUpdateClass, CycleType, GenderType, Class } from '../hooks/useClasses';
+import { useSchoolCycles } from '../hooks/useSchoolCycles';
 
-interface EditClassDialogProps {
+// Schéma de validation dynamique
+const createEditClassFormSchema = (allowedCycles: string[]) => z.object({
+  name: z.string().min(1, 'Le nom est requis').max(50, 'Maximum 50 caractères'),
+  cycle: z.string().refine(val => allowedCycles.length === 0 || allowedCycles.includes(val), {
+    message: 'Veuillez sélectionner un cycle valide',
+  }),
+  max_students: z.coerce
+    .number()
+    .min(1, 'Minimum 1 élève')
+    .max(100, 'Maximum 100 élèves'),
+  gender_type: z.enum(['mixte', 'garçons', 'filles'], {
+    required_error: 'Veuillez sélectionner un type',
+  }),
+  registration_fee: z.coerce
+    .number()
+    .min(0, 'Le montant doit être positif'),
+  annual_fee: z.coerce
+    .number()
+    .min(0, 'Le montant doit être positif'),
+});
+
+type EditClassFormValues = z.infer<ReturnType<typeof createEditClassFormSchema>>;
+
+interface EditClassModalProps {
   classData: Class;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const EditClassDialog: React.FC<EditClassDialogProps> = ({
+const GENDER_TYPES: { value: GenderType; label: string }[] = [
+  { value: 'mixte', label: 'Mixte' },
+  { value: 'garçons', label: 'Garçons uniquement' },
+  { value: 'filles', label: 'Filles uniquement' },
+];
+
+export const EditClassModal: React.FC<EditClassModalProps> = ({ 
   classData,
-  open,
-  onOpenChange,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange 
 }) => {
-  const { t } = useTranslation();
   const updateClass = useUpdateClass();
+  const { data: cycles, isLoading: cyclesLoading } = useSchoolCycles(classData.school_id);
+  
+  // Liste des cycles valides
+  const allowedCycles = React.useMemo(() => cycles?.map(c => c.name) || [], [cycles]);
 
-  const [formData, setFormData] = useState({
-    name: classData.name,
-    cycle: classData.cycle,
-    max_students: classData.max_students,
-    gender_type: classData.gender_type,
-    annual_fee: classData.annual_fee,
-    registration_fee: classData.registration_fee,
-  });
-
-  useEffect(() => {
-    setFormData({
+  const form = useForm<EditClassFormValues>({
+    resolver: zodResolver(createEditClassFormSchema(allowedCycles)),
+    defaultValues: {
       name: classData.name,
       cycle: classData.cycle,
       max_students: classData.max_students,
       gender_type: classData.gender_type,
-      annual_fee: classData.annual_fee,
-      registration_fee: classData.registration_fee,
-    });
-  }, [classData]);
+      registration_fee: classData.registration_fee || 0,
+      annual_fee: classData.annual_fee || 0,
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const onSubmit = async (data: EditClassFormValues) => {
     await updateClass.mutateAsync({
       id: classData.id,
-      updates: formData,
+      updates: {
+        ...data,
+        cycle: data.cycle as CycleType,
+      },
     });
-
-    onOpenChange(false);
+    if (controlledOnOpenChange) {
+      controlledOnOpenChange(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={controlledOpen} onOpenChange={controlledOnOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('schoolOS.classes.editClass')}</DialogTitle>
+          <DialogTitle>Modifier la classe</DialogTitle>
+          <DialogDescription>
+            Modifiez les informations de base de la classe
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">{t('schoolOS.common.name')}</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Nom de la classe */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nom de la classe</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: 6ème A, CM2 B..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>{t('schoolOS.classes.cycle')}</Label>
-              <Select
-                value={formData.cycle}
-                onValueChange={(value: CycleType) => setFormData({ ...formData, cycle: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="maternel">Maternel</SelectItem>
-                  <SelectItem value="primaire">Primaire</SelectItem>
-                  <SelectItem value="collège">Collège</SelectItem>
-                  <SelectItem value="lycée">Lycée</SelectItem>
-                  <SelectItem value="université">Université</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t('schoolOS.classes.genderType')}</Label>
-              <Select
-                value={formData.gender_type}
-                onValueChange={(value: GenderType) => setFormData({ ...formData, gender_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mixte">Mixte</SelectItem>
-                  <SelectItem value="garçons">Garçons</SelectItem>
-                  <SelectItem value="filles">Filles</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="max_students">{t('schoolOS.classes.maxStudents')}</Label>
-            <Input
-              id="max_students"
-              type="number"
-              value={formData.max_students}
-              onChange={(e) => setFormData({ ...formData, max_students: parseInt(e.target.value) || 0 })}
-              min={1}
+            {/* Cycle */}
+            <FormField
+              control={form.control}
+              name="cycle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cycle d'enseignement</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un cycle" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {cyclesLoading ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : (
+                        cycles?.map((c) => (
+                          <SelectItem key={c.name} value={c.name}>
+                            {c.label} (/{c.grade_base})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="annual_fee">{t('schoolOS.classes.annualFee')}</Label>
-              <Input
-                id="annual_fee"
-                type="number"
-                value={formData.annual_fee}
-                onChange={(e) => setFormData({ ...formData, annual_fee: parseInt(e.target.value) || 0 })}
-                min={0}
-              />
+            {/* Capacité maximale */}
+            <FormField
+              control={form.control}
+              name="max_students"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Capacité maximale</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      placeholder="30"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Nombre actuel d'élèves: {classData.current_students}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Type de classe */}
+            <FormField
+              control={form.control}
+              name="gender_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type de classe</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner le type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {GENDER_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Frais d'inscription */}
+            <FormField
+              control={form.control}
+              name="registration_fee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Frais d'inscription (optionnel)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Montant des frais d'inscription en € (peut être payé plus tard)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Frais de scolarité annuels */}
+            <FormField
+              control={form.control}
+              name="annual_fee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Frais de scolarité annuels (optionnel)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Montant des frais de scolarité annuels en €
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => controlledOnOpenChange?.(false)}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={updateClass.isPending}>
+                {updateClass.isPending ? 'Modification...' : 'Modifier'}
+              </Button>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="registration_fee">{t('schoolOS.classes.registrationFee')}</Label>
-              <Input
-                id="registration_fee"
-                type="number"
-                value={formData.registration_fee}
-                onChange={(e) => setFormData({ ...formData, registration_fee: parseInt(e.target.value) || 0 })}
-                min={0}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('schoolOS.common.cancel')}
-            </Button>
-            <Button type="submit" disabled={updateClass.isPending || !formData.name}>
-              {updateClass.isPending ? t('schoolOS.common.saving') : t('schoolOS.common.save')}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
