@@ -61,11 +61,13 @@ class LocalMessageStore {
 
   /**
    * Récupère les messages du cache local
+   * @param ignoreExpiry - Si true, retourne les messages même s'ils sont expirés (utile pour le mode offline)
    */
   async getMessages(
     lessonId: string,
     formationId: string,
-    userId: string
+    userId: string,
+    ignoreExpiry: boolean = false
   ): Promise<any[] | null> {
     try {
       const db = await this.ensureDB();
@@ -84,15 +86,15 @@ class LocalMessageStore {
             return;
           }
 
-          // Vérifier si le cache est encore valide
+          // Vérifier si le cache est encore valide (sauf si ignoreExpiry)
           const isExpired = Date.now() - result.timestamp > CACHE_DURATION;
           
-          if (isExpired) {
+          if (isExpired && !ignoreExpiry) {
             // Cache expiré, le supprimer
             this.deleteMessages(lessonId, formationId, userId);
             resolve(null);
           } else {
-            console.log('📦 Messages loaded from cache:', result.messages.length);
+            console.log('📦 Messages loaded from cache:', result.messages.length, ignoreExpiry ? '(offline mode)' : '');
             resolve(result.messages);
           }
         };
