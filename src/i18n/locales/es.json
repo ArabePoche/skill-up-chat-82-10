@@ -54,7 +54,21 @@
     "loginSuccess": "Inicio de sesión exitoso",
     "signupSuccess": "Registro exitoso",
     "loginError": "Error de inicio de sesión",
-    "signupError": "Error de registro"
+    "signupError": "Error de registro",
+    "errors": {
+      "invalidCredentials": "Correo electrónico o contraseña incorrectos",
+      "emailNotConfirmed": "Por favor confirma tu correo antes de iniciar sesión",
+      "userAlreadyExists": "Ya existe una cuenta con este correo electrónico",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+      "invalidPassword": "Contraseña inválida",
+      "invalidEmail": "Formato de correo electrónico inválido",
+      "rateLimited": "Demasiados intentos. Por favor intenta más tarde",
+      "emailRateLimited": "Demasiados correos enviados. Por favor intenta más tarde",
+      "sessionExpired": "Tu sesión ha expirado. Por favor inicia sesión de nuevo",
+      "networkError": "Error de conexión de red. Verifica tu conexión a internet",
+      "timeout": "La solicitud tardó demasiado. Por favor intenta de nuevo",
+      "generic": "Ocurrió un error. Por favor intenta de nuevo"
+    }
   },
   "courses": {
     "myCourses": "Mis Cursos",
