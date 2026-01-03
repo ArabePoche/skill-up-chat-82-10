@@ -110,7 +110,7 @@ export const useOfflineMedia = ({
   );
 
   // Récupérer le statut initial depuis le cache mémoire (instant, pas d'async)
-  const cachedStatus = remoteUrl ? fileStatusCache.get(remoteUrl) : null;
+  const cachedStatus = remoteUrl ? fileStatusCache.getByUrl(remoteUrl) : null;
   
   const [status, setStatus] = useState<FileDownloadStatus>(
     cachedStatus?.status || 'remote'
@@ -142,7 +142,7 @@ export const useOfflineMedia = ({
     if (hasCheckedRef.current) return;
     
     // Si déjà en cache mémoire, ne pas revérifier IndexedDB
-    const cached = fileStatusCache.get(remoteUrl);
+    const cached = fileStatusCache.getByUrl(remoteUrl);
     if (cached && cached.status === 'downloaded' && cached.blobUrl) {
       setDisplayUrl(cached.blobUrl);
       setStatus('downloaded');
@@ -161,8 +161,8 @@ export const useOfflineMedia = ({
         const blobUrl = URL.createObjectURL(localFile.blob);
         objectUrlRef.current = blobUrl;
         
-        // Mettre en cache mémoire
-        fileStatusCache.set(remoteUrl, {
+        // Mettre en cache mémoire (utiliser setByUrl pour compatibilité)
+        fileStatusCache.setByUrl(remoteUrl, {
           status: 'downloaded',
           blobUrl,
           checkedAt: Date.now(),
@@ -176,7 +176,7 @@ export const useOfflineMedia = ({
         // Fichier non disponible localement
         const newStatus = isOnline ? 'remote' : 'offline_unavailable';
         
-        fileStatusCache.set(remoteUrl, {
+        fileStatusCache.setByUrl(remoteUrl, {
           status: newStatus,
           blobUrl: null,
           checkedAt: Date.now(),
@@ -281,7 +281,7 @@ export const useOfflineMedia = ({
       objectUrlRef.current = blobUrl;
 
       // Mettre à jour le cache mémoire
-      fileStatusCache.set(remoteUrl, {
+      fileStatusCache.setByUrl(remoteUrl, {
         status: 'downloaded',
         blobUrl,
         checkedAt: Date.now(),
@@ -313,7 +313,7 @@ export const useOfflineMedia = ({
       await fileStore.deleteFile(remoteUrl);
       
       // Invalider le cache mémoire
-      fileStatusCache.delete(remoteUrl);
+      fileStatusCache.deleteByUrl(remoteUrl);
       
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
