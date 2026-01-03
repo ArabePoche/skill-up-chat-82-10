@@ -1,10 +1,14 @@
 /**
- * Module de gestion intelligente des fichiers (logique WhatsApp)
+ * Module de gestion intelligente des fichiers - Architecture Offline-First
+ * 
+ * PRINCIPE FONDAMENTAL:
+ * 📌 Supabase = source de téléchargement initial UNIQUEMENT
+ * 📌 Stockage local (IndexedDB) = source réelle d'affichage
  * 
  * Fonctionnalités :
- * - Téléchargement manuel des fichiers distants
- * - Stockage local avec IndexedDB
- * - Vérification de présence réelle à chaque rendu
+ * - Téléchargement depuis Supabase vers stockage local
+ * - Affichage exclusif depuis URLs locales (blob:)
+ * - Vérification de présence locale à chaque rendu
  * - Gestion du mode hors ligne
  * - Nettoyage automatique des anciens fichiers
  */
@@ -17,9 +21,16 @@ export { fileStore } from './stores/FileStore';
 
 // Hooks
 export { useFileDownload } from './hooks/useFileDownload';
+export { useOfflineMedia } from './hooks/useOfflineMedia';
 export { useNetworkStatus } from './hooks/useNetworkStatus';
 export { useFileStorageManager } from './hooks/useFileStorageManager';
 
-// Components
+// Composants Offline-First
+export { OfflineImage } from './components/OfflineImage';
+export { OfflineAudio } from './components/OfflineAudio';
+export { OfflineVideo } from './components/OfflineVideo';
+export { OfflineDocument } from './components/OfflineDocument';
+
+// Composants utilitaires
 export { SmartFilePreview } from './components/SmartFilePreview';
 export { FileStorageIndicator } from './components/FileStorageIndicator';
