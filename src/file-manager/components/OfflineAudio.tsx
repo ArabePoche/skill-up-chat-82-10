@@ -92,18 +92,27 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
 
   // Non téléchargé
   return (
-    <div 
-      className={cn(
-        'flex items-center gap-3 p-3 bg-muted/50 hover:bg-muted rounded-lg cursor-pointer transition-colors',
-        className
-      )}
-      onClick={download}
-    >
+    <div className={cn('flex items-center gap-3 p-3 bg-muted/50 rounded-lg', className)}>
       <Volume2 className="h-5 w-5 text-muted-foreground" />
       <span className="flex-1 text-sm text-muted-foreground">
         {fileName || 'Fichier audio'}
       </span>
-      <Button variant="ghost" size="icon" className="h-8 w-8">
+
+      {/*
+        IMPORTANT: téléchargement strictement unitaire
+        → seul le bouton "Télécharger" déclenche download() (pas le container)
+      */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          download();
+        }}
+      >
         <Download className="h-4 w-4" />
       </Button>
     </div>
