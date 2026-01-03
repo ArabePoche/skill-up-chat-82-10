@@ -24,7 +24,7 @@ import { useProgressionLogic } from '@/hooks/group-chat/useProgressionLogic';
 import { useGroupLessonId } from '@/hooks/group-chat/useGroupLessonId';
 
 // Hook offline
-import { useOfflineGroupChat } from '@/offline/hooks/useOfflineGroupChat';
+import { useOfflineGroupChat } from '@/offline/hooks/useOfflineGroupeChat';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 
 // Réutilisation des composants existants de ChatInterface
