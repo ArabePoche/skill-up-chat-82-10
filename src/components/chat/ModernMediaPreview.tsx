@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { Download, Eye, Maximize2, X, Edit3, Play, Pause, Volume2 } from 'lucide-react';
+import { Download, Maximize2, X, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import LessonVideoPlayer from '../LessonVideoPlayer';
 import ImageAnnotationModal from './ImageAnnotationModal';
 import SimpleImageEditor from './SimpleImageEditor';
+// Composants offline-first pour les médias
+import { OfflineImage } from '@/file-manager/components/OfflineImage';
+import { OfflineVideo } from '@/file-manager/components/OfflineVideo';
+import { OfflineAudio } from '@/file-manager/components/OfflineAudio';
 
 interface ModernMediaPreviewProps {
   fileUrl: string;
@@ -33,11 +37,8 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
   lessonId,
   formationId
 }) => {
-  const [showFullscreen, setShowFullscreen] = useState(false);
+const [showFullscreen, setShowFullscreen] = useState(false);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
 
   const isImage = fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
   const isVideo = fileType?.startsWith('video/') || /\.(mp4|webm|ogg|avi|mov)$/i.test(fileName);
@@ -62,12 +63,6 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
       return;
     }
     setShowAnnotationModal(true);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (fullscreen) {
@@ -114,10 +109,11 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
             </div>
             
             {isImage && (
-              <img
+              <OfflineImage
                 src={fileUrl}
                 alt={fileName}
                 className="max-w-full max-h-[90vh] object-contain mx-auto"
+                autoDownload={false}
               />
             )}
             
@@ -136,11 +132,7 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
     <>
       {isImage && (
         <div className="relative group">
-          <img
-            src={fileUrl}
-            alt={fileName}
-            className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg cursor-pointer ${className}`}
-            loading="lazy"
+          <div
             onClick={() => {
               if (lessonId && formationId && isTeacher) {
                 handleAnnotate();
@@ -148,7 +140,15 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
                 handleFullscreen();
               }
             }}
-          />
+            className="cursor-pointer"
+          >
+            <OfflineImage
+              src={fileUrl}
+              alt={fileName}
+              className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg ${className}`}
+              autoDownload={false}
+            />
+          </div>
           {/* Bouton d'annotation visible pour les profs */}
           {isTeacher && lessonId && formationId && (
             <div className="absolute top-2 right-2 z-10">
@@ -187,38 +187,30 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
       )}
 
       {isAudio && (
-        
+        <OfflineAudio
+          src={fileUrl}
+          fileName={fileName}
+          autoDownload={false}
+          className="max-w-xs sm:max-w-sm"
+        />
+      )}
 
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-center gap-2">
-              <audio
-                controls
-                className="flex-1 h-6 sm:h-8"
-                style={{ height: '24px' }}
-                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-              >
-                <source src={fileUrl} type={fileType} />
-                Votre navigateur ne supporte pas l'élément audio.
-              </audio>
+      {(isVideo && !isYouTubeVideo) && (
+        <OfflineVideo
+          src={fileUrl}
+          autoDownload={false}
+          className={`max-w-xs sm:max-w-sm ${className}`}
+        />
+      )}
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                className="text-xs sm:text-sm"
-              >
-                <Download size={14} className="mr-1" />
-              </Button>
-            </div>
-          </div>
-        
+      {isYouTubeVideo && (
+        <div className="max-w-xs sm:max-w-sm">
+          <LessonVideoPlayer url={fileUrl} className="w-full" />
+        </div>
       )}
 
 
-      {!isImage && !isVideo && !isYouTubeVideo && !isAudio && !isPDF && (
+      {!isImage && !isVideo && !isAudio && !isPDF && (
         <div className="bg-gray-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border">
           <div className="flex items-center gap-2 mb-2 sm:mb-3">
             <div className="bg-gray-500 p-1.5 sm:p-2 rounded-full text-white text-xs font-bold">
