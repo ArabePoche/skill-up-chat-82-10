@@ -4,15 +4,14 @@
  * PRINCIPE FONDAMENTAL:
  * 📌 Supabase = source de téléchargement initial UNIQUEMENT
  * 📌 Stockage local (IndexedDB) = source réelle d'affichage
+ * 📌 Cache mémoire = accès instantané sans vérification filesystem
  * 📌 Galerie (Android/iOS) = visibilité dans Photos pour images/vidéos
  * 
- * Fonctionnalités :
- * - Téléchargement depuis Supabase vers stockage local
- * - Sauvegarde dans la galerie Android/iOS (type WhatsApp)
- * - Affichage exclusif depuis URLs locales (blob:)
- * - Vérification de présence locale à chaque rendu
- * - Gestion du mode hors ligne
- * - Nettoyage automatique des anciens fichiers
+ * ARCHITECTURE OPTIMISÉE:
+ * ✅ Cache mémoire pour éviter les vérifications répétées
+ * ✅ Vérification IndexedDB une seule fois au montage
+ * ✅ Pas de vérification au scroll/render
+ * ✅ Préchargement du cache au démarrage de l'app
  */
 
 // Types
@@ -20,6 +19,7 @@ export * from './types';
 
 // Stores
 export { fileStore } from './stores/FileStore';
+export { fileStatusCache } from './stores/FileStatusCache';
 
 // Utils
 export { 
@@ -40,6 +40,7 @@ export { useFileDownload } from './hooks/useFileDownload';
 export { useMediaDownload } from './hooks/useMediaDownload';
 export type { MediaDownloadResult, UseMediaDownloadReturn } from './hooks/useMediaDownload';
 export { useOfflineMedia } from './hooks/useOfflineMedia';
+export type { UseOfflineMediaReturn } from './hooks/useOfflineMedia';
 export { useNetworkStatus } from './hooks/useNetworkStatus';
 export { useFileStorageManager } from './hooks/useFileStorageManager';
 

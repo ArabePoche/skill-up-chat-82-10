@@ -11,6 +11,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { fileStore } from '../stores/FileStore';
+import { fileStatusCache } from '../stores/FileStatusCache';
 import { useNetworkStatus } from './useNetworkStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -192,6 +193,13 @@ export const useMediaDownload = (
 
       // Créer URL blob pour affichage
       const localUrl = URL.createObjectURL(blob);
+
+      // Mettre à jour le cache mémoire
+      fileStatusCache.set(fileUrl, {
+        status: 'downloaded',
+        blobUrl: localUrl,
+        checkedAt: Date.now(),
+      });
 
       const result: MediaDownloadResult = {
         downloaded: true,
