@@ -215,3 +215,18 @@
 .animate-bounce-subtle {
   animation: bounce-subtle 1s;
 }
+
+/* ⚡ Animation shimmer pour les états de chargement (skeleton) */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
