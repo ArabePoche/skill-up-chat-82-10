@@ -195,7 +195,7 @@ export const useMediaDownload = (
       const localUrl = URL.createObjectURL(blob);
 
       // Mettre à jour le cache mémoire
-      fileStatusCache.set(fileUrl, {
+      fileStatusCache.setByUrl(fileUrl, {
         status: 'downloaded',
         blobUrl: localUrl,
         checkedAt: Date.now(),

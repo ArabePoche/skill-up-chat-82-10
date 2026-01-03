@@ -1,18 +1,35 @@
 /**
  * Store IndexedDB pour la gestion des fichiers en mode offline-first
  * Supabase = source de téléchargement, Stockage local = source d'affichage
+ * 
+ * AMÉLIORATION v2:
+ * ✅ fileId comme clé stable (indépendant de remoteUrl)
+ * ✅ Index fileId pour recherche rapide
  */
 
 import { LocalFileMetadata, FileRegistryEntry, FileStorageStats } from '../types';
 
 const DB_NAME = 'file_storage';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incrémenté pour la migration
 const FILES_STORE = 'files';
 const BLOBS_STORE = 'blobs';
 
 class FileStore {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+
+  /**
+   * Génère un fileId stable à partir de l'URL
+   */
+  generateFileId(remoteUrl: string): string {
+    let hash = 0;
+    for (let i = 0; i < remoteUrl.length; i++) {
+      const char = remoteUrl.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return `file_${Math.abs(hash).toString(36)}`;
+  }
 
   /**
    * Initialise la base de données IndexedDB
@@ -40,9 +57,19 @@ class FileStore {
         // Store pour les métadonnées des fichiers
         if (!db.objectStoreNames.contains(FILES_STORE)) {
           const filesStore = db.createObjectStore(FILES_STORE, { keyPath: 'id' });
-          filesStore.createIndex('remoteUrl', 'remoteUrl', { unique: true });
+          filesStore.createIndex('remoteUrl', 'remoteUrl', { unique: false });
+          filesStore.createIndex('fileId', 'fileId', { unique: true });
           filesStore.createIndex('downloadedAt', 'downloadedAt', { unique: false });
           filesStore.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
+        } else {
+          // Migration: ajouter l'index fileId si manquant
+          const transaction = (event.target as IDBOpenDBRequest).transaction;
+          if (transaction) {
+            const store = transaction.objectStore(FILES_STORE);
+            if (!store.indexNames.contains('fileId')) {
+              store.createIndex('fileId', 'fileId', { unique: true });
+            }
+          }
         }
 
         // Store séparé pour les blobs (meilleure performance)
@@ -62,33 +89,24 @@ class FileStore {
   }
 
   /**
-   * Génère un ID unique basé sur l'URL distante
-   */
-  private generateFileId(remoteUrl: string): string {
-    // Utiliser un hash simple de l'URL comme ID
-    let hash = 0;
-    for (let i = 0; i < remoteUrl.length; i++) {
-      const char = remoteUrl.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return `file_${Math.abs(hash).toString(36)}`;
-  }
-
-  /**
    * Sauvegarde un fichier dans le stockage local
+   * @param fileIdOrUrl - fileId stable ou remoteUrl (pour compatibilité)
    */
   async saveFile(
-    remoteUrl: string,
+    fileIdOrUrl: string,
     blob: Blob,
-    metadata: Omit<LocalFileMetadata, 'id' | 'localPath' | 'downloadedAt' | 'lastAccessedAt'>
+    metadata: Omit<LocalFileMetadata, 'id' | 'fileId' | 'localPath' | 'downloadedAt' | 'lastAccessedAt'>
   ): Promise<LocalFileMetadata> {
     const db = await this.ensureDB();
-    const id = this.generateFileId(remoteUrl);
+    
+    // Générer un fileId stable
+    const fileId = this.generateFileId(metadata.remoteUrl);
+    const id = fileId; // Utiliser fileId comme ID principal
     const now = Date.now();
 
     const fileMetadata: LocalFileMetadata = {
       id,
+      fileId,
       localPath: `indexeddb://${id}`,
       downloadedAt: now,
       lastAccessedAt: now,
@@ -119,11 +137,10 @@ class FileStore {
   }
 
   /**
-   * Récupère un fichier depuis le stockage local
+   * Récupère un fichier par fileId
    */
-  async getFile(remoteUrl: string): Promise<FileRegistryEntry | null> {
+  async getFileById(fileId: string): Promise<FileRegistryEntry | null> {
     const db = await this.ensureDB();
-    const id = this.generateFileId(remoteUrl);
 
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([FILES_STORE, BLOBS_STORE], 'readwrite');
@@ -131,8 +148,8 @@ class FileStore {
       const filesStore = transaction.objectStore(FILES_STORE);
       const blobsStore = transaction.objectStore(BLOBS_STORE);
 
-      const metadataRequest = filesStore.get(id);
-      const blobRequest = blobsStore.get(id);
+      const metadataRequest = filesStore.get(fileId);
+      const blobRequest = blobsStore.get(fileId);
 
       let metadata: LocalFileMetadata | null = null;
       let blob: Blob | null = null;
@@ -155,8 +172,9 @@ class FileStore {
       transaction.oncomplete = () => {
         if (metadata && blob) {
           resolve({
-            id,
-            remoteUrl,
+            id: metadata.id,
+            fileId: metadata.fileId,
+            remoteUrl: metadata.remoteUrl,
             metadata,
             blob,
           });
@@ -170,16 +188,23 @@ class FileStore {
   }
 
   /**
-   * Vérifie si un fichier existe localement
+   * Récupère un fichier par URL distante (compatibilité)
    */
-  async hasFile(remoteUrl: string): Promise<boolean> {
+  async getFile(remoteUrl: string): Promise<FileRegistryEntry | null> {
+    const fileId = this.generateFileId(remoteUrl);
+    return this.getFileById(fileId);
+  }
+
+  /**
+   * Vérifie si un fichier existe localement par fileId
+   */
+  async hasFileById(fileId: string): Promise<boolean> {
     const db = await this.ensureDB();
-    const id = this.generateFileId(remoteUrl);
 
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([FILES_STORE], 'readonly');
       const store = transaction.objectStore(FILES_STORE);
-      const request = store.get(id);
+      const request = store.get(fileId);
 
       request.onsuccess = () => resolve(!!request.result);
       request.onerror = () => reject(request.error);
@@ -187,17 +212,24 @@ class FileStore {
   }
 
   /**
-   * Supprime un fichier du stockage local
+   * Vérifie si un fichier existe par URL (compatibilité)
    */
-  async deleteFile(remoteUrl: string): Promise<void> {
+  async hasFile(remoteUrl: string): Promise<boolean> {
+    const fileId = this.generateFileId(remoteUrl);
+    return this.hasFileById(fileId);
+  }
+
+  /**
+   * Supprime un fichier par fileId
+   */
+  async deleteFileById(fileId: string): Promise<void> {
     const db = await this.ensureDB();
-    const id = this.generateFileId(remoteUrl);
 
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([FILES_STORE, BLOBS_STORE], 'readwrite');
 
-      transaction.objectStore(FILES_STORE).delete(id);
-      transaction.objectStore(BLOBS_STORE).delete(id);
+      transaction.objectStore(FILES_STORE).delete(fileId);
+      transaction.objectStore(BLOBS_STORE).delete(fileId);
 
       transaction.oncomplete = () => {
         console.log('🗑️ File deleted from local storage');
@@ -206,6 +238,14 @@ class FileStore {
 
       transaction.onerror = () => reject(transaction.error);
     });
+  }
+
+  /**
+   * Supprime un fichier par URL (compatibilité)
+   */
+  async deleteFile(remoteUrl: string): Promise<void> {
+    const fileId = this.generateFileId(remoteUrl);
+    return this.deleteFileById(fileId);
   }
 
   /**
@@ -328,6 +368,30 @@ class FileStore {
 
       request.onsuccess = () => resolve(request.result || []);
       request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Met à jour l'URL distante d'un fichier (quand elle expire/change)
+   */
+  async updateRemoteUrl(fileId: string, newRemoteUrl: string): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([FILES_STORE], 'readwrite');
+      const store = transaction.objectStore(FILES_STORE);
+      const request = store.get(fileId);
+
+      request.onsuccess = () => {
+        const metadata = request.result as LocalFileMetadata | undefined;
+        if (metadata) {
+          metadata.remoteUrl = newRemoteUrl;
+          store.put(metadata);
+        }
+      };
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
     });
   }
 }
