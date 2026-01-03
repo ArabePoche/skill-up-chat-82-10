@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import MessageBubble from './MessageBubble';
 import SystemMessage from './SystemMessage';
 import TypingIndicator from './TypingIndicator';
@@ -13,6 +13,7 @@ import { useTypingListener } from '@/hooks/useTypingListener';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 import LessonVideoPlayer from '../LessonVideoPlayer';
 import { groupMessagesByDate } from '@/utils/dateUtils';
+import { useCachePreloader } from '@/file-manager/hooks/useCachePreloader';
 
 interface Message {
   id: string;
@@ -103,6 +104,16 @@ const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ⚡ OPTIMISATION: Extraire toutes les URLs de médias et précharger le cache
+  const mediaUrls = useMemo(() => {
+    return messages
+      .filter(msg => msg.file_url)
+      .map(msg => msg.file_url as string);
+  }, [messages]);
+
+  // Précharger le cache mémoire pour un affichage instantané des médias
+  useCachePreloader({ urls: mediaUrls, enabled: mediaUrls.length > 0 });
 
   // Fonction utilitaire pour obtenir le statut d'un exercice pour l'utilisateur actuel
   const getExerciseStatus = (exerciseId: string): string | undefined => {
