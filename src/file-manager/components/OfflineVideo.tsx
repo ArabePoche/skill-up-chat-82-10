@@ -91,21 +91,34 @@ export const OfflineVideo: React.FC<OfflineVideoProps> = ({
 
   // Non téléchargé - Afficher avec poster ou placeholder
   return (
-    <div 
+    <div
       className={cn(
-        'relative flex items-center justify-center bg-muted rounded-lg aspect-video cursor-pointer overflow-hidden group',
+        'relative flex items-center justify-center bg-muted rounded-lg aspect-video overflow-hidden group',
         className
       )}
-      onClick={download}
     >
       {poster ? (
         <img src={poster} alt="" className="w-full h-full object-cover" />
       ) : (
         <PlayCircle className="h-16 w-16 text-muted-foreground" />
       )}
-      
-      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="secondary" size="lg" className="gap-2">
+
+      {/*
+        IMPORTANT: téléchargement strictement unitaire
+        → seul le bouton "Télécharger la vidéo" déclenche download() (pas le container)
+      */}
+      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          className="gap-2"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            download();
+          }}
+        >
           <Download className="h-5 w-5" />
           Télécharger la vidéo
         </Button>
