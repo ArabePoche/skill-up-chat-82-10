@@ -62,8 +62,9 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
     }
   }, [isLocal, onDownloaded]);
 
-  // Image téléchargée et disponible localement
-  if (status === 'downloaded' && displayUrl) {
+  // ⚡ PRIORITÉ ABSOLUE: Si on a une displayUrl, afficher immédiatement
+  // Pas de conditions intermédiaires, pas d'attente
+  if (displayUrl) {
     return (
       <img
         src={displayUrl}
@@ -72,6 +73,16 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
         loading="lazy"
         {...imgProps}
       />
+    );
+  }
+
+  // ⚡ État "checking": vérification locale en cours - afficher skeleton discret
+  // PAS de bouton télécharger pendant cette phase ultra-rapide
+  if (status === 'checking') {
+    return (
+      <div className={cn('bg-muted/30 rounded-lg animate-pulse', className)} style={{ minHeight: 100 }}>
+        <div className="w-full h-full bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 animate-shimmer" />
+      </div>
     );
   }
 
