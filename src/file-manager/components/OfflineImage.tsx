@@ -116,11 +116,25 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
   // Non téléchargé - Afficher placeholder ou bouton
   if (placeholder) {
     return (
-      <div className={cn('relative', className)} onClick={download}>
+      <div className={cn('relative', className)}>
         {placeholder}
         {showDownloadButton && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
-            <Button variant="secondary" size="sm" className="gap-2">
+            {/*
+              IMPORTANT: téléchargement strictement unitaire
+              → seul le bouton déclenche download() (pas le container)
+            */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                download();
+              }}
+            >
               <Download className="h-4 w-4" />
               Télécharger
             </Button>
@@ -131,18 +145,26 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
   }
 
   return (
-    <div 
-      className={cn(
-        'flex flex-col items-center justify-center p-4 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors',
-        className
-      )}
-      onClick={download}
-    >
+    <div className={cn('flex flex-col items-center justify-center p-4 bg-muted/50 rounded-lg', className)}>
       <Download className="h-8 w-8 text-muted-foreground mb-2" />
+
       {showDownloadButton && (
-        <span className="text-xs text-muted-foreground">
-          Appuyer pour télécharger
-        </span>
+        <>
+          <span className="text-xs text-muted-foreground">Non téléchargé</span>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              download();
+            }}
+          >
+            Télécharger
+          </Button>
+        </>
       )}
     </div>
   );
