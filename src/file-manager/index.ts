@@ -43,6 +43,7 @@ export { useOfflineMedia } from './hooks/useOfflineMedia';
 export type { UseOfflineMediaReturn } from './hooks/useOfflineMedia';
 export { useNetworkStatus } from './hooks/useNetworkStatus';
 export { useFileStorageManager } from './hooks/useFileStorageManager';
+export { useCachePreloader, preloadCacheForUrls } from './hooks/useCachePreloader';
 
 // Composants Offline-First
 export { OfflineImage } from './components/OfflineImage';
