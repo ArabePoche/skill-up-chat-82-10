@@ -52,8 +52,9 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
     }
   }, [isLocal, onDownloaded]);
 
-  // Audio disponible localement
-  if (status === 'downloaded' && displayUrl) {
+  // ⚡ PRIORITÉ ABSOLUE: Si on a une displayUrl, afficher immédiatement
+  // Pas de vérification de status, affichage instantané
+  if (displayUrl) {
     return (
       <div className={cn('flex items-center gap-3 p-3 bg-muted rounded-lg', className)}>
         <Volume2 className="h-5 w-5 text-primary flex-shrink-0" />
@@ -63,6 +64,16 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
           className="flex-1 h-8"
           {...audioProps}
         />
+      </div>
+    );
+  }
+
+  // ⚡ État "checking": vérification locale en cours - afficher skeleton discret
+  if (status === 'checking') {
+    return (
+      <div className={cn('flex items-center gap-3 p-3 bg-muted/30 rounded-lg animate-pulse', className)}>
+        <div className="h-5 w-5 bg-muted rounded" />
+        <div className="flex-1 h-8 bg-muted/50 rounded" />
       </div>
     );
   }
