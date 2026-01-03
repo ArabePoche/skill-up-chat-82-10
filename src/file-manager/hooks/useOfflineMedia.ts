@@ -109,23 +109,32 @@ export const useOfflineMedia = ({
     [fileName, remoteUrl]
   );
 
-  // Récupérer le statut initial depuis le cache mémoire (instant, pas d'async)
-  const cachedStatus = remoteUrl ? fileStatusCache.getByUrl(remoteUrl) : null;
+  // ⚡ OPTIMISATION CRITIQUE: Récupérer IMMÉDIATEMENT depuis le cache mémoire
+  // Cette vérification est synchrone et instantanée (pas d'async)
+  const cachedStatus = useMemo(() => {
+    if (!remoteUrl) return null;
+    return fileStatusCache.getByUrl(remoteUrl);
+  }, [remoteUrl]);
   
-  const [status, setStatus] = useState<FileDownloadStatus>(
-    cachedStatus?.status || 'remote'
-  );
-  const [displayUrl, setDisplayUrl] = useState<string | null>(
-    cachedStatus?.blobUrl || null
-  );
+  // ⚡ Si en cache avec blobUrl → état initial = downloaded (priorité absolue)
+  // Si pas en cache → état "checking" pour éviter d'afficher le bouton télécharger
+  const hasCachedBlob = !!(cachedStatus?.status === 'downloaded' && cachedStatus?.blobUrl);
+  const initialStatus: FileDownloadStatus = hasCachedBlob 
+    ? 'downloaded' 
+    : 'checking'; // Nouvel état: vérification en cours
+  const initialDisplayUrl = cachedStatus?.blobUrl || null;
+  
+  const [status, setStatus] = useState<FileDownloadStatus>(initialStatus);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(initialDisplayUrl);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<Error | null>(null);
   const [savedToGallery, setSavedToGallery] = useState(false);
   
   const { isOnline } = useNetworkStatus();
-  const objectUrlRef = useRef<string | null>(cachedStatus?.blobUrl || null);
+  const objectUrlRef = useRef<string | null>(initialDisplayUrl);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const hasCheckedRef = useRef(false);
+  // ⚡ Si déjà en cache mémoire avec blob, pas besoin de vérifier IndexedDB
+  const hasCheckedRef = useRef<boolean>(hasCachedBlob);
 
   /**
    * Vérifie si le fichier est disponible localement
@@ -331,10 +340,14 @@ export const useOfflineMedia = ({
     }
   }, [remoteUrl, effectiveFileName, isOnline]);
 
-  // Vérifier la présence locale UNE SEULE FOIS au montage
+  // ⚡ Vérifier IndexedDB SEULEMENT si pas déjà en cache mémoire
   useEffect(() => {
+    // Si déjà marqué comme downloaded avec une URL, pas besoin de vérifier
+    if (status === 'downloaded' && displayUrl) {
+      return;
+    }
     checkLocalPresence();
-  }, [checkLocalPresence]);
+  }, [checkLocalPresence, status, displayUrl]);
 
   // Mettre à jour le statut selon la connexion
   useEffect(() => {
