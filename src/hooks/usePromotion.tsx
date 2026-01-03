@@ -59,6 +59,26 @@ export const useStudentPromotion = (formationId?: string) => {
 
       console.log('Fetching student promotion:', { userId: user.id, formationId });
 
+      // D'abord récupérer les promotions de cette formation
+      const { data: promotions, error: promotionsError } = await supabase
+        .from('promotions')
+        .select('id')
+        .eq('formation_id', formationId)
+        .eq('is_active', true);
+
+      if (promotionsError) {
+        console.error('Error fetching promotions:', promotionsError);
+        throw promotionsError;
+      }
+
+      if (!promotions || promotions.length === 0) {
+        console.log('No promotions found for formation:', formationId);
+        return null;
+      }
+
+      const promotionIds = promotions.map(p => p.id);
+
+      // Ensuite récupérer l'inscription de l'étudiant dans une de ces promotions
       const { data, error } = await supabase
         .from('student_promotions')
         .select(`
@@ -71,10 +91,10 @@ export const useStudentPromotion = (formationId?: string) => {
         `)
         .eq('student_id', user.id)
         .eq('is_active', true)
-        .eq('promotions.formation_id', formationId)
-        .single();
+        .in('promotion_id', promotionIds)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching student promotion:', error);
         throw error;
       }
