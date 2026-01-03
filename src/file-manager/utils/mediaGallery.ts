@@ -20,7 +20,7 @@ interface MediaPlugin {
 }
 
 // Nom de l'album dans la galerie
-const ALBUM_NAME = 'EducTok';
+const ALBUM_NAME = 'EducaTok';
 
 // Cache pour l'identifiant de l'album
 let albumIdentifier: string | null = null;
@@ -107,7 +107,7 @@ export const generateFileName = (originalName: string, mediaType: MediaType): st
   const extension = originalName.split('.').pop() || getDefaultExtension(mediaType);
   const baseName = originalName.replace(/\.[^/.]+$/, '').slice(0, 30);
   
-  return `EducTok_${mediaType}_${timestamp}_${baseName}.${extension}`;
+  return `EducaTok_${mediaType}_${timestamp}_${baseName}.${extension}`;
 };
 
 /**
@@ -291,7 +291,7 @@ export const saveAudioToDevice = async (
     
     // Sauvegarder dans le dossier Documents de l'app
     const result = await Filesystem.writeFile({
-      path: `EducTok/Audio/${fileName}`,
+      path: `EducaTok/Audio/${fileName}`,
       data: base64,
       directory: Directory.Documents,
       recursive: true,
@@ -329,7 +329,7 @@ export const saveDocumentToDevice = async (
     const base64 = await blobToBase64(blob);
     
     const result = await Filesystem.writeFile({
-      path: `EducTok/Documents/${fileName}`,
+      path: `EducaTok/Documents/${fileName}`,
       data: base64,
       directory: Directory.Documents,
       recursive: true,
