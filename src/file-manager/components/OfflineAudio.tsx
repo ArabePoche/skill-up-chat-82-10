@@ -38,6 +38,7 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
     status,
     progress,
     isLocal,
+    hasCheckedLocal,
     download,
   } = useOfflineMedia({
     remoteUrl: src,
@@ -45,6 +46,8 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
     fileName,
     autoDownload,
   });
+
+  const canOfferDownload = hasCheckedLocal && (status === 'remote' || status === 'error');
 
   React.useEffect(() => {
     if (isLocal && onDownloaded) {
@@ -58,17 +61,10 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
     return (
       <div className={cn('flex items-center gap-3 p-3 bg-muted rounded-lg', className)}>
         <Volume2 className="h-5 w-5 text-primary flex-shrink-0" />
-        <audio 
-          src={displayUrl} 
-          controls 
-          className="flex-1 h-8"
-          {...audioProps}
-        />
+        <audio src={displayUrl} controls className="flex-1 h-8" {...audioProps} />
       </div>
     );
   }
-
-  // ⛔ PLUS D'ÉTAT "checking" BLOQUANT - pas de shimmer/attente
 
   // Téléchargement en cours
   if (status === 'downloading') {
@@ -79,6 +75,16 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
           <Progress value={progress} className="h-1" />
           <span className="text-xs text-muted-foreground">{progress}%</span>
         </div>
+      </div>
+    );
+  }
+
+  // ✅ Tant que la vérification locale n'est pas terminée: PAS de bouton Télécharger.
+  if (!hasCheckedLocal) {
+    return (
+      <div className={cn('flex items-center gap-3 p-3 bg-muted/50 rounded-lg', className)} aria-busy="true">
+        <Volume2 className="h-5 w-5 text-muted-foreground" />
+        <span className="flex-1 text-sm text-muted-foreground">{fileName || 'Fichier audio'}</span>
       </div>
     );
   }
@@ -97,27 +103,27 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
   return (
     <div className={cn('flex items-center gap-3 p-3 bg-muted/50 rounded-lg', className)}>
       <Volume2 className="h-5 w-5 text-muted-foreground" />
-      <span className="flex-1 text-sm text-muted-foreground">
-        {fileName || 'Fichier audio'}
-      </span>
+      <span className="flex-1 text-sm text-muted-foreground">{fileName || 'Fichier audio'}</span>
 
       {/*
         IMPORTANT: téléchargement strictement unitaire
         → seul le bouton "Télécharger" déclenche download() (pas le container)
       */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          download();
-        }}
-      >
-        <Download className="h-4 w-4" />
-      </Button>
+      {canOfferDownload && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            download();
+          }}
+        >
+          <Download className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 };

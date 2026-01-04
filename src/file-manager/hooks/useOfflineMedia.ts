@@ -8,6 +8,10 @@
  * ✅ Supabase = source de téléchargement initial UNIQUEMENT
  * ✅ IndexedDB = source réelle d'affichage
  * ✅ Galerie Android/iOS = visibilité dans Photos (images/vidéos)
+ * 
+ * UX PRO (WhatsApp-like):
+ * ✅ On n'affiche JAMAIS le bouton Télécharger tant que la vérification locale n'est pas terminée
+ * ✅ Priorité absolue à l'affichage immédiat si déjà en cache mémoire
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -20,6 +24,8 @@ import { fileStatusCache } from '../stores/FileStatusCache';
 interface UseOfflineMediaOptions {
   /** URL distante du média (Supabase ou autre) */
   remoteUrl: string | null | undefined;
+  /** ID stable du fichier (recommandé si URL signée/expirable) */
+  fileId?: string;
   /** Type MIME du fichier */
   mimeType?: string;
   /** Nom du fichier pour le stockage */
@@ -39,6 +45,8 @@ export interface UseOfflineMediaReturn {
   progress: number;
   /** Le fichier est-il disponible localement ? */
   isLocal: boolean;
+  /** Vérification locale (IndexedDB) terminée ? */
+  hasCheckedLocal: boolean;
   /** Le fichier a été sauvegardé dans la galerie */
   savedToGallery: boolean;
   /** Erreur éventuelle */
@@ -94,117 +102,160 @@ const getFileNameFromUrl = (url: string): string => {
 
 export const useOfflineMedia = ({
   remoteUrl,
+  fileId,
   mimeType,
   fileName,
   autoDownload = false,
   saveToGallery = true,
 }: UseOfflineMediaOptions): UseOfflineMediaReturn => {
+  const { isOnline } = useNetworkStatus();
+
   // Calculer les valeurs dérivées une seule fois
   const effectiveMimeType = useMemo(
     () => mimeType || (remoteUrl ? guessMimeType(remoteUrl) : 'application/octet-stream'),
     [mimeType, remoteUrl]
   );
+
   const effectiveFileName = useMemo(
     () => fileName || (remoteUrl ? getFileNameFromUrl(remoteUrl) : 'file'),
     [fileName, remoteUrl]
   );
 
-  // ⚡ OPTIMISATION CRITIQUE: Récupérer IMMÉDIATEMENT depuis le cache mémoire
-  // Cette vérification est synchrone et instantanée (pas d'async)
+  // ✅ Clé stable principale : fileId si fourni, sinon fallback (moins fiable) sur hash d'URL
+  const resolvedFileId = useMemo(() => {
+    if (fileId) return fileId;
+    if (remoteUrl) return fileStore.generateFileId(remoteUrl);
+    return null;
+  }, [fileId, remoteUrl]);
+
+  // ⚡ OPTIMISATION CRITIQUE: lecture SYNCHRONE du cache mémoire
   const cachedStatus = useMemo(() => {
-    if (!remoteUrl) return null;
-    return fileStatusCache.getByUrl(remoteUrl);
-  }, [remoteUrl]);
-  
-  // ⚡ PRIORITÉ ABSOLUE: 
-  // - Si cache mémoire a un blobUrl → downloaded immédiat
-  // - Sinon → 'remote' (jamais 'checking' bloquant)
-  // L'état 'checking' n'existe PLUS - pas de shimmer/attente
+    if (!resolvedFileId) return null;
+    return fileStatusCache.get(resolvedFileId);
+  }, [resolvedFileId]);
+
   const hasCachedBlob = !!(cachedStatus?.status === 'downloaded' && cachedStatus?.blobUrl);
-  const initialStatus: FileDownloadStatus = hasCachedBlob ? 'downloaded' : 'remote';
-  const initialDisplayUrl = cachedStatus?.blobUrl || null;
-  
-  const [status, setStatus] = useState<FileDownloadStatus>(initialStatus);
-  const [displayUrl, setDisplayUrl] = useState<string | null>(initialDisplayUrl);
+
+  const [status, setStatus] = useState<FileDownloadStatus>(hasCachedBlob ? 'downloaded' : 'remote');
+  const [displayUrl, setDisplayUrl] = useState<string | null>(cachedStatus?.blobUrl || null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<Error | null>(null);
   const [savedToGallery, setSavedToGallery] = useState(false);
-  
-  const { isOnline } = useNetworkStatus();
-  const objectUrlRef = useRef<string | null>(initialDisplayUrl);
+
+  // ✅ Permet aux composants de NE PAS afficher "Télécharger" tant que ce n'est pas certain
+  const [hasCheckedLocal, setHasCheckedLocal] = useState<boolean>(hasCachedBlob);
+
+  const objectUrlRef = useRef<string | null>(cachedStatus?.blobUrl || null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  // ⚡ Si déjà en cache mémoire avec blob, pas besoin de vérifier IndexedDB
-  const hasCheckedRef = useRef<boolean>(hasCachedBlob);
+
+  // Empêche les re-checks pour un même fichier
+  const checkedKeyRef = useRef<string | null>(hasCachedBlob ? resolvedFileId : null);
+
+  // Reset propre si on change de média (fileId)
+  useEffect(() => {
+    if (!resolvedFileId) {
+      setDisplayUrl(null);
+      setStatus('remote');
+      setHasCheckedLocal(true);
+      checkedKeyRef.current = null;
+      return;
+    }
+
+    if (hasCachedBlob && cachedStatus?.blobUrl) {
+      setDisplayUrl(cachedStatus.blobUrl);
+      setStatus('downloaded');
+      objectUrlRef.current = cachedStatus.blobUrl;
+      setHasCheckedLocal(true);
+      checkedKeyRef.current = resolvedFileId;
+      return;
+    }
+
+    // Pas de cache blob → on doit vérifier IndexedDB (mais SANS afficher le bouton Télécharger)
+    setDisplayUrl(null);
+    setStatus('remote');
+    setHasCheckedLocal(false);
+    checkedKeyRef.current = null;
+    setError(null);
+    setProgress(0);
+    setSavedToGallery(false);
+  }, [resolvedFileId, hasCachedBlob, cachedStatus?.blobUrl]);
 
   /**
    * Vérifie si le fichier est disponible localement
-   * APPELÉE UNE SEULE FOIS au montage si pas en cache
+   * ➜ 1 seule fois par média (fileId) tant qu'on n'a pas changé de fileId
    */
   const checkLocalPresence = useCallback(async () => {
-    if (!remoteUrl) {
+    if (!remoteUrl || !resolvedFileId) {
       setDisplayUrl(null);
       setStatus('remote');
+      setHasCheckedLocal(true);
       return;
     }
 
-    // Éviter les vérifications multiples
-    if (hasCheckedRef.current) return;
-    
-    // Si déjà en cache mémoire, ne pas revérifier IndexedDB
-    const cached = fileStatusCache.getByUrl(remoteUrl);
-    if (cached && cached.status === 'downloaded' && cached.blobUrl) {
+    // Éviter les vérifications multiples pour le même fichier
+    if (checkedKeyRef.current === resolvedFileId) return;
+    checkedKeyRef.current = resolvedFileId;
+
+    // UX: tant que la vérification n'est pas terminée, on masque le bouton Télécharger
+    setHasCheckedLocal(false);
+
+    // ⚡ Re-check instantané du cache mémoire (au cas où un autre composant a téléchargé)
+    const cached = fileStatusCache.get(resolvedFileId);
+    if (cached?.status === 'downloaded' && cached.blobUrl) {
       setDisplayUrl(cached.blobUrl);
       setStatus('downloaded');
       objectUrlRef.current = cached.blobUrl;
-      hasCheckedRef.current = true;
+      setError(null);
+      setHasCheckedLocal(true);
       return;
     }
 
-    hasCheckedRef.current = true;
-
     try {
-      const localFile = await fileStore.getFile(remoteUrl);
-      
-      if (localFile && localFile.blob) {
-        // Fichier présent localement → créer URL blob
+      const localFile = await fileStore.getFileById(resolvedFileId);
+
+      if (localFile?.blob) {
         const blobUrl = URL.createObjectURL(localFile.blob);
         objectUrlRef.current = blobUrl;
-        
-        // Mettre en cache mémoire (utiliser setByUrl pour compatibilité)
-        fileStatusCache.setByUrl(remoteUrl, {
+
+        fileStatusCache.set(resolvedFileId, {
+          fileId: resolvedFileId,
           status: 'downloaded',
           blobUrl,
           checkedAt: Date.now(),
+          remoteUrl,
         });
-        
+
         setDisplayUrl(blobUrl);
         setStatus('downloaded');
         setError(null);
         console.log('📁 [Cache] Loaded from local storage:', effectiveFileName);
       } else {
-        // Fichier non disponible localement
-        const newStatus = isOnline ? 'remote' : 'offline_unavailable';
-        
-        fileStatusCache.setByUrl(remoteUrl, {
+        const newStatus: FileDownloadStatus = isOnline ? 'remote' : 'offline_unavailable';
+
+        fileStatusCache.set(resolvedFileId, {
+          fileId: resolvedFileId,
           status: newStatus,
           blobUrl: null,
           checkedAt: Date.now(),
+          remoteUrl,
         });
-        
+
         setDisplayUrl(null);
         setStatus(newStatus);
       }
     } catch (err) {
       console.error('❌ Error checking local file:', err);
       setStatus('remote');
+    } finally {
+      setHasCheckedLocal(true);
     }
-  }, [remoteUrl, isOnline, effectiveFileName]);
+  }, [remoteUrl, resolvedFileId, isOnline, effectiveFileName]);
 
   /**
    * Télécharge le fichier depuis Supabase vers le stockage local
    */
   const download = useCallback(async () => {
-    if (!remoteUrl || !isOnline) {
+    if (!remoteUrl || !isOnline || !resolvedFileId) {
       if (!isOnline) {
         setStatus('offline_unavailable');
       }
@@ -245,7 +296,7 @@ export const useOfflineMedia = ({
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           chunks.push(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
           received += value.length;
           setProgress(Math.round((received / total) * 100));
@@ -258,7 +309,7 @@ export const useOfflineMedia = ({
       }
 
       // 1. Sauvegarder dans IndexedDB (accès offline)
-      await fileStore.saveFile(remoteUrl, blob, {
+      await fileStore.saveFile(resolvedFileId, blob, {
         remoteUrl,
         fileName: effectiveFileName,
         fileType: effectiveMimeType,
@@ -290,16 +341,19 @@ export const useOfflineMedia = ({
       objectUrlRef.current = blobUrl;
 
       // Mettre à jour le cache mémoire
-      fileStatusCache.setByUrl(remoteUrl, {
+      fileStatusCache.set(resolvedFileId, {
+        fileId: resolvedFileId,
         status: 'downloaded',
         blobUrl,
         checkedAt: Date.now(),
+        remoteUrl,
       });
 
       setDisplayUrl(blobUrl);
       setStatus('downloaded');
       setProgress(100);
-      
+      setHasCheckedLocal(true);
+
       console.log('✅ Downloaded & saved locally:', effectiveFileName);
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -310,60 +364,67 @@ export const useOfflineMedia = ({
         setStatus('error');
       }
     }
-  }, [remoteUrl, effectiveFileName, effectiveMimeType, isOnline, saveToGallery]);
+  }, [remoteUrl, resolvedFileId, effectiveFileName, effectiveMimeType, isOnline, saveToGallery]);
 
   /**
    * Supprime la copie locale
    */
   const deleteLocal = useCallback(async () => {
-    if (!remoteUrl) return;
+    if (!remoteUrl || !resolvedFileId) return;
 
     try {
-      await fileStore.deleteFile(remoteUrl);
-      
+      await fileStore.deleteFileById(resolvedFileId);
+
       // Invalider le cache mémoire
-      fileStatusCache.deleteByUrl(remoteUrl);
-      
+      fileStatusCache.delete(resolvedFileId);
+
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
         objectUrlRef.current = null;
       }
-      
+
       setDisplayUrl(null);
       setStatus(isOnline ? 'remote' : 'offline_unavailable');
       setProgress(0);
-      hasCheckedRef.current = false;
-      
+
+      // Après suppression, on est "sûr" que le fichier n'est plus local
+      setHasCheckedLocal(true);
+      checkedKeyRef.current = resolvedFileId;
+
       console.log('🗑️ Local copy deleted:', effectiveFileName);
     } catch (err) {
       console.error('❌ Error deleting local file:', err);
     }
-  }, [remoteUrl, effectiveFileName, isOnline]);
+  }, [remoteUrl, resolvedFileId, effectiveFileName, isOnline]);
 
-  // ⚡ Vérifier IndexedDB SEULEMENT si pas déjà en cache mémoire
+  // Vérifier IndexedDB si nécessaire (pas de bouton Télécharger tant que ce n'est pas fait)
   useEffect(() => {
-    // Si déjà marqué comme downloaded avec une URL, pas besoin de vérifier
-    if (status === 'downloaded' && displayUrl) {
-      return;
+    if (!remoteUrl || !resolvedFileId) return;
+    if (displayUrl) return;
+    if (!hasCheckedLocal) {
+      checkLocalPresence();
     }
-    checkLocalPresence();
-  }, [checkLocalPresence, status, displayUrl]);
+  }, [remoteUrl, resolvedFileId, displayUrl, hasCheckedLocal, checkLocalPresence]);
 
-  // Mettre à jour le statut selon la connexion
+  // Mettre à jour le statut selon la connexion (uniquement quand la vérification est terminée)
   useEffect(() => {
+    if (!hasCheckedLocal) return;
+
     if (status === 'remote' && !isOnline) {
       setStatus('offline_unavailable');
     } else if (status === 'offline_unavailable' && isOnline) {
       setStatus('remote');
     }
-  }, [isOnline, status]);
+  }, [isOnline, status, hasCheckedLocal]);
 
-  // Auto-télécharger si activé
+  // Auto-télécharger si activé (uniquement après vérification IndexedDB)
   useEffect(() => {
+    if (!hasCheckedLocal) return;
+
     if (autoDownload && status === 'remote' && isOnline && remoteUrl) {
       download();
     }
-  }, [autoDownload, status, isOnline, remoteUrl, download]);
+  }, [autoDownload, status, isOnline, remoteUrl, download, hasCheckedLocal]);
 
   // Cleanup uniquement au démontage complet
   useEffect(() => {
@@ -381,6 +442,7 @@ export const useOfflineMedia = ({
     status,
     progress,
     isLocal: status === 'downloaded',
+    hasCheckedLocal,
     savedToGallery,
     error,
     download,
