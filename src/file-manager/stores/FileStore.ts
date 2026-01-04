@@ -98,9 +98,15 @@ class FileStore {
     metadata: Omit<LocalFileMetadata, 'id' | 'fileId' | 'localPath' | 'downloadedAt' | 'lastAccessedAt'>
   ): Promise<LocalFileMetadata> {
     const db = await this.ensureDB();
-    
-    // Générer un fileId stable
-    const fileId = this.generateFileId(metadata.remoteUrl);
+
+    // ✅ Support progressif d'un fileId stable (si fourni), sinon fallback sur l'URL
+    const isProbablyUrl = (value: string) =>
+      value.startsWith('http://') || value.startsWith('https://');
+
+    const fileId = isProbablyUrl(fileIdOrUrl)
+      ? this.generateFileId(fileIdOrUrl)
+      : fileIdOrUrl;
+
     const id = fileId; // Utiliser fileId comme ID principal
     const now = Date.now();
 

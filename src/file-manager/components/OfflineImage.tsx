@@ -5,6 +5,9 @@
  * ARCHITECTURE:
  * 📌 Supabase = source de téléchargement initial
  * 📌 Stockage local = source d'affichage
+ * 
+ * NOTE UX:
+ * ✅ Le bouton "Télécharger" n'apparaît qu'après vérification IndexedDB.
  */
 
 import React from 'react';
@@ -17,6 +20,8 @@ import { Progress } from '@/components/ui/progress';
 interface OfflineImageProps {
   /** URL distante de l'image (Supabase) */
   src: string | null | undefined;
+  /** ID stable du fichier (recommandé si URL signée/expirable) */
+  fileId?: string;
   /** Texte alternatif */
   alt?: string;
   /** Classes CSS */
@@ -35,6 +40,7 @@ interface OfflineImageProps {
 
 export const OfflineImage: React.FC<OfflineImageProps> = ({
   src,
+  fileId,
   alt = '',
   className,
   autoDownload = false,
@@ -48,12 +54,16 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
     status,
     progress,
     isLocal,
+    hasCheckedLocal,
     download,
   } = useOfflineMedia({
     remoteUrl: src,
+    fileId,
     mimeType: 'image/jpeg',
     autoDownload,
   });
+
+  const canOfferDownload = showDownloadButton && hasCheckedLocal && status === 'remote';
 
   // Callback quand téléchargé
   React.useEffect(() => {
@@ -63,7 +73,6 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
   }, [isLocal, onDownloaded]);
 
   // ⚡ PRIORITÉ ABSOLUE: Si on a une displayUrl, afficher immédiatement
-  // Pas de conditions intermédiaires, pas d'attente, pas de shimmer
   if (displayUrl) {
     return (
       <img
@@ -76,8 +85,27 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
     );
   }
 
-  // ⛔ PLUS D'ÉTAT "checking" BLOQUANT
-  // → On passe directement aux autres états (downloading, offline, error, remote)
+  // ✅ Tant que la vérification locale n'est pas terminée: PAS de bouton Télécharger.
+  // (On garde un rendu stable, sans shimmer)
+  if (!hasCheckedLocal) {
+    if (placeholder) {
+      return (
+        <div className={cn('relative', className)} aria-busy="true">
+          {placeholder}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={cn('flex flex-col items-center justify-center p-4 bg-muted/50 rounded-lg', className)}
+        aria-busy="true"
+      >
+        <Download className="h-8 w-8 text-muted-foreground mb-2" />
+        <span className="text-xs text-muted-foreground">Chargement…</span>
+      </div>
+    );
+  }
 
   // Téléchargement en cours
   if (status === 'downloading') {
@@ -95,9 +123,7 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
     return (
       <div className={cn('flex flex-col items-center justify-center p-4 bg-muted/50 rounded-lg', className)}>
         <CloudOff className="h-8 w-8 text-muted-foreground mb-2" />
-        <span className="text-xs text-muted-foreground text-center">
-          Hors connexion
-        </span>
+        <span className="text-xs text-muted-foreground text-center">Hors connexion</span>
       </div>
     );
   }
@@ -122,7 +148,7 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
     return (
       <div className={cn('relative', className)}>
         {placeholder}
-        {showDownloadButton && (
+        {canOfferDownload && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
             {/*
               IMPORTANT: téléchargement strictement unitaire
@@ -152,7 +178,7 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
     <div className={cn('flex flex-col items-center justify-center p-4 bg-muted/50 rounded-lg', className)}>
       <Download className="h-8 w-8 text-muted-foreground mb-2" />
 
-      {showDownloadButton && (
+      {canOfferDownload ? (
         <>
           <span className="text-xs text-muted-foreground">Non téléchargé</span>
           <Button
@@ -169,6 +195,8 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
             Télécharger
           </Button>
         </>
+      ) : (
+        <span className="text-xs text-muted-foreground">Non disponible</span>
       )}
     </div>
   );
