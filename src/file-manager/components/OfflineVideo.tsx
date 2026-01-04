@@ -52,7 +52,7 @@ export const OfflineVideo: React.FC<OfflineVideoProps> = ({
   }, [isLocal, onDownloaded]);
 
   // ⚡ PRIORITÉ ABSOLUE: Si on a une displayUrl, afficher immédiatement
-  // Pas de vérification de status, affichage instantané
+  // Pas de vérification de status, affichage instantané, pas de shimmer
   if (displayUrl) {
     return (
       <video
@@ -65,14 +65,7 @@ export const OfflineVideo: React.FC<OfflineVideoProps> = ({
     );
   }
 
-  // ⚡ État "checking": vérification locale en cours - afficher skeleton discret
-  if (status === 'checking') {
-    return (
-      <div className={cn('bg-muted/30 rounded-lg aspect-video animate-pulse', className)}>
-        <div className="w-full h-full bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50" />
-      </div>
-    );
-  }
+  // ⛔ PLUS D'ÉTAT "checking" BLOQUANT - pas de shimmer/attente
 
   // Téléchargement en cours
   if (status === 'downloading') {

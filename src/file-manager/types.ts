@@ -8,9 +8,9 @@
  */
 
 // État d'un fichier distant
+// ⛔ PAS d'état 'checking' bloquant → affichage instantané
 export type FileDownloadStatus = 
-  | 'checking'             // ⚡ Vérification locale en cours (ne pas afficher bouton télécharger)
-  | 'remote'               // Fichier distant, non téléchargé
+  | 'remote'               // Fichier distant, non téléchargé (afficher bouton Télécharger)
   | 'downloading'          // Téléchargement en cours
   | 'downloaded'           // Téléchargé et disponible localement
   | 'error'                // Erreur de téléchargement
