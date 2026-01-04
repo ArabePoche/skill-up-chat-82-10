@@ -116,12 +116,12 @@ export const useOfflineMedia = ({
     return fileStatusCache.getByUrl(remoteUrl);
   }, [remoteUrl]);
   
-  // ⚡ Si en cache avec blobUrl → état initial = downloaded (priorité absolue)
-  // Si pas en cache → état "checking" pour éviter d'afficher le bouton télécharger
+  // ⚡ PRIORITÉ ABSOLUE: 
+  // - Si cache mémoire a un blobUrl → downloaded immédiat
+  // - Sinon → 'remote' (jamais 'checking' bloquant)
+  // L'état 'checking' n'existe PLUS - pas de shimmer/attente
   const hasCachedBlob = !!(cachedStatus?.status === 'downloaded' && cachedStatus?.blobUrl);
-  const initialStatus: FileDownloadStatus = hasCachedBlob 
-    ? 'downloaded' 
-    : 'checking'; // Nouvel état: vérification en cours
+  const initialStatus: FileDownloadStatus = hasCachedBlob ? 'downloaded' : 'remote';
   const initialDisplayUrl = cachedStatus?.blobUrl || null;
   
   const [status, setStatus] = useState<FileDownloadStatus>(initialStatus);

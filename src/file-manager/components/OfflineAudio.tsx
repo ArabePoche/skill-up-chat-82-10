@@ -53,7 +53,7 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
   }, [isLocal, onDownloaded]);
 
   // ⚡ PRIORITÉ ABSOLUE: Si on a une displayUrl, afficher immédiatement
-  // Pas de vérification de status, affichage instantané
+  // Pas de vérification de status, affichage instantané, pas de shimmer
   if (displayUrl) {
     return (
       <div className={cn('flex items-center gap-3 p-3 bg-muted rounded-lg', className)}>
@@ -68,15 +68,7 @@ export const OfflineAudio: React.FC<OfflineAudioProps> = ({
     );
   }
 
-  // ⚡ État "checking": vérification locale en cours - afficher skeleton discret
-  if (status === 'checking') {
-    return (
-      <div className={cn('flex items-center gap-3 p-3 bg-muted/30 rounded-lg animate-pulse', className)}>
-        <div className="h-5 w-5 bg-muted rounded" />
-        <div className="flex-1 h-8 bg-muted/50 rounded" />
-      </div>
-    );
-  }
+  // ⛔ PLUS D'ÉTAT "checking" BLOQUANT - pas de shimmer/attente
 
   // Téléchargement en cours
   if (status === 'downloading') {
