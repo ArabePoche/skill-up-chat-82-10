@@ -12,6 +12,7 @@ interface SendExerciseParams {
   lessonId: string;
   exerciseId: string;
   exerciseTitle: string;
+  levelId?: string; // Optionnel - contexte groupe
 }
 
 export const useSendExerciseToStudent = () => {
