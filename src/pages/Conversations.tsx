@@ -14,6 +14,7 @@ const Conversations = () => {
   const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasInitialScrolled = useRef(false);
   const queryClient = useQueryClient();
 
   // Récupérer les infos de l'autre utilisateur
@@ -140,8 +141,14 @@ const Conversations = () => {
     markAsRead();
   }, [user?.id, otherUserId, queryClient]);
 
+  // Scroll initial instantané au dernier message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0 && !hasInitialScrolled.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      hasInitialScrolled.current = true;
+    } else if (hasInitialScrolled.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const otherUserName = otherUserProfile 
