@@ -7,6 +7,9 @@ import InterviewToggleButton from './teacher/InterviewToggleButton';
 import LessonVideoPlayer from './LessonVideoPlayer';
 import TeachingStudio from './live-classroom/TeachingStudio';
 import DateSeparator from './chat/DateSeparator';
+import SendExerciseModal from './teacher/SendExerciseModal';
+import { Button } from './ui/button';
+import { BookOpen } from 'lucide-react';
 import { groupMessagesByDate } from '@/utils/dateUtils';
 import { useTeacherStudentMessages } from '@/hooks/useTeacherStudentMessages';
 import { useSendTeacherStudentMessage } from '@/hooks/useSendTeacherStudentMessage';
@@ -55,6 +58,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
   const messagesRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [showStudio, setShowStudio] = useState(false);
+  const [showExerciseModal, setShowExerciseModal] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{
     id: string;
     content: string;
@@ -236,7 +240,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
             </div>
           )}
 
-          {/* Indicateurs de frappe */}
+        {/* Indicateurs de frappe */}
           {typingUsers.map(user => (
             <TypingIndicator
               key={user.user_id}
@@ -246,6 +250,19 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
           ))}
 
           <div ref={messagesEndRef} />
+        </div>
+
+        {/* Bouton d'envoi d'exercice */}
+        <div className="px-4 py-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowExerciseModal(true)}
+            className="w-full border-primary/30 text-primary hover:bg-primary/10"
+          >
+            <BookOpen size={16} className="mr-2" />
+            Envoyer un exercice
+          </Button>
         </div>
 
         {/* Bouton toggle entretien */}
@@ -269,6 +286,16 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
           />
         </div>
       </div>
+
+      {/* Modal d'envoi d'exercice */}
+      <SendExerciseModal
+        isOpen={showExerciseModal}
+        onClose={() => setShowExerciseModal(false)}
+        formationId={formation.id}
+        lessonId={lesson.id}
+        studentId={student.user_id}
+        studentName={student.profiles?.first_name || student.profiles?.username || 'Étudiant'}
+      />
 
       {/* Modal d'appel direct (quand en chat avec l'étudiant) */}
       {directCall && (
