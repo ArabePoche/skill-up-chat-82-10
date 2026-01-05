@@ -104,6 +104,7 @@ const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasInitialScrolled = useRef(false);
 
   // ⚡ OPTIMISATION: Extraire toutes les URLs de médias et précharger le cache
   const mediaUrls = useMemo(() => {
@@ -140,8 +141,8 @@ const MessageList: React.FC<MessageListProps> = ({
     return 'pending';
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (instant = false) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: instant ? "instant" : "smooth" });
   };
 
   // Écouter les indicateurs de frappe
@@ -150,16 +151,28 @@ const MessageList: React.FC<MessageListProps> = ({
   // Activer les mises à jour temps réel
   useRealtimeMessages(lessonId.toString(), formationId);
 
-   // Récupérer les évaluations en attente pour les étudiants
+  // Récupérer les évaluations en attente pour les étudiants
   const { data: pendingEvaluations = [] } = useStudentEvaluations();
+
+  // Scroll initial instantané au dernier message
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0 && !hasInitialScrolled.current) {
+      scrollToBottom(true); // Scroll instantané au premier chargement
+      hasInitialScrolled.current = true;
+    }
+  }, [messages.length]);
+
+  // Scroll smooth pour les nouveaux messages
+  useEffect(() => {
+    if (hasInitialScrolled.current) {
+      scrollToBottom(false);
+    }
   }, [messages, typingUsers]);
 
   // Exposer scrollToBottom pour l'utiliser depuis l'extérieur
   useEffect(() => {
     if (window) {
-      (window as any).__scrollToBottom = scrollToBottom;
+      (window as any).__scrollToBottom = () => scrollToBottom(false);
     }
   }, []);
 
