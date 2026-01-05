@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import MediaPreview from './MediaPreview';
-import MessageSender from './MessageSender';
+import ClickableStudentAvatar from './ClickableStudentAvatar';
 import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
 import ExerciseRejectionDetails from './ExerciseRejectionDetails';
@@ -77,9 +77,22 @@ interface MessageBubbleProps {
   onReply?: (message: Message) => void; // callback pour définir la réponse dans l'input
   onScrollToMessage?: (messageId: string) => void; // Nouvelle prop pour le scroll
   highlightedMessageId?: string | null;
+  // Props pour le chat groupe - envoi d'exercice
+  formationId?: string;
+  levelId?: string;
+  isGroupChat?: boolean;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onReply, onScrollToMessage, highlightedMessageId }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ 
+  message, 
+  isTeacher, 
+  onReply, 
+  onScrollToMessage, 
+  highlightedMessageId,
+  formationId,
+  levelId,
+  isGroupChat = false,
+}) => {
   const { user } = useAuth();
   const isOwnMessage = message.sender_id === user?.id;
   const isRealExerciseSubmission = message.is_exercise_submission === true;
@@ -162,8 +175,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isTeacher, onRep
               isOwnMessage ? 'bg-[#dcf8c6]' : 'bg-white'
             } ${isHighlighted ? 'ring-2 ring-[#25d366] scale-105' : ''}`}
           >
-            {!isOwnMessage && (
-              <MessageSender profile={message.profiles} />
+            {!isOwnMessage && message.profiles && (
+              <ClickableStudentAvatar 
+                profile={message.profiles}
+                isTeacherViewing={isTeacher}
+                formationId={formationId}
+                levelId={levelId}
+                isGroupChat={isGroupChat}
+              />
             )}
 
             {/* Référence au message répondu (persistante) */}
