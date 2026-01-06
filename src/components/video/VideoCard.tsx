@@ -140,7 +140,8 @@ const VideoCard: React.FC<VideoCardProps> = ({
     }
   };
 
-  const handleActionClick = (action: () => void) => {
+  // Actions nécessitant une connexion (like, save, follow)
+  const handleAuthRequiredAction = (action: () => void) => {
     if (!user) {
       navigate('/auth');
       return;
@@ -149,7 +150,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   const handleLike = () => {
-    handleActionClick(() => {
+    handleAuthRequiredAction(() => {
       const wasLiked = isLiked;
       toggleLike();
       if (!wasLiked && onLikeWithConfetti) {
@@ -159,7 +160,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   const handleFollow = () => {
-    handleActionClick(() => {
+    handleAuthRequiredAction(() => {
       if (friendshipStatus === 'friends') {
         removeFriend();
       } else if (friendshipStatus === 'pending_sent') {
@@ -171,7 +172,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   const handleSave = () => {
-    handleActionClick(() => {
+    handleAuthRequiredAction(() => {
       setIsSaved(!isSaved);
       toast.success(isSaved ? t('video.removedFromFavorites') : t('video.savedToFavorites'));
     });
@@ -325,12 +326,12 @@ const VideoCard: React.FC<VideoCardProps> = ({
           </span>
         </div>
 
-        {/* Bouton Commentaires */}
+        {/* Bouton Commentaires - accessible à tous */}
         <div className="flex flex-col items-center">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handleActionClick(() => setShowComments(true))}
+            onClick={() => setShowComments(true)}
             className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
           >
             <MessageCircle size={24} />
