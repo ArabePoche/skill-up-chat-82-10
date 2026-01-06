@@ -82,7 +82,7 @@ export const AssignSubjectsToClassDialog: React.FC<AssignSubjectsToClassDialogPr
     setSelectedSubjectId('');
     setSelectedTeacherId('');
     setCoefficient('1');
-    setMaxScore('20');
+    setMaxScore('10');
   };
 
   const handleUpdateCoefficient = async (assignmentId: string, newCoefficient: string) => {
