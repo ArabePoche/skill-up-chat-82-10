@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { fileStore } from '@/file-manager/stores/FileStore';
 
 export const useSubmitGroupExercise = () => {
   const queryClient = useQueryClient();
@@ -57,6 +58,24 @@ export const useSubmitGroupExercise = () => {
             name: file.name,
             type: file.type
           });
+
+          // ✅ Sauvegarder immédiatement dans le cache local (FileStore)
+          // L'élève verra directement son fichier sans bouton "Télécharger"
+          try {
+            const blob = new Blob([await file.arrayBuffer()], { type: file.type });
+            await fileStore.saveFile(publicUrl, blob, {
+              remoteUrl: publicUrl,
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              ownerId: user.id,
+              isOwnFile: true,
+            });
+            console.log('💾 Fichier exercice groupe sauvegardé localement (élève):', file.name);
+          } catch (cacheError) {
+            // Ne pas bloquer la soumission si le cache échoue
+            console.warn('⚠️ Impossible de sauvegarder dans le cache local:', cacheError);
+          }
         }
         
         console.log('Group exercise files uploaded successfully:', uploadedFiles);
