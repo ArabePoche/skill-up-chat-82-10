@@ -244,6 +244,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   isTeacher={isTeacher}
                   lessonId={message.lesson_id}
                   formationId={message.formation_id}
+                  isOwnMessage={isOwnMessage}
                 />
               </div>
             )}
