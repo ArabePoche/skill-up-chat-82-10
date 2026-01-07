@@ -98,6 +98,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isRealExerciseSubmission = message.is_exercise_submission === true;
   const isNewMessage = new Date().getTime() - new Date(message.created_at).getTime() < 5 * 60 * 1000;
 
+  // Déduire le contexte "chat de groupe" même si le parent n'a pas passé la prop.
+  // Règle: en groupe, receiver_id est null et level_id est renseigné.
+  const isInferredGroupChat = !message.receiver_id && !!message.level_id;
+  const isGroupChatContext = isGroupChat || isInferredGroupChat;
+
+  // Toujours préférer les IDs du message (source de vérité) quand disponibles.
+  const effectiveFormationId = formationId ?? message.formation_id;
+  const effectiveLevelId = isGroupChatContext ? (message.level_id ?? levelId) : levelId;
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -179,9 +188,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <ClickableStudentAvatar 
                 profile={message.profiles}
                 isTeacherViewing={isTeacher}
-                formationId={formationId}
-                levelId={levelId}
-                isGroupChat={isGroupChat}
+                formationId={effectiveFormationId}
+                levelId={effectiveLevelId}
+                isGroupChat={isGroupChatContext}
               />
             )}
 
