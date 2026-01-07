@@ -41,8 +41,8 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
   const { subscription } = useUserSubscription(formationId, studentId);
   
   // Calculer le prix par jour basé sur l'abonnement réel de l'étudiant
-  const getUserPricePerDay = () => {
-    if (!subscription || !pricingOptions) return 500; // Fallback à 500 FCFA par jour si pas de données
+  const getUserPricePerDay = (): number | null => {
+    if (!subscription || !pricingOptions) return null; // Pas de fallback, attendre les données
     
     // Utiliser le vrai plan de l'étudiant
     const userPlan = pricingOptions.find(
@@ -53,10 +53,11 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
       return userPlan.price_monthly / 30;
     }
     
-    return 500; // Fallback à 500 FCFA par jour
+    return null; // Pas de fallback
   };
 
   const pricePerDay = getUserPricePerDay();
+  const isPricingReady = pricePerDay !== null && pricePerDay > 0;
   
   // Récupérer le progrès de paiement actuel
   const { data: paymentProgress } = useQuery({
@@ -99,6 +100,10 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
       const amountNum = parseFloat(amount);
       if (isNaN(amountNum) || amountNum <= 0) {
         throw new Error('Montant invalide');
+      }
+
+      if (!pricePerDay || pricePerDay <= 0) {
+        throw new Error('Tarification non disponible. Veuillez réessayer.');
       }
 
       // Calculer les jours et heures à ajouter en fonction du prix par jour
@@ -233,15 +238,18 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="25000"
                   />
-                   {amount && !isNaN(parseFloat(amount)) && pricePerDay > 0 && (
+                   {amount && !isNaN(parseFloat(amount)) && isPricingReady && (
                      <p className="text-xs text-gray-600">
                        {(() => {
-                         const totalDays = parseFloat(amount) / pricePerDay;
+                         const totalDays = parseFloat(amount) / pricePerDay!;
                          const days = Math.floor(totalDays);
                          const hours = Math.round((totalDays - days) * 24);
-                         return `= ${days} jour${days > 1 ? 's' : ''} ${hours > 0 ? `+ ${hours}h` : ''} (à ${pricePerDay.toLocaleString('fr-FR')} FCFA/jour)`;
+                         return `= ${days} jour${days > 1 ? 's' : ''} ${hours > 0 ? `+ ${hours}h` : ''} (à ${pricePerDay!.toLocaleString('fr-FR')} FCFA/jour)`;
                        })()}
                      </p>
+                   )}
+                   {!isPricingReady && (
+                     <p className="text-xs text-amber-600">⚠️ Chargement des tarifs...</p>
                    )}
                 </div>
 
@@ -285,11 +293,11 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
 
               <Button
                 onClick={() => addPaymentMutation.mutate()}
-                disabled={!amount || addPaymentMutation.isPending}
+                disabled={!amount || !isPricingReady || addPaymentMutation.isPending}
                 className="w-full"
               >
                 <Plus size={16} className="mr-2" />
-                {addPaymentMutation.isPending ? 'Ajout...' : 'Ajouter le paiement'}
+                {!isPricingReady ? 'Chargement tarifs...' : addPaymentMutation.isPending ? 'Ajout...' : 'Ajouter le paiement'}
               </Button>
             </div>
 
