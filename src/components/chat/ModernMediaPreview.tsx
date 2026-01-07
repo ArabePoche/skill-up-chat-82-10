@@ -41,9 +41,12 @@ const [showFullscreen, setShowFullscreen] = useState(false);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
 
   const isImage = fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
-  const isVideo = fileType?.startsWith('video/') || /\.(mp4|webm|ogg|avi|mov)$/i.test(fileName);
+  // ⚠️ IMPORTANT: Vérifier audio AVANT vidéo car .webm et .ogg peuvent être les deux
+  // Si fileType commence par audio/, c'est un audio même si l'extension est ambiguë
+  const isAudio = fileType?.startsWith('audio/') || /\.(mp3|wav|m4a|aac|flac)$/i.test(fileName);
+  // Vidéo seulement si ce n'est PAS de l'audio (évite les conflits .webm/.ogg)
+  const isVideo = !isAudio && (fileType?.startsWith('video/') || /\.(mp4|webm|ogg|avi|mov|mkv)$/i.test(fileName));
   const isYouTubeVideo = fileUrl.includes('youtube.com') || fileUrl.includes('youtu.be');
-  const isAudio = fileType?.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|webm)$/i.test(fileName);
   const isPDF = fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
 
   const handleDownload = () => {
