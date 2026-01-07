@@ -311,6 +311,9 @@ const MessageList: React.FC<MessageListProps> = ({
               isTeacher={isTeacher}
               onReply={onReply}
               onScrollToMessage={onScrollToMessage}
+              formationId={formationId}
+              levelId={lessonId}
+              isGroupChat={isGroupChat}
             />
           </div>
         );
