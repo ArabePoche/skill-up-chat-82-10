@@ -16,6 +16,26 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  // Détection automatique du meilleur format audio supporté (mobile-first)
+  const getSupportedMimeType = (): { mimeType: string; extension: string } => {
+    const formats = [
+      { mimeType: 'audio/mp4', extension: 'mp4' },           // iOS + Android
+      { mimeType: 'audio/webm;codecs=opus', extension: 'webm' }, // Android Chrome
+      { mimeType: 'audio/webm', extension: 'webm' },         // Fallback WebM
+      { mimeType: 'audio/ogg;codecs=opus', extension: 'ogg' }, // Firefox
+    ];
+
+    for (const format of formats) {
+      if (MediaRecorder.isTypeSupported(format.mimeType)) {
+        console.log('🎧 Format audio détecté:', format.mimeType);
+        return format;
+      }
+    }
+
+    console.log('🎧 Aucun format préféré, utilisation du défaut');
+    return { mimeType: '', extension: 'webm' };
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -26,9 +46,10 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
         }
       });
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      const { mimeType, extension } = getSupportedMimeType();
+      
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
 
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -40,10 +61,14 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete, disa
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: actualMimeType });
         
-        // Envoyer automatiquement l'audio au modal
-        const file = new File([blob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+        // Déterminer l'extension à partir du mimeType réel
+        const fileExt = actualMimeType.includes('mp4') ? 'mp4' 
+          : actualMimeType.includes('ogg') ? 'ogg' 
+          : 'webm';
+        
+        const file = new File([blob], `audio_${Date.now()}.${fileExt}`, { type: actualMimeType });
         onRecordingComplete(file);
         
         // Arrêter le stream
