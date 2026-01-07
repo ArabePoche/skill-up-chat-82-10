@@ -1,8 +1,13 @@
+/**
+ * Hook pour l'upload de fichiers vers Supabase Storage
+ * Avec sauvegarde automatique dans le cache local (FileStore) pour l'expéditeur
+ */
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
+import { fileStore } from '@/file-manager/stores/FileStore';
 
 export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
@@ -50,6 +55,24 @@ export const useFileUpload = () => {
         publicUrl: publicUrl,
         bucket: bucketName
       });
+
+      // ✅ Sauvegarder immédiatement dans le cache local (FileStore)
+      // L'expéditeur verra directement l'aperçu sans bouton "Télécharger"
+      try {
+        const blob = new Blob([await file.arrayBuffer()], { type: file.type });
+        await fileStore.saveFile(publicUrl, blob, {
+          remoteUrl: publicUrl,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          ownerId: user.id,
+          isOwnFile: true,
+        });
+        console.log('💾 Fichier sauvegardé dans le cache local (expéditeur)');
+      } catch (cacheError) {
+        // Ne pas bloquer l'upload si le cache échoue
+        console.warn('⚠️ Impossible de sauvegarder dans le cache local:', cacheError);
+      }
       
       return {
         fileUrl: publicUrl,
