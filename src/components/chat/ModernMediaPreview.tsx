@@ -22,6 +22,7 @@ interface ModernMediaPreviewProps {
   isTeacher?: boolean;
   lessonId?: string;
   formationId?: string;
+  isOwnMessage?: boolean; // Si c'est le propre message de l'utilisateur - fichier déjà local
 }
 
 const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
@@ -35,7 +36,8 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
   messageId,
   isTeacher = false,
   lessonId,
-  formationId
+  formationId,
+  isOwnMessage = false
 }) => {
 const [showFullscreen, setShowFullscreen] = useState(false);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
@@ -221,10 +223,13 @@ const [showFullscreen, setShowFullscreen] = useState(false);
             </div>
             <span className="font-medium text-xs sm:text-sm truncate">{fileName}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={handleDownload} className="w-full text-xs sm:text-sm">
-            <Download size={14} className="mr-1" />
-            Télécharger
-          </Button>
+          {/* Masquer le bouton télécharger pour l'expéditeur - fichier déjà local */}
+          {!isOwnMessage && (
+            <Button variant="outline" size="sm" onClick={handleDownload} className="w-full text-xs sm:text-sm">
+              <Download size={14} className="mr-1" />
+              Télécharger
+            </Button>
+          )}
         </div>
       )}
 
