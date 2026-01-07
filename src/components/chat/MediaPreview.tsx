@@ -10,6 +10,7 @@ interface MediaPreviewProps {
   isTeacher?: boolean;
   lessonId?: string;
   formationId?: string;
+  isOwnMessage?: boolean; // Si c'est le propre message de l'utilisateur
 }
 
 const MediaPreview: React.FC<MediaPreviewProps> = ({
@@ -19,13 +20,12 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
   messageId,
   isTeacher = false,
   lessonId,
-  formationId
+  formationId,
+  isOwnMessage = false
 }) => {
   // Fonction de mise à jour pour permettre l'édition des images
   const handleUpdate = (newUrl: string) => {
     console.log('Image updated:', newUrl);
-    // Cette fonction pourrait être étendue pour mettre à jour le message en base
-    // Pour l'instant, on log juste pour confirmer que l'édition fonctionne
   };
 
   return (
@@ -38,6 +38,7 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
       lessonId={lessonId}
       formationId={formationId}
       onUpdate={handleUpdate}
+      isOwnMessage={isOwnMessage}
     />
   );
 };
