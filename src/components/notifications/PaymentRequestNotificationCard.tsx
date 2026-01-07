@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
 import { useFormationPricing } from '@/hooks/useFormationPricing';
+import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
+import { calculateRemainingDays } from '@/utils/paymentCalculations';
 
 interface PaymentRequestNotificationCardProps {
   notification: {
@@ -65,6 +67,30 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
   const { subscription } = useUserSubscription(notification.formation_id, notification.user_id);
   const { pricingOptions } = useFormationPricing(notification.formation_id);
 
+  // Récupérer les jours restants actuels de l'élève
+  const { data: studentPaymentProgress } = useQuery({
+    queryKey: ['student-payment-progress-notification', notification.user_id, notification.formation_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('student_payment_progress')
+        .select('*')
+        .eq('user_id', notification.user_id)
+        .eq('formation_id', notification.formation_id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!notification.user_id && !!notification.formation_id,
+  });
+
+  // Calculer les jours restants en temps réel
+  const currentDaysRemaining = calculateRemainingDays(
+    studentPaymentProgress?.total_days_remaining,
+    studentPaymentProgress?.last_payment_date
+  );
+  const currentHoursRemaining = studentPaymentProgress?.hours_remaining || 0;
+
   // Charger le titre de la formation
   const { data: formation } = useQuery({
     queryKey: ['formation-price', notification.formation_id],
@@ -98,7 +124,7 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
 
   // Calculer le prix par jour basé sur l'abonnement réel de l'élève
   const pricePerDay = useMemo(() => {
-    if (!subscription || !pricingOptions) return 1; // Fallback à 1F par jour
+    if (!subscription || !pricingOptions) return null; // Pas de fallback, attendre les données
     
     // Trouver le plan de tarification correspondant à l'abonnement de l'élève
     const userPlan = pricingOptions.find(
@@ -109,12 +135,15 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
       return userPlan.price_monthly / 30;
     }
     
-    return 1; // Fallback à 1F par jour
+    return null; // Pas de fallback, les données ne sont pas disponibles
   }, [subscription, pricingOptions]);
+
+  // Vérifier si les données de tarification sont prêtes
+  const isPricingReady = pricePerDay !== null && pricePerDay > 0;
 
   const { daysAdded, hoursAdded } = useMemo(() => {
     const amt = Number(amount || 0);
-    if (!amt || pricePerDay <= 0) return { daysAdded: 0, hoursAdded: 0 };
+    if (!amt || !pricePerDay || pricePerDay <= 0) return { daysAdded: 0, hoursAdded: 0 };
     
     const totalDays = amt / pricePerDay;
     const wholeDays = Math.floor(totalDays);
@@ -212,6 +241,20 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Jours restants actuels de l'élève */}
+        <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-amber-600" />
+            <span className="text-sm text-amber-800">
+              Solde actuel de l'élève:
+            </span>
+          </div>
+          <span className="font-semibold text-amber-800">
+            {currentDaysRemaining} jour{currentDaysRemaining > 1 ? 's' : ''}
+            {currentHoursRemaining > 0 && ` + ${currentHoursRemaining}h`}
+          </span>
+        </div>
+
         {/* Contexte */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded-lg">
           <div className="flex items-center gap-3">
@@ -318,27 +361,34 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
             </div>
 
             {/* Calcul automatique */}
-            <div className="p-4 bg-white rounded-lg text-sm text-gray-700">
-              <p>
-                Plan de l'élève: <span className="font-medium">{subscription?.plan_type || 'Non défini'}</span>
-              </p>
-              <p>
-                Tarif par jour: <span className="font-medium">{pricePerDay.toFixed(0)} F</span>
-              </p>
-              <p className="mt-1">
-                Crédité: <span className="font-semibold">{daysAdded} jour(s)</span>
-                {hoursAdded > 0 && <span className="font-semibold"> + {hoursAdded} heure(s)</span>}
-              </p>
-            </div>
+            {!isPricingReady ? (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                <p className="font-medium">⚠️ Chargement des tarifs...</p>
+                <p>Veuillez patienter, les données de tarification sont en cours de chargement.</p>
+              </div>
+            ) : (
+              <div className="p-4 bg-white rounded-lg text-sm text-gray-700">
+                <p>
+                  Plan de l'élève: <span className="font-medium">{subscription?.plan_type || 'Non défini'}</span>
+                </p>
+                <p>
+                  Tarif par jour: <span className="font-medium">{pricePerDay?.toFixed(0) || '...'} F</span>
+                </p>
+                <p className="mt-1">
+                  Crédité: <span className="font-semibold">{daysAdded} jour(s)</span>
+                  {hoursAdded > 0 && <span className="font-semibold"> + {hoursAdded} heure(s)</span>}
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <Button 
                 onClick={() => processMutation.mutate()} 
-                disabled={processMutation.isPending || !amount || (daysAdded <= 0 && hoursAdded <= 0)}
+                disabled={processMutation.isPending || !amount || !isPricingReady || (daysAdded <= 0 && hoursAdded <= 0)}
                 className="bg-green-600 hover:bg-green-700 text-white flex-1"
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
-                Valider le paiement
+                {!isPricingReady ? 'Chargement tarifs...' : 'Valider le paiement'}
               </Button>
             </div>
           </>
