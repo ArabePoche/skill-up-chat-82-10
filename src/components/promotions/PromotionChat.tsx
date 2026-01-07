@@ -12,6 +12,7 @@ import ExerciseDisplay from '@/components/chat/ExerciseDisplay';
 import { MessageReactions } from '@/components/chat/MessageReactions';
 import { ValidatedByTeacherBadge } from '@/components/chat/ValidatedByTeacherBadge';
 import DateSeparator from '@/components/chat/DateSeparator';
+import ModernMediaPreview from '@/components/chat/ModernMediaPreview';
 import { groupMessagesByDate } from '@/utils/dateUtils';
 import { toast } from 'sonner';
 import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
@@ -265,15 +266,12 @@ export const PromotionChat: React.FC<PromotionChatProps> = ({
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                       
                       {msg.file_url && (
-                        <div className="mt-2 p-2 bg-background/10 rounded border">
-                          <a 
-                            href={msg.file_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs underline"
-                          >
-                            📎 {msg.file_name || 'Fichier joint'}
-                          </a>
+                        <div className="mt-2">
+                          <ModernMediaPreview
+                            fileUrl={msg.file_url}
+                            fileName={msg.file_name || 'Fichier joint'}
+                            fileType={msg.file_type}
+                          />
                         </div>
                       )}
                       
