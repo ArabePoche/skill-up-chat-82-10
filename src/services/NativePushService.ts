@@ -129,16 +129,37 @@ export class NativePushService {
       return PushNotifications !== null; // Capacitor disponible
     } else {
       // Pour le web (desktop et mobile)
-      // Vérifier que l'API Notification existe et que le service worker est supporté
       const hasNotificationAPI = 'Notification' in window;
       const hasSW = 'serviceWorker' in navigator;
+      const hasPushManager = 'PushManager' in window;
+      
+      // Détection iOS Safari (pas de support Push sur iOS Safari < 16.4)
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const isIOSSafari = isIOS && isSafari;
+      
+      // Vérifier si c'est une PWA installée sur iOS (standalone mode)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone === true;
       
       console.log('🔍 Vérification support notifications:', {
         hasNotificationAPI,
         hasSW,
-        userAgent: navigator.userAgent,
-        platform: navigator.platform
+        hasPushManager,
+        isIOS,
+        isSafari,
+        isIOSSafari,
+        isStandalone,
+        userAgent: navigator.userAgent
       });
+      
+      // iOS Safari (non-PWA) ne supporte pas les notifications push
+      // Les PWA iOS 16.4+ supportent les notifications
+      if (isIOSSafari && !isStandalone) {
+        console.warn('⚠️ iOS Safari hors PWA: notifications push non supportées');
+        // On retourne true quand même pour permettre l'inscription
+        // car l'utilisateur pourrait installer la PWA plus tard
+      }
       
       return hasNotificationAPI && hasSW;
     }
