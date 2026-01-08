@@ -44,6 +44,8 @@ export const PushNotificationSetup = () => {
   };
 
   if (!isSupported) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
@@ -52,7 +54,14 @@ export const PushNotificationSetup = () => {
             Notifications non supportées
           </CardTitle>
           <CardDescription>
-            Votre navigateur ne supporte pas les notifications push.
+            {isIOS ? (
+              <>
+                Pour recevoir les notifications sur iPhone/iPad, installez l'application : 
+                Safari → Partager → "Sur l'écran d'accueil"
+              </>
+            ) : (
+              'Votre navigateur ne supporte pas les notifications push. Essayez Chrome, Firefox ou Edge.'
+            )}
           </CardDescription>
         </CardHeader>
       </Card>
