@@ -47,6 +47,9 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
   };
 
   if (!isSupported) {
+    // Détecter si c'est iOS pour un message adapté
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
@@ -56,8 +59,18 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
               Notifications non supportées
             </DialogTitle>
             <DialogDescription>
-              Votre navigateur ne supporte pas les notifications push. 
-              Essayez avec Chrome, Firefox ou Safari sur ordinateur.
+              {isIOS ? (
+                <>
+                  Pour recevoir les notifications sur iPhone/iPad, installez l'application sur votre écran d'accueil : 
+                  <br />
+                  <strong>Safari → Partager → "Sur l'écran d'accueil"</strong>
+                </>
+              ) : (
+                <>
+                  Votre navigateur ne supporte pas les notifications push.
+                  Essayez avec Chrome, Firefox, Edge ou Samsung Internet.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end">
