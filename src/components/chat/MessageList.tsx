@@ -162,12 +162,22 @@ const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages.length]);
 
-  // Scroll smooth pour les nouveaux messages
+  // Scroll smooth uniquement pour les nouveaux messages (pas les mises à jour de statut)
+  const prevMessageCountRef = useRef(messages.length);
   useEffect(() => {
-    if (hasInitialScrolled.current) {
+    // Ne scroll que si un nouveau message a été ajouté, pas si un statut a changé
+    if (hasInitialScrolled.current && messages.length > prevMessageCountRef.current) {
       scrollToBottom(false);
     }
-  }, [messages, typingUsers]);
+    prevMessageCountRef.current = messages.length;
+  }, [messages.length]);
+
+  // Scroll pour indicateur de frappe seulement
+  useEffect(() => {
+    if (hasInitialScrolled.current && typingUsers && typingUsers.length > 0) {
+      scrollToBottom(false);
+    }
+  }, [typingUsers]);
 
   // Exposer scrollToBottom pour l'utiliser depuis l'extérieur
   useEffect(() => {
