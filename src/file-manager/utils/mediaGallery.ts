@@ -1,6 +1,6 @@
 /**
  * Service pour sauvegarder les médias dans la galerie Android/iOS
- * Utilise le plugin Capacitor "Media" (si présent côté natif)
+ * Utilise @capacitor-community/media (v8+) pour l'intégration native
  *
  * Comportement type WhatsApp:
  * - Les médias téléchargés apparaissent dans la galerie
@@ -8,19 +8,9 @@
  * - Fallback web pour les environnements non-natifs
  */
 
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-
-// Types pour le plugin Media (bridge Capacitor : pas d'import NPM requis pour le build web)
-interface MediaPlugin {
-  savePhoto: (options: { path: string; albumIdentifier?: string }) => Promise<{ filePath: string }>;
-  saveVideo: (options: { path: string; albumIdentifier?: string }) => Promise<{ filePath: string }>;
-  createAlbum: (options: { name: string }) => Promise<void>;
-  getAlbums: () => Promise<{ albums: Array<{ identifier: string; name: string }> }>;
-}
-
-// Instance du plugin (résolue à l'exécution sur Android/iOS)
-const MediaBridge = registerPlugin<MediaPlugin>('Media');
+import { Media as MediaPlugin } from '@capacitor-community/media';
 
 // Nom de l'album dans la galerie
 const ALBUM_NAME = 'EducaTok';
@@ -37,17 +27,10 @@ export const isNativePlatform = (): boolean => {
 
 /**
  * Accès au plugin Media si disponible côté natif.
- * (Aucun import de "@capacitor-community/media" → évite l'erreur Netlify/Vite.)
  */
-const getMediaPlugin = async (): Promise<MediaPlugin | null> => {
+const getMediaPlugin = async (): Promise<typeof MediaPlugin | null> => {
   if (!isNativePlatform()) return null;
-
-  if (!Capacitor.isPluginAvailable('Media')) {
-    console.warn('⚠️ Plugin Media non disponible (Media)');
-    return null;
-  }
-
-  return MediaBridge;
+  return MediaPlugin;
 };
 
 /**
