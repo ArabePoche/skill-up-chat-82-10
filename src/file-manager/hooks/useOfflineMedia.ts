@@ -317,19 +317,21 @@ export const useOfflineMedia = ({
         isOwnFile: false,
       });
 
-      // 2. Sauvegarder dans la galerie Android/iOS si demandé
+      // 2. Sauvegarder dans le stockage du téléphone (galerie ou Documents)
+      // ✅ Comportement type WhatsApp: tous les fichiers téléchargés sont sauvegardés
       if (saveToGallery && isNativePlatform()) {
-        const mediaType = getMediaType(effectiveMimeType);
-        if (mediaType === 'image' || mediaType === 'video') {
-          try {
-            const galleryResult = await saveMediaToDevice(blob, effectiveFileName, effectiveMimeType);
-            setSavedToGallery(galleryResult.savedToGallery);
-            if (galleryResult.savedToGallery) {
-              console.log('📱 Saved to gallery:', galleryResult.filePath);
-            }
-          } catch (galleryError) {
-            console.warn('⚠️ Could not save to gallery:', galleryError);
+        try {
+          const galleryResult = await saveMediaToDevice(blob, effectiveFileName, effectiveMimeType);
+          setSavedToGallery(galleryResult.savedToGallery || galleryResult.success);
+          
+          const mediaType = getMediaType(effectiveMimeType);
+          if (galleryResult.savedToGallery) {
+            console.log('📱 Image/Vidéo sauvegardée dans la galerie:', galleryResult.filePath);
+          } else if (galleryResult.success && galleryResult.filePath) {
+            console.log(`📂 ${mediaType === 'audio' ? 'Audio' : 'Document'} sauvegardé dans EducaTok:`, galleryResult.filePath);
           }
+        } catch (galleryError) {
+          console.warn('⚠️ Impossible de sauvegarder sur le téléphone:', galleryError);
         }
       }
 
