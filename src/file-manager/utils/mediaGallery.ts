@@ -3,8 +3,9 @@
  * Utilise @capacitor-community/media (v8+) pour l'intégration native
  *
  * Comportement type WhatsApp:
- * - Les médias téléchargés apparaissent dans la galerie
- * - Album dédié "EducTok" pour regrouper les médias
+ * - Les médias téléchargés apparaissent dans la galerie (images/vidéos)
+ * - Dossier EducaTok dans Downloads pour les audios/documents
+ * - Album dédié "EducaTok" pour regrouper les médias
  * - Fallback web pour les environnements non-natifs
  */
 
@@ -18,11 +19,47 @@ const ALBUM_NAME = 'EducaTok';
 // Cache pour l'identifiant de l'album
 let albumIdentifier: string | null = null;
 
+// Cache pour savoir si les permissions ont été demandées
+let permissionsRequested = false;
+
 /**
  * Vérifie si on est sur une plateforme native (Android/iOS)
  */
 export const isNativePlatform = (): boolean => {
   return Capacitor.isNativePlatform();
+};
+
+/**
+ * Demande les permissions de stockage sur Android
+ * Nécessaire pour écrire dans ExternalStorage (dossier Downloads)
+ */
+export const requestStoragePermissions = async (): Promise<boolean> => {
+  if (!isNativePlatform() || permissionsRequested) {
+    return true;
+  }
+
+  try {
+    const platform = Capacitor.getPlatform();
+    
+    if (platform === 'android') {
+      // Sur Android 10+, on n'a pas besoin de permission pour le dossier Downloads
+      // Mais on doit quand même vérifier les permissions du Filesystem
+      const permStatus = await Filesystem.checkPermissions();
+      
+      if (permStatus.publicStorage !== 'granted') {
+        const reqResult = await Filesystem.requestPermissions();
+        permissionsRequested = true;
+        return reqResult.publicStorage === 'granted';
+      }
+    }
+    
+    permissionsRequested = true;
+    return true;
+  } catch (error) {
+    console.warn('⚠️ Erreur demande permissions:', error);
+    permissionsRequested = true;
+    return false;
+  }
 };
 
 /**
@@ -262,7 +299,8 @@ export const saveVideoToGallery = async (
 
 /**
  * Sauvegarde un audio dans le système de fichiers
- * Note: Les audios ne vont pas dans la galerie photos mais dans le dossier de l'app
+ * Note: Les audios ne vont pas dans la galerie photos mais dans le dossier EducaTok
+ * Utilise ExternalStorage sur Android pour être visible dans le gestionnaire de fichiers
  */
 export const saveAudioToDevice = async (
   blob: Blob,
@@ -274,12 +312,17 @@ export const saveAudioToDevice = async (
 
   try {
     const base64 = await blobToBase64(blob);
+    const platform = Capacitor.getPlatform();
     
-    // Sauvegarder dans le dossier Documents de l'app
+    // Sur Android: utiliser ExternalStorage pour que les fichiers soient visibles
+    // Sur iOS: utiliser Documents (pas d'accès externe sur iOS)
+    const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
+    const basePath = platform === 'android' ? 'Download/EducaTok/Audio' : 'EducaTok/Audio';
+    
     const result = await Filesystem.writeFile({
-      path: `EducaTok/Audio/${fileName}`,
+      path: `${basePath}/${fileName}`,
       data: base64,
-      directory: Directory.Documents,
+      directory,
       recursive: true,
     });
 
@@ -302,6 +345,7 @@ export const saveAudioToDevice = async (
 
 /**
  * Sauvegarde un document dans le système de fichiers
+ * Utilise ExternalStorage sur Android pour être visible dans le gestionnaire de fichiers
  */
 export const saveDocumentToDevice = async (
   blob: Blob,
@@ -313,11 +357,17 @@ export const saveDocumentToDevice = async (
 
   try {
     const base64 = await blobToBase64(blob);
+    const platform = Capacitor.getPlatform();
+    
+    // Sur Android: utiliser ExternalStorage pour que les fichiers soient visibles
+    // Sur iOS: utiliser Documents (pas d'accès externe sur iOS)
+    const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
+    const basePath = platform === 'android' ? 'Download/EducaTok/Documents' : 'EducaTok/Documents';
     
     const result = await Filesystem.writeFile({
-      path: `EducaTok/Documents/${fileName}`,
+      path: `${basePath}/${fileName}`,
       data: base64,
-      directory: Directory.Documents,
+      directory,
       recursive: true,
     });
 
@@ -341,12 +391,20 @@ export const saveDocumentToDevice = async (
 /**
  * Sauvegarde un média dans la galerie/système de fichiers selon son type
  * Point d'entrée principal pour la sauvegarde de médias
+ * 
+ * Comportement:
+ * - Images/Vidéos → Galerie Photos (album EducaTok)
+ * - Audios → Dossier Download/EducaTok/Audio (visible dans gestionnaire fichiers)
+ * - Documents → Dossier Download/EducaTok/Documents (visible dans gestionnaire fichiers)
  */
 export const saveMediaToDevice = async (
   blob: Blob,
   fileName: string,
   mimeType: string
 ): Promise<SaveToGalleryResult> => {
+  // Demander les permissions de stockage si nécessaire (Android)
+  await requestStoragePermissions();
+  
   const mediaType = getMediaType(mimeType);
   const finalFileName = generateFileName(fileName, mediaType);
   
