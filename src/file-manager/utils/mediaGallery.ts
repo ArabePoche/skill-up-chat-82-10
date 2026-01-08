@@ -1,23 +1,26 @@
 /**
  * Service pour sauvegarder les médias dans la galerie Android/iOS
- * Utilise @capacitor-community/media pour l'intégration native
- * 
+ * Utilise le plugin Capacitor "Media" (si présent côté natif)
+ *
  * Comportement type WhatsApp:
  * - Les médias téléchargés apparaissent dans la galerie
  * - Album dédié "EducTok" pour regrouper les médias
  * - Fallback web pour les environnements non-natifs
  */
 
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
-// Types pour le plugin Media (import dynamique pour éviter les erreurs web)
+// Types pour le plugin Media (bridge Capacitor : pas d'import NPM requis pour le build web)
 interface MediaPlugin {
   savePhoto: (options: { path: string; albumIdentifier?: string }) => Promise<{ filePath: string }>;
   saveVideo: (options: { path: string; albumIdentifier?: string }) => Promise<{ filePath: string }>;
   createAlbum: (options: { name: string }) => Promise<void>;
   getAlbums: () => Promise<{ albums: Array<{ identifier: string; name: string }> }>;
 }
+
+// Instance du plugin (résolue à l'exécution sur Android/iOS)
+const MediaBridge = registerPlugin<MediaPlugin>('Media');
 
 // Nom de l'album dans la galerie
 const ALBUM_NAME = 'EducaTok';
@@ -33,18 +36,18 @@ export const isNativePlatform = (): boolean => {
 };
 
 /**
- * Charge dynamiquement le plugin Media
+ * Accès au plugin Media si disponible côté natif.
+ * (Aucun import de "@capacitor-community/media" → évite l'erreur Netlify/Vite.)
  */
 const getMediaPlugin = async (): Promise<MediaPlugin | null> => {
   if (!isNativePlatform()) return null;
-  
-  try {
-    const { Media } = await import('@capacitor-community/media');
-    return Media as MediaPlugin;
-  } catch (error) {
-    console.warn('⚠️ Plugin Media non disponible:', error);
+
+  if (!Capacitor.isPluginAvailable('Media')) {
+    console.warn('⚠️ Plugin Media non disponible (Media)');
     return null;
   }
+
+  return MediaBridge;
 };
 
 /**
