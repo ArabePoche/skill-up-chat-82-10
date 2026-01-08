@@ -6,12 +6,14 @@
  * 📌 Stockage local (IndexedDB) = source réelle d'affichage
  * 📌 Cache mémoire = accès instantané sans vérification filesystem
  * 📌 Galerie (Android/iOS) = visibilité dans Photos pour images/vidéos
+ * 📌 Dossier EducaTok (Android) = visibilité dans gestionnaire fichiers pour audios/documents
  * 
  * ARCHITECTURE OPTIMISÉE:
  * ✅ Cache mémoire pour éviter les vérifications répétées
  * ✅ Vérification IndexedDB une seule fois au montage
  * ✅ Pas de vérification au scroll/render
  * ✅ Préchargement du cache au démarrage de l'app
+ * ✅ Sauvegarde automatique dans le stockage du téléphone
  */
 
 // Types
@@ -32,6 +34,7 @@ export {
   getMediaType,
   generateFileName,
   ensureAlbumExists,
+  requestStoragePermissions,
 } from './utils/mediaGallery';
 export type { SaveToGalleryResult, MediaType } from './utils/mediaGallery';
 
