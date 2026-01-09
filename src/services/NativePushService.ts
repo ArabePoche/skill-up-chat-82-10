@@ -1,24 +1,7 @@
 import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { FCMService } from './FCMService';
 import { NotificationService } from './NotificationService';
-
-// Import conditionnel pour éviter les erreurs si Capacitor n'est pas disponible
-let PushNotifications: any = null;
-let capacitorPushAvailable = false;
-
-// Vérifier si on est vraiment sur une plateforme native Capacitor
-const isNativePlatform = Capacitor.isNativePlatform();
-
-if (isNativePlatform) {
-  try {
-    const module = require('@capacitor/push-notifications');
-    PushNotifications = module.PushNotifications;
-    capacitorPushAvailable = true;
-    console.log('✅ Capacitor Push Notifications chargé avec succès');
-  } catch (error) {
-    console.warn('⚠️ Capacitor Push Notifications non disponible:', error);
-  }
-}
 
 /**
  * Service unifié pour les notifications push natives (iOS/Android) et web
@@ -36,11 +19,10 @@ export class NativePushService {
   }
 
   constructor() {
-    this.isNative = isNativePlatform && capacitorPushAvailable;
+    this.isNative = Capacitor.isNativePlatform();
     console.log('🔧 NativePushService initialisé:', {
-      isNativePlatform,
-      capacitorPushAvailable,
-      willUseNative: this.isNative
+      isNativePlatform: this.isNative,
+      platform: Capacitor.getPlatform()
     });
   }
 
@@ -54,7 +36,7 @@ export class NativePushService {
         platform: Capacitor.getPlatform()
       });
 
-      if (this.isNative && PushNotifications) {
+      if (this.isNative) {
         return await this.initializeNative();
       } else {
         return await this.initializeWeb();
@@ -72,10 +54,6 @@ export class NativePushService {
    * Initialise les notifications natives (iOS/Android) via Capacitor
    */
   private async initializeNative(): Promise<{ success: boolean; token?: string; error?: string }> {
-    if (!PushNotifications) {
-      return { success: false, error: 'Capacitor Push Notifications non disponible' };
-    }
-
     try {
       console.log('📱 Initialisation notifications natives Capacitor...');
 
@@ -89,7 +67,7 @@ export class NativePushService {
 
         // Retourner une promesse qui se résout quand on reçoit le token
         return new Promise((resolve) => {
-          // Timeout au cas où le token ne arrive pas
+          // Timeout au cas où le token n'arrive pas
           const timeout = setTimeout(() => {
             console.warn('⏱️ Timeout: pas de token reçu, mais permission accordée');
             resolve({ success: true });
@@ -154,22 +132,23 @@ export class NativePushService {
    * Vérifie si les notifications sont supportées sur cette plateforme
    */
   isSupported(): boolean {
+    const platform = Capacitor.getPlatform();
+    
     console.log('🔍 Vérification support notifications:', {
       isNative: this.isNative,
-      capacitorPushAvailable,
-      platform: Capacitor.getPlatform(),
+      platform,
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A'
     });
 
-    // Sur plateforme native Capacitor → toujours supporté si le plugin est chargé
-    if (this.isNative) {
-      console.log('✅ Plateforme native détectée, notifications supportées');
+    // Sur plateforme native Capacitor (android/ios) → toujours supporté
+    if (platform === 'android' || platform === 'ios') {
+      console.log('✅ Plateforme native détectée (' + platform + '), notifications supportées');
       return true;
     }
     
-    // Sur le web → vérifier service worker
-    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-      console.log('✅ Web avec Service Worker, notifications supportées');
+    // Sur le web → vérifier Notification API et service worker
+    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
+      console.log('✅ Web avec Notification API, notifications supportées');
       return true;
     }
 
@@ -181,7 +160,7 @@ export class NativePushService {
    * Obtient l'état actuel des permissions
    */
   async getPermissionStatus(): Promise<NotificationPermission | 'unknown'> {
-    if (this.isNative && PushNotifications) {
+    if (this.isNative) {
       try {
         const result = await PushNotifications.checkPermissions();
         console.log('📋 Status permission native:', result);
