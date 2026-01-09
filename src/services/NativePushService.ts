@@ -1,25 +1,32 @@
-
 import { Capacitor } from '@capacitor/core';
 import { FCMService } from './FCMService';
 import { NotificationService } from './NotificationService';
 
 // Import conditionnel pour éviter les erreurs si Capacitor n'est pas disponible
 let PushNotifications: any = null;
-try {
-  if (Capacitor.isNativePlatform()) {
-    PushNotifications = require('@capacitor/push-notifications').PushNotifications;
+let capacitorPushAvailable = false;
+
+// Vérifier si on est vraiment sur une plateforme native Capacitor
+const isNativePlatform = Capacitor.isNativePlatform();
+
+if (isNativePlatform) {
+  try {
+    const module = require('@capacitor/push-notifications');
+    PushNotifications = module.PushNotifications;
+    capacitorPushAvailable = true;
+    console.log('✅ Capacitor Push Notifications chargé avec succès');
+  } catch (error) {
+    console.warn('⚠️ Capacitor Push Notifications non disponible:', error);
   }
-} catch (error) {
-  console.warn('Capacitor Push Notifications not available:', error);
 }
 
 /**
  * Service unifié pour les notifications push natives (iOS/Android) et web
- * Utilise Capacitor Push pour mobile et Firebase FCM pour web
+ * Utilise Capacitor Push pour mobile natif et Firebase FCM pour web/PWA
  */
 export class NativePushService {
   private static instance: NativePushService;
-  private isNative = false;
+  private isNative: boolean;
 
   static getInstance(): NativePushService {
     if (!NativePushService.instance) {
@@ -29,7 +36,12 @@ export class NativePushService {
   }
 
   constructor() {
-    this.isNative = Capacitor.isNativePlatform();
+    this.isNative = isNativePlatform && capacitorPushAvailable;
+    console.log('🔧 NativePushService initialisé:', {
+      isNativePlatform,
+      capacitorPushAvailable,
+      willUseNative: this.isNative
+    });
   }
 
   /**
@@ -37,13 +49,18 @@ export class NativePushService {
    */
   async initialize(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
+      console.log('🚀 Initialisation des notifications...', {
+        isNative: this.isNative,
+        platform: Capacitor.getPlatform()
+      });
+
       if (this.isNative && PushNotifications) {
         return await this.initializeNative();
       } else {
         return await this.initializeWeb();
       }
     } catch (error) {
-      console.error('Erreur initialisation notifications:', error);
+      console.error('❌ Erreur initialisation notifications:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Erreur inconnue' 
@@ -60,35 +77,47 @@ export class NativePushService {
     }
 
     try {
-      console.log('🔔 Initialisation notifications natives...');
+      console.log('📱 Initialisation notifications natives Capacitor...');
 
       // Demander les permissions
       const permissionResult = await PushNotifications.requestPermissions();
+      console.log('📋 Résultat permission:', permissionResult);
       
       if (permissionResult.receive === 'granted') {
         // Enregistrer pour recevoir les notifications
         await PushNotifications.register();
 
-        // Écouter les événements
-        PushNotifications.addListener('registration', (token: any) => {
-          console.log('📱 Token natif reçu:', token.value);
-        });
+        // Retourner une promesse qui se résout quand on reçoit le token
+        return new Promise((resolve) => {
+          // Timeout au cas où le token ne arrive pas
+          const timeout = setTimeout(() => {
+            console.warn('⏱️ Timeout: pas de token reçu, mais permission accordée');
+            resolve({ success: true });
+          }, 10000);
 
-        PushNotifications.addListener('registrationError', (error: any) => {
-          console.error('❌ Erreur enregistrement natif:', error);
-        });
+          PushNotifications.addListener('registration', (token: { value: string }) => {
+            clearTimeout(timeout);
+            console.log('🎯 Token natif FCM reçu:', token.value?.substring(0, 20) + '...');
+            resolve({ success: true, token: token.value });
+          });
 
-        PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-          console.log('📨 Notification native reçue:', notification);
-        });
+          PushNotifications.addListener('registrationError', (error: any) => {
+            clearTimeout(timeout);
+            console.error('❌ Erreur enregistrement natif:', error);
+            resolve({ success: false, error: `Erreur enregistrement: ${JSON.stringify(error)}` });
+          });
 
-        PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
-          console.log('👆 Action notification native:', notification);
-        });
+          // Écouter les notifications
+          PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
+            console.log('📨 Notification reçue (foreground):', notification);
+          });
 
-        return { success: true };
+          PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
+            console.log('👆 Action sur notification:', notification);
+          });
+        });
       } else {
-        return { success: false, error: 'Permission refusée' };
+        return { success: false, error: 'Permission refusée par l\'utilisateur' };
       }
     } catch (error) {
       console.error('❌ Erreur notifications natives:', error);
@@ -103,7 +132,7 @@ export class NativePushService {
    * Initialise les notifications web via Firebase FCM
    */
   private async initializeWeb(): Promise<{ success: boolean; token?: string; error?: string }> {
-    console.log('🌐 Initialisation notifications web...');
+    console.log('🌐 Initialisation notifications web (FCM)...');
     return await FCMService.requestPermission();
   }
 
@@ -125,22 +154,27 @@ export class NativePushService {
    * Vérifie si les notifications sont supportées sur cette plateforme
    */
   isSupported(): boolean {
+    console.log('🔍 Vérification support notifications:', {
+      isNative: this.isNative,
+      capacitorPushAvailable,
+      platform: Capacitor.getPlatform(),
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A'
+    });
+
+    // Sur plateforme native Capacitor → toujours supporté si le plugin est chargé
     if (this.isNative) {
-      return PushNotifications !== null; // Capacitor disponible
-    } else {
-      // Pour le web - on est plus permissif pour permettre l'essai
-      // Firebase FCM gèrera les erreurs si vraiment non supporté
-      const hasSW = 'serviceWorker' in navigator;
-      
-      console.log('🔍 Vérification support notifications:', {
-        hasSW,
-        userAgent: navigator.userAgent
-      });
-      
-      // On retourne true si service worker est supporté
-      // Cela permet à la plupart des navigateurs modernes de tenter l'inscription
-      return hasSW;
+      console.log('✅ Plateforme native détectée, notifications supportées');
+      return true;
     }
+    
+    // Sur le web → vérifier service worker
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      console.log('✅ Web avec Service Worker, notifications supportées');
+      return true;
+    }
+
+    console.warn('⚠️ Notifications non supportées sur cette plateforme');
+    return false;
   }
 
   /**
@@ -150,13 +184,17 @@ export class NativePushService {
     if (this.isNative && PushNotifications) {
       try {
         const result = await PushNotifications.checkPermissions();
-        return result.receive === 'granted' ? 'granted' : 'denied';
-      } catch {
+        console.log('📋 Status permission native:', result);
+        return result.receive === 'granted' ? 'granted' : 
+               result.receive === 'denied' ? 'denied' : 'default';
+      } catch (error) {
+        console.error('Erreur vérification permission native:', error);
         return 'unknown';
       }
-    } else {
+    } else if (typeof Notification !== 'undefined') {
       return Notification.permission;
     }
+    return 'unknown';
   }
 }
 
