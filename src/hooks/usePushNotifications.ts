@@ -62,7 +62,7 @@ export const usePushNotifications = () => {
         .select('notification_preferences, token')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (data) {
         if (data.notification_preferences) {
