@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { offlineStore } from '../utils/offlineStore';
 
 const FIRST_RUN_KEY = 'educatok_first_run_complete';
@@ -17,10 +18,19 @@ interface FirstRunState {
   canAccessApp: boolean;
 }
 
+// Dans Capacitor natif, navigator.onLine n'est pas fiable
+// On assume qu'on est en ligne sauf preuve du contraire
+const getInitialOnlineStatus = () => {
+  if (Capacitor.isNativePlatform()) {
+    return true; // Assume en ligne dans app native
+  }
+  return navigator.onLine;
+};
+
 export const useFirstRun = () => {
   const [state, setState] = useState<FirstRunState>({
     isFirstRun: true,
-    isOnline: navigator.onLine,
+    isOnline: getInitialOnlineStatus(),
     isCacheReady: false,
     isLoading: true,
     canAccessApp: false,
@@ -30,7 +40,7 @@ export const useFirstRun = () => {
   const checkFirstRun = useCallback(async () => {
     const hasBeenOpened = localStorage.getItem(FIRST_RUN_KEY);
     const cacheInitialized = localStorage.getItem(CACHE_INITIALIZED_KEY);
-    const isOnline = navigator.onLine;
+    const isOnline = getInitialOnlineStatus();
 
     // Initialiser IndexedDB
     try {
