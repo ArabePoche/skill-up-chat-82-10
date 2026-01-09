@@ -3,6 +3,19 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import { FCMService } from './FCMService';
 import { NotificationService } from './NotificationService';
 
+// NOTE: Avec Vite/ESM, `require()` n'existe pas. On importe donc le plugin statiquement.
+// Sur le web, le plugin fournit une implémentation "web" (sans push) et n'explose pas.
+// Sur mobile (iOS/Android), Capacitor fournira l'implémentation native.
+const capacitorPushAvailable = true;
+
+// Vérifier si on est vraiment sur une plateforme native Capacitor
+const isNativePlatform = Capacitor.isNativePlatform();
+
+// ---
+// NativePushService (voir plus bas)
+// ---
+
+
 /**
  * Service unifié pour les notifications push natives (iOS/Android) et web
  * Utilise Capacitor Push pour mobile natif et Firebase FCM pour web/PWA
@@ -19,10 +32,11 @@ export class NativePushService {
   }
 
   constructor() {
-    this.isNative = Capacitor.isNativePlatform();
+    this.isNative = isNativePlatform && capacitorPushAvailable;
     console.log('🔧 NativePushService initialisé:', {
-      isNativePlatform: this.isNative,
-      platform: Capacitor.getPlatform()
+      isNativePlatform,
+      capacitorPushAvailable,
+      willUseNative: this.isNative
     });
   }
 
@@ -36,7 +50,7 @@ export class NativePushService {
         platform: Capacitor.getPlatform()
       });
 
-      if (this.isNative) {
+      if (this.isNative && PushNotifications) {
         return await this.initializeNative();
       } else {
         return await this.initializeWeb();
@@ -54,6 +68,10 @@ export class NativePushService {
    * Initialise les notifications natives (iOS/Android) via Capacitor
    */
   private async initializeNative(): Promise<{ success: boolean; token?: string; error?: string }> {
+    if (!PushNotifications) {
+      return { success: false, error: 'Capacitor Push Notifications non disponible' };
+    }
+
     try {
       console.log('📱 Initialisation notifications natives Capacitor...');
 
@@ -62,17 +80,15 @@ export class NativePushService {
       console.log('📋 Résultat permission:', permissionResult);
       
       if (permissionResult.receive === 'granted') {
-        // Enregistrer pour recevoir les notifications
-        await PushNotifications.register();
-
         // Retourner une promesse qui se résout quand on reçoit le token
         return new Promise((resolve) => {
-          // Timeout au cas où le token n'arrive pas
+          // Timeout au cas où le token ne arrive pas
           const timeout = setTimeout(() => {
             console.warn('⏱️ Timeout: pas de token reçu, mais permission accordée');
             resolve({ success: true });
           }, 10000);
 
+          // IMPORTANT: on écoute AVANT d'appeler register(), sinon on peut rater l'événement "registration"
           PushNotifications.addListener('registration', (token: { value: string }) => {
             clearTimeout(timeout);
             console.log('🎯 Token natif FCM reçu:', token.value?.substring(0, 20) + '...');
@@ -92,6 +108,13 @@ export class NativePushService {
 
           PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
             console.log('👆 Action sur notification:', notification);
+          });
+
+          // Enregistrer pour recevoir les notifications (APRÈS les listeners)
+          PushNotifications.register().catch((err: any) => {
+            clearTimeout(timeout);
+            console.error('❌ Erreur register() native:', err);
+            resolve({ success: false, error: `Erreur register(): ${JSON.stringify(err)}` });
           });
         });
       } else {
@@ -132,23 +155,22 @@ export class NativePushService {
    * Vérifie si les notifications sont supportées sur cette plateforme
    */
   isSupported(): boolean {
-    const platform = Capacitor.getPlatform();
-    
     console.log('🔍 Vérification support notifications:', {
       isNative: this.isNative,
-      platform,
+      capacitorPushAvailable,
+      platform: Capacitor.getPlatform(),
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A'
     });
 
-    // Sur plateforme native Capacitor (android/ios) → toujours supporté
-    if (platform === 'android' || platform === 'ios') {
-      console.log('✅ Plateforme native détectée (' + platform + '), notifications supportées');
+    // Sur plateforme native Capacitor → toujours supporté si le plugin est chargé
+    if (this.isNative) {
+      console.log('✅ Plateforme native détectée, notifications supportées');
       return true;
     }
     
-    // Sur le web → vérifier Notification API et service worker
-    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
-      console.log('✅ Web avec Notification API, notifications supportées');
+    // Sur le web → vérifier service worker
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      console.log('✅ Web avec Service Worker, notifications supportées');
       return true;
     }
 
@@ -160,7 +182,7 @@ export class NativePushService {
    * Obtient l'état actuel des permissions
    */
   async getPermissionStatus(): Promise<NotificationPermission | 'unknown'> {
-    if (this.isNative) {
+    if (this.isNative && PushNotifications) {
       try {
         const result = await PushNotifications.checkPermissions();
         console.log('📋 Status permission native:', result);
