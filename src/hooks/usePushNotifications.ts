@@ -36,9 +36,12 @@ export const usePushNotifications = () => {
 
   useEffect(() => {
     const checkSupport = async () => {
+      // Petit délai pour s'assurer que Capacitor est prêt
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const supported = nativePushService.isSupported();
       console.log('📱 Notifications supportées:', supported);
-      console.log('🖥️ Plateforme:', navigator.userAgent);
+      console.log('🖥️ Plateforme:', Capacitor.getPlatform());
       setIsSupported(supported);
       
       if (supported) {
@@ -49,7 +52,7 @@ export const usePushNotifications = () => {
         }
         loadUserPreferences();
         
-        // Précharger les sons de notification
+        // Précharger les sons de notification (ignoré sur mobile natif)
         NotificationSoundService.preloadSounds();
       } else {
         console.warn('⚠️ Notifications non supportées sur cet appareil');
