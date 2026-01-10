@@ -1,28 +1,31 @@
+/**
+ * NativePushService - Service unifié pour les notifications push
+ * 
+ * ARCHITECTURE:
+ * - Android/iOS Capacitor → Push natif via @capacitor/push-notifications
+ * - Web (navigateur réel) → Firebase FCM Web + Service Worker
+ * 
+ * RÈGLE D'OR: Une app Capacitor NE DOIT JAMAIS exécuter du code push web
+ */
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { FCMService } from './FCMService';
 import { NotificationService } from './NotificationService';
 
-// NOTE: Avec Vite/ESM, `require()` n'existe pas. On importe donc le plugin statiquement.
-// Sur le web, le plugin fournit une implémentation "web" (sans push) et n'explose pas.
-// Sur mobile (iOS/Android), Capacitor fournira l'implémentation native.
-const capacitorPushAvailable = true;
-
-// Vérifier si on est vraiment sur une plateforme native Capacitor
-const isNativePlatform = Capacitor.isNativePlatform();
-
-// ---
-// NativePushService (voir plus bas)
-// ---
-
-
 /**
- * Service unifié pour les notifications push natives (iOS/Android) et web
- * Utilise Capacitor Push pour mobile natif et Firebase FCM pour web/PWA
+ * Détection STRICTE de la plateforme native
+ * Seule méthode fiable pour distinguer mobile natif vs web
  */
+const getPlatformType = (): 'android' | 'ios' | 'web' => {
+  const platform = Capacitor.getPlatform();
+  if (platform === 'android' || platform === 'ios') {
+    return platform;
+  }
+  return 'web';
+};
+
 export class NativePushService {
   private static instance: NativePushService;
-  private isNative: boolean;
+  private platformType: 'android' | 'ios' | 'web';
 
   static getInstance(): NativePushService {
     if (!NativePushService.instance) {
@@ -32,29 +35,37 @@ export class NativePushService {
   }
 
   constructor() {
-    this.isNative = isNativePlatform && capacitorPushAvailable;
+    this.platformType = getPlatformType();
     console.log('🔧 NativePushService initialisé:', {
-      isNativePlatform,
-      capacitorPushAvailable,
-      willUseNative: this.isNative
+      platform: this.platformType,
+      isNativeMobile: this.isNativeMobile()
     });
   }
 
   /**
+   * Vérifie si on est sur une plateforme mobile native (Android/iOS)
+   */
+  private isNativeMobile(): boolean {
+    return this.platformType === 'android' || this.platformType === 'ios';
+  }
+
+  /**
    * Initialise le service de notifications selon la plateforme
+   * IMPORTANT: Sur mobile natif, on n'utilise JAMAIS le code web
    */
   async initialize(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
       console.log('🚀 Initialisation des notifications...', {
-        isNative: this.isNative,
-        platform: Capacitor.getPlatform()
+        platform: this.platformType
       });
 
-      if (this.isNative && PushNotifications) {
+      // Détection stricte: Android ou iOS = push natif uniquement
+      if (this.platformType === 'android' || this.platformType === 'ios') {
         return await this.initializeNative();
-      } else {
-        return await this.initializeWeb();
       }
+
+      // Web uniquement (navigateur réel, pas WebView Capacitor)
+      return await this.initializeWeb();
     } catch (error) {
       console.error('❌ Erreur initialisation notifications:', error);
       return { 
@@ -131,10 +142,23 @@ export class NativePushService {
 
   /**
    * Initialise les notifications web via Firebase FCM
+   * IMPORTANT: Cette méthode ne doit JAMAIS être appelée sur mobile natif
    */
   private async initializeWeb(): Promise<{ success: boolean; token?: string; error?: string }> {
     console.log('🌐 Initialisation notifications web (FCM)...');
-    return await FCMService.requestPermission();
+    
+    // Import dynamique de FCMService uniquement sur le web
+    // Cela évite que le code Firebase soit évalué sur mobile
+    try {
+      const { FCMService } = await import('./FCMService');
+      return await FCMService.requestPermission();
+    } catch (error) {
+      console.error('❌ Erreur import FCMService:', error);
+      return { 
+        success: false, 
+        error: 'Impossible de charger le service de notifications web' 
+      };
+    }
   }
 
   /**
@@ -156,21 +180,21 @@ export class NativePushService {
    */
   isSupported(): boolean {
     console.log('🔍 Vérification support notifications:', {
-      isNative: this.isNative,
-      capacitorPushAvailable,
-      platform: Capacitor.getPlatform(),
+      platform: this.platformType,
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A'
     });
 
-    // Sur plateforme native Capacitor → toujours supporté si le plugin est chargé
-    if (this.isNative) {
-      console.log('✅ Plateforme native détectée, notifications supportées');
+    // Sur plateforme native mobile → toujours supporté
+    if (this.isNativeMobile()) {
+      console.log('✅ Plateforme native mobile détectée, notifications supportées');
       return true;
     }
     
-    // Sur le web → vérifier service worker
-    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-      console.log('✅ Web avec Service Worker, notifications supportées');
+    // Sur le web → vérifier Notification API et Service Worker
+    if (typeof window !== 'undefined' && 
+        'Notification' in window && 
+        'serviceWorker' in navigator) {
+      console.log('✅ Web avec Notification API et Service Worker, notifications supportées');
       return true;
     }
 
@@ -182,7 +206,8 @@ export class NativePushService {
    * Obtient l'état actuel des permissions
    */
   async getPermissionStatus(): Promise<NotificationPermission | 'unknown'> {
-    if (this.isNative && PushNotifications) {
+    // Mobile natif: utiliser Capacitor PushNotifications
+    if (this.isNativeMobile()) {
       try {
         const result = await PushNotifications.checkPermissions();
         console.log('📋 Status permission native:', result);
@@ -192,9 +217,13 @@ export class NativePushService {
         console.error('Erreur vérification permission native:', error);
         return 'unknown';
       }
-    } else if (typeof Notification !== 'undefined') {
+    }
+    
+    // Web: utiliser l'API Notification du navigateur
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       return Notification.permission;
     }
+    
     return 'unknown';
   }
 }
