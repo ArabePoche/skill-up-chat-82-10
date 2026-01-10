@@ -47,8 +47,20 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
   };
 
   if (!isSupported) {
-    // Détecter si c'est iOS pour un message adapté
+    // Détecter la plateforme pour un message adapté
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isCapacitorNative = typeof (window as any).Capacitor !== 'undefined' && 
+      ((window as any).Capacitor.getPlatform?.() === 'android' || 
+       (window as any).Capacitor.getPlatform?.() === 'ios');
+    
+    // Si on est sur Capacitor natif, ne pas afficher ce message d'erreur
+    // car isSupported devrait être true sur mobile natif
+    // Ce cas ne devrait pas arriver normalement
+    console.warn('⚠️ isSupported=false mais on est peut-être sur mobile:', {
+      isIOS,
+      isCapacitorNative,
+      userAgent: navigator.userAgent
+    });
     
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,10 +68,14 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BellOff className="w-5 h-5 text-gray-500" />
-              Notifications non supportées
+              Notifications non disponibles
             </DialogTitle>
             <DialogDescription>
-              {isIOS ? (
+              {isCapacitorNative ? (
+                <>
+                  Veuillez vérifier que les notifications sont autorisées dans les paramètres de votre appareil.
+                </>
+              ) : isIOS ? (
                 <>
                   Pour recevoir les notifications sur iPhone/iPad, installez l'application sur votre écran d'accueil : 
                   <br />
@@ -67,7 +83,7 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
                 </>
               ) : (
                 <>
-                  Votre navigateur ne supporte pas les notifications push.
+                  Les notifications ne sont pas disponibles dans ce contexte.
                   Essayez avec Chrome, Firefox, Edge ou Samsung Internet.
                 </>
               )}
