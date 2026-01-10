@@ -1,9 +1,15 @@
+/**
+ * Hook pour gérer les notifications push
+ * 
+ * Utilise NativePushService qui gère automatiquement:
+ * - Android/iOS → Push natif Capacitor
+ * - Web → Firebase FCM
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { FCMService } from '@/services/FCMService';
 import { NotificationService } from '@/services/NotificationService';
 import { nativePushService } from '@/services/NativePushService';
 import { NotificationSoundService } from '@/services/NotificationSoundService';
@@ -88,29 +94,22 @@ export const usePushNotifications = () => {
     try {
       console.log('🔔 Demande de permission pour les notifications...');
       
+      // NativePushService gère automatiquement la bonne méthode selon la plateforme
       const result = await nativePushService.initialize();
       
       if (result.success) {
-        // Pour les notifications web, utiliser FCM pour obtenir le token
-        if (!result.token) {
-          const fcmResult = await FCMService.requestPermission();
-          if (fcmResult.success && fcmResult.token) {
-            result.token = fcmResult.token;
-          }
-        }
-
+        setPermission('granted');
+        
         if (result.token) {
-          setPermission('granted');
           setFcmToken(result.token);
-          
           await NotificationService.saveToken(user.id, result.token);
           toast.success('🎉 Notifications activées avec succès !');
-          return true;
         } else {
+          // Sur mobile natif, on peut ne pas avoir le token immédiatement
+          // mais la permission est accordée
           toast.success('✅ Notifications activées !');
-          setPermission('granted');
-          return true;
         }
+        return true;
       } else {
         console.error('Erreur lors de l\'activation:', result.error);
         toast.error(`❌ ${result.error || 'Erreur lors de la configuration des notifications'}`);
@@ -174,29 +173,35 @@ export const usePushNotifications = () => {
       return;
     }
 
+    const platform = Capacitor.getPlatform();
+    const isNativeMobile = platform === 'android' || platform === 'ios';
+
     try {
-      // Afficher d'abord une notification locale immédiate
-      if ('Notification' in window && Notification.permission === 'granted') {
+      // Jouer le son de notification (ignorer l'erreur si les fichiers audio n'existent pas)
+      NotificationSoundService.playNotificationSound('default').catch(() => {
+        console.log('Sons de notification non disponibles');
+      });
+
+      // Sur mobile natif, ne PAS utiliser l'API Notification du navigateur
+      if (!isNativeMobile && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         const localNotif = new Notification('🎯 Test immédiat', {
           body: 'Notification locale fonctionnelle !',
           icon: '/icon-192.png',
           badge: '/badge-72.png'
         });
-        
-        // Jouer le son de notification (ignorer l'erreur si les fichiers audio n'existent pas)
-        NotificationSoundService.playNotificationSound('default').catch(() => {
-          console.log('Sons de notification non disponibles');
-        });
-        
         setTimeout(() => localNotif.close(), 3000);
       }
 
-      // Ensuite envoyer via FCM si le token est disponible
+      // Envoyer via FCM si le token est disponible
       if (fcmToken) {
         await NotificationService.sendTestNotification(user.id, fcmToken);
         toast.success('🎯 Notifications de test envoyées !');
+      } else if (isNativeMobile) {
+        // Sur mobile natif, envoyer quand même via l'edge function
+        await NotificationService.sendTestNotification(user.id, 'native-test');
+        toast.success('🎯 Notification de test envoyée !');
       } else {
-        toast.warning('⚠️ Token FCM non disponible, notification locale uniquement');
+        toast.warning('⚠️ Token FCM non disponible');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi de la notification de test:', error);
@@ -205,8 +210,10 @@ export const usePushNotifications = () => {
   }, [fcmToken, user]);
 
   // Computed property for hasPermission
-  // Sur le web on exige un token FCM; sur mobile natif, seule la permission suffit
-  const hasPermission = permission === 'granted' && (Capacitor.isNativePlatform() ? true : !!fcmToken);
+  // Sur mobile natif, seule la permission suffit (pas besoin de token FCM web)
+  const platform = Capacitor.getPlatform();
+  const isNativeMobile = platform === 'android' || platform === 'ios';
+  const hasPermission = permission === 'granted' && (isNativeMobile || !!fcmToken);
 
   return {
     isSupported,
