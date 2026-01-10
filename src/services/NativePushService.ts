@@ -15,7 +15,7 @@ import { NotificationService } from './NotificationService';
  * Détection STRICTE de la plateforme native
  * Seule méthode fiable pour distinguer mobile natif vs web
  */
-const getPlatformType = (): 'android' | 'ios' | 'web' => {
+const detectPlatformType = (): 'android' | 'ios' | 'web' => {
   const platform = Capacitor.getPlatform();
   if (platform === 'android' || platform === 'ios') {
     return platform;
@@ -25,6 +25,10 @@ const getPlatformType = (): 'android' | 'ios' | 'web' => {
 
 export class NativePushService {
   private static instance: NativePushService;
+  /**
+   * IMPORTANT: on garde un cache, mais on le rafraîchit à chaque appel public.
+   * Dans certains contextes (WebView/hot-reload), la détection peut être fausse au tout début.
+   */
   private platformType: 'android' | 'ios' | 'web';
 
   static getInstance(): NativePushService {
@@ -35,18 +39,31 @@ export class NativePushService {
   }
 
   constructor() {
-    this.platformType = getPlatformType();
+    this.platformType = detectPlatformType();
     console.log('🔧 NativePushService initialisé:', {
       platform: this.platformType,
-      isNativeMobile: this.isNativeMobile()
+      capacitorPlatform: Capacitor.getPlatform(),
     });
+  }
+
+  /**
+   * Rafraîchit la plateforme détectée (évite les faux "web" si le service est instancié trop tôt).
+   */
+  private refreshPlatformType(): 'android' | 'ios' | 'web' {
+    const detected = detectPlatformType();
+    if (detected !== this.platformType) {
+      console.log('🔄 Plateforme mise à jour:', { from: this.platformType, to: detected });
+      this.platformType = detected;
+    }
+    return this.platformType;
   }
 
   /**
    * Vérifie si on est sur une plateforme mobile native (Android/iOS)
    */
   private isNativeMobile(): boolean {
-    return this.platformType === 'android' || this.platformType === 'ios';
+    const platform = this.refreshPlatformType();
+    return platform === 'android' || platform === 'ios';
   }
 
   /**
@@ -55,12 +72,11 @@ export class NativePushService {
    */
   async initialize(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
-      console.log('🚀 Initialisation des notifications...', {
-        platform: this.platformType
-      });
+      const platform = this.refreshPlatformType();
+      console.log('🚀 Initialisation des notifications...', { platform });
 
       // Détection stricte: Android ou iOS = push natif uniquement
-      if (this.platformType === 'android' || this.platformType === 'ios') {
+      if (platform === 'android' || platform === 'ios') {
         return await this.initializeNative();
       }
 
@@ -68,9 +84,9 @@ export class NativePushService {
       return await this.initializeWeb();
     } catch (error) {
       console.error('❌ Erreur initialisation notifications:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Erreur inconnue' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
       };
     }
   }
