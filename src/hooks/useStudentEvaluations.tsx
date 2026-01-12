@@ -34,6 +34,7 @@ export const useStudentEvaluations = () => {
       return evaluations || [];
     },
     enabled: !!user?.id,
-    refetchInterval: 10000,
+    staleTime: 60000, // Cache pendant 1 minute
+    refetchInterval: 60000, // Toutes les minutes au lieu de 10 secondes
   });
 };
