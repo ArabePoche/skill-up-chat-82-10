@@ -91,7 +91,8 @@ const VideoCard: React.FC<VideoCardProps> = ({
       return count ?? video.comments_count;
     },
     enabled: !!video.id,
-    refetchInterval: 5000, // Rafraîchissement toutes les 5 secondes
+    staleTime: 60000, // Cache pendant 1 minute
+    refetchInterval: false, // Désactivé - invalidation manuelle
   });
 
   // Détection du type de vidéo
