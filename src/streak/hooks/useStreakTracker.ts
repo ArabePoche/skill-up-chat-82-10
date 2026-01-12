@@ -32,7 +32,8 @@ export const useStreakProgress = (userId?: string) => {
       };
     },
     enabled: !!userId,
-    refetchInterval: 10000, // Refetch toutes les 10 secondes pour UI temps réel
+    staleTime: 60000, // Cache pendant 1 minute
+    refetchInterval: 60000, // Toutes les minutes au lieu de 10 secondes
   });
 
   const requiredMinutes = globalConfig?.minutes_per_day_required || 5;
