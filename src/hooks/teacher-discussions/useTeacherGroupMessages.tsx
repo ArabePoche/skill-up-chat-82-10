@@ -95,6 +95,7 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
       return messages || [];
     },
     enabled: !!formationId && !!levelId && !!user?.id,
-    refetchInterval: 2000, // Actualisation automatique chaque 2 secondes
+    staleTime: 30000, // Cache pendant 30 secondes
+    refetchInterval: false, // Désactivé - utiliser Supabase Realtime à la place
   });
 };
