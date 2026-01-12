@@ -47,7 +47,8 @@ export const usePostLikes = (postId: string, initialLikesCount: number = 0) => {
       return count ?? initialLikesCount;
     },
     enabled: !!postId,
-    refetchInterval: 3000,
+    staleTime: 60000, // Cache pendant 1 minute
+    refetchInterval: false, // Désactivé - invalidation manuelle dans onSuccess
   });
 
   // Fonction de mutation like/unlike
