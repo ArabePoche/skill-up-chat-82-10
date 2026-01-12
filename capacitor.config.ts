@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     url: 'https://educatok.netlify.app',
-    cleartext: false,
+    cleartext: true,
   },
 };
 
