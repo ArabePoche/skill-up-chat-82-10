@@ -157,6 +157,7 @@ export const usePromotionMessages = (lessonId?: string, formationId?: string) =>
       return data || [];
     },
     enabled: !!lessonId && !!formationId && !!user?.id,
-    refetchInterval: 1000, // Rafraîchir toutes les secondes pour le temps réel
+    staleTime: 30000, // Cache pendant 30 secondes
+    refetchInterval: false, // Désactivé - utiliser invalidation manuelle après action
   });
 };
