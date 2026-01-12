@@ -72,7 +72,8 @@ const Conversations = () => {
       return data || [];
     },
     enabled: !!user?.id && !!otherUserId,
-    refetchInterval: 3000,
+    staleTime: 30000, // Cache pendant 30 secondes
+    refetchInterval: false, // Désactivé - utiliser Realtime subscriptions
   });
 
   // Envoyer un message
