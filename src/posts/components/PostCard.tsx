@@ -95,7 +95,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
       return count ?? (post.comments_count || 0);
     },
     enabled: !!post.id,
-    refetchInterval: 3000,
+    staleTime: 60000, // Cache pendant 1 minute
+    refetchInterval: false, // Désactivé - le compteur se met à jour via invalidation
   });
 
   // Récupérer toutes les images du post
