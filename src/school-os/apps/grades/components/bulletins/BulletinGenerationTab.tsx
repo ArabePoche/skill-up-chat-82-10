@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp, AlertCircle, ArrowUpDown, Trophy, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
 import { useBulletinTemplates, useBulletinAppreciations, BulletinTemplate, BulletinAppreciationTemplate } from '../../hooks/useBulletins';
 import { StudentBulletinCard, StudentBulletinData, SubjectGrade } from './StudentBulletinCard';
@@ -57,6 +58,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   const [selectedCompositionId, setSelectedCompositionId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [expandedAll, setExpandedAll] = useState(true);
+  const [sortBy, setSortBy] = useState<'name' | 'rank'>('name'); // Tri par nom ou par classement
   
   // Configuration des notes de classe
   const [classNotesConfig, setClassNotesConfig] = useState<ClassNotesConfig>({
@@ -418,9 +420,40 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions et Tri */}
           {selectedCompositionId && bulletinsData.length > 0 && (
-            <div className="flex gap-3 mt-4 pt-4 border-t">
+            <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t">
+              {/* Option de tri */}
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Trier par :</span>
+                <ToggleGroup 
+                  type="single" 
+                  value={sortBy} 
+                  onValueChange={(value) => value && setSortBy(value as 'name' | 'rank')}
+                  className="bg-muted rounded-md p-1"
+                >
+                  <ToggleGroupItem 
+                    value="name" 
+                    aria-label="Trier par nom"
+                    className="gap-1 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    <span className="text-xs">Nom</span>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem 
+                    value="rank" 
+                    aria-label="Trier par classement"
+                    className="gap-1 data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  >
+                    <Trophy className="h-3.5 w-3.5" />
+                    <span className="text-xs">Classement</span>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+
+              <div className="flex-1" />
+              
               <Button 
                 variant="outline"
                 onClick={() => setExpandedAll(!expandedAll)}
@@ -503,7 +536,18 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
       {/* Bulletins */}
       {!isLoading && selectedCompositionId && bulletinsData.length > 0 && (
         <div className="space-y-4">
-          {bulletinsData.map((data) => (
+          {/* Trier les bulletins selon le mode choisi */}
+          {[...bulletinsData]
+            .sort((a, b) => {
+              if (sortBy === 'rank') {
+                // Tri par classement (rang croissant)
+                return a.rank - b.rank;
+              } else {
+                // Tri par nom alphabétique
+                return a.studentName.localeCompare(b.studentName, 'fr', { sensitivity: 'base' });
+              }
+            })
+            .map((data) => (
             <StudentBulletinCard
               key={data.studentId}
               data={data}
