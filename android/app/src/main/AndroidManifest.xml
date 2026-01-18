@@ -27,8 +27,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Domaine principal de production -->
-                <data android:scheme="https" android:host="educatok.com" />
+                <!-- Domaine principal Netlify -->
+                <data android:scheme="https" android:host="educatok.netlify.app" />
             </intent-filter>
 
             <!-- Deep Links pour preview Lovable (développement) -->
