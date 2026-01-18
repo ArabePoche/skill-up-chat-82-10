@@ -138,7 +138,7 @@ export const useDeepLinks = () => {
  */
 export const generateShareableLink = (
   path: string,
-  baseUrl: string = 'https://educatok.com'
+  baseUrl: string = 'https://educatok.netlify.app'
 ): string => {
   // S'assurer que le path commence par /
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -174,3 +174,4 @@ export const generateProfileShareLink = (profileId: string): string => {
 };
 
 export default useDeepLinks;
+ 
