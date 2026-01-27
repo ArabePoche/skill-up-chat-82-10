@@ -54,7 +54,7 @@ export const MaintenanceScreen: React.FC = () => {
         {/* Logo */}
         <div className="pt-4 flex flex-col items-center gap-3">
           <img 
-            src="/pwa-192x192.png" 
+            src="/educatok-logo.png" 
             alt="EducaTok Logo" 
             className="w-16 h-16 rounded-2xl shadow-lg"
           />
