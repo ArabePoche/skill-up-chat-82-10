@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
 import useBackButtonHandler from '@/hooks/useBackButtonHandler';
-import { useDeepLinks } from '@/hooks/useDeepLinks';
+import { useDeepLinks } from '@/hooks/useDeeplinks';
 import { registerServiceWorker } from '@/offline/utils/registerSW';
 import LanguageOnboarding from '@/components/LanguageOnboarding';
 import MaintenanceScreen from '@/components/MaintenanceScreen';
