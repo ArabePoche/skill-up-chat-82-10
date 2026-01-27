@@ -37,6 +37,7 @@ import School from '@/pages/School';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { OfflineIndicator, OfflineGate, ConversationSyncProvider } from '@/offline';
+import { OfflineAuthBanner } from '@/offline/components/OfflineAuthBanner';
 
 
 // Créer une instance unique du QueryClient
@@ -59,6 +60,7 @@ const AppWithRouter: React.FC = () => {
       <StreakTrackerWrapper />
       <ActivityTrackerWrapper />
       <OfflineIndicator />
+      <OfflineAuthBanner />
       <Routes>
         {/* Routes spéciales qui gardent le système de routage classique */}
         <Route path="/formation/:formationId" element={<FormationDetail />} />

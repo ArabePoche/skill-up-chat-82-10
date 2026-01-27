@@ -6,6 +6,7 @@
 // Stores et utilitaires
 export { offlineStore } from './utils/offlineStore';
 export { syncManager } from './utils/syncManager';
+export { authStore } from './utils/authStore';
 export { 
   hashQueryKey, 
   persistQuery, 
@@ -22,6 +23,7 @@ export { useOfflineMutation, useSyncPendingMutations } from './hooks/useOfflineM
 export { useFirstRun } from './hooks/useFirstRun';
 export { useOfflineConversations } from './hooks/useOfflineConversations';
 export { useOfflineGroupChat } from './hooks/useOfflineGroupeChat';
+export { useSupabaseStatus } from './hooks/useSupabaseStatus';
 
 // Composants
 export { OfflineIndicator } from './components/OfflineIndicator';
