@@ -1,15 +1,16 @@
 /**
  * Hook pour les mutations offline-first
  * Les mutations sont mises en file d'attente si hors ligne
+ * et synchronisées automatiquement au retour de la connexion
  */
 
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { offlineStore } from '../utils/offlineStore';
-import { useOfflineSync } from './useOfflineSync';
-import { toast } from '@/hooks/use-toast';
+import { syncManager } from '../utils/syncManager';
+import { toast } from 'sonner';
 
-type MutationType = 'message' | 'reaction' | 'progress' | 'profile';
+type MutationType = 'message' | 'reaction' | 'progress' | 'profile' | 'grade' | 'attendance' | 'payment' | 'note' | 'generic';
 
 interface UseOfflineMutationOptions<TData, TVariables, TError = Error> 
   extends Omit<UseMutationOptions<TData, TError, TVariables>, 'mutationFn'> {
@@ -33,8 +34,15 @@ export function useOfflineMutation<TData, TVariables, TError = Error>(
     ...mutationOptions 
   } = options;
   
-  const { isOnline } = useOfflineSync();
+  const [isOnline, setIsOnline] = useState(syncManager.getOnlineStatus());
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const unsubscribe = syncManager.onConnectionChange((online) => {
+      setIsOnline(online);
+    });
+    return () => { unsubscribe(); };
+  }, []);
 
   const offlineMutationFn = useCallback(async (variables: TVariables): Promise<TData> => {
     if (isOnline) {
@@ -52,13 +60,12 @@ export function useOfflineMutation<TData, TVariables, TError = Error>(
     } else {
       // Hors ligne : mettre en queue
       await offlineStore.addPendingMutation({
-        type: mutationType,
+        type: mutationType as 'message' | 'reaction' | 'progress' | 'profile',
         payload: variables,
       });
 
-      toast({
-        title: "Hors ligne",
-        description: "L'action sera synchronisée dès que la connexion sera rétablie",
+      toast.info('Modification enregistrée localement', {
+        description: 'Elle sera synchronisée dès le retour de la connexion',
       });
 
       // Retourner une version optimiste si disponible
@@ -81,40 +88,75 @@ export function useOfflineMutation<TData, TVariables, TError = Error>(
  * Hook pour synchroniser les mutations en attente
  */
 export function useSyncPendingMutations() {
-  const { isOnline } = useOfflineSync();
+  const [isOnline, setIsOnline] = useState(syncManager.getOnlineStatus());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0 });
   const queryClient = useQueryClient();
 
-  const syncAll = useCallback(async () => {
-    if (!isOnline) return { synced: 0, failed: 0 };
+  // Charger le compteur au démarrage
+  useEffect(() => {
+    const loadCount = async () => {
+      const pending = await offlineStore.getPendingMutations();
+      setPendingCount(pending.length);
+    };
+    loadCount();
+
+    // S'abonner aux changements de connexion
+    const unsubscribe = syncManager.onConnectionChange(async (online) => {
+      setIsOnline(online);
+      if (online) {
+        // Recharger le compteur car syncManager va synchroniser
+        const pending = await offlineStore.getPendingMutations();
+        setPendingCount(pending.length);
+      }
+    });
+
+    // S'abonner aux événements de sync
+    const unsubscribeSync = syncManager.onSyncEvent((event) => {
+      switch (event.type) {
+        case 'start':
+          setIsSyncing(true);
+          break;
+        case 'progress':
+          setSyncProgress({ current: event.current || 0, total: event.total || 0 });
+          break;
+        case 'complete':
+        case 'error':
+          setIsSyncing(false);
+          setSyncProgress({ current: 0, total: 0 });
+          // Recharger le compteur
+          offlineStore.getPendingMutations().then(pending => setPendingCount(pending.length));
+          break;
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeSync();
+    };
+  }, []);
+
+  const syncAllPending = useCallback(async () => {
+    if (!isOnline || isSyncing) return { synced: 0, failed: 0 };
+
+    // Forcer une synchronisation
+    await syncManager.forceSync();
+
+    // Rafraîchir toutes les données
+    queryClient.invalidateQueries();
 
     const pending = await offlineStore.getPendingMutations();
-    let synced = 0;
-    let failed = 0;
+    setPendingCount(pending.length);
 
-    for (const mutation of pending) {
-      try {
-        // TODO: Implémenter la logique de sync selon le type
-        // Pour l'instant on marque comme complété
-        await offlineStore.removePendingMutation(mutation.id);
-        synced++;
-      } catch (error) {
-        console.error('Failed to sync mutation:', mutation.id, error);
-        await offlineStore.incrementMutationRetry(mutation.id);
-        failed++;
-      }
-    }
+    return { synced: 0, failed: pending.length };
+  }, [isOnline, isSyncing, queryClient]);
 
-    if (synced > 0) {
-      // Rafraîchir toutes les données
-      queryClient.invalidateQueries();
-      toast({
-        title: "Synchronisation terminée",
-        description: `${synced} action(s) synchronisée(s)`,
-      });
-    }
-
-    return { synced, failed };
-  }, [isOnline, queryClient]);
-
-  return { syncAll };
+  return { 
+    isSyncing, 
+    pendingCount, 
+    syncProgress, 
+    syncAllPending,
+    isOnline,
+  };
 }

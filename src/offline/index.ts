@@ -31,3 +31,4 @@ export { OfflineDownloadButton } from './components/OfflineDownloadButton';
 export { OfflineGate } from './components/OfflineGate';
 export { ConnectionRequiredScreen } from './components/ConnectionRequiredScreen';
 export { ConversationSyncProvider } from './components/ConversationSyncProvider';
+export { SyncStatusIndicator } from './components/SyncStatusIndicator';
