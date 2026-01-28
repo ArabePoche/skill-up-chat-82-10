@@ -54,7 +54,7 @@ interface CachedQuery {
 
 interface PendingMutation {
   id: string;
-  type: 'message' | 'reaction' | 'progress' | 'profile';
+  type: 'message' | 'reaction' | 'progress' | 'profile' | 'grade' | 'attendance' | 'payment' | 'note' | 'generic';
   payload: any;
   createdAt: number;
   retryCount: number;
