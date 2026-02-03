@@ -64,24 +64,78 @@ export const usePushNotifications = () => {
 
   /**
    * IMPORTANT (mobile natif): le token peut arriver APRÈS l'appel à requestPermission()
-   * (event `registration`). On s'abonne donc aux tokens pour:
+   * ou même au DÉMARRAGE de l'app si la permission était déjà accordée.
+   * On s'abonne donc aux tokens pour:
    * - mettre à jour le state
    * - persister dans `push_tokens` dès qu'il est disponible
    */
   useEffect(() => {
-    if (!user) return;
-
     const platform = Capacitor.getPlatform();
     const isNativeMobile = platform === 'android' || platform === 'ios';
-    if (!isNativeMobile) return;
-
-    return nativePushService.onToken((token) => {
-      setFcmToken(token);
-      NotificationService.saveToken(user.id, token).catch((error) => {
-        console.error('Erreur sauvegarde token (listener natif):', error);
-      });
+    
+    console.log('🔔 [usePushNotifications] Setup listener token:', {
+      platform,
+      isNativeMobile,
+      hasUser: !!user,
+      userId: user?.id?.substring(0, 8) + '...',
     });
+    
+    if (!isNativeMobile) {
+      console.log('⏭️ [usePushNotifications] Skip listener natif (pas sur mobile)');
+      return;
+    }
+
+    // S'abonner même sans user pour capter le token au démarrage
+    // On sauvegardera quand user sera disponible
+    const unsubscribe = nativePushService.onToken(async (token) => {
+      console.log('🎯 [usePushNotifications] Token reçu via listener!', {
+        tokenPreview: token.substring(0, 30) + '...',
+        tokenLength: token.length,
+        platform,
+        hasUser: !!user,
+      });
+      
+      setFcmToken(token);
+      setPermission('granted');
+      
+      // Sauvegarder seulement si on a un user
+      if (user?.id) {
+        try {
+          console.log('💾 [usePushNotifications] Sauvegarde token en DB...');
+          await NotificationService.saveToken(user.id, token);
+          console.log('✅ [usePushNotifications] Token sauvegardé en DB!');
+        } catch (error) {
+          console.error('❌ [usePushNotifications] Erreur sauvegarde token:', error);
+        }
+      } else {
+        console.log('⏳ [usePushNotifications] User non connecté, token en attente de sauvegarde');
+      }
+    });
+
+    return unsubscribe;
   }, [user?.id]);
+
+  // Effet séparé pour sauvegarder un token en attente quand user devient disponible
+  useEffect(() => {
+    const platform = Capacitor.getPlatform();
+    const isNativeMobile = platform === 'android' || platform === 'ios';
+    
+    if (!isNativeMobile || !user?.id || !fcmToken) return;
+    
+    // Si on a un token mais qu'il n'a pas encore été sauvegardé
+    console.log('🔄 [usePushNotifications] User disponible, vérification sauvegarde token...');
+    
+    const saveIfNeeded = async () => {
+      try {
+        await NotificationService.saveToken(user.id, fcmToken);
+        console.log('✅ [usePushNotifications] Token sauvegardé après connexion user');
+      } catch (error) {
+        console.error('❌ [usePushNotifications] Erreur sauvegarde après connexion:', error);
+      }
+    };
+    
+    saveIfNeeded();
+  }, [user?.id, fcmToken]);
 
   const loadUserPreferences = useCallback(async () => {
     if (!user) return;
