@@ -45,6 +45,15 @@ export class NativePushService {
   private _platformType: 'android' | 'ios' | 'web' | null = null;
   private initPromise: Promise<void> | null = null;
 
+  /**
+   * Gestion interne des tokens natifs.
+   * Objectif: même si `initializeNative()` timeout, on veut capter le token
+   * plus tard (event `registration`) et le remonter au front via listeners.
+   */
+  private nativeListenersReady = false;
+  private lastNativeToken: string | null = null;
+  private tokenListeners = new Set<(token: string) => void>();
+
   static getInstance(): NativePushService {
     if (!NativePushService.instance) {
       NativePushService.instance = new NativePushService();
@@ -55,6 +64,60 @@ export class NativePushService {
   constructor() {
     // Initialisation lazy - on ne détecte pas tout de suite
     console.log('🔧 NativePushService créé (détection lazy)');
+  }
+
+  /**
+   * S'abonner aux mises à jour de token (principalement utile sur mobile natif).
+   * Retourne une fonction `unsubscribe`.
+   */
+  onToken(listener: (token: string) => void): () => void {
+    this.tokenListeners.add(listener);
+    // Si on a déjà un token, on le rejoue pour synchroniser l'état.
+    if (this.lastNativeToken) {
+      listener(this.lastNativeToken);
+    }
+    return () => {
+      this.tokenListeners.delete(listener);
+    };
+  }
+
+  private emitToken(token: string) {
+    this.lastNativeToken = token;
+    for (const cb of this.tokenListeners) {
+      try {
+        cb(token);
+      } catch (e) {
+        console.warn('⚠️ Erreur listener token push:', e);
+      }
+    }
+  }
+
+  /**
+   * Enregistre les listeners natifs une seule fois pour éviter les doublons.
+   */
+  private ensureNativeListeners(): void {
+    if (this.nativeListenersReady) return;
+    if (!isPushNotificationsAvailable()) return;
+
+    this.nativeListenersReady = true;
+
+    PushNotifications.addListener('registration', (token: { value: string }) => {
+      console.log('🎯 Token natif FCM reçu:', token.value?.substring(0, 20) + '...');
+      if (token?.value) this.emitToken(token.value);
+    });
+
+    PushNotifications.addListener('registrationError', (error: any) => {
+      console.error('❌ Erreur enregistrement natif:', error);
+    });
+
+    // Écouter les notifications
+    PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
+      console.log('📨 Notification reçue (foreground):', notification);
+    });
+
+    PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
+      console.log('👆 Action sur notification:', notification);
+    });
   }
 
   /**
@@ -164,46 +227,35 @@ export class NativePushService {
         return { success: false, error: 'Permission refusée par l\'utilisateur' };
       }
 
-      // Retourner une promesse qui se résout quand on reçoit le token
-      return new Promise((resolve) => {
-        // Timeout de sécurité - permission accordée mais pas de token
-        const timeout = setTimeout(() => {
-          console.warn('⏱️ Timeout: pas de token reçu, mais permission accordée');
-          resolve({ success: true });
-        }, 15000);
+      // Préparer les listeners natifs (persistants) avant l'enregistrement.
+      this.ensureNativeListeners();
 
-        // Écouter AVANT d'appeler register()
-        PushNotifications.addListener('registration', (token: { value: string }) => {
-          clearTimeout(timeout);
-          console.log('🎯 Token natif FCM reçu:', token.value?.substring(0, 20) + '...');
-          resolve({ success: true, token: token.value });
-        });
-
-        PushNotifications.addListener('registrationError', (error: any) => {
-          clearTimeout(timeout);
-          console.error('❌ Erreur enregistrement natif:', error);
-          // Même en cas d'erreur d'enregistrement, la permission est accordée
-          // L'utilisateur peut quand même recevoir des notifications locales
-          resolve({ success: true, error: `Avertissement: ${JSON.stringify(error)}` });
-        });
-
-        // Écouter les notifications
-        PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-          console.log('📨 Notification reçue (foreground):', notification);
-        });
-
-        PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
-          console.log('👆 Action sur notification:', notification);
-        });
-
-        // Enregistrer APRÈS les listeners
-        PushNotifications.register().catch((err: any) => {
-          clearTimeout(timeout);
-          console.error('❌ Erreur register() native:', err);
-          // Permission accordée mais erreur d'enregistrement FCM
-          resolve({ success: true, error: `Avertissement registration: ${JSON.stringify(err)}` });
-        });
+      // Enregistrer auprès de FCM/APNS (le token arrivera via l'event `registration`).
+      PushNotifications.register().catch((err: any) => {
+        console.error('❌ Erreur register() native:', err);
       });
+
+      // Attendre (au max 15s) un token; s'il arrive plus tard, on le captera quand même
+      // via `ensureNativeListeners()` + `onToken()`.
+      const token = await new Promise<string | null>((resolve) => {
+        let done = false;
+        const unsub = this.onToken((t) => {
+          if (done) return;
+          done = true;
+          unsub();
+          resolve(t);
+        });
+
+        setTimeout(() => {
+          if (done) return;
+          done = true;
+          unsub();
+          console.warn('⏱️ Timeout: pas de token reçu (il peut arriver plus tard)');
+          resolve(null);
+        }, 15000);
+      });
+
+      return token ? { success: true, token } : { success: true };
     } catch (error) {
       console.error('❌ Erreur notifications natives:', error);
       return { 

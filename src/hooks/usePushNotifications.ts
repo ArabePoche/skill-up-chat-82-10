@@ -62,6 +62,27 @@ export const usePushNotifications = () => {
     checkSupport();
   }, [user]);
 
+  /**
+   * IMPORTANT (mobile natif): le token peut arriver APRÈS l'appel à requestPermission()
+   * (event `registration`). On s'abonne donc aux tokens pour:
+   * - mettre à jour le state
+   * - persister dans `push_tokens` dès qu'il est disponible
+   */
+  useEffect(() => {
+    if (!user) return;
+
+    const platform = Capacitor.getPlatform();
+    const isNativeMobile = platform === 'android' || platform === 'ios';
+    if (!isNativeMobile) return;
+
+    return nativePushService.onToken((token) => {
+      setFcmToken(token);
+      NotificationService.saveToken(user.id, token).catch((error) => {
+        console.error('Erreur sauvegarde token (listener natif):', error);
+      });
+    });
+  }, [user?.id]);
+
   const loadUserPreferences = useCallback(async () => {
     if (!user) return;
 
@@ -88,7 +109,12 @@ export const usePushNotifications = () => {
   }, [user]);
 
   const requestPermission = useCallback(async () => {
-    if (!isSupported || !user) {
+    if (!user) {
+      toast.error('❌ Connectez-vous pour activer les notifications');
+      return false;
+    }
+
+    if (!isSupported) {
       toast.error('Les notifications ne sont pas supportées sur cet appareil');
       return false;
     }
@@ -110,7 +136,7 @@ export const usePushNotifications = () => {
         } else {
           // Sur mobile natif, on peut ne pas avoir le token immédiatement
           // mais la permission est accordée
-          toast.success('✅ Notifications activées !');
+          toast.success('✅ Permission accordée ! (token en cours de récupération…)');
         }
         return true;
       } else {
@@ -195,17 +221,14 @@ export const usePushNotifications = () => {
         setTimeout(() => localNotif.close(), 3000);
       }
 
-      // Envoyer via FCM si le token est disponible
-      if (fcmToken) {
-        await NotificationService.sendTestNotification(user.id, fcmToken);
-        toast.success('🎯 Notifications de test envoyées !');
-      } else if (isNativeMobile) {
-        // Sur mobile natif, envoyer quand même via l'edge function
-        await NotificationService.sendTestNotification(user.id, 'native-test');
-        toast.success('🎯 Notification de test envoyée !');
-      } else {
-        toast.warning('⚠️ Token FCM non disponible');
+      // Un push "réel" nécessite un token en base (push_tokens).
+      if (!fcmToken) {
+        toast.warning('⚠️ Token push indisponible. Réessayez dans quelques secondes.');
+        return;
       }
+
+      await NotificationService.sendTestNotification(user.id, fcmToken);
+      toast.success('🎯 Notification de test envoyée !');
     } catch (error) {
       console.error('Erreur lors de l\'envoi de la notification de test:', error);
       toast.error('❌ Erreur lors de l\'envoi de la notification de test');
