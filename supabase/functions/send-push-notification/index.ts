@@ -83,13 +83,26 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Utiliser les credentials GCP pour FCM v1
-    const gcpProjectId = Deno.env.get('GCP_PROJECT_ID');
-    const gcpClientEmail = Deno.env.get('GCP_CLIENT_EMAIL');
-    const gcpPrivateKey = Deno.env.get('GCP_PRIVATE_KEY');
+    // Lire le JSON du compte de service Firebase
+    const serviceAccountJson = Deno.env.get('firebase_service_account');
+    
+    if (!serviceAccountJson) {
+      throw new Error('Secret firebase_service_account non configuré');
+    }
+
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(serviceAccountJson);
+    } catch (parseError) {
+      throw new Error('Le secret firebase_service_account n\'est pas un JSON valide');
+    }
+
+    const gcpProjectId = serviceAccount.project_id;
+    const gcpClientEmail = serviceAccount.client_email;
+    const gcpPrivateKey = serviceAccount.private_key;
 
     if (!gcpProjectId || !gcpClientEmail || !gcpPrivateKey) {
-      throw new Error('Credentials GCP non configurés (GCP_PROJECT_ID, GCP_CLIENT_EMAIL, GCP_PRIVATE_KEY)');
+      throw new Error('Le JSON du compte de service est incomplet (project_id, client_email ou private_key manquant)');
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
