@@ -62,8 +62,53 @@ export class NativePushService {
   }
 
   constructor() {
-    // Initialisation lazy - on ne détecte pas tout de suite
-    console.log('🔧 NativePushService créé (détection lazy)');
+    console.log('🔧 NativePushService créé');
+    // Initialisation immédiate sur mobile natif pour capter les tokens au démarrage
+    this.initEarly();
+  }
+
+  /**
+   * Initialisation précoce: sur mobile natif, on configure les listeners
+   * dès que possible pour ne pas rater l'event `registration`
+   */
+  private async initEarly(): Promise<void> {
+    // Petit délai pour que Capacitor soit prêt
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const platform = this.getPlatformType(true);
+    console.log('🚀 [NativePushService] initEarly - platform:', platform);
+    
+    if (platform === 'android' || platform === 'ios') {
+      console.log('📱 [NativePushService] Mobile natif détecté, setup listeners...');
+      this.ensureNativeListeners();
+      
+      // Vérifier si on a déjà la permission et demander le token
+      await this.checkAndRegisterExistingPermission();
+    }
+  }
+
+  /**
+   * Si l'utilisateur a déjà accordé la permission, on enregistre directement
+   * pour obtenir le token au démarrage de l'app
+   */
+  private async checkAndRegisterExistingPermission(): Promise<void> {
+    if (!isPushNotificationsAvailable()) {
+      console.log('⚠️ [NativePushService] Plugin push non disponible');
+      return;
+    }
+
+    try {
+      const result = await PushNotifications.checkPermissions();
+      console.log('🔐 [NativePushService] Permission existante:', result.receive);
+      
+      if (result.receive === 'granted') {
+        console.log('✅ [NativePushService] Permission déjà accordée, registration...');
+        await PushNotifications.register();
+        console.log('📤 [NativePushService] register() appelé au démarrage');
+      }
+    } catch (error) {
+      console.error('❌ [NativePushService] Erreur checkAndRegisterExistingPermission:', error);
+    }
   }
 
   /**
@@ -96,28 +141,44 @@ export class NativePushService {
    * Enregistre les listeners natifs une seule fois pour éviter les doublons.
    */
   private ensureNativeListeners(): void {
-    if (this.nativeListenersReady) return;
-    if (!isPushNotificationsAvailable()) return;
+    if (this.nativeListenersReady) {
+      console.log('⏭️ [NativePushService] Listeners déjà configurés');
+      return;
+    }
+    
+    if (!isPushNotificationsAvailable()) {
+      console.error('❌ [NativePushService] Plugin PushNotifications NON disponible!');
+      return;
+    }
 
     this.nativeListenersReady = true;
+    console.log('🔧 [NativePushService] Configuration des listeners natifs...');
 
     PushNotifications.addListener('registration', (token: { value: string }) => {
-      console.log('🎯 Token natif FCM reçu:', token.value?.substring(0, 20) + '...');
-      if (token?.value) this.emitToken(token.value);
+      console.log('🎯 [NativePushService] EVENT registration reçu!');
+      console.log('🎯 [NativePushService] Token FCM:', token.value?.substring(0, 30) + '...');
+      console.log('🎯 [NativePushService] Token length:', token.value?.length);
+      
+      if (token?.value) {
+        this.emitToken(token.value);
+      } else {
+        console.error('❌ [NativePushService] Token vide reçu!');
+      }
     });
 
     PushNotifications.addListener('registrationError', (error: any) => {
-      console.error('❌ Erreur enregistrement natif:', error);
+      console.error('❌ [NativePushService] EVENT registrationError:', JSON.stringify(error));
     });
 
-    // Écouter les notifications
     PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-      console.log('📨 Notification reçue (foreground):', notification);
+      console.log('📨 [NativePushService] Notification foreground:', JSON.stringify(notification));
     });
 
     PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
-      console.log('👆 Action sur notification:', notification);
+      console.log('👆 [NativePushService] Action notification:', JSON.stringify(notification));
     });
+    
+    console.log('✅ [NativePushService] Listeners natifs configurés!');
   }
 
   /**
