@@ -7,10 +7,8 @@ import useBackButtonHandler from '@/hooks/useBackButtonHandler';
 import { useDeepLinks } from '@/hooks/useDeeplinks';
 import { registerServiceWorker } from '@/offline/utils/registerSW';
 import LanguageOnboarding from '@/components/LanguageOnboarding';
-import MaintenanceScreen from '@/components/MaintenanceScreen';
 
-// 🚧 MODE MAINTENANCE - Mettre à false pour désactiver
-const MAINTENANCE_MODE = true;
+
 import Formation from '@/pages/Formation';
 import FormationDetail from '@/pages/FormationDetail';
 import Profil from '@/pages/Profil';
@@ -120,10 +118,6 @@ const App: React.FC = () => {
     registerServiceWorker();
   }, []);
 
-  // 🚧 Mode maintenance activé
-  if (MAINTENANCE_MODE) {
-    return <MaintenanceScreen />;
-  }
 
   return (
     <QueryClientProvider client={queryClient}>
