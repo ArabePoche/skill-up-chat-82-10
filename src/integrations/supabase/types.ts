@@ -152,6 +152,165 @@ export type Database = {
         }
         Relationships: []
       }
+      archived_students: {
+        Row: {
+          address: string | null
+          archive_comment: string | null
+          archive_reason: string
+          archived_at: string
+          archived_by: string | null
+          birth_place: string | null
+          city: string | null
+          class_id: string | null
+          created_at: string
+          date_of_birth: string
+          discount_amount: number | null
+          discount_percentage: number | null
+          family_id: string | null
+          father_name: string | null
+          father_occupation: string | null
+          first_name: string
+          gender: string
+          id: string
+          is_restored: boolean
+          last_name: string
+          medical_notes: string | null
+          mother_name: string | null
+          mother_occupation: string | null
+          observations: string | null
+          original_student_id: string
+          parent_email: string | null
+          parent_name: string | null
+          parent_phone: string | null
+          photo_url: string | null
+          restored_at: string | null
+          restored_by: string | null
+          restored_to_class_id: string | null
+          school_id: string
+          school_year_id: string
+          student_code: string | null
+          target_school_id: string | null
+          target_school_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          archive_comment?: string | null
+          archive_reason: string
+          archived_at?: string
+          archived_by?: string | null
+          birth_place?: string | null
+          city?: string | null
+          class_id?: string | null
+          created_at?: string
+          date_of_birth: string
+          discount_amount?: number | null
+          discount_percentage?: number | null
+          family_id?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
+          first_name: string
+          gender: string
+          id?: string
+          is_restored?: boolean
+          last_name: string
+          medical_notes?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          observations?: string | null
+          original_student_id: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          photo_url?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
+          restored_to_class_id?: string | null
+          school_id: string
+          school_year_id: string
+          student_code?: string | null
+          target_school_id?: string | null
+          target_school_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          archive_comment?: string | null
+          archive_reason?: string
+          archived_at?: string
+          archived_by?: string | null
+          birth_place?: string | null
+          city?: string | null
+          class_id?: string | null
+          created_at?: string
+          date_of_birth?: string
+          discount_amount?: number | null
+          discount_percentage?: number | null
+          family_id?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
+          first_name?: string
+          gender?: string
+          id?: string
+          is_restored?: boolean
+          last_name?: string
+          medical_notes?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          observations?: string | null
+          original_student_id?: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          photo_url?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
+          restored_to_class_id?: string | null
+          school_id?: string
+          school_year_id?: string
+          student_code?: string | null
+          target_school_id?: string | null
+          target_school_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archived_students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archived_students_restored_to_class_id_fkey"
+            columns: ["restored_to_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archived_students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archived_students_school_year_id_fkey"
+            columns: ["school_year_id"]
+            isOneToOne: false
+            referencedRelation: "school_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archived_students_target_school_id_fkey"
+            columns: ["target_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_sessions: {
         Row: {
           call_type: string
