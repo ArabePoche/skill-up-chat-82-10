@@ -23,32 +23,61 @@ const FollowingList: React.FC<FollowingListProps> = ({ userId }) => {
     queryFn: async () => {
       if (!userId) return [];
 
-      // Récupérer d'abord les demandes envoyées
-      const { data: requests, error: requestsError } = await supabase
+      // Récupérer les demandes envoyées (pending + accepted)
+      const { data: sentRequests, error: sentError } = await supabase
         .from('friend_requests')
-        .select('id, status, receiver_id, created_at')
+        .select('id, status, sender_id, receiver_id, created_at')
         .eq('sender_id', userId)
         .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false });
 
-      if (requestsError) throw requestsError;
-      if (!requests || requests.length === 0) return [];
+      if (sentError) throw sentError;
 
-      // Récupérer les profils des receivers
-      const receiverIds = requests.map(r => r.receiver_id);
+      // Récupérer les demandes reçues et acceptées (l'utilisateur suit aussi l'autre)
+      const { data: receivedAccepted, error: receivedError } = await supabase
+        .from('friend_requests')
+        .select('id, status, sender_id, receiver_id, created_at')
+        .eq('receiver_id', userId)
+        .eq('status', 'accepted')
+        .order('created_at', { ascending: false });
+
+      if (receivedError) throw receivedError;
+
+      // Combiner les deux listes sans doublons
+      const allRequests = [...(sentRequests || [])];
+      const existingReceiverIds = new Set(sentRequests?.map(r => r.receiver_id) || []);
+      
+      receivedAccepted?.forEach(req => {
+        // Ajouter seulement si cet utilisateur n'est pas déjà dans la liste
+        if (!existingReceiverIds.has(req.sender_id)) {
+          allRequests.push(req);
+        }
+      });
+
+      if (allRequests.length === 0) return [];
+
+      // Récupérer les IDs des personnes suivies
+      const followedIds = allRequests.map(r => 
+        r.sender_id === userId ? r.receiver_id : r.sender_id
+      );
+
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username, first_name, last_name, avatar_url, is_verified')
-        .in('id', receiverIds);
+        .in('id', followedIds);
 
       if (profilesError) throw profilesError;
 
       // Combiner les données
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
-      return requests.map(req => ({
-        ...req,
-        receiver: profilesMap.get(req.receiver_id)
-      }));
+      return allRequests.map(req => {
+        const followedUserId = req.sender_id === userId ? req.receiver_id : req.sender_id;
+        return {
+          ...req,
+          receiver: profilesMap.get(followedUserId),
+          receiver_id: followedUserId // Normaliser pour l'affichage
+        };
+      });
     },
     enabled: !!userId,
   });
