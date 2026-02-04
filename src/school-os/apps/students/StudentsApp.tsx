@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Filter, Users, User } from 'lucide-react';
+import { Plus, Search, Filter, Users, User, Archive } from 'lucide-react';
 import { useStudents, useDeleteStudent } from './hooks/useStudents';
 import { StudentCard } from './components/StudentCard';
 import { AddStudentDialog } from './components/AddStudentDialog';
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { EditStudentDialog } from './components/EditStudentDialog';
+import { ArchivedStudentsTab } from './components/ArchivedStudentsTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
@@ -309,6 +310,12 @@ export const StudentsApp: React.FC = () => {
             <Users className="w-4 h-4 mr-2" />
             {t('schoolOS.students.familiesTab')}
           </TabsTrigger>
+          {canManageStudents && (
+            <TabsTrigger value="archives">
+              <Archive className="w-4 h-4 mr-2" />
+              Archives
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="students" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
@@ -530,6 +537,13 @@ export const StudentsApp: React.FC = () => {
             </TabsContent>
           </Tabs>
         </TabsContent>
+
+        {/* Onglet Archives - visible uniquement pour les administrateurs */}
+        {canManageStudents && (
+          <TabsContent value="archives" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
+            <ArchivedStudentsTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
