@@ -4,12 +4,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Mail, Phone, MapPin, Users, ChevronDown, FileText } from 'lucide-react';
+import { MoreVertical, Mail, Phone, MapPin, Users, ChevronDown, FileText, Scale } from 'lucide-react';
 import { ImageModal } from '@/components/ui/image-modal';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui/collapsible';
 import { useFamilySiblings } from '@/school-os/families/hooks/useFamilies';
 import { TeacherFollowUpNotesModal } from '@/school-os/apps/teachers/components/TeacherFollowUpNotesModal';
+import { StudentDecisionModal } from './StudentDecisionModal';
 
 interface StudentCardProps {
   student: any;
@@ -33,6 +35,7 @@ interface StudentCardProps {
   showTeacherNotes?: boolean;
   currentTeacherId?: string;
   schoolId?: string;
+  showDecisionOption?: boolean;
 }
 
 export const StudentCard: React.FC<StudentCardProps> = ({
@@ -42,11 +45,13 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   showTeacherNotes = false,
   currentTeacherId,
   schoolId,
+  showDecisionOption = false,
 }) => {
   const [showSiblings, setShowSiblings] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showDecisionModal, setShowDecisionModal] = useState(false);
   const { data: siblings } = useFamilySiblings(student.family_id, student.id);
 
   const getInitials = () => {
@@ -144,6 +149,15 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                           <FileText className="h-4 w-4 mr-2" />
                           Notes de suivi
                         </DropdownMenuItem>
+                      )}
+                      {showDecisionOption && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setShowDecisionModal(true)}>
+                            <Scale className="h-4 w-4 mr-2" />
+                            Décision
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -265,6 +279,15 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           student={student}
           teacherId={currentTeacherId}
           schoolId={schoolId}
+        />
+      )}
+
+      {/* Modal de décision */}
+      {showDecisionOption && (
+        <StudentDecisionModal
+          isOpen={showDecisionModal}
+          onClose={() => setShowDecisionModal(false)}
+          student={student}
         />
       )}
     </Card>
