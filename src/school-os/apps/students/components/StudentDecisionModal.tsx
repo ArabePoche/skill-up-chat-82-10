@@ -1,5 +1,5 @@
 // Modal pour prendre une décision concernant un élève
-// (Promotion, Rétrogradation, Transfert, Exclusion)
+// (Promotion, Rétrogradation, Transfert, Exclusion avec archivage)
 import React, { useState, useMemo } from 'react';
 import {
   Dialog,
@@ -25,11 +25,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, TrendingUp, TrendingDown, ArrowRightLeft, UserX, AlertTriangle, School, Search } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, ArrowRightLeft, UserX, AlertTriangle, School, Search, Archive } from 'lucide-react';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useApplyStudentDecision, useAllSchools, type DecisionType } from '../hooks/useStudentDecision';
+import { useArchiveStudent, type ArchiveReason } from '../hooks/useArchivedStudents';
 
 interface StudentDecisionModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
   const { data: classes = [] } = useSchoolClasses(school?.id, activeSchoolYear?.id);
   const { data: allSchools = [] } = useAllSchools();
   const applyDecision = useApplyStudentDecision();
+  const archiveStudent = useArchiveStudent();
 
   const [decisionType, setDecisionType] = useState<DecisionType | ''>('');
   const [targetClassId, setTargetClassId] = useState<string>('');
@@ -89,15 +91,32 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
       return;
     }
 
-    await applyDecision.mutateAsync({
-      student_id: student.id,
-      decision_type: decisionType,
-      target_class_id: targetClassId || null,
-      target_school_id: useManualSchool ? null : targetSchoolId || null,
-      target_school_name: useManualSchool ? manualSchoolName : null,
-      comment: comment || null,
-      decided_by: user.id,
-    });
+    // Pour exclusion et transfert, on archive l'élève au lieu de juste changer le statut
+    if (decisionType === 'exclusion' || decisionType === 'transfer') {
+      const archiveReason: ArchiveReason = decisionType === 'exclusion' ? 'exclusion' : 'transfer';
+      
+      await archiveStudent.mutateAsync({
+        student,
+        archive_reason: archiveReason,
+        archive_comment: comment || undefined,
+        target_school_id: useManualSchool ? null : targetSchoolId || null,
+        target_school_name: useManualSchool ? manualSchoolName : (
+          targetSchoolId ? allSchools.find((s: any) => s.id === targetSchoolId)?.name : null
+        ),
+        archived_by: user.id,
+      });
+    } else {
+      // Pour promotion/rétrogradation, on garde le comportement existant
+      await applyDecision.mutateAsync({
+        student_id: student.id,
+        decision_type: decisionType,
+        target_class_id: targetClassId || null,
+        target_school_id: null,
+        target_school_name: null,
+        comment: comment || null,
+        decided_by: user.id,
+      });
+    }
 
     handleClose();
   };
@@ -139,6 +158,8 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
     
     return true; // Exclusion ne nécessite pas de champs supplémentaires
   };
+
+  const isPending = applyDecision.isPending || archiveStudent.isPending;
 
   if (!student) return null;
 
@@ -223,7 +244,7 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                   <ArrowRightLeft className="w-5 h-5 text-blue-600" />
                   <div className="flex-1">
                     <p className="font-medium">Transfert</p>
-                    <p className="text-xs text-muted-foreground">Transférer l'élève vers une autre école</p>
+                    <p className="text-xs text-muted-foreground">Transférer et archiver l'élève (restaurable)</p>
                   </div>
                 </label>
 
@@ -237,7 +258,7 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                   <UserX className="w-5 h-5 text-red-600" />
                   <div className="flex-1">
                     <p className="font-medium">Exclusion</p>
-                    <p className="text-xs text-muted-foreground">Retirer l'élève définitivement</p>
+                    <p className="text-xs text-muted-foreground">Exclure et archiver l'élève (restaurable)</p>
                   </div>
                 </label>
               </RadioGroup>
@@ -332,12 +353,13 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
               </div>
             )}
 
-            {/* Avertissement pour exclusion */}
-            {decisionType === 'exclusion' && (
-              <Alert variant="destructive">
-                <AlertTriangle className="w-4 h-4" />
-                <AlertDescription>
-                  Cette action est irréversible. L'élève sera définitivement retiré de l'école.
+            {/* Info archivage pour exclusion/transfert */}
+            {(decisionType === 'exclusion' || decisionType === 'transfer') && (
+              <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+                <Archive className="w-4 h-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  L'élève sera archivé et pourra être restauré ultérieurement depuis l'onglet "Archives".
+                  Toutes ses données académiques et administratives seront conservées.
                 </AlertDescription>
               </Alert>
             )}
@@ -363,10 +385,10 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!isFormValid() || applyDecision.isPending}
+            disabled={!isFormValid() || isPending}
             variant={decisionType === 'exclusion' ? 'destructive' : 'default'}
           >
-            {applyDecision.isPending ? (
+            {isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Application...
