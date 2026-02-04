@@ -46,6 +46,16 @@ export const StudentsApp: React.FC = () => {
   const isOwner = roleData?.isOwner ?? false;
   const canManageStudents = isOwner; // Seul le propriétaire peut gérer les élèves
 
+  // Debug: afficher les rôles dans la console
+  console.log('🔐 StudentsApp - roleData:', { 
+    isOwner, 
+    isTeacher, 
+    canManageStudents, 
+    schoolId: school?.id,
+    userId: user?.id,
+    roleData 
+  });
+
   // Récupérer les classes selon le rôle
   const { data: allClasses } = useSchoolClasses(school?.id, schoolYear?.id);
   const { data: teacherClasses } = useTeacherClasses(school?.id, schoolYear?.id);
