@@ -5965,6 +5965,103 @@ export type Database = {
           },
         ]
       }
+      student_transfer_requests: {
+        Row: {
+          archived_student_id: string
+          created_at: string
+          id: string
+          parent_email: string | null
+          parent_name: string | null
+          parent_phone: string | null
+          rejection_reason: string | null
+          requested_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_school_id: string
+          source_school_name: string
+          status: string
+          student_code: string | null
+          student_date_of_birth: string
+          student_first_name: string
+          student_gender: string
+          student_last_name: string
+          student_photo_url: string | null
+          target_school_id: string
+          target_school_name: string
+          updated_at: string
+        }
+        Insert: {
+          archived_student_id: string
+          created_at?: string
+          id?: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          rejection_reason?: string | null
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_school_id: string
+          source_school_name: string
+          status?: string
+          student_code?: string | null
+          student_date_of_birth: string
+          student_first_name: string
+          student_gender: string
+          student_last_name: string
+          student_photo_url?: string | null
+          target_school_id: string
+          target_school_name: string
+          updated_at?: string
+        }
+        Update: {
+          archived_student_id?: string
+          created_at?: string
+          id?: string
+          parent_email?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          rejection_reason?: string | null
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_school_id?: string
+          source_school_name?: string
+          status?: string
+          student_code?: string | null
+          student_date_of_birth?: string
+          student_first_name?: string
+          student_gender?: string
+          student_last_name?: string
+          student_photo_url?: string | null
+          target_school_id?: string
+          target_school_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_transfer_requests_archived_student_id_fkey"
+            columns: ["archived_student_id"]
+            isOneToOne: false
+            referencedRelation: "archived_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transfer_requests_source_school_id_fkey"
+            columns: ["source_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transfer_requests_target_school_id_fkey"
+            columns: ["target_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students_school: {
         Row: {
           address: string | null
