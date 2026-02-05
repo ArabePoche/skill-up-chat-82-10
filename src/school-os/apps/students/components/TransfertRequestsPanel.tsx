@@ -6,12 +6,12 @@
  import { Loader2, ArrowDownLeft, ArrowUpRight, Inbox } from 'lucide-react';
  import { useSchoolYear } from '@/school/context/SchoolYearContext';
  import {
-   useIncomingTransferRequests,
+  useIncomingTransferRequests,
    useOutgoingTransferRequests,
- } from '../hooks/useTransferRequests';
- import { TransferRequestCard } from './TransferRequestCard';
- 
- export const TransferRequestsPanel: React.FC = () => {
+ } from '../hooks/useTransfertRequest';
+  import { TransfertRequestCard } from './TransfertRequestCard';
+  
+  export const TransfertRequestsPanel: React.FC = () => {
    const { school } = useSchoolYear();
    const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing'>('incoming');
  
@@ -58,10 +58,10 @@
            ) : (
              <ScrollArea className="h-[500px]">
                <div className="space-y-3 pr-4">
-                 {incomingRequests.map((request) => (
-                   <TransferRequestCard key={request.id} request={request} />
-                 ))}
-               </div>
+                {incomingRequests.map((request) => (
+                  <TransfertRequestCard key={request.id} request={request} />
+                ))}
+              </div>
              </ScrollArea>
            )}
          </TabsContent>
@@ -79,10 +79,10 @@
            ) : (
              <ScrollArea className="h-[500px]">
                <div className="space-y-3 pr-4">
-                 {outgoingRequests.map((request) => (
-                   <TransferRequestCard key={request.id} request={request} />
-                 ))}
-               </div>
+                {outgoingRequests.map((request) => (
+                  <TransfertRequestCard key={request.id} request={request} />
+                ))}
+              </div>
              </ScrollArea>
            )}
          </TabsContent>

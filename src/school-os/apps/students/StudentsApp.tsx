@@ -12,8 +12,8 @@ import { AddStudentDialog } from './components/AddStudentDialog';
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { EditStudentDialog } from './components/EditStudentDialog';
 import { ArchivedStudentsTab } from './components/ArchivedStudentsTab';
- import { TransferRequestsPanel } from './components/TransferRequestsPanel';
- import { usePendingTransferRequestsCount } from './hooks/useTransferRequests';
+import { TransfertRequestsPanel } from './components/TransfertRequestsPanel';
+import { usePendingTransferRequestsCount } from './hooks/useTransfertRequest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
@@ -347,7 +347,7 @@ export const StudentsApp: React.FC = () => {
            )}
         </TabsList>
 
-        <TabsContent value="students" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
+        <TabsContent value="students" className="flex-1 flex-col overflow-hidden mt-0 data-[state=active]:flex">
           {/* Entête fixe */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 flex-shrink-0">
             <div>
@@ -585,7 +585,7 @@ export const StudentsApp: React.FC = () => {
                  </p>
                </div>
                <div className="flex-1 overflow-hidden">
-                 <TransferRequestsPanel />
+                 <TransfertRequestsPanel />
                </div>
              </div>
            </TabsContent>

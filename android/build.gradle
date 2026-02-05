@@ -24,10 +24,29 @@ task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-// ✅ Forcer Java 17 globalement
+// ✅ Forcer Java 17 globalement pour tous les modules
 allprojects {
     tasks.withType(JavaCompile).configureEach {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+                // Si le projet utilise Kotlin, on force aussi le jvmTarget à 17
+                if (project.plugins.hasPlugin('kotlin-android')) {
+                    kotlinOptions {
+                        jvmTarget = "17"
+                    }
+                }
+            }
+        }
     }
 }
