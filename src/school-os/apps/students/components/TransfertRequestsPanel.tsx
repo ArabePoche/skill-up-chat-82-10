@@ -9,7 +9,7 @@
   useIncomingTransferRequests,
    useOutgoingTransferRequests,
  } from '../hooks/useTransfertRequest';
-  import { TransfertRequestCard } from './TransfertRequestCard';
+  import { TransferRequestCard } from './TransfertRequestCard';
   
   export const TransfertRequestsPanel: React.FC = () => {
    const { school } = useSchoolYear();
@@ -59,8 +59,8 @@
              <ScrollArea className="h-[500px]">
                <div className="space-y-3 pr-4">
                 {incomingRequests.map((request) => (
-                  <TransfertRequestCard key={request.id} request={request} />
-                ))}
+                   <TransferRequestCard key={request.id} request={request} />
+                 ))}
               </div>
              </ScrollArea>
            )}
@@ -80,8 +80,8 @@
              <ScrollArea className="h-[500px]">
                <div className="space-y-3 pr-4">
                 {outgoingRequests.map((request) => (
-                  <TransfertRequestCard key={request.id} request={request} />
-                ))}
+                   <TransferRequestCard key={request.id} request={request} />
+                 ))}
               </div>
              </ScrollArea>
            )}

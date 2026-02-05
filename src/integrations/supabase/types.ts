@@ -7472,6 +7472,10 @@ export type Database = {
       cleanup_expired_media_links: { Args: never; Returns: undefined }
       cleanup_expired_stories: { Args: never; Returns: undefined }
       decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
+      delete_student_cascade: {
+        Args: { p_student_id: string }
+        Returns: undefined
+      }
       delete_video_comment: {
         Args: { comment_id: string; user_id: string }
         Returns: boolean
