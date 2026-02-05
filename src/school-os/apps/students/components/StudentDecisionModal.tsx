@@ -103,6 +103,7 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
         target_school_name: useManualSchool ? manualSchoolName : (
           targetSchoolId ? allSchools.find((s: any) => s.id === targetSchoolId)?.name : null
         ),
+           source_school_name: school?.name || null,
         archived_by: user.id,
       });
     } else {
