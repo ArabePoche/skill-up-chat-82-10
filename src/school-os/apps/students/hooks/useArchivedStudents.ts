@@ -2,6 +2,53 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+ 
+ // Fonction pour créer une demande de transfert
+ const createTransferRequestInDb = async (input: {
+   archived_student_id: string;
+   source_school_id: string;
+   target_school_id: string;
+   source_school_name?: string | null;
+   target_school_name?: string | null;
+   student_first_name: string;
+   student_last_name: string;
+   student_date_of_birth: string;
+   student_gender: string;
+   student_photo_url?: string | null;
+   student_code?: string | null;
+   parent_name?: string | null;
+   parent_phone?: string | null;
+   parent_email?: string | null;
+   requested_by: string;
+ }) => {
+   const insertData = {
+     archived_student_id: input.archived_student_id,
+     source_school_id: input.source_school_id,
+     target_school_id: input.target_school_id,
+     source_school_name: input.source_school_name,
+     target_school_name: input.target_school_name,
+     student_first_name: input.student_first_name,
+     student_last_name: input.student_last_name,
+     student_date_of_birth: input.student_date_of_birth,
+     student_gender: input.student_gender,
+     student_photo_url: input.student_photo_url,
+     student_code: input.student_code,
+     parent_name: input.parent_name,
+     parent_phone: input.parent_phone,
+     parent_email: input.parent_email,
+     requested_by: input.requested_by,
+     status: 'pending',
+   };
+ 
+   const { data, error } = await (supabase
+     .from('student_transfer_requests' as any)
+     .insert(insertData)
+     .select()
+     .single() as any);
+   
+   if (error) throw error;
+   return data;
+ };
 
 export type ArchiveReason = 'exclusion' | 'transfer' | 'other';
 
@@ -75,6 +122,7 @@ export interface ArchiveStudentInput {
   archive_comment?: string;
   target_school_id?: string | null;
   target_school_name?: string | null;
+   source_school_name?: string | null;
   archived_by: string;
 }
 
@@ -142,14 +190,42 @@ export const useArchiveStudent = () => {
 
       return archivedData;
     },
-    onSuccess: (_, variables) => {
+     onSuccess: async (archivedData, variables) => {
+       // Si c'est un transfert vers une école connue, créer la demande de transfert
+       if (variables.archive_reason === 'transfer' && variables.target_school_id) {
+         try {
+           await createTransferRequestInDb({
+             archived_student_id: archivedData.id,
+             source_school_id: variables.student.school_id,
+             target_school_id: variables.target_school_id,
+             source_school_name: variables.source_school_name || null,
+             target_school_name: variables.target_school_name || null,
+             student_first_name: variables.student.first_name,
+             student_last_name: variables.student.last_name,
+             student_date_of_birth: variables.student.date_of_birth,
+             student_gender: variables.student.gender,
+             student_photo_url: variables.student.photo_url || null,
+             student_code: variables.student.student_code || null,
+             parent_name: variables.student.parent_name || null,
+             parent_phone: variables.student.parent_phone || null,
+             parent_email: variables.student.parent_email || null,
+             requested_by: variables.archived_by,
+           });
+         } catch (transferError) {
+           console.error('Error creating transfer request:', transferError);
+         }
+       }
+ 
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['archived-students'] });
+       queryClient.invalidateQueries({ queryKey: ['transfer-requests'] });
       
       const message = variables.archive_reason === 'exclusion' 
         ? 'Élève exclu et archivé avec succès'
         : variables.archive_reason === 'transfer'
-        ? 'Élève transféré et archivé avec succès'
+         ? variables.target_school_id 
+           ? 'Élève transféré - Demande envoyée à l\'école cible'
+           : 'Élève transféré et archivé avec succès'
         : 'Élève archivé avec succès';
       
       toast.success(message);
