@@ -51,12 +51,15 @@ export const useFirstRun = () => {
 
     const isFirstRun = !hasBeenOpened;
     const isCacheReady = cacheInitialized === 'true';
+    
+    // Vérifier s'il y a une session d'auth cachée (utilisateur déjà connecté)
+    const hasAuthCache = localStorage.getItem('sb-jiasafdbfqqhhdazoybu-auth-token') !== null;
 
     // Logique d'accès :
     // - En ligne : toujours accès
-    // - Hors ligne + jamais ouvert : bloqué
-    // - Hors ligne + déjà ouvert : accès (mode offline)
-    const canAccessApp = isOnline || (!isFirstRun && isCacheReady);
+    // - Hors ligne + jamais ouvert ET pas de session cachée : bloqué
+    // - Hors ligne + déjà ouvert OU session cachée : accès (mode offline)
+    const canAccessApp = isOnline || (!isFirstRun && isCacheReady) || hasAuthCache;
 
     setState({
       isFirstRun,
@@ -94,11 +97,13 @@ export const useFirstRun = () => {
     const handleOffline = () => {
       const hasBeenOpened = localStorage.getItem(FIRST_RUN_KEY);
       const cacheInitialized = localStorage.getItem(CACHE_INITIALIZED_KEY);
+      const hasAuthCache = localStorage.getItem('sb-jiasafdbfqqhhdazoybu-auth-token') !== null;
       
       setState(prev => ({
         ...prev,
         isOnline: false,
-        canAccessApp: !!hasBeenOpened && cacheInitialized === 'true',
+        // Permettre l'accès si: (déjà ouvert + cache prêt) OU session auth existante
+        canAccessApp: (!!hasBeenOpened && cacheInitialized === 'true') || hasAuthCache,
       }));
     };
 
