@@ -7,6 +7,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ChatInputBar from '@/components/chat/ChatInputBar';
 import ConversationMessageBubble from '@/components/conversation/ConversationMessageBubble';
+import { useOfflineConversations } from '@/offline/hooks/useOfflineConversations';
+import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
+import { offlineStore } from '@/offline/utils/offlineStore';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
@@ -16,11 +19,24 @@ const Conversations = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialScrolled = useRef(false);
   const queryClient = useQueryClient();
+  const { isOnline } = useOfflineSync();
+  const { getOfflineConversationWith } = useOfflineConversations(user?.id);
+  const [offlineMessages, setOfflineMessages] = useState<any[]>([]);
 
   // Récupérer les infos de l'autre utilisateur
   const { data: otherUserProfile } = useQuery({
     queryKey: ['profile', otherUserId],
     queryFn: async () => {
+      // En mode offline, essayer de récupérer le profil depuis le cache
+      if (!isOnline) {
+        const cachedProfile = await offlineStore.getProfile(otherUserId!);
+        if (cachedProfile) {
+          console.log('📦 Using cached profile for', otherUserId);
+          return cachedProfile;
+        }
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, username, avatar_url')
@@ -28,16 +44,28 @@ const Conversations = () => {
         .single();
       
       if (error) throw error;
+      
+      // Sauvegarder le profil dans le cache pour usage offline
+      if (data) {
+        await offlineStore.saveProfile(data);
+      }
+      
       return data;
     },
     enabled: !!otherUserId,
+    retry: isOnline ? 3 : 0,
   });
 
   // Récupérer les messages de cette conversation
-  const { data: messages = [], isLoading } = useQuery({
+  const { data: onlineMessages = [], isLoading } = useQuery({
     queryKey: ['conversation-messages', otherUserId],
     queryFn: async () => {
       if (!user?.id) return [];
+      
+      // En mode offline, retourner un tableau vide - on utilisera offlineMessages
+      if (!isOnline) {
+        return [];
+      }
 
       // Récupérer TOUS les messages entre les deux utilisateurs (stories et directs)
       const { data, error } = await supabase
@@ -69,17 +97,96 @@ const Conversations = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+      
+      // Sauvegarder les messages dans le cache pour usage offline
+      if (data && data.length > 0) {
+        // Sauvegarder dans le query cache
+        const participants = [user.id, otherUserId].sort();
+        const conversationKey = participants.join('_');
+        await offlineStore.cacheQuery(
+          `conversation:${conversationKey}`,
+          data,
+          1000 * 60 * 60 * 24 * 7 // 7 jours
+        );
+      }
+      
       return data || [];
     },
-    enabled: !!user?.id && !!otherUserId,
+    enabled: !!user?.id && !!otherUserId && isOnline,
     staleTime: 30000, // Cache pendant 30 secondes
     refetchInterval: false, // Désactivé - utiliser Realtime subscriptions
+    retry: isOnline ? 3 : 0,
   });
+
+  // Charger les messages offline
+  useEffect(() => {
+    const loadOfflineMessages = async () => {
+      if (!isOnline && user?.id && otherUserId) {
+        console.log('📵 Loading offline messages...');
+        const cached = await getOfflineConversationWith(otherUserId);
+        if (cached && cached.length > 0) {
+          console.log(`📦 Found ${cached.length} cached messages`);
+          setOfflineMessages(cached);
+        }
+      }
+    };
+    loadOfflineMessages();
+  }, [isOnline, user?.id, otherUserId, getOfflineConversationWith]);
+
+  // Fusionner les messages online et offline
+  const messages = isOnline ? onlineMessages : offlineMessages;
 
   // Envoyer un message
   const sendMessageMutation = useMutation({
     mutationFn: async ({ content, file, fileUrl }: { content: string; file?: File; fileUrl?: string }) => {
       if (!user?.id) throw new Error('Non authentifié');
+      
+      // En mode offline, sauvegarder localement
+      if (!isOnline) {
+        const pendingMessage = {
+          id: `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          content,
+          sender_id: user.id,
+          receiver_id: otherUserId,
+          created_at: new Date().toISOString(),
+          is_story_reply: false,
+          replied_to_message_id: replyingTo?.id || null,
+          is_pending: true,
+          profiles: {
+            first_name: user.user_metadata?.first_name || 'Vous',
+            last_name: user.user_metadata?.last_name || '',
+            username: user.email?.split('@')[0] || 'user',
+            avatar_url: null,
+          },
+          conversation_media: [],
+        };
+        
+        // Ajouter à la liste locale
+        setOfflineMessages(prev => [...prev, pendingMessage]);
+        
+        // Sauvegarder dans la mutation queue
+        await offlineStore.addPendingMutation({
+          type: 'generic',
+          payload: {
+            table: 'conversation_messages',
+            operation: 'insert',
+            data: {
+              story_id: null,
+              sender_id: user.id,
+              receiver_id: otherUserId,
+              content,
+              is_story_reply: false,
+              replied_to_message_id: replyingTo?.id || null,
+            }
+          }
+        });
+        
+        toast.info('Message enregistré', {
+          description: 'Il sera envoyé automatiquement quand vous serez en ligne'
+        });
+        
+        return;
+      }
 
       // Insérer le message sans story_id (conversation directe)
       const { data: messageData, error: messageError } = await supabase
@@ -184,11 +291,17 @@ const Conversations = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {isLoading ? (
-          <div className="text-center text-gray-500">Chargement...</div>
+          <div className="text-center text-gray-500">
+            {isOnline ? 'Chargement...' : 'Chargement depuis le cache...'}
+          </div>
         ) : messages.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
             <p>Aucun message pour le moment</p>
-            <p className="text-sm mt-2">Envoyez un message pour démarrer la conversation</p>
+            <p className="text-sm mt-2">
+              {isOnline 
+                ? 'Envoyez un message pour démarrer la conversation'
+                : 'Les messages seront chargés quand vous serez en ligne'}
+            </p>
           </div>
         ) : (
           messages.map((msg: any) => (
