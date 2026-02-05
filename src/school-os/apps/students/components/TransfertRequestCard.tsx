@@ -27,11 +27,11 @@
  import { useSchoolClasses } from '@/school/hooks/useClasses';
  import { useSchoolYear } from '@/school/context/SchoolYearContext';
  import { useAuth } from '@/hooks/useAuth';
- import {
-   TransferRequest,
-   useApproveTransferRequest,
-   useRejectTransferRequest,
- } from '../hooks/useTransferRequests';
+import {
+  TransferRequest,
+  useApproveTransferRequest,
+  useRejectTransferRequest,
+} from '../hooks/useTransfertRequest';
  
  interface TransferRequestCardProps {
    request: TransferRequest;
