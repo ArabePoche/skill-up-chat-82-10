@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { authStore } from '@/offline/utils/authStore';
+import { syncManager } from '@/offline/utils/syncManager';
 
 interface Profile {
   id: string;
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
+  const [cachedProfile, setCachedProfile] = useState<Profile | null>(null);
 
   // Fonction pour charger la session depuis le cache
   const loadCachedSession = useCallback(async () => {
@@ -46,6 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(cached.user);
         setSession(cached.session);
         setIsOfflineMode(true);
+        
+        // Charger aussi le profil caché
+        const profile = await authStore.getCachedProfile(cached.user.id);
+        if (profile) {
+          console.log('📦 Using cached profile (offline mode)');
+          setCachedProfile(profile as Profile);
+        }
+        
         return true;
       }
     } catch (error) {
@@ -159,11 +169,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     retry: 1, // Limite les retries pour ne pas bloquer en mode offline
   });
 
+  // Utiliser le profil caché si le profil de la query n'est pas disponible
+  const effectiveProfile = profile || cachedProfile;
+
   useEffect(() => {
     let mounted = true;
 
     const initAuth = async () => {
       try {
+        // D'abord, essayer de charger la session depuis le cache
+        const hasCachedSession = await loadCachedSession();
+        
+        // Vérifier si on est vraiment en ligne
+        const isReallyOnline = syncManager.getOnlineStatus();
+        
+        if (!isReallyOnline && hasCachedSession) {
+          // Mode offline avec session cachée - on arrête là
+          console.log('📵 Offline mode with cached session - skipping Supabase');
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
+        }
+        
         // Configuration du listener d'état d'authentification
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (!mounted) return;
@@ -181,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(null);
             setUser(null);
             setIsOfflineMode(false);
+            setCachedProfile(null);
             // Nettoyer le cache
             await authStore.clearAll();
           }
@@ -217,14 +246,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(session.user);
             setIsOfflineMode(false);
             await cacheSession(session.user, session);
-          } else if (mounted) {
-            // Pas de session Supabase - essayer le cache
-            const hasCached = await loadCachedSession();
-            if (!hasCached) {
-              // Vraiment pas de session
+          } else if (mounted && !hasCachedSession) {
+            // Pas de session Supabase et pas de cache - vraiment pas de session
               setUser(null);
               setSession(null);
-            }
           }
           
           if (mounted) {
@@ -235,10 +260,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn('⚠️ Network error, trying cache:', err);
           setSupabaseError('Erreur de connexion');
           
-          const hasCached = await loadCachedSession();
-          if (!hasCached && mounted) {
-            setLoading(false);
-          } else if (mounted) {
+          // Si on n'a pas encore de session cachée, essayer de la charger
+          if (!hasCachedSession) {
+            await loadCachedSession();
+          }
+          
+          if (mounted) {
             setLoading(false);
           }
         }
@@ -301,6 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setIsOfflineMode(false);
       setSupabaseError(null);
+      setCachedProfile(null);
       
       // Rafraîchir la page après déconnexion
       window.location.reload();
@@ -310,6 +338,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Force le nettoyage même en cas d'erreur
       setUser(null);
       setSession(null);
+      setCachedProfile(null);
       await authStore.clearAll();
       localStorage.clear();
       sessionStorage.clear();
@@ -327,7 +356,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       session, 
-      profile: profile || null, 
+      profile: effectiveProfile || null, 
       loading, 
       isOfflineMode,
       supabaseError,
