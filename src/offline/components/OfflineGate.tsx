@@ -22,15 +22,14 @@ export const OfflineGate: React.FC<OfflineGateProps> = ({ children }) => {
   } = useFirstRun();
 
   // Marquer le cache comme prêt quand l'app charge avec succès en ligne
-  // Attendre suffisamment longtemps pour que le Service Worker cache tous les assets
+  // Délai réduit à 10 secondes pour ne pas bloquer l'offline inutilement
   useEffect(() => {
     if (isOnline && canAccessApp) {
-      // Attendre 5 minutes pour que le SW cache les assets critiques
-      // C'est plus long mais garantit que l'app fonctionnera hors ligne
+      // Marquer immédiatement + timer court pour être sûr que le SW a commencé le cache
       const timer = setTimeout(() => {
         markCacheReady();
-        console.log('[OfflineGate] Cache marqué comme prêt après 5mn');
-      }, 300000); // 5mns
+        console.log('[OfflineGate] Cache marqué comme prêt après 10s');
+      }, 10000); // 10 secondes
       return () => clearTimeout(timer);
     }
   }, [isOnline, canAccessApp, markCacheReady]);
