@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Filter, Users, User, Archive } from 'lucide-react';
+ import { Plus, Search, Filter, Users, User, Archive, ArrowRightLeft } from 'lucide-react';
 import { useStudents, useDeleteStudent } from './hooks/useStudents';
 import { StudentCard } from './components/StudentCard';
 import { AddStudentDialog } from './components/AddStudentDialog';
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { EditStudentDialog } from './components/EditStudentDialog';
 import { ArchivedStudentsTab } from './components/ArchivedStudentsTab';
+ import { TransferRequestsPanel } from './components/TransferRequestsPanel';
+ import { usePendingTransferRequestsCount } from './hooks/useTransferRequests';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
@@ -45,6 +47,9 @@ export const StudentsApp: React.FC = () => {
   const isTeacher = roleData?.isTeacher ?? false;
   const isOwner = roleData?.isOwner ?? false;
   const canManageStudents = isOwner; // Seul le propriétaire peut gérer les élèves
+ 
+   // Compteur de demandes de transfert en attente
+   const { data: pendingTransferCount = 0 } = usePendingTransferRequestsCount(school?.id);
 
   // Debug: afficher les rôles dans la console
   console.log('🔐 StudentsApp - roleData:', { 
@@ -326,6 +331,20 @@ export const StudentsApp: React.FC = () => {
               Archives
             </TabsTrigger>
           )}
+           {canManageStudents && (
+             <TabsTrigger value="transfers" className="relative">
+               <ArrowRightLeft className="w-4 h-4 mr-2" />
+               Transferts
+               {pendingTransferCount > 0 && (
+                 <Badge 
+                   variant="destructive" 
+                   className="ml-2 h-5 min-w-[20px] px-1.5 flex items-center justify-center text-xs"
+                 >
+                   {pendingTransferCount}
+                 </Badge>
+               )}
+             </TabsTrigger>
+           )}
         </TabsList>
 
         <TabsContent value="students" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
@@ -554,6 +573,23 @@ export const StudentsApp: React.FC = () => {
             <ArchivedStudentsTab />
           </TabsContent>
         )}
+
+         {/* Onglet Transferts - visible uniquement pour les administrateurs */}
+         {canManageStudents && (
+           <TabsContent value="transfers" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
+             <div className="flex flex-col h-full">
+               <div className="mb-4 flex-shrink-0">
+                 <h2 className="text-xl sm:text-2xl font-bold">Demandes de transfert</h2>
+                 <p className="text-sm text-muted-foreground mt-1">
+                   Gérez les demandes de transfert d'élèves entrantes et sortantes
+                 </p>
+               </div>
+               <div className="flex-1 overflow-hidden">
+                 <TransferRequestsPanel />
+               </div>
+             </div>
+           </TabsContent>
+         )}
       </Tabs>
     </div>
   );
