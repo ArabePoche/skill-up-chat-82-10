@@ -1,50 +1,69 @@
-// Application de messagerie pour l'école - Unifiée pour tous les rôles
+/**
+ * Application de messagerie pour l'école - Style Gmail
+ * Interface moderne avec sidebar, liste de messages et vue détaillée
+ */
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSchoolMessages } from './hooks/useSchoolMessages';
-import { JoinRequestCard } from './components/JoinRequestCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Inbox, UserPlus, Users, MessageSquare, Mail } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
+import { useSchoolMessagesGmail } from './hooks/useSchoolMessagesGmail';
+
+// Composants Gmail
+import { MessagesSidebar } from './components/MessagesSidebar';
+import { MessageList } from './components/MessageList';
+import { MessageDetail } from './components/MessageDetail';
+import { ComposeDialog } from './components/ComposeDialog';
+import { LabelManager } from './components/LabelManager';
+
+// UI
+import { Button } from '@/components/ui/button';
+import { Loader2, Menu, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const MessagesApp: React.FC = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const { school } = useSchoolYear();
   const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
-  const isTeacher = roleData?.isTeacher ?? false;
-  const isOwner = roleData?.isOwner ?? false;
-  
-  const [activeTab, setActiveTab] = useState(isTeacher ? 'admin' : 'join-requests');
-  
+
+  // État local UI
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [labelManagerOpen, setLabelManagerOpen] = useState(false);
+
+  // Hook principal de gestion des messages
   const {
-    joinRequests,
+    currentView,
+    currentLabelId,
+    selectedMessageIds,
+    searchQuery,
+    selectedMessage,
+    labels,
+    messages,
+    counts,
     isLoading,
-    approveRequest,
-    rejectRequest,
-    isApproving,
-    isRejecting,
-  } = useSchoolMessages(school?.id);
+    handleViewChange,
+    setSearchQuery,
+    setSelectedMessage,
+    handleSelectAll,
+    handleSelectMessage,
+    handleStarToggle,
+    handleArchive,
+    handleDelete,
+    handleMarkRead,
+    handleAddLabel,
+    handleMessageClick,
+    handleCreateLabel,
+    handleUpdateLabel,
+    handleDeleteLabel,
+    handleSendMessage,
+    handleSaveDraft,
+  } = useSchoolMessagesGmail(school?.id);
 
-  const pendingRequests = joinRequests.filter((req) => req.status === 'pending');
-  const processedRequests = joinRequests.filter((req) => req.status !== 'pending');
-
-  // Handlers simplifiés
-  const handleApprove = (requestId: string) => {
-    approveRequest({ requestId });
-  };
-
-  const handleReject = (requestId: string, reason?: string) => {
-    rejectRequest({ requestId, reason });
-  };
-
+  // États de chargement
   if (!school) {
     return (
-      <div className="p-6 h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-muted-foreground">{t('schoolOS.common.noData')}</p>
       </div>
     );
@@ -52,208 +71,128 @@ export const MessagesApp: React.FC = () => {
 
   if (isLoadingRole) {
     return (
-      <div className="p-6 h-full flex items-center justify-center">
-        <p className="text-muted-foreground">{t('schoolOS.common.loading')}</p>
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  // Vue enseignant : Messages avec administration et parents
-  if (isTeacher) {
-    return (
-      <div className="h-full flex flex-col">
-        <div className="p-6 border-b flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Mail className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold">{t('schoolOS.apps.messages')}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t('schoolOS.apps.messages')}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <Tabs defaultValue="admin" className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 pt-4 flex-shrink-0">
-            <TabsList>
-              <TabsTrigger value="admin" className="gap-2">
-                <Inbox className="h-4 w-4" />
-                Administration
-              </TabsTrigger>
-              <TabsTrigger value="parents" className="gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Parents
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="admin" className="flex-1 mt-0 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="p-6">
-                <div className="text-center py-12">
-                  <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-                    <Inbox className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Messages administratifs</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Les messages de l'administration apparaîtront ici
-                  </p>
-                </div>
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="parents" className="flex-1 mt-0 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="p-6">
-                <div className="text-center py-12">
-                  <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-                    <MessageSquare className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Messages des parents</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Les messages des parents de vos élèves apparaîtront ici
-                  </p>
-                </div>
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-      </div>
-    );
-  }
-
-  // Vue propriétaire/administrateur : Demandes d'adhésion et messages
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-6 border-b">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Inbox className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold">{t('schoolOS.apps.messages')}</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t('schoolOS.apps.messages')}
-            </p>
-          </div>
+    <div className="h-full flex flex-col bg-background">
+      {/* Header mobile */}
+      <div className="lg:hidden flex items-center gap-2 p-3 border-b">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+        >
+          {mobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+        <span className="font-semibold">Messages</span>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Overlay mobile */}
+        {mobileSidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar */}
+        <div
+          className={cn(
+            'fixed lg:relative z-50 lg:z-auto h-full transition-transform duration-200',
+            mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          )}
+        >
+          <MessagesSidebar
+            currentView={currentView}
+            currentLabelId={currentLabelId}
+            onViewChange={(view, labelId) => {
+              handleViewChange(view, labelId);
+              setMobileSidebarOpen(false);
+            }}
+            onCompose={() => {
+              setComposeOpen(true);
+              setMobileSidebarOpen(false);
+            }}
+            labels={labels}
+            counts={counts}
+            collapsed={sidebarCollapsed}
+            onManageLabels={() => setLabelManagerOpen(true)}
+          />
+        </div>
+
+        {/* Contenu principal */}
+        <div className="flex-1 flex overflow-hidden">
+          {selectedMessage ? (
+            // Vue détaillée du message
+            <MessageDetail
+              message={selectedMessage}
+              labels={labels}
+              onBack={() => setSelectedMessage(null)}
+              onReply={() => {
+                setComposeOpen(true);
+                // TODO: pré-remplir avec les infos de réponse
+              }}
+              onReplyAll={() => setComposeOpen(true)}
+              onForward={() => setComposeOpen(true)}
+              onArchive={() => {
+                handleArchive([selectedMessage.id]);
+                setSelectedMessage(null);
+              }}
+              onDelete={() => {
+                handleDelete([selectedMessage.id]);
+                setSelectedMessage(null);
+              }}
+              onStarToggle={() => handleStarToggle(selectedMessage.id)}
+              onAddLabel={(labelId) => handleAddLabel([selectedMessage.id], labelId)}
+            />
+          ) : (
+            // Liste des messages
+            <MessageList
+              messages={messages}
+              labels={labels}
+              selectedIds={selectedMessageIds}
+              onSelectAll={handleSelectAll}
+              onSelectMessage={handleSelectMessage}
+              onMessageClick={handleMessageClick}
+              onStarToggle={handleStarToggle}
+              onArchive={handleArchive}
+              onDelete={handleDelete}
+              onMarkRead={handleMarkRead}
+              onAddLabel={handleAddLabel}
+              onRefresh={() => {
+                // TODO: implémenter le refresh
+              }}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              currentView={currentView}
+              isLoading={isLoading}
+            />
+          )}
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="px-6 pt-4">
-          <TabsList>
-            <TabsTrigger value="join-requests" className="gap-2">
-              <UserPlus className="h-4 w-4" />
-              Demandes d'adhésion
-              {pendingRequests.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {pendingRequests.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="teachers" className="gap-2">
-              <Users className="h-4 w-4" />
-              Enseignants
-            </TabsTrigger>
-            <TabsTrigger value="parents" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Parents
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      {/* Dialog de composition */}
+      <ComposeDialog
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        onSend={handleSendMessage}
+        onSaveDraft={handleSaveDraft}
+      />
 
-        <TabsContent value="join-requests" className="flex-1 mt-0">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-4">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : pendingRequests.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-                    <UserPlus className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Aucune demande en attente</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Les nouvelles demandes d'adhésion apparaîtront ici
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                    En attente ({pendingRequests.length})
-                  </h3>
-                  {pendingRequests.map((request) => (
-                    <JoinRequestCard
-                      key={request.id}
-                      request={request}
-                      onApprove={() => handleApprove(request.id)}
-                      onReject={() => handleReject(request.id)}
-                      isApproving={isApproving}
-                      isRejecting={isRejecting}
-                    />
-                  ))}
-
-                  {processedRequests.length > 0 && (
-                    <>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-2 mt-6">
-                        Traitées ({processedRequests.length})
-                      </h3>
-                      {processedRequests.map((request) => (
-                        <JoinRequestCard
-                          key={request.id}
-                          request={request}
-                          onApprove={() => {}}
-                          onReject={() => {}}
-                          isApproving={false}
-                          isRejecting={false}
-                        />
-                      ))}
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="teachers" className="flex-1 mt-0">
-          <ScrollArea className="h-full">
-            <div className="p-6">
-              <div className="text-center py-12">
-                <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-                  <Users className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Messages des enseignants</h3>
-                <p className="text-sm text-muted-foreground">
-                  Les messages de vos enseignants apparaîtront ici
-                </p>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="parents" className="flex-1 mt-0">
-          <ScrollArea className="h-full">
-            <div className="p-6">
-              <div className="text-center py-12">
-                <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-                  <MessageSquare className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Messages des parents</h3>
-                <p className="text-sm text-muted-foreground">
-                  Les messages des parents apparaîtront ici
-                </p>
-              </div>
-            </div>
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
+      {/* Gestionnaire de labels */}
+      <LabelManager
+        open={labelManagerOpen}
+        onOpenChange={setLabelManagerOpen}
+        labels={labels}
+        onCreateLabel={handleCreateLabel}
+        onUpdateLabel={handleUpdateLabel}
+        onDeleteLabel={handleDeleteLabel}
+      />
     </div>
   );
 };
