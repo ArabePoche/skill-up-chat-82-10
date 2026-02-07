@@ -134,8 +134,11 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
 
       if (paymentError) throw paymentError;
 
-      // Mettre à jour ou créer le progrès de paiement
-      const currentDays = paymentProgress?.total_days_remaining || 0;
+      // Calculer les jours réellement restants (en tenant compte de l'expiration)
+      const currentDays = calculateRemainingDays(
+        paymentProgress?.total_days_remaining,
+        paymentProgress?.last_payment_date
+      );
       const currentHours = paymentProgress?.hours_remaining || 0;
       
       // Ajouter les nouvelles heures et convertir en jours si nécessaire
