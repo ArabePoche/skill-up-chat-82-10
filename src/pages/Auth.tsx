@@ -11,11 +11,13 @@ import { translateAuthError } from '@/utils/authErrorMessages';
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -57,6 +59,42 @@ const Auth = () => {
     } catch (error) {
       console.error('Erreur lors de la vérification du profil:', error);
       navigate('/complete-profile');
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({
+        title: t('auth.forgotPassword', 'Mot de passe oublié'),
+        description: t('auth.enterEmailFirst', 'Veuillez entrer votre adresse email.'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      setResetEmailSent(true);
+      toast({
+        title: t('auth.resetEmailSent', 'Email envoyé'),
+        description: t('auth.resetEmailSentDesc', 'Un lien de réinitialisation a été envoyé à votre adresse email.'),
+      });
+    } catch (error: any) {
+      const errorMessage = translateAuthError(error.message || '');
+      toast({
+        title: t('auth.resetPasswordError', 'Erreur'),
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -109,6 +147,83 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  // Vue "Mot de passe oublié"
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#25d366]/10 to-[#20c75a]/10 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="bg-[#25d366] text-white p-6 text-center">
+              <h1 className="text-2xl font-bold mb-2">EducaTok</h1>
+              <p className="text-white/80">
+                {t('auth.forgotPassword', 'Mot de passe oublié ?')}
+              </p>
+            </div>
+
+            <div className="p-6">
+              {resetEmailSent ? (
+                <div className="text-center space-y-4">
+                  <Mail className="mx-auto text-[#25d366]" size={48} />
+                  <h2 className="text-lg font-semibold">
+                    {t('auth.resetEmailSent', 'Email envoyé !')}
+                  </h2>
+                  <p className="text-gray-500 text-sm">
+                    {t('auth.resetEmailSentDesc', 'Un lien de réinitialisation a été envoyé à votre adresse email. Vérifiez votre boîte de réception.')}
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setResetEmailSent(false);
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {t('auth.backToLogin', 'Retour à la connexion')}
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <p className="text-gray-500 text-sm text-center mb-2">
+                    {t('auth.forgotPasswordDesc', 'Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.')}
+                  </p>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                    <Input
+                      type="email"
+                      placeholder={t('auth.emailPlaceholder')}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#25d366] hover:bg-[#20c75a] text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading
+                      ? t('common.loading')
+                      : t('auth.sendResetLink', 'Envoyer le lien')}
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="w-full text-center text-[#25d366] hover:underline text-sm mt-2"
+                  >
+                    {t('auth.backToLogin', 'Retour à la connexion')}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#25d366]/10 to-[#20c75a]/10 flex items-center justify-center p-4">
@@ -182,6 +297,18 @@ const Auth = () => {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+
+              {isLogin && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-[#25d366] hover:underline"
+                  >
+                    {t('auth.forgotPassword', 'Mot de passe oublié ?')}
+                  </button>
+                </div>
+              )}
 
               <Button
                 type="submit"
