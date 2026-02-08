@@ -1,5 +1,6 @@
 /**
  * Hook pour accéder aux formations offline
+ * Télécharge les formations avec leur structure complète (levels + lessons)
  */
 
 import { useState, useEffect } from 'react';
@@ -49,62 +50,139 @@ export const useOfflineFormation = (formationId: string | undefined) => {
           setLessons(lessonsData || []);
         } catch (error) {
           console.error('Error loading online data:', error);
+          // Fallback vers le cache si erreur réseau
+          if (isOffline) {
+            await loadFromCache(formationId);
+          }
         }
       } else {
         // Hors ligne : charger depuis le cache
-        const offlineFormation = await offlineStore.getFormation(formationId);
-        const offlineLessons = await offlineStore.getLessonsByFormation(formationId);
-
-        setFormation(offlineFormation);
-        setLessons(offlineLessons);
+        await loadFromCache(formationId);
       }
 
       setIsLoading(false);
     };
 
+    const loadFromCache = async (fId: string) => {
+      const offlineFormation = await offlineStore.getFormation(fId);
+      const offlineLessons = await offlineStore.getLessonsByFormation(fId);
+
+      setFormation(offlineFormation);
+      setLessons(offlineLessons);
+    };
+
     loadData();
   }, [formationId, isOnline]);
 
+  /**
+   * Télécharge la formation COMPLÈTE avec levels et lessons pour usage offline
+   */
   const downloadForOffline = async () => {
     if (!formationId || !isOnline) return;
 
     try {
-      // Télécharger la formation
-      const { data: formationData } = await supabase
+      // Télécharger la formation avec sa structure complète (levels + lessons + exercises)
+      const { data: fullFormation, error: formationError } = await supabase
         .from('formations')
-        .select('*')
+        .select(`
+          *,
+          profiles:author_id (
+            id,
+            first_name,
+            last_name,
+            username
+          ),
+          levels (
+            *,
+            lessons (
+              *,
+              exercises!exercises_lesson_id_fkey (
+                id,
+                title,
+                description,
+                content,
+                type
+              )
+            )
+          )
+        `)
         .eq('id', formationId)
         .single();
 
-      if (formationData) {
-        await offlineStore.saveFormation(formationData);
+      if (formationError) {
+        console.error('Error downloading formation:', formationError);
+        throw formationError;
       }
 
-      // Télécharger les leçons via fetch direct
-      const SUPABASE_URL = 'https://jiasafdbfqqhhdazoybu.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppYXNhZmRiZnFxaGhkYXpveWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTQ5MTAsImV4cCI6MjA2NTQ5MDkxMH0.TXPwCkGAZRrn83pTsZHr2QFZwX03nBWdNPJN0s_jLKQ';
-      
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/lessons?formation_id=eq.${formationId}&order=order_index.asc`,
-        {
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-          },
-        }
-      );
-      const lessonsData = await response.json();
+      if (fullFormation) {
+        // Sauvegarder la formation complète (avec levels imbriqués)
+        await offlineStore.saveFormation(fullFormation);
+        console.log('✅ Formation saved with levels:', fullFormation.levels?.length || 0, 'levels');
 
-      if (Array.isArray(lessonsData)) {
-        for (const lesson of lessonsData) {
-          await offlineStore.saveLesson(lesson);
+        // Sauvegarder aussi chaque leçon individuellement pour accès par formation_id
+        if (fullFormation.levels) {
+          for (const level of fullFormation.levels) {
+            for (const lesson of level.lessons || []) {
+              await offlineStore.saveLesson({
+                ...lesson,
+                formation_id: formationId,
+                level_id: level.id,
+                level_title: level.title,
+                level_order_index: level.order_index,
+              });
+            }
+          }
         }
+      }
+
+      // Aussi sauvegarder les infos d'inscription et d'abonnement pour accès offline
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const userId = session?.session?.user?.id;
+        
+        if (userId) {
+          // Sauvegarder le rôle utilisateur
+          const { data: enrollmentData } = await supabase
+            .from('enrollment_requests')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('formation_id', formationId)
+            .eq('status', 'approved')
+            .maybeSingle();
+
+          if (enrollmentData) {
+            await offlineStore.cacheQuery(
+              `["user-role-offline","${userId}","${formationId}"]`,
+              { role: 'student', formationId },
+              30 * 24 * 60 * 60 * 1000 // 30 jours
+            );
+          }
+
+          // Sauvegarder l'abonnement
+          const { data: subscriptionData } = await supabase
+            .from('user_subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('formation_id', formationId)
+            .maybeSingle();
+
+          if (subscriptionData) {
+            await offlineStore.cacheQuery(
+              `["user-subscription-offline","${userId}","${formationId}"]`,
+              subscriptionData,
+              30 * 24 * 60 * 60 * 1000
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Could not cache user metadata for offline:', e);
       }
 
       setIsOfflineAvailable(true);
-      console.log('✅ Formation downloaded for offline use');
+      console.log('✅ Formation downloaded for offline use (with full structure)');
     } catch (error) {
       console.error('Error downloading formation:', error);
+      throw error;
     }
   };
 
