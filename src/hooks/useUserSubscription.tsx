@@ -1,6 +1,13 @@
+/**
+ * Hook pour gérer l'abonnement utilisateur à une formation
+ * Avec support offline via cache IndexedDB
+ */
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
+import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
 
 interface UserSubscription {
@@ -15,6 +22,7 @@ interface UserSubscription {
 export const useUserSubscription = (formationId: string, userId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { isOnline } = useOfflineSync();
   
   // Utiliser l'userId fourni ou celui de l'utilisateur connecté
   const targetUserId = userId || user?.id;
@@ -23,6 +31,15 @@ export const useUserSubscription = (formationId: string, userId?: string) => {
     queryKey: ['user-subscription', targetUserId, formationId],
     queryFn: async (): Promise<UserSubscription | null> => {
       if (!targetUserId || !formationId) return null;
+
+      // Mode hors ligne : utiliser le cache
+      if (!isOnline) {
+        console.log('📦 Offline - loading cached subscription');
+        const cached = await offlineStore.getCachedQuery(
+          `["user-subscription-offline","${targetUserId}","${formationId}"]`
+        );
+        return cached as UserSubscription | null;
+      }
 
       const { data, error } = await supabase
         .from('user_subscriptions')
@@ -33,12 +50,27 @@ export const useUserSubscription = (formationId: string, userId?: string) => {
 
       if (error) {
         console.error('Error fetching user subscription:', error);
-        return null;
+        // Fallback vers le cache en cas d'erreur
+        const cached = await offlineStore.getCachedQuery(
+          `["user-subscription-offline","${targetUserId}","${formationId}"]`
+        );
+        return cached as UserSubscription | null;
+      }
+
+      // Sauvegarder dans le cache pour accès offline
+      if (data) {
+        await offlineStore.cacheQuery(
+          `["user-subscription-offline","${targetUserId}","${formationId}"]`,
+          data,
+          30 * 24 * 60 * 60 * 1000
+        );
       }
 
       return data as UserSubscription;
     },
     enabled: !!targetUserId && !!formationId,
+    retry: isOnline ? 3 : false,
+    staleTime: isOnline ? 1000 * 60 * 5 : Infinity,
   });
 
   const createSubscription = useMutation({
