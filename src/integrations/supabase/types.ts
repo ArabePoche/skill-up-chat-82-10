@@ -4036,6 +4036,234 @@ export type Database = {
           },
         ]
       }
+      school_message_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+          message_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number
+          file_type: string
+          file_url: string
+          id?: string
+          message_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "school_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_message_label_assignments: {
+        Row: {
+          label_id: string
+          message_id: string
+        }
+        Insert: {
+          label_id: string
+          message_id: string
+        }
+        Update: {
+          label_id?: string
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_message_label_assignments_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "school_message_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_message_label_assignments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "school_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_message_labels: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          school_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          school_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_message_labels_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_message_labels_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_message_recipients: {
+        Row: {
+          created_at: string
+          folder: string
+          id: string
+          is_read: boolean
+          is_starred: boolean
+          message_id: string
+          recipient_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder?: string
+          id?: string
+          is_read?: boolean
+          is_starred?: boolean
+          message_id: string
+          recipient_id: string
+        }
+        Update: {
+          created_at?: string
+          folder?: string
+          id?: string
+          is_read?: boolean
+          is_starred?: boolean
+          message_id?: string
+          recipient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_message_recipients_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "school_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_message_recipients_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_messages: {
+        Row: {
+          content: string
+          created_at: string
+          folder: string
+          has_attachments: boolean
+          id: string
+          is_draft: boolean
+          is_read: boolean
+          is_starred: boolean
+          reply_to: string | null
+          school_id: string
+          sender_id: string
+          subject: string
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          folder?: string
+          has_attachments?: boolean
+          id?: string
+          is_draft?: boolean
+          is_read?: boolean
+          is_starred?: boolean
+          reply_to?: string | null
+          school_id: string
+          sender_id: string
+          subject?: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          folder?: string
+          has_attachments?: boolean
+          id?: string
+          is_draft?: boolean
+          is_read?: boolean
+          is_starred?: boolean
+          reply_to?: string | null
+          school_id?: string
+          sender_id?: string
+          subject?: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "school_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_permissions: {
         Row: {
           category: string | null
