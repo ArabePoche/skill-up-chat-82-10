@@ -41,14 +41,12 @@ import { toast } from 'sonner';
     if (input.source_school_name) insertData.source_school_name = input.source_school_name;
     if (input.target_school_name) insertData.target_school_name = input.target_school_name;
  
-   const { data, error } = await (supabase
+   const { error } = await (supabase
      .from('student_transfer_requests' as any)
-     .insert(insertData)
-     .select()
-     .single() as any);
+     .insert(insertData) as any);
    
    if (error) throw error;
-   return data;
+   return true;
  };
 
 export type ArchiveReason = 'exclusion' | 'transfer' | 'other';
@@ -211,38 +209,39 @@ export const useArchiveStudent = () => {
         throw deleteError;
       }
 
+      // 5. Si c'est un transfert vers une école connue, créer la demande de transfert
+      if (archive_reason === 'transfer' && target_school_id) {
+        try {
+          await createTransferRequestInDb({
+            archived_student_id: archivedData.id,
+            source_school_id: student.school_id,
+            target_school_id: target_school_id,
+            source_school_name: input.source_school_name || null,
+            target_school_name: target_school_name || null,
+            student_first_name: student.first_name,
+            student_last_name: student.last_name,
+            student_date_of_birth: student.date_of_birth,
+            student_gender: student.gender,
+            student_photo_url: student.photo_url || null,
+            student_code: student.student_code || null,
+            parent_name: student.parent_name || null,
+            parent_phone: student.parent_phone || null,
+            parent_email: student.parent_email || null,
+            requested_by: archived_by,
+          });
+        } catch (transferError: any) {
+          console.error('Error creating transfer request:', transferError?.message || transferError);
+          // Ne pas bloquer l'archivage, mais signaler l'erreur
+          toast.error('Archivage réussi mais erreur lors de la demande de transfert: ' + (transferError?.message || 'Erreur inconnue'));
+        }
+      }
+
       return archivedData;
     },
-     onSuccess: async (archivedData, variables) => {
-       // Si c'est un transfert vers une école connue, créer la demande de transfert
-       if (variables.archive_reason === 'transfer' && variables.target_school_id) {
-         try {
-           await createTransferRequestInDb({
-             archived_student_id: archivedData.id,
-             source_school_id: variables.student.school_id,
-             target_school_id: variables.target_school_id,
-             source_school_name: variables.source_school_name || null,
-             target_school_name: variables.target_school_name || null,
-             student_first_name: variables.student.first_name,
-             student_last_name: variables.student.last_name,
-             student_date_of_birth: variables.student.date_of_birth,
-             student_gender: variables.student.gender,
-             student_photo_url: variables.student.photo_url || null,
-             student_code: variables.student.student_code || null,
-             parent_name: variables.student.parent_name || null,
-             parent_phone: variables.student.parent_phone || null,
-             parent_email: variables.student.parent_email || null,
-             requested_by: variables.archived_by,
-           });
-        } catch (transferError: any) {
-            console.error('Error creating transfer request:', transferError?.message || transferError);
-            toast.error('Archivage réussi mais erreur lors de la demande de transfert: ' + (transferError?.message || 'Erreur inconnue'));
-          }
-       }
- 
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['archived-students'] });
-       queryClient.invalidateQueries({ queryKey: ['transfer-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['transfer-requests'] });
       
       const message = variables.archive_reason === 'exclusion' 
         ? 'Élève exclu et archivé avec succès'
