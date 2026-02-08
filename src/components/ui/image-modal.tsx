@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
+import { downloadFile } from '@/file-manager/utils/downloadFile';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -17,13 +18,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({
   fileName
 }) => {
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(imageUrl, fileName);
   };
 
   return (
