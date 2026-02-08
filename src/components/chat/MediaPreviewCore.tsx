@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Download, Eye, Maximize2, Edit3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { downloadFile } from '@/file-manager/utils/downloadFile';
 
 interface MediaPreviewCoreProps {
   fileUrl: string;
@@ -28,10 +29,7 @@ const MediaPreviewCore: React.FC<MediaPreviewCoreProps> = ({
   const isImage = fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
 
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName;
-    link.click();
+    downloadFile(fileUrl, fileName, fileType);
   };
 
   if (!isImage) return null;
