@@ -5,10 +5,14 @@
  * - Export de tous les bulletins d'une classe
  * - Export individuel d'un bulletin élève
  * - Support complet de l'arabe avec la police Amiri
+ * - Police Roboto embarquée pour rendu correct des accents français
+ * - Téléchargement cross-platform (web + Capacitor natif)
  * - Inclusion des notes de classe dans le PDF
  */
 import { jsPDF } from 'jspdf';
 import { BulletinTemplate } from '../hooks/useBulletins';
+import { isNativePlatform, saveDocumentToDevice } from '@/file-manager/utils/mediaGallery';
+import { toast } from 'sonner';
 
 // Interface pour les données du bulletin
 export interface BulletinPdfData {
@@ -62,7 +66,6 @@ const containsArabic = (text: string): boolean => {
 const getSubjectAppreciation = (score: number | null, maxScore: number, isAbsent: boolean): string => {
   if (isAbsent) return 'Absent';
   if (score === null) return '-';
-  // Normaliser le score en pourcentage pour l'appréciation
   const percentage = (score / maxScore) * 100;
   if (percentage >= 90) return 'Excellent';
   if (percentage >= 80) return 'Très bien';
@@ -86,7 +89,7 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
 };
 
 /**
- * Convertit un ArrayBuffer en base64 de façon performante (évite les erreurs sur gros fichiers)
+ * Convertit un ArrayBuffer en base64 de façon performante
  */
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
@@ -105,30 +108,78 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   return btoa(binary);
 };
 
-// Load Arabic font (Noto Sans Arabic) as base64
-const loadArabicFont = async (): Promise<{ base64: string; fontName: string } | null> => {
-  // Try multiple font options in order of preference
+/**
+ * Charge une police TTF depuis le dossier public/fonts
+ */
+const loadFont = async (path: string, fontName: string): Promise<{ base64: string; fontName: string } | null> => {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) {
+      console.warn(`Police introuvable: ${path}`);
+      return null;
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = arrayBufferToBase64(arrayBuffer);
+    return { base64, fontName };
+  } catch (error) {
+    console.warn(`Échec chargement police ${fontName}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Charge et enregistre la police Roboto (support complet Latin/accents) dans jsPDF
+ */
+const loadAndRegisterLatinFont = async (doc: jsPDF): Promise<boolean> => {
+  const fontData = await loadFont('/fonts/Roboto-Regular.ttf', 'Roboto');
+  if (!fontData) return false;
+
+  try {
+    const fileName = 'Roboto-Regular.ttf';
+    doc.addFileToVFS(fileName, fontData.base64);
+    doc.addFont(fileName, 'Roboto', 'normal');
+
+    // Valider que la police fonctionne
+    doc.setFont('Roboto', 'normal');
+    doc.getTextWidth('Évaluation générale');
+
+    return true;
+  } catch (error) {
+    console.warn('Échec enregistrement police Roboto:', error);
+    return false;
+  }
+};
+
+/**
+ * Charge et enregistre la police Amiri (support arabe) dans jsPDF
+ */
+const loadAndRegisterArabicFont = async (doc: jsPDF): Promise<{ loaded: boolean; fontName: string }> => {
   const fontOptions = [
     { path: '/fonts/Amiri-Regular.ttf', name: 'Amiri' },
     { path: '/fonts/NotoSansArabic-Regular.ttf', name: 'NotoSansArabic' },
   ];
 
   for (const font of fontOptions) {
-    try {
-      const response = await fetch(font.path);
-      if (!response.ok) continue;
+    const fontData = await loadFont(font.path, font.name);
+    if (!fontData) continue;
 
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = arrayBufferToBase64(arrayBuffer);
-      return { base64, fontName: font.name };
+    try {
+      const fileName = `${fontData.fontName}-Regular.ttf`;
+      doc.addFileToVFS(fileName, fontData.base64);
+      doc.addFont(fileName, fontData.fontName, 'normal');
+
+      // Valider
+      doc.setFont(fontData.fontName, 'normal');
+      doc.getTextWidth('ا');
+
+      return { loaded: true, fontName: fontData.fontName };
     } catch (error) {
-      console.warn(`Failed to load font ${font.name}:`, error);
+      console.warn(`Échec enregistrement police ${font.name}:`, error);
       continue;
     }
   }
 
-  console.warn('No Arabic font available, falling back to default');
-  return null;
+  return { loaded: false, fontName: 'Amiri' };
 };
 
 /**
@@ -152,43 +203,31 @@ const generateBulletinPdfCore = async ({
   }
 
   const doc = new jsPDF();
-  
-  // Check if any bulletin has Arabic content
-  const hasArabicContent = bulletins.some(b => 
-    containsArabic(b.studentName) || 
+
+  // Toujours charger Roboto pour le texte latin (accents français)
+  const latinFontLoaded = await loadAndRegisterLatinFont(doc);
+  const latinFontName = latinFontLoaded ? 'Roboto' : 'helvetica';
+
+  // Charger la police arabe si nécessaire
+  const hasArabicContent = bulletins.some(b =>
+    containsArabic(b.studentName) ||
     b.grades.some(g => containsArabic(g.subjectName))
   );
 
-  // Load and register Arabic font if needed
   let arabicFontLoaded = false;
   let arabicFontName = 'Amiri';
   if (hasArabicContent) {
-    const fontData = await loadArabicFont();
-    if (fontData) {
-      try {
-        const fileName = `${fontData.fontName}-Regular.ttf`;
-        doc.addFileToVFS(fileName, fontData.base64);
-        doc.addFont(fileName, fontData.fontName, 'normal');
-
-        // Validation: certaines polices sans Unicode cmap font planter jsPDF (widths undefined)
-        doc.setFont(fontData.fontName, 'normal');
-        doc.getTextWidth('ا');
-
-        arabicFontName = fontData.fontName;
-        arabicFontLoaded = true;
-      } catch (fontError) {
-        console.warn('Failed to register Arabic font:', fontError);
-        arabicFontLoaded = false;
-      }
-    }
+    const result = await loadAndRegisterArabicFont(doc);
+    arabicFontLoaded = result.loaded;
+    arabicFontName = result.fontName;
   }
-  
+
   // Get template colors or use defaults
-  const primaryColor = template?.primary_color 
-    ? hexToRgb(template.primary_color) 
+  const primaryColor = template?.primary_color
+    ? hexToRgb(template.primary_color)
     : { r: 59, g: 130, b: 246 };
-  const secondaryColor = template?.secondary_color 
-    ? hexToRgb(template.secondary_color) 
+  const secondaryColor = template?.secondary_color
+    ? hexToRgb(template.secondary_color)
     : { r: 100, g: 116, b: 139 };
 
   const layoutType = template?.layout_type || 'classic';
@@ -199,11 +238,15 @@ const generateBulletinPdfCore = async ({
 
     let y = 15;
 
+    /**
+     * Sélectionne la bonne police selon le contenu (arabe ou latin)
+     */
     const setFont = (text: string, style: 'normal' | 'bold' = 'normal') => {
       if (arabicFontLoaded && containsArabic(text)) {
         doc.setFont(arabicFontName, 'normal');
       } else {
-        doc.setFont('helvetica', style);
+        // Utiliser Roboto si chargé, sinon fallback helvetica
+        doc.setFont(latinFontName, style === 'bold' && !latinFontLoaded ? 'bold' : style);
       }
     };
 
@@ -237,22 +280,20 @@ const generateBulletinPdfCore = async ({
       doc.setTextColor(0, 0, 0);
     }
 
-    // School and class info - Section enrichie avec plus d'informations
+    // School and class info
     doc.setFontSize(11);
     doc.setTextColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
     setFont(schoolName || '');
-    
-    // Ligne 1: Nom de l'école (en gras)
+
     if (schoolName) {
-      doc.setFont('helvetica', 'bold');
+      setFont(schoolName, 'bold');
       doc.setFontSize(12);
       doc.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
       doc.text(schoolName, 105, y, { align: 'center' });
       y += 6;
     }
-    
-    // Ligne 2: Adresse de l'école
-    doc.setFont('helvetica', 'normal');
+
+    setFont('', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
     const addressParts: string[] = [];
@@ -263,8 +304,7 @@ const generateBulletinPdfCore = async ({
       doc.text(addressParts.join(', '), 105, y, { align: 'center' });
       y += 5;
     }
-    
-    // Ligne 3: Contact (téléphone et email)
+
     const contactParts: string[] = [];
     if (schoolPhone) contactParts.push(`Tél: ${schoolPhone}`);
     if (schoolEmail) contactParts.push(`Email: ${schoolEmail}`);
@@ -272,17 +312,17 @@ const generateBulletinPdfCore = async ({
       doc.text(contactParts.join(' | '), 105, y, { align: 'center' });
       y += 5;
     }
-    
-    // Ligne séparatrice
+
     y += 2;
     doc.setDrawColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
     doc.setLineWidth(0.2);
     doc.line(20, y, 190, y);
     y += 6;
 
-    // Ligne 4: Classe, Période et Année scolaire
+    // Classe, Période, Année scolaire
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
+    setFont('Classe', 'normal');
     doc.text(`Classe: ${className}`, 20, y);
     doc.text(`Période: ${evaluationTitle}`, 80, y);
     if (schoolYearName) {
@@ -294,8 +334,8 @@ const generateBulletinPdfCore = async ({
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
     setFont(student.studentName);
-    doc.text(`Eleve: ${student.studentName}`, 20, y);
-    doc.setFont('helvetica', 'normal');
+    doc.text(`Élève: ${student.studentName}`, 20, y);
+    setFont('', 'normal');
     doc.text(`Code: ${student.studentCode}`, 150, y);
     y += 10;
 
@@ -304,45 +344,45 @@ const generateBulletinPdfCore = async ({
     doc.rect(15, y - 5, 180, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
+    setFont('', 'bold');
 
     const hasArabicSubjects = student.grades.some(g => containsArabic(g.subjectName));
-    
+
     if (includeClassGrades) {
       if (hasArabicSubjects) {
-        doc.text('Appreciation', 17, y);
+        doc.text('Appréciation', 17, y);
         doc.text('Moy.', 48, y);
         doc.text('Examen', 65, y);
         doc.text('Classe', 85, y);
         doc.text('Coef.', 105, y);
-        doc.text('Matiere', 175, y, { align: 'right' });
+        doc.text('Matière', 175, y, { align: 'right' });
       } else {
-        doc.text('Matiere', 17, y);
+        doc.text('Matière', 17, y);
         doc.text('Coef.', 60, y);
         doc.text('Classe', 78, y);
         doc.text('Examen', 98, y);
-        doc.text('Bareme', 118, y);
-        doc.text('Appreciation', 145, y);
+        doc.text('Barème', 118, y);
+        doc.text('Appréciation', 145, y);
       }
     } else {
       if (hasArabicSubjects) {
-        doc.text('Appreciation', 17, y);
-        doc.text('Bareme', 55, y);
+        doc.text('Appréciation', 17, y);
+        doc.text('Barème', 55, y);
         doc.text('Coef.', 70, y);
         doc.text('Note', 90, y);
-        doc.text('Matiere', 175, y, { align: 'right' });
+        doc.text('Matière', 175, y, { align: 'right' });
       } else {
-        doc.text('Matiere', 17, y);
+        doc.text('Matière', 17, y);
         doc.text('Note', 78, y);
         doc.text('Coef.', 98, y);
-        doc.text('Bareme', 118, y);
-        doc.text('Appreciation', 145, y);
+        doc.text('Barème', 118, y);
+        doc.text('Appréciation', 145, y);
       }
     }
 
     y += 8;
     doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'normal');
+    setFont('', 'normal');
 
     // Grades rows
     let rowIndex = 0;
@@ -359,11 +399,11 @@ const generateBulletinPdfCore = async ({
 
       const subjectAppreciation = getSubjectAppreciation(grade.score, grade.maxScore, !!grade.isAbsent);
       const examScoreText = grade.isAbsent ? 'ABS' : (grade.score !== null ? grade.score.toString() : '-');
-      const classScoreText = grade.classGradeScore !== null && grade.classGradeScore !== undefined 
-        ? grade.classGradeScore.toString() 
+      const classScoreText = grade.classGradeScore !== null && grade.classGradeScore !== undefined
+        ? grade.classGradeScore.toString()
         : '-';
       const baremeText = `/${grade.maxScore}`;
-      
+
       let avgScoreText = '-';
       if (includeClassGrades && grade.score !== null && grade.classGradeScore !== null && grade.classGradeScore !== undefined) {
         const avg = (grade.score + grade.classGradeScore) / 2;
@@ -371,7 +411,7 @@ const generateBulletinPdfCore = async ({
       } else if (!includeClassGrades && grade.score !== null) {
         avgScoreText = grade.score.toString();
       }
-      
+
       doc.setFontSize(9);
       doc.setTextColor(0, 0, 0);
 
@@ -387,7 +427,7 @@ const generateBulletinPdfCore = async ({
         } else {
           setFont(grade.subjectName);
           doc.text(grade.subjectName.substring(0, 22), 17, y);
-          doc.setFont('helvetica', 'normal');
+          setFont('', 'normal');
           doc.text(grade.coefficient.toString(), 63, y);
           doc.text(classScoreText, 82, y);
           doc.text(examScoreText, 100, y);
@@ -405,14 +445,14 @@ const generateBulletinPdfCore = async ({
         } else {
           setFont(grade.subjectName);
           doc.text(grade.subjectName.substring(0, 25), 17, y);
-          doc.setFont('helvetica', 'normal');
+          setFont('', 'normal');
           doc.text(examScoreText, 82, y);
           doc.text(grade.coefficient.toString(), 100, y);
           doc.text(baremeText, 118, y);
           doc.text(subjectAppreciation, 145, y);
         }
       }
-      
+
       y += 7;
       rowIndex++;
     });
@@ -427,21 +467,21 @@ const generateBulletinPdfCore = async ({
     // Results box
     doc.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
     doc.roundedRect(15, y - 3, 180, 25, 3, 3, 'F');
-    
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    
+    setFont('Moyenne', 'bold');
+
     const avgText = student.average !== null ? student.average.toFixed(2) : '-';
     doc.text(`Moyenne: ${avgText}`, 25, y + 5);
     doc.text(`Rang: ${student.rank}/${student.totalStudents}`, 80, y + 5);
     doc.text(`Mention: ${student.mention || '-'}`, 130, y + 5);
-    
+
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    setFont('', 'normal');
     doc.text(`Moyenne de classe: ${student.classAverage.toFixed(2)}`, 25, y + 15);
     doc.text(`Meilleure moyenne: ${student.firstAverage.toFixed(2)}`, 110, y + 15);
-    
+
     y += 30;
 
     // Global appreciation
@@ -449,10 +489,12 @@ const generateBulletinPdfCore = async ({
     doc.setFontSize(10);
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(15, y, 180, 20, 2, 2, 'F');
-    
+
     doc.setTextColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
-    doc.text('Appreciation generale:', 20, y + 6);
+    setFont('Appréciation générale:');
+    doc.text('Appréciation générale:', 20, y + 6);
     doc.setTextColor(0, 0, 0);
+    setFont(student.appreciation || '-');
     doc.text(student.appreciation || '-', 20, y + 14);
 
     // Footer
@@ -460,7 +502,8 @@ const generateBulletinPdfCore = async ({
     doc.setFontSize(8);
     doc.setTextColor(secondaryColor.r, secondaryColor.g, secondaryColor.b);
     const today = new Date().toLocaleDateString('fr-FR');
-    doc.text(`Document genere le ${today}`, 105, 285, { align: 'center' });
+    setFont('Document généré le');
+    doc.text(`Document généré le ${today}`, 105, 285, { align: 'center' });
   });
 
   const blob = doc.output('blob');
@@ -468,11 +511,24 @@ const generateBulletinPdfCore = async ({
 };
 
 /**
- * Télécharge un blob côté navigateur (compatible iframe / PWA)
+ * Télécharge un blob côté navigateur ou natif (Capacitor)
  */
-const downloadBlob = (blob: Blob, fileName: string) => {
+const downloadBlob = async (blob: Blob, fileName: string) => {
   if (!blob) throw new Error('PDF blob introuvable');
 
+  // Sur plateforme native: sauvegarder via Capacitor Filesystem
+  if (isNativePlatform()) {
+    toast.info('Téléchargement en cours...');
+    const result = await saveDocumentToDevice(blob, fileName);
+    if (result.success) {
+      toast.success('Bulletin sauvegardé dans EducaTok !');
+    } else {
+      toast.error(`Erreur: ${result.error || 'Sauvegarde échouée'}`);
+    }
+    return;
+  }
+
+  // Sur web: téléchargement classique
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -486,7 +542,6 @@ const downloadBlob = (blob: Blob, fileName: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   } finally {
     link.remove();
-    // Laisser le temps au navigateur de démarrer le download avant de révoquer
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 };
@@ -534,7 +589,6 @@ export const exportSingleBulletinToPdf = async ({
     schoolCountry,
     schoolPhone,
     schoolEmail,
-    // schoolLogoUrl est gardé en option (pas encore dessiné dans le PDF)
     template,
     bulletins: [bulletin],
   });
@@ -546,7 +600,7 @@ export const exportSingleBulletinToPdf = async ({
     return { blob, fileName };
   }
 
-  downloadBlob(blob, fileName);
+  await downloadBlob(blob, fileName);
 };
 
 /**
@@ -560,5 +614,5 @@ export const exportBulletinsToPdf = async (options: BulletinPdfOptions): Promise
     .replace(/\s+/g, '_')
     .replace(/[^\w.-]/g, '');
 
-  downloadBlob(blob, fileName);
+  await downloadBlob(blob, fileName);
 };
