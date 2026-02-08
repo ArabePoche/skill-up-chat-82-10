@@ -154,13 +154,21 @@ const Cours = () => {
   // Si hors ligne, utiliser les formations offline
   let studentFormations = [];
   
-  if (!isOnline && offlineFormations.length > 0) {
-    // Mode hors ligne : afficher les formations téléchargées
-    studentFormations = offlineFormations.map(formation => ({
-      ...formation,
-      progress: 0,
-      isTeacher: false
-    }));
+  if (!isOnline) {
+    // Mode hors ligne : afficher les formations téléchargées depuis IndexedDB
+    // Ces formations ont été sauvegardées avec la structure complète (levels + lessons)
+    if (offlineFormations.length > 0) {
+      studentFormations = offlineFormations.map(formation => ({
+        ...formation,
+        levels: formation.levels || [],
+        progress: 0,
+        isTeacher: false
+      }));
+    }
+    console.log('📦 Offline formations with levels:', studentFormations.map(f => ({
+      title: f.title,
+      levelsCount: f.levels?.length || 0
+    })));
   } else {
     // Mode en ligne : afficher les formations inscrites
     studentFormations = userEnrollments?.map(enrollment => {
