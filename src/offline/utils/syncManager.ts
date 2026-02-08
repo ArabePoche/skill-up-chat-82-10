@@ -368,49 +368,48 @@ class SyncManager {
 
   /**
    * Synchronise une formation spécifique
+   * Préserve la structure complète (levels/lessons) si elle existe
    */
   private async syncFormation(formationId: string): Promise<void> {
     try {
-      // Récupérer les données à jour depuis Supabase
+      // Récupérer les données à jour avec la structure complète
       const { data: formation, error: formationError } = await supabase
         .from('formations')
-        .select('*')
+        .select(`
+          *,
+          profiles:author_id (id, first_name, last_name, username),
+          levels (
+            *,
+            lessons (
+              *,
+              exercises!exercises_lesson_id_fkey (id, title, description, content, type)
+            )
+          )
+        `)
         .eq('id', formationId)
         .single();
 
       if (formationError) throw formationError;
 
-      // Mettre à jour le cache offline
+      // Mettre à jour le cache offline avec la structure complète
       await offlineStore.saveFormation(formation);
 
-      // Récupérer et synchroniser les leçons via fetch
-      const SUPABASE_URL = 'https://jiasafdbfqqhhdazoybu.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppYXNhZmRiZnFxaGhkYXpveWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTQ5MTAsImV4cCI6MjA2NTQ5MDkxMH0.TXPwCkGAZRrn83pTsZHr2QFZwX03nBWdNPJN0s_jLKQ';
-      
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/lessons?formation_id=eq.${formationId}&order=order_index.asc`,
-        {
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-          },
-        }
-      );
-      const lessons = await response.json();
-
-      // Sauvegarder chaque leçon
-      for (const lesson of lessons || []) {
-        const offlineLesson = await offlineStore.getLesson(lesson.id);
-        
-        // Si la leçon existe déjà offline avec audio, garder l'audio
-        if (offlineLesson && offlineLesson.offlineAudioUrl) {
-          await offlineStore.saveLesson(lesson);
-        } else {
-          await offlineStore.saveLesson(lesson);
+      // Sauvegarder aussi chaque leçon individuellement
+      if (formation.levels) {
+        for (const level of formation.levels) {
+          for (const lesson of level.lessons || []) {
+            await offlineStore.saveLesson({
+              ...lesson,
+              formation_id: formationId,
+              level_id: level.id,
+              level_title: level.title,
+              level_order_index: level.order_index,
+            });
+          }
         }
       }
 
-      console.log(`✅ Formation ${formationId} synced`);
+      console.log(`✅ Formation ${formationId} synced with ${formation.levels?.length || 0} levels`);
     } catch (error) {
       console.error(`❌ Failed to sync formation ${formationId}:`, error);
     }
