@@ -6206,7 +6206,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           source_school_id: string
-          source_school_name: string
+          source_school_name: string | null
           status: string
           student_code: string | null
           student_date_of_birth: string
@@ -6215,7 +6215,7 @@ export type Database = {
           student_last_name: string
           student_photo_url: string | null
           target_school_id: string
-          target_school_name: string
+          target_school_name: string | null
           updated_at: string
         }
         Insert: {
@@ -6230,7 +6230,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_school_id: string
-          source_school_name: string
+          source_school_name?: string | null
           status?: string
           student_code?: string | null
           student_date_of_birth: string
@@ -6239,7 +6239,7 @@ export type Database = {
           student_last_name: string
           student_photo_url?: string | null
           target_school_id: string
-          target_school_name: string
+          target_school_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -6254,7 +6254,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_school_id?: string
-          source_school_name?: string
+          source_school_name?: string | null
           status?: string
           student_code?: string | null
           student_date_of_birth?: string
@@ -6263,7 +6263,7 @@ export type Database = {
           student_last_name?: string
           student_photo_url?: string | null
           target_school_id?: string
-          target_school_name?: string
+          target_school_name?: string | null
           updated_at?: string
         }
         Relationships: [
