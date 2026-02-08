@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Download, FileText, Image, Video, Music, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageModal } from '@/components/ui/image-modal';
+import { downloadFile } from '@/file-manager/utils/downloadFile';
 
 interface ExerciseFile {
   id?: string;
@@ -22,13 +23,7 @@ const ExerciseFilePreview: React.FC<ExerciseFilePreviewProps> = ({
   const fileName = file.file_url.split('/').pop() || 'Fichier';
   
   const handleFileDownload = (fileUrl: string) => {
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(fileUrl, fileName, file.file_type);
   };
 
   const getFileIcon = (fileType: string) => {
