@@ -14,6 +14,7 @@ import FormationDetail from '@/pages/FormationDetail';
 import Profil from '@/pages/Profil';
 import Lesson from '@/pages/Lesson';
 import Auth from '@/pages/Auth';
+import ResetPassword from '@/pages/ResetPassword';
 import Admin from '@/pages/Admin';
 import CompleteProfile from '@/pages/CompleteProfile';
 import NotFound from '@/pages/NotFound';
@@ -66,6 +67,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/profile/:profileId" element={<Profil />} />
         <Route path="/lesson/:lessonId" element={<Lesson />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/formation/:formationId/pricing" element={<FormationPricingPage />} />
