@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import AudioRecorder from './AudioRecorder';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useAuth } from '@/hooks/useAuth';
+import { downloadFile } from '@/file-manager/utils/downloadFile';
 
 interface ExerciseValidationProps {
   message: {
@@ -257,13 +258,7 @@ const ExerciseValidation: React.FC<ExerciseValidationProps> = ({ message }) => {
   };
 
   const handleFileDownload = (fileUrl: string, fileName?: string) => {
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName || 'fichier';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(fileUrl, fileName || 'fichier');
   };
 
   const handleResetDecision = async () => {
