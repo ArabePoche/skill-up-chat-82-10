@@ -9,6 +9,7 @@ import SimpleImageEditor from './SimpleImageEditor';
 import { OfflineImage } from '@/file-manager/components/OfflineImage';
 import { OfflineVideo } from '@/file-manager/components/OfflineVideo';
 import { OfflineAudio } from '@/file-manager/components/OfflineAudio';
+import { downloadFile } from '@/file-manager/utils/downloadFile';
 
 interface ModernMediaPreviewProps {
   fileUrl: string;
@@ -52,10 +53,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
   const isPDF = fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
 
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName;
-    link.click();
+    downloadFile(fileUrl, fileName, fileType);
   };
 
   const handleFullscreen = () => {
