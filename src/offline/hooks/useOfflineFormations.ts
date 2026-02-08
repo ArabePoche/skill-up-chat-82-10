@@ -7,12 +7,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { offlineStore } from '../utils/offlineStore';
 import { useOfflineSync } from './useOfflineSync';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export const useOfflineFormations = () => {
   const { isOnline } = useOfflineSync();
   const [cachedFormations, setCachedFormations] = useState<any[]>([]);
   const [isCacheLoaded, setIsCacheLoaded] = useState(false);
+  const cachedFormationsRef = useRef<any[]>([]);
 
   // Charger depuis le cache au montage
   useEffect(() => {
@@ -20,12 +21,31 @@ export const useOfflineFormations = () => {
       try {
         // Charger les formations téléchargées offline
         const offlineData = await offlineStore.getAllFormations();
-        setCachedFormations(offlineData);
+        
+        if (offlineData && offlineData.length > 0) {
+          setCachedFormations(offlineData);
+          cachedFormationsRef.current = offlineData;
+        }
         
         // Aussi vérifier le cache de requêtes
         const queryCache = await offlineStore.getCachedQuery('["formations"]');
         if (queryCache && queryCache.length > 0) {
-          setCachedFormations(queryCache);
+          // Merger : garder les formations offline + celles du query cache
+          const mergedMap = new Map();
+          
+          // D'abord ajouter les formations du query cache
+          for (const f of queryCache) {
+            mergedMap.set(f.id, f);
+          }
+          
+          // Ensuite les formations offline (priorité car elles ont la structure complète)
+          for (const f of offlineData) {
+            mergedMap.set(f.id, f);
+          }
+          
+          const merged = Array.from(mergedMap.values());
+          setCachedFormations(merged);
+          cachedFormationsRef.current = merged;
         }
       } catch (error) {
         console.error('Error loading cached formations:', error);
@@ -40,10 +60,10 @@ export const useOfflineFormations = () => {
   const query = useQuery({
     queryKey: ['formations'],
     queryFn: async () => {
-      // Si hors ligne, retourner le cache
+      // Si hors ligne, retourner le cache (utiliser la ref pour éviter les closures périmées)
       if (!isOnline) {
-        console.log('📦 Offline - returning cached formations');
-        return cachedFormations;
+        console.log('📦 Offline - returning cached formations:', cachedFormationsRef.current.length);
+        return cachedFormationsRef.current;
       }
 
       console.log('🔄 Fetching formations from server...');
@@ -63,15 +83,19 @@ export const useOfflineFormations = () => {
       if (error) {
         console.error('Error fetching formations:', error);
         // En cas d'erreur réseau, retourner le cache
-        return cachedFormations;
+        return cachedFormationsRef.current;
       }
 
       // Sauvegarder dans le cache
       await offlineStore.cacheQuery('["formations"]', data || []);
       
-      // Mettre à jour les formations individuelles
+      // Mettre à jour les formations individuelles (sans écraser celles qui ont des levels)
       for (const formation of data || []) {
-        await offlineStore.saveFormation(formation);
+        // Vérifier si on a déjà une version plus complète (avec levels)
+        const existing = await offlineStore.getFormation(formation.id);
+        if (!existing || !existing.levels) {
+          await offlineStore.saveFormation(formation);
+        }
       }
 
       console.log('✅ Formations synced:', data?.length);
@@ -85,6 +109,7 @@ export const useOfflineFormations = () => {
     refetchOnReconnect: true,
     staleTime: isOnline ? 1000 * 60 * 5 : Infinity,
     enabled: isCacheLoaded,
+    retry: isOnline ? 3 : false,
   });
 
   return {
@@ -102,6 +127,7 @@ export const useOfflineFormationById = (formationId: string | undefined) => {
   const { isOnline } = useOfflineSync();
   const [cachedFormation, setCachedFormation] = useState<any | null>(null);
   const [isCacheLoaded, setIsCacheLoaded] = useState(false);
+  const cachedFormationRef = useRef<any | null>(null);
 
   useEffect(() => {
     if (!formationId) {
@@ -113,6 +139,7 @@ export const useOfflineFormationById = (formationId: string | undefined) => {
       try {
         const cached = await offlineStore.getFormation(formationId);
         setCachedFormation(cached);
+        cachedFormationRef.current = cached;
       } catch (error) {
         console.error('Error loading cached formation:', error);
       } finally {
@@ -130,7 +157,7 @@ export const useOfflineFormationById = (formationId: string | undefined) => {
 
       if (!isOnline) {
         console.log('📦 Offline - returning cached formation');
-        return cachedFormation;
+        return cachedFormationRef.current;
       }
 
       console.log('🔄 Fetching formation:', formationId);
@@ -164,7 +191,7 @@ export const useOfflineFormationById = (formationId: string | undefined) => {
 
       if (error) {
         console.error('Error fetching formation:', error);
-        return cachedFormation;
+        return cachedFormationRef.current;
       }
 
       // Sauvegarder dans le cache
@@ -189,6 +216,7 @@ export const useOfflineFormationById = (formationId: string | undefined) => {
     initialData: isCacheLoaded ? cachedFormation : undefined,
     refetchOnMount: isOnline,
     staleTime: isOnline ? 1000 * 60 * 5 : Infinity,
+    retry: isOnline ? 3 : false,
   });
 
   return {
@@ -205,6 +233,7 @@ export const useOfflineUserEnrollments = (userId: string | undefined) => {
   const { isOnline } = useOfflineSync();
   const [cachedEnrollments, setCachedEnrollments] = useState<any[]>([]);
   const [isCacheLoaded, setIsCacheLoaded] = useState(false);
+  const cachedEnrollmentsRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (!userId) {
@@ -218,6 +247,7 @@ export const useOfflineUserEnrollments = (userId: string | undefined) => {
         const cached = await offlineStore.getCachedQuery(cacheKey);
         if (cached) {
           setCachedEnrollments(cached);
+          cachedEnrollmentsRef.current = cached;
         }
       } catch (error) {
         console.error('Error loading cached enrollments:', error);
@@ -236,7 +266,7 @@ export const useOfflineUserEnrollments = (userId: string | undefined) => {
 
       if (!isOnline) {
         console.log('📦 Offline - returning cached enrollments');
-        return cachedEnrollments;
+        return cachedEnrollmentsRef.current;
       }
 
       try {
@@ -285,7 +315,7 @@ export const useOfflineUserEnrollments = (userId: string | undefined) => {
         return enrichedEnrollments;
       } catch (error) {
         console.error('Error fetching enrollments:', error);
-        return cachedEnrollments;
+        return cachedEnrollmentsRef.current;
       }
     },
     enabled: !!userId && isCacheLoaded,
