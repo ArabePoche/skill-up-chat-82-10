@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import ExerciseSubmission from './ExerciseSubmission';
 import GroupExerciseSubmission from '../group-chat/GroupExerciseSubmission';
 import { useExerciseWithFiles } from '@/hooks/useExerciseWithFiles';
+import { downloadFile } from '@/file-manager/utils/downloadFile';
 
 interface Exercise {
   id: string;
@@ -43,13 +44,7 @@ const ExerciseDisplay: React.FC<ExerciseDisplayProps> = ({
   const { data: exerciseWithFiles } = useExerciseWithFiles(exercise.id);
 
   const handleFileDownload = (fileUrl: string, fileName?: string) => {
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName || 'fichier';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(fileUrl, fileName || 'fichier');
   };
 
   if (isTeacherView) {
