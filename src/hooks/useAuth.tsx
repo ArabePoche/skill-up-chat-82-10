@@ -197,6 +197,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!mounted) return;
           
           console.log('Auth state changed:', event, session?.user?.email);
+
+          // Rediriger vers /reset-password si l'événement est PASSWORD_RECOVERY
+          if (event === 'PASSWORD_RECOVERY' && session) {
+            setSession(session);
+            setUser(session.user);
+            setLoading(false);
+            // Naviguer vers la page de réinitialisation du mot de passe
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/reset-password') {
+              window.location.href = '/reset-password';
+            }
+            return;
+          }
           
           if (session) {
             setSession(session);
