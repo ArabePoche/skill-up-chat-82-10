@@ -21,24 +21,25 @@ import { toast } from 'sonner';
    parent_email?: string | null;
    requested_by: string;
  }) => {
-   const insertData = {
-     archived_student_id: input.archived_student_id,
-     source_school_id: input.source_school_id,
-     target_school_id: input.target_school_id,
-     source_school_name: input.source_school_name,
-     target_school_name: input.target_school_name,
-     student_first_name: input.student_first_name,
-     student_last_name: input.student_last_name,
-     student_date_of_birth: input.student_date_of_birth,
-     student_gender: input.student_gender,
-     student_photo_url: input.student_photo_url,
-     student_code: input.student_code,
-     parent_name: input.parent_name,
-     parent_phone: input.parent_phone,
-     parent_email: input.parent_email,
-     requested_by: input.requested_by,
-     status: 'pending',
-   };
+  const insertData: Record<string, any> = {
+      archived_student_id: input.archived_student_id,
+      source_school_id: input.source_school_id,
+      target_school_id: input.target_school_id,
+      student_first_name: input.student_first_name,
+      student_last_name: input.student_last_name,
+      student_date_of_birth: input.student_date_of_birth,
+      student_gender: input.student_gender,
+      student_photo_url: input.student_photo_url || null,
+      student_code: input.student_code || null,
+      parent_name: input.parent_name || null,
+      parent_phone: input.parent_phone || null,
+      parent_email: input.parent_email || null,
+      requested_by: input.requested_by,
+      status: 'pending',
+    };
+    // N'ajouter les noms d'écoles que s'ils sont définis (colonnes nullable)
+    if (input.source_school_name) insertData.source_school_name = input.source_school_name;
+    if (input.target_school_name) insertData.target_school_name = input.target_school_name;
  
    const { data, error } = await (supabase
      .from('student_transfer_requests' as any)
@@ -173,7 +174,29 @@ export const useArchiveStudent = () => {
 
       if (archiveError) throw archiveError;
 
-      // 2. Supprimer l'élève de la table students_school
+      // 2. Supprimer manuellement les paiements AVANT l'élève
+      // (les triggers sur school_students_payment tentent de réinsérer dans
+      //  school_student_payment_progress, ce qui échoue si l'élève est déjà supprimé)
+      const { error: paymentDeleteError } = await (supabase
+        .from('school_students_payment' as any)
+        .delete()
+        .eq('student_id', student.id) as any);
+
+      if (paymentDeleteError) {
+        console.warn('Error deleting payments (non-blocking):', paymentDeleteError);
+      }
+
+      // 3. Supprimer la progression de paiement (créée/mise à jour par le trigger ci-dessus)
+      const { error: progressDeleteError } = await (supabase
+        .from('school_student_payment_progress' as any)
+        .delete()
+        .eq('student_id', student.id) as any);
+
+      if (progressDeleteError) {
+        console.warn('Error deleting payment progress (non-blocking):', progressDeleteError);
+      }
+
+      // 4. Supprimer l'élève de la table students_school
       const { error: deleteError } = await supabase
         .from('students_school')
         .delete()
@@ -211,9 +234,10 @@ export const useArchiveStudent = () => {
              parent_email: variables.student.parent_email || null,
              requested_by: variables.archived_by,
            });
-         } catch (transferError) {
-           console.error('Error creating transfer request:', transferError);
-         }
+        } catch (transferError: any) {
+            console.error('Error creating transfer request:', transferError?.message || transferError);
+            toast.error('Archivage réussi mais erreur lors de la demande de transfert: ' + (transferError?.message || 'Erreur inconnue'));
+          }
        }
  
       queryClient.invalidateQueries({ queryKey: ['students'] });
