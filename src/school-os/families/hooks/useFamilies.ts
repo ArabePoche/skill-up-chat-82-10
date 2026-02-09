@@ -12,6 +12,7 @@ export interface Family {
   primary_contact_email: string | null;
   address: string | null;
   notes: string | null;
+  parental_code: string | null;
   created_at: string;
   updated_at: string;
 }
