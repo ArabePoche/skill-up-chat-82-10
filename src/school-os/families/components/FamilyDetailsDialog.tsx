@@ -13,6 +13,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Users, Phone, Mail, MapPin, FileText } from 'lucide-react';
 import { useFamilies } from '../hooks/useFamilies';
 import { useFamilySiblings } from '../hooks/useFamilies';
+import { useFamilyParents } from '../hooks/useParentalCode';
+import { ParentalCodeDisplay } from './ParentalCodeDisplay';
 import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
 
 interface FamilyDetailsDialogProps {
@@ -32,6 +34,7 @@ export const FamilyDetailsDialog: React.FC<FamilyDetailsDialogProps> = ({
 }) => {
   const { data: families = [] } = useFamilies(schoolId);
   const { data: siblings = [] } = useFamilySiblings(familyId, currentStudentId);
+  const { data: parents = [] } = useFamilyParents(familyId);
 
   const family = families.find(f => f.id === familyId);
 
@@ -48,6 +51,32 @@ export const FamilyDetailsDialog: React.FC<FamilyDetailsDialogProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Code parental */}
+          {family.parental_code && (
+            <Card>
+              <CardContent className="pt-6">
+                <ParentalCodeDisplay code={family.parental_code} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Parents associés */}
+          {parents.length > 0 && (
+            <Card>
+              <CardContent className="pt-6 space-y-2">
+                <p className="text-sm font-medium mb-2">Parents associés ({parents.length})</p>
+                {parents.map((parent: any) => (
+                  <div key={parent.id} className="flex items-center gap-2 text-sm">
+                    <span className="font-medium">
+                      {parent.profiles?.first_name} {parent.profiles?.last_name}
+                    </span>
+                    <Badge variant="outline" className="text-xs">Actif</Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Informations de contact */}
           <Card>
             <CardContent className="pt-6 space-y-3">
