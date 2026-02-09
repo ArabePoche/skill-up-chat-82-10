@@ -135,12 +135,51 @@ export const useOfflineFormation = (formationId: string | undefined) => {
         }
       }
 
-      // Aussi sauvegarder les infos d'inscription et d'abonnement pour accès offline
+      // Sauvegarder la progression de l'élève pour accès offline
       try {
         const { data: session } = await supabase.auth.getSession();
         const userId = session?.session?.user?.id;
         
         if (userId) {
+          // Récupérer la progression de l'utilisateur pour cette formation
+          const { data: progressData, error: progressError } = await supabase
+            .from('user_lesson_progress')
+            .select(`
+              lesson_id,
+              status,
+              exercise_completed,
+              completed_at,
+              lessons!inner (
+                id,
+                order_index,
+                level_id,
+                levels!inner (
+                  id,
+                  order_index,
+                  formation_id
+                )
+              )
+            `)
+            .eq('user_id', userId)
+            .eq('lessons.levels.formation_id', formationId);
+
+          if (!progressError && progressData && progressData.length > 0) {
+            const progressBatch = progressData.map((p: any) => ({
+              userId,
+              lessonId: p.lesson_id,
+              formationId,
+              levelId: p.lessons.levels.id,
+              levelOrderIndex: p.lessons.levels.order_index,
+              lessonOrderIndex: p.lessons.order_index,
+              status: p.status,
+              exerciseCompleted: p.exercise_completed || false,
+              completedAt: p.completed_at,
+            }));
+
+            await offlineStore.saveUserProgressBatch(progressBatch);
+            console.log('📊 User progress saved offline:', progressBatch.length, 'entries');
+          }
+
           // Sauvegarder le rôle utilisateur
           const { data: enrollmentData } = await supabase
             .from('enrollment_requests')
@@ -175,7 +214,7 @@ export const useOfflineFormation = (formationId: string | undefined) => {
           }
         }
       } catch (e) {
-        console.warn('Could not cache user metadata for offline:', e);
+        console.warn('Could not cache user metadata/progress for offline:', e);
       }
 
       setIsOfflineAvailable(true);
