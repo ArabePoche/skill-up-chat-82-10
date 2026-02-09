@@ -175,67 +175,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // IMPORTANT: Enregistrer le listener AVANT toute opération async
+    // pour ne pas rater l'événement PASSWORD_RECOVERY
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      console.log('Auth state changed:', event, session?.user?.email);
+
+      // Rediriger vers /reset-password si l'événement est PASSWORD_RECOVERY
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        setSession(session);
+        setUser(session.user);
+        setLoading(false);
+        // Naviguer vers la page de réinitialisation du mot de passe
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/reset-password') {
+          window.location.href = '/reset-password';
+        }
+        return;
+      }
+      
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        setIsOfflineMode(false);
+        setSupabaseError(null);
+        // Sauvegarder dans le cache (déféré pour éviter deadlock)
+        setTimeout(() => {
+          cacheSession(session.user, session);
+        }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        setIsOfflineMode(false);
+        setCachedProfile(null);
+        // Nettoyer le cache (déféré)
+        setTimeout(() => {
+          authStore.clearAll();
+        }, 0);
+      }
+      
+      setLoading(false);
+    });
+
+    // Ensuite, initialiser la session de manière async
     const initAuth = async () => {
       try {
-        // D'abord, essayer de charger la session depuis le cache
+        // Charger la session depuis le cache
         const hasCachedSession = await loadCachedSession();
         
         // Vérifier si on est vraiment en ligne
         const isReallyOnline = syncManager.getOnlineStatus();
         
         if (!isReallyOnline && hasCachedSession) {
-          // Mode offline avec session cachée - on arrête là
           console.log('📵 Offline mode with cached session - skipping Supabase');
           if (mounted) {
             setLoading(false);
           }
           return;
         }
-        
-        // Configuration du listener d'état d'authentification
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (!mounted) return;
-          
-          console.log('Auth state changed:', event, session?.user?.email);
-
-          // Rediriger vers /reset-password si l'événement est PASSWORD_RECOVERY
-          if (event === 'PASSWORD_RECOVERY' && session) {
-            setSession(session);
-            setUser(session.user);
-            setLoading(false);
-            // Naviguer vers la page de réinitialisation du mot de passe
-            const currentPath = window.location.pathname;
-            if (currentPath !== '/reset-password') {
-              window.location.href = '/reset-password';
-            }
-            return;
-          }
-          
-          if (session) {
-            setSession(session);
-            setUser(session.user);
-            setIsOfflineMode(false);
-            setSupabaseError(null);
-            // Sauvegarder dans le cache
-            await cacheSession(session.user, session);
-          } else if (event === 'SIGNED_OUT') {
-            setSession(null);
-            setUser(null);
-            setIsOfflineMode(false);
-            setCachedProfile(null);
-            // Nettoyer le cache
-            await authStore.clearAll();
-          }
-          
-          setLoading(false);
-        });
 
         // Vérification de la session existante avec fallback offline
         try {
-          const { data: { session }, error } = await supabase.auth.getSession();
+          const { data: { session: existingSession }, error } = await supabase.auth.getSession();
           
           if (error) {
-            // Erreur Supabase (ex: 402) - essayer le cache
             console.warn('⚠️ Supabase auth error, trying cache:', error.message);
             
             const errorMessage = error.message || '';
@@ -247,33 +251,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setSupabaseError(error.message);
             }
             
-            const hasCached = await loadCachedSession();
-            if (!hasCached && mounted) {
+            if (!hasCachedSession) {
+              await loadCachedSession();
+            }
+            if (mounted) {
               setLoading(false);
             }
-            return () => subscription.unsubscribe();
+            return;
           }
           
-          if (session && mounted) {
-            setSession(session);
-            setUser(session.user);
+          if (existingSession && mounted) {
+            setSession(existingSession);
+            setUser(existingSession.user);
             setIsOfflineMode(false);
-            await cacheSession(session.user, session);
+            await cacheSession(existingSession.user, existingSession);
           } else if (mounted && !hasCachedSession) {
-            // Pas de session Supabase et pas de cache - vraiment pas de session
-              setUser(null);
-              setSession(null);
+            setUser(null);
+            setSession(null);
           }
           
           if (mounted) {
             setLoading(false);
           }
         } catch (err: any) {
-          // Erreur réseau - essayer le cache
           console.warn('⚠️ Network error, trying cache:', err);
           setSupabaseError('Erreur de connexion');
           
-          // Si on n'a pas encore de session cachée, essayer de la charger
           if (!hasCachedSession) {
             await loadCachedSession();
           }
@@ -282,8 +285,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
           }
         }
-
-        return () => subscription.unsubscribe();
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (mounted) {
@@ -296,6 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, [cacheSession, loadCachedSession]);
 
