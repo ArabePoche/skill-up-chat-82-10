@@ -214,6 +214,8 @@ export const useSchoolMessagesGmail = (schoolId?: string) => {
           join_request_status: req.status,
           join_request_role: req.role,
           join_request_form_data: formData,
+          join_request_school_id: schoolId,
+          join_request_user_id: req.user_id,
         };
       });
     },
