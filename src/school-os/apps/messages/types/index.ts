@@ -48,6 +48,10 @@ export interface SchoolMessage {
   join_request_status?: 'pending' | 'approved' | 'rejected';
   join_request_role?: string;
   join_request_form_data?: Record<string, any>;
+  /** School ID for join requests */
+  join_request_school_id?: string;
+  /** User ID of the requester */
+  join_request_user_id?: string;
 }
 
 export interface MessageFolder {
