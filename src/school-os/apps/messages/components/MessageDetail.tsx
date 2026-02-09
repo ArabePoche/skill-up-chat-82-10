@@ -24,6 +24,7 @@ import {
 import { SchoolMessage, MessageLabel } from '../types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import ParentApprovalStudentSelector from '@/school-os/families/components/ParentApprovalStudentSelector';
 
 interface MessageDetailProps {
   message: SchoolMessage;
@@ -72,6 +73,7 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
   const [expanded, setExpanded] = React.useState(true);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [showStudentSelector, setShowStudentSelector] = useState(false);
 
   const getInitials = (name: string) => name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
@@ -232,21 +234,50 @@ export const MessageDetail: React.FC<MessageDetailProps> = ({
                       {/* Action buttons for pending requests */}
                       {message.join_request_status === 'pending' && onApproveJoinRequest && onRejectJoinRequest && (
                         <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <Button
-                              onClick={() => onApproveJoinRequest(message.join_request_id!)}
-                              className="gap-2 bg-green-600 hover:bg-green-700"
-                            >
-                              <Check className="h-4 w-4" /> Approuver
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => setShowRejectInput(!showRejectInput)}
-                              className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
-                            >
-                              <X className="h-4 w-4" /> Refuser
-                            </Button>
-                          </div>
+                          {/* Si c'est un parent et que le sélecteur d'élèves est visible */}
+                          {message.join_request_role === 'parent' && showStudentSelector && message.join_request_school_id && (
+                            <div className="rounded-lg border p-4 bg-muted/30">
+                              <h4 className="font-medium mb-3 flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                Sélectionner les élèves à associer au parent
+                              </h4>
+                              <ParentApprovalStudentSelector
+                                schoolId={message.join_request_school_id}
+                                joinRequestId={message.join_request_id!}
+                                parentUserId={message.join_request_user_id || message.sender.id}
+                                onComplete={() => {
+                                  setShowStudentSelector(false);
+                                  // Invalider les requêtes pour rafraîchir
+                                }}
+                                onCancel={() => setShowStudentSelector(false)}
+                              />
+                            </div>
+                          )}
+
+                          {/* Boutons d'action */}
+                          {!showStudentSelector && (
+                            <div className="flex items-center gap-3">
+                              <Button
+                                onClick={() => {
+                                  if (message.join_request_role === 'parent') {
+                                    setShowStudentSelector(true);
+                                  } else {
+                                    onApproveJoinRequest(message.join_request_id!);
+                                  }
+                                }}
+                                className="gap-2 bg-green-600 hover:bg-green-700"
+                              >
+                                <Check className="h-4 w-4" /> Approuver
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => setShowRejectInput(!showRejectInput)}
+                                className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
+                              >
+                                <X className="h-4 w-4" /> Refuser
+                              </Button>
+                            </div>
+                          )}
                           {showRejectInput && (
                             <div className="space-y-2">
                               <Textarea
