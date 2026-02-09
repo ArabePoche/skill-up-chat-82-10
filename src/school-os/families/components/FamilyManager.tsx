@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { FamilyForm } from './FamilyForm';
+import { ParentalCodeDisplay } from './ParentalCodeDisplay';
 import { useFamilies, useCreateFamily, useUpdateFamily, useDeleteFamily, Family } from '../hooks/useFamilies';
 
 interface FamilyManagerProps {
@@ -121,6 +122,11 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({ schoolId }) => {
               )}
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              {family.parental_code && (
+                <div className="mb-2">
+                  <ParentalCodeDisplay code={family.parental_code} compact />
+                </div>
+              )}
               {family.primary_contact_phone && (
                 <p className="text-muted-foreground">📱 {family.primary_contact_phone}</p>
               )}
