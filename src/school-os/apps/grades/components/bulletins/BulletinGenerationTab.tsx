@@ -274,8 +274,8 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
       data.rank = index + 1;
       data.classAverage = classAverage;
       data.firstAverage = firstAverage;
-      data.mention = getMentionFromTemplates(data.average, appreciationTemplates);
-      data.appreciation = getAppreciationFromTemplates(data.average, appreciationTemplates);
+      data.mention = getMentionFromTemplates(data.average, appreciationTemplates, gradeBase);
+      data.appreciation = getAppreciationFromTemplates(data.average, appreciationTemplates, gradeBase);
     });
 
     // Gérer les élèves sans notes
@@ -611,8 +611,12 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
 };
 
 // Helper functions - Version avec templates depuis la base de données
-function getMentionFromTemplates(average: number | null, templates: BulletinAppreciationTemplate[]): string {
+// gradeBase: barème de notation (10, 20, etc.) pour normaliser les seuils
+function getMentionFromTemplates(average: number | null, templates: BulletinAppreciationTemplate[], gradeBase: number = 20): string {
   if (average === null) return 'Non évalué';
+  
+  // Normaliser la moyenne sur /20 pour comparer aux seuils standards
+  const normalizedAvg = gradeBase !== 20 ? (average / gradeBase) * 20 : average;
   
   // Mapping des catégories vers les mentions
   const categoryToMention: Record<string, string> = {
@@ -623,45 +627,48 @@ function getMentionFromTemplates(average: number | null, templates: BulletinAppr
     'poor': 'Insuffisant'
   };
   
-  // Trouver le template qui correspond à la moyenne
+  // Trouver le template qui correspond à la moyenne normalisée
   const matchingTemplate = templates.find(t => {
     const min = t.min_average ?? 0;
     const max = t.max_average ?? 20;
-    return average >= min && average <= max;
+    return normalizedAvg >= min && normalizedAvg <= max;
   });
   
   if (matchingTemplate) {
     return categoryToMention[matchingTemplate.category] || matchingTemplate.category;
   }
   
-  // Fallback si pas de template trouvé
-  if (average >= 16) return 'Très Bien';
-  if (average >= 14) return 'Bien';
-  if (average >= 12) return 'Assez Bien';
-  if (average >= 10) return 'Passable';
+  // Fallback si pas de template trouvé (seuils sur /20)
+  if (normalizedAvg >= 16) return 'Très Bien';
+  if (normalizedAvg >= 14) return 'Bien';
+  if (normalizedAvg >= 12) return 'Assez Bien';
+  if (normalizedAvg >= 10) return 'Passable';
   return 'Insuffisant';
 }
 
-function getAppreciationFromTemplates(average: number | null, templates: BulletinAppreciationTemplate[]): string {
+function getAppreciationFromTemplates(average: number | null, templates: BulletinAppreciationTemplate[], gradeBase: number = 20): string {
   if (average === null) return 'Aucune note disponible.';
   
-  // Trouver le template qui correspond à la moyenne
+  // Normaliser la moyenne sur /20 pour comparer aux seuils standards
+  const normalizedAvg = gradeBase !== 20 ? (average / gradeBase) * 20 : average;
+  
+  // Trouver le template qui correspond à la moyenne normalisée
   const matchingTemplate = templates.find(t => {
     const min = t.min_average ?? 0;
     const max = t.max_average ?? 20;
-    return average >= min && average <= max;
+    return normalizedAvg >= min && normalizedAvg <= max;
   });
   
   if (matchingTemplate) {
     return matchingTemplate.text;
   }
   
-  // Fallback si pas de template trouvé - avec plus de variété
-  if (average >= 18) return 'Excellent travail ! Continuez ainsi.';
-  if (average >= 16) return 'Très bon travail. Félicitations !';
-  if (average >= 14) return 'Bon travail. Continuez vos efforts.';
-  if (average >= 12) return 'Travail satisfaisant. Peut mieux faire.';
-  if (average >= 10) return 'Résultats justes. Des efforts sont nécessaires.';
+  // Fallback si pas de template trouvé (seuils sur /20)
+  if (normalizedAvg >= 18) return 'Excellent travail ! Continuez ainsi.';
+  if (normalizedAvg >= 16) return 'Très bon travail. Félicitations !';
+  if (normalizedAvg >= 14) return 'Bon travail. Continuez vos efforts.';
+  if (normalizedAvg >= 12) return 'Travail satisfaisant. Peut mieux faire.';
+  if (normalizedAvg >= 10) return 'Résultats justes. Des efforts sont nécessaires.';
   return 'Résultats insuffisants. Un travail plus soutenu est indispensable.';
 }
 
