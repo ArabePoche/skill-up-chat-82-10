@@ -9,3 +9,5 @@ export * from './components/FamilyFormSelectorDialog';
 export * from './components/ParentalCodeDisplay';
 export * from './components/ParentalCodeInput';
 export * from './components/ParentAssociationRequests';
+export * from './components/ParentCodeConfirmation';
+export * from './hooks/useParentJoinConfirmation';
