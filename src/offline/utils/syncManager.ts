@@ -28,6 +28,8 @@ class SyncManager {
   private maxReconnectAttempts: number = 5;
   private reconnectDelay: number = 5000;
 
+  private hasRunStartupSync: boolean = false;
+
   constructor() {
     this.init();
   }
@@ -461,6 +463,18 @@ class SyncManager {
    * Forcer une synchronisation manuelle
    */
   async forceSync(): Promise<void> {
+    await this.syncAll();
+  }
+
+  /**
+   * Synchronisation au lancement de l'app
+   * Met à jour les formations offline et la progression utilisateur
+   */
+  async startupSync(): Promise<void> {
+    if (this.hasRunStartupSync || !this.isOnline) return;
+    this.hasRunStartupSync = true;
+
+    console.log('🚀 Startup sync: refreshing offline data...');
     await this.syncAll();
   }
 }
