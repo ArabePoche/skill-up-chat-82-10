@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'offline_content';
-const DB_VERSION = 2; // Incrémenté pour supporter les nouveaux stores
+const DB_VERSION = 3; // V3: ajout du store user_progress pour la progression offline
 const FORMATIONS_STORE = 'formations';
 const LESSONS_STORE = 'lessons';
 const AUDIO_FILES_STORE = 'audio_files';
@@ -12,6 +12,7 @@ const MESSAGES_STORE = 'messages';
 const PROFILES_STORE = 'profiles';
 const QUERY_CACHE_STORE = 'query_cache';
 const PENDING_MUTATIONS_STORE = 'pending_mutations';
+const USER_PROGRESS_STORE = 'user_progress';
 
 // Interfaces
 interface OfflineFormation {
@@ -58,6 +59,23 @@ interface PendingMutation {
   payload: any;
   createdAt: number;
   retryCount: number;
+}
+
+/**
+ * Progression offline d'un utilisateur pour une leçon
+ */
+interface OfflineUserProgress {
+  id: string; // `${userId}_${lessonId}`
+  userId: string;
+  lessonId: string;
+  formationId: string;
+  levelId: string;
+  levelOrderIndex: number;
+  lessonOrderIndex: number;
+  status: 'not_started' | 'in_progress' | 'awaiting_review' | 'completed';
+  exerciseCompleted: boolean;
+  completedAt?: string;
+  savedAt: number;
 }
 
 class OfflineStore {
@@ -126,6 +144,14 @@ class OfflineStore {
           const mutationStore = db.createObjectStore(PENDING_MUTATIONS_STORE, { keyPath: 'id' });
           mutationStore.createIndex('type', 'type', { unique: false });
           mutationStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // Store pour la progression utilisateur (V3)
+        if (!db.objectStoreNames.contains(USER_PROGRESS_STORE)) {
+          const progressStore = db.createObjectStore(USER_PROGRESS_STORE, { keyPath: 'id' });
+          progressStore.createIndex('userId', 'userId', { unique: false });
+          progressStore.createIndex('formationId', 'formationId', { unique: false });
+          progressStore.createIndex('userFormation', ['userId', 'formationId'], { unique: false });
         }
       };
     });
@@ -437,6 +463,103 @@ class OfflineStore {
       };
       request.onerror = () => reject(request.error);
     });
+  }
+
+  // ==================== USER PROGRESS (V3) ====================
+
+  /**
+   * Sauvegarde la progression d'un utilisateur pour une leçon
+   */
+  async saveUserProgress(progress: Omit<OfflineUserProgress, 'id' | 'savedAt'>): Promise<void> {
+    const db = await this.ensureDB();
+    const entry: OfflineUserProgress = {
+      id: `${progress.userId}_${progress.lessonId}`,
+      ...progress,
+      savedAt: Date.now(),
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([USER_PROGRESS_STORE], 'readwrite');
+      const store = transaction.objectStore(USER_PROGRESS_STORE);
+      store.put(entry);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  /**
+   * Sauvegarde la progression complète d'un utilisateur pour une formation
+   */
+  async saveUserProgressBatch(progressList: Omit<OfflineUserProgress, 'id' | 'savedAt'>[]): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([USER_PROGRESS_STORE], 'readwrite');
+      const store = transaction.objectStore(USER_PROGRESS_STORE);
+
+      for (const progress of progressList) {
+        const entry: OfflineUserProgress = {
+          id: `${progress.userId}_${progress.lessonId}`,
+          ...progress,
+          savedAt: Date.now(),
+        };
+        store.put(entry);
+      }
+
+      transaction.oncomplete = () => {
+        console.log(`📊 Saved ${progressList.length} progress entries offline`);
+        resolve();
+      };
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  /**
+   * Récupère la progression d'un utilisateur pour une formation
+   */
+  async getUserProgressByFormation(userId: string, formationId: string): Promise<OfflineUserProgress[]> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([USER_PROGRESS_STORE], 'readonly');
+      const store = transaction.objectStore(USER_PROGRESS_STORE);
+      const index = store.index('userFormation');
+      const request = index.getAll([userId, formationId]);
+
+      request.onsuccess = () => resolve(request.result as OfflineUserProgress[]);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Récupère le niveau maximum atteint par un utilisateur dans une formation (offline)
+   */
+  async getUserMaxProgress(userId: string, formationId: string): Promise<{
+    levelOrder: number;
+    lessonOrder: number;
+    status: string;
+  }> {
+    const progressList = await this.getUserProgressByFormation(userId, formationId);
+    
+    if (progressList.length === 0) {
+      return { levelOrder: 0, lessonOrder: 0, status: 'not_started' };
+    }
+
+    // Trouver la progression la plus avancée
+    let maxLevel = 0;
+    let maxLesson = 0;
+    let lastStatus = 'not_started';
+
+    for (const p of progressList) {
+      if (p.levelOrderIndex > maxLevel || 
+          (p.levelOrderIndex === maxLevel && p.lessonOrderIndex > maxLesson)) {
+        maxLevel = p.levelOrderIndex;
+        maxLesson = p.lessonOrderIndex;
+        lastStatus = p.status;
+      }
+    }
+
+    return { levelOrder: maxLevel, lessonOrder: maxLesson, status: lastStatus };
   }
 
   // ==================== FORMATIONS (existing) ====================
