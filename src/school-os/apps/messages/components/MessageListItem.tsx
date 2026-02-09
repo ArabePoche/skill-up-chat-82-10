@@ -6,7 +6,8 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Star, Paperclip } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Star, Paperclip, UserPlus } from 'lucide-react';
 import { SchoolMessage, MessageLabel } from '../types';
 import { formatDistanceToNow, format, isToday, isYesterday, isThisYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -132,8 +133,13 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
         </Avatar>
 
         {/* Expéditeur */}
-        <div className="w-40 flex-shrink-0 truncate">
-          <span className={cn('text-sm', !message.is_read && 'font-semibold')}>
+        <div className="w-40 flex-shrink-0 truncate flex items-center gap-1">
+          {message.is_join_request && (
+            <Badge variant="outline" className="text-[10px] h-4 px-1 gap-0.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 flex-shrink-0">
+              <UserPlus className="h-2.5 w-2.5" />
+            </Badge>
+          )}
+          <span className={cn('text-sm truncate', !message.is_read && 'font-semibold')}>
             {message.sender.name}
           </span>
           <span className="ml-1 text-xs">{getRoleIcon(message.sender.role)}</span>
