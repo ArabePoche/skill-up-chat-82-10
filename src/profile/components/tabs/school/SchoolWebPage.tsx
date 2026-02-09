@@ -2,12 +2,15 @@
  * SchoolWebPage - Page web complète d'une école style site officiel
  * Affiche toutes les informations avec un design moderne Material 3
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, MapPin, Phone, Mail, Globe, Calendar, Building2, 
   Users, GraduationCap, BookOpen, Image as ImageIcon,
-  ExternalLink, Award, Languages
+  ExternalLink, Award, Languages, UserPlus
 } from 'lucide-react';
+import SchoolJoinRequestModal from '@/school/components/SchoolJoinRequestModal';
+import { ParentCodeConfirmation } from '@/school-os/families/components/ParentCodeConfirmation';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -36,7 +39,9 @@ interface SchoolWebPageProps {
 }
 
 const SchoolWebPage: React.FC<SchoolWebPageProps> = ({ school, onClose }) => {
-  const { t } = useTranslation();
+  const { user } = useAuth();
+  const [showJoinModal, setShowJoinModal] = useState(false);
+
 
   const getSchoolTypeLabel = (type: string) => {
     switch (type) {
@@ -119,11 +124,30 @@ const SchoolWebPage: React.FC<SchoolWebPageProps> = ({ school, onClose }) => {
                     {school.country}
                   </span>
                 )}
-              </div>
             </div>
           </div>
+
+          {/* Bouton Rejoindre */}
+          {user && (
+            <Button
+              onClick={() => setShowJoinModal(true)}
+              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-0"
+              variant="outline"
+            >
+              <UserPlus size={18} />
+              Rejoindre cette école
+            </Button>
+          )}
         </div>
       </div>
+      </div>
+
+      {/* Confirmation de code parental en attente */}
+      {user && (
+        <div className="px-1 mb-4">
+          <ParentCodeConfirmation />
+        </div>
+      )}
 
       {/* Contenu principal */}
       <div className="space-y-6 px-1">
@@ -313,6 +337,12 @@ const SchoolWebPage: React.FC<SchoolWebPageProps> = ({ school, onClose }) => {
           </p>
         </footer>
       </div>
+      {/* Modal de demande d'adhésion */}
+      <SchoolJoinRequestModal
+        isOpen={showJoinModal}
+        onClose={() => setShowJoinModal(false)}
+        school={{ id: school.id, name: school.name }}
+      />
     </motion.div>
   );
 };
