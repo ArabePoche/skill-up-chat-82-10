@@ -21,6 +21,7 @@ export { useOfflineFormations } from './hooks/useOfflineFormations';
 export { useOfflineQuery, useOfflineData } from './hooks/useOfflineQuery';
 export { useOfflineMutation, useSyncPendingMutations } from './hooks/useOfflineMutation';
 export { useFirstRun } from './hooks/useFirstRun';
+export { useOfflineProgression, useOfflineMaxProgress } from './hooks/useOfflineProgression';
 export { useOfflineConversations } from './hooks/useOfflineConversations';
 export { useOfflineGroupChat } from './hooks/useOfflineGroupeChat';
 export { useSupabaseStatus } from './hooks/useSupabaseStatus';
