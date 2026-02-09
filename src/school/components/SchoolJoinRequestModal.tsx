@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Key } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useTranslation } from 'react-i18next';
 import { useSchoolJoinRequest } from '../hooks/useSchoolJoinRequest';
 import { useAuth } from '@/hooks/useAuth';
 import { useSchoolClasses } from '../hooks/useClasses';
 import { useSchoolSubjects } from '../hooks/useSubjects';
 import { useAssignableRoles, ROLE_LABELS, ROLE_DESCRIPTIONS } from '../hooks/useSchoolRoles';
-import ParentJoinForm from './ParentJoinForm';
 import TeacherJoinForm from './TeacherJoinForm';
 import StudentJoinForm from './StudentJoinForm';
 import StaffJoinForm from './StaffJoinForm';
+import { Button } from '@/components/ui/button';
 
 /**
  * Modal pour demander à rejoindre une école
@@ -39,6 +41,8 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
   const { data: roles = [], isLoading: rolesLoading } = useAssignableRoles(school.id);
   
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  const [parentalCode, setParentalCode] = useState('');
+  const [parentMessage, setParentMessage] = useState('');
   
   // Trouver le rôle sélectionné
   const selectedRole = roles.find(r => r.id === selectedRoleId);
@@ -73,13 +77,17 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
     return '';
   };
 
-  const handleParentSubmit = async (data: any) => {
+  const handleParentSubmit = async () => {
     if (!user?.id || !selectedRoleId) return;
     await sendRequest.mutateAsync({
       schoolId: school.id,
       userId: user.id,
       role: roleName,
-      formData: { ...data, roleId: selectedRoleId },
+      formData: { 
+        parentalCode: parentalCode || null,
+        message: parentMessage || null,
+        roleId: selectedRoleId 
+      },
     });
     onClose();
   };
@@ -206,8 +214,45 @@ const SchoolJoinRequestModal: React.FC<SchoolJoinRequestModalProps> = ({
 
           {/* Formulaires spécifiques selon le rôle */}
           {roleName === 'parent' && (
-            <div className="pt-4 border-t">
-              <ParentJoinForm onSubmit={handleParentSubmit} isPending={sendRequest.isPending} />
+            <div className="pt-4 border-t space-y-4">
+              <div>
+                <Label htmlFor="parental-code" className="flex items-center gap-2">
+                  <Key className="w-4 h-4" />
+                  Code parental (optionnel)
+                </Label>
+                <Input
+                  id="parental-code"
+                  placeholder="Ex: FAM-AB12CD"
+                  value={parentalCode}
+                  onChange={(e) => setParentalCode(e.target.value.toUpperCase())}
+                  className="font-mono mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Si vous avez reçu un code parental de l'école, saisissez-le ici pour faciliter l'association.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="parent-message">Message (optionnel)</Label>
+                <Textarea
+                  id="parent-message"
+                  value={parentMessage}
+                  onChange={(e) => setParentMessage(e.target.value)}
+                  placeholder="Présentez-vous et expliquez votre demande..."
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={handleParentSubmit}
+                disabled={sendRequest.isPending}
+              >
+                {sendRequest.isPending ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Envoi...</>
+                ) : (
+                  "Envoyer la demande d'adhésion"
+                )}
+              </Button>
             </div>
           )}
 
