@@ -58,6 +58,8 @@ export const MessagesApp: React.FC = () => {
     handleDeleteLabel,
     handleSendMessage,
     handleSaveDraft,
+    handleApproveJoinRequest,
+    handleRejectJoinRequest,
   } = useSchoolMessagesGmail(school?.id);
 
   // États de chargement
@@ -135,7 +137,6 @@ export const MessagesApp: React.FC = () => {
               onBack={() => setSelectedMessage(null)}
               onReply={() => {
                 setComposeOpen(true);
-                // TODO: pré-remplir avec les infos de réponse
               }}
               onReplyAll={() => setComposeOpen(true)}
               onForward={() => setComposeOpen(true)}
@@ -149,6 +150,8 @@ export const MessagesApp: React.FC = () => {
               }}
               onStarToggle={() => handleStarToggle(selectedMessage.id)}
               onAddLabel={(labelId) => handleAddLabel([selectedMessage.id], labelId)}
+              onApproveJoinRequest={handleApproveJoinRequest}
+              onRejectJoinRequest={handleRejectJoinRequest}
             />
           ) : (
             // Liste des messages
