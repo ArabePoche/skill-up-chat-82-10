@@ -5,12 +5,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export interface GradingPeriod {
+export interface CompositionPeriod {
   id: string;
-  name: string;
+  title: string;
+  type: string;
   start_date: string;
   end_date: string;
-  is_active: boolean | null;
+  include_class_notes: boolean | null;
 }
 
 export interface ParentReportCard {
@@ -29,29 +30,30 @@ export interface ParentReportCard {
 }
 
 export interface ParentBulletinByPeriod {
-  period: GradingPeriod;
+  period: CompositionPeriod;
   reportCard: ParentReportCard | null;
 }
 
 /**
- * Récupère les périodes de l'année scolaire
+ * Récupère les compositions (périodes) de l'année scolaire depuis school_compositions
  */
-export const useGradingPeriods = (schoolYearId?: string) => {
+export const useCompositionPeriods = (schoolId?: string, schoolYearId?: string) => {
   return useQuery({
-    queryKey: ['grading-periods', schoolYearId],
-    queryFn: async (): Promise<GradingPeriod[]> => {
-      if (!schoolYearId) return [];
+    queryKey: ['composition-periods', schoolId, schoolYearId],
+    queryFn: async (): Promise<CompositionPeriod[]> => {
+      if (!schoolId || !schoolYearId) return [];
 
       const { data, error } = await supabase
-        .from('grading_periods')
-        .select('id, name, start_date, end_date, is_active')
+        .from('school_compositions')
+        .select('id, title, type, start_date, end_date, include_class_notes')
+        .eq('school_id', schoolId)
         .eq('school_year_id', schoolYearId)
         .order('start_date', { ascending: true });
 
       if (error) throw error;
       return data || [];
     },
-    enabled: !!schoolYearId,
+    enabled: !!schoolId && !!schoolYearId,
   });
 };
 
@@ -63,7 +65,7 @@ export const useParentBulletins = (
   schoolYearId?: string,
   studentId?: string
 ) => {
-  const { data: periods, isLoading: isLoadingPeriods } = useGradingPeriods(schoolYearId);
+  const { data: periods, isLoading: isLoadingPeriods } = useCompositionPeriods(schoolId, schoolYearId);
 
   const { data: reportCards, isLoading: isLoadingReports } = useQuery({
     queryKey: ['parent-report-cards', schoolId, schoolYearId, studentId],
