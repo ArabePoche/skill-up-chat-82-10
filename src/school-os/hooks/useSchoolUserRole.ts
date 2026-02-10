@@ -63,6 +63,17 @@ export const useSchoolUserRole = (schoolId: string | undefined) => {
         };
       }
 
+      // Vérifier si l'utilisateur est parent dans cette école
+      const { data: parentAssoc } = await supabase
+        .from('parent_family_associations')
+        .select('id, school_student_families!inner(school_id)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .eq('school_student_families.school_id', schoolId)
+        .limit(1);
+
+      const isParent = (parentAssoc && parentAssoc.length > 0) || false;
+
       // Récupérer les rôles de l'utilisateur dans cette école
       const { data: userRoles } = await supabase
         .from('school_user_roles')
@@ -77,6 +88,9 @@ export const useSchoolUserRole = (schoolId: string | undefined) => {
         .eq('user_id', user.id);
 
       const roles = userRoles?.map((ur: any) => ur.school_roles.name) || [];
+      if (isParent && !roles.includes('parent')) {
+        roles.push('parent');
+      }
 
       // Récupérer les permissions via les rôles
       const { data: permissions } = await supabase.rpc('get_user_school_permissions', {
@@ -84,16 +98,31 @@ export const useSchoolUserRole = (schoolId: string | undefined) => {
         _school_id: schoolId,
       });
 
+      // Permissions par défaut pour les parents
+      const parentPermissions = isParent ? [
+        'app.grades',
+        'app.schedule',
+        'app.messages',
+        'app.reports',
+      ] : [];
+
+      const allPermissions = [
+        ...(permissions?.map((p: any) => p.permission_code) || []),
+        ...parentPermissions,
+      ];
+      // Dédupliquer
+      const uniquePermissions = [...new Set(allPermissions)];
+
       return {
         isOwner: false,
         isAdmin: roles.includes('admin'),
         isTeacher: roles.includes('teacher'),
         isSecretary: roles.includes('secretary'),
-        isParent: roles.includes('parent'),
+        isParent,
         isStudent: roles.includes('student'),
         isSupervisor: roles.includes('supervisor'),
         roles,
-        permissions: permissions?.map((p: any) => p.permission_code) || [],
+        permissions: uniquePermissions,
       };
     },
     enabled: !!schoolId && !!user?.id,
