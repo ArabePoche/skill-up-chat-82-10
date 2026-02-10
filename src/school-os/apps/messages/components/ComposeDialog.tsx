@@ -1,6 +1,6 @@
 /**
  * Dialog de composition de message style Gmail
- * Avec sélection de membres par recherche et par groupe
+ * Avec sélection de membres par recherche, par groupe, et filtrage par classe
  */
 import React, { useState, useMemo } from 'react';
 import {
@@ -17,17 +17,17 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Paperclip, Send, Trash2, ChevronDown, X, Minimize2, Maximize2,
-  Image, Link2, Search, Users, GraduationCap, Briefcase, User,
+  Paperclip, Send, Trash2, X, Minimize2, Maximize2,
+  Image, Link2, Users, GraduationCap, Briefcase, User, Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSchoolMembers } from '../hooks/useSchoolMembers';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
+import { useSchoolClasses } from '@/school/hooks/useClasses';
+import { useClassMemberMap } from '../hooks/useClassMemberMap';
 import { SchoolMember } from '../types';
+import { RecipientGroupPicker } from './RecipientGroupPicker';
 
 interface ComposeDialogProps {
   open: boolean;
@@ -79,11 +79,25 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
   const { school, activeSchoolYear } = useSchoolYear();
   const { data: roleData } = useSchoolUserRole(school?.id);
   const isParent = roleData?.isParent || false;
+  const isAdmin = roleData?.isAdmin || roleData?.isOwner || false;
   const { members, filteredMembers, groups, searchQuery, setSearchQuery, isLoading } = useSchoolMembers(school?.id, {
     isParent,
     schoolYearId: activeSchoolYear?.id,
   });
-  
+
+  // Fetch classes for admin filtering
+  const { data: classes = [] } = useSchoolClasses(
+    isAdmin ? school?.id : undefined,
+    activeSchoolYear?.id
+  );
+
+  // Fetch class-member mapping (teachers & parents per class)
+  const { data: classMemberMap = {} } = useClassMemberMap(
+    isAdmin ? school?.id : undefined,
+    activeSchoolYear?.id,
+    members
+  );
+
   const [selectedRecipients, setSelectedRecipients] = useState<SchoolMember[]>([]);
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
   const [content, setContent] = useState('');
@@ -91,6 +105,12 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [recipientPopoverOpen, setRecipientPopoverOpen] = useState(false);
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
+
+  const selectedRecipientIds = useMemo(
+    () => new Set(selectedRecipients.map(r => r.id)),
+    [selectedRecipients]
+  );
 
   const addRecipient = (member: SchoolMember) => {
     if (!selectedRecipients.find((r) => r.id === member.id)) {
@@ -111,6 +131,19 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
       );
       setSelectedRecipients((prev) => [...prev, ...newMembers]);
     }
+  };
+
+  const handleAddRecipients = (newMembers: SchoolMember[]) => {
+    setSelectedRecipients(prev => {
+      const existingIds = new Set(prev.map(r => r.id));
+      const toAdd = newMembers.filter(m => !existingIds.has(m.id));
+      return [...prev, ...toAdd];
+    });
+  };
+
+  const handleRemoveRecipients = (ids: string[]) => {
+    const removeSet = new Set(ids);
+    setSelectedRecipients(prev => prev.filter(r => !removeSet.has(r.id)));
   };
 
   const handleSend = () => {
@@ -141,6 +174,7 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
     setContent('');
     setAttachments([]);
     setSearchQuery('');
+    setShowGroupPicker(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,10 +187,14 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
-  // Members not already selected
   const availableMembers = useMemo(() => {
     return filteredMembers.filter((m) => !selectedRecipients.find((r) => r.id === m.id));
   }, [filteredMembers, selectedRecipients]);
+
+  const classInfos = useMemo(() =>
+    classes.map((c: any) => ({ id: c.id, name: c.name, cycle: c.cycle })),
+    [classes]
+  );
 
   if (isMinimized) {
     return (
@@ -200,6 +238,7 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
           <div className="flex items-start gap-2 border-b px-4 py-2">
             <Label className="text-sm text-muted-foreground w-12 pt-1.5">À</Label>
             <div className="flex-1">
+              {/* Selected recipients badges */}
               <div className="flex flex-wrap items-center gap-1.5 mb-1">
                 {selectedRecipients.map((r) => {
                   const RoleIcon = roleIcons[r.role] || User;
@@ -216,7 +255,7 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
               </div>
 
               {isParent ? (
-                /* Mode parent: sélecteur direct de membres (pas de recherche) */
+                /* Mode parent: direct member list */
                 <ScrollArea className="max-h-40">
                   <div className="space-y-0.5">
                     {isLoading ? (
@@ -254,85 +293,112 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
                   </div>
                 </ScrollArea>
               ) : (
-                /* Mode non-parent: recherche avec popover */
-                <div className="flex items-center gap-2">
-                  <Popover open={recipientPopoverOpen} onOpenChange={setRecipientPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <div className="flex-1 relative">
-                        <Input
-                          value={searchQuery}
-                          onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            if (!recipientPopoverOpen) setRecipientPopoverOpen(true);
-                          }}
-                          onFocus={() => setRecipientPopoverOpen(true)}
-                          placeholder="Rechercher un membre..."
-                          className="border-0 focus-visible:ring-0 px-0 h-8"
-                        />
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                      <ScrollArea className="max-h-64">
-                        {/* Group buttons */}
-                        {groups.length > 0 && !searchQuery.trim() && (
-                          <div className="p-2 border-b">
-                            <p className="text-xs text-muted-foreground px-2 mb-1.5">Envoyer à un groupe</p>
-                            <div className="flex flex-wrap gap-1">
-                              {groups.map((g) => {
-                                const Icon = roleIcons[g.key] || Users;
-                                return (
-                                  <Button
-                                    key={g.key}
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-1 text-xs h-7"
-                                    onClick={() => { addGroupRecipients(g.key); }}
-                                  >
-                                    <Icon className="h-3 w-3" />
-                                    Tous les {g.label.toLowerCase()} ({g.members.length})
-                                  </Button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        {/* Individual members */}
-                        <div className="p-1">
-                          {availableMembers.length === 0 ? (
-                            <p className="text-sm text-muted-foreground p-3 text-center">
-                              {isLoading ? 'Chargement...' : 'Aucun membre trouvé'}
-                            </p>
-                          ) : (
-                            availableMembers.slice(0, 20).map((member) => {
-                              const RoleIcon = roleIcons[member.role] || User;
-                              return (
-                                <button
-                                  key={member.id}
-                                  className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted text-left transition-colors"
-                                  onClick={() => { addRecipient(member); }}
-                                >
-                                  <Avatar className="h-7 w-7">
-                                    <AvatarImage src={member.avatar_url} />
-                                    <AvatarFallback className="text-xs">
-                                      {member.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">{member.name}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                                  </div>
-                                  <Badge variant="outline" className="text-[10px] gap-0.5 h-5">
-                                    <RoleIcon className="h-3 w-3" />
-                                    {roleLabels[member.role] || member.role}
-                                  </Badge>
-                                </button>
-                              );
-                            })
-                          )}
+                /* Mode non-parent: search + group picker */
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Popover open={recipientPopoverOpen} onOpenChange={setRecipientPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <div className="flex-1 relative">
+                          <Input
+                            value={searchQuery}
+                            onChange={(e) => {
+                              setSearchQuery(e.target.value);
+                              if (!recipientPopoverOpen) setRecipientPopoverOpen(true);
+                            }}
+                            onFocus={() => setRecipientPopoverOpen(true)}
+                            placeholder="Rechercher un membre..."
+                            className="border-0 focus-visible:ring-0 px-0 h-8"
+                          />
                         </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <ScrollArea className="max-h-64">
+                          {/* Quick group buttons */}
+                          {groups.length > 0 && !searchQuery.trim() && (
+                            <div className="p-2 border-b">
+                              <p className="text-xs text-muted-foreground px-2 mb-1.5">Envoyer à un groupe</p>
+                              <div className="flex flex-wrap gap-1">
+                                {groups.map((g) => {
+                                  const Icon = roleIcons[g.key] || Users;
+                                  return (
+                                    <Button
+                                      key={g.key}
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-1 text-xs h-7"
+                                      onClick={() => { addGroupRecipients(g.key); }}
+                                    >
+                                      <Icon className="h-3 w-3" />
+                                      Tous les {g.label.toLowerCase()} ({g.members.length})
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {/* Individual members */}
+                          <div className="p-1">
+                            {availableMembers.length === 0 ? (
+                              <p className="text-sm text-muted-foreground p-3 text-center">
+                                {isLoading ? 'Chargement...' : 'Aucun membre trouvé'}
+                              </p>
+                            ) : (
+                              availableMembers.slice(0, 20).map((member) => {
+                                const RoleIcon = roleIcons[member.role] || User;
+                                return (
+                                  <button
+                                    key={member.id}
+                                    className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted text-left transition-colors"
+                                    onClick={() => { addRecipient(member); }}
+                                  >
+                                    <Avatar className="h-7 w-7">
+                                      <AvatarImage src={member.avatar_url} />
+                                      <AvatarFallback className="text-xs">
+                                        {member.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{member.name}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px] gap-0.5 h-5">
+                                      <RoleIcon className="h-3 w-3" />
+                                      {roleLabels[member.role] || member.role}
+                                    </Badge>
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Toggle group picker for admin */}
+                    {isAdmin && groups.length > 0 && (
+                      <Button
+                        variant={showGroupPicker ? 'secondary' : 'outline'}
+                        size="sm"
+                        className="gap-1 text-xs h-8 shrink-0"
+                        onClick={() => setShowGroupPicker(!showGroupPicker)}
+                      >
+                        <Filter className="h-3.5 w-3.5" />
+                        Filtrer
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Advanced group picker for admin */}
+                  {isAdmin && showGroupPicker && (
+                    <RecipientGroupPicker
+                      groups={groups}
+                      classes={classInfos}
+                      classMemberMap={classMemberMap}
+                      selectedRecipientIds={selectedRecipientIds}
+                      onAddRecipients={handleAddRecipients}
+                      onRemoveRecipients={handleRemoveRecipients}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -375,6 +441,11 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
               <Send className="h-4 w-4" />
               Envoyer
             </Button>
+            {selectedRecipients.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {selectedRecipients.length} destinataire{selectedRecipients.length > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" asChild>
