@@ -19,6 +19,7 @@ const APP_PERMISSION_MAP: Record<string, string> = {
   messages: 'app.messages',
   personnel: 'app.personnel',
   settings: 'app.settings',
+  'parent-enrollment': 'app.parent-enrollment',
 };
 
 export const useFilteredApps = (schoolId: string | undefined): {
