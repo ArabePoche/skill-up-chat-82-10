@@ -1,5 +1,10 @@
 name: Build Mobile Apps
 
+# ✅ CORRECTION CRITIQUE
+permissions:
+  contents: write
+  actions: read
+
 on:
   push:
     branches: [ main ]
@@ -13,30 +18,31 @@ on:
         default: 'patch'
         type: choice
         options:
-        - patch
-        - minor
-        - major
+          - patch
+          - minor
+          - major
 
 jobs:
   version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          
+
       - name: Configure git
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
       - name: Bump version
         id: version
         run: |
@@ -53,62 +59,66 @@ jobs:
     strategy:
       matrix:
         platform: [android, ios]
+
     runs-on: ${{ matrix.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Build web app
         run: npm run build
-        
+
       - name: Setup Java (Android)
         if: matrix.platform == 'android'
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-          
+
       - name: Setup Android SDK
         if: matrix.platform == 'android'
         uses: android-actions/setup-android@v3
-        
+
       - name: Copy production config
-        run: |
-          cp capacitor.config.prod.ts capacitor.config.ts
-          
+        run: cp capacitor.config.prod.ts capacitor.config.ts
+
       - name: Sync Capacitor
-        run: |
-          npx cap sync ${{ matrix.platform }}
-          
+        run: npx cap sync ${{ matrix.platform }}
+
       - name: Build Android APK
         if: matrix.platform == 'android'
         run: |
           cd android
           ./gradlew assembleRelease
-          
+
       - name: Build Android AAB
         if: matrix.platform == 'android'
         run: |
           cd android
           ./gradlew bundleRelease
-          
+
       - name: Build iOS
         if: matrix.platform == 'ios'
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination generic/platform=iOS -archivePath App.xcarchive archive
-          
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination generic/platform=iOS \
+            -archivePath App.xcarchive archive
+
       - name: Upload Android artifacts
         if: matrix.platform == 'android'
         uses: actions/upload-artifact@v4
@@ -117,7 +127,7 @@ jobs:
           path: |
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/bundle/release/*.aab
-            
+
       - name: Upload iOS artifacts
         if: matrix.platform == 'ios'
         uses: actions/upload-artifact@v4
@@ -129,53 +139,53 @@ jobs:
     needs: [version, build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download Android artifacts
         uses: actions/download-artifact@v4
         with:
           name: android-release-${{ needs.version.outputs.version }}
           path: ./artifacts/android
-          
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.0'
-          
+
       - name: Install Fastlane
         run: gem install fastlane
-        
+
       - name: Deploy to Play Store
         env:
           ANDROID_SERVICE_ACCOUNT_JSON: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
         run: |
           echo "$ANDROID_SERVICE_ACCOUNT_JSON" > service-account.json
           fastlane android deploy
-          
+
   deploy-ios:
     needs: [version, build]
     runs-on: macos-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download iOS artifacts
         uses: actions/download-artifact@v4
         with:
           name: ios-release-${{ needs.version.outputs.version }}
           path: ./artifacts/ios
-          
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.0'
-          
+
       - name: Install Fastlane
         run: gem install fastlane
-        
+
       - name: Deploy to App Store
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
