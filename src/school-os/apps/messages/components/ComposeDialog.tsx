@@ -78,8 +78,9 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
 }) => {
   const { school, activeSchoolYear } = useSchoolYear();
   const { data: roleData } = useSchoolUserRole(school?.id);
+  const isParent = roleData?.isParent || false;
   const { members, filteredMembers, groups, searchQuery, setSearchQuery, isLoading } = useSchoolMembers(school?.id, {
-    isParent: roleData?.isParent || false,
+    isParent,
     schoolYearId: activeSchoolYear?.id,
   });
   
@@ -213,85 +214,127 @@ export const ComposeDialog: React.FC<ComposeDialogProps> = ({
                   );
                 })}
               </div>
-              <div className="flex items-center gap-2">
-                <Popover open={recipientPopoverOpen} onOpenChange={setRecipientPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <div className="flex-1 relative">
-                      <Input
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          if (!recipientPopoverOpen) setRecipientPopoverOpen(true);
-                        }}
-                        onFocus={() => setRecipientPopoverOpen(true)}
-                        placeholder="Rechercher un membre..."
-                        className="border-0 focus-visible:ring-0 px-0 h-8"
-                      />
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <ScrollArea className="max-h-64">
-                      {/* Group buttons */}
-                      {groups.length > 0 && !searchQuery.trim() && (
-                        <div className="p-2 border-b">
-                          <p className="text-xs text-muted-foreground px-2 mb-1.5">Envoyer à un groupe</p>
-                          <div className="flex flex-wrap gap-1">
-                            {groups.map((g) => {
-                              const Icon = roleIcons[g.key] || Users;
-                              return (
-                                <Button
-                                  key={g.key}
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1 text-xs h-7"
-                                  onClick={() => { addGroupRecipients(g.key); }}
-                                >
-                                  <Icon className="h-3 w-3" />
-                                  Tous les {g.label.toLowerCase()} ({g.members.length})
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      {/* Individual members */}
-                      <div className="p-1">
-                        {availableMembers.length === 0 ? (
-                          <p className="text-sm text-muted-foreground p-3 text-center">
-                            {isLoading ? 'Chargement...' : 'Aucun membre trouvé'}
-                          </p>
-                        ) : (
-                          availableMembers.slice(0, 20).map((member) => {
-                            const RoleIcon = roleIcons[member.role] || User;
-                            return (
-                              <button
-                                key={member.id}
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted text-left transition-colors"
-                                onClick={() => { addRecipient(member); }}
-                              >
-                                <Avatar className="h-7 w-7">
-                                  <AvatarImage src={member.avatar_url} />
-                                  <AvatarFallback className="text-xs">
-                                    {member.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">{member.name}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                                </div>
-                                <Badge variant="outline" className="text-[10px] gap-0.5 h-5">
-                                  <RoleIcon className="h-3 w-3" />
-                                  {roleLabels[member.role] || member.role}
-                                </Badge>
-                              </button>
-                            );
-                          })
-                        )}
+
+              {isParent ? (
+                /* Mode parent: sélecteur direct de membres (pas de recherche) */
+                <ScrollArea className="max-h-40">
+                  <div className="space-y-0.5">
+                    {isLoading ? (
+                      <p className="text-sm text-muted-foreground p-2">Chargement...</p>
+                    ) : availableMembers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-2">
+                        {selectedRecipients.length > 0 ? 'Tous les membres sont sélectionnés' : 'Aucun membre disponible'}
+                      </p>
+                    ) : (
+                      availableMembers.map((member) => {
+                        const RoleIcon = roleIcons[member.role] || User;
+                        return (
+                          <button
+                            key={member.id}
+                            className="w-full flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted text-left transition-colors"
+                            onClick={() => addRecipient(member)}
+                          >
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={member.avatar_url} />
+                              <AvatarFallback className="text-[10px]">
+                                {member.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{member.name}</p>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] gap-0.5 h-5">
+                              <RoleIcon className="h-3 w-3" />
+                              {roleLabels[member.role] || member.role}
+                            </Badge>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+              ) : (
+                /* Mode non-parent: recherche avec popover */
+                <div className="flex items-center gap-2">
+                  <Popover open={recipientPopoverOpen} onOpenChange={setRecipientPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <div className="flex-1 relative">
+                        <Input
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            if (!recipientPopoverOpen) setRecipientPopoverOpen(true);
+                          }}
+                          onFocus={() => setRecipientPopoverOpen(true)}
+                          placeholder="Rechercher un membre..."
+                          className="border-0 focus-visible:ring-0 px-0 h-8"
+                        />
                       </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
-              </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                      <ScrollArea className="max-h-64">
+                        {/* Group buttons */}
+                        {groups.length > 0 && !searchQuery.trim() && (
+                          <div className="p-2 border-b">
+                            <p className="text-xs text-muted-foreground px-2 mb-1.5">Envoyer à un groupe</p>
+                            <div className="flex flex-wrap gap-1">
+                              {groups.map((g) => {
+                                const Icon = roleIcons[g.key] || Users;
+                                return (
+                                  <Button
+                                    key={g.key}
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1 text-xs h-7"
+                                    onClick={() => { addGroupRecipients(g.key); }}
+                                  >
+                                    <Icon className="h-3 w-3" />
+                                    Tous les {g.label.toLowerCase()} ({g.members.length})
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {/* Individual members */}
+                        <div className="p-1">
+                          {availableMembers.length === 0 ? (
+                            <p className="text-sm text-muted-foreground p-3 text-center">
+                              {isLoading ? 'Chargement...' : 'Aucun membre trouvé'}
+                            </p>
+                          ) : (
+                            availableMembers.slice(0, 20).map((member) => {
+                              const RoleIcon = roleIcons[member.role] || User;
+                              return (
+                                <button
+                                  key={member.id}
+                                  className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-muted text-left transition-colors"
+                                  onClick={() => { addRecipient(member); }}
+                                >
+                                  <Avatar className="h-7 w-7">
+                                    <AvatarImage src={member.avatar_url} />
+                                    <AvatarFallback className="text-xs">
+                                      {member.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{member.name}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                                  </div>
+                                  <Badge variant="outline" className="text-[10px] gap-0.5 h-5">
+                                    <RoleIcon className="h-3 w-3" />
+                                    {roleLabels[member.role] || member.role}
+                                  </Badge>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
           </div>
 
