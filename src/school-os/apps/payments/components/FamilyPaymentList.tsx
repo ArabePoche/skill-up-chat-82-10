@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Search, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 
 interface FamilyPaymentListProps {
   schoolId?: string;
@@ -18,6 +20,9 @@ interface FamilyPaymentListProps {
 
 export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }) => {
   const { data: families = [], isLoading, refetch } = useFamiliesWithPayments(schoolId);
+  const { school } = useSchoolYear();
+  const { data: roleData } = useSchoolUserRole(school?.id);
+  const isParent = roleData?.isParent || false;
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
@@ -74,16 +79,18 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
           </div>
         </div>
         
-        <div className="flex justify-center">
-          <Button 
-            onClick={() => setIsRegistrationDialogOpen(true)} 
-            variant="outline"
-            className="rounded-full border-2"
-          >
-            <GraduationCap className="w-4 h-4 mr-2" />
-            Frais d'inscription familial
-          </Button>
-        </div>
+        {!isParent && (
+          <div className="flex justify-center">
+            <Button 
+              onClick={() => setIsRegistrationDialogOpen(true)} 
+              variant="outline"
+              className="rounded-full border-2"
+            >
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Frais d'inscription familial
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Liste des familles - SCROLLABLE */}
@@ -105,6 +112,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
                   setSelectedFamily(family);
                   setIsRegistrationDialogOpen(true);
                 }}
+                hidePaymentActions={isParent}
               />
             ))
           )}
