@@ -62,6 +62,30 @@ export const useUserSchools = (userId?: string) => {
         throw teacherError;
       }
 
+      // Récupérer les écoles où l'utilisateur est parent (via parent_family_associations → school_student_families)
+      const { data: parentAssociations, error: parentError } = await supabase
+        .from('parent_family_associations')
+        .select(`
+          status,
+          school_student_families:family_id (
+            id,
+            school_id,
+            schools:school_id (
+              id,
+              name,
+              description,
+              school_type
+            )
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+      if (parentError) {
+        console.error('Error fetching parent schools:', parentError);
+        throw parentError;
+      }
+
       // Combiner les résultats
       const owned = (ownedSchools || []).map(school => ({
         ...school,
@@ -82,10 +106,19 @@ export const useUserSchools = (userId?: string) => {
           role: 'teacher' as const
         }));
 
-      // Fusionner et dédupliquer par id (priorité: owner > staff > teacher)
+      const parent = (parentAssociations || [])
+        .filter(p => p.school_student_families && (p.school_student_families as any)?.schools)
+        .map(p => ({
+          ...((p.school_student_families as any).schools as any),
+          role: 'parent' as const
+        }));
+
+      // Fusionner et dédupliquer par id (priorité: owner > staff > teacher > parent)
       const schoolMap = new Map();
       
-      // Ajouter les écoles enseignant d'abord (priorité la plus basse)
+      // Ajouter les écoles parent d'abord (priorité la plus basse)
+      parent.forEach(s => schoolMap.set(s.id, s));
+      // Puis les écoles enseignant
       teacher.forEach(s => schoolMap.set(s.id, s));
       // Puis les écoles staff
       staff.forEach(s => schoolMap.set(s.id, s));
