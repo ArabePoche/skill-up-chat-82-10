@@ -19,6 +19,7 @@ const appTranslationKeys: Record<string, string> = {
   reports: 'schoolOS.apps.reports',
   messages: 'schoolOS.apps.messages',
   personnel: 'schoolOS.apps.personnel',
+  'parent-enrollment': 'schoolOS.apps.parentEnrollment',
   settings: 'schoolOS.apps.settings',
 };
 
