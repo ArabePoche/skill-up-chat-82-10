@@ -1,9 +1,7 @@
 /**
  * Application de gestion des notes
  * Affiche les évaluations par classe avec saisie des notes et export Excel
- * Supporte deux méthodes de saisie :
- * 1. Par évaluation complète (toutes les matières)
- * 2. Par matière directe (une seule matière à la fois)
+ * Supporte les vues admin/enseignant et parent (lecture seule)
  */
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,11 +9,13 @@ import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 import { useTeacherClasses } from '@/school-os/hooks/useTeacherClasses';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
+import { useParentChildren } from '../classes/hooks/useParentChildren';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked, ScrollText, BarChart3, FileCheck } from 'lucide-react';
 import { EvaluationsListView } from './components/EvaluationsListView';
 import { GradeEntryView } from './components/GradeEntryView';
@@ -23,6 +23,7 @@ import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListV
 import { SubjectGradeEntryView } from './components/SubjectGradeEntryView';
 import { BulletinsSection } from './components/BulletinsSection';
 import { CompositionsGradeEntry } from './components/CompositionsGradesEntry';
+import { ParentChildGrades } from './components/ParentChildGrades';
 import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
 import { SubjectEvaluation } from './hooks/useSubjectEvaluations';
 import { useEvaluationGrades } from './hooks/useGrades';
@@ -36,6 +37,7 @@ export const GradesApp: React.FC = () => {
   const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
   const isTeacher = roleData?.isTeacher ?? false;
   const isOwner = roleData?.isOwner ?? false;
+  const isParent = roleData?.isParent ?? false;
 
   // Classes selon le rôle
   const { data: teacherClasses, isLoading: isLoadingTeacherClasses } = useTeacherClasses(
@@ -46,6 +48,9 @@ export const GradesApp: React.FC = () => {
     school?.id, 
     activeSchoolYear?.id
   );
+
+  // Hook pour les parents
+  const { data: parentChildren, isLoading: isLoadingParentChildren } = useParentChildren(school?.id, activeSchoolYear?.id);
 
   // Pour les admins, on utilise toutes les classes, pour les enseignants leurs classes assignées
   const availableClasses = isOwner && !isTeacher 
@@ -123,10 +128,71 @@ export const GradesApp: React.FC = () => {
     );
   }
 
-  if (isLoadingRole || isLoadingClasses) {
+  if (isLoadingRole || isLoadingClasses || (isParent && isLoadingParentChildren)) {
     return (
       <div className="p-6 h-full flex items-center justify-center">
         <p className="text-muted-foreground">{t('schoolOS.common.loading')}</p>
+      </div>
+    );
+  }
+
+  // Vue parent : afficher les notes de ses enfants (lecture seule)
+  if (isParent && !isOwner && !roleData?.isAdmin) {
+    if (!parentChildren || parentChildren.length === 0) {
+      return (
+        <div className="p-6 h-full overflow-auto">
+          <div className="text-center py-12">
+            <GraduationCap className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucun enfant trouvé</h3>
+            <p className="text-muted-foreground">
+              Aucun enfant n'est associé à votre compte pour cette année scolaire.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6 h-full flex flex-col overflow-hidden">
+        <div className="mb-4 flex-shrink-0">
+          <h2 className="text-2xl font-bold">Notes de mes enfants</h2>
+          <p className="text-muted-foreground mt-1">
+            Consultez les résultats scolaires de vos enfants
+          </p>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="space-y-4">
+            {parentChildren.map((child) => (
+              <Card key={child.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                      {child.first_name?.[0]}{child.last_name?.[0]}
+                    </span>
+                    <div>
+                      <CardTitle className="text-lg">{child.last_name} {child.first_name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        {child.class_name && (
+                          <Badge variant="outline">
+                            <BookOpen className="w-3 h-3 mr-1" />
+                            {child.class_name}
+                          </Badge>
+                        )}
+                        {child.student_code && (
+                          <span className="text-sm text-muted-foreground">{child.student_code}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ParentChildGrades studentId={child.id} classId={child.class_id} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
     );
   }
