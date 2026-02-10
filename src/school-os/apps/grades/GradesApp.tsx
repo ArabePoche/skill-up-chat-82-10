@@ -24,6 +24,7 @@ import { SubjectGradeEntryView } from './components/SubjectGradeEntryView';
 import { BulletinsSection } from './components/BulletinsSection';
 import { CompositionsGradeEntry } from './components/CompositionsGradesEntry';
 import { ParentChildGrades } from './components/ParentChildGrades';
+import { ParentBulletinsView } from './components/ParentBulletinsView';
 import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
 import { SubjectEvaluation } from './hooks/useSubjectEvaluations';
 import { useEvaluationGrades } from './hooks/useGrades';
@@ -32,6 +33,7 @@ import { exportClassGradesToExcel } from './utils/exportGrades';
 export const GradesApp: React.FC = () => {
   const { t } = useTranslation();
   const [mainTab, setMainTab] = useState<'grades' | 'bulletins' | 'stats'>('grades');
+  const [parentTab, setParentTab] = useState<'notes' | 'bulletins'>('notes');
   const [gradeSubTab, setGradeSubTab] = useState<'evaluations' | 'compositions'>('evaluations');
   const { school, activeSchoolYear } = useSchoolYear();
   const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
@@ -155,44 +157,67 @@ export const GradesApp: React.FC = () => {
     return (
       <div className="p-6 h-full flex flex-col overflow-hidden">
         <div className="mb-4 flex-shrink-0">
-          <h2 className="text-2xl font-bold">Notes de mes enfants</h2>
+          <h2 className="text-2xl font-bold">Résultats scolaires</h2>
           <p className="text-muted-foreground mt-1">
-            Consultez les résultats scolaires de vos enfants
+            Consultez les notes et bulletins de vos enfants
           </p>
         </div>
 
-        <ScrollArea className="flex-1">
-          <div className="space-y-4">
-            {parentChildren.map((child) => (
-              <Card key={child.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                      {child.first_name?.[0]}{child.last_name?.[0]}
-                    </span>
-                    <div>
-                      <CardTitle className="text-lg">{child.last_name} {child.first_name}</CardTitle>
-                      <div className="flex items-center gap-2 mt-1">
-                        {child.class_name && (
-                          <Badge variant="outline">
-                            <BookOpen className="w-3 h-3 mr-1" />
-                            {child.class_name}
-                          </Badge>
-                        )}
-                        {child.student_code && (
-                          <span className="text-sm text-muted-foreground">{child.student_code}</span>
-                        )}
+        <Tabs value={parentTab} onValueChange={(v) => setParentTab(v as 'notes' | 'bulletins')} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
+            <TabsTrigger value="notes" className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Notes
+            </TabsTrigger>
+            <TabsTrigger value="bulletins" className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4" />
+              Bulletins
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="notes" className="flex-1 overflow-hidden m-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-4">
+                {parentChildren.map((child) => (
+                  <Card key={child.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                          {child.first_name?.[0]}{child.last_name?.[0]}
+                        </span>
+                        <div>
+                          <CardTitle className="text-lg">{child.last_name} {child.first_name}</CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
+                            {child.class_name && (
+                              <Badge variant="outline">
+                                <BookOpen className="w-3 h-3 mr-1" />
+                                {child.class_name}
+                              </Badge>
+                            )}
+                            {child.student_code && (
+                              <span className="text-sm text-muted-foreground">{child.student_code}</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ParentChildGrades studentId={child.id} classId={child.class_id} />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </ScrollArea>
+                    </CardHeader>
+                    <CardContent>
+                      <ParentChildGrades studentId={child.id} classId={child.class_id} />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="bulletins" className="flex-1 overflow-hidden m-0">
+            <ParentBulletinsView
+              children={parentChildren}
+              schoolId={school!.id}
+              schoolYearId={activeSchoolYear!.id}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
