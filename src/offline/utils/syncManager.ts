@@ -29,6 +29,8 @@ class SyncManager {
   private reconnectDelay: number = 5000;
 
   private hasRunStartupSync: boolean = false;
+  private checkConnectionTimer: ReturnType<typeof setInterval> | null = null;
+  private isCheckingConnection: boolean = false;
 
   constructor() {
     this.init();
@@ -39,8 +41,8 @@ class SyncManager {
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
 
-    // Vérifier périodiquement la connexion (toutes les 15 secondes)
-    setInterval(() => this.checkConnection(), 15000);
+    // Vérifier périodiquement la connexion (toutes les 60 secondes au lieu de 15)
+    this.checkConnectionTimer = setInterval(() => this.checkConnection(), 60000);
     
     // Vérification initiale
     this.checkConnection();
@@ -61,15 +63,22 @@ class SyncManager {
   }
 
   private async checkConnection() {
+    // Éviter les vérifications concurrentes
+    if (this.isCheckingConnection) return;
+    this.isCheckingConnection = true;
+
     const wasOnline = this.isOnline;
     this.isOnline = navigator.onLine;
 
-    // Test réel de connexion avec Supabase
+    // Test réel de connexion avec Supabase seulement si navigator dit qu'on est en ligne
     if (this.isOnline) {
       try {
-        const { error } = await supabase.from('formations').select('id').limit(1);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         
-        // Gérer les erreurs de quota/paiement comme offline
+        const { error } = await supabase.from('formations').select('id').limit(1).abortSignal(controller.signal);
+        clearTimeout(timeout);
+        
         if (error) {
           const errorMessage = error.message?.toLowerCase() || '';
           const isQuotaError = errorMessage.includes('quota') || 
@@ -79,10 +88,8 @@ class SyncManager {
           
           if (isQuotaError) {
             console.log('📵 Supabase quota exceeded - treating as offline');
-            this.isOnline = false;
-          } else {
-            this.isOnline = false;
           }
+          this.isOnline = false;
         } else {
           this.isOnline = true;
           this.reconnectAttempts = 0;
@@ -91,6 +98,8 @@ class SyncManager {
         this.isOnline = false;
       }
     }
+
+    this.isCheckingConnection = false;
 
     // Si changement d'état
     if (wasOnline !== this.isOnline) {
