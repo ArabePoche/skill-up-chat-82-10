@@ -6,9 +6,10 @@ import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 import { useTeacherClasses, TeacherClass } from '@/school-os/hooks/useTeacherClasses';
 import { useTeacherStudents } from '@/school-os/hooks/useTeacherStudents';
+import { useParentChildren } from './hooks/useParentChildren';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
+import { Users, BookOpen, ChevronRight, GraduationCap, Baby } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -16,12 +17,16 @@ export const ClassesApp: React.FC = () => {
   const { school, activeSchoolYear } = useSchoolYear();
   const { data: roleData, isLoading: isLoadingRole } = useSchoolUserRole(school?.id);
   const isTeacher = roleData?.isTeacher ?? false;
+  const isParent = roleData?.isParent ?? false;
   const isOwner = roleData?.isOwner ?? false;
 
   // Hooks pour les enseignants
   const { data: teacherClasses, isLoading: isLoadingTeacherClasses } = useTeacherClasses(school?.id, activeSchoolYear?.id);
   const { data: teacherStudents } = useTeacherStudents(school?.id, activeSchoolYear?.id);
   const [selectedClass, setSelectedClass] = useState<TeacherClass | null>(null);
+
+  // Hook pour les parents
+  const { data: parentChildren, isLoading: isLoadingParentChildren } = useParentChildren(school?.id, activeSchoolYear?.id);
 
   if (!school?.id || !activeSchoolYear?.id) {
     return (
@@ -39,6 +44,101 @@ export const ClassesApp: React.FC = () => {
     return (
       <div className="p-6 h-full flex items-center justify-center">
         <p className="text-muted-foreground">Chargement...</p>
+      </div>
+    );
+  }
+
+  // Vue parent : afficher ses enfants et leurs classes
+  if (isParent && !isOwner && !roleData?.isAdmin) {
+    if (isLoadingParentChildren) {
+      return (
+        <div className="p-6 h-full flex items-center justify-center">
+          <p className="text-muted-foreground">Chargement de vos enfants...</p>
+        </div>
+      );
+    }
+
+    if (!parentChildren || parentChildren.length === 0) {
+      return (
+        <div className="p-6 h-full overflow-auto">
+          <div className="text-center py-12">
+            <Baby className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucun enfant trouvé</h3>
+            <p className="text-muted-foreground">
+              Aucun enfant n'est associé à votre compte pour cette année scolaire.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Grouper les enfants par classe
+    const childrenByClass = parentChildren.reduce((acc, child) => {
+      const key = child.class_id || 'no-class';
+      if (!acc[key]) {
+        acc[key] = {
+          className: child.class_name || 'Non assigné',
+          cycle: child.class_cycle || '',
+          children: [],
+        };
+      }
+      acc[key].children.push(child);
+      return acc;
+    }, {} as Record<string, { className: string; cycle: string; children: typeof parentChildren }>);
+
+    return (
+      <div className="p-6 h-full flex flex-col overflow-hidden">
+        <div className="mb-6 flex-shrink-0">
+          <h2 className="text-2xl font-bold">Mes Enfants</h2>
+          <p className="text-muted-foreground mt-1">
+            {parentChildren.length} enfant{parentChildren.length > 1 ? 's' : ''} inscrit{parentChildren.length > 1 ? 's' : ''}
+          </p>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="space-y-4">
+            {Object.entries(childrenByClass).map(([classId, group]) => (
+              <Card key={classId}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg">{group.className}</CardTitle>
+                    {group.cycle && (
+                      <Badge variant="outline">{group.cycle}</Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {group.children.map((child) => (
+                      <div
+                        key={child.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                          {child.first_name?.[0]}{child.last_name?.[0]}
+                        </span>
+                        <div className="flex-1">
+                          <p className="font-medium">
+                            {child.last_name} {child.first_name}
+                          </p>
+                          {child.student_code && (
+                            <p className="text-sm text-muted-foreground">
+                              {child.student_code}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant={child.gender === 'male' ? 'default' : 'secondary'}>
+                          {child.gender === 'male' ? 'M' : 'F'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
     );
   }
