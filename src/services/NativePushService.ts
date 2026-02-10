@@ -61,43 +61,34 @@ export class NativePushService {
     return NativePushService.instance;
   }
 
+  private isInitializing = false;
+
   constructor() {
     console.log('🔧 NativePushService créé');
-    // Initialisation immédiate sur mobile natif pour capter les tokens au démarrage
-    this.initEarly();
+    // On n'appelle plus initEarly() dans le constructeur pour éviter les crashes
+    // L'initialisation se fera à la demande via initialize() ou initEarlyWhenReady()
   }
 
   /**
-   * Initialisation précoce: sur mobile natif, on configure les listeners
-   * dès que possible pour ne pas rater l'event `registration`
+   * Initialisation différée - appelée uniquement quand l'app est montée
+   * et Capacitor est prêt. Évite les crashes au démarrage sur Android.
    */
-  private async initEarly(): Promise<void> {
-    // Petit délai pour que Capacitor soit prêt
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
+  async initEarlyWhenReady(): Promise<void> {
     const platform = this.getPlatformType(true);
-    console.log('🚀 [NativePushService] initEarly - platform:', platform);
+    console.log('🚀 [NativePushService] initEarlyWhenReady - platform:', platform);
     
-    if (platform === 'android' || platform === 'ios') {
+    if (platform !== 'android' && platform !== 'ios') return;
+
+    try {
       console.log('📱 [NativePushService] Mobile natif détecté, setup listeners...');
       this.ensureNativeListeners();
       
-      // Vérifier si on a déjà la permission et demander le token
-      await this.checkAndRegisterExistingPermission();
-    }
-  }
+      // Vérifier si on a déjà la permission et récupérer le token
+      if (!isPushNotificationsAvailable()) {
+        console.log('⚠️ [NativePushService] Plugin push non disponible');
+        return;
+      }
 
-  /**
-   * Si l'utilisateur a déjà accordé la permission, on enregistre directement
-   * pour obtenir le token au démarrage de l'app
-   */
-  private async checkAndRegisterExistingPermission(): Promise<void> {
-    if (!isPushNotificationsAvailable()) {
-      console.log('⚠️ [NativePushService] Plugin push non disponible');
-      return;
-    }
-
-    try {
       const result = await PushNotifications.checkPermissions();
       console.log('🔐 [NativePushService] Permission existante:', result.receive);
       
@@ -107,7 +98,7 @@ export class NativePushService {
         console.log('📤 [NativePushService] register() appelé au démarrage');
       }
     } catch (error) {
-      console.error('❌ [NativePushService] Erreur checkAndRegisterExistingPermission:', error);
+      console.error('❌ [NativePushService] Erreur initEarlyWhenReady:', error);
     }
   }
 
@@ -272,7 +263,14 @@ export class NativePushService {
    * Initialise les notifications natives (iOS/Android) via Capacitor
    */
   private async initializeNative(): Promise<{ success: boolean; token?: string; error?: string }> {
+    if (this.isInitializing) {
+      console.log('⏳ [NativePushService] Initialisation déjà en cours, skip');
+      return { success: true };
+    }
+    this.isInitializing = true;
+
     if (!isPushNotificationsAvailable()) {
+      this.isInitializing = false;
       console.error('❌ Plugin PushNotifications non disponible');
       return { success: false, error: 'Plugin notifications non disponible' };
     }
@@ -316,8 +314,10 @@ export class NativePushService {
         }, 15000);
       });
 
+      this.isInitializing = false;
       return token ? { success: true, token } : { success: true };
     } catch (error) {
+      this.isInitializing = false;
       console.error('❌ Erreur notifications natives:', error);
       return { 
         success: false, 
