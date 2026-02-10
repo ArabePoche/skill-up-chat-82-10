@@ -140,9 +140,9 @@ const PeriodAccordionItem: React.FC<{ data: ParentBulletinByPeriod }> = ({ data 
       <AccordionTrigger className="hover:no-underline px-3">
         <div className="flex items-center gap-3 flex-1">
           <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <span className="font-medium">{period.name}</span>
-          {period.is_active && (
-            <Badge variant="default" className="text-xs">En cours</Badge>
+          <span className="font-medium">{period.title}</span>
+          {period.type && (
+            <Badge variant="secondary" className="text-xs">{period.type}</Badge>
           )}
           {hasReport ? (
             <Badge className={cn("font-mono text-xs ml-auto mr-2", getMentionColor(reportCard.general_average))}>
