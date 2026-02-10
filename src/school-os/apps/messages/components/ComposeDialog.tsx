@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useSchoolMembers } from '../hooks/useSchoolMembers';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 import { SchoolMember } from '../types';
 
 interface ComposeDialogProps {
@@ -75,8 +76,12 @@ const roleLabels: Record<string, string> = {
 export const ComposeDialog: React.FC<ComposeDialogProps> = ({
   open, onOpenChange, onSend, onSaveDraft, replyTo,
 }) => {
-  const { school } = useSchoolYear();
-  const { members, filteredMembers, groups, searchQuery, setSearchQuery, isLoading } = useSchoolMembers(school?.id);
+  const { school, activeSchoolYear } = useSchoolYear();
+  const { data: roleData } = useSchoolUserRole(school?.id);
+  const { members, filteredMembers, groups, searchQuery, setSearchQuery, isLoading } = useSchoolMembers(school?.id, {
+    isParent: roleData?.isParent || false,
+    schoolYearId: activeSchoolYear?.id,
+  });
   
   const [selectedRecipients, setSelectedRecipients] = useState<SchoolMember[]>([]);
   const [subject, setSubject] = useState(replyTo ? `Re: ${replyTo.subject}` : '');
