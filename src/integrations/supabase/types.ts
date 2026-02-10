@@ -7904,6 +7904,10 @@ export type Database = {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: string
       }
+      get_user_received_message_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
+      }
       get_user_roles_in_school: {
         Args: { _school_id: string; _user_id: string }
         Returns: {
@@ -7917,6 +7921,10 @@ export type Database = {
         Returns: {
           permission_code: string
         }[]
+      }
+      get_user_sent_message_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
       }
       get_user_usage: {
         Args: { p_formation_id: string; p_user_id: string }
