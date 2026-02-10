@@ -258,7 +258,29 @@ export const useSchoolMembers = (schoolId?: string, options?: UseSchoolMembersOp
         });
       }
 
-      // 5. Get school owner
+      // 5. Get students
+      if (schoolYearId) {
+        const { data: students } = await supabase
+          .from('students_school')
+          .select('id, first_name, last_name, student_code, class_id')
+          .eq('school_id', schoolId)
+          .eq('school_year_id', schoolYearId)
+          .eq('status', 'active');
+
+        (students || []).forEach((s: any) => {
+          if (!seenIds.has(s.id)) {
+            seenIds.add(s.id);
+            result.push({
+              id: s.id,
+              name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Élève',
+              email: s.student_code || '',
+              role: 'student',
+            });
+          }
+        });
+      }
+
+      // 6. Get school owner
       const { data: schoolData } = await supabase
         .from('schools')
         .select('owner_id')
