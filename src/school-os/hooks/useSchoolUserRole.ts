@@ -106,6 +106,7 @@ export const useSchoolUserRole = (schoolId: string | undefined) => {
         'app.messages',
         'app.reports',
         'app.payments',
+        'app.parent-enrollment',
       ] : [];
 
       const allPermissions = [
