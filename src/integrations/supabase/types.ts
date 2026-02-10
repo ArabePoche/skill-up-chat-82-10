@@ -2375,6 +2375,149 @@ export type Database = {
           },
         ]
       }
+      parent_association_requests: {
+        Row: {
+          created_at: string
+          family_id: string
+          id: string
+          requester_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          id?: string
+          requester_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          id?: string
+          requester_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_association_requests_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "school_student_families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_family_associations: {
+        Row: {
+          associated_at: string
+          created_at: string
+          family_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          associated_at?: string
+          created_at?: string
+          family_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          associated_at?: string
+          created_at?: string
+          family_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_family_associations_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "school_student_families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_join_confirmations: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          created_by: string
+          family_id: string
+          id: string
+          join_request_id: string
+          parent_user_id: string
+          parental_code: string
+          school_id: string
+          student_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          created_by: string
+          family_id: string
+          id?: string
+          join_request_id: string
+          parent_user_id: string
+          parental_code: string
+          school_id: string
+          student_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string
+          family_id?: string
+          id?: string
+          join_request_id?: string
+          parent_user_id?: string
+          parental_code?: string
+          school_id?: string
+          student_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_join_confirmations_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "school_student_families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_join_confirmations_join_request_id_fkey"
+            columns: ["join_request_id"]
+            isOneToOne: true
+            referencedRelation: "school_join_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_join_confirmations_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comment_likes: {
         Row: {
           comment_id: string
@@ -4564,6 +4707,7 @@ export type Database = {
           family_name: string
           id: string
           notes: string | null
+          parental_code: string | null
           primary_contact_email: string | null
           primary_contact_name: string | null
           primary_contact_phone: string | null
@@ -4576,6 +4720,7 @@ export type Database = {
           family_name: string
           id?: string
           notes?: string | null
+          parental_code?: string | null
           primary_contact_email?: string | null
           primary_contact_name?: string | null
           primary_contact_phone?: string | null
@@ -4588,6 +4733,7 @@ export type Database = {
           family_name?: string
           id?: string
           notes?: string | null
+          parental_code?: string | null
           primary_contact_email?: string | null
           primary_contact_name?: string | null
           primary_contact_phone?: string | null
@@ -7632,6 +7778,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      associate_parent_with_code: {
+        Args: { p_parental_code: string }
+        Returns: Json
+      }
       auto_unlock_next_lesson_on_week_reset: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: undefined
@@ -7708,6 +7858,7 @@ export type Database = {
         Args: { comment_id: string; user_id: string }
         Returns: boolean
       }
+      generate_parental_code: { Args: never; Returns: string }
       get_exercise_global_status: {
         Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
         Returns: string
@@ -7775,6 +7926,10 @@ export type Database = {
           time_used_this_week: number
           time_used_today: number
         }[]
+      }
+      handle_parent_association_request: {
+        Args: { p_action: string; p_request_id: string }
+        Returns: Json
       }
       handle_validated_exercise: {
         Args: {
