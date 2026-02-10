@@ -100,10 +100,12 @@ export const useSchoolUserRole = (schoolId: string | undefined) => {
 
       // Permissions par défaut pour les parents
       const parentPermissions = isParent ? [
+        'app.classes',
         'app.grades',
         'app.schedule',
         'app.messages',
         'app.reports',
+        'app.payments',
       ] : [];
 
       const allPermissions = [
