@@ -13,12 +13,15 @@ interface FamilyPaymentCardProps {
   family: FamilyWithStudents;
   onAddPayment: () => void;
   onAddRegistrationPayment?: () => void;
+  /** Si true, masque les boutons de paiement (ex: pour les parents) */
+  hidePaymentActions?: boolean;
 }
 
 export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
   family,
   onAddPayment,
   onAddRegistrationPayment,
+  hidePaymentActions = false,
 }) => {
   const [showHistory, setShowHistory] = useState(false);
 
@@ -107,7 +110,7 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
               )}
             </div>
             {/* Bouton de paiement rapide pour frais d'inscription familial */}
-            {onAddRegistrationPayment && registrationStatus.type !== 'paid' && (
+            {onAddRegistrationPayment && registrationStatus.type !== 'paid' && !hidePaymentActions && (
               <Button 
                 onClick={onAddRegistrationPayment} 
                 variant="outline" 
@@ -163,16 +166,26 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Button onClick={onAddPayment} className="w-full" size="sm">
-            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            <span className="text-xs sm:text-sm">Paiement</span>
-          </Button>
-          <Button onClick={() => setShowHistory(true)} variant="outline" className="w-full" size="sm">
-            <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            <span className="text-xs sm:text-sm">Historique</span>
-          </Button>
-        </div>
+        {!hidePaymentActions && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={onAddPayment} className="w-full" size="sm">
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Paiement</span>
+            </Button>
+            <Button onClick={() => setShowHistory(true)} variant="outline" className="w-full" size="sm">
+              <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Historique</span>
+            </Button>
+          </div>
+        )}
+        {hidePaymentActions && (
+          <div className="flex justify-end">
+            <Button onClick={() => setShowHistory(true)} variant="outline" size="sm">
+              <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Historique</span>
+            </Button>
+          </div>
+        )}
       </CardContent>
 
       <FamilyPaymentHistoryModal
