@@ -62,8 +62,10 @@ const MySchoolsList: React.FC<MySchoolsListProps> = ({ onClose }) => {
                   <p className="text-sm text-muted-foreground truncate">{school.description}</p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
-                  {school.role === 'owner' 
+                  {school.role === 'owner'
                     ? t('school.roleOwner', { defaultValue: 'Créateur' })
+                    : school.role === 'parent'
+                    ? t('school.roleParent', { defaultValue: 'Parent' })
                     : t(`school.role${school.role}`, { defaultValue: school.role })}
                 </p>
               </div>
