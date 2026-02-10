@@ -26,6 +26,8 @@ const MySchoolsCarousel: React.FC = () => {
         return <Users size={12} className="text-blue-500" />;
       case 'teacher':
         return <GraduationCap size={12} className="text-green-500" />;
+      case 'parent':
+        return <Users size={12} className="text-orange-500" />;
       default:
         return null;
     }
@@ -39,6 +41,8 @@ const MySchoolsCarousel: React.FC = () => {
         return t('school.roles.staff', { defaultValue: 'Personnel' });
       case 'teacher':
         return t('school.roles.teacher', { defaultValue: 'Enseignant' });
+      case 'parent':
+        return t('school.roles.parent', { defaultValue: 'Parent' });
       default:
         return role;
     }
