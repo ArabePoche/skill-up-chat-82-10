@@ -36,15 +36,28 @@ export const useClassMemberMap = (
         }
       });
 
-      // 2. Parents per class: students_school -> family -> parent_family_associations
+      // 2. Students per class
       const { data: students } = await supabase
         .from('students_school')
-        .select('class_id, family_id')
+        .select('id, class_id, family_id, first_name, last_name, student_code')
         .eq('school_id', schoolId)
         .eq('school_year_id', schoolYearId)
-        .not('class_id', 'is', null)
-        .not('family_id', 'is', null);
+        .eq('status', 'active')
+        .not('class_id', 'is', null);
 
+      // Add students to their class in the map
+      (students || []).forEach((s: any) => {
+        if (!s.class_id) return;
+        const member = memberById.get(s.id);
+        if (member) {
+          if (!result[s.class_id]) result[s.class_id] = [];
+          if (!result[s.class_id].find(m => m.id === member.id)) {
+            result[s.class_id].push(member);
+          }
+        }
+      });
+
+      // 3. Parents per class: students_school -> family -> parent_family_associations
       const familyClassMap = new Map<string, string[]>();
       (students || []).forEach((s: any) => {
         if (!s.family_id || !s.class_id) return;
