@@ -105,7 +105,7 @@ export const RecipientGroupPicker: React.FC<RecipientGroupPickerProps> = ({
     }
   };
 
-  const canFilterByClass = (groupKey: string) => groupKey === 'teacher' || groupKey === 'parent';
+  const canFilterByClass = (groupKey: string) => groupKey === 'teacher' || groupKey === 'parent' || groupKey === 'student';
 
   return (
     <div className="border rounded-lg bg-card">
@@ -181,7 +181,7 @@ export const RecipientGroupPicker: React.FC<RecipientGroupPickerProps> = ({
                       <div className="space-y-1">
                         {classes.map((cls) => {
                           const classMembers = (classMemberMap[cls.id] || []).filter(
-                            m => m.role === (group.key === 'teacher' ? 'teacher' : 'parent')
+                            m => m.role === group.key || (group.key === 'parent' && m.role === 'parent')
                           );
                           if (classMembers.length === 0) return null;
 
