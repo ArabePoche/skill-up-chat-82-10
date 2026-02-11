@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle } from 'lucide-react';
+import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import {
@@ -31,6 +31,7 @@ import SchoolTab from '@/profile/components/tabs/SchoolTab';
 import LikesTab from '@/profile/components/tabs/LikesTab';
 import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
 import ShopTab from '@/profile/components/tabs/ShopTab';
+import CvBuilderModal from '@/cv-builder/CvBuilderModal';
 
 
 type TabType = 'videos' | 'posts' | 'school' | 'likes' | 'favorites' | 'shop';
@@ -44,6 +45,7 @@ const Profil = () => {
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [showNotificationDialog, setShowNotificationDialog] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showCvBuilder, setShowCvBuilder] = useState(false);
   
   // Rediriger vers la page de connexion si non connecté et qu'on consulte son propre profil
   React.useEffect(() => {
@@ -208,6 +210,18 @@ const Profil = () => {
                 {(profile as any)?.is_verified && <VerifiedBadge size={18} />}
               </h1>
               <p className="text-sm text-muted-foreground">@{profile?.username || t('profile.user')}</p>
+              {/* Bouton CV Builder sous le @username */}
+              {isOwnProfile && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 gap-1.5"
+                  onClick={() => setShowCvBuilder(true)}
+                >
+                  <FileText className="w-4 h-4" />
+                  Créer mon CV
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -315,6 +329,11 @@ const Profil = () => {
             onOpenChange={setShowNotificationDialog}
           />
         </>
+      )}
+
+      {/* CV Builder Modal */}
+      {isOwnProfile && (
+        <CvBuilderModal open={showCvBuilder} onOpenChange={setShowCvBuilder} />
       )}
 
       {/* Dialog de confirmation de retrait d'ami */}
