@@ -50,7 +50,7 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           git add package.json
-          git commit -m "chore: bump version to $VERSION"
+          git commit -m "chore: bump version to $VERSION [skip ci]"
           git tag "v$VERSION"
           git push origin main --tags
 
