@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
-import type { Certification } from '../../types';
+import type { Certification } from '../types';
 
 interface Props {
   data: Certification[];

@@ -3,15 +3,15 @@
  */
 import React from 'react';
 import { CvData } from '../types';
-import PersonalInfoForm from './forms/PersonalInfoForm';
-import EducationForm from './forms/EducationForm';
-import ExperienceForm from './forms/ExperienceForm';
-import SkillsForm from './forms/SkillsForm';
-import LanguagesForm from './forms/LanguagesForm';
-import HobbiesForm from './forms/HobbiesForm';
-import CertificationsForm from './forms/CertificationsForm';
-import ProjectsForm from './forms/ProjectsForm';
-import ReferencesForm from './forms/ReferencesForm';
+import PersonalInfoForm from './PersonalInfoForm';
+import EducationForm from './EducationForm';
+import ExperienceForm from './ExperienceForm';
+import SkillsForm from './SkillsForm';
+import LanguagesForm from './LanguagesForm';
+import HobbiesForm from './HobbiesForm';
+import CertificationsForm from './CertificationsForm';
+import ProjectsForm from './ProjectsForm';
+import ReferencesForm from './ReferencesForm';
 
 interface Props {
   activeSection: string;

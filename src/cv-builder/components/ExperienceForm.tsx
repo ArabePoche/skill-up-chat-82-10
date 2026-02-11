@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2 } from 'lucide-react';
-import type { Experience } from '../../types';
+import type { Experience } from '../types';
 
 interface Props {
   data: Experience[];
