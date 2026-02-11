@@ -32,7 +32,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden">
-          <DialogTitle className="sr-only">Constructeur de CV</DialogTitle>
+          <DialogTitle className="sr-only">CV Maker</DialogTitle>
           
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
