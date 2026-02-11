@@ -304,45 +304,24 @@ export const useOfflineMedia = ({
 
         blob = new Blob(chunks, { type: effectiveMimeType });
       } else {
-        // Fallback sans progression
+        // Fallback sans progression - simuler progression
+        setProgress(50);
         blob = await response.blob();
+        setProgress(100);
       }
 
-      // 1. Sauvegarder dans IndexedDB (accès offline)
-      await fileStore.saveFile(resolvedFileId, blob, {
-        remoteUrl,
-        fileName: effectiveFileName,
-        fileType: effectiveMimeType,
-        fileSize: blob.size,
-        isOwnFile: false,
-      });
+      // Marquer la progression à 100% avant les opérations de sauvegarde
+      setProgress(100);
 
-      // 2. Sauvegarder dans le stockage du téléphone (galerie ou Documents)
-      // ✅ Comportement type WhatsApp: tous les fichiers téléchargés sont sauvegardés
-      if (saveToGallery && isNativePlatform()) {
-        try {
-          const galleryResult = await saveMediaToDevice(blob, effectiveFileName, effectiveMimeType);
-          setSavedToGallery(galleryResult.savedToGallery || galleryResult.success);
-          
-          const mediaType = getMediaType(effectiveMimeType);
-          if (galleryResult.savedToGallery) {
-            console.log('📱 Image/Vidéo sauvegardée dans la galerie:', galleryResult.filePath);
-          } else if (galleryResult.success && galleryResult.filePath) {
-            console.log(`📂 ${mediaType === 'audio' ? 'Audio' : 'Document'} sauvegardé dans EducaTok:`, galleryResult.filePath);
-          }
-        } catch (galleryError) {
-          console.warn('⚠️ Impossible de sauvegarder sur le téléphone:', galleryError);
-        }
-      }
-
-      // Créer URL locale pour affichage
+      // Sauvegarder en arrière-plan sans bloquer l'affichage
+      // Créer l'URL locale AVANT les sauvegardes pour un affichage immédiat
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
       }
       const blobUrl = URL.createObjectURL(blob);
       objectUrlRef.current = blobUrl;
 
-      // Mettre à jour le cache mémoire
+      // Mettre à jour le cache mémoire et afficher IMMÉDIATEMENT
       fileStatusCache.set(resolvedFileId, {
         fileId: resolvedFileId,
         status: 'downloaded',
@@ -356,7 +335,25 @@ export const useOfflineMedia = ({
       setProgress(100);
       setHasCheckedLocal(true);
 
-      console.log('✅ Downloaded & saved locally:', effectiveFileName);
+      console.log('✅ Downloaded & displaying:', effectiveFileName);
+
+      // 1. Sauvegarder dans IndexedDB en arrière-plan (accès offline)
+      fileStore.saveFile(resolvedFileId, blob, {
+        remoteUrl,
+        fileName: effectiveFileName,
+        fileType: effectiveMimeType,
+        fileSize: blob.size,
+        isOwnFile: false,
+      }).catch(err => console.warn('⚠️ IndexedDB save error:', err));
+
+      // 2. Sauvegarder dans la galerie en arrière-plan (natif uniquement)
+      if (saveToGallery && isNativePlatform()) {
+        saveMediaToDevice(blob, effectiveFileName, effectiveMimeType)
+          .then(galleryResult => {
+            setSavedToGallery(galleryResult.savedToGallery || galleryResult.success);
+          })
+          .catch(err => console.warn('⚠️ Gallery save error:', err));
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setStatus('remote');
