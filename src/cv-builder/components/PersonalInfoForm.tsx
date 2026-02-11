@@ -5,7 +5,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import type { PersonalInfo } from '../../types';
+import type { PersonalInfo } from '../types';
 
 interface Props {
   data: PersonalInfo;

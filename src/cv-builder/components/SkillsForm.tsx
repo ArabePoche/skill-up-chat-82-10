@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
-import type { Skill } from '../../types';
+import type { Skill } from '../types';
 
 const LEVELS = [
   { value: 'beginner', label: 'Débutant' },

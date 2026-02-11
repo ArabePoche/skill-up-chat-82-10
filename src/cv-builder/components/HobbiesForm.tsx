@@ -5,7 +5,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
-import type { Hobby } from '../../types';
+import type { Hobby } from '../types';
 
 interface Props {
   data: Hobby[];
