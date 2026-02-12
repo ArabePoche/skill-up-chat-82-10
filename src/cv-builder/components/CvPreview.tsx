@@ -218,8 +218,8 @@ const CvPreview: React.FC<Props> = ({ cvData, sections, onClose }) => {
 
   // Render via portal to escape Dialog z-index
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[99999] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[99999] bg-black/60 flex items-center justify-center p-4 pointer-events-auto" style={{ isolation: 'isolate' }} onClick={onClose}>
+      <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col pointer-events-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="font-bold text-lg">Aperçu du CV</h2>
