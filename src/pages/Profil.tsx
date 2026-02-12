@@ -91,6 +91,22 @@ const Profil = () => {
     finalProfile: profile
   });
   const { data: enrollments } = useUserEnrollments(viewedUserId);
+
+  // Récupérer le CV public de l'utilisateur consulté
+  const { data: viewedUserCv } = useQuery({
+    queryKey: ['public-cv-user', viewedUserId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('public_cvs')
+        .select('id')
+        .eq('is_public', true)
+        .eq('user_id', viewedUserId!)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !isOwnProfile && !!viewedUserId,
+  });
   
   // Hooks pour le système d'amitié
   const { friendshipStatus, sendRequest, acceptRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(viewedUserId);
@@ -220,6 +236,18 @@ const Profil = () => {
                 >
                   <FileText className="w-4 h-4" />
                   Créer mon CV
+                </Button>
+              )}
+              {/* Bouton Voir le CV pour les autres profils */}
+              {!isOwnProfile && viewedUserCv && (
+                <Button
+                  size="sm"
+                  variant="actionBlue"
+                  className="mt-2 gap-1.5 rounded-full px-5"
+                  onClick={() => navigate(`/cv/${viewedUserCv.id}`)}
+                >
+                  <FileText className="w-4 h-4" />
+                  Voir le CV
                 </Button>
               )}
             </div>
