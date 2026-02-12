@@ -3124,6 +3124,63 @@ export type Database = {
           },
         ]
       }
+      public_cvs: {
+        Row: {
+          certifications: Json
+          created_at: string
+          education: Json
+          experiences: Json
+          hobbies: Json
+          id: string
+          is_public: boolean
+          languages: Json
+          personal_info: Json
+          projects: Json
+          references: Json
+          section_order: string[]
+          skills: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certifications?: Json
+          created_at?: string
+          education?: Json
+          experiences?: Json
+          hobbies?: Json
+          id?: string
+          is_public?: boolean
+          languages?: Json
+          personal_info?: Json
+          projects?: Json
+          references?: Json
+          section_order?: string[]
+          skills?: Json
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certifications?: Json
+          created_at?: string
+          education?: Json
+          experiences?: Json
+          hobbies?: Json
+          id?: string
+          is_public?: boolean
+          languages?: Json
+          personal_info?: Json
+          projects?: Json
+          references?: Json
+          section_order?: string[]
+          skills?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       push_tokens: {
         Row: {
           created_at: string
