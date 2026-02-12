@@ -30,17 +30,20 @@ export const useSaveCv = (userId: string | undefined) => {
       if (data) {
         setSavedCvId(data.id);
         return {
-          personalInfo: data.personal_info as any,
-          education: data.education as any,
-          experiences: data.experiences as any,
-          skills: data.skills as any,
-          languages: data.languages as any,
-          hobbies: data.hobbies as any,
-          certifications: data.certifications as any,
-          projects: data.projects as any,
-          references: data.references as any,
-          sectionOrder: data.section_order || [],
-        } as CvData;
+          cvData: {
+            personalInfo: data.personal_info as any,
+            education: data.education as any,
+            experiences: data.experiences as any,
+            skills: data.skills as any,
+            languages: data.languages as any,
+            hobbies: data.hobbies as any,
+            certifications: data.certifications as any,
+            projects: data.projects as any,
+            references: data.references as any,
+            sectionOrder: data.section_order || [],
+          } as CvData,
+          isPublic: data.is_public,
+        };
       }
       return null;
     } catch (error: any) {
@@ -52,7 +55,7 @@ export const useSaveCv = (userId: string | undefined) => {
   }, [userId]);
 
   // Sauvegarder / mettre à jour le CV
-  const saveCv = useCallback(async (cvData: CvData) => {
+  const saveCv = useCallback(async (cvData: CvData, isPublic: boolean = true) => {
     if (!userId) {
       toast({ title: "Erreur", description: "Vous devez être connecté pour sauvegarder votre CV", variant: "destructive" });
       return;
@@ -72,7 +75,7 @@ export const useSaveCv = (userId: string | undefined) => {
         projects: cvData.projects as any,
         references: cvData.references as any,
         section_order: cvData.sectionOrder,
-        is_public: true,
+        is_public: isPublic,
       };
 
       if (savedCvId) {
