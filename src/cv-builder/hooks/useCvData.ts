@@ -82,8 +82,13 @@ export const useCvData = () => {
     }));
   }, []);
 
+  const setCvDataFull = useCallback((data: CvData) => {
+    setCvData(data);
+  }, []);
+
   return {
     cvData,
+    setCvData: setCvDataFull,
     sections,
     showAdvanced,
     setShowAdvanced,
