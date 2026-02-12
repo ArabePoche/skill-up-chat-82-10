@@ -68,7 +68,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open && !showPreview} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden">
           <DialogTitle className="sr-only">CV Maker pro</DialogTitle>
           
