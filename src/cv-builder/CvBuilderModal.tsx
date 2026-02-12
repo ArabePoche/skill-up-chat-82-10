@@ -7,7 +7,9 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Eye, ArrowLeft, Save, Loader2, Share2 } from 'lucide-react';
+import { Eye, ArrowLeft, Save, Loader2, Share2, Lock, Globe } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useCvData } from './hooks/useCvData';
 import { useSaveCv } from './hooks/useSaveCv';
 import SectionList from './components/SectionList';
@@ -34,6 +36,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'form'>('list');
   const [loaded, setLoaded] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
   const { toast } = useToast();
 
   // Récupérer l'utilisateur connecté
@@ -46,9 +49,10 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
   // Charger le CV existant à l'ouverture
   useEffect(() => {
     if (open && userId && !loaded) {
-      loadExistingCv().then(existingData => {
-        if (existingData) {
-          setCvData(existingData);
+      loadExistingCv().then(result => {
+        if (result) {
+          setCvData(result.cvData);
+          setIsPublic(result.isPublic);
         }
         setLoaded(true);
       });
@@ -56,7 +60,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
     if (!open) setLoaded(false);
   }, [open, userId, loaded, loadExistingCv, setCvData]);
 
-  const handleSave = () => saveCv(cvData);
+  const handleSave = () => saveCv(cvData, isPublic);
 
   const handleShareLink = () => {
     if (savedCvId) {
@@ -82,7 +86,18 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
               )}
               <h2 className="font-bold text-lg">Mon CV</h2>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                {isPublic ? <Globe className="w-3.5 h-3.5 text-primary" /> : <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
+                <Label htmlFor="cv-public-toggle" className="text-xs cursor-pointer">
+                  {isPublic ? 'Public' : 'Privé'}
+                </Label>
+                <Switch
+                  id="cv-public-toggle"
+                  checked={isPublic}
+                  onCheckedChange={setIsPublic}
+                />
+              </div>
               {savedCvId && (
                 <Button size="sm" variant="ghost" onClick={handleShareLink}>
                   <Share2 className="w-4 h-4 mr-1" /> Partager
