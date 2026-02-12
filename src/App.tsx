@@ -33,6 +33,7 @@ import LessonChat from '@/pages/cours/LessonChat';
 import GroupLessonChat from '@/pages/cours/GroupLessonChat';
 import Conversations from '@/pages/Conversations';
 import UploadVideo from '@/pages/UploadVideo';
+import PublicCv from '@/pages/PublicCv';
 import School from '@/pages/School';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
@@ -77,6 +78,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/admin" element={<Admin />} />
         <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/formation/:formationId/pricing" element={<FormationPricingPage />} />
+        <Route path="/cv/:cvId" element={<PublicCv />} />
         
         {/* Nouvelles routes cours explicites */}
         <Route path="/cours" element={<CoursIndex />} />
