@@ -88,7 +88,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
                   <Share2 className="w-4 h-4 mr-1" /> Partager
                 </Button>
               )}
-              <Button size="sm" variant="default" onClick={handleSave} disabled={isSaving}>
+              <Button size="sm" variant="actionBlue" onClick={handleSave} disabled={isSaving} className="rounded-full px-5 font-semibold text-base shadow-lg hover:scale-105 transition-transform">
                 {isSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                 Sauvegarder
               </Button>
