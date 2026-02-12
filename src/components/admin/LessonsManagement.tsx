@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit, Trash2, Plus, ArrowLeft, FileText, Play } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Edit, Trash2, Plus, ArrowLeft, FileText, Play, Lock, Unlock, MousePointerClick, HelpCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ExercisesManagement from './ExercisesManagement';
+import QuizManagement from './quiz/QuizManagement';
 
 interface LessonsManagementProps {
   levelId: string;
@@ -26,6 +28,7 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
   onBack 
 }) => {
   const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string } | null>(null);
+  const [quizLesson, setQuizLesson] = useState<{ id: string; title: string } | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<any>(null);
@@ -52,6 +55,7 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
       order_index: number;
       video_url?: string;
       duration?: string;
+      unlock_mode?: string;
     }) => {
       const { data, error } = await supabase
         .from('lessons')
@@ -80,7 +84,7 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
   const updateLessonMutation = useMutation({
     mutationFn: async ({ id, lessonData }: { 
       id: string; 
-      lessonData: { title: string; description: string; order_index: number; video_url?: string; duration?: string; }
+      lessonData: { title: string; description: string; order_index: number; video_url?: string; duration?: string; unlock_mode?: string; }
     }) => {
       const { data, error } = await supabase
         .from('lessons')
@@ -122,6 +126,8 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
     }
   });
 
+  const [createUnlockMode, setCreateUnlockMode] = useState('teacher_validation');
+
   const handleCreateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -132,8 +138,10 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
     const video_url = formData.get('video_url') as string;
     const duration = formData.get('duration') as string;
 
-    createLessonMutation.mutate({ title, description, order_index, video_url, duration });
+    createLessonMutation.mutate({ title, description, order_index, video_url, duration, unlock_mode: createUnlockMode });
   };
+
+  const [editUnlockMode, setEditUnlockMode] = useState('teacher_validation');
 
   const handleEditSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -147,12 +155,13 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
 
     updateLessonMutation.mutate({ 
       id: editingLesson.id, 
-      lessonData: { title, description, order_index, video_url, duration }
+      lessonData: { title, description, order_index, video_url, duration, unlock_mode: editUnlockMode }
     });
   };
 
   const handleEdit = (lesson: any) => {
     setEditingLesson(lesson);
+    setEditUnlockMode(lesson.unlock_mode || 'teacher_validation');
     setIsEditDialogOpen(true);
   };
 
@@ -161,6 +170,16 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
       deleteLessonMutation.mutate(id);
     }
   };
+
+  if (quizLesson) {
+    return (
+      <QuizManagement
+        lessonId={quizLesson.id}
+        lessonTitle={quizLesson.title}
+        onBack={() => setQuizLesson(null)}
+      />
+    );
+  }
 
   if (selectedLesson) {
     return (
@@ -241,6 +260,18 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
                         <label className="block text-sm font-medium mb-1">Durée</label>
                         <Input name="duration" placeholder="ex: 30 min" />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Mode de déblocage</label>
+                        <Select value={createUnlockMode} onValueChange={setCreateUnlockMode}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="teacher_validation">✅ Validation professeur</SelectItem>
+                            <SelectItem value="next_button">▶️ Bouton Suivant</SelectItem>
+                            <SelectItem value="quiz">📝 Quiz</SelectItem>
+                            <SelectItem value="free">🔓 Libre</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Button type="submit" className="w-full" disabled={createLessonMutation.isPending}>
                         {createLessonMutation.isPending ? 'Création...' : 'Créer la leçon'}
                       </Button>
@@ -257,6 +288,7 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
                       <TableRow className="bg-gray-50">
                         <TableHead className="font-semibold">Ordre</TableHead>
                         <TableHead className="font-semibold">Titre</TableHead>
+                        <TableHead className="font-semibold hidden sm:table-cell">Mode</TableHead>
                         <TableHead className="font-semibold hidden sm:table-cell">Description</TableHead>
                         <TableHead className="font-semibold hidden md:table-cell">Durée</TableHead>
                         <TableHead className="font-semibold">Actions</TableHead>
@@ -281,6 +313,19 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
                               <span className="truncate max-w-[150px] sm:max-w-none">{lesson.title}</span>
                             </div>
                           </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              (lesson as any).unlock_mode === 'free' ? 'bg-emerald-100 text-emerald-800' :
+                              (lesson as any).unlock_mode === 'quiz' ? 'bg-orange-100 text-orange-800' :
+                              (lesson as any).unlock_mode === 'next_button' ? 'bg-blue-100 text-blue-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {(lesson as any).unlock_mode === 'free' ? '🔓 Libre' :
+                               (lesson as any).unlock_mode === 'quiz' ? '📝 Quiz' :
+                               (lesson as any).unlock_mode === 'next_button' ? '▶️ Suivant' :
+                               '✅ Professeur'}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-gray-600 hidden sm:table-cell">
                             <span className="truncate block max-w-[200px]">{lesson.description}</span>
                           </TableCell>
@@ -303,6 +348,17 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
                                 <span className="hidden sm:inline">Exercices</span>
                                 <span className="sm:hidden">Ex.</span>
                               </Button>
+                              {(lesson as any).unlock_mode === 'quiz' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setQuizLesson({ id: lesson.id, title: lesson.title })}
+                                  className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs"
+                                >
+                                  <HelpCircle size={12} className="mr-1" />
+                                  <span className="hidden sm:inline">Quiz</span>
+                                </Button>
+                              )}
                               <Button 
                                 size="sm" 
                                 variant="outline" 
@@ -363,6 +419,18 @@ const LessonsManagement: React.FC<LessonsManagementProps> = ({
                   <div>
                     <label className="block text-sm font-medium mb-1">Durée</label>
                     <Input name="duration" placeholder="ex: 30 min" defaultValue={editingLesson.duration} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Mode de déblocage</label>
+                    <Select value={editUnlockMode} onValueChange={setEditUnlockMode}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="teacher_validation">✅ Validation professeur</SelectItem>
+                        <SelectItem value="next_button">▶️ Bouton Suivant</SelectItem>
+                        <SelectItem value="quiz">📝 Quiz</SelectItem>
+                        <SelectItem value="free">🔓 Libre</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button type="submit" className="w-full" disabled={updateLessonMutation.isPending}>
                     {updateLessonMutation.isPending ? 'Mise à jour...' : 'Mettre à jour la leçon'}
