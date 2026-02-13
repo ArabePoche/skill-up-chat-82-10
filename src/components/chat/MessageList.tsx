@@ -228,6 +228,7 @@ const MessageList: React.FC<MessageListProps> = ({
             >
               <LessonVideoPlayer 
                 url={message.video_url || ''}
+                videoId={message.lesson_id || undefined}
                 title={message.lesson_title || 'Vidéo de la leçon'}
                 views="Formation"
                 channelName="Académie"
