@@ -57,8 +57,9 @@ export const useSubmitQuizAttempt = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ quizId, answers }: {
+    mutationFn: async ({ quizId, lessonId, answers }: {
       quizId: string;
+      lessonId: string;
       answers: { questionId: string; selectedOptionId?: string }[];
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -109,12 +110,45 @@ export const useSubmitQuizAttempt = () => {
 
       if (insertError) throw insertError;
 
-      return { passed, score, maxScore, percentage };
+      // Si quiz réussi, déclencher la progression (débloquer leçon suivante)
+      let progressionResult = null;
+      if (passed) {
+        const { data: progData, error: progError } = await supabase.rpc(
+          'handle_quiz_passed_progression',
+          {
+            p_user_id: user.id,
+            p_lesson_id: lessonId,
+          }
+        );
+
+        if (progError) {
+          console.error('Erreur progression quiz:', progError);
+        } else {
+          progressionResult = progData;
+          console.log('✅ Progression quiz:', progData);
+        }
+      }
+
+      return { passed, score, maxScore, percentage, progressionResult };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quiz-passed'] });
+      queryClient.invalidateQueries({ queryKey: ['lesson-unlocking'] });
+      queryClient.invalidateQueries({ queryKey: ['user-lesson-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['student-progression'] });
+      queryClient.invalidateQueries({ queryKey: ['group-chat-messages'] });
+
       if (data.passed) {
-        toast.success('Quiz réussi ! 🎉');
+        const result = data.progressionResult as any;
+        if (result?.formation_completed) {
+          toast.success('🏆 Formation terminée ! Félicitations !');
+        } else if (result?.level_completed) {
+          toast.success('🎖️ Quiz réussi ! Niveau suivant débloqué !');
+        } else if (result?.next_lesson_unlocked) {
+          toast.success('🎉 Quiz réussi ! Leçon suivante débloquée !');
+        } else {
+          toast.success('Quiz réussi ! 🎉');
+        }
       } else {
         toast.error(`Score insuffisant : ${data.percentage}%`);
       }
