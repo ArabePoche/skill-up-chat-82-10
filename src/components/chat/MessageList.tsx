@@ -12,6 +12,7 @@ import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useTypingListener } from '@/hooks/useTypingListener';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 import LessonVideoPlayer from '../LessonVideoPlayer';
+import QuizPlayer from '../quiz/QuizPlayer';
 import { groupMessagesByDate } from '@/utils/dateUtils';
 import { useCachePreloader } from '@/file-manager/hooks/useCachePreloader';
 
@@ -217,7 +218,6 @@ const MessageList: React.FC<MessageListProps> = ({
           {messagesInGroup.map((message) => {
         // Vidéos de leçons (priorité sur les messages système)
         if (message.item_type === 'lesson_video') {
-          console.log('🎥 Rendering lesson video:', message);
           return (
             <div
               key={message.id}
@@ -234,6 +234,10 @@ const MessageList: React.FC<MessageListProps> = ({
                 channelName="Académie"
                 className="w-full rounded-lg overflow-hidden shadow-md"
               />
+              {/* Quiz sous la vidéo correspondante - visible uniquement pour les élèves */}
+              {!isTeacherView && message.lesson_id && (
+                <QuizPlayer lessonId={message.lesson_id} />
+              )}
             </div>
           );
         }
