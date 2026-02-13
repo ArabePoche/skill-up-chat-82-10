@@ -14,7 +14,7 @@ import { useCallNotifications } from '@/hooks/useCallNotifications';
 import ChatInputBar from './chat/ChatInputBar';
 import MessageList from './chat/MessageList';
 import DateSeparator from './chat/DateSeparator';
-import QuizPlayer from './quiz/QuizPlayer';
+
 import { groupMessagesByDate } from '@/utils/dateUtils';
 import { LessonVideoPlayerWithTimer } from './video/LessonVideoPlayerWithTimer';
 import { SubscriptionUpgradeModal } from './chat/SubscriptionUpgradeModal';
@@ -329,11 +329,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         onScrollToVideo={scrollToVideo}
         onScrollToMessages={scrollToMessages}
       />
-
-      {/* Quiz de la leçon - visible uniquement pour les élèves */}
-      {userRole?.role === 'student' && (
-        <QuizPlayer lessonId={lesson.id.toString()} />
-      )}
 
       {/* Messages - responsive */}
       <div ref={messagesRef} className="flex-1 flex flex-col p-24 min-h-0 pt-[100px] pb-[80px] px-2 md:px-4">
