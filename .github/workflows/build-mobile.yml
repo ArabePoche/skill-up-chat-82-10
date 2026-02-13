@@ -6,10 +6,6 @@ permissions:
   actions: read
 
 on:
-  push:
-    branches: [ main ]
-  repository_dispatch:
-    types: [ netlify-deploy ]
   workflow_dispatch:
     inputs:
       version_bump:
