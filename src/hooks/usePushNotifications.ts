@@ -45,12 +45,20 @@ export const usePushNotifications = () => {
   const [preferences, setPreferences] = useState<NotificationPreferences>(getStoredPreferences);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
 
-  const isSupported = nativePushService.isSupported();
-  const isNative = nativePushService.isNativeMobile();
+  // Cache les valeurs pour éviter des appels répétés à Capacitor à chaque render
+  const [isSupported] = useState(() => {
+    try { return nativePushService.isSupported(); } catch { return false; }
+  });
+  const [isNative] = useState(() => {
+    try { return nativePushService.isNativeMobile(); } catch { return false; }
+  });
 
-  const [permission, setPermission] = useState<NotificationPermission | null>(
-    !isNative && 'Notification' in window ? Notification.permission : null
-  );
+  const [permission, setPermission] = useState<NotificationPermission | null>(() => {
+    try {
+      return !isNative && typeof window !== 'undefined' && 'Notification' in window 
+        ? Notification.permission : null;
+    } catch { return null; }
+  });
 
   const hasPermission = isNative ? currentToken !== null : permission === 'granted';
 

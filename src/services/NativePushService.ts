@@ -197,29 +197,15 @@ export class NativePushService {
    * IMPORTANT: Sur mobile natif, c'est TOUJOURS supporté si le plugin est disponible
    */
   isSupported(): boolean {
-    // Force refresh de la plateforme pour être sûr
-    const platform = this.getPlatformType(true);
+    const platform = this.getPlatformType();
     
-    console.log('🔍 Vérification support notifications:', {
-      platform,
-      capacitorPlatform: Capacitor.getPlatform(),
-      pushPluginAvailable: isPushNotificationsAvailable(),
-    });
 
-    // Sur plateforme native mobile → supporté si le plugin existe
     if (platform === 'android' || platform === 'ios') {
-      const pluginAvailable = isPushNotificationsAvailable();
-      console.log('📱 Mobile natif détecté, plugin disponible:', pluginAvailable);
-      return pluginAvailable;
+      return isPushNotificationsAvailable();
     }
     
-    // Sur le web → vérifier Notification API et Service Worker
     if (typeof window !== 'undefined') {
-      const hasNotificationAPI = 'Notification' in window;
-      const hasServiceWorker = 'serviceWorker' in navigator;
-      const supported = hasNotificationAPI && hasServiceWorker;
-      console.log('🌐 Web détecté:', { hasNotificationAPI, hasServiceWorker, supported });
-      return supported;
+      return 'Notification' in window && 'serviceWorker' in navigator;
     }
 
     console.warn('⚠️ Environnement non reconnu');
@@ -232,14 +218,9 @@ export class NativePushService {
    */
   async initialize(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
-      // Force refresh pour être sûr d'avoir la bonne plateforme
-      const platform = this.getPlatformType(true);
+      const platform = this.getPlatformType();
       
-      console.log('🚀 Initialisation des notifications...', { 
-        platform,
-        capacitorPlatform: Capacitor.getPlatform(),
-        isNative: Capacitor.isNativePlatform(),
-      });
+      console.log('🚀 [NativePushService] initialize() platform:', platform);
 
       // Détection stricte: Android ou iOS = push natif UNIQUEMENT
       if (platform === 'android' || platform === 'ios') {
