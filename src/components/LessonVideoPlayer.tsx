@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Maximize2, Volume2, VolumeX, ThumbsUp, Share2, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
-import { useVideoComments } from '@/hooks/useVideoComments';
+import { useLessonVideoComments } from '@/hooks/useLessonVideoComments';
 import { useCommentLikes } from '@/hooks/useCommentLikes';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,7 +46,7 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
 
   // Hooks pour les likes et commentaires
   const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = useVideoLikes(videoId || '', 0);
-  const { comments, commentsCount, addComment, isSubmitting } = useVideoComments(videoId || '');
+  const { comments, commentsCount, addComment, isSubmitting } = useLessonVideoComments(videoId || '');
 
   const handleLikeClick = () => {
     if (!videoId) return;
@@ -82,7 +82,7 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
     }
     if (!replyContent.trim()) return;
     
-    const success = await addComment(replyContent, parentId);
+    const success = await addComment(replyContent);
     if (success) {
       setReplyContent('');
       setReplyingTo(null);
