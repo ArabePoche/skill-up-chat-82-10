@@ -32,6 +32,7 @@ import ChatInputBar from '../chat/ChatInputBar';
 import MessageList from '../chat/MessageList';
 import { SubscriptionUpgradeModal } from '../chat/SubscriptionUpgradeModal';
 import VideoMessageSwitch from '../video/VideoMessageSwitch';
+import QuizPlayer from '../quiz/QuizPlayer';
 import { LessonVideoPlayerWithTimer } from '../video/LessonVideoPlayerWithTimer';
 import { Button } from '../ui/button';
 import { GroupInfoDrawer } from './GroupInfoDrawer';
@@ -542,6 +543,18 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       {/* Messages - réutilise MessageList de ChatInterface */}
       <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[100px] pb-[80px] px-2 md:px-4">
         
+        {/* Quiz des leçons du niveau - visible uniquement pour les élèves */}
+        {userRole?.role === 'student' && level.lessons && level.lessons.length > 0 && (
+          <div className="space-y-2 mt-2">
+            {level.lessons
+              .sort((a, b) => a.order_index - b.order_index)
+              .map(lesson => (
+                <QuizPlayer key={lesson.id} lessonId={lesson.id.toString()} />
+              ))
+            }
+          </div>
+        )}
+
         {/* Filtres pour les élèves */}
         {userRole?.role === 'student' && (
           <div className="sticky top-[100px] z-40 bg-[#e5ddd5] py-2">
