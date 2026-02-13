@@ -8191,6 +8191,10 @@ export type Database = {
         Args: { p_action: string; p_request_id: string }
         Returns: Json
       }
+      handle_quiz_passed_progression: {
+        Args: { p_lesson_id: string; p_user_id: string }
+        Returns: Json
+      }
       handle_validated_exercise: {
         Args: {
           p_formation_id: string
