@@ -153,7 +153,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ lessonId }) => {
     }));
 
     submitAttempt.mutate(
-      { quizId: quiz.id, answers: formattedAnswers },
+      { quizId: quiz.id, lessonId, answers: formattedAnswers },
       {
         onSuccess: (data) => {
           setResult({
