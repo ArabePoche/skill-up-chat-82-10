@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "848401036339",
+    "project_id": "push-notifications-727ff",
+    "storage_bucket": "push-notifications-727ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:848401036339:android:3745e709c9ab89d79cdf46",
+        "android_client_info": {
+          "package_name": "Come.islahmedia.educatok"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5vjkWfLq486Y6CnEoKpZYRVIUrDK-yTs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

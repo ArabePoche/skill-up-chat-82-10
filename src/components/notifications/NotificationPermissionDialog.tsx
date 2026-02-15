@@ -23,7 +23,8 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
     requestPermission,
     updatePreferences,
     disableNotifications,
-    sendTestNotification
+    sendTestNotification,
+    currentToken
   } = usePushNotifications();
 
   const [localPreferences, setLocalPreferences] = useState<NotificationPreferences>(preferences);
@@ -49,10 +50,10 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
   if (!isSupported) {
     // Détecter la plateforme pour un message adapté
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isCapacitorNative = typeof (window as any).Capacitor !== 'undefined' && 
-      ((window as any).Capacitor.getPlatform?.() === 'android' || 
-       (window as any).Capacitor.getPlatform?.() === 'ios');
-    
+    const isCapacitorNative = typeof (window as any).Capacitor !== 'undefined' &&
+      ((window as any).Capacitor.getPlatform?.() === 'android' ||
+        (window as any).Capacitor.getPlatform?.() === 'ios');
+
     // Si on est sur Capacitor natif, ne pas afficher ce message d'erreur
     // car isSupported devrait être true sur mobile natif
     // Ce cas ne devrait pas arriver normalement
@@ -61,7 +62,7 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
       isCapacitorNative,
       userAgent: navigator.userAgent
     });
-    
+
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
@@ -77,7 +78,7 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
                 </>
               ) : isIOS ? (
                 <>
-                  Pour recevoir les notifications sur iPhone/iPad, installez l'application sur votre écran d'accueil : 
+                  Pour recevoir les notifications sur iPhone/iPad, installez l'application sur votre écran d'accueil :
                   <br />
                   <strong>Safari → Partager → "Sur l'écran d'accueil"</strong>
                 </>
@@ -106,7 +107,7 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
             Notifications Push
           </DialogTitle>
           <DialogDescription>
-            Recevez des rappels motivants pour ne jamais manquer vos études, 
+            Recevez des rappels motivants pour ne jamais manquer vos études,
             comme sur Duolingo ! 🎯
           </DialogDescription>
         </DialogHeader>
@@ -127,15 +128,15 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
               </div>
 
               <div className="flex gap-3">
-                <Button 
+                <Button
                   onClick={handlePermissionRequest}
                   disabled={isLoading}
                   className="flex-1"
                 >
                   {isLoading ? 'Configuration...' : '🔔 Activer les notifications'}
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
                   Plus tard
@@ -216,14 +217,14 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
               </div>
 
               <div className="flex gap-3 pt-4 border-t">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleDisable}
                   className="flex-1"
                 >
                   Désactiver
                 </Button>
-                <Button 
+                <Button
                   onClick={() => onOpenChange(false)}
                   className="flex-1"
                 >
@@ -232,6 +233,14 @@ const NotificationPermissionDialog: React.FC<NotificationPermissionDialogProps> 
               </div>
             </div>
           )}
+
+          {/* DEBUG SECTION */}
+          <div className="mt-4 p-2 bg-gray-100 rounded text-xs font-mono break-all">
+            <p><strong>Debug Info:</strong></p>
+            <p>Platform: {isSupported ? 'Supported' : 'Not Supported'}</p>
+            <p>Permission: {String(hasPermission)}</p>
+            <p>Token: {currentToken || 'No token'}</p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

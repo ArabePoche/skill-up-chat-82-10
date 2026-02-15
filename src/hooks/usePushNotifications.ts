@@ -29,14 +29,14 @@ const getStoredPreferences = (): NotificationPreferences => {
   try {
     const stored = localStorage.getItem(PREFERENCES_KEY);
     if (stored) return { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) };
-  } catch {}
+  } catch { }
   return DEFAULT_PREFERENCES;
 };
 
 const storePreferences = (prefs: NotificationPreferences) => {
   try {
     localStorage.setItem(PREFERENCES_KEY, JSON.stringify(prefs));
-  } catch {}
+  } catch { }
 };
 
 export const usePushNotifications = () => {
@@ -55,7 +55,7 @@ export const usePushNotifications = () => {
 
   const [permission, setPermission] = useState<NotificationPermission | null>(() => {
     try {
-      return !isNative && typeof window !== 'undefined' && 'Notification' in window 
+      return !isNative && typeof window !== 'undefined' && 'Notification' in window
         ? Notification.permission : null;
     } catch { return null; }
   });
@@ -81,6 +81,7 @@ export const usePushNotifications = () => {
           console.log('✅ [usePushNotifications] Token + préférences sauvegardés en DB');
         } catch (err) {
           console.error('❌ [usePushNotifications] Erreur sauvegarde token:', err);
+          toast.error('Erreur sauvegarde token DB');
         }
       }
     });
@@ -109,6 +110,7 @@ export const usePushNotifications = () => {
               console.log('✅ [usePushNotifications] Token sauvegardé après permission');
             } catch (err) {
               console.error('❌ [usePushNotifications] Erreur sauvegarde:', err);
+              toast.error('Erreur sauvegarde token DB');
             }
           }
         }
@@ -193,5 +195,6 @@ export const usePushNotifications = () => {
     updatePreferences,
     disableNotifications,
     sendTestNotification,
+    currentToken,
   };
 };

@@ -46,18 +46,18 @@ const Profil = () => {
   const [showNotificationDialog, setShowNotificationDialog] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showCvBuilder, setShowCvBuilder] = useState(false);
-  
+
   // Rediriger vers la page de connexion si non connecté et qu'on consulte son propre profil
   React.useEffect(() => {
     if (!profileId && !user) {
       navigate('/auth');
     }
   }, [user, profileId, navigate]);
-  
+
   // Si profileId existe, c'est le profil d'un autre utilisateur, sinon c'est le profil de l'utilisateur connecté
   const viewedUserId = profileId || user?.id;
   const isOwnProfile = !profileId || profileId === user?.id;
-  
+
   // Récupérer le profil de l'utilisateur visualisé (SEULEMENT si ce n'est pas son propre profil)
   const { data: viewedProfile, isLoading: isLoadingViewedProfile } = useQuery({
     queryKey: ['viewed-profile', viewedUserId], // Différente de 'profile' pour éviter les conflits
@@ -78,11 +78,11 @@ const Profil = () => {
     enabled: !isOwnProfile && !!viewedUserId, // Ne charge que si ce n'est PAS son propre profil
     staleTime: 5000, // Cache pendant 5 secondes
   });
-  
+
   // Utiliser directement currentUserProfile si c'est son propre profil, sinon viewedProfile
   const profile = isOwnProfile ? currentUserProfile : viewedProfile;
   const isLoadingProfile = isOwnProfile ? !currentUserProfile : isLoadingViewedProfile;
-  
+
   console.log('🔍 Profil Debug:', {
     isOwnProfile,
     viewedUserId,
@@ -107,7 +107,7 @@ const Profil = () => {
     },
     enabled: !isOwnProfile && !!viewedUserId,
   });
-  
+
   // Hooks pour le système d'amitié
   const { friendshipStatus, sendRequest, acceptRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(viewedUserId);
   const { data: friendsCount = 0 } = useFollowersCount(viewedUserId);
@@ -178,7 +178,7 @@ const Profil = () => {
       <div className="sticky top-0 z-30 bg-background border-b border-border">
         <div className="relative p-4">
           {!isOwnProfile && (
-            <button 
+            <button
               onClick={() => navigate(-1)}
               className="absolute left-4 top-4 p-2 hover:bg-muted rounded-lg transition-colors"
             >
@@ -186,24 +186,24 @@ const Profil = () => {
             </button>
           )}
           {isOwnProfile && (
-            <button 
+            <button
               onClick={() => setShowMenuDrawer(true)}
               className="absolute right-4 top-4 p-2 hover:bg-muted rounded-lg transition-colors"
             >
               <Menu size={24} />
             </button>
           )}
-          
+
           <div className="flex flex-col items-center gap-2 pt-8">
             <div className="relative">
-              <div 
+              <div
                 className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
                 onClick={() => isOwnProfile && setShowAvatarModal(true)}
               >
                 {profile?.avatar_url ? (
-                  <img 
-                    src={profile.avatar_url} 
-                    alt="Avatar" 
+                  <img
+                    src={profile.avatar_url}
+                    alt="Avatar"
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
@@ -211,7 +211,7 @@ const Profil = () => {
                 )}
               </div>
               {isOwnProfile && (
-                <button 
+                <button
                   onClick={() => setShowAvatarModal(true)}
                   className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground p-2 rounded-full hover:opacity-80 transition-opacity"
                 >
@@ -314,7 +314,7 @@ const Profil = () => {
         )}
 
         {/* Compteurs */}
-        <ProfileCounters 
+        <ProfileCounters
           followingCount={pendingSentCount}
           friendsCount={friendsCount}
           formationsCount={enrollments?.length || 0}
@@ -324,8 +324,8 @@ const Profil = () => {
       </div>
 
       {/* Onglets */}
-      <ProfileTabs 
-        activeTab={activeTab} 
+      <ProfileTabs
+        activeTab={activeTab}
         onTabChange={setActiveTab}
         showShopTab={(profile as any)?.is_verified === true}
       />
@@ -338,7 +338,7 @@ const Profil = () => {
       {/* Menu Drawer - uniquement pour son propre profil */}
       {isOwnProfile && (
         <>
-          <ProfileMenuDrawer 
+          <ProfileMenuDrawer
             isOpen={showMenuDrawer}
             onClose={() => setShowMenuDrawer(false)}
             onShowNotificationDialog={() => setShowNotificationDialog(true)}

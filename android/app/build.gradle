@@ -1,11 +1,12 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 android {
-    namespace "com.islamedia.com"
+    namespace "Come.islahmedia.educatok"
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.islamedia.com"
+        applicationId "Come.islahmedia.educatok"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion 35
         versionCode 2
@@ -23,9 +24,9 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    // kotlinOptions {
-    //    jvmTarget = "17"
-    //}
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 
     buildTypes {
         release {
@@ -51,6 +52,10 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Dépendances Firebase
+    implementation platform('com.google.firebase:firebase-bom:33.1.0')
+    implementation 'com.google.firebase:firebase-messaging'
 }
 
 apply from: 'capacitor.build.gradle'

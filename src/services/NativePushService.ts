@@ -19,7 +19,7 @@ const detectPlatformType = (): 'android' | 'ios' | 'web' => {
   try {
     const platform = Capacitor.getPlatform();
     console.log('🔍 Capacitor.getPlatform():', platform);
-    
+
     if (platform === 'android' || platform === 'ios') {
       return platform;
     }
@@ -76,13 +76,13 @@ export class NativePushService {
   async initEarlyWhenReady(): Promise<void> {
     const platform = this.getPlatformType(true);
     console.log('🚀 [NativePushService] initEarlyWhenReady - platform:', platform);
-    
+
     if (platform !== 'android' && platform !== 'ios') return;
 
     try {
       console.log('📱 [NativePushService] Mobile natif détecté, setup listeners...');
       this.ensureNativeListeners();
-      
+
       // Vérifier si on a déjà la permission et récupérer le token
       if (!isPushNotificationsAvailable()) {
         console.log('⚠️ [NativePushService] Plugin push non disponible');
@@ -91,7 +91,7 @@ export class NativePushService {
 
       const result = await PushNotifications.checkPermissions();
       console.log('🔐 [NativePushService] Permission existante:', result.receive);
-      
+
       if (result.receive === 'granted') {
         console.log('✅ [NativePushService] Permission déjà accordée, registration...');
         await PushNotifications.register();
@@ -136,7 +136,7 @@ export class NativePushService {
       console.log('⏭️ [NativePushService] Listeners déjà configurés');
       return;
     }
-    
+
     if (!isPushNotificationsAvailable()) {
       console.error('❌ [NativePushService] Plugin PushNotifications NON disponible!');
       return;
@@ -149,7 +149,7 @@ export class NativePushService {
       console.log('🎯 [NativePushService] EVENT registration reçu!');
       console.log('🎯 [NativePushService] Token FCM:', token.value?.substring(0, 30) + '...');
       console.log('🎯 [NativePushService] Token length:', token.value?.length);
-      
+
       if (token?.value) {
         this.emitToken(token.value);
       } else {
@@ -168,7 +168,7 @@ export class NativePushService {
     PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
       console.log('👆 [NativePushService] Action notification:', JSON.stringify(notification));
     });
-    
+
     console.log('✅ [NativePushService] Listeners natifs configurés!');
   }
 
@@ -198,12 +198,12 @@ export class NativePushService {
    */
   isSupported(): boolean {
     const platform = this.getPlatformType();
-    
+
 
     if (platform === 'android' || platform === 'ios') {
       return isPushNotificationsAvailable();
     }
-    
+
     if (typeof window !== 'undefined') {
       return 'Notification' in window && 'serviceWorker' in navigator;
     }
@@ -219,7 +219,7 @@ export class NativePushService {
   async initialize(): Promise<{ success: boolean; token?: string; error?: string }> {
     try {
       const platform = this.getPlatformType();
-      
+
       console.log('🚀 [NativePushService] initialize() platform:', platform);
 
       // Détection stricte: Android ou iOS = push natif UNIQUEMENT
@@ -262,7 +262,7 @@ export class NativePushService {
       // Demander les permissions
       const permissionResult = await PushNotifications.requestPermissions();
       console.log('📋 Résultat permission:', permissionResult);
-      
+
       if (permissionResult.receive !== 'granted') {
         return { success: false, error: 'Permission refusée par l\'utilisateur' };
       }
@@ -271,8 +271,11 @@ export class NativePushService {
       this.ensureNativeListeners();
 
       // Enregistrer auprès de FCM/APNS (le token arrivera via l'event `registration`).
+      // Enregistrer auprès de FCM/APNS (le token arrivera via l'event `registration`).
       PushNotifications.register().catch((err: any) => {
-        console.error('❌ Erreur register() native:', err);
+        console.error('❌ [NativePushService] CRITICAL Error register() native:', err);
+        console.error('👉 Vérifiez que google-services.json est présent dans android/app/');
+        console.error('👉 Vérifiez que le package name correspond à Firebase Console');
       });
 
       // Attendre (au max 15s) un token; s'il arrive plus tard, on le captera quand même
@@ -300,9 +303,9 @@ export class NativePushService {
     } catch (error) {
       this.isInitializing = false;
       console.error('❌ Erreur notifications natives:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Erreur native inconnue' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur native inconnue'
       };
     }
   }
@@ -313,29 +316,29 @@ export class NativePushService {
    */
   private async initializeWeb(): Promise<{ success: boolean; token?: string; error?: string }> {
     console.log('🌐 Initialisation notifications web (FCM)...');
-    
+
     // Vérifications préliminaires
     if (typeof window === 'undefined') {
       return { success: false, error: 'Environnement non-browser' };
     }
-    
+
     if (!('Notification' in window)) {
       return { success: false, error: 'API Notification non disponible' };
     }
-    
+
     if (!('serviceWorker' in navigator)) {
       return { success: false, error: 'Service Worker non disponible' };
     }
-    
+
     // Import dynamique de FCMService uniquement sur le web
     try {
       const { FCMService } = await import('./FCMService');
       return await FCMService.requestPermission();
     } catch (error) {
       console.error('❌ Erreur import FCMService:', error);
-      return { 
-        success: false, 
-        error: 'Impossible de charger le service de notifications web' 
+      return {
+        success: false,
+        error: 'Impossible de charger le service de notifications web'
       };
     }
   }
@@ -359,7 +362,7 @@ export class NativePushService {
    */
   async getPermissionStatus(): Promise<NotificationPermission | 'unknown'> {
     const platform = this.getPlatformType(true);
-    
+
     // Mobile natif: utiliser Capacitor PushNotifications
     if (platform === 'android' || platform === 'ios') {
       try {
@@ -368,19 +371,19 @@ export class NativePushService {
         }
         const result = await PushNotifications.checkPermissions();
         console.log('📋 Status permission native:', result);
-        return result.receive === 'granted' ? 'granted' : 
-               result.receive === 'denied' ? 'denied' : 'default';
+        return result.receive === 'granted' ? 'granted' :
+          result.receive === 'denied' ? 'denied' : 'default';
       } catch (error) {
         console.error('Erreur vérification permission native:', error);
         return 'unknown';
       }
     }
-    
+
     // Web: utiliser l'API Notification du navigateur
     if (typeof window !== 'undefined' && 'Notification' in window) {
       return Notification.permission;
     }
-    
+
     return 'unknown';
   }
 }

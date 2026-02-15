@@ -44,6 +44,7 @@ export const NotificationTriggers = {
     await sendPushNotification({
       userIds: [studentId],
       title: "🎉 Exercice validé !",
+      message: `Votre exercice "${exerciseTitle}" a été validé !`,
       type: "exercise_validation",
       clickAction: "/cours",
       data: { exerciseTitle }
@@ -57,7 +58,7 @@ export const NotificationTriggers = {
       title: "💬 Réponse de votre professeur",
       message: `${teacherName} a répondu dans "${lessonTitle}"`,
       type: "teacher_response",
-      clickAction: "/messages",
+      clickAction: "/cours",
       data: { teacherName, lessonTitle }
     });
   },
@@ -78,7 +79,7 @@ export const NotificationTriggers = {
   sendDailyReminders: async () => {
     try {
       const { data, error } = await supabase.functions.invoke('send-daily-reminders');
-      
+
       if (error) {
         console.error('Erreur lors de l\'envoi des rappels quotidiens:', error);
         throw error;
