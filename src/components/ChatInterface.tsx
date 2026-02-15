@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+
 import { ArrowLeft, Phone, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStudentMessages, useLessonExercises } from '@/hooks/useStudentMessages';
@@ -14,6 +15,7 @@ import { useCallNotifications } from '@/hooks/useCallNotifications';
 import ChatInputBar from './chat/ChatInputBar';
 import MessageList from './chat/MessageList';
 import DateSeparator from './chat/DateSeparator';
+import QuizPlayer from './quiz/QuizPlayer';
 
 import { groupMessagesByDate } from '@/utils/dateUtils';
 import { LessonVideoPlayerWithTimer } from './video/LessonVideoPlayerWithTimer';
@@ -321,6 +323,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
             onPlayStateChange={setIsVideoPlaying}
             className="w-full"
           />
+          {/* Quiz sous la vidéo - visible uniquement pour les élèves */}
+          {userRole?.role !== 'teacher' && (
+            <QuizPlayer lessonId={lesson.id.toString()} />
+          )}
         </div>
       )}
 
