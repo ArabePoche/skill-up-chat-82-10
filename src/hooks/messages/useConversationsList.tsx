@@ -5,8 +5,9 @@ import { useAuth } from '@/hooks/useAuth';
 const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';
 
 /**
- * Hook optimisé pour charger les conversations uniquement quand nécessaire
- * Utilisé en lazy loading quand l'utilisateur ouvre l'onglet Conversations
+ * Hook pour charger les conversations privées entre amis (messagerie sociale).
+ * Totalement indépendant des formations — aucun lien avec le chat pédagogique.
+ * Utilisé en lazy loading quand l'utilisateur ouvre l'onglet Conversations.
  */
 export const useConversationsList = (enabled: boolean = false) => {
   const { user } = useAuth();
@@ -18,125 +19,50 @@ export const useConversationsList = (enabled: boolean = false) => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      // Récupérer les données en parallèle
-      const [
-        teacherFormations, 
-        studentEnrollments,
-        teacherUnreadCounts,
-        studentUnreadCounts,
-        storyMessages
-      ] = await Promise.all([
-        // Formations où l'utilisateur est enseignant
-        supabase
-          .from('teachers')
-          .select(`
-            id,
-            teacher_formations!inner (
-              formation_id,
-              formations (
-                id,
-                title,
-                description,
-                created_at
-              )
-            )
-          `)
-          .eq('user_id', user.id),
-        
-        // Formations où l'utilisateur est étudiant
-        supabase
-          .from('enrollment_requests')
-          .select(`
-            formation_id,
-            created_at,
-            formations:formation_id (
-              id,
-              title,
-              description,
-              profiles:author_id (
-                first_name,
-                last_name,
-                username
-              )
-            )
-          `)
-          .eq('user_id', user.id)
-          .eq('status', 'approved'),
-        
-        // Messages non lus pour les profs
-        supabase
-          .from('lesson_messages')
-          .select('formation_id')
-          .is('read_by_teachers', null)
-          .neq('sender_id', user.id)
-          .eq('is_system_message', false),
-        
-        // Messages non lus pour les étudiants
-        supabase
-          .from('lesson_messages')
-          .select('formation_id')
-          .eq('receiver_id', user.id)
-          .eq('is_read', false),
-        
-        // Conversations de stories
-        supabase
-          .from('conversation_messages')
-          .select(`
-            id,
-            story_id,
-            sender_id,
-            receiver_id,
-            content,
-            created_at,
-            is_read
-          `)
-          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-          .order('created_at', { ascending: true })
-      ]);
-
-      // Créer des maps pour les comptages
-      const teacherUnreadMap = new Map<string, number>();
-      teacherUnreadCounts.data?.forEach(msg => {
-        const count = teacherUnreadMap.get(msg.formation_id) || 0;
-        teacherUnreadMap.set(msg.formation_id, count + 1);
-      });
-
-      const studentUnreadMap = new Map<string, number>();
-      studentUnreadCounts.data?.forEach(msg => {
-        const count = studentUnreadMap.get(msg.formation_id) || 0;
-        studentUnreadMap.set(msg.formation_id, count + 1);
-      });
+      // Récupérer uniquement les messages privés (conversation_messages)
+      const { data: directMessages } = await supabase
+        .from('conversation_messages')
+        .select(`
+          id,
+          story_id,
+          sender_id,
+          receiver_id,
+          content,
+          created_at,
+          is_read
+        `)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: true });
 
       const conversations = [];
 
-      // NE PLUS ajouter les formations dans les conversations
-      // Les formations seront accessibles via la page /cours
-
-      // Traiter les conversations de stories
-      if (storyMessages.data && storyMessages.data.length > 0) {
-        const storyConversationsMap = new Map();
+      if (directMessages && directMessages.length > 0) {
+        const conversationsMap = new Map();
         const unreadCountMap = new Map<string, number>();
-        
-        for (const msg of storyMessages.data) {
+
+        for (const msg of directMessages) {
           const otherUserId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-          
+
+          // Exclure le système
           if (otherUserId === SYSTEM_USER_ID) continue;
-          
+
+          // Compter les non lus
           if (msg.receiver_id === user.id && !msg.is_read) {
             const count = unreadCountMap.get(otherUserId) || 0;
             unreadCountMap.set(otherUserId, count + 1);
           }
-          
-          if (!storyConversationsMap.has(otherUserId)) {
-            storyConversationsMap.set(otherUserId, { otherUserId, messages: [] });
+
+          // Une seule conversation par interlocuteur
+          if (!conversationsMap.has(otherUserId)) {
+            conversationsMap.set(otherUserId, { otherUserId, messages: [] });
           }
-          
-          storyConversationsMap.get(otherUserId).messages.push(msg);
+
+          conversationsMap.get(otherUserId).messages.push(msg);
         }
 
         // Récupérer les profils en une seule requête
-        const userIds = Array.from(storyConversationsMap.keys());
-        
+        const userIds = Array.from(conversationsMap.keys());
+
         if (userIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
@@ -146,11 +72,11 @@ export const useConversationsList = (enabled: boolean = false) => {
           const profilesMap = new Map();
           profiles?.forEach(profile => profilesMap.set(profile.id, profile));
 
-          for (const [otherUserId, convData] of storyConversationsMap) {
+          for (const [otherUserId, convData] of conversationsMap) {
             const profile = profilesMap.get(otherUserId);
             const lastMsg = convData.messages[convData.messages.length - 1];
-            
-            const otherName = profile 
+
+            const otherName = profile
               ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'Utilisateur'
               : 'Utilisateur';
 
@@ -176,7 +102,7 @@ export const useConversationsList = (enabled: boolean = false) => {
         }
       }
 
-      // Trier par date
+      // Trier par date du plus récent au plus ancien
       return conversations.sort((a, b) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();

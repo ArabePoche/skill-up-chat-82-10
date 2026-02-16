@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { notifyFormationTeachers } from '@/utils/notifyFormationTeachers';
 
 /**
  * Hook unifié pour envoyer des messages dans le contexte de groupe/promotion
@@ -143,6 +144,20 @@ export const useSendPromotionMessage = (formationId: string) => {
         toast.success('Exercice soumis avec succès !');
       } else {
         toast.success('Message envoyé');
+      }
+
+      // Notifier les profs de la formation (fire & forget)
+      if (user?.id) {
+        const senderName = user.user_metadata?.first_name
+          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+          : user.email || 'Un élève';
+        notifyFormationTeachers({
+          formationId,
+          senderName,
+          type: data.is_exercise_submission ? 'exercise' : 'message',
+          contentPreview: data.content,
+          senderId: user.id,
+        });
       }
     },
     onError: (error) => {

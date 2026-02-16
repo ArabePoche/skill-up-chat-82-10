@@ -33,10 +33,12 @@ messaging.onBackgroundMessage(function(payload) {
   console.log('📨 Message reçu en arrière-plan:', payload);
 
   const notificationTitle = payload.notification?.title || 'EducTok';
+  const imageUrl = payload.notification?.image || payload.data?.imageUrl || null;
   const notificationOptions = {
     body: payload.notification?.body || 'Vous avez une nouvelle notification',
     icon: '/icon-192.png',
     badge: '/badge-72.png',
+    ...(imageUrl ? { image: imageUrl } : {}),
     tag: 'eductok-notification',
     data: {
       click_action: payload.data?.click_action || '/',
@@ -70,8 +72,9 @@ self.addEventListener('notificationclick', function(event) {
     return;
   }
 
-  // Ouvrir ou focuser l'app
-  const urlToOpen = event.notification.data?.click_action || '/';
+  // Ouvrir ou focuser l'app et naviguer vers la bonne page
+  const clickAction = event.notification.data?.click_action || event.notification.data?.clickAction || '/';
+  const urlToOpen = new URL(clickAction, self.location.origin).href;
   
   event.waitUntil(
     clients.matchAll({
@@ -82,11 +85,13 @@ self.addEventListener('notificationclick', function(event) {
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
         if (client.url.includes(self.location.origin) && 'focus' in client) {
+          // Naviguer vers la bonne page
+          client.navigate(urlToOpen);
           return client.focus();
         }
       }
       
-      // Si l'app n'est pas ouverte, l'ouvrir
+      // Si l'app n'est pas ouverte, l'ouvrir sur la bonne page
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }

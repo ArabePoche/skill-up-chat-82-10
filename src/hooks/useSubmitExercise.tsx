@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { fileStore } from '@/file-manager/stores/FileStore';
+import { notifyFormationTeachers } from '@/utils/notifyFormationTeachers';
 
 export const useSubmitExercise = () => {
   const queryClient = useQueryClient();
@@ -211,7 +212,7 @@ export const useSubmitExercise = () => {
       console.log('Exercise submitted with', messages.length, 'messages');
       return data?.[0] || data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       // Invalider tous les messages de la leçon
       queryClient.invalidateQueries({ 
         queryKey: ['student-messages'] 
@@ -232,6 +233,19 @@ export const useSubmitExercise = () => {
         queryKey: ['lesson-unlocking'] 
       });
       toast.success('Exercice soumis avec succès !');
+
+      // Notifier les profs de la formation (fire & forget)
+      if (user?.id) {
+        const senderName = user.user_metadata?.first_name
+          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+          : user.email || 'Un élève';
+        notifyFormationTeachers({
+          formationId: variables.formationId,
+          senderName,
+          type: 'exercise',
+          senderId: user.id,
+        });
+      }
     },
     onError: (error) => {
       console.error('Erreur lors de la soumission:', error);
