@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Activity, MessageCircle, CheckCircle, Clock, Crown, Globe, GraduationCap } from 'lucide-react';
+import { Users, Activity, MessageCircle, CheckCircle, Clock, Crown, Globe, GraduationCap, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useQuery } from '@tanstack/react-query';
@@ -20,12 +20,16 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
       // Calculer les utilisateurs en ligne (actifs dans les 5 dernières minutes)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       
-      const [usersResult, countriesResult, onlineUsersResult, studentsResult] = await Promise.all([
+      const [usersResult, countriesResult, onlineUsersResult, studentsResult, visitorsResult] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact' }),
         supabase.from('profiles').select('country').not('country', 'is', null),
         supabase.from('profiles').select('id', { count: 'exact' }).gte('last_seen', fiveMinutesAgo),
-        supabase.from('enrollment_requests').select('id', { count: 'exact' }).eq('status', 'approved')
+        supabase.from('enrollment_requests').select('id', { count: 'exact' }).eq('status', 'approved'),
+        supabase.from('site_visitors').select('id', { count: 'exact' }).gte('last_seen', fiveMinutesAgo)
       ]);
+
+      // Nettoyer les visiteurs expirés
+      await supabase.rpc('clean_expired_visitors');
 
       // Compter les pays uniques
       const uniqueCountries = new Set(
@@ -35,11 +39,12 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
       return {
         users: usersResult.count || 0,
         countries: uniqueCountries.size,
-        onlineUsers: onlineUsersResult.count || 0, // Nombre réel d'utilisateurs en ligne
-        students: studentsResult.count || 0
+        onlineUsers: onlineUsersResult.count || 0,
+        students: studentsResult.count || 0,
+        visitors: visitorsResult.count || 0
       };
     },
-    refetchInterval: 30000 // Actualiser toutes les 30 secondes
+    refetchInterval: 15000 // Actualiser toutes les 15 secondes
   });
 
   return (
@@ -61,7 +66,7 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
       
       {/* Quick Stats */}
       <div className="p-4 border-b">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
@@ -109,6 +114,18 @@ export function AdminHeader({ profileName, profileRole }: AdminHeaderProps) {
                   <p className="text-xl font-bold">{stats?.students || 0}</p>
                 </div>
                 <GraduationCap className="w-6 h-6 text-orange-200 flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-pink-100 text-xs truncate">Visiteurs</p>
+                  <p className="text-xl font-bold">{stats?.visitors || 0}</p>
+                </div>
+                <Eye className="w-6 h-6 text-pink-200 flex-shrink-0" />
               </div>
             </CardContent>
           </Card>

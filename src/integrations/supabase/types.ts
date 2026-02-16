@@ -6119,6 +6119,33 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visitors: {
+        Row: {
+          country: string | null
+          created_at: string
+          id: string
+          last_seen: string
+          session_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          last_seen?: string
+          session_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          last_seen?: string
+          session_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       staff_permissions: {
         Row: {
           granted_at: string
@@ -8194,6 +8221,7 @@ export type Database = {
         Returns: boolean
       }
       check_student_inactivity: { Args: never; Returns: undefined }
+      clean_expired_visitors: { Args: never; Returns: undefined }
       cleanup_expired_media_links: { Args: never; Returns: undefined }
       cleanup_expired_stories: { Args: never; Returns: undefined }
       decrement_post_comments: { Args: { post_id: string }; Returns: undefined }

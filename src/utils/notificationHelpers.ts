@@ -16,8 +16,16 @@ export interface SendNotificationParams {
 // Fonction helper pour envoyer des notifications
 export const sendPushNotification = async (params: SendNotificationParams) => {
   try {
+    // S'assurer que clickAction est aussi dans data pour l'edge function
+    const body = {
+      ...params,
+      data: {
+        ...(params.data || {}),
+        clickAction: params.clickAction || '/',
+      },
+    };
     const { data, error } = await supabase.functions.invoke('send-push-notification', {
-      body: params
+      body,
     });
 
     if (error) {

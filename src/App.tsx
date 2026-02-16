@@ -37,6 +37,7 @@ import PublicCv from '@/pages/PublicCv';
 import School from '@/pages/School';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
+import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
 import { OfflineIndicator, OfflineGate, ConversationSyncProvider } from '@/offline';
 import { OfflineAuthBanner } from '@/offline/components/OfflineAuthBanner';
 
@@ -65,6 +66,7 @@ const AppWithRouter: React.FC = () => {
       <PermissionManager />
       <StreakTrackerWrapper />
       <ActivityTrackerWrapper />
+      <VisitorTrackerWrapper />
       <OfflineIndicator />
       <OfflineAuthBanner />
       <Routes>
