@@ -231,18 +231,24 @@ self.addEventListener('message', (event) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('🔔 Notification clicked');
   event.notification.close();
-  
+
+  // Récupérer la page de redirection depuis les données de la notification
+  const clickAction = event.notification.data?.click_action || event.notification.data?.clickAction || '/';
+  const urlToOpen = new URL(clickAction, self.location.origin).href;
+  console.log('🔗 Redirection vers:', urlToOpen);
+
   event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then((clientList) => {
-      // Si une fenêtre est déjà ouverte, la focus
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Si une fenêtre est déjà ouverte, naviguer et focus
       for (const client of clientList) {
-        if ('focus' in client) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(urlToOpen);
           return client.focus();
         }
       }
-      // Sinon, ouvrir une nouvelle fenêtre
+      // Sinon, ouvrir une nouvelle fenêtre sur la bonne page
       if (self.clients.openWindow) {
-        return self.clients.openWindow('/');
+        return self.clients.openWindow(urlToOpen);
       }
     })
   );
