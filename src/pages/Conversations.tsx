@@ -10,6 +10,7 @@ import ConversationMessageBubble from '@/components/conversation/ConversationMes
 import { useOfflineConversations } from '@/offline/hooks/useOfflineConversations';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
+import { sendPushNotification } from '@/utils/notificationHelpers';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
@@ -219,9 +220,24 @@ const Conversations = () => {
         if (mediaError) throw mediaError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
       setReplyingTo(null);
+
+      // Envoyer une notification push au destinataire (fire & forget)
+      if (otherUserId && user?.id) {
+        const senderName = otherUserProfile
+          ? `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || user.email || 'Quelqu\'un'
+          : 'Quelqu\'un';
+        sendPushNotification({
+          userIds: [otherUserId],
+          title: senderName,
+          message: variables.content.substring(0, 100),
+          type: 'private_chat',
+          clickAction: '/messages',
+          data: { senderId: user.id },
+        }).catch(() => { /* silently ignore */ });
+      }
     },
     onError: (error) => {
       toast.error('Erreur lors de l\'envoi du message');
