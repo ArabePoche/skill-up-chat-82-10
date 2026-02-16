@@ -167,6 +167,16 @@ export class NativePushService {
 
     PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
       console.log('👆 [NativePushService] Action notification:', JSON.stringify(notification));
+      
+      // Récupérer la page de redirection depuis les données FCM
+      const data = notification?.notification?.data;
+      const clickAction = data?.click_action || data?.clickAction || '/';
+      console.log('🔗 [NativePushService] Redirection vers:', clickAction);
+      
+      // Naviguer vers la page cible
+      if (clickAction && clickAction !== '/') {
+        window.location.href = clickAction;
+      }
     });
 
     console.log('✅ [NativePushService] Listeners natifs configurés!');
