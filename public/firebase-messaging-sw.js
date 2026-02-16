@@ -33,10 +33,12 @@ messaging.onBackgroundMessage(function(payload) {
   console.log('📨 Message reçu en arrière-plan:', payload);
 
   const notificationTitle = payload.notification?.title || 'EducTok';
+  const imageUrl = payload.notification?.image || payload.data?.imageUrl || null;
   const notificationOptions = {
     body: payload.notification?.body || 'Vous avez une nouvelle notification',
     icon: '/icon-192.png',
     badge: '/badge-72.png',
+    ...(imageUrl ? { image: imageUrl } : {}),
     tag: 'eductok-notification',
     data: {
       click_action: payload.data?.click_action || '/',
