@@ -159,6 +159,12 @@ Deno.serve(async (req) => {
                 body: payload.message,
                 ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
               },
+              android: {
+                notification: {
+                  icon: 'ic_notification',
+                  ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
+                },
+              },
               webpush: {
                 notification: {
                   icon: '/icon-192.png',
