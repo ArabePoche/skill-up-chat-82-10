@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { NotificationSoundService } from '@/services/NotificationSoundService';
 
 // Types pour les notifications
-export type NotificationType = 'daily_reminder' | 'teacher_response' | 'exercise_validation' | 'new_lesson' | 'test';
+export type NotificationType = 'daily_reminder' | 'teacher_response' | 'exercise_validation' | 'new_lesson' | 'test' | 'private_chat';
 
 export interface SendNotificationParams {
   userIds?: string[];
