@@ -2,9 +2,10 @@
  * PushNotificationSender
  * Composant admin pour envoyer des notifications push personnalisées
  * à un ou plusieurs utilisateurs, ou à tous les utilisateurs.
+ * Supporte l'upload d'image et un sélecteur de pages.
  */
-import React, { useState } from 'react';
-import { Bell, Send, Users, User, Loader2, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Bell, Send, Users, User, Loader2, X, ImagePlus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { sendPushNotification } from '@/utils/notificationHelpers';
@@ -25,12 +27,32 @@ interface UserResult {
   email: string | null;
 }
 
+// Pages disponibles dans l'application
+const AVAILABLE_PAGES = [
+  { value: '/', label: '🏠 Accueil' },
+  { value: '/video', label: '🎬 Vidéos' },
+  { value: '/post', label: '📝 Posts' },
+  { value: '/search', label: '🔍 Recherche' },
+  { value: '/shop', label: '🛒 Boutique' },
+  { value: '/messages', label: '💬 Messages' },
+  { value: '/profil', label: '👤 Profil' },
+  { value: '/cours', label: '📚 Cours' },
+  { value: '/upload-video', label: '📤 Upload vidéo' },
+  { value: '/school', label: '🏫 École' },
+  { value: '/admin', label: '⚙️ Admin' },
+  { value: '/auth', label: '🔐 Connexion' },
+];
+
 const PushNotificationSender = () => {
   const [targetMode, setTargetMode] = useState<TargetMode>('all');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [clickAction, setClickAction] = useState('/');
   const [isSending, setIsSending] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Recherche d'utilisateurs
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,7 +75,6 @@ const PushNotificationSender = () => {
         .limit(10);
 
       if (error) throw error;
-      // Filtrer ceux déjà sélectionnés
       const filtered = (data || []).filter(
         (u) => !selectedUsers.some((s) => s.id === u.id)
       );
@@ -75,6 +96,57 @@ const PushNotificationSender = () => {
     setSelectedUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 
+  // Gestion de l'image
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 5 Mo');
+      return;
+    }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+    setIsUploadingImage(true);
+    try {
+      const ext = imageFile.name.split('.').pop();
+      const fileName = `notification-${Date.now()}.${ext}`;
+      const filePath = `notifications/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, imageFile, { contentType: imageFile.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('media').getPublicUrl(filePath);
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Erreur upload image:', err);
+      toast.error('Erreur lors de l\'upload de l\'image');
+      return null;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!title.trim()) {
       toast.error('Le titre est obligatoire');
@@ -87,52 +159,55 @@ const PushNotificationSender = () => {
 
     setIsSending(true);
     try {
-      if (targetMode === 'all') {
-        // Récupérer tous les user_id ayant un token actif
-        const { data: tokens, error } = await supabase
-          .from('push_tokens')
-          .select('user_id')
-          .eq('is_active', true);
+      // Upload image si présente
+      const imageUrl = await uploadImage();
 
-        if (error) throw error;
-        const userIds = [...new Set((tokens || []).map((t) => t.user_id))];
-
-        if (userIds.length === 0) {
-          toast.warning('Aucun utilisateur avec un token push actif');
-          setIsSending(false);
-          return;
+      const getUserIds = async () => {
+        if (targetMode === 'all') {
+          const { data: tokens, error } = await supabase
+            .from('push_tokens')
+            .select('user_id')
+            .eq('is_active', true);
+          if (error) throw error;
+          const ids = [...new Set((tokens || []).map((t) => t.user_id))];
+          if (ids.length === 0) {
+            toast.warning('Aucun utilisateur avec un token push actif');
+            return null;
+          }
+          return ids;
         }
+        return selectedUsers.map((u) => u.id);
+      };
 
-        await sendPushNotification({
-          userIds,
-          title: title.trim(),
-          message: message.trim() || undefined,
-          type: 'test',
-          clickAction: clickAction.trim() || '/',
-        });
-
-        toast.success(`Notification envoyée à ${userIds.length} utilisateur(s)`);
-      } else {
-        const userIds = selectedUsers.map((u) => u.id);
-        await sendPushNotification({
-          userIds,
-          title: title.trim(),
-          message: message.trim() || undefined,
-          type: 'test',
-          clickAction: clickAction.trim() || '/',
-        });
-
-        toast.success(`Notification envoyée à ${userIds.length} utilisateur(s)`);
+      const userIds = await getUserIds();
+      if (!userIds) {
+        setIsSending(false);
+        return;
       }
+
+      await sendPushNotification({
+        userIds,
+        title: title.trim(),
+        message: message.trim() || undefined,
+        type: 'test',
+        clickAction: clickAction || '/',
+        data: {
+          clickAction: clickAction || '/',
+          ...(imageUrl ? { imageUrl } : {}),
+        },
+      });
+
+      toast.success(`Notification envoyée à ${userIds.length} utilisateur(s)`);
 
       // Reset form
       setTitle('');
       setMessage('');
       setClickAction('/');
       setSelectedUsers([]);
+      removeImage();
     } catch (err) {
       console.error('Erreur envoi notification:', err);
-      toast.error('Erreur lors de l\'envoi de la notification');
+      toast.error("Erreur lors de l'envoi de la notification");
     } finally {
       setIsSending(false);
     }
@@ -196,9 +271,8 @@ const PushNotificationSender = () => {
                 )}
               </div>
 
-              {/* Résultats de recherche */}
               {searchResults.length > 0 && (
-                <div className="border rounded-md max-h-40 overflow-y-auto">
+                <div className="border rounded-md max-h-40 overflow-y-auto bg-popover">
                   {searchResults.map((user) => (
                     <button
                       key={user.id}
@@ -214,7 +288,6 @@ const PushNotificationSender = () => {
                 </div>
               )}
 
-              {/* Utilisateurs sélectionnés */}
               {selectedUsers.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {selectedUsers.map((user) => (
@@ -257,14 +330,62 @@ const PushNotificationSender = () => {
             />
           </div>
 
+          {/* Upload d'image */}
           <div className="space-y-3">
-            <Label htmlFor="notif-action">Lien de redirection</Label>
-            <Input
-              id="notif-action"
-              placeholder="/ (page d'accueil par défaut)"
-              value={clickAction}
-              onChange={(e) => setClickAction(e.target.value)}
+            <Label>Image (optionnel)</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
             />
+            {imagePreview ? (
+              <div className="relative inline-block">
+                <img
+                  src={imagePreview}
+                  alt="Aperçu"
+                  className="max-h-40 rounded-lg border object-cover"
+                />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                  onClick={removeImage}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Ajouter une image
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              L'image sera envoyée avec la notification (max 5 Mo)
+            </p>
+          </div>
+
+          {/* Sélecteur de page */}
+          <div className="space-y-3">
+            <Label htmlFor="notif-action">Page de redirection</Label>
+            <Select value={clickAction} onValueChange={setClickAction}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choisir une page" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                {AVAILABLE_PAGES.map((page) => (
+                  <SelectItem key={page.value} value={page.value}>
+                    {page.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
               Page vers laquelle l'utilisateur sera redirigé en cliquant sur la notification
             </p>
@@ -273,20 +394,24 @@ const PushNotificationSender = () => {
           {/* Bouton d'envoi */}
           <Button
             onClick={handleSend}
-            disabled={isSending || !title.trim()}
+            disabled={isSending || isUploadingImage || !title.trim()}
             className="w-full"
             size="lg"
           >
-            {isSending ? (
+            {isSending || isUploadingImage ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Envoi en cours...
+                {isUploadingImage ? 'Upload image...' : 'Envoi en cours...'}
               </>
             ) : (
               <>
                 <Send className="h-4 w-4 mr-2" />
                 Envoyer la notification
-                {targetMode === 'all' ? ' à tous' : selectedUsers.length > 0 ? ` à ${selectedUsers.length} utilisateur(s)` : ''}
+                {targetMode === 'all'
+                  ? ' à tous'
+                  : selectedUsers.length > 0
+                    ? ` à ${selectedUsers.length} utilisateur(s)`
+                    : ''}
               </>
             )}
           </Button>
