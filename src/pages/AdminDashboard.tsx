@@ -17,6 +17,7 @@ import { PromotionManagementAdmin } from '@/components/promotions/PromotionManag
 import { TeacherApplicationsList } from '@/teacher-application/components/TeacherApplicationsList';
 import VerificationRequestsManagement from '@/components/admin/VerificationRequestsManagement';
 import StudentPaymentTracking from '@/components/admin/payments/StudentPaymentTracking';
+import PushNotificationSender from '@/components/admin/PushNotificationSender';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -86,6 +87,8 @@ const AdminDashboard = () => {
         return <VideosManagement />;
       case 'users':
         return <UsersManagement />;
+      case 'push-notifications':
+        return <PushNotificationSender />;
       default:
         return <DashboardStats />;
     }
