@@ -157,14 +157,19 @@ Deno.serve(async (req) => {
               notification: {
                 title: payload.title,
                 body: payload.message,
+                ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
               },
               webpush: {
                 notification: {
                   icon: '/icon-192.png',
                   badge: '/badge-72.png',
+                  ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
                 },
               },
-              data: payload.data || {},
+              data: {
+                ...(payload.data || {}),
+                click_action: payload.data?.clickAction || '/',
+              },
             },
           }),
         });
