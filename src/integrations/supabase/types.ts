@@ -2521,6 +2521,98 @@ export type Database = {
           },
         ]
       }
+      physical_shop_products: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          marketplace_quantity: number | null
+          name: string
+          price: number | null
+          product_id: string | null
+          shop_id: string
+          stock_quantity: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          marketplace_quantity?: number | null
+          name: string
+          price?: number | null
+          product_id?: string | null
+          shop_id: string
+          stock_quantity?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          marketplace_quantity?: number | null
+          name?: string
+          price?: number | null
+          product_id?: string | null
+          shop_id?: string
+          stock_quantity?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_shop_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physical_shop_products_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physical_shops: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_shops_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comment_likes: {
         Row: {
           comment_id: string
@@ -3026,6 +3118,7 @@ export type Database = {
           gender: string | null
           id: string
           interests: string[] | null
+          is_shop_owner: boolean | null
           is_teacher: boolean | null
           is_verified: boolean | null
           language: string | null
@@ -3051,6 +3144,7 @@ export type Database = {
           gender?: string | null
           id: string
           interests?: string[] | null
+          is_shop_owner?: boolean | null
           is_teacher?: boolean | null
           is_verified?: boolean | null
           language?: string | null
@@ -3076,6 +3170,7 @@ export type Database = {
           gender?: string | null
           id?: string
           interests?: string[] | null
+          is_shop_owner?: boolean | null
           is_teacher?: boolean | null
           is_verified?: boolean | null
           language?: string | null
@@ -6024,6 +6119,33 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visitors: {
+        Row: {
+          country: string | null
+          created_at: string
+          id: string
+          last_seen: string
+          session_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          last_seen?: string
+          session_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          last_seen?: string
+          session_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       staff_permissions: {
         Row: {
           granted_at: string
@@ -8099,6 +8221,7 @@ export type Database = {
         Returns: boolean
       }
       check_student_inactivity: { Args: never; Returns: undefined }
+      clean_expired_visitors: { Args: never; Returns: undefined }
       cleanup_expired_media_links: { Args: never; Returns: undefined }
       cleanup_expired_stories: { Args: never; Returns: undefined }
       decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
