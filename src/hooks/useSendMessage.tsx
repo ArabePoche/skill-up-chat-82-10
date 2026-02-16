@@ -5,6 +5,7 @@ import { useStudentPromotion } from '@/hooks/usePromotion';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
+import { notifyFormationTeachers } from '@/utils/notifyFormationTeachers';
 
 export const useSendMessage = (lessonId: string, formationId: string) => {
   const queryClient = useQueryClient();
@@ -153,7 +154,7 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
       console.log('Message sent:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalider toutes les queries liées aux messages
       queryClient.invalidateQueries({ 
         queryKey: ['lesson-messages', lessonId, formationId] 
@@ -164,6 +165,20 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
       queryClient.invalidateQueries({ 
         queryKey: ['teacher-messages', lessonId, formationId] 
       });
+
+      // Notifier les profs de la formation (fire & forget)
+      if (user?.id) {
+        const senderName = user.user_metadata?.first_name
+          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+          : user.email || 'Un élève';
+        notifyFormationTeachers({
+          formationId,
+          senderName,
+          type: 'message',
+          contentPreview: data?.content,
+          senderId: user.id,
+        });
+      }
     },
   });
 };
