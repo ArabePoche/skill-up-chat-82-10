@@ -41,13 +41,24 @@ import TransferDialog from './TransferDialog';
 
 const BoutiqueManagement: React.FC = () => {
     const { user } = useAuth();
-    const { data: shop, isLoading: shopLoading } = usePhysicalShop();
-    const { data: products, isLoading: productsLoading } = useBoutiqueProducts(shop?.id);
+    const { data: shop, isLoading: shopLoading, error: shopError } = usePhysicalShop();
+    const { data: products, isLoading: productsLoading, error: productsError } = useBoutiqueProducts(shop?.id);
     const createShop = useCreatePhysicalShop();
     const createProduct = useCreateBoutiqueProduct();
     const updateProduct = useUpdateBoutiqueProduct();
     const deleteProduct = useDeleteBoutiqueProduct();
     const transferToMarketplace = useTransferToMarketplace();
+
+    // Debug logging
+    console.log('🛒 [BoutiqueManagement] Render:', {
+        userId: user?.id,
+        shopId: shop?.id,
+        shopLoading,
+        shopError: shopError?.message,
+        productsCount: products?.length,
+        productsLoading,
+        productsError: productsError?.message,
+    });
 
     // UI State
     const [showProductForm, setShowProductForm] = useState(false);
