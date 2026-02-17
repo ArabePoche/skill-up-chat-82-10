@@ -53,20 +53,24 @@ export const useBoutiqueProducts = (shopId?: string) => {
             }
             console.log('📦 [useBoutiqueProducts] Found', data?.length, 'products');
 
-            // Mettre en cache IndexedDB
-            const localProducts: LocalBoutiqueProduct[] = (data || []).map(p => ({
-                id: p.id,
-                shopId: p.shop_id,
-                productId: p.product_id || undefined,
-                name: p.name,
-                description: p.description || undefined,
-                price: p.price || 0,
-                stockQuantity: p.stock_quantity || 0,
-                marketplaceQuantity: p.marketplace_quantity || 0,
-                imageUrl: p.image_url || undefined,
-                updatedAt: Date.now(),
-            }));
-            await boutiqueProductStore.putMany(localProducts);
+            // Mettre en cache IndexedDB (non bloquant)
+            try {
+                const localProducts: LocalBoutiqueProduct[] = (data || []).map(p => ({
+                    id: p.id,
+                    shopId: p.shop_id,
+                    productId: p.product_id || undefined,
+                    name: p.name,
+                    description: p.description || undefined,
+                    price: p.price || 0,
+                    stockQuantity: p.stock_quantity || 0,
+                    marketplaceQuantity: p.marketplace_quantity || 0,
+                    imageUrl: p.image_url || undefined,
+                    updatedAt: Date.now(),
+                }));
+                await boutiqueProductStore.putMany(localProducts);
+            } catch (cacheError) {
+                console.warn('📦 [useBoutiqueProducts] Cache IndexedDB failed (non-blocking):', cacheError);
+            }
 
             return data as BoutiqueProduct[];
         },
