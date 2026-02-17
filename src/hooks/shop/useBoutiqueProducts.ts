@@ -40,13 +40,18 @@ export const useBoutiqueProducts = (shopId?: string) => {
     return useQuery({
         queryKey: ['boutique-products', shopId],
         queryFn: async () => {
+            console.log('📦 [useBoutiqueProducts] Fetching products for shop:', shopId);
             const { data, error } = await supabase
                 .from('physical_shop_products')
                 .select('*')
                 .eq('shop_id', shopId!)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error('📦 [useBoutiqueProducts] Error:', error);
+                throw error;
+            }
+            console.log('📦 [useBoutiqueProducts] Found', data?.length, 'products');
 
             // Mettre en cache IndexedDB
             const localProducts: LocalBoutiqueProduct[] = (data || []).map(p => ({
