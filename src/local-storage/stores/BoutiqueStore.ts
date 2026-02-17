@@ -1,6 +1,7 @@
 /**
  * Store IndexedDB pour les produits de boutique physique
- * Permet le fonctionnement offline-first
+ * Les deux stores partagent la même DB avec version 2 pour garantir
+ * que les deux object stores sont créés ensemble
  */
 import { BaseStore } from './BaseStore';
 
@@ -25,17 +26,29 @@ export interface LocalPhysicalShop {
     updatedAt: number;
 }
 
+/**
+ * Fonction utilitaire pour créer tous les object stores de la boutique DB
+ * Appelée par les deux classes pour garantir la cohérence
+ */
+function createAllBoutiqueStores(db: IDBDatabase): void {
+    if (!db.objectStoreNames.contains('boutique_products')) {
+        const store = db.createObjectStore('boutique_products', { keyPath: 'id' });
+        store.createIndex('shopId', 'shopId', { unique: false });
+        store.createIndex('productId', 'productId', { unique: false });
+    }
+    if (!db.objectStoreNames.contains('physical_shops')) {
+        const store = db.createObjectStore('physical_shops', { keyPath: 'id' });
+        store.createIndex('ownerId', 'ownerId', { unique: false });
+    }
+}
+
 class BoutiqueProductStore extends BaseStore<LocalBoutiqueProduct> {
     constructor() {
-        super('boutique_db', 1, 'boutique_products');
+        super('boutique_db', 2, 'boutique_products');
     }
 
     createStore(db: IDBDatabase): void {
-        if (!db.objectStoreNames.contains(this.storeName)) {
-            const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
-            store.createIndex('shopId', 'shopId', { unique: false });
-            store.createIndex('productId', 'productId', { unique: false });
-        }
+        createAllBoutiqueStores(db);
     }
 
     async getByShop(shopId: string): Promise<LocalBoutiqueProduct[]> {
@@ -45,14 +58,11 @@ class BoutiqueProductStore extends BaseStore<LocalBoutiqueProduct> {
 
 class PhysicalShopStore extends BaseStore<LocalPhysicalShop> {
     constructor() {
-        super('boutique_db', 1, 'physical_shops');
+        super('boutique_db', 2, 'physical_shops');
     }
 
     createStore(db: IDBDatabase): void {
-        if (!db.objectStoreNames.contains(this.storeName)) {
-            const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
-            store.createIndex('ownerId', 'ownerId', { unique: false });
-        }
+        createAllBoutiqueStores(db);
     }
 
     async getByOwner(ownerId: string): Promise<LocalPhysicalShop[]> {
