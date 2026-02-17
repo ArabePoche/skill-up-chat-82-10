@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Store, Package, WifiOff } from 'lucide-react';
+import ProductImageUploader from './ProductImageUploader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -108,21 +109,27 @@ const BoutiqueManagement: React.FC = () => {
             image_url: formImageUrl.trim() || undefined,
         };
 
-        if (editingProduct) {
-            await updateProduct.mutateAsync({
-                id: editingProduct.id,
-                shop_id: shop.id,
-                ...productData,
-            });
-        } else {
-            await createProduct.mutateAsync({
-                shop_id: shop.id,
-                ...productData,
-            });
-        }
+        try {
+            if (editingProduct) {
+                await updateProduct.mutateAsync({
+                    id: editingProduct.id,
+                    shop_id: shop.id,
+                    ...productData,
+                });
+            } else {
+                await createProduct.mutateAsync({
+                    shop_id: shop.id,
+                    ...productData,
+                });
+            }
 
-        setShowProductForm(false);
-        setEditingProduct(null);
+            setShowProductForm(false);
+            setEditingProduct(null);
+        } catch (error) {
+            // L'erreur est déjà gérée par le hook (toast.error),
+            // on ne ferme pas le dialog pour permettre de réessayer
+            console.error('Erreur sauvegarde produit:', error);
+        }
     };
 
     /** Supprimer un produit */
@@ -335,12 +342,10 @@ const BoutiqueManagement: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <Label htmlFor="product-image">URL Image</Label>
-                            <Input
-                                id="product-image"
-                                value={formImageUrl}
-                                onChange={(e) => setFormImageUrl(e.target.value)}
-                                placeholder="https://..."
+                            <Label>Image du produit</Label>
+                            <ProductImageUploader
+                                imageUrl={formImageUrl}
+                                onImageChange={setFormImageUrl}
                             />
                         </div>
                     </div>
