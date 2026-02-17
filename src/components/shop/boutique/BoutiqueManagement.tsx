@@ -3,7 +3,7 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search } from 'lucide-react';
 import ProductImageUploader from './ProductImageUploader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,7 @@ const BoutiqueManagement: React.FC = () => {
     });
 
     // UI State
+    const [searchQuery, setSearchQuery] = useState('');
     const [showProductForm, setShowProductForm] = useState(false);
     const [editingProduct, setEditingProduct] = useState<BoutiqueProduct | null>(null);
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
@@ -265,32 +266,57 @@ const BoutiqueManagement: React.FC = () => {
 
             {/* Liste des produits */}
             <div className="p-3 sm:p-4">
-                {productsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
-                    </div>
-                ) : products && products.length > 0 ? (
-                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-                        {products.map(product => (
-                            <BoutiqueProductCard
-                                key={product.id}
-                                product={product}
-                                onEdit={openEditProductForm}
-                                onDelete={(id) => setDeletingProductId(id)}
-                                onTransfer={(p) => setTransferProduct(p)}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-16">
-                        <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                        <p className="text-gray-500 mb-4">Aucun produit dans votre boutique</p>
-                        <Button onClick={openNewProductForm} className="bg-emerald-600 hover:bg-emerald-700">
-                            <Plus size={16} className="mr-2" />
-                            Ajouter un produit
-                        </Button>
+                {/* Barre de recherche */}
+                {products && products.length > 0 && (
+                    <div className="relative mb-4">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Rechercher un produit..."
+                            className="pl-9"
+                        />
                     </div>
                 )}
+
+                {(() => {
+                    const filtered = products?.filter(p =>
+                        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+
+                    return productsLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+                        </div>
+                    ) : filtered && filtered.length > 0 ? (
+                        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                            {filtered.map(product => (
+                                <BoutiqueProductCard
+                                    key={product.id}
+                                    product={product}
+                                    onEdit={openEditProductForm}
+                                    onDelete={(id) => setDeletingProductId(id)}
+                                    onTransfer={(p) => setTransferProduct(p)}
+                                />
+                            ))}
+                        </div>
+                    ) : searchQuery ? (
+                        <div className="text-center py-12">
+                            <Search size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+                            <p className="text-muted-foreground">Aucun produit trouvé pour "{searchQuery}"</p>
+                        </div>
+                    ) : (
+                        <div className="text-center py-16">
+                            <Package size={48} className="mx-auto text-gray-300 mb-4" />
+                            <p className="text-gray-500 mb-4">Aucun produit dans votre boutique</p>
+                            <Button onClick={openNewProductForm} className="bg-emerald-600 hover:bg-emerald-700">
+                                <Plus size={16} className="mr-2" />
+                                Ajouter un produit
+                            </Button>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Dialog produit (ajout/modification) */}
