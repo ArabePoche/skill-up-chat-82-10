@@ -8105,23 +8105,23 @@ export type Database = {
     }
     Functions: {
       add_time_used:
-      | {
-        Args: {
-          p_formation_id: string
-          p_minutes: number
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      | {
-        Args: {
-          p_date?: string
-          p_formation_id: string
-          p_minutes: number
-          p_user_id: string
-        }
-        Returns: Record<string, unknown>
-      }
+        | {
+            Args: {
+              p_formation_id: string
+              p_minutes: number
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_date?: string
+              p_formation_id: string
+              p_minutes: number
+              p_user_id: string
+            }
+            Returns: Record<string, unknown>
+          }
       approve_enrollment: {
         Args: {
           p_decided_by?: string
@@ -8333,14 +8333,14 @@ export type Database = {
         Returns: boolean
       }
       increment_messages_sent:
-      | {
-        Args: { p_formation_id: string; p_user_id: string }
-        Returns: undefined
-      }
-      | {
-        Args: { p_date?: string; p_formation_id: string; p_user_id: string }
-        Returns: number
-      }
+        | {
+            Args: { p_formation_id: string; p_user_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: { p_date?: string; p_formation_id: string; p_user_id: string }
+            Returns: number
+          }
       increment_post_comments: { Args: { post_id: string }; Returns: undefined }
       initialize_first_lesson: {
         Args: { p_lesson_id: string; p_user_id: string }
@@ -8360,8 +8360,8 @@ export type Database = {
         Returns: boolean
       }
       is_school_owner:
-      | { Args: { _school_id: string }; Returns: boolean }
-      | { Args: { _school_id: string; _user_id: string }; Returns: boolean }
+        | { Args: { _school_id: string }; Returns: boolean }
+        | { Args: { _school_id: string; _user_id: string }; Returns: boolean }
       is_school_owner_or_teacher: {
         Args: { user_id: string }
         Returns: boolean
@@ -8490,25 +8490,25 @@ export type Database = {
       }
       update_user_streak_daily_minutes: { Args: never; Returns: undefined }
       validate_exercise_submission:
-      | {
-        Args: {
-          p_is_valid: boolean
-          p_message_id: string
-          p_reject_reason?: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      | {
-        Args: {
-          p_is_valid: boolean
-          p_message_id: string
-          p_reject_reason?: string
-          p_teacher_id?: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
+        | {
+            Args: {
+              p_is_valid: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_is_valid: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_teacher_id?: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
       validate_exercise_submission_global: {
         Args: {
           p_is_approved: boolean
@@ -8520,45 +8520,45 @@ export type Database = {
         Returns: Json
       }
       validate_exercise_submission_with_promotion:
-      | {
-        Args: {
-          p_is_approved: boolean
-          p_message_id: string
-          p_reject_reason?: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      | {
-        Args: {
-          p_is_approved: boolean
-          p_message_id: string
-          p_reject_reason?: string
-          p_teacher_id?: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
+        | {
+            Args: {
+              p_is_approved: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_is_approved: boolean
+              p_message_id: string
+              p_reject_reason?: string
+              p_teacher_id?: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
     }
     Enums: {
       lesson_status:
-      | "not_started"
-      | "in_progress"
-      | "awaiting_review"
-      | "completed"
-      product_type: "formation" | "article" | "service" | "physical"
+        | "not_started"
+        | "in_progress"
+        | "awaiting_review"
+        | "completed"
+      product_type: "formation" | "article" | "service"
       school_type: "virtual" | "physical" | "both"
       staff_permission_type:
-      | "can_enroll_students"
-      | "can_view_accounting"
-      | "can_modify_accounting"
-      | "can_manage_classes"
-      | "can_manage_teachers"
-      | "can_manage_staff"
-      | "can_manage_payments"
-      | "can_view_reports"
-      | "can_manage_schedule"
-      | "can_manage_grades"
+        | "can_enroll_students"
+        | "can_view_accounting"
+        | "can_modify_accounting"
+        | "can_manage_classes"
+        | "can_manage_teachers"
+        | "can_manage_staff"
+        | "can_manage_payments"
+        | "can_view_reports"
+        | "can_manage_schedule"
+        | "can_manage_grades"
       status: "not_started" | "in_progress" | "awaiting_review" | "completed"
       user_role: "user" | "admin"
       video_type: "lesson" | "promo" | "classic"
@@ -8575,116 +8575,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
@@ -8695,7 +8695,7 @@ export const Constants = {
         "awaiting_review",
         "completed",
       ],
-      product_type: ["formation", "article", "service", "physical"],
+      product_type: ["formation", "article", "service"],
       school_type: ["virtual", "physical", "both"],
       staff_permission_type: [
         "can_enroll_students",
