@@ -280,7 +280,8 @@ export const useTransferToMarketplace = () => {
                 const { error: productError } = await supabase
                     .from('products')
                     .update({
-                        stock_quantity: newMarketplaceQty,
+                        stock: newMarketplaceQty,
+                        quantity: newMarketplaceQty,
                         is_active: newMarketplaceQty > 0,
                     })
                     .eq('id', boutiqueProduct.product_id);
@@ -297,7 +298,8 @@ export const useTransferToMarketplace = () => {
                         image_url: boutiqueProduct.image_url,
                         seller_id: sellerId,
                         is_active: true,
-                        stock_quantity: newMarketplaceQty,
+                        stock: newMarketplaceQty,
+                        quantity: newMarketplaceQty,
                         product_type: 'physical',
                     })
                     .select()
