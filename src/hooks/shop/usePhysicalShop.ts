@@ -24,13 +24,18 @@ export const usePhysicalShop = () => {
     const query = useQuery({
         queryKey: ['physical-shop', user?.id],
         queryFn: async () => {
+            console.log('🏪 [usePhysicalShop] Fetching shop for user:', user!.id);
             const { data, error } = await supabase
                 .from('physical_shops')
                 .select('*')
                 .eq('owner_id', user!.id)
                 .maybeSingle();
 
-            if (error) throw error;
+            if (error) {
+                console.error('🏪 [usePhysicalShop] Error:', error);
+                throw error;
+            }
+            console.log('🏪 [usePhysicalShop] Result:', data);
 
             // Mettre en cache IndexedDB
             if (data) {
@@ -110,14 +115,18 @@ export const useIsShopOwner = () => {
     return useQuery({
         queryKey: ['is-shop-owner', user?.id],
         queryFn: async () => {
-            // Vérifier si l'utilisateur a une boutique physique
+            console.log('🔍 [useIsShopOwner] Checking for user:', user!.id);
             const { data, error } = await supabase
                 .from('physical_shops')
                 .select('id')
                 .eq('owner_id', user!.id)
                 .maybeSingle();
 
-            if (error) throw error;
+            if (error) {
+                console.error('🔍 [useIsShopOwner] Error:', error);
+                throw error;
+            }
+            console.log('🔍 [useIsShopOwner] Result:', !!data);
             return !!data;
         },
         enabled: !!user?.id,
