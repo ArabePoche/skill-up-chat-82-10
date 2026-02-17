@@ -40,6 +40,7 @@ import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
 import { OfflineIndicator, OfflineGate, ConversationSyncProvider } from '@/offline';
 import { OfflineAuthBanner } from '@/offline/components/OfflineAuthBanner';
+import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt';
 
 
 // Créer une instance unique du QueryClient
@@ -69,6 +70,7 @@ const AppWithRouter: React.FC = () => {
       <VisitorTrackerWrapper />
       <OfflineIndicator />
       <OfflineAuthBanner />
+      <PushNotificationPrompt />
       <Routes>
         {/* Routes spéciales qui gardent le système de routage classique */}
         <Route path="/formation/:formationId" element={<FormationDetail />} />
