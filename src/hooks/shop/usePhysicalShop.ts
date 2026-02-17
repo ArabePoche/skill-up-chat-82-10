@@ -37,17 +37,21 @@ export const usePhysicalShop = () => {
             }
             console.log('🏪 [usePhysicalShop] Result:', data);
 
-            // Mettre en cache IndexedDB
+            // Mettre en cache IndexedDB (non bloquant)
             if (data) {
-                const localShop: LocalPhysicalShop = {
-                    id: data.id,
-                    ownerId: data.owner_id,
-                    name: data.name,
-                    address: data.address,
-                    updatedAt: Date.now(),
-                };
-                await physicalShopStore.put(localShop);
-                setCachedShop(localShop);
+                try {
+                    const localShop: LocalPhysicalShop = {
+                        id: data.id,
+                        ownerId: data.owner_id,
+                        name: data.name,
+                        address: data.address,
+                        updatedAt: Date.now(),
+                    };
+                    await physicalShopStore.put(localShop);
+                    setCachedShop(localShop);
+                } catch (cacheError) {
+                    console.warn('🏪 [usePhysicalShop] Cache IndexedDB failed (non-blocking):', cacheError);
+                }
             }
 
             return data;
