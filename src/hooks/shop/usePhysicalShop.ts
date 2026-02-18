@@ -115,6 +115,7 @@ export const useCreatePhysicalShop = () => {
 
 export const useIsShopOwner = () => {
     const { user } = useAuth();
+    const cacheKey = user?.id ? `is-shop-owner-${user.id}` : null;
 
     return useQuery({
         queryKey: ['is-shop-owner', user?.id],
@@ -128,12 +129,30 @@ export const useIsShopOwner = () => {
 
             if (error) {
                 console.error('🔍 [useIsShopOwner] Error:', error);
+                // En cas d'erreur (offline), utiliser le cache localStorage
+                if (cacheKey) {
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached !== null) {
+                        console.log('🔍 [useIsShopOwner] Using cached value:', cached);
+                        return cached === 'true';
+                    }
+                }
                 throw error;
             }
-            console.log('🔍 [useIsShopOwner] Result:', !!data);
-            return !!data;
+            const result = !!data;
+            console.log('🔍 [useIsShopOwner] Result:', result);
+            // Persister dans localStorage pour le mode offline
+            if (cacheKey) {
+                localStorage.setItem(cacheKey, String(result));
+            }
+            return result;
         },
         enabled: !!user?.id,
         staleTime: 1000 * 60 * 10,
+        // Utiliser le cache localStorage comme initialData pour affichage immédiat offline
+        initialData: cacheKey ? (() => {
+            const cached = localStorage.getItem(cacheKey);
+            return cached !== null ? cached === 'true' : undefined;
+        })() : undefined,
     });
 };
