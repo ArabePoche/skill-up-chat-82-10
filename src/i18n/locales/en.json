@@ -574,7 +574,16 @@
       "archives": "Archives",
       "transfers": "Transfers",
       "transferRequests": "Transfer requests",
-      "transferRequestsDescription": "Manage incoming and outgoing student transfer requests"
+      "transferRequestsDescription": "Manage incoming and outgoing student transfer requests",
+      "followUpNotes": "Follow-up notes",
+      "decision": "Decision",
+      "yearsOld": "years old",
+      "boy": "Boy",
+      "girl": "Girl",
+      "family": "Family",
+      "parentGuardian": "Parent/Guardian",
+      "siblings": "Siblings",
+      "noSiblings": "No siblings in this family"
     },
     "teachers": {
       "title": "Teacher Management",
