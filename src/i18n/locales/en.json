@@ -570,7 +570,11 @@
       "studentsByFamily": "Students by Family",
       "hide": "Hide",
       "filters": "Filters",
-      "notAssigned": "Not assigned"
+      "notAssigned": "Not assigned",
+      "archives": "Archives",
+      "transfers": "Transfers",
+      "transferRequests": "Transfer requests",
+      "transferRequestsDescription": "Manage incoming and outgoing student transfer requests"
     },
     "teachers": {
       "title": "Teacher Management",
