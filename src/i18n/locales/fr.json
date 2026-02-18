@@ -545,7 +545,11 @@
       "studentsByFamily": "Élèves par Famille",
       "hide": "Masquer",
       "filters": "Filtres",
-      "notAssigned": "Non assigné"
+      "notAssigned": "Non assigné",
+      "archives": "Archives",
+      "transfers": "Transferts",
+      "transferRequests": "Demandes de transfert",
+      "transferRequestsDescription": "Gérez les demandes de transfert d'élèves entrantes et sortantes"
     },
     "teachers": {
       "title": "Gestion des enseignants",
