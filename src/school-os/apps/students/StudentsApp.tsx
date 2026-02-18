@@ -328,13 +328,13 @@ export const StudentsApp: React.FC = () => {
           {canManageStudents && (
             <TabsTrigger value="archives">
               <Archive className="w-4 h-4 mr-2" />
-              Archives
+              {t('schoolOS.students.archives')}
             </TabsTrigger>
           )}
            {canManageStudents && (
              <TabsTrigger value="transfers" className="relative">
                <ArrowRightLeft className="w-4 h-4 mr-2" />
-               Transferts
+               {t('schoolOS.students.transfers')}
                {pendingTransferCount > 0 && (
                  <Badge 
                    variant="destructive" 
@@ -578,10 +578,10 @@ export const StudentsApp: React.FC = () => {
          {canManageStudents && (
            <TabsContent value="transfers" className="flex-1 flex-col overflow-hidden mt-0 hidden data-[state=active]:flex">
              <div className="flex flex-col h-full">
-               <div className="mb-4 flex-shrink-0">
-                 <h2 className="text-xl sm:text-2xl font-bold">Demandes de transfert</h2>
+              <div className="mb-4 flex-shrink-0">
+                 <h2 className="text-xl sm:text-2xl font-bold">{t('schoolOS.students.transferRequests')}</h2>
                  <p className="text-sm text-muted-foreground mt-1">
-                   Gérez les demandes de transfert d'élèves entrantes et sortantes
+                   {t('schoolOS.students.transferRequestsDescription')}
                  </p>
                </div>
                <div className="flex-1 overflow-hidden">
