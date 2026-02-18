@@ -1,5 +1,6 @@
 // Card pour afficher un élève
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   schoolId,
   showDecisionOption = false,
 }) => {
+  const { t } = useTranslation();
   const [showSiblings, setShowSiblings] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -122,10 +124,10 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                     className="text-xs"
                   >
                     {student.status === 'active'
-                      ? 'Actif'
+                      ? t('schoolOS.students.active')
                       : student.status === 'inactive'
-                      ? 'Inactif'
-                      : 'Transféré'}
+                      ? t('schoolOS.students.inactive')
+                      : t('schoolOS.students.transferred')}
                   </Badge>
 
                   <CollapsibleTrigger asChild>
@@ -142,12 +144,12 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onEdit?.(student)}>
-                        Modifier
+                        {t('schoolOS.common.edit')}
                       </DropdownMenuItem>
                       {showTeacherNotes && currentTeacherId && schoolId && (
                         <DropdownMenuItem onClick={() => setShowNotesModal(true)}>
                           <FileText className="h-4 w-4 mr-2" />
-                          Notes de suivi
+                          {t('schoolOS.students.followUpNotes')}
                         </DropdownMenuItem>
                       )}
                       {showDecisionOption && (
@@ -155,7 +157,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => setShowDecisionModal(true)}>
                             <Scale className="h-4 w-4 mr-2" />
-                            Décision
+                            {t('schoolOS.students.decision')}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -170,7 +172,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             <div className="mt-3 pt-3 border-t space-y-3">
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline" className="text-xs">
-                  {calculateAge(student.date_of_birth)} ans • {student.gender === 'male' ? 'Garçon' : 'Fille'}
+                  {calculateAge(student.date_of_birth)} {t('schoolOS.students.yearsOld')} • {student.gender === 'male' ? t('schoolOS.students.boy') : t('schoolOS.students.girl')}
                 </Badge>
                 {student.student_code && (
                   <Badge variant="outline" className="text-xs">
@@ -187,7 +189,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                     }}
                   >
                     <Users className="h-3 w-3 mr-1" />
-                    Famille: {student.school_student_families.family_name}
+                    {t('schoolOS.students.family')}: {student.school_student_families.family_name}
                     {siblings && siblings.length > 0 && ` (${siblings.length})`}
                   </Badge>
                 )}
@@ -195,7 +197,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
 
               {student.parent_name && (
                 <div className="space-y-1 text-sm">
-                  <p className="font-medium">Parent/Tuteur: {student.parent_name}</p>
+                  <p className="font-medium">{t('schoolOS.students.parentGuardian')}: {student.parent_name}</p>
                   {student.parent_phone && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="h-3 w-3" />
@@ -229,7 +231,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
       <Dialog open={showSiblings} onOpenChange={setShowSiblings}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Frères et sœurs - Famille {student.school_student_families?.family_name}</DialogTitle>
+            <DialogTitle>{t('schoolOS.students.siblings')} - {t('schoolOS.students.family')} {student.school_student_families?.family_name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {siblings && siblings.length > 0 ? (
@@ -249,14 +251,14 @@ export const StudentCard: React.FC<StudentCardProps> = ({
                       </p>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      {new Date().getFullYear() - new Date(sibling.date_of_birth).getFullYear()} ans
+                      {new Date().getFullYear() - new Date(sibling.date_of_birth).getFullYear()} {t('schoolOS.students.yearsOld')}
                     </p>
                   </div>
                 </div>
               ))
             ) : (
               <p className="text-center text-muted-foreground py-4">
-                Aucun frère ou sœur dans cette famille
+                {t('schoolOS.students.noSiblings')}
               </p>
             )}
           </div>
