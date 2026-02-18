@@ -549,7 +549,16 @@
       "archives": "Archives",
       "transfers": "Transferts",
       "transferRequests": "Demandes de transfert",
-      "transferRequestsDescription": "Gérez les demandes de transfert d'élèves entrantes et sortantes"
+      "transferRequestsDescription": "Gérez les demandes de transfert d'élèves entrantes et sortantes",
+      "followUpNotes": "Notes de suivi",
+      "decision": "Décision",
+      "yearsOld": "ans",
+      "boy": "Garçon",
+      "girl": "Fille",
+      "family": "Famille",
+      "parentGuardian": "Parent/Tuteur",
+      "siblings": "Frères et sœurs",
+      "noSiblings": "Aucun frère ou sœur dans cette famille"
     },
     "teachers": {
       "title": "Gestion des enseignants",
