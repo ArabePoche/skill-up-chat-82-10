@@ -29,7 +29,7 @@ const Shop = () => {
   const [activeTab, setActiveTab] = useState('formations');
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
   const [mainView, setMainView] = useState<'marketplace' | 'gestion'>('marketplace');
   const { user } = useAuth();
   const navigate = useNavigate();
