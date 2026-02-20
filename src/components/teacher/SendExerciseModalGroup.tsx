@@ -1,6 +1,6 @@
 /**
  * Modal pour envoyer un exercice à un élève dans le contexte du chat groupe
- * Affiche tous les exercices du niveau et l'historique des exercices de l'élève
+ * Affiche tous les exercices du niveau, l'historique, et la promotion de niveau
  */
 import React, { useState } from 'react';
 import { 
@@ -11,6 +11,7 @@ import {
   DialogDescription 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -23,11 +24,14 @@ import {
   Clock, 
   FileText,
   Loader2,
-  User
+  ArrowUpCircle,
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 import { useLevelExercises } from '@/hooks/group-chat/useLevelExercises';
 import { useStudentExerciseHistory, ExerciseSubmissionHistory } from '@/hooks/useStudentExerciseHistory';
 import { useSendExerciseToStudent } from '@/hooks/useSendExerciseToStudent';
+import { useAvailableLevelsForUpgrade, useUpgradeStudentLevel } from '@/hooks/group-chat/useUpgradeStudentLevel';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -52,6 +56,8 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
 }) => {
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [selectedTargetLevel, setSelectedTargetLevel] = useState<string | null>(null);
+  const [selectedIntermediateLevels, setSelectedIntermediateLevels] = useState<string[]>([]);
 
   // Récupérer les exercices du niveau (toutes les leçons)
   const { data: exercises = [], isLoading: exercisesLoading } = useLevelExercises(levelId);
@@ -61,6 +67,10 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
   
   // Mutation pour envoyer l'exercice
   const sendExerciseMutation = useSendExerciseToStudent();
+
+  // Niveaux disponibles pour la promotion
+  const { data: availableLevels = [], isLoading: levelsLoading } = useAvailableLevelsForUpgrade(formationId, levelId);
+  const upgradeStudentMutation = useUpgradeStudentLevel();
 
   const handleSendExercise = async () => {
     if (!selectedExercise || !selectedLessonId) return;
@@ -74,13 +84,37 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
       lessonId: selectedLessonId,
       exerciseId: selectedExercise,
       exerciseTitle: exercise.title,
-      levelId, // Ajout du levelId pour le contexte groupe
+      levelId,
     });
 
     setSelectedExercise(null);
     setSelectedLessonId(null);
     onClose();
   };
+
+  const handleUpgradeLevel = async () => {
+    if (!selectedTargetLevel) return;
+
+    await upgradeStudentMutation.mutateAsync({
+      studentId,
+      formationId,
+      currentLevelId: levelId,
+      targetLevelId: selectedTargetLevel,
+      intermediateLevelIds: selectedIntermediateLevels,
+    });
+
+    setSelectedTargetLevel(null);
+    setSelectedIntermediateLevels([]);
+    onClose();
+  };
+
+  // Niveaux intermédiaires = tous les niveaux entre le courant et le cible (exclus)
+  const intermediateLevels = selectedTargetLevel
+    ? availableLevels.filter(l => {
+        const target = availableLevels.find(t => t.id === selectedTargetLevel);
+        return target && l.order_index < target.order_index;
+      })
+    : [];
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
@@ -149,17 +183,17 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <BookOpen className="text-primary" size={18} />
-                Exercices pour {studentName}
+                Actions pour {studentName}
               </div>
               <p className="text-xs text-muted-foreground font-normal mt-0.5">
-                Envoyez un exercice ou consultez l'historique
+                Exercices, historique ou promotion de niveau
               </p>
             </div>
           </DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="send" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="send">
               <Send size={14} className="mr-1.5" />
               Envoyer
@@ -172,6 +206,10 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
                   {history.submissions.length}
                 </Badge>
               ) : null}
+            </TabsTrigger>
+            <TabsTrigger value="upgrade">
+              <ArrowUpCircle size={14} className="mr-1.5" />
+              Promouvoir
             </TabsTrigger>
           </TabsList>
 
@@ -312,6 +350,139 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
                 </div>
               )}
             </ScrollArea>
+          </TabsContent>
+
+          {/* Onglet Promouvoir */}
+          <TabsContent value="upgrade" className="mt-4">
+            <div className="mb-4 p-3 bg-accent/50 rounded-lg border border-accent">
+              <div className="flex items-start gap-2">
+                <Zap size={16} className="text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Choisissez le niveau cible pour <strong className="text-foreground">{studentName}</strong>. 
+                  Vous pourrez ensuite sélectionner les niveaux intermédiaires à débloquer.
+                </p>
+              </div>
+            </div>
+
+            <ScrollArea className="h-[350px] pr-4">
+              {levelsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-primary" size={24} />
+                </div>
+              ) : availableLevels.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ArrowUpCircle size={40} className="mx-auto mb-2 opacity-50" />
+                  <p>Cet élève est déjà au dernier niveau</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Sélectionnez le niveau cible :</p>
+                  {availableLevels.map((level) => {
+                    const isSelected = selectedTargetLevel === level.id;
+
+                    return (
+                      <div
+                        key={level.id}
+                        onClick={() => {
+                          setSelectedTargetLevel(level.id);
+                          setSelectedIntermediateLevels([]);
+                        }}
+                        className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                            : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              isSelected 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {level.order_index}
+                            </div>
+                            <div>
+                              <h5 className="font-medium text-foreground text-sm">
+                                {level.title}
+                              </h5>
+                              {level.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                  {level.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight size={16} className={`transition-colors ${
+                            isSelected ? 'text-primary' : 'text-muted-foreground'
+                          }`} />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Niveaux intermédiaires à débloquer (optionnel) */}
+                  {intermediateLevels.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-border">
+                      <p className="text-xs font-medium text-foreground mb-2">
+                        Débloquer aussi les niveaux intermédiaires ? (optionnel)
+                      </p>
+                      <div className="space-y-2">
+                        {intermediateLevels.map((level) => (
+                          <label
+                            key={level.id}
+                            className="flex items-center gap-3 p-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
+                          >
+                            <Checkbox
+                              checked={selectedIntermediateLevels.includes(level.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedIntermediateLevels(prev =>
+                                  checked
+                                    ? [...prev, level.id]
+                                    : prev.filter(id => id !== level.id)
+                                );
+                              }}
+                            />
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                                {level.order_index}
+                              </div>
+                              <span className="text-sm text-foreground">{level.title}</span>
+                            </div>
+                          </label>
+                        ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs mt-1"
+                          onClick={() => setSelectedIntermediateLevels(intermediateLevels.map(l => l.id))}
+                        >
+                          Tout sélectionner
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </ScrollArea>
+
+            <div className="flex justify-end gap-3 mt-4 pt-4 border-t">
+              <Button variant="outline" onClick={onClose}>
+                Annuler
+              </Button>
+              <Button
+                onClick={handleUpgradeLevel}
+                disabled={!selectedTargetLevel || upgradeStudentMutation.isPending}
+                className="gap-2"
+              >
+                {upgradeStudentMutation.isPending ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <ArrowUpCircle size={16} />
+                )}
+                Promouvoir
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createIDBPersister } from '@/offline/utils/idbPersister';
 import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
 import useBackButtonHandler from '@/hooks/useBackButtonHandler';
@@ -43,15 +45,34 @@ import { OfflineAuthBanner } from '@/offline/components/OfflineAuthBanner';
 import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt';
 
 
-// Créer une instance unique du QueryClient
+// Cache-first : affichage instantané depuis IndexedDB, revalidation en arrière-plan
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      // Données considérées fraîches pendant 5 min (formations, profils…)
+      staleTime: 1000 * 60 * 5,
+      // Garder le cache en mémoire 24h pour persistance
+      gcTime: 1000 * 60 * 60 * 24,
+      // Revalider au montage seulement si stale (respecte staleTime)
+      refetchOnMount: true,
+      // Revalider quand le réseau revient
+      refetchOnReconnect: true,
     },
   },
 });
+
+// Persister IndexedDB pour restauration instantanée au démarrage
+const idbPersister = createIDBPersister();
+
+const persistOptions = {
+  persister: idbPersister,
+  // Conserver le cache persisté 7 jours
+  maxAge: 1000 * 60 * 60 * 24 * 7,
+  // Invalider le cache persisté si la structure de l'app change (incrémenter à chaque breaking change)
+  buster: 'v1',
+};
 
 const AppWithRouter: React.FC = () => {
   useBackButtonHandler();
@@ -134,7 +155,7 @@ const App: React.FC = () => {
 
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
       <OfflineGate>
         <BrowserRouter>
           <AuthProvider>
@@ -157,7 +178,7 @@ const App: React.FC = () => {
           </AuthProvider>
         </BrowserRouter>
       </OfflineGate>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 };
 

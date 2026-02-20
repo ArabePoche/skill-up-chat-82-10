@@ -3,7 +3,7 @@
  * Affiche stock, prix, et quantité marketplace
  */
 import React from 'react';
-import { Package, ArrowUpRight, Edit2, Trash2 } from 'lucide-react';
+import { Package, ArrowUpRight, Edit2, Trash2, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
 
@@ -12,6 +12,7 @@ interface BoutiqueProductCardProps {
     onEdit: (product: BoutiqueProduct) => void;
     onDelete: (productId: string) => void;
     onTransfer: (product: BoutiqueProduct) => void;
+    onSell: (product: BoutiqueProduct) => void;
 }
 
 const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
@@ -19,6 +20,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     onEdit,
     onDelete,
     onTransfer,
+    onSell,
 }) => {
     const availableStock = product.stock_quantity - product.marketplace_quantity;
 
@@ -71,12 +73,21 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onTransfer(product)}
+                        onClick={() => onSell(product)}
                         disabled={availableStock <= 0}
                         className="flex-1 text-xs h-8 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                     >
-                        <ArrowUpRight size={14} className="mr-1" />
-                        Transférer
+                        <ShoppingCart size={14} className="mr-1" />
+                        Vendre
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onTransfer(product)}
+                        disabled={availableStock <= 0}
+                        className="text-xs h-8 text-blue-700 border-blue-200 hover:bg-blue-50"
+                    >
+                        <ArrowUpRight size={14} />
                     </Button>
                     <Button
                         variant="ghost"
