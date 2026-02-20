@@ -101,35 +101,57 @@ Deno.serve(async (req) => {
 
     console.log('🔔 Début de l\'envoi des rappels quotidiens');
 
-    // Récupérer tous les tokens actifs avec préférence daily_reminders activée
+    // 1. Récupérer les user_ids inscrits à au moins une formation (status accepted)
+    const { data: enrolledUsers, error: enrollError } = await supabase
+      .from('enrollment_requests')
+      .select('user_id')
+      .eq('status', 'accepted');
+
+    if (enrollError) {
+      throw enrollError;
+    }
+
+    // Dédupliquer les user_ids inscrits
+    const enrolledUserIds = [...new Set((enrolledUsers || []).map(e => e.user_id))];
+    console.log(`📚 ${enrolledUserIds.length} utilisateurs inscrits à au moins une formation`);
+
+    if (enrolledUserIds.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, sent: 0, message: 'Aucun utilisateur inscrit à une formation' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2. Récupérer les tokens actifs uniquement pour ces utilisateurs
     const { data: tokens, error } = await supabase
       .from('push_tokens')
       .select('user_id, token, notification_preferences')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .in('user_id', enrolledUserIds);
 
     if (error) {
       throw error;
     }
 
     if (!tokens || tokens.length === 0) {
-      console.log('ℹ️ Aucun token actif trouvé');
+      console.log('ℹ️ Aucun token actif parmi les utilisateurs inscrits');
       return new Response(
-        JSON.stringify({ success: true, sent: 0, message: 'Aucun token actif' }),
+        JSON.stringify({ success: true, sent: 0, message: 'Aucun token actif pour les inscrits' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Filtrer les utilisateurs qui ont activé les rappels quotidiens
+    // 3. Filtrer ceux qui ont activé les rappels quotidiens
     const eligibleTokens = tokens.filter(t => {
       const prefs = t.notification_preferences as any;
       return prefs?.daily_reminders === true;
     });
 
-    console.log(`📊 ${eligibleTokens.length} utilisateurs éligibles sur ${tokens.length}`);
+    console.log(`📊 ${eligibleTokens.length} utilisateurs éligibles sur ${tokens.length} (inscrits + rappels activés)`);
 
     if (eligibleTokens.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, sent: 0, message: 'Aucun utilisateur avec rappels activés' }),
+        JSON.stringify({ success: true, sent: 0, message: 'Aucun utilisateur éligible' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -145,6 +167,18 @@ Deno.serve(async (req) => {
     // Envoyer via FCM v1 pour chaque token
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${gcpProjectId}/messages:send`;
 
+    // Messages variés pour éviter la répétition
+    const dailyMessages = [
+      { title: '📚 Continuez votre apprentissage !', body: 'Prenez quelques minutes aujourd\'hui pour progresser dans vos cours.' },
+      { title: '🎯 Objectif du jour', body: 'Une révision chaque jour, c\'est la clé du succès. On s\'y met ?' },
+      { title: '💪 Ne lâchez pas !', body: 'Votre formation vous attend. Quelques minutes suffisent pour avancer.' },
+      { title: '🚀 Prêt à progresser ?', body: 'Chaque jour compte. Continuez votre formation maintenant !' },
+      { title: '📖 Votre cours vous attend', body: 'Restez régulier pour atteindre vos objectifs. C\'est parti !' },
+      { title: '⭐ Bravo pour votre régularité !', body: 'Continuez sur cette lancée, révisez une leçon aujourd\'hui.' },
+      { title: '🧠 Entraînez votre cerveau', body: 'L\'apprentissage quotidien renforce la mémoire. À vous de jouer !' },
+    ];
+    const todayMessage = dailyMessages[new Date().getDay() % dailyMessages.length];
+
     for (const tokenData of eligibleTokens) {
       try {
         const fcmResponse = await fetch(fcmUrl, {
@@ -157,8 +191,8 @@ Deno.serve(async (req) => {
             message: {
               token: tokenData.token,
               notification: {
-                title: '📚 Continuez votre apprentissage !',
-                body: 'Prenez quelques minutes aujourd\'hui pour progresser dans vos cours.',
+                title: todayMessage.title,
+                body: todayMessage.body,
               },
               webpush: {
                 notification: {
