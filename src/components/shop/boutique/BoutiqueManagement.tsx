@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Store, Package, WifiOff, Search } from 'lucide-react';
+import SaleDialog from './SaleDialog';
 import ProductImageUploader from './ProductImageUploader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ import {
     useTransferToMarketplace,
     type BoutiqueProduct,
 } from '@/hooks/shop/useBoutiqueProducts';
+import { useCreateBoutiqueSale } from '@/hooks/shop/useBoutiqueSales';
 import BoutiqueProductCard from './BoutiqueProductCard';
 import TransferDialog from './TransferDialog';
 
@@ -48,7 +50,7 @@ const BoutiqueManagement: React.FC = () => {
     const updateProduct = useUpdateBoutiqueProduct();
     const deleteProduct = useDeleteBoutiqueProduct();
     const transferToMarketplace = useTransferToMarketplace();
-
+    const createSale = useCreateBoutiqueSale();
     // Debug logging
     console.log('🛒 [BoutiqueManagement] Render:', {
         userId: user?.id,
@@ -66,6 +68,7 @@ const BoutiqueManagement: React.FC = () => {
     const [editingProduct, setEditingProduct] = useState<BoutiqueProduct | null>(null);
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
     const [transferProduct, setTransferProduct] = useState<BoutiqueProduct | null>(null);
+    const [sellingProduct, setSellingProduct] = useState<BoutiqueProduct | null>(null);
     const [shopName, setShopName] = useState('');
     const [shopAddress, setShopAddress] = useState('');
 
@@ -298,6 +301,7 @@ const BoutiqueManagement: React.FC = () => {
                                     onEdit={openEditProductForm}
                                     onDelete={(id) => setDeletingProductId(id)}
                                     onTransfer={(p) => setTransferProduct(p)}
+                                    onSell={(p) => setSellingProduct(p)}
                                 />
                             ))}
                         </div>
@@ -409,6 +413,28 @@ const BoutiqueManagement: React.FC = () => {
                 onClose={() => setTransferProduct(null)}
                 onConfirm={handleTransfer}
                 isLoading={transferToMarketplace.isPending}
+            />
+
+            {/* Dialog vente POS */}
+            <SaleDialog
+                product={sellingProduct}
+                isOpen={!!sellingProduct}
+                onClose={() => setSellingProduct(null)}
+                onConfirm={async (data) => {
+                    if (!shop?.id) return;
+                    await createSale.mutateAsync({
+                        shop_id: shop.id,
+                        product_id: data.productId,
+                        quantity: data.quantity,
+                        unit_price: data.unitPrice,
+                        total_amount: data.totalAmount,
+                        customer_name: data.customerName,
+                        payment_method: data.paymentMethod,
+                        notes: data.notes,
+                    });
+                    setSellingProduct(null);
+                }}
+                isLoading={createSale.isPending}
             />
 
             {/* Confirmation suppression */}
