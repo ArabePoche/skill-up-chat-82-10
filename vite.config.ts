@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
       injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'icon-192x192.png', 'icon-512x512.png', 'offline.html'],
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+        globPatterns: mode === 'production' ? ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'] : [],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: '/offline.html',
