@@ -139,6 +139,16 @@ export const useProgressionLogic = (formationId: string, levelId: string) => {
       if (nextLesson) {
         console.log('📚 Next lesson found:', nextLesson.id);
         
+        // Créer l'entrée de progression pour la leçon suivante
+        await supabase
+          .from('user_lesson_progress')
+          .upsert({
+            user_id: studentId,
+            lesson_id: nextLesson.id,
+            status: 'not_started',
+            exercise_completed: false,
+          }, { onConflict: 'user_id,lesson_id' });
+
         // Présenter la leçon suivante
         await presentLessonToStudent(studentId, nextLesson.id, formationId);
         
@@ -167,6 +177,26 @@ export const useProgressionLogic = (formationId: string, levelId: string) => {
 
       if (nextLevel) {
         console.log('🎯 Next level found:', nextLevel.id);
+
+        // Récupérer la première leçon du niveau suivant et créer la progression
+        const { data: firstLessonOfNextLevel } = await supabase
+          .from('lessons')
+          .select('id')
+          .eq('level_id', nextLevel.id)
+          .order('order_index', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (firstLessonOfNextLevel) {
+          await supabase
+            .from('user_lesson_progress')
+            .upsert({
+              user_id: studentId,
+              lesson_id: firstLessonOfNextLevel.id,
+              status: 'not_started',
+              exercise_completed: false,
+            }, { onConflict: 'user_id,lesson_id' });
+        }
         
         // Envoyer notification de déblocage du niveau suivant
         await notifyLevelUnlocked(studentId, nextLevel.id, formationId);
@@ -184,6 +214,10 @@ export const useProgressionLogic = (formationId: string, levelId: string) => {
       // Invalider les requêtes pour rafraîchir l'affichage
       queryClient.invalidateQueries({ queryKey: ['group-chat-messages'] });
       queryClient.invalidateQueries({ queryKey: ['level-exercises'] });
+      queryClient.invalidateQueries({ queryKey: ['lesson-unlocking'] });
+      queryClient.invalidateQueries({ queryKey: ['student-progression'] });
+      queryClient.invalidateQueries({ queryKey: ['group-progression'] });
+      queryClient.invalidateQueries({ queryKey: ['current-progression-status'] });
       
       if (data.progressionUpdate === 'next_exercise') {
         toast.success('Exercice validé ! Prochain exercice débloqué.');
