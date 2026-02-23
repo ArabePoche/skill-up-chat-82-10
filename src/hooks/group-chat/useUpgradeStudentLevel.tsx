@@ -117,6 +117,20 @@ export const useUpgradeStudentLevel = () => {
           .maybeSingle();
 
         if (firstLesson) {
+          // Créer l'entrée de progression pour la première leçon du niveau
+          const { error: progressError } = await supabase
+            .from('user_lesson_progress')
+            .upsert({
+              user_id: studentId,
+              lesson_id: firstLesson.id,
+              status: 'not_started',
+              exercise_completed: false,
+            }, { onConflict: 'user_id,lesson_id' });
+
+          if (progressError) {
+            console.error('Error creating lesson progress for upgrade:', progressError);
+          }
+
           // Créer un message système de présentation de la leçon
           await supabase
             .from('lesson_messages')
@@ -139,6 +153,8 @@ export const useUpgradeStudentLevel = () => {
       queryClient.invalidateQueries({ queryKey: ['group-progression'] });
       queryClient.invalidateQueries({ queryKey: ['level-members'] });
       queryClient.invalidateQueries({ queryKey: ['current-progression-status'] });
+      queryClient.invalidateQueries({ queryKey: ['lesson-unlocking'] });
+      queryClient.invalidateQueries({ queryKey: ['student-progression'] });
 
       toast.success(
         data.levelsUnlocked > 1
