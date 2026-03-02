@@ -50,8 +50,7 @@ export const OfflineGate: React.FC<OfflineGateProps> = ({ children }) => {
   if (!canAccessApp) {
     return (
       <ConnectionRequiredScreen 
-        onRetry={checkRealConnection}
-        isFirstRun={isFirstRun}
+        onDismiss={() => checkRealConnection()}
       />
     );
   }
