@@ -104,7 +104,6 @@ export const useCallSystem = (formationId: string) => {
       console.log('📞 Raw calls data:', callsData);
 
       const formattedCalls: CallSession[] = (callsData || []).map(call => {
-        // Extraire les informations du profil de manière sécurisée avec type assertion
         const profile = call.profiles as { first_name?: string; last_name?: string; avatar_url?: string } | null;
         const lesson = call.lessons as { title?: string } | null;
         
@@ -140,13 +139,13 @@ export const useCallSystem = (formationId: string) => {
 
   // Écouter les changements en temps réel
   useEffect(() => {
-    if (!user || !isTeacher) {
-      console.log('🔄 Skipping realtime setup:', { user: !!user, isTeacher });
-      return;
-    }
+    if (!user) return;
 
-    console.log('🔄 Setting up realtime listener for calls');
-    fetchIncomingCalls();
+    // Pour les professeurs : écouter les nouveaux appels
+    if (isTeacher) {
+      console.log('🔄 Setting up realtime listener for calls (teacher)');
+      fetchIncomingCalls();
+    }
 
     const channel = supabase
       .channel(`calls_${formationId}`)
@@ -160,7 +159,7 @@ export const useCallSystem = (formationId: string) => {
         },
         (payload) => {
           console.log('📞 New call detected:', payload.new);
-          if (payload.new.status === 'pending' && !payload.new.receiver_id) {
+          if (isTeacher && payload.new.status === 'pending' && !payload.new.receiver_id) {
             fetchIncomingCalls();
           }
         }
@@ -175,8 +174,26 @@ export const useCallSystem = (formationId: string) => {
         },
         (payload) => {
           console.log('📞 Call updated:', payload.new);
-          if (payload.new.status !== 'pending') {
-            setIncomingCalls(prev => prev.filter(call => call.id !== payload.new.id));
+          const updated = payload.new;
+          
+          // Pour les professeurs : retirer l'appel de la liste
+          if (isTeacher && updated.status !== 'pending') {
+            setIncomingCalls(prev => prev.filter(call => call.id !== updated.id));
+          }
+
+          // Pour les étudiants : leur appel a été accepté → ouvrir l'UI Agora
+          if (updated.caller_id === user.id && updated.status === 'accepted') {
+            console.log('✅ Student call accepted, opening Agora UI');
+            setCurrentCall({
+              ...updated,
+              call_type: updated.call_type as 'audio' | 'video',
+              status: 'accepted',
+            } as CallSession);
+          }
+          
+          // Appel terminé ou rejeté
+          if (updated.caller_id === user.id && (updated.status === 'ended' || updated.status === 'rejected')) {
+            setCurrentCall(null);
           }
         }
       )
