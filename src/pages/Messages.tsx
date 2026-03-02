@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, MoreVertical, Bell, UserPlus, Users, BookOpen, CreditCard } from 'lucide-react';
+import { Search, MoreVertical, Bell, UserPlus, Users, BookOpen, CreditCard, Check, CheckCheck } from 'lucide-react';
 import { useConversationsList } from '@/hooks/messages/useConversationsList';
 import { useNotificationCategories } from '@/components/notifications/hooks/useNotificationCategories';
 import { useCategoryNotifications } from '@/components/notifications/hooks/useCategoryNotifications';
@@ -170,7 +170,18 @@ const Messages = () => {
                           {formatMessageTime(conversation.created_at || new Date())}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
+                      <div className="flex items-center gap-1">
+                        {conversation.lastMsgIsOwn && (
+                          conversation.lastMsgIsRead ? (
+                            <CheckCheck size={16} className="text-blue-500 flex-shrink-0" />
+                          ) : conversation.lastMsgIsDelivered ? (
+                            <CheckCheck size={16} className="text-gray-400 flex-shrink-0" />
+                          ) : (
+                            <Check size={16} className="text-gray-400 flex-shrink-0" />
+                          )
+                        )}
+                        <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
+                      </div>
                     </div>
                     
                     {conversation.unread > 0 && (
