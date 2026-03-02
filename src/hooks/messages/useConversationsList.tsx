@@ -19,6 +19,14 @@ export const useConversationsList = (enabled: boolean = false) => {
     queryFn: async () => {
       if (!user?.id) return [];
 
+      // Marquer tous les messages reçus comme "livrés" (deux coches grises)
+      // Cela se fait dès que l'utilisateur ouvre la liste des conversations
+      await supabase
+        .from('conversation_messages')
+        .update({ is_delivered: true })
+        .eq('receiver_id', user.id)
+        .eq('is_delivered', false);
+
       // Récupérer uniquement les messages privés (conversation_messages)
       const { data: directMessages } = await supabase
         .from('conversation_messages')
@@ -29,7 +37,8 @@ export const useConversationsList = (enabled: boolean = false) => {
           receiver_id,
           content,
           created_at,
-          is_read
+          is_read,
+          is_delivered
         `)
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: true });
@@ -86,6 +95,9 @@ export const useConversationsList = (enabled: boolean = false) => {
             const createdAt = new Date(lastMsg.created_at);
             const timeLabel = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+            // Déterminer si le dernier message est envoyé par moi et son statut
+            const lastMsgIsOwn = lastMsg.sender_id === user.id;
+
             conversations.push({
               id: `user-${otherUserId}`,
               name: otherName,
@@ -96,7 +108,10 @@ export const useConversationsList = (enabled: boolean = false) => {
               avatar: profile?.avatar_url || '💬',
               online: false,
               type: 'direct_message',
-              otherUserId: otherUserId
+              otherUserId: otherUserId,
+              lastMsgIsOwn,
+              lastMsgIsDelivered: lastMsg.is_delivered ?? false,
+              lastMsgIsRead: lastMsg.is_read ?? false,
             });
           }
         }
