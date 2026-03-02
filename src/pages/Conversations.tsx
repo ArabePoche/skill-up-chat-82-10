@@ -11,6 +11,7 @@ import { useOfflineConversations } from '@/offline/hooks/useOfflineConversations
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
 import { sendPushNotification } from '@/utils/notificationHelpers';
+import { useConversationTyping } from '@/hooks/conversations/useConversationTyping';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
@@ -23,6 +24,22 @@ const Conversations = () => {
   const { isOnline } = useOfflineSync();
   const { getOfflineConversationWith } = useOfflineConversations(user?.id);
   const [offlineMessages, setOfflineMessages] = useState<any[]>([]);
+  const { isOtherTyping, emitTyping, emitStopTyping } = useConversationTyping(otherUserId);
+
+  // Récupérer le profil de l'utilisateur courant (pour les notifications)
+  const { data: currentUserProfile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, username')
+        .eq('id', user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   // Récupérer les infos de l'autre utilisateur
   const { data: otherUserProfile } = useQuery({
@@ -79,6 +96,8 @@ const Conversations = () => {
           created_at,
           is_story_reply,
           replied_to_message_id,
+          is_read,
+          is_delivered,
           profiles:sender_id (
             first_name,
             last_name,
@@ -226,8 +245,8 @@ const Conversations = () => {
 
       // Envoyer une notification push au destinataire (fire & forget)
       if (otherUserId && user?.id) {
-        const senderName = otherUserProfile
-          ? `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || user.email || 'Quelqu\'un'
+        const senderName = currentUserProfile
+          ? `${currentUserProfile.first_name || ''} ${currentUserProfile.last_name || ''}`.trim() || currentUserProfile.username || 'Quelqu\'un'
           : 'Quelqu\'un';
         sendPushNotification({
           userIds: [otherUserId],
@@ -245,11 +264,13 @@ const Conversations = () => {
     },
   });
 
-  // Marquer les messages comme lus à l'ouverture
+  // Marquer les messages comme lus à l'ouverture de la conversation
+  // (is_delivered est déjà mis à true dans useConversationsList)
   useEffect(() => {
     const markAsRead = async () => {
       if (!user?.id || !otherUserId) return;
 
+      // Marquer comme lu les messages non lus
       await supabase
         .from('conversation_messages')
         .update({ is_read: true })
@@ -257,13 +278,14 @@ const Conversations = () => {
         .eq('receiver_id', user.id)
         .eq('is_read', false);
 
-      // Invalider les queries pour mettre à jour le compteur
-      queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+      // Invalider les queries pour mettre à jour les compteurs et les coches
+      queryClient.invalidateQueries({ queryKey: ['conversations-list', user.id] });
       queryClient.invalidateQueries({ queryKey: ['unread-counts', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
     };
 
     markAsRead();
-  }, [user?.id, otherUserId, queryClient]);
+  }, [user?.id, otherUserId, queryClient, messages]);
 
   // Scroll initial instantané au dernier message
   useEffect(() => {
@@ -299,7 +321,9 @@ const Conversations = () => {
           </div>
           <div>
             <h2 className="font-semibold">{otherUserName}</h2>
-            
+            {isOtherTyping && (
+              <p className="text-xs text-white/80 italic animate-pulse">est en train d'écrire...</p>
+            )}
           </div>
         </button>
       </div>
@@ -350,7 +374,7 @@ const Conversations = () => {
         <ChatInputBar
           onSendMessage={(content, messageType, file) => {
             if (content.trim() || file) {
-              // Récupérer l'URL uploadée depuis le fichier si disponible
+              emitStopTyping();
               const fileUrl = file && (file as any).uploadUrl;
               sendMessageMutation.mutate({ 
                 content, 
@@ -359,6 +383,7 @@ const Conversations = () => {
               });
             }
           }}
+          onTyping={emitTyping}
           disabled={sendMessageMutation.isPending}
         />
       </div>
