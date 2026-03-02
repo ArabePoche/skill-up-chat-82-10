@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Phone, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { CallSession } from '../hooks/useCallSystem';
 import IncomingCallsGrid from './IncomingCallsGrid';
+import AgoraCallUI from './AgoraCallUI';
 
 interface CallsModalProps {
   isOpen: boolean;
@@ -31,7 +32,35 @@ const CallsModal: React.FC<CallsModalProps> = ({
   onRejectCall,
   onRefresh
 }) => {
-  console.log('📞 CallsModal render:', { formationId, callsCount: incomingCalls.length, isLoading });
+  const [activeCall, setActiveCall] = useState<CallSession | null>(null);
+
+  const handleAcceptCall = async (callId: string) => {
+    const success = await onAcceptCall(callId);
+    if (success) {
+      const call = incomingCalls.find(c => c.id === callId);
+      if (call) {
+        setActiveCall(call);
+      }
+    }
+    return success;
+  };
+
+  const handleEndActiveCall = () => {
+    setActiveCall(null);
+  };
+
+  // Si un appel Agora est actif, afficher l'UI d'appel en plein écran
+  if (activeCall) {
+    return (
+      <AgoraCallUI
+        callId={activeCall.id}
+        channelName={`call_${activeCall.id}`}
+        callType={activeCall.call_type}
+        remoteUserName={activeCall.caller_name || 'Utilisateur'}
+        onEndCall={handleEndActiveCall}
+      />
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -67,7 +96,7 @@ const CallsModal: React.FC<CallsModalProps> = ({
           ) : (
             <IncomingCallsGrid
               incomingCalls={incomingCalls}
-              onAcceptCall={onAcceptCall}
+              onAcceptCall={handleAcceptCall}
               onRejectCall={onRejectCall}
             />
           )}
