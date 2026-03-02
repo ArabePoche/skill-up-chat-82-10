@@ -2,14 +2,17 @@
  * Indicateur de statut de connexion
  */
 
-import React from 'react';
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { Wifi, WifiOff, RefreshCw, X } from 'lucide-react';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export const OfflineIndicator = () => {
   const { isOnline, isSyncing, forceSync } = useOfflineSync();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed) return null;
 
   return (
     <div className={cn(
@@ -39,6 +42,16 @@ export const OfflineIndicator = () => {
           <RefreshCw className={cn("w-3 h-3", isSyncing && "animate-spin")} />
         </Button>
       )}
+
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => setDismissed(true)}
+        className="h-6 w-6 p-0 ml-1"
+        title="Fermer"
+      >
+        <X className="w-3 h-3" />
+      </Button>
     </div>
   );
 };
