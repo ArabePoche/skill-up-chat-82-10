@@ -3,7 +3,7 @@
  * Bloque l'app si jamais ouverte en ligne et actuellement hors connexion
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFirstRun } from '../hooks/useFirstRun';
 import { ConnectionRequiredScreen } from './ConnectionRequiredScreen';
 
@@ -20,21 +20,18 @@ export const OfflineGate: React.FC<OfflineGateProps> = ({ children }) => {
     markCacheReady,
     checkRealConnection 
   } = useFirstRun();
+  const [offlineDismissed, setOfflineDismissed] = useState(false);
 
-  // Marquer le cache comme prêt quand l'app charge avec succès en ligne
-  // Délai réduit à 10 secondes pour ne pas bloquer l'offline inutilement
   useEffect(() => {
     if (isOnline && canAccessApp) {
-      // Marquer immédiatement + timer court pour être sûr que le SW a commencé le cache
       const timer = setTimeout(() => {
         markCacheReady();
         console.log('[OfflineGate] Cache marqué comme prêt après 10s');
-      }, 10000); // 10 secondes
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [isOnline, canAccessApp, markCacheReady]);
 
-  // Écran de chargement initial
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -46,15 +43,13 @@ export const OfflineGate: React.FC<OfflineGateProps> = ({ children }) => {
     );
   }
 
-  // Écran de connexion requise si pas d'accès
-  if (!canAccessApp) {
+  if (!canAccessApp && !offlineDismissed) {
     return (
       <ConnectionRequiredScreen 
-        onDismiss={() => checkRealConnection()}
+        onDismiss={() => setOfflineDismissed(true)}
       />
     );
   }
 
-  // App normale
   return <>{children}</>;
 };
