@@ -2,7 +2,7 @@
 // Rôle: afficher un message avec toutes ses actions possibles
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Reply, Edit2, Trash2, Smile } from 'lucide-react';
+import { Reply, Edit2, Trash2, Smile, Check, CheckCheck } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -34,6 +34,8 @@ interface Message {
   is_story_reply?: boolean;
   replied_to_message_id?: string | null;
   conversation_media?: ConversationMedia[];
+  is_read?: boolean;
+  is_delivered?: boolean;
 }
 
 interface ConversationMessageBubbleProps {
@@ -155,7 +157,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
             )}
 
             {/* Heure et bouton réaction */}
-            <div className={`text-xs mt-1 flex items-center justify-end gap-2 ${
+            <div className={`text-xs mt-1 flex items-center justify-end gap-1.5 ${
               isOwnMessage ? 'text-white/70' : 'text-gray-500'
             }`}>
               <button
@@ -174,6 +176,16 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
                   minute: '2-digit',
                 })}
               </span>
+              {/* WhatsApp-style status ticks - only for own messages */}
+              {isOwnMessage && (
+                message.is_read ? (
+                  <CheckCheck size={16} className="text-blue-400" />
+                ) : message.is_delivered ? (
+                  <CheckCheck size={16} />
+                ) : (
+                  <Check size={16} />
+                )
+              )}
             </div>
           </div>
 
