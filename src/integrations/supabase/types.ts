@@ -682,6 +682,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          is_delivered: boolean | null
           is_read: boolean | null
           is_story_reply: boolean | null
           receiver_id: string | null
@@ -694,6 +695,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          is_delivered?: boolean | null
           is_read?: boolean | null
           is_story_reply?: boolean | null
           receiver_id?: string | null
@@ -706,6 +708,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          is_delivered?: boolean | null
           is_read?: boolean | null
           is_story_reply?: boolean | null
           receiver_id?: string | null
@@ -2571,6 +2574,63 @@ export type Database = {
           },
           {
             foreignKeyName: "physical_shop_products_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physical_shop_sales: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          product_id: string
+          quantity: number
+          shop_id: string
+          sold_at: string
+          total_amount: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          product_id: string
+          quantity?: number
+          shop_id: string
+          sold_at?: string
+          total_amount: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          product_id?: string
+          quantity?: number
+          shop_id?: string
+          sold_at?: string
+          total_amount?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_shop_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shop_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physical_shop_sales_shop_id_fkey"
             columns: ["shop_id"]
             isOneToOne: false
             referencedRelation: "physical_shops"
@@ -6185,6 +6245,67 @@ export type Database = {
           },
         ]
       }
+      stock_transfers: {
+        Row: {
+          created_at: string
+          destination_shop_id: string | null
+          destination_type: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          source_shop_id: string | null
+          source_type: string
+          transferred_by: string
+        }
+        Insert: {
+          created_at?: string
+          destination_shop_id?: string | null
+          destination_type: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          source_shop_id?: string | null
+          source_type: string
+          transferred_by: string
+        }
+        Update: {
+          created_at?: string
+          destination_shop_id?: string | null
+          destination_type?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          source_shop_id?: string | null
+          source_type?: string
+          transferred_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_destination_shop_id_fkey"
+            columns: ["destination_shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shop_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_source_shop_id_fkey"
+            columns: ["source_shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       story_likes: {
         Row: {
           created_at: string
@@ -8519,26 +8640,16 @@ export type Database = {
         }
         Returns: Json
       }
-      validate_exercise_submission_with_promotion:
-        | {
-            Args: {
-              p_is_approved: boolean
-              p_message_id: string
-              p_reject_reason?: string
-              p_user_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_is_approved: boolean
-              p_message_id: string
-              p_reject_reason?: string
-              p_teacher_id?: string
-              p_user_id: string
-            }
-            Returns: undefined
-          }
+      validate_exercise_submission_with_promotion: {
+        Args: {
+          p_is_approved: boolean
+          p_message_id: string
+          p_reject_reason?: string
+          p_teacher_id?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       lesson_status:
