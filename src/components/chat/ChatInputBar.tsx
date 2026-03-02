@@ -27,6 +27,7 @@ interface ChatInputBarProps {
   } | null;
   onCancelReply?: () => void;
   onScrollToMessage?: (messageId: string) => void;
+  onTyping?: () => void;
 }
 
 const ChatInputBar: React.FC<ChatInputBarProps> = ({ 
@@ -40,7 +41,8 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   lessonTitle,
   replyingTo,
   onCancelReply,
-  onScrollToMessage
+  onScrollToMessage,
+  onTyping
 }) => {
   const [message, setMessage] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -87,9 +89,10 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
     const newMessage = e.target.value;
     setMessage(newMessage);
     
-    if (newMessage.trim() && lessonId && formationId) {
-      startTyping();
-    } else if (!newMessage.trim()) {
+    if (newMessage.trim()) {
+      if (lessonId && formationId) startTyping();
+      onTyping?.();
+    } else {
       stopTyping();
     }
   };
