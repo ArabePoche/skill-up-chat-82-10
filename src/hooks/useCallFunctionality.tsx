@@ -6,7 +6,7 @@ import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 interface CallFunctionality {
-  initiateCall: (type: 'audio' | 'video', receiverId: string, lessonId: string) => Promise<boolean>;
+  initiateCall: (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => Promise<boolean>;
   isCallActive: boolean;
   currentCall: any;
   endCall: () => void;
@@ -18,7 +18,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
   const [isCallActive, setIsCallActive] = useState(false);
   const [currentCall, setCurrentCall] = useState(null);
 
-  const initiateCall = useCallback(async (type: 'audio' | 'video', receiverId: string, lessonId: string) => {
+  const initiateCall = useCallback(async (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => {
     if (!user) {
       toast.error('Vous devez être connecté pour passer un appel');
       return false;
@@ -41,7 +41,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
           receiver_id: null, // null car l'appel va à tous les professeurs
           formation_id: formationId,
           lesson_id: lessonId,
-          call_type: type,
+          call_type: type === 'audio' ? 'voice' : type,
           status: 'pending'
         })
         .select()
