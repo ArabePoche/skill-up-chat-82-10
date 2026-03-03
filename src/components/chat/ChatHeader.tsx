@@ -35,7 +35,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   const { initiateCall } = useCallFunctionality(formation?.id || '');
 
   const handleVoiceCall = async () => {
-    const permission = canMakeCall('audio');
+    const permission = canMakeCall('voice');
     if (!permission.allowed) {
       toast.error(permission.reason || 'Appel non autorisé');
       onUpgrade?.();
@@ -43,7 +43,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
     }
     
     try {
-      const success = await initiateCall('audio', '', lesson.id);
+      const success = await initiateCall('voice', '', lesson.id);
       if (!success) {
         toast.error('Impossible de démarrer l\'appel audio');
       }
