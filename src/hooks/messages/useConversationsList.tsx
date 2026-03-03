@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from 'react';
 
 const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';
 
@@ -11,6 +12,33 @@ const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';
  */
 export const useConversationsList = (enabled: boolean = false) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Realtime: écouter les nouveaux messages pour rafraîchir la liste
+  useEffect(() => {
+    if (!enabled || !user?.id) return;
+
+    const channel = supabase
+      .channel(`conv-list-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversation_messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['conversations-list', user.id] });
+          queryClient.invalidateQueries({ queryKey: ['unread-counts', user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, user?.id, queryClient]);
 
   return useQuery({
     queryKey: ['conversations-list', user?.id],
