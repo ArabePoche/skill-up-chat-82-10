@@ -69,8 +69,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 // realtime hooks handled in MessageList to avoid duplicate subscriptions
 
   // Fonctionnalités d'appel
-  const { initiateCall, acceptedCall, closeAgoraUI } = useCallFunctionality(formation.id);
-  const { incomingCall, dismissCall, acceptCall, rejectCall } = useCallNotifications();
+  const { initiateCall, acceptedCall, closeAgoraUI, openAgoraUI } = useCallFunctionality(formation.id);
+  const { incomingCall, dismissCall, acceptCall: acceptNotificationCall, rejectCall } = useCallNotifications();
 
   // Nouveau système de limites centralisé
   const planLimits = usePlanLimits({
@@ -239,7 +239,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           <div className="flex space-x-2">
             <Button 
               size="sm" 
-              onClick={() => acceptCall(incomingCall.id)}
+              onClick={async () => {
+                await acceptNotificationCall(incomingCall.id);
+                openAgoraUI({
+                  id: incomingCall.id,
+                  callType: (incomingCall.call_type === 'video' ? 'video' : 'audio') as 'audio' | 'video',
+                  channelName: `call_${incomingCall.id}`,
+                  callerName: 'Élève',
+                });
+              }}
               className="bg-green-500 hover:bg-green-600"
             >
               {t('formation.accept')}
@@ -372,7 +380,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           callId={acceptedCall.id}
           channelName={acceptedCall.channelName}
           callType={acceptedCall.callType}
-          remoteUserName="Professeur"
+          remoteUserName={acceptedCall.callerName || (userRole?.role === 'teacher' ? 'Élève' : 'Professeur')}
           onEndCall={closeAgoraUI}
         />
       )}
