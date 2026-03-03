@@ -1,22 +1,38 @@
-
-import { useState, useCallback } from 'react';
+/**
+ * Hook pour gérer les appels (initiation, écoute de la réponse, état d'appel Agora)
+ * Utilisé côté étudiant ET côté professeur pour initier un appel
+ */
+import { useState, useCallback, useRef } from 'react';
 import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+
+export interface AcceptedCall {
+  id: string;
+  callType: 'audio' | 'video';
+  channelName: string;
+  callerName?: string;
+}
 
 interface CallFunctionality {
   initiateCall: (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => Promise<boolean>;
   isCallActive: boolean;
   currentCall: any;
   endCall: () => void;
+  /** Appel accepté par un professeur — prêt pour Agora */
+  acceptedCall: AcceptedCall | null;
+  /** Fermer l'UI d'appel Agora */
+  closeAgoraUI: () => void;
 }
 
 export const useCallFunctionality = (formationId: string): CallFunctionality => {
   const { user } = useAuth();
   const { canMakeCall } = usePlanLimits({ formationId, context: 'call' });
   const [isCallActive, setIsCallActive] = useState(false);
-  const [currentCall, setCurrentCall] = useState(null);
+  const [currentCall, setCurrentCall] = useState<any>(null);
+  const [acceptedCall, setAcceptedCall] = useState<AcceptedCall | null>(null);
+  const channelRef = useRef<any>(null);
 
   const initiateCall = useCallback(async (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => {
     if (!user) {
@@ -24,24 +40,23 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
       return false;
     }
 
-    // Vérifier les permissions d'abonnement
     const permission = canMakeCall(type);
-    
     if (!permission.allowed) {
       toast.error(permission.reason || 'Appel non autorisé');
       return false;
     }
 
     try {
-      // Créer une session d'appel qui sera reçue par tous les professeurs
+      const callType = type === 'audio' || type === 'voice' ? 'voice' : 'video';
+
       const { data: callSession, error } = await supabase
         .from('call_sessions')
         .insert({
           caller_id: user.id,
-          receiver_id: null, // null car l'appel va à tous les professeurs
+          receiver_id: null,
           formation_id: formationId,
           lesson_id: lessonId,
-          call_type: type === 'audio' ? 'voice' : type,
+          call_type: callType,
           status: 'pending'
         })
         .select()
@@ -55,11 +70,11 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
 
       setCurrentCall(callSession);
       setIsCallActive(true);
-      
-      toast.success(`Appel ${type === 'audio' ? 'audio' : 'vidéo'} lancé`);
+
+      toast.success(`Appel ${callType === 'voice' ? 'audio' : 'vidéo'} lancé`);
       toast.info('En attente qu\'un professeur réponde...');
-      
-      // Écouter la réponse des professeurs
+
+      // Écouter la réponse du professeur
       const callChannel = supabase
         .channel(`call-${callSession.id}`)
         .on(
@@ -70,30 +85,44 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
             table: 'call_sessions',
             filter: `id=eq.${callSession.id}`
           },
-          (payload) => {
+          (payload: any) => {
             const updatedCall = payload.new;
-            
+
             if (updatedCall.status === 'accepted') {
               toast.success('Un professeur a accepté votre appel !');
-              // TODO: Démarrer la connexion WebRTC
-            } else if (updatedCall.status === 'rejected') {
+              // Ouvrir l'UI Agora côté étudiant
+              setAcceptedCall({
+                id: callSession.id,
+                callType: callType === 'voice' ? 'audio' : 'video',
+                channelName: `call_${callSession.id}`,
+              });
+              setIsCallActive(false);
+            } else if (updatedCall.status === 'rejected' || updatedCall.status === 'ended') {
               toast.info('Appel terminé');
               setIsCallActive(false);
               setCurrentCall(null);
+              // Nettoyer le channel
+              supabase.removeChannel(callChannel);
             }
           }
         )
         .subscribe();
 
-      // Nettoyer l'écoute après 2 minutes si pas de réponse
+      channelRef.current = callChannel;
+
+      // Timeout après 2 minutes
       setTimeout(() => {
         supabase.removeChannel(callChannel);
-        if (callSession.status === 'pending') {
-          endCall();
-          toast.info('Aucun professeur n\'est disponible pour le moment');
-        }
-      }, 120000); // 2 minutes
-      
+        setIsCallActive((active) => {
+          if (active) {
+            toast.info('Aucun professeur n\'est disponible pour le moment');
+            setCurrentCall(null);
+            return false;
+          }
+          return active;
+        });
+      }, 120000);
+
       return true;
     } catch (error) {
       console.error('Erreur lors de l\'initiation de l\'appel:', error);
@@ -108,10 +137,8 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     try {
       await supabase
         .from('call_sessions')
-        .update({ 
+        .update({
           status: 'ended',
-          // Si l'appel est terminé par l'appelant, on conserve le receiver_id existant s'il y en a un
-          // Cela permet de savoir quel professeur était en communication
           ended_at: new Date().toISOString()
         })
         .eq('id', currentCall.id);
@@ -122,12 +149,26 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     } catch (error) {
       console.error('Erreur lors de la fin de l\'appel:', error);
     }
+
+    // Nettoyer le channel realtime
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
   }, [currentCall, user]);
+
+  const closeAgoraUI = useCallback(() => {
+    setAcceptedCall(null);
+    setCurrentCall(null);
+    setIsCallActive(false);
+  }, []);
 
   return {
     initiateCall,
     isCallActive,
     currentCall,
-    endCall
+    endCall,
+    acceptedCall,
+    closeAgoraUI,
   };
 };
