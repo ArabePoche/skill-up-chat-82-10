@@ -4,13 +4,11 @@
  */
 
 const CACHE_NAME = 'educatok-cache-v1';
-const OFFLINE_URL = '/offline.html';
 
 // Assets critiques à mettre en cache immédiatement
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/offline.html',
   '/manifest.json'
 ];
 
@@ -89,11 +87,11 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
 
-        // Si c'est une navigation, afficher la page offline
+        // Si c'est une navigation, retourner la page index en cache
         if (request.mode === 'navigate') {
-          const offlinePage = await caches.match(OFFLINE_URL);
-          if (offlinePage) {
-            return offlinePage;
+          const indexPage = await caches.match('/index.html');
+          if (indexPage) {
+            return indexPage;
           }
         }
 
