@@ -1,5 +1,8 @@
-
-import { useEffect, useState } from 'react';
+/**
+ * Hook pour recevoir les notifications d'appel entrant côté professeur
+ * Joue une sonnerie et affiche la notification en temps réel
+ */
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,6 +20,32 @@ export interface CallNotification {
 export const useCallNotifications = () => {
   const { user } = useAuth();
   const [incomingCall, setIncomingCall] = useState<CallNotification | null>(null);
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialiser l'audio de sonnerie
+  useEffect(() => {
+    ringtoneRef.current = new Audio('/sounds/ringtone-call.ogg');
+    ringtoneRef.current.loop = true;
+    return () => {
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current = null;
+      }
+    };
+  }, []);
+
+  // Jouer / arrêter la sonnerie selon l'état
+  useEffect(() => {
+    if (incomingCall && ringtoneRef.current) {
+      ringtoneRef.current.currentTime = 0;
+      ringtoneRef.current.play().catch(() => {
+        console.log('Cannot autoplay ringtone (user gesture required)');
+      });
+    } else if (!incomingCall && ringtoneRef.current) {
+      ringtoneRef.current.pause();
+      ringtoneRef.current.currentTime = 0;
+    }
+  }, [incomingCall]);
 
   useEffect(() => {
     if (!user) return;
@@ -32,10 +61,9 @@ export const useCallNotifications = () => {
           filter: `status=eq.pending`
         } as any,
         (payload: any) => {
-          console.log('New call received:', payload);
+          console.log('📞 New call received:', payload);
           const call = payload.new as CallNotification;
           
-          // Vérifier si cet appel concerne l'utilisateur actuel
           if (call.status === 'pending') {
             checkIfCallConcernsUser(call);
           }
@@ -47,15 +75,13 @@ export const useCallNotifications = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'call_sessions',
-          filter: `status=neq.pending`
         } as any,
         (payload: any) => {
-          console.log('Call updated:', payload);
+          console.log('📞 Call updated:', payload);
           const call = payload.new as CallNotification;
           
-          // Nettoyer la notification si l'appel n'est plus en attente
           if (call.status !== 'pending') {
-            setIncomingCall(null);
+            setIncomingCall(prev => (prev?.id === call.id ? null : prev));
           }
         }
       )
@@ -70,41 +96,42 @@ export const useCallNotifications = () => {
     if (!user) return;
 
     try {
-      // Si receiver_id est null, c'est un appel à tous les profs
       if (!call.receiver_id) {
-        // Vérifier si l'utilisateur est professeur de cette formation via teacher_formations
-        const { data: teacherFormation, error } = await supabase
-          .from('teacher_formations')
-          .select('teacher_id')
-          .eq('formation_id', call.formation_id)
-          .eq('teacher_id', user.id)
+        // Vérifier si l'utilisateur est professeur de cette formation
+        // teacher_formations.teacher_id → teachers.id, donc on passe par teachers.user_id
+        const { data: teacherData, error } = await supabase
+          .from('teachers')
+          .select(`
+            id,
+            teacher_formations!inner(formation_id)
+          `)
+          .eq('user_id', user.id)
+          .eq('teacher_formations.formation_id', call.formation_id)
           .single();
 
         if (error && error.code !== 'PGRST116') {
-          console.error('Erreur lors de la vérification de la formation:', error);
+          console.error('Erreur vérification professeur:', error);
           return;
         }
 
-        // Si l'utilisateur est le professeur de cette formation, afficher la notification
-        if (teacherFormation) {
-          console.log('Appel reçu pour le professeur:', call);
+        if (teacherData) {
+          console.log('📞 Appel entrant pour le professeur:', call);
           setIncomingCall(call);
         }
       } else {
-        // Si receiver_id n'est pas vide, vérifier si c'est pour cet utilisateur
         if (call.receiver_id === user.id) {
-          console.log('Appel reçu pour l\'utilisateur:', call);
+          console.log('📞 Appel entrant pour l\'utilisateur:', call);
           setIncomingCall(call);
         }
       }
     } catch (error) {
-      console.error('Erreur lors de la vérification de l\'appel:', error);
+      console.error('Erreur vérification appel:', error);
     }
   };
 
-  const dismissCall = () => {
+  const dismissCall = useCallback(() => {
     setIncomingCall(null);
-  };
+  }, []);
 
   const acceptCall = async (callId: string) => {
     if (!user) return;
@@ -114,19 +141,19 @@ export const useCallNotifications = () => {
         .from('call_sessions')
         .update({ 
           status: 'accepted',
-          receiver_id: user.id,  // Ajout du receiver_id pour identifier le professeur qui répond
+          receiver_id: user.id,
+          started_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', callId);
 
       if (error) {
-        console.error('Erreur lors de l\'acceptation de l\'appel:', error);
+        console.error('Erreur acceptation appel:', error);
       } else {
         setIncomingCall(null);
-        // TODO: Démarrer la connexion WebRTC
       }
     } catch (error) {
-      console.error('Erreur lors de l\'acceptation de l\'appel:', error);
+      console.error('Erreur acceptation appel:', error);
     }
   };
 
@@ -138,18 +165,19 @@ export const useCallNotifications = () => {
         .from('call_sessions')
         .update({ 
           status: 'rejected',
-          receiver_id: user.id,  // Ajout du receiver_id pour identifier le professeur qui rejette
+          receiver_id: user.id,
+          ended_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', callId);
 
       if (error) {
-        console.error('Erreur lors du rejet de l\'appel:', error);
+        console.error('Erreur rejet appel:', error);
       } else {
         setIncomingCall(null);
       }
     } catch (error) {
-      console.error('Erreur lors du rejet de l\'appel:', error);
+      console.error('Erreur rejet appel:', error);
     }
   };
 
