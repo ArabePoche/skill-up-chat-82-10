@@ -179,8 +179,8 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const { validateExercise } = useProgressionLogic(formation.id, level.id.toString());
 
   // Fonctionnalités d'appel réutilisées
-  const { initiateCall, acceptedCall, closeAgoraUI } = useCallFunctionality(formation.id);
-  const { incomingCall, dismissCall, acceptCall, rejectCall } = useCallNotifications();
+  const { initiateCall, acceptedCall, closeAgoraUI, openAgoraUI } = useCallFunctionality(formation.id);
+  const { incomingCall, dismissCall, acceptCall: acceptNotificationCall, rejectCall } = useCallNotifications();
 
   // Nouveau système de limites centralisé
   const planLimits = usePlanLimits({
@@ -441,7 +441,15 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           <div className="flex space-x-2">
             <Button 
               size="sm" 
-              onClick={() => acceptCall(incomingCall.id)}
+              onClick={async () => {
+                await acceptNotificationCall(incomingCall.id);
+                openAgoraUI({
+                  id: incomingCall.id,
+                  callType: (incomingCall.call_type === 'video' ? 'video' : 'audio') as 'audio' | 'video',
+                  channelName: `call_${incomingCall.id}`,
+                  callerName: 'Élève',
+                });
+              }}
               className="bg-green-500 hover:bg-green-600"
             >
               Accepter
@@ -599,7 +607,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           callId={acceptedCall.id}
           channelName={acceptedCall.channelName}
           callType={acceptedCall.callType}
-          remoteUserName="Professeur"
+          remoteUserName={acceptedCall.callerName || (userRole?.role === 'teacher' ? 'Élève' : 'Professeur')}
           onEndCall={closeAgoraUI}
         />
       )}
