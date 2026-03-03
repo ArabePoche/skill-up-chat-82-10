@@ -145,6 +145,7 @@ export const useProgressionLogic = (formationId: string, levelId: string) => {
           .upsert({
             user_id: studentId,
             lesson_id: nextLesson.id,
+            level_id: levelId,
             status: 'not_started',
             exercise_completed: false,
           }, { onConflict: 'user_id,lesson_id' });
@@ -193,6 +194,7 @@ export const useProgressionLogic = (formationId: string, levelId: string) => {
             .upsert({
               user_id: studentId,
               lesson_id: firstLessonOfNextLevel.id,
+              level_id: nextLevel.id,
               status: 'not_started',
               exercise_completed: false,
             }, { onConflict: 'user_id,lesson_id' });
