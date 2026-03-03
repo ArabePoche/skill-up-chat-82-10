@@ -44,7 +44,7 @@ interface PlanLimitsResult {
   
   // Vérifications d'accès
   canSendMessage: () => { allowed: boolean; reason?: string };
-  canMakeCall: (type: 'audio' | 'video') => { allowed: boolean; reason?: string };
+  canMakeCall: (type: 'audio' | 'video' | 'voice') => { allowed: boolean; reason?: string };
   canUseTime: () => { allowed: boolean; timeRemaining: number; reason?: string };
   
   // Actions de consommation
@@ -279,7 +279,7 @@ export const usePlanLimits = ({
     return { allowed: true };
   }, [limits, userRole]);
 
-  const canMakeCall = useCallback((type: 'audio' | 'video') => {
+  const canMakeCall = useCallback((type: 'audio' | 'video' | 'voice') => {
     if (userRole?.role === 'teacher') {
       return { allowed: true };
     }
