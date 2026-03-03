@@ -131,7 +131,7 @@ export const useLiveSession = (formationId: string) => {
   }, [currentSession]);
 
   // Fonctions de compatibilité avec l'ancien système d'appels
-  const initiateCall = useCallback(async (type: 'audio' | 'video', receiverId: string, lessonId: string) => {
+  const initiateCall = useCallback(async (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => {
     // Rediriger vers le nouveau système de session en direct
     if (type === 'video') {
       return await startLiveSession(lessonId);
