@@ -113,6 +113,7 @@ export const useSendPromotionMessage = (formationId: string) => {
           .upsert({
             user_id: user.id,
             lesson_id: finalLessonId,
+            level_id: levelId,
             status: 'in_progress',
             exercise_completed: false
           });
