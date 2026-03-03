@@ -48,7 +48,7 @@ export const useUserRole = (formationId: string | undefined) => {
         `)
         .eq('user_id', user.id)
         .eq('teacher_formations.formation_id', formationId)
-        .single();
+        .maybeSingle();
 
       if (!teacherError && teacherData) {
         console.log('User is teacher in this formation:', teacherData);
