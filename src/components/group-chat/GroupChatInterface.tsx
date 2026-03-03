@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { useCallNotifications } from '@/hooks/useCallNotifications';
+import AgoraCallUI from '@/call-system/components/AgoraCallUI';
 import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { useLessonAccessControl } from '@/hooks/useLessonAccessControl';
 import { useFileUpload } from '@/hooks/useFileUpload';
@@ -178,7 +179,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const { validateExercise } = useProgressionLogic(formation.id, level.id.toString());
 
   // Fonctionnalités d'appel réutilisées
-  const { initiateCall } = useCallFunctionality(formation.id);
+  const { initiateCall, acceptedCall, closeAgoraUI } = useCallFunctionality(formation.id);
   const { incomingCall, dismissCall, acceptCall, rejectCall } = useCallNotifications();
 
   // Nouveau système de limites centralisé
@@ -591,6 +592,17 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           lessonTitle={`Niveau: ${level.title}`}
         />
       </div>
+
+      {/* UI Agora quand un professeur a accepté l'appel */}
+      {acceptedCall && (
+        <AgoraCallUI
+          callId={acceptedCall.id}
+          channelName={acceptedCall.channelName}
+          callType={acceptedCall.callType}
+          remoteUserName="Professeur"
+          onEndCall={closeAgoraUI}
+        />
+      )}
     </div>
     </ExerciseModalProvider>
   );
