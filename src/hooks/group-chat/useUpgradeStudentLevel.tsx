@@ -123,6 +123,7 @@ export const useUpgradeStudentLevel = () => {
             .upsert({
               user_id: studentId,
               lesson_id: firstLesson.id,
+              level_id: level.id,
               status: 'not_started',
               exercise_completed: false,
             }, { onConflict: 'user_id,lesson_id' });
