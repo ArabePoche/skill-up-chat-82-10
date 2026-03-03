@@ -59,7 +59,7 @@ const TeacherChatHeader: React.FC<TeacherChatHeaderProps> = ({
 
   const handleAudioCall = async () => {
     try {
-      const success = await initiateCall('audio', student.user_id, lesson.id);
+      const success = await initiateCall('voice', student.user_id, lesson.id);
       if (!success) {
         toast.error('Impossible de démarrer l\'appel audio');
       }
