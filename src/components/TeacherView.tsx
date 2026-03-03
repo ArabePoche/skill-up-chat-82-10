@@ -47,7 +47,7 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
   
   const { data: unreadCount = 0 } = useUnreadMessagesBadge(formation.id);
   const { data: privateDiscussions } = useTeacherPrivateDiscussions(formation.id);
-  const { incomingCalls } = useIncomingCalls(formation.id);
+  const { incomingCalls, acceptCall: acceptIncomingCall, rejectCall: rejectIncomingCall } = useIncomingCalls(formation.id);
   
   // Pour les appels directs quand on est en chat avec un étudiant
   const { directCall, acceptDirectCall, rejectDirectCall } = useDirectCallModal(
@@ -222,18 +222,68 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
           </TabsContent>
         </Tabs>
       </div>
-      {/* Modal de liste des appels - temporairement désactivé */}
+      {/* Modal de liste des appels entrants */}
       {showCallsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">{t('formation.incomingCalls')}</h3>
-            <p className="text-gray-600 mb-4">{t('formation.featureDisabled')}</p>
-            <button 
-              onClick={() => setShowCallsModal(false)}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg"
-            >
-              {t('common.close')}
-            </button>
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{t('formation.incomingCalls')}</h3>
+              <button 
+                onClick={() => setShowCallsModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {incomingCalls.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">Aucun appel en attente</p>
+            ) : (
+              <div className="space-y-3">
+                {incomingCalls.map((call) => (
+                  <div key={call.id} className="border rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {call.caller_avatar ? (
+                        <img src={call.caller_avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <User size={18} className="text-blue-600" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{call.caller_name || 'Étudiant'}</p>
+                        <p className="text-xs text-gray-500">
+                          {call.call_type === 'video' ? '📹 Vidéo' : '📞 Audio'}
+                          {call.lesson_title && ` • ${call.lesson_title}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={async () => {
+                          const success = await acceptIncomingCall(call.id);
+                          if (success) {
+                            setShowCallsModal(false);
+                          }
+                        }}
+                      >
+                        ✓
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => rejectIncomingCall(call.id)}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
