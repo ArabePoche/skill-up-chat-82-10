@@ -32,6 +32,8 @@ import { useLevelExercises } from '@/hooks/group-chat/useLevelExercises';
 import { useStudentExerciseHistory, ExerciseSubmissionHistory } from '@/hooks/useStudentExerciseHistory';
 import { useSendExerciseToStudent } from '@/hooks/useSendExerciseToStudent';
 import { useAvailableLevelsForUpgrade, useUpgradeStudentLevel } from '@/hooks/group-chat/useUpgradeStudentLevel';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -71,6 +73,21 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
   // Niveaux disponibles pour la promotion
   const { data: availableLevels = [], isLoading: levelsLoading } = useAvailableLevelsForUpgrade(formationId, levelId);
   const upgradeStudentMutation = useUpgradeStudentLevel();
+
+  // Récupérer le niveau actuel de l'élève
+  const { data: currentLevel } = useQuery({
+    queryKey: ['current-level-info', levelId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('levels')
+        .select('id, title, order_index')
+        .eq('id', levelId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!levelId,
+  });
 
   const handleSendExercise = async () => {
     if (!selectedExercise || !selectedLessonId) return;
@@ -357,12 +374,29 @@ const SendExerciseModalGroup: React.FC<SendExerciseModalGroupProps> = ({
             <div className="mb-4 p-3 bg-accent/50 rounded-lg border border-accent">
               <div className="flex items-start gap-2">
                 <Zap size={16} className="text-primary mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  Choisissez le niveau cible pour <strong className="text-foreground">{studentName}</strong>. 
-                  Vous pourrez ensuite sélectionner les niveaux intermédiaires à débloquer.
-                </p>
+                <div className="text-sm text-muted-foreground">
+                  <p>
+                    Choisissez le niveau cible pour <strong className="text-foreground">{studentName}</strong>. 
+                    Vous pourrez ensuite sélectionner les niveaux intermédiaires à débloquer.
+                  </p>
+                </div>
               </div>
             </div>
+
+            {/* Indication du niveau actuel */}
+            {currentLevel && (
+              <div className="mb-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                    {currentLevel.order_index}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Niveau actuel</p>
+                    <p className="text-sm font-semibold text-foreground">{currentLevel.title}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <ScrollArea className="h-[350px] pr-4">
               {levelsLoading ? (
