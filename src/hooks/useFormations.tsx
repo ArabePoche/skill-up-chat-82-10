@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { offlineStore } from '@/offline/utils/offlineStore';
+import { syncManager } from '@/offline/utils/syncManager';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { useState, useEffect } from 'react';
 
@@ -67,78 +68,91 @@ export const useFormationById = (formationId: string | undefined) => {
   }, [formationId]);
 
   const query = useQuery({
-    queryKey: ['formation', formationId, isOnline],
+    queryKey: ['formation', formationId],
     queryFn: async () => {
       if (!formationId) return null;
 
+      const currentlyOnline = syncManager.getOnlineStatus();
+
       // Si hors ligne, retourner le cache
-      if (!isOnline) {
+      if (!currentlyOnline) {
         console.log('📴 Offline - returning cached formation:', formationId);
         if (cachedFormation) {
           return cachedFormation;
         }
-        throw new Error('Formation non disponible hors ligne');
+        // Ne pas throw : retourner null et laisser le composant gérer
+        return null;
       }
 
       console.log('🔄 Fetching formation by ID:', formationId);
 
-      const { data, error } = await supabase
-        .from('formations')
-        .select(`
-          *,
-          profiles:author_id (
-            id,
-            first_name,
-            last_name,
-            username
-          ),
-          levels (
+      try {
+        const { data, error } = await supabase
+          .from('formations')
+          .select(`
             *,
-            lessons (
+            profiles:author_id (
+              id,
+              first_name,
+              last_name,
+              username
+            ),
+            levels (
               *,
-              exercises!exercises_lesson_id_fkey (
-                id,
-                title,
-                description,
-                content,
-                type
+              lessons (
+                *,
+                exercises!exercises_lesson_id_fkey (
+                  id,
+                  title,
+                  description,
+                  content,
+                  type
+                )
               )
             )
-          )
-        `)
-        .eq('id', formationId)
-        .maybeSingle();
+          `)
+          .eq('id', formationId)
+          .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching formation:', error);
-        // En cas d'erreur réseau, retourner le cache si disponible
+        if (error) {
+          console.error('Error fetching formation:', error);
+          // En cas d'erreur réseau, retourner le cache si disponible
+          if (cachedFormation) {
+            console.log('📦 Network error - returning cached formation');
+            return cachedFormation;
+          }
+          throw error;
+        }
+
+        if (!data) {
+          console.warn('⚠️ Formation not found:', formationId);
+          if (cachedFormation) {
+            console.log('📦 Formation not found - returning cached version');
+            return cachedFormation;
+          }
+          throw new Error('Formation introuvable');
+        }
+
+        // Sauvegarder dans le cache pour accès offline
+        await offlineStore.saveFormation(data);
+        console.log('✅ Formation cached for offline:', formationId);
+
+        return data;
+      } catch (fetchError) {
+        // Fallback sur le cache en cas d'erreur quelconque
         if (cachedFormation) {
-          console.log('📦 Network error - returning cached formation');
+          console.log('📦 Fetch error - returning cached formation');
           return cachedFormation;
         }
-        throw error;
+        throw fetchError;
       }
-
-      if (!data) {
-        console.warn('⚠️ Formation not found:', formationId);
-        if (cachedFormation) {
-          console.log('📦 Formation not found - returning cached version');
-          return cachedFormation;
-        }
-        throw new Error('Formation introuvable');
-      }
-
-      // Sauvegarder dans le cache pour accès offline
-      await offlineStore.saveFormation(data);
-      console.log('✅ Formation cached for offline:', formationId);
-
-      return data;
     },
     enabled: !!formationId && isCacheLoaded,
-    initialData: isCacheLoaded ? cachedFormation : undefined,
+    initialData: isCacheLoaded && cachedFormation ? cachedFormation : undefined,
     refetchOnMount: true,
-    staleTime: isOnline ? 1000 * 60 * 5 : Infinity,
-    retry: isOnline ? 3 : 0,
+    staleTime: 1000 * 60 * 5,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   // Quand on passe de offline à online et qu'il y a une erreur, relancer
