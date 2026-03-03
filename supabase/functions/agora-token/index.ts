@@ -3,7 +3,6 @@
  * Génération manuelle du token sans dépendance externe
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
@@ -114,17 +113,29 @@ async function generateAccessToken(
 
   const signature = await hmacSign(encoder.encode(appCertificate), toSign);
 
+  // Convert Uint8Array to base64 string
+  const uint8ToBase64 = (bytes: Uint8Array): string => {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  };
+
+  const signatureB64 = uint8ToBase64(signature);
+  const messageB64 = uint8ToBase64(message);
+
   // Pack content
   const content = concat(
-    packString(new TextDecoder().decode(base64Encode(signature) as unknown as Uint8Array || encoder.encode(btoa(String.fromCharCode(...signature))))),
+    packString(signatureB64),
     packUint32(0), // crc_channel (simplified)
     packUint32(0), // crc_uid (simplified)
-    packString(btoa(String.fromCharCode(...message)))
+    packString(messageB64)
   );
 
   // Final token
   const version = "006";
-  const contentB64 = btoa(String.fromCharCode(...content));
+  const contentB64 = uint8ToBase64(content);
   
   return `${version}${appId}${contentB64}`;
 }
