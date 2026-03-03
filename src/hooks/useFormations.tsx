@@ -66,8 +66,8 @@ export const useFormationById = (formationId: string | undefined) => {
     loadCache();
   }, [formationId]);
 
-  return useQuery({
-    queryKey: ['formation', formationId],
+  const query = useQuery({
+    queryKey: ['formation', formationId, isOnline],
     queryFn: async () => {
       if (!formationId) return null;
 
@@ -136,10 +136,20 @@ export const useFormationById = (formationId: string | undefined) => {
     },
     enabled: !!formationId && isCacheLoaded,
     initialData: isCacheLoaded ? cachedFormation : undefined,
-    refetchOnMount: isOnline,
+    refetchOnMount: true,
     staleTime: isOnline ? 1000 * 60 * 5 : Infinity,
-    retry: isOnline ? 3 : false,
+    retry: isOnline ? 3 : 0,
   });
+
+  // Quand on passe de offline à online et qu'il y a une erreur, relancer
+  useEffect(() => {
+    if (isOnline && query.isError) {
+      console.log('🔄 Back online - refetching formation');
+      query.refetch();
+    }
+  }, [isOnline, query.isError]);
+
+  return query;
 };
 
 export const useUserEnrollments = (userId: string | undefined) => {
