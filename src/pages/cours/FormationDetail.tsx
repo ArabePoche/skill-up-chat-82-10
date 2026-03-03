@@ -59,10 +59,19 @@ const FormationDetailPage = () => {
 
   if (error || !formation) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
           <h1 className="text-2xl font-bold text-foreground mb-4">{t('common.error')}</h1>
-          <p className="text-muted-foreground">{t('formation.errorLoading')}</p>
+          <p className="text-muted-foreground mb-6">{t('formation.errorLoading')}</p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => window.location.reload()} variant="default">
+              Réessayer
+            </Button>
+            <Button onClick={() => navigate('/cours')} variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour aux cours
+            </Button>
+          </div>
         </div>
       </div>
     );
