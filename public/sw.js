@@ -4,13 +4,11 @@
  */
 
 const CACHE_NAME = 'educatok-cache-v1';
-const OFFLINE_URL = '/offline.html';
 
 // Assets critiques à mettre en cache immédiatement
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/offline.html',
   '/manifest.json'
 ];
 
