@@ -24,6 +24,8 @@ interface CallFunctionality {
   acceptedCall: AcceptedCall | null;
   /** Fermer l'UI d'appel Agora */
   closeAgoraUI: () => void;
+  /** Ouvrir manuellement l'UI Agora (pour le prof qui accepte un appel entrant) */
+  openAgoraUI: (call: AcceptedCall) => void;
 }
 
 export const useCallFunctionality = (formationId: string): CallFunctionality => {
@@ -163,6 +165,10 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     setIsCallActive(false);
   }, []);
 
+  const openAgoraUI = useCallback((call: AcceptedCall) => {
+    setAcceptedCall(call);
+  }, []);
+
   return {
     initiateCall,
     isCallActive,
@@ -170,5 +176,6 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     endCall,
     acceptedCall,
     closeAgoraUI,
+    openAgoraUI,
   };
 };
