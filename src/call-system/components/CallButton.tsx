@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 interface CallButtonProps {
-  type: 'audio' | 'video';
-  onCall: (type: 'audio' | 'video') => Promise<boolean>;
+  type: 'audio' | 'video' | 'voice';
+  onCall: (type: 'audio' | 'video' | 'voice') => Promise<boolean>;
   disabled?: boolean;
   className?: string;
 }
