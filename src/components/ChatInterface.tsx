@@ -12,6 +12,7 @@ import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { useCallFunctionality } from '@/hooks/useCallFunctionality';
 import { useStudentEvaluations } from '@/hooks/useStudentEvaluations';
 import { useCallNotifications } from '@/hooks/useCallNotifications';
+import AgoraCallUI from '@/call-system/components/AgoraCallUI';
 import ChatInputBar from './chat/ChatInputBar';
 import MessageList from './chat/MessageList';
 import DateSeparator from './chat/DateSeparator';
@@ -68,7 +69,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 // realtime hooks handled in MessageList to avoid duplicate subscriptions
 
   // Fonctionnalités d'appel
-  const { initiateCall } = useCallFunctionality(formation.id);
+  const { initiateCall, acceptedCall, closeAgoraUI } = useCallFunctionality(formation.id);
   const { incomingCall, dismissCall, acceptCall, rejectCall } = useCallNotifications();
 
   // Nouveau système de limites centralisé
@@ -365,9 +366,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           onScrollToMessage={handleScrollToMessage}
         />
       </div>
-     
-      
-      
+      {/* UI Agora quand un professeur a accepté l'appel */}
+      {acceptedCall && (
+        <AgoraCallUI
+          callId={acceptedCall.id}
+          channelName={acceptedCall.channelName}
+          callType={acceptedCall.callType}
+          remoteUserName="Professeur"
+          onEndCall={closeAgoraUI}
+        />
+      )}
 
     </div>
   );
