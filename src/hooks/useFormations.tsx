@@ -107,7 +107,7 @@ export const useFormationById = (formationId: string | undefined) => {
           )
         `)
         .eq('id', formationId)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Error fetching formation:', error);
@@ -117,14 +117,6 @@ export const useFormationById = (formationId: string | undefined) => {
           return cachedFormation;
         }
         throw error;
-      }
-
-      if (!data) {
-        console.error('Formation not found:', formationId);
-        if (cachedFormation) {
-          return cachedFormation;
-        }
-        throw new Error('Formation introuvable');
       }
 
       // Sauvegarder dans le cache pour accès offline
