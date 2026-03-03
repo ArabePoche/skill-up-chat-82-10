@@ -133,10 +133,54 @@ const Conversations = () => {
       return data || [];
     },
     enabled: !!user?.id && !!otherUserId && isOnline,
-    staleTime: 30000, // Cache pendant 30 secondes
-    refetchInterval: false, // Désactivé - utiliser Realtime subscriptions
+    staleTime: 10000,
     retry: isOnline ? 3 : 0,
   });
+
+  // Realtime subscription pour les nouveaux messages de cette conversation
+  useEffect(() => {
+    if (!user?.id || !otherUserId || !isOnline) return;
+
+    const channel = supabase
+      .channel(`conv-${user.id}-${otherUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversation_messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // Vérifier que le message vient bien de cet interlocuteur
+          const newMsg = payload.new as any;
+          if (newMsg?.sender_id === otherUserId || newMsg?.receiver_id === otherUserId) {
+            queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
+            queryClient.invalidateQueries({ queryKey: ['conversations-list', user.id] });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversation_messages',
+          filter: `sender_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          if (newMsg?.receiver_id === otherUserId) {
+            queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, otherUserId, isOnline, queryClient]);
 
   // Charger les messages offline
   useEffect(() => {
