@@ -266,8 +266,14 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       return;
     }
 
+    if (!groupLessonId) {
+      toast.error('Impossible d\'initier l\'appel : leçon non déterminée');
+      return;
+    }
+
     if (userRole?.role === 'student') {
-      const success = await initiateCall(type, '', level.id.toString());
+      const callType = type === 'audio' ? 'voice' : type;
+      const success = await initiateCall(callType, '', groupLessonId);
       if (success) {
         toast.info(`Appel ${type === 'video' ? 'vidéo' : 'audio'} envoyé aux professeurs`);
       }
