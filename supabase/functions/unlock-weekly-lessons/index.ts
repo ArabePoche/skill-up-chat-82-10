@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
           .select(`
             id,
             order_index,
+            level_id,
             levels!inner (
+              id,
               order_index,
               formation_id
             )
@@ -147,6 +149,7 @@ Deno.serve(async (req) => {
           .insert({
             user_id: enrollment.user_id,
             lesson_id: lessonToUnlock.id,
+            level_id: lessonToUnlock.level_id || null,
             status: 'not_started',
             exercise_completed: false
           });
