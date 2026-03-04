@@ -121,8 +121,12 @@ export const useRealtimeCallSystem = (formationId: string, lessonId: string) => 
             
             if (updatedCall.status === 'accepted') {
               toast.success('Un professeur a accepté votre appel !');
-              setIsStudentCallActive(false); // Fermer le modal étudiant
-            } else if (updatedCall.status === 'rejected' || updatedCall.status === 'ended') {
+              // Garder le modal ouvert pour afficher le feedback "accepté"
+              // Il se fermera automatiquement via le timer dans StudentCallModal
+            } else if (updatedCall.status === 'rejected') {
+              toast.info('Appel refusé par le professeur');
+              // Garder le modal ouvert pour afficher le feedback "refusé"
+            } else if (updatedCall.status === 'ended') {
               toast.info('Appel terminé');
               setIsStudentCallActive(false);
               setCurrentCall(null);
@@ -156,7 +160,9 @@ export const useRealtimeCallSystem = (formationId: string, lessonId: string) => 
     }
 
     try {
-      console.log('📞 Initiating call:', { callType, formationId, lessonId });
+      // Normaliser le type d'appel en 'audio'
+      const normalizedCallType = 'audio';
+      console.log('📞 Initiating call:', { callType: normalizedCallType, formationId, lessonId });
       
       const { data: callSession, error } = await supabase
         .from('call_sessions')
@@ -165,7 +171,7 @@ export const useRealtimeCallSystem = (formationId: string, lessonId: string) => 
           receiver_id: null, // Pour tous les professeurs
           formation_id: formationId,
           lesson_id: lessonId,
-          call_type: callType,
+          call_type: normalizedCallType,
           status: 'pending'
         })
         .select()
