@@ -24,7 +24,7 @@ const Conversations = () => {
   const { isOnline } = useOfflineSync();
   const { getOfflineConversationWith } = useOfflineConversations(user?.id);
   const [offlineMessages, setOfflineMessages] = useState<any[]>([]);
-  const { isOtherTyping, emitTyping, emitStopTyping } = useConversationTyping(otherUserId);
+  const { isOtherTyping, otherActivityType, emitTyping, emitStopTyping } = useConversationTyping(otherUserId);
 
   // Récupérer le profil de l'utilisateur courant (pour les notifications)
   const { data: currentUserProfile } = useQuery({
@@ -146,15 +146,14 @@ const Conversations = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'conversation_messages',
           filter: `receiver_id=eq.${user.id}`,
         },
         (payload) => {
-          // Vérifier que le message vient bien de cet interlocuteur
           const newMsg = payload.new as any;
-          if (newMsg?.sender_id === otherUserId || newMsg?.receiver_id === otherUserId) {
+          if (newMsg?.sender_id === otherUserId) {
             queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
             queryClient.invalidateQueries({ queryKey: ['conversations-list', user.id] });
           }
@@ -163,7 +162,37 @@ const Conversations = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversation_messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          if (newMsg?.sender_id === otherUserId) {
+            queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
+            queryClient.invalidateQueries({ queryKey: ['conversations-list', user.id] });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'conversation_messages',
+        },
+        () => {
+          // Pour DELETE, payload.old peut être incomplet avec les filtres
+          // On invalide systématiquement pour cette conversation
+          queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
+          queryClient.invalidateQueries({ queryKey: ['conversations-list', user.id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'conversation_messages',
           filter: `sender_id=eq.${user.id}`,
@@ -366,7 +395,9 @@ const Conversations = () => {
           <div>
             <h2 className="font-semibold">{otherUserName}</h2>
             {isOtherTyping && (
-              <p className="text-xs text-white/80 italic animate-pulse">est en train d'écrire...</p>
+              <p className="text-xs text-white/80 italic animate-pulse">
+                {otherActivityType === 'recording' ? 'est en train d\'enregistrer un vocal...' : 'est en train d\'écrire...'}
+              </p>
             )}
           </div>
         </button>
