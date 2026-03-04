@@ -10,8 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 interface NotifyTeachersParams {
   formationId: string;
   senderName: string;
-  /** 'message' = message normal, 'exercise' = soumission d'exercice */
-  type: 'message' | 'exercise';
+  /** 'message' = message normal, 'exercise' = soumission d'exercice, 'call' = appel entrant */
+  type: 'message' | 'exercise' | 'call';
   /** Aperçu du contenu du message (optionnel) */
   contentPreview?: string;
   /** ID de l'expéditeur pour l'exclure s'il est aussi prof */
@@ -73,19 +73,27 @@ export const notifyFormationTeachers = async ({
     // 4. Construire le titre et le message
     const title = type === 'exercise'
       ? `📝 Nouvel exercice soumis`
+      : type === 'call'
+      ? `📞 Appel entrant`
       : `💬 Nouveau message`;
 
     const message = type === 'exercise'
       ? `${senderName} a soumis un exercice dans "${formationTitle}"`
+      : type === 'call'
+      ? `${senderName} vous appelle dans "${formationTitle}"`
       : `${senderName} a envoyé un message dans "${formationTitle}"${contentPreview ? `: ${contentPreview.substring(0, 60)}` : ''}`;
 
     // 5. Envoyer la notification push via l'edge function
+    const notifType = type === 'call' ? 'incoming_call' 
+      : type === 'exercise' ? 'exercise_validation' 
+      : 'teacher_response';
+
     const { error } = await supabase.functions.invoke('send-push-notification', {
       body: {
         userIds: teacherUserIds,
         title,
         message,
-        type: type === 'exercise' ? 'exercise_validation' : 'teacher_response',
+        type: notifType,
         data: {
           click_action: `/formation/${formationId}/chat`,
           formationId,

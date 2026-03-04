@@ -205,10 +205,11 @@ export const useRealtimeCallSystem = (formationId: string, lessonId: string) => 
         ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Un élève'
         : 'Un élève';
 
+      // Envoyer notification push haute priorité (type appel)
       notifyFormationTeachers({
         formationId,
         senderName,
-        type: 'message',
+        type: 'call',
         contentPreview: `📞 Appel ${callType === 'audio' ? 'audio' : 'vidéo'} entrant`,
         senderId: user.id,
       }).catch(err => console.error('❌ Erreur notif push appel:', err));
