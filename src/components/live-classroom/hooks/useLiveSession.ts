@@ -34,7 +34,7 @@ export const useLiveSession = (formationId: string) => {
           receiver_id: null, // NULL au lieu de chaîne vide pour un champ UUID
           formation_id: formationId,
           lesson_id: lessonId,
-          call_type: 'video',
+          call_type: 'audio',
           status: 'active',
           started_at: new Date().toISOString()
         })
