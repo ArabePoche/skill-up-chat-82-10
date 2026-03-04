@@ -143,41 +143,60 @@ Deno.serve(async (req) => {
     // Envoyer via FCM v1 pour chaque token
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${gcpProjectId}/messages:send`;
     
+    const isCallNotification = payload.type === 'incoming_call';
+
     for (const tokenData of tokens) {
       try {
+        const fcmMessage: Record<string, any> = {
+          token: tokenData.token,
+          notification: {
+            title: payload.title,
+            body: payload.message,
+            ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
+          },
+          android: {
+            // Priorité haute pour les appels — réveille le téléphone
+            priority: isCallNotification ? 'HIGH' : 'NORMAL',
+            notification: {
+              icon: 'ic_notification',
+              ...(isCallNotification ? {
+                channel_id: 'incoming_calls',
+                sound: 'ringtone_call',
+                visibility: 'PUBLIC',
+                notification_priority: 'PRIORITY_MAX',
+              } : {}),
+              ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
+            },
+          },
+          webpush: {
+            headers: {
+              ...(isCallNotification ? { Urgency: 'high' } : {}),
+            },
+            notification: {
+              icon: '/icon-192.png',
+              badge: '/badge-72.png',
+              ...(isCallNotification ? {
+                requireInteraction: true,
+                vibrate: [300, 200, 300, 200, 300],
+                tag: 'incoming-call',
+              } : {}),
+              ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
+            },
+          },
+          data: {
+            ...(payload.data || {}),
+            click_action: payload.data?.clickAction || '/',
+            ...(isCallNotification ? { type: 'incoming_call' } : {}),
+          },
+        };
+
         const fcmResponse = await fetch(fcmUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({
-            message: {
-              token: tokenData.token,
-              notification: {
-                title: payload.title,
-                body: payload.message,
-                ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
-              },
-              android: {
-                notification: {
-                  icon: 'ic_notification',
-                  ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
-                },
-              },
-              webpush: {
-                notification: {
-                  icon: '/icon-192.png',
-                  badge: '/badge-72.png',
-                  ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
-                },
-              },
-              data: {
-                ...(payload.data || {}),
-                click_action: payload.data?.clickAction || '/',
-              },
-            },
-          }),
+          body: JSON.stringify({ message: fcmMessage }),
         });
 
         const fcmResult = await fcmResponse.json();
