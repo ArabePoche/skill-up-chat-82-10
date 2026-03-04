@@ -31,33 +31,20 @@ export const useMatchingUsers = () => {
     setIsLoading(true);
     try {
       // Normaliser les numéros (enlever espaces, tirets, etc.)
-      const normalizedNumbers = phoneNumbers.map(num => 
+      const normalizedNumbers = phoneNumbers.map(num =>
         num.replace(/[\s\-\(\)]/g, '')
       );
 
-      // Récupérer l'utilisateur actuel
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Rechercher les profils avec ces numéros
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, phone, phone_country_code')
-        .not('phone', 'is', null)
-        .neq('id', user?.id || ''); // Exclure l'utilisateur actuel
+      // Appeler la fonction RPC sécurisée (SECURITY DEFINER, bypass RLS)
+      const { data: matches, error } = await supabase
+        .rpc('find_contacts_by_phone', {
+          phone_numbers: normalizedNumbers,
+        });
 
       if (error) throw error;
 
-      // Filtrer les profils qui correspondent aux numéros de contacts
-      const matches = profiles?.filter(profile => {
-        if (!profile.phone) return false;
-        const profilePhone = profile.phone.replace(/[\s\-\(\)]/g, '');
-        return normalizedNumbers.some(num => 
-          num.includes(profilePhone) || profilePhone.includes(num)
-        );
-      }) || [];
-
-      setMatchingUsers(matches);
-      return matches;
+      setMatchingUsers(matches || []);
+      return matches || [];
     } catch (error) {
       console.error('Erreur lors de la recherche des utilisateurs:', error);
       toast({
