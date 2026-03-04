@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { notifyFormationTeachers } from '@/utils/notifyFormationTeachers';
 
 export interface CallSession {
   id: string;
@@ -192,6 +193,25 @@ export const useRealtimeCallSystem = (formationId: string, lessonId: string) => 
       
       toast.success(`Appel ${callType === 'audio' ? 'audio' : 'vidéo'} lancé`);
       toast.info('En attente qu\'un professeur réponde...');
+
+      // Envoyer une notification push aux profs de la formation
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+
+      const senderName = profile
+        ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Un élève'
+        : 'Un élève';
+
+      notifyFormationTeachers({
+        formationId,
+        senderName,
+        type: 'message',
+        contentPreview: `📞 Appel ${callType === 'audio' ? 'audio' : 'vidéo'} entrant`,
+        senderId: user.id,
+      }).catch(err => console.error('❌ Erreur notif push appel:', err));
       
       return true;
     } catch (error) {
