@@ -55,7 +55,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
         .from('call_sessions')
         .insert({
           caller_id: user.id,
-          receiver_id: null,
+          receiver_id: receiverId ? receiverId : null,
           formation_id: formationId,
           lesson_id: lessonId,
           call_type: callType,
