@@ -144,6 +144,33 @@ export const useUpgradeStudentLevel = () => {
               message_type: 'system',
               is_system_message: true,
             });
+
+          // Récupérer et envoyer automatiquement les exercices de la première leçon
+          const { data: lessonExercises, error: exercisesError } = await supabase
+            .from('exercises')
+            .select('id, title, description, content, type')
+            .eq('lesson_id', firstLesson.id)
+            .order('created_at', { ascending: true });
+
+          if (!exercisesError && lessonExercises && lessonExercises.length > 0) {
+            console.log(`📝 Auto-sending ${lessonExercises.length} exercises for lesson ${firstLesson.id}`);
+            
+            for (const exercise of lessonExercises) {
+              await supabase
+                .from('lesson_messages')
+                .insert({
+                  lesson_id: firstLesson.id,
+                  formation_id: formationId,
+                  receiver_id: studentId,
+                  sender_id: user.id, // Le professeur qui fait la promotion
+                  content: `📝 Exercice : ${exercise.title}`,
+                  message_type: 'exercise',
+                  is_system_message: true,
+                  exercise_id: exercise.id,
+                  level_id: level.id,
+                });
+            }
+          }
         }
       }
 
