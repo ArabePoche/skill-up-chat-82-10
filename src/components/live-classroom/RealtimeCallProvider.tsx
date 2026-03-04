@@ -38,8 +38,9 @@ const RealtimeCallProvider: React.FC<RealtimeCallProviderProps> = ({
       <StudentCallModal
         isOpen={isStudentCallActive}
         onEndCall={endCall}
-        callType={currentCall?.call_type || 'audio'}
+        callType={(currentCall?.call_type as 'audio' | 'video') || 'audio'}
         teacherName={currentCall?.receiver_id ? 'Professeur' : undefined}
+        callStatus={(currentCall?.status as 'pending' | 'accepted' | 'rejected' | 'ended') || 'pending'}
       />
       
       {/* Modal côté professeur */}
