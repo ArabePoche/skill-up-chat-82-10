@@ -84,12 +84,16 @@ export const notifyFormationTeachers = async ({
       : `${senderName} a envoyé un message dans "${formationTitle}"${contentPreview ? `: ${contentPreview.substring(0, 60)}` : ''}`;
 
     // 5. Envoyer la notification push via l'edge function
+    const notifType = type === 'call' ? 'incoming_call' 
+      : type === 'exercise' ? 'exercise_validation' 
+      : 'teacher_response';
+
     const { error } = await supabase.functions.invoke('send-push-notification', {
       body: {
         userIds: teacherUserIds,
         title,
         message,
-        type: type === 'exercise' ? 'exercise_validation' : 'teacher_response',
+        type: notifType,
         data: {
           click_action: `/formation/${formationId}/chat`,
           formationId,
