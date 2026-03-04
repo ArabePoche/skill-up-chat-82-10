@@ -73,10 +73,14 @@ export const notifyFormationTeachers = async ({
     // 4. Construire le titre et le message
     const title = type === 'exercise'
       ? `📝 Nouvel exercice soumis`
+      : type === 'call'
+      ? `📞 Appel entrant`
       : `💬 Nouveau message`;
 
     const message = type === 'exercise'
       ? `${senderName} a soumis un exercice dans "${formationTitle}"`
+      : type === 'call'
+      ? `${senderName} vous appelle dans "${formationTitle}"`
       : `${senderName} a envoyé un message dans "${formationTitle}"${contentPreview ? `: ${contentPreview.substring(0, 60)}` : ''}`;
 
     // 5. Envoyer la notification push via l'edge function
