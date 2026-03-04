@@ -35,23 +35,17 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setIsRinging(true);
-      // Créer et jouer la sonnerie
       if (!audioRef.current) {
-        audioRef.current = new Audio();
+        audioRef.current = new Audio('/sounds/notification-default.mp3');
         audioRef.current.loop = true;
-        audioRef.current.volume = 0.5;
-        
-        // Créer une sonnerie simple avec l'API Web Audio
-        createRingtone().then(audioUrl => {
-          if (audioRef.current) {
-            audioRef.current.src = audioUrl;
-            audioRef.current.play().catch(console.error);
-          }
-        });
+        audioRef.current.volume = 0.8;
       }
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(err => {
+        console.log('Autoplay sonnerie bloqué:', err);
+      });
     } else {
       setIsRinging(false);
-      // Arrêter la sonnerie
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
