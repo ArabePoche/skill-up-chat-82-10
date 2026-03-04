@@ -1,13 +1,16 @@
-// Hook pour gérer l'indicateur "est en train d'écrire" dans les conversations directes
+// Hook pour gérer l'indicateur "est en train d'écrire/enregistrer" dans les conversations directes
 // Combine l'émission (typing indicator) et l'écoute (typing listener) en un seul hook
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+type ActivityType = 'typing' | 'recording';
+
 export const useConversationTyping = (otherUserId?: string) => {
   const { user } = useAuth();
   const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [otherActivityType, setOtherActivityType] = useState<ActivityType>('typing');
   const channelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const otherTypingTimeoutRef = useRef<NodeJS.Timeout>();
@@ -15,7 +18,6 @@ export const useConversationTyping = (otherUserId?: string) => {
   useEffect(() => {
     if (!user?.id || !otherUserId) return;
 
-    // Canal unique entre les deux utilisateurs (trié pour cohérence)
     const participants = [user.id, otherUserId].sort();
     const channelName = `conv-typing-${participants[0]}-${participants[1]}`;
 
@@ -25,7 +27,7 @@ export const useConversationTyping = (otherUserId?: string) => {
         const senderId = payload.payload?.user_id;
         if (senderId === otherUserId) {
           setIsOtherTyping(true);
-          // Auto-reset après 3s sans nouveau signal
+          setOtherActivityType(payload.payload?.activity || 'typing');
           if (otherTypingTimeoutRef.current) clearTimeout(otherTypingTimeoutRef.current);
           otherTypingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3000);
         }
@@ -46,16 +48,15 @@ export const useConversationTyping = (otherUserId?: string) => {
     };
   }, [user?.id, otherUserId]);
 
-  const emitTyping = useCallback(() => {
+  const emitTyping = useCallback((activity: ActivityType = 'typing') => {
     if (!channelRef.current || !user?.id) return;
 
     channelRef.current.send({
       type: 'broadcast',
       event: 'typing',
-      payload: { user_id: user.id },
+      payload: { user_id: user.id, activity },
     });
 
-    // Auto-stop après 3s d'inactivité
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       channelRef.current?.send({
@@ -76,5 +77,5 @@ export const useConversationTyping = (otherUserId?: string) => {
     });
   }, [user?.id]);
 
-  return { isOtherTyping, emitTyping, emitStopTyping };
+  return { isOtherTyping, otherActivityType, emitTyping, emitStopTyping };
 };
