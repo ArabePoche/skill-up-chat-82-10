@@ -24,7 +24,7 @@ export const useCallNotifications = () => {
 
   // Initialiser l'audio de sonnerie
   useEffect(() => {
-    ringtoneRef.current = new Audio('/sounds/ringtone-call.ogg');
+    ringtoneRef.current = new Audio('/sounds/ringtone-call.mp3');
     ringtoneRef.current.loop = true;
     return () => {
       if (ringtoneRef.current) {
@@ -63,7 +63,7 @@ export const useCallNotifications = () => {
         (payload: any) => {
           console.log('📞 New call received:', payload);
           const call = payload.new as CallNotification;
-          
+
           if (call.status === 'pending') {
             checkIfCallConcernsUser(call);
           }
@@ -79,7 +79,7 @@ export const useCallNotifications = () => {
         (payload: any) => {
           console.log('📞 Call updated:', payload);
           const call = payload.new as CallNotification;
-          
+
           if (call.status !== 'pending') {
             setIncomingCall(prev => (prev?.id === call.id ? null : prev));
           }
@@ -139,7 +139,7 @@ export const useCallNotifications = () => {
     try {
       const { error } = await supabase
         .from('call_sessions')
-        .update({ 
+        .update({
           status: 'accepted',
           receiver_id: user.id,
           started_at: new Date().toISOString(),
@@ -163,7 +163,7 @@ export const useCallNotifications = () => {
     try {
       const { error } = await supabase
         .from('call_sessions')
-        .update({ 
+        .update({
           status: 'rejected',
           receiver_id: user.id,
           ended_at: new Date().toISOString(),

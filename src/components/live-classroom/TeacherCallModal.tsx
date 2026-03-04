@@ -36,7 +36,7 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
     if (isOpen) {
       setIsRinging(true);
       if (!audioRef.current) {
-        audioRef.current = new Audio('/sounds/notification-default.mp3');
+        audioRef.current = new Audio('/sounds/ringtone-call.mp3');
         audioRef.current.loop = true;
         audioRef.current.volume = 0.8;
       }
@@ -77,7 +77,7 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={() => { }}>
       <DialogContent className="max-w-md mx-auto bg-gradient-to-b from-blue-50 to-white border-blue-200">
         <div className="flex flex-col items-center space-y-6 py-6">
           {/* Avatar étudiant avec animation */}
@@ -128,7 +128,7 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
             >
               <PhoneOff className="w-6 h-6" />
             </Button>
-            
+
             <Button
               onClick={handleAccept}
               className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600"
