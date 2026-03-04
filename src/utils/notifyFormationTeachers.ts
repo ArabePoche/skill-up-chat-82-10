@@ -10,8 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 interface NotifyTeachersParams {
   formationId: string;
   senderName: string;
-  /** 'message' = message normal, 'exercise' = soumission d'exercice */
-  type: 'message' | 'exercise';
+  /** 'message' = message normal, 'exercise' = soumission d'exercice, 'call' = appel entrant */
+  type: 'message' | 'exercise' | 'call';
   /** Aperçu du contenu du message (optionnel) */
   contentPreview?: string;
   /** ID de l'expéditeur pour l'exclure s'il est aussi prof */
