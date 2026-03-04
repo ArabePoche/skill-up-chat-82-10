@@ -27,7 +27,7 @@ interface ChatInputBarProps {
   } | null;
   onCancelReply?: () => void;
   onScrollToMessage?: (messageId: string) => void;
-  onTyping?: () => void;
+  onTyping?: (activity?: 'typing' | 'recording') => void;
 }
 
 const ChatInputBar: React.FC<ChatInputBarProps> = ({ 
@@ -215,6 +215,9 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const handleStartVoiceRecording = () => {
     checkAuthAndExecute(() => {
       setShowVoiceBar(true);
+      // Émettre l'indicateur d'enregistrement vocal
+      if (lessonId && formationId) startTyping();
+      onTyping?.('recording');
     });
   };
 
