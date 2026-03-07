@@ -122,6 +122,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
         }).catch(console.error);
       } else {
         videoRef.current.pause();
+        videoRef.current.currentTime = 0; // Remettre au début quand on quitte
         setIsPlaying(false);
       }
     }
