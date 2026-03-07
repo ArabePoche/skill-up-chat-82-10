@@ -68,38 +68,54 @@ class SyncManager {
     this.isCheckingConnection = true;
 
     const wasOnline = this.isOnline;
-    this.isOnline = navigator.onLine;
 
-    // Test réel de connexion avec Supabase seulement si navigator dit qu'on est en ligne
-    if (this.isOnline) {
+    // Si le navigateur dit qu'on est hors ligne, c'est fiable
+    if (!navigator.onLine) {
+      this.isOnline = false;
+      this.isCheckingConnection = false;
+    } else {
+      // navigator.onLine = true → vérifier avec un ping léger à Supabase
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), 8000);
         
         const { error } = await supabase.from('formations').select('id').limit(1).abortSignal(controller.signal);
         clearTimeout(timeout);
         
         if (error) {
           const errorMessage = error.message?.toLowerCase() || '';
-          const isQuotaError = errorMessage.includes('quota') || 
-                              errorMessage.includes('storage') ||
-                              errorMessage.includes('exceed') ||
-                              (error as any).code === '402';
+          // Seuls les vrais problèmes réseau doivent passer en offline
+          const isNetworkError = errorMessage.includes('fetch') || 
+                                errorMessage.includes('network') ||
+                                errorMessage.includes('abort') ||
+                                errorMessage.includes('timeout') ||
+                                errorMessage.includes('failed to fetch');
           
-          if (isQuotaError) {
-            console.log('📵 Supabase quota exceeded - treating as offline');
+          if (isNetworkError) {
+            console.log('📵 Network error detected:', errorMessage);
+            this.isOnline = false;
+          } else {
+            // Erreur Supabase (RLS, quota, etc.) ≠ perte de connexion
+            console.log('⚠️ Supabase error but network OK:', errorMessage);
+            this.isOnline = true;
+            this.reconnectAttempts = 0;
           }
-          this.isOnline = false;
         } else {
           this.isOnline = true;
           this.reconnectAttempts = 0;
         }
-      } catch {
-        this.isOnline = false;
+      } catch (err: unknown) {
+        // Seules les erreurs de type réseau (AbortError, TypeError fetch) = offline
+        const errName = err instanceof Error ? err.name : '';
+        if (errName === 'AbortError' || errName === 'TypeError') {
+          this.isOnline = false;
+        } else {
+          // Erreur inattendue, garder l'état actuel
+          console.warn('⚠️ Unexpected check error, keeping state:', err);
+        }
       }
+      this.isCheckingConnection = false;
     }
-
-    this.isCheckingConnection = false;
 
     // Si changement d'état
     if (wasOnline !== this.isOnline) {
