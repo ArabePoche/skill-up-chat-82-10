@@ -102,7 +102,7 @@ export const useInfiniteVideos = () => {
         });
       }
 
-      return data || [];
+      return result;
     },
     getNextPageParam: (lastPage, allPages) => {
       // Continuer à charger si on a reçu le nombre complet de vidéos demandé
