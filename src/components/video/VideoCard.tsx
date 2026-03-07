@@ -247,11 +247,11 @@ const VideoCard: React.FC<VideoCardProps> = ({
             ref={videoRef}
             src={video.video_url}
             poster={video.thumbnail_url}
-            className="absolute inset-0 w-full h-full object-cover cursor-pointer"
+            className="absolute inset-0 w-full h-full object-contain cursor-pointer"
             style={{
               width: '100vw',
               height: '100vh',
-              objectFit: 'cover'
+              objectFit: 'contain'
             }}
             muted={isMuted}
             loop
