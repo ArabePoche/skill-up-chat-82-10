@@ -87,9 +87,17 @@ export const useInfiniteVideos = () => {
         return [];
       }
 
+      // Mélanger le pool aléatoirement (Fisher-Yates) puis prendre pageSize
+      const shuffled = [...(data || [])];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      const result = shuffled.slice(0, pageSize);
+
       // Ajouter les nouvelles vidéos au Set des vidéos affichées
-      if (data && data.length > 0) {
-        data.forEach((video: Video) => {
+      if (result.length > 0) {
+        result.forEach((video: Video) => {
           displayedVideosRef.current.add(video.id);
         });
       }
