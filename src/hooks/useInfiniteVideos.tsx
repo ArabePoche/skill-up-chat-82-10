@@ -70,39 +70,15 @@ export const useInfiniteVideos = () => {
         query = query.not('id', 'in', `(${displayedIds.join(',')})`);
       }
       
-      // Récupérer plus de vidéos que nécessaire pour compenser le filtrage
-      query = query.limit(pageSize);
+      // Algorithme de recommandation avec shuffle réel
+      // On récupère un pool plus large puis on mélange côté client
+      const poolSize = pageSize * 4;
+      query = query.limit(poolSize);
 
-      // Algorithme de recommandation dynamique
-      const shouldRecommendByInterests = userInterests.length > 0 && Math.random() < 0.8;
-      
-      if (shouldRecommendByInterests) {
-        // 80% basé sur les intérêts : tri par engagement et pertinence
-        const randomSort = Math.random();
-        if (randomSort < 0.4) {
-          // Contenu populaire dans les centres d'intérêt
-          query = query.order('likes_count', { ascending: false });
-        } else if (randomSort < 0.7) {
-          // Contenu récent dans les centres d'intérêt
-          query = query.order('created_at', { ascending: false });
-        } else {
-          // Contenu avec beaucoup de commentaires (engagement)
-          query = query.order('comments_count', { ascending: false });
-        }
-      } else {
-        // 20% découverte aléatoire pour la diversité
-        const discoveryType = Math.random();
-        if (discoveryType < 0.3) {
-          // Nouveau contenu tendance
-          query = query.order('created_at', { ascending: false });
-        } else if (discoveryType < 0.6) {
-          // Contenu populaire général
-          query = query.order('likes_count', { ascending: false });
-        } else {
-          // Contenu avec engagement élevé
-          query = query.order('comments_count', { ascending: false });
-        }
-      }
+      // Varier le tri pour diversifier le pool
+      const sortOptions = ['likes_count', 'created_at', 'comments_count'] as const;
+      const randomSortKey = sortOptions[Math.floor(Math.random() * sortOptions.length)];
+      query = query.order(randomSortKey, { ascending: Math.random() > 0.5 });
 
       const { data, error } = await query;
 

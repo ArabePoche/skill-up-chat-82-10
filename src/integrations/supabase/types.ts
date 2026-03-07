@@ -8354,6 +8354,16 @@ export type Database = {
         Args: { comment_id: string; user_id: string }
         Returns: boolean
       }
+      find_contacts_by_phone: {
+        Args: { phone_numbers: string[] }
+        Returns: {
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          phone_country_code: string
+        }[]
+      }
       generate_parental_code: { Args: never; Returns: string }
       get_exercise_global_status: {
         Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
