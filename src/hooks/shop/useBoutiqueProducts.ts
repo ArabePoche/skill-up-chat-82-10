@@ -446,20 +446,31 @@ export const useTransferToMarketplace = () => {
                     .eq('id', boutiqueProductId);
             }
 
-            // SI le stock passe de 0 à > 0, on déclenche les notifications de réapprovisionnement
-            const oldQty = boutiqueProduct.marketplace_quantity || 0;
-            if (oldQty === 0 && serverMarketplaceQty > 0) {
-                const pid = boutiqueProduct.product_id || (await supabase.from('physical_shop_products').select('product_id').eq('id', boutiqueProductId).single()).data?.product_id;
-                if (pid) {
+            // Vérifier le stock actuel du produit marketplace pour déclencher les notifs de restock
+            // On vérifie le stock RÉEL dans la table products (ce que le client voit)
+            const pid = boutiqueProduct.product_id || (await supabase.from('physical_shop_products').select('product_id').eq('id', boutiqueProductId).single()).data?.product_id;
+            if (pid) {
+                // Récupérer l'ancien stock du produit marketplace
+                const { data: marketplaceProduct } = await supabase
+                    .from('products')
+                    .select('stock')
+                    .eq('id', pid)
+                    .single();
+
+                const oldStock = marketplaceProduct?.stock ?? 0;
+                console.log(`📦 Stock avant mise à jour: ${oldStock}, nouveau stock marketplace: ${serverMarketplaceQty}`);
+
+                // Si le produit était en rupture (stock <= 0) et qu'il est maintenant disponible
+                if (oldStock <= 0 && serverMarketplaceQty > 0) {
                     console.log(`🔔 Déclenchement des notifications de réapprovisionnement pour le produit ${pid}`);
                     supabase.functions.invoke('notify-restock', {
                         body: { productId: pid }
                     })
                         .then(({ data, error }) => {
-                            if (error) console.error('Erreur API notifications:', error);
-                            else console.log('Réponse notifications:', data);
+                            if (error) console.error('❌ Erreur API notifications restock:', error);
+                            else console.log('✅ Réponse notifications restock:', data);
                         })
-                        .catch(err => console.error('Erreur lors du déclenchement des notifications:', err));
+                        .catch(err => console.error('❌ Erreur lors du déclenchement des notifications:', err));
                 }
             }
 

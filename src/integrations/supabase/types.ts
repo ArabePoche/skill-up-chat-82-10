@@ -2099,6 +2099,7 @@ export type Database = {
           message: string
           payment_id: string | null
           post_id: string | null
+          product_id: string | null
           reaction_type: string | null
           requested_plan_type: string | null
           sender_id: string | null
@@ -2123,6 +2124,7 @@ export type Database = {
           message: string
           payment_id?: string | null
           post_id?: string | null
+          product_id?: string | null
           reaction_type?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
@@ -2147,6 +2149,7 @@ export type Database = {
           message?: string
           payment_id?: string | null
           post_id?: string | null
+          product_id?: string | null
           reaction_type?: string | null
           requested_plan_type?: string | null
           sender_id?: string | null
@@ -2193,6 +2196,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
@@ -2987,6 +2997,42 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_restock_subscriptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_restock_subscriptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_restock_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
