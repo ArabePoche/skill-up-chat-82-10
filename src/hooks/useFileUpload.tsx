@@ -19,23 +19,24 @@ export const useFileUpload = () => {
     }
 
     setIsUploading(true);
-    
+
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      
+
       console.log('📤 Upload fichier:', {
         name: file.name,
         size: file.size,
         bucket: bucketName,
         path: fileName
       });
-      
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          contentType: file.type || undefined
         });
 
       if (uploadError) {
@@ -73,7 +74,7 @@ export const useFileUpload = () => {
         // Ne pas bloquer l'upload si le cache échoue
         console.warn('⚠️ Impossible de sauvegarder dans le cache local:', cacheError);
       }
-      
+
       return {
         fileUrl: publicUrl,
         fileName: file.name,

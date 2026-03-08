@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import type { BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
 
-interface TransferDialogProps {
+export interface TransferDialogProps {
     product: BoutiqueProduct | null;
     isOpen: boolean;
     onClose: () => void;

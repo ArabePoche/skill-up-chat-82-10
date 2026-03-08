@@ -14,6 +14,7 @@ interface Product {
   discount_percentage?: number;
   rating?: number;
   product_type: string;
+  stock?: number;
   product_media?: Array<{
     media_url: string;
     display_order: number;
@@ -34,14 +35,14 @@ interface ProductGridProps {
 const ProductGrid: React.FC<ProductGridProps> = ({ products, user, onAddToCart }) => {
   const { t } = useTranslation();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  
+
   // Filtrer les produits similaires (même type, exclure le produit sélectionné)
   const getSimilarProducts = (product: Product) => {
     return products
       .filter(p => p.id !== product.id && p.product_type === product.product_type)
       .slice(0, 4);
   };
-  
+
   if (products.length === 0) {
     return (
       <div className="text-center py-8 sm:py-12">

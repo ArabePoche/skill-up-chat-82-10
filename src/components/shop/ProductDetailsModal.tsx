@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { ShoppingCart, Star, Heart, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Star, Heart, X, ChevronLeft, ChevronRight, Store, Info, Bell, BellOff } from 'lucide-react';
+import { useProductRestock } from '@/hooks/shop/useProductRestock';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,6 +24,7 @@ interface Product {
   discount_percentage?: number;
   rating?: number;
   product_type: string;
+  stock?: number;
   product_media?: Array<{
     media_url: string;
     display_order: number;
@@ -51,7 +54,8 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   similarProducts = []
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, skipSnaps: false });
+  const { isSubscribed, subscribe, unsubscribe, isSubscribing, isUnsubscribing } = useProductRestock(product?.id, user?.id);
   const [emblaThumbsRef, emblaThumbsApi] = useEmblaCarousel({
     containScroll: 'keepSnaps',
     dragFree: true,
@@ -85,8 +89,8 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
   if (!product) return null;
 
-  const images = product.product_media?.map(m => m.media_url) || 
-                 (product.image_url ? [product.image_url] : []);
+  const images = product.product_media?.map(m => m.media_url) ||
+    (product.image_url ? [product.image_url] : []);
 
   const formatAuthorName = (profile: any) => {
     if (!profile) return 'Auteur inconnu';
@@ -99,13 +103,22 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
     ? product.original_price * (1 - product.discount_percentage / 100)
     : product.price;
 
+  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0">
         <ScrollArea className="max-h-[90vh]">
           <div className="p-6">
             <DialogHeader className="mb-6">
-              <DialogTitle className="text-2xl font-bold">{product.title}</DialogTitle>
+              <div className="flex items-center gap-3">
+                <DialogTitle className="text-2xl font-bold">{product.title}</DialogTitle>
+                {isOutOfStock && (
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 font-bold border-gray-200">
+                    En rupture
+                  </Badge>
+                )}
+              </div>
             </DialogHeader>
 
             <div className="grid md:grid-cols-2 gap-8">
@@ -120,7 +133,7 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                             <img
                               src={image}
                               alt={`${product.title} - Image ${index + 1}`}
-                              className="w-full h-96 object-cover"
+                              className={`w-full h-96 object-cover ${isOutOfStock ? 'grayscale-[0.5]' : ''}`}
                             />
                           </div>
                         ))
@@ -164,16 +177,15 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         <button
                           key={index}
                           onClick={() => onThumbClick(index)}
-                          className={`flex-[0_0_20%] min-w-0 rounded-md overflow-hidden border-2 transition-all ${
-                            index === currentImageIndex
-                              ? 'border-orange-500'
-                              : 'border-transparent opacity-60 hover:opacity-100'
-                          }`}
+                          className={`flex-[0_0_20%] min-w-0 rounded-md overflow-hidden border-2 transition-all ${index === currentImageIndex
+                            ? 'border-orange-500'
+                            : 'border-transparent opacity-60 hover:opacity-100'
+                            }`}
                         >
                           <img
                             src={image}
                             alt={`Miniature ${index + 1}`}
-                            className="w-full h-20 object-cover"
+                            className={`w-full h-20 object-cover ${isOutOfStock ? 'grayscale-[0.5]' : ''}`}
                           />
                         </button>
                       ))}
@@ -185,7 +197,7 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
               {/* Détails du produit */}
               <div className="space-y-6">
                 {/* Badge promo */}
-                {product.discount_percentage && (
+                {product.discount_percentage && !isOutOfStock && (
                   <Badge className="bg-red-500 text-white">
                     -{product.discount_percentage}%
                   </Badge>
@@ -193,8 +205,8 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
                 {/* Type de produit */}
                 <Badge variant="outline">
-                  {product.product_type === 'formation' ? 'Formation' : 
-                   product.product_type === 'article' ? 'Article' : 'Service'}
+                  {product.product_type === 'formation' ? 'Formation' :
+                    product.product_type === 'article' ? 'Article' : 'Service'}
                 </Badge>
 
                 {/* Auteur */}
@@ -210,11 +222,10 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                         <Star
                           key={i}
                           size={18}
-                          className={`${
-                            i < Math.floor(product.rating || 0)
-                              ? 'text-yellow-400 fill-current'
-                              : 'text-gray-300'
-                          }`}
+                          className={`${i < Math.floor(product.rating || 0)
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300'
+                            }`}
                         />
                       ))}
                     </div>
@@ -225,16 +236,16 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 {/* Prix */}
                 <div className="space-y-1">
                   <div className="flex items-baseline space-x-3">
-                    <span className="text-3xl font-bold text-gray-900">
+                    <span className={`text-3xl font-bold ${isOutOfStock ? 'text-gray-500' : 'text-gray-900'}`}>
                       {Math.round(discountedPrice || 0)}€
                     </span>
-                    {product.original_price && product.discount_percentage && (
+                    {product.original_price && product.discount_percentage && !isOutOfStock && (
                       <span className="text-xl text-gray-500 line-through">
                         {product.original_price}€
                       </span>
                     )}
                   </div>
-                  {product.discount_percentage && (
+                  {product.discount_percentage && !isOutOfStock && (
                     <p className="text-sm text-green-600">
                       Économisez {Math.round((product.original_price || 0) - discountedPrice)}€
                     </p>
@@ -251,14 +262,44 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
                 {/* Boutons d'action */}
                 <div className="flex gap-3 pt-4">
-                  <Button
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-12 text-base"
-                    disabled={!user}
-                    onClick={() => onAddToCart?.(product.id)}
-                  >
-                    <ShoppingCart size={20} className="mr-2" />
-                    {!user ? 'Connectez-vous pour acheter' : 'Ajouter au panier'}
-                  </Button>
+                  {isOutOfStock ? (
+                    <Button
+                      className={`w-full flex-1 py-6 text-lg font-bold shadow-lg ${isSubscribed ? 'bg-gray-200 hover:bg-gray-300 text-gray-800' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                      disabled={isSubscribing || isUnsubscribing || !user}
+                      onClick={() => {
+                        if (!user) {
+                          toast.error('Veuillez vous connecter pour être notifié.');
+                          return;
+                        }
+                        if (isSubscribed) {
+                          unsubscribe();
+                        } else {
+                          subscribe();
+                        }
+                      }}
+                    >
+                      {isSubscribed ? (
+                        <>
+                          <BellOff className="mr-2 h-6 w-6" />
+                          Ne plus me notifier
+                        </>
+                      ) : (
+                        <>
+                          <Bell className="mr-2 h-6 w-6" />
+                          Me notifier
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-12 text-base"
+                      disabled={!user}
+                      onClick={() => onAddToCart?.(product.id)}
+                    >
+                      <ShoppingCart size={20} className="mr-2" />
+                      {!user ? 'Connectez-vous pour acheter' : 'Ajouter au panier'}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="icon"

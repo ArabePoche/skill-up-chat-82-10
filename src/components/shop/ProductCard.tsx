@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import useEmblaCarousel from 'embla-carousel-react';
+import { useProductRestock } from '@/hooks/shop/useProductRestock';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -16,6 +18,7 @@ interface Product {
   discount_percentage?: number;
   rating?: number;
   product_type: string;
+  stock?: number;
   product_media?: Array<{
     media_url: string;
     display_order: number;
@@ -37,13 +40,15 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, onClick }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, skipSnaps: false });
-  
+  const { isSubscribed, subscribe, unsubscribe, isSubscribing, isUnsubscribing } = useProductRestock(product.id, user?.id);
+
   // Récupérer toutes les images disponibles
-  const images = product.product_media?.map(m => m.media_url) || 
-                 (product.image_url ? [product.image_url] : []);
-  
+  const images = product.product_media?.map(m => m.media_url) ||
+    (product.image_url ? [product.image_url] : []);
+
   const hasMultipleImages = images.length > 1;
-  
+  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+
   const scrollPrev = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (emblaApi) emblaApi.scrollPrev();
@@ -79,14 +84,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
     : product.price;
 
   return (
-    <Card 
-      className="group hover:shadow-xl transition-all duration-300 bg-white border border-gray-200 hover:border-orange-300 relative cursor-pointer"
+    <Card
+      className={`group hover:shadow-xl transition-all duration-300 bg-white border border-gray-200 hover:border-orange-300 relative cursor-pointer ${isOutOfStock ? 'opacity-90' : ''}`}
       onClick={() => onClick?.(product)}
     >
       {/* Badge promo */}
       {product.discount_percentage && (
-        <Badge className="absolute top-2 left-2 z-10 bg-red-500 text-white">
+        <Badge className={`${isOutOfStock ? 'hidden' : 'absolute top-2 left-2 z-10 bg-red-500 text-white'}`}>
           -{product.discount_percentage}%
+        </Badge>
+      )}
+
+      {/* Badge Rupture */}
+      {isOutOfStock && (
+        <Badge className="absolute top-2 left-2 z-10 bg-gray-600 text-white font-bold">
+          En rupture
         </Badge>
       )}
 
@@ -106,11 +118,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
               {images.length > 0 ? (
                 images.map((image, index) => (
                   <div key={index} className="flex-[0_0_100%] min-w-0">
-                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                      <img 
-                        src={image} 
+                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
+                      <img
+                        src={image}
                         alt={`${product.title || 'Produit'} - Image ${index + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'grayscale-[0.5]' : ''}`}
                       />
                     </div>
                   </div>
@@ -124,7 +136,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
               )}
             </div>
           </div>
-          
+
           {/* Boutons de navigation des images */}
           {hasMultipleImages && (
             <>
@@ -144,15 +156,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
               >
                 <ChevronRight size={16} />
               </Button>
-              
+
               {/* Indicateurs de pagination */}
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
                 {images.map((_, index) => (
                   <div
                     key={index}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                      index === currentImageIndex ? 'bg-white' : 'bg-white/50'
-                    }`}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                      }`}
                   />
                 ))}
               </div>
@@ -181,9 +192,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
           <div className="flex items-center mb-2">
             <div className="flex mr-1">
               {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
-                  size={12} 
+                <Star
+                  key={i}
+                  size={12}
                   className={`${i < Math.floor(product.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
                 />
               ))}
@@ -194,10 +205,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
 
         {/* Prix */}
         <div className="flex items-center space-x-2 mb-3">
-          <span className="text-lg font-bold text-gray-900">
+          <span className={`text-lg font-bold ${isOutOfStock ? 'text-gray-500' : 'text-gray-900'}`}>
             {Math.round(discountedPrice || 0)}€
           </span>
-          {product.original_price && product.discount_percentage && (
+          {product.original_price && product.discount_percentage && !isOutOfStock && (
             <span className="text-sm text-gray-500 line-through">
               {product.original_price}€
             </span>
@@ -206,17 +217,38 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
-        <Button 
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-          disabled={!user}
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddToCart?.(product.id);
-          }}
-        >
-          <ShoppingCart size={16} className="mr-2" />
-          {!user ? 'Connectez-vous' : 'Ajouter au panier'}
-        </Button>
+        {isOutOfStock ? (
+          <Button
+            className={`w-full ${isSubscribed ? 'bg-gray-200 hover:bg-gray-300 text-gray-800' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+            disabled={isSubscribing || isUnsubscribing || !user}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!user) {
+                toast.error('Veuillez vous connecter pour être notifié.');
+                return;
+              }
+              if (isSubscribed) {
+                unsubscribe();
+              } else {
+                subscribe();
+              }
+            }}
+          >
+            {isSubscribed ? 'Ne plus me notifier' : 'Me notifier'}
+          </Button>
+        ) : (
+          <Button
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+            disabled={!user}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToCart?.(product.id);
+            }}
+          >
+            <ShoppingCart size={16} className="mr-2" />
+            {!user ? 'Connectez-vous' : 'Ajouter au panier'}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

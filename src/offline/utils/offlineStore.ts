@@ -55,7 +55,7 @@ interface CachedQuery {
 
 interface PendingMutation {
   id: string;
-  type: 'message' | 'reaction' | 'progress' | 'profile' | 'grade' | 'attendance' | 'payment' | 'note' | 'generic';
+  type: 'message' | 'reaction' | 'progress' | 'profile' | 'grade' | 'attendance' | 'payment' | 'note' | 'transfer' | 'return' | 'update_boutique_product' | 'delete_boutique_product' | 'generic';
   payload: any;
   createdAt: number;
   retryCount: number;
@@ -84,7 +84,7 @@ class OfflineStore {
 
   async init(): Promise<void> {
     if (this.initPromise) return this.initPromise;
-    
+
     this.initPromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -92,7 +92,7 @@ class OfflineStore {
         console.error('Failed to open IndexedDB:', request.error);
         reject(request.error);
       };
-      
+
       request.onsuccess = () => {
         this.db = request.result;
         console.log('📦 IndexedDB initialized');
@@ -101,7 +101,7 @@ class OfflineStore {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        
+
         // Store pour les formations
         if (!db.objectStoreNames.contains(FORMATIONS_STORE)) {
           const formationStore = db.createObjectStore(FORMATIONS_STORE, { keyPath: 'id' });
@@ -391,7 +391,7 @@ class OfflineStore {
 
       request.onsuccess = () => {
         const results = request.result as OfflineMessage[];
-        resolve(results.map(r => r.data).sort((a, b) => 
+        resolve(results.map(r => r.data).sort((a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         ));
       };
@@ -540,7 +540,7 @@ class OfflineStore {
     status: string;
   }> {
     const progressList = await this.getUserProgressByFormation(userId, formationId);
-    
+
     if (progressList.length === 0) {
       return { levelOrder: 0, lessonOrder: 0, status: 'not_started' };
     }
@@ -551,8 +551,8 @@ class OfflineStore {
     let lastStatus = 'not_started';
 
     for (const p of progressList) {
-      if (p.levelOrderIndex > maxLevel || 
-          (p.levelOrderIndex === maxLevel && p.lessonOrderIndex > maxLesson)) {
+      if (p.levelOrderIndex > maxLevel ||
+        (p.levelOrderIndex === maxLevel && p.lessonOrderIndex > maxLesson)) {
         maxLevel = p.levelOrderIndex;
         maxLesson = p.lessonOrderIndex;
         lastStatus = p.status;
@@ -684,7 +684,7 @@ class OfflineStore {
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to download audio');
-      
+
       const blob = await response.blob();
       const db = await this.ensureDB();
 
@@ -713,7 +713,7 @@ class OfflineStore {
       try {
         const lessons = await this.getLessonsByFormation(formationId);
         const transaction = db.transaction([FORMATIONS_STORE, LESSONS_STORE], 'readwrite');
-        
+
         const formationStore = transaction.objectStore(FORMATIONS_STORE);
         formationStore.delete(formationId);
 

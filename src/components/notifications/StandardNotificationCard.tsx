@@ -16,10 +16,12 @@ interface StandardNotificationCardProps {
   };
 }
 
-const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({ 
-  notification 
+const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
+  notification
 }) => {
   const queryClient = useQueryClient();
+
+  const isRestock = notification.type === 'product_restock';
 
   // Marquer automatiquement comme lue à l'affichage
   useEffect(() => {
@@ -29,12 +31,12 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
           .from('notifications')
           .update({ is_read: true })
           .eq('id', notification.id);
-        
+
         // Invalider les compteurs pour mise à jour
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
         queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       };
-      
+
       // Délai léger pour éviter trop de requêtes
       const timer = setTimeout(markAsRead, 500);
       return () => clearTimeout(timer);
@@ -48,6 +50,8 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
         return <Bell size={16} className="text-blue-600" />;
       case 'system':
         return <Bell size={16} className="text-green-600" />;
+      case 'product_restock':
+        return <Bell size={16} className="text-orange-600" />;
       default:
         return <Bell size={16} className="text-purple-600" />;
     }
@@ -60,6 +64,8 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
         return 'bg-blue-100';
       case 'system':
         return 'bg-green-100';
+      case 'product_restock':
+        return 'bg-orange-100';
       default:
         return 'bg-purple-100';
     }
@@ -70,8 +76,21 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
     locale: fr
   });
 
+  const productId = (notification as any).product_id;
+
+  const handleNotificationClick = () => {
+    if (isRestock && productId) {
+      // Si on est sur une notification de réapprovisionnement, on pourrait rediriger vers le produit
+      // Pour l'instant on laisse Standard, mais on pourrait ajouter un bouton
+      window.location.href = `/shop?product=${productId}`;
+    }
+  };
+
   return (
-    <div className={`bg-white rounded-lg p-4 border ${!notification.is_read ? 'border-l-4 border-l-blue-500' : ''}`}>
+    <div
+      onClick={handleNotificationClick}
+      className={`bg-white rounded-lg p-4 border ${!notification.is_read ? 'border-l-4 border-l-blue-500' : ''} ${isRestock ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+    >
       <div className="flex items-start space-x-3">
         <div className={`w-10 h-10 ${getIconBgColor(notification.type)} rounded-full flex items-center justify-center`}>
           {getNotificationIcon(notification.type)}

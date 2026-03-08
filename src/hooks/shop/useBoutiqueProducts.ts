@@ -5,6 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { boutiqueProductStore, type LocalBoutiqueProduct } from '@/local-storage/stores/BoutiqueStore';
+import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
@@ -164,6 +165,32 @@ export const useUpdateBoutiqueProduct = () => {
         }) => {
             const { id, shop_id, ...updates } = product;
 
+            // 1. Mise à jour locale optimiste
+            const existing = await boutiqueProductStore.get(id);
+            if (!existing) throw new Error('Produit introuvable localement');
+
+            const updatedLocal = {
+                ...existing,
+                ...updates,
+                stockQuantity: updates.stock_quantity ?? existing.stockQuantity,
+                updatedAt: Date.now(),
+            };
+            await boutiqueProductStore.put(updatedLocal);
+
+            // 2. Gestion Offline
+            if (!navigator.onLine) {
+                console.log('📵 App status: offline. Queueing update mutation.');
+                await offlineStore.addPendingMutation({
+                    type: 'update_boutique_product',
+                    payload: product
+                });
+                return updatedLocal as any;
+            }
+
+            // 3. Mode Online : Sync avec Supabase
+            console.log('🌐 App status: online. Syncing update with Supabase.');
+
+            // Mise à jour de la table boutique
             const { data, error } = await supabase
                 .from('physical_shop_products')
                 .update({ ...updates, updated_at: new Date().toISOString() })
@@ -171,27 +198,68 @@ export const useUpdateBoutiqueProduct = () => {
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                // Si erreur réseau, on queue la mutation
+                if (error.message.includes('fetch') || error.message.includes('network')) {
+                    await offlineStore.addPendingMutation({
+                        type: 'update_boutique_product',
+                        payload: product
+                    });
+                    return updatedLocal as any;
+                }
+                throw error;
+            }
 
-            // Mettre à jour le cache
-            const existing = await boutiqueProductStore.get(id);
-            if (existing) {
-                await boutiqueProductStore.put({
-                    ...existing,
-                    ...updates,
-                    stockQuantity: updates.stock_quantity ?? existing.stockQuantity,
-                    updatedAt: Date.now(),
-                });
+            // Propagation vers le Marketplace s'il y a un product_id lié
+            if (data.product_id) {
+                const productUpdates: any = {};
+                if (updates.name !== undefined) productUpdates.title = updates.name;
+                if (updates.description !== undefined) productUpdates.description = updates.description;
+                if (updates.price !== undefined) productUpdates.price = updates.price;
+                if (updates.image_url !== undefined) productUpdates.image_url = updates.image_url;
+
+                if (Object.keys(productUpdates).length > 0) {
+                    const { error: marketplaceError } = await supabase
+                        .from('products')
+                        .update(productUpdates)
+                        .eq('id', data.product_id);
+
+                    if (marketplaceError) {
+                        console.error('⚠️ Failed to sync update to marketplace:', marketplaceError);
+                    }
+                }
             }
 
             return data as BoutiqueProduct;
         },
+        onMutate: async (updatedProduct) => {
+            // Annuler les refetchs en cours pour ne pas écraser notre mise à jour optimiste
+            await queryClient.cancelQueries({ queryKey: ['boutique-products', updatedProduct.shop_id] });
+
+            // Sauvegarder l'état précédent pour le rollback
+            const previousProducts = queryClient.getQueryData<BoutiqueProduct[]>(['boutique-products', updatedProduct.shop_id]);
+
+            // Mise à jour optimiste du cache
+            if (previousProducts) {
+                queryClient.setQueryData<BoutiqueProduct[]>(
+                    ['boutique-products', updatedProduct.shop_id],
+                    previousProducts.map(p => p.id === updatedProduct.id ? { ...p, ...updatedProduct, stock_quantity: updatedProduct.stock_quantity ?? p.stock_quantity } as BoutiqueProduct : p)
+                );
+            }
+
+            return { previousProducts };
+        },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['boutique-products', variables.shop_id] });
+            queryClient.invalidateQueries({ queryKey: ['products'] });
             toast.success('Produit mis à jour !');
         },
-        onError: (error: any) => {
+        onError: (error: any, variables, context) => {
             console.error('Erreur mise à jour produit:', error);
+            // Rollback en cas d'erreur
+            if (context?.previousProducts) {
+                queryClient.setQueryData(['boutique-products', variables.shop_id], context.previousProducts);
+            }
             toast.error('Erreur lors de la mise à jour');
         },
     });
@@ -205,24 +273,61 @@ export const useDeleteBoutiqueProduct = () => {
 
     return useMutation({
         mutationFn: async ({ id, shopId }: { id: string; shopId: string }) => {
+            // 1. Suppression locale immédiate du cache
+            await boutiqueProductStore.delete(id);
+
+            // 2. Gestion Offline
+            if (!navigator.onLine) {
+                console.log('📵 App status: offline. Queueing delete mutation.');
+                await offlineStore.addPendingMutation({
+                    type: 'delete_boutique_product',
+                    payload: { id, shopId }
+                });
+                return { id, shopId };
+            }
+
+            // 3. Mode Online : Sync avec Supabase
             const { error } = await supabase
                 .from('physical_shop_products')
                 .delete()
                 .eq('id', id);
 
-            if (error) throw error;
-
-            // Supprimer du cache
-            await boutiqueProductStore.delete(id);
+            if (error) {
+                // Si erreur réseau (et non erreur SQL), on peut quand même tenter de queue
+                if (error.message.includes('fetch') || error.message.includes('network')) {
+                    await offlineStore.addPendingMutation({
+                        type: 'delete_boutique_product',
+                        payload: { id, shopId }
+                    });
+                    return { id, shopId };
+                }
+                throw error;
+            }
 
             return { id, shopId };
+        },
+        onMutate: async ({ id, shopId }) => {
+            await queryClient.cancelQueries({ queryKey: ['boutique-products', shopId] });
+            const previousProducts = queryClient.getQueryData<BoutiqueProduct[]>(['boutique-products', shopId]);
+
+            if (previousProducts) {
+                queryClient.setQueryData<BoutiqueProduct[]>(
+                    ['boutique-products', shopId],
+                    previousProducts.filter(p => p.id !== id)
+                );
+            }
+
+            return { previousProducts };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['boutique-products', data.shopId] });
             toast.success('Produit supprimé');
         },
-        onError: (error: any) => {
+        onError: (error: any, variables, context) => {
             console.error('Erreur suppression produit:', error);
+            if (context?.previousProducts) {
+                queryClient.setQueryData(['boutique-products', variables.shopId], context.previousProducts);
+            }
             toast.error('Erreur lors de la suppression');
         },
     });
@@ -247,27 +352,57 @@ export const useTransferToMarketplace = () => {
             quantity: number;
             sellerId: string;
         }) => {
-            // 1. Récupérer le produit boutique
+            // 1. Mises à jour locales immédiates (Cache IndexedDB)
+            const cached = await boutiqueProductStore.get(boutiqueProductId);
+            if (!cached) throw new Error('Produit introuvable localement');
+
+            const newMarketplaceQty = cached.marketplaceQuantity + quantity;
+            const availableStock = cached.stockQuantity - cached.marketplaceQuantity;
+
+            if (quantity > availableStock) {
+                throw new Error(`Stock insuffisant. Disponible : ${availableStock}`);
+            }
+
+            // Mise à jour optimiste du store local
+            await boutiqueProductStore.put({
+                ...cached,
+                marketplaceQuantity: newMarketplaceQty,
+                updatedAt: Date.now(),
+            });
+
+            // 2. Gestion Offline / Online
+            if (!navigator.onLine) {
+                console.log('📵 App status: offline. Queueing transfer mutation.');
+                await offlineStore.addPendingMutation({
+                    type: 'transfer',
+                    payload: {
+                        boutiqueProductId,
+                        shopId,
+                        quantity,
+                        sellerId
+                    }
+                });
+                return { success: true, offline: true, newMarketplaceQty };
+            }
+
+            // 3. Mode Online : Sync directe avec Supabase
+            console.log('🌐 App status: online. Syncing transfer with Supabase.');
+
+            // Récupérer les données réelles (plus sûr avant de sync)
             const { data: boutiqueProduct, error: fetchError } = await supabase
                 .from('physical_shop_products')
                 .select('*')
                 .eq('id', boutiqueProductId)
                 .single();
 
-            if (fetchError || !boutiqueProduct) throw fetchError || new Error('Produit introuvable');
-
-            // Vérifier le stock disponible
-            const availableStock = boutiqueProduct.stock_quantity - boutiqueProduct.marketplace_quantity;
-            if (quantity > availableStock) {
-                throw new Error(`Stock insuffisant. Disponible : ${availableStock}`);
-            }
+            if (fetchError || !boutiqueProduct) throw fetchError || new Error('Produit introuvable sur le serveur');
 
             // 2. Mettre à jour marketplace_quantity dans physical_shop_products
-            const newMarketplaceQty = boutiqueProduct.marketplace_quantity + quantity;
+            const serverMarketplaceQty = boutiqueProduct.marketplace_quantity + quantity;
             const { error: updateError } = await supabase
                 .from('physical_shop_products')
                 .update({
-                    marketplace_quantity: newMarketplaceQty,
+                    marketplace_quantity: serverMarketplaceQty,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', boutiqueProductId);
@@ -276,19 +411,17 @@ export const useTransferToMarketplace = () => {
 
             // 3. Créer ou mettre à jour le produit dans la table products (marketplace)
             if (boutiqueProduct.product_id) {
-                // Produit existant : mettre à jour la quantité
                 const { error: productError } = await supabase
                     .from('products')
                     .update({
-                        stock: newMarketplaceQty,
-                        quantity: newMarketplaceQty,
-                        is_active: newMarketplaceQty > 0,
+                        stock: serverMarketplaceQty,
+                        quantity: serverMarketplaceQty,
+                        is_active: true, // Garder actif même si stock = 0
                     })
                     .eq('id', boutiqueProduct.product_id);
 
                 if (productError) throw productError;
             } else {
-                // Nouveau produit marketplace
                 const { data: newProduct, error: insertError } = await supabase
                     .from('products')
                     .insert({
@@ -298,8 +431,8 @@ export const useTransferToMarketplace = () => {
                         image_url: boutiqueProduct.image_url,
                         seller_id: sellerId,
                         is_active: true,
-                        stock: newMarketplaceQty,
-                        quantity: newMarketplaceQty,
+                        stock: serverMarketplaceQty,
+                        quantity: serverMarketplaceQty,
                         product_type: 'physical',
                     })
                     .select()
@@ -307,33 +440,166 @@ export const useTransferToMarketplace = () => {
 
                 if (insertError) throw insertError;
 
-                // Lier le produit marketplace au produit boutique
                 await supabase
                     .from('physical_shop_products')
                     .update({ product_id: newProduct.id })
                     .eq('id', boutiqueProductId);
             }
 
-            // Mettre à jour le cache local
-            const cached = await boutiqueProductStore.get(boutiqueProductId);
-            if (cached) {
-                await boutiqueProductStore.put({
-                    ...cached,
-                    marketplaceQuantity: newMarketplaceQty,
-                    updatedAt: Date.now(),
-                });
+            // SI le stock passe de 0 à > 0, on déclenche les notifications de réapprovisionnement
+            const oldQty = boutiqueProduct.marketplace_quantity || 0;
+            if (oldQty === 0 && serverMarketplaceQty > 0) {
+                const pid = boutiqueProduct.product_id || (await supabase.from('physical_shop_products').select('product_id').eq('id', boutiqueProductId).single()).data?.product_id;
+                if (pid) {
+                    console.log(`🔔 Déclenchement des notifications de réapprovisionnement pour le produit ${pid}`);
+                    supabase.functions.invoke('notify-restock', {
+                        body: { productId: pid }
+                    })
+                        .then(({ data, error }) => {
+                            if (error) console.error('Erreur API notifications:', error);
+                            else console.log('Réponse notifications:', data);
+                        })
+                        .catch(err => console.error('Erreur lors du déclenchement des notifications:', err));
+                }
             }
 
-            return { success: true, newMarketplaceQty };
+            return { success: true, newMarketplaceQty: serverMarketplaceQty };
+        },
+        onMutate: async ({ boutiqueProductId, shopId, quantity }) => {
+            await queryClient.cancelQueries({ queryKey: ['boutique-products', shopId] });
+            const previousProducts = queryClient.getQueryData<BoutiqueProduct[]>(['boutique-products', shopId]);
+
+            if (previousProducts) {
+                queryClient.setQueryData<BoutiqueProduct[]>(
+                    ['boutique-products', shopId],
+                    previousProducts.map(p => p.id === boutiqueProductId ? { ...p, marketplace_quantity: p.marketplace_quantity + quantity } : p)
+                );
+            }
+
+            return { previousProducts };
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['boutique-products', variables.shopId] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
             toast.success('Produit transféré vers le marketplace !');
         },
-        onError: (error: any) => {
+        onError: (error: any, variables, context) => {
             console.error('Erreur transfert:', error);
+            if (context?.previousProducts) {
+                queryClient.setQueryData(['boutique-products', variables.shopId], context.previousProducts);
+            }
             toast.error(error.message || 'Erreur lors du transfert');
+        },
+    });
+};
+
+/**
+ * Retourner du stock du marketplace vers la boutique physique
+ */
+export const useReturnFromMarketplace = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            boutiqueProductId,
+            shopId,
+            quantity,
+        }: {
+            boutiqueProductId: string;
+            shopId: string;
+            quantity: number;
+        }) => {
+            // 1. Mises à jour locales immédiates (Cache IndexedDB)
+            const cached = await boutiqueProductStore.get(boutiqueProductId);
+            if (!cached) throw new Error('Produit introuvable localement');
+
+            const newMarketplaceQty = Math.max(0, cached.marketplaceQuantity - quantity);
+
+            // Mise à jour optimiste du store local
+            await boutiqueProductStore.put({
+                ...cached,
+                marketplaceQuantity: newMarketplaceQty,
+                updatedAt: Date.now(),
+            });
+
+            // 2. Gestion Offline / Online
+            if (!navigator.onLine) {
+                console.log('📵 App status: offline. Queueing return mutation.');
+                await offlineStore.addPendingMutation({
+                    type: 'return',
+                    payload: {
+                        boutiqueProductId,
+                        shopId,
+                        quantity
+                    }
+                });
+                return { success: true, offline: true, newMarketplaceQty };
+            }
+
+            // 3. Mode Online : Sync directe avec Supabase
+            console.log('🌐 App status: online. Syncing return with Supabase.');
+
+            const { data: boutiqueProduct, error: fetchError } = await supabase
+                .from('physical_shop_products')
+                .select('*')
+                .eq('id', boutiqueProductId)
+                .single();
+
+            if (fetchError || !boutiqueProduct) throw fetchError || new Error('Produit introuvable sur le serveur');
+
+            const serverMarketplaceQty = Math.max(0, boutiqueProduct.marketplace_quantity - quantity);
+
+            // Mettre à jour physical_shop_products
+            const { error: updateError } = await supabase
+                .from('physical_shop_products')
+                .update({
+                    marketplace_quantity: serverMarketplaceQty,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', boutiqueProductId);
+
+            if (updateError) throw updateError;
+
+            // Mettre à jour le produit marketplace
+            if (boutiqueProduct.product_id) {
+                const { error: productError } = await supabase
+                    .from('products')
+                    .update({
+                        stock: serverMarketplaceQty,
+                        quantity: serverMarketplaceQty,
+                        is_active: true, // Garder actif même si stock = 0
+                    })
+                    .eq('id', boutiqueProduct.product_id);
+
+                if (productError) throw productError;
+            }
+
+            return { success: true, newMarketplaceQty: serverMarketplaceQty };
+        },
+        onMutate: async ({ boutiqueProductId, shopId, quantity }) => {
+            await queryClient.cancelQueries({ queryKey: ['boutique-products', shopId] });
+            const previousProducts = queryClient.getQueryData<BoutiqueProduct[]>(['boutique-products', shopId]);
+
+            if (previousProducts) {
+                queryClient.setQueryData<BoutiqueProduct[]>(
+                    ['boutique-products', shopId],
+                    previousProducts.map(p => p.id === boutiqueProductId ? { ...p, marketplace_quantity: Math.max(0, p.marketplace_quantity - quantity) } : p)
+                );
+            }
+
+            return { previousProducts };
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['boutique-products', variables.shopId] });
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            toast.success('Stock retourné en boutique !');
+        },
+        onError: (error: any, variables, context) => {
+            console.error('Erreur retour stock:', error);
+            if (context?.previousProducts) {
+                queryClient.setQueryData(['boutique-products', variables.shopId], context.previousProducts);
+            }
+            toast.error(error.message || 'Erreur lors du retour de stock');
         },
     });
 };

@@ -4,7 +4,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Store, Package, WifiOff, Search } from 'lucide-react';
-import SaleDialog from './SaleDialog';
+import SaleDialog, { SaleDialogProps } from './SaleDialog';
 import ProductImageUploader from './ProductImageUploader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,11 +35,13 @@ import {
     useUpdateBoutiqueProduct,
     useDeleteBoutiqueProduct,
     useTransferToMarketplace,
+    useReturnFromMarketplace,
     type BoutiqueProduct,
 } from '@/hooks/shop/useBoutiqueProducts';
-import { useCreateBoutiqueSale } from '@/hooks/shop/useBoutiqueSales';
+import { useCreateBoutiqueSale, type SaleInput } from '@/hooks/shop/useBoutiqueSales';
 import BoutiqueProductCard from './BoutiqueProductCard';
-import TransferDialog from './TransferDialog';
+import TransferDialog, { TransferDialogProps } from './TransferDialog';
+import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
 
 const BoutiqueManagement: React.FC = () => {
     const { user } = useAuth();
@@ -50,6 +52,7 @@ const BoutiqueManagement: React.FC = () => {
     const updateProduct = useUpdateBoutiqueProduct();
     const deleteProduct = useDeleteBoutiqueProduct();
     const transferToMarketplace = useTransferToMarketplace();
+    const returnFromMarketplace = useReturnFromMarketplace();
     const createSale = useCreateBoutiqueSale();
     // Debug logging
     console.log('🛒 [BoutiqueManagement] Render:', {
@@ -68,6 +71,7 @@ const BoutiqueManagement: React.FC = () => {
     const [editingProduct, setEditingProduct] = useState<BoutiqueProduct | null>(null);
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
     const [transferProduct, setTransferProduct] = useState<BoutiqueProduct | null>(null);
+    const [returningProduct, setReturningProduct] = useState<BoutiqueProduct | null>(null);
     const [sellingProduct, setSellingProduct] = useState<BoutiqueProduct | null>(null);
     const [shopName, setShopName] = useState('');
     const [shopAddress, setShopAddress] = useState('');
@@ -164,6 +168,17 @@ const BoutiqueManagement: React.FC = () => {
             sellerId: user.id,
         });
         setTransferProduct(null);
+    };
+
+    /** Retourner du marketplace vers la boutique */
+    const handleReturn = async (productId: string, quantity: number) => {
+        if (!shop?.id) return;
+        await returnFromMarketplace.mutateAsync({
+            boutiqueProductId: productId,
+            shopId: shop.id,
+            quantity,
+        });
+        setReturningProduct(null);
     };
 
     // Loading state
@@ -301,6 +316,7 @@ const BoutiqueManagement: React.FC = () => {
                                     onEdit={openEditProductForm}
                                     onDelete={(id) => setDeletingProductId(id)}
                                     onTransfer={(p) => setTransferProduct(p)}
+                                    onReturn={(p) => setReturningProduct(p)}
                                     onSell={(p) => setSellingProduct(p)}
                                 />
                             ))}
@@ -411,8 +427,21 @@ const BoutiqueManagement: React.FC = () => {
                 product={transferProduct}
                 isOpen={!!transferProduct}
                 onClose={() => setTransferProduct(null)}
-                onConfirm={handleTransfer}
+                onConfirm={(productId, quantity) => {
+                    handleTransfer(productId, quantity);
+                }}
                 isLoading={transferToMarketplace.isPending}
+            />
+
+            {/* Dialog retour */}
+            <ReturnDialog
+                product={returningProduct}
+                isOpen={!!returningProduct}
+                onClose={() => setReturningProduct(null)}
+                onConfirm={(productId, quantity) => {
+                    handleReturn(productId, quantity);
+                }}
+                isLoading={returnFromMarketplace.isPending}
             />
 
             {/* Dialog vente POS */}
@@ -422,7 +451,7 @@ const BoutiqueManagement: React.FC = () => {
                 onClose={() => setSellingProduct(null)}
                 onConfirm={async (data) => {
                     if (!shop?.id) return;
-                    await createSale.mutateAsync({
+                    const saleData: SaleInput = {
                         shop_id: shop.id,
                         product_id: data.productId,
                         quantity: data.quantity,
@@ -431,7 +460,8 @@ const BoutiqueManagement: React.FC = () => {
                         customer_name: data.customerName,
                         payment_method: data.paymentMethod,
                         notes: data.notes,
-                    });
+                    };
+                    await createSale.mutateAsync(saleData);
                     setSellingProduct(null);
                 }}
                 isLoading={createSale.isPending}

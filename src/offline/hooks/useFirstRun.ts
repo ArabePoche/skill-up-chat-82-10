@@ -51,7 +51,7 @@ export const useFirstRun = () => {
 
     const isFirstRun = !hasBeenOpened;
     const isCacheReady = cacheInitialized === 'true';
-    
+
     // Vérifier s'il y a une session d'auth cachée (utilisateur déjà connecté)
     const hasAuthCache = localStorage.getItem('sb-jiasafdbfqqhhdazoybu-auth-token') !== null;
 
@@ -86,7 +86,7 @@ export const useFirstRun = () => {
         isOnline: true,
         canAccessApp: true,
       }));
-      
+
       // Marquer comme initialisé quand on retrouve la connexion
       if (!localStorage.getItem(FIRST_RUN_KEY)) {
         localStorage.setItem(FIRST_RUN_KEY, Date.now().toString());
@@ -98,7 +98,7 @@ export const useFirstRun = () => {
       const hasBeenOpened = localStorage.getItem(FIRST_RUN_KEY);
       const cacheInitialized = localStorage.getItem(CACHE_INITIALIZED_KEY);
       const hasAuthCache = localStorage.getItem('sb-jiasafdbfqqhhdazoybu-auth-token') !== null;
-      
+
       setState(prev => ({
         ...prev,
         isOnline: false,
@@ -129,12 +129,9 @@ export const useFirstRun = () => {
     try {
       const response = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/rest/v1/', {
         method: 'HEAD',
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppYXNhZmRiZnFxaGhkYXpveWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTQ5MTAsImV4cCI6MjA2NTQ5MDkxMH0.TXPwCkGAZRrn83pTsZHr2QFZwX03nBWdNPJN0s_jLKQ',
-        },
         cache: 'no-store',
       });
-      return response.ok;
+      return response.ok || response.status === 401 || response.status === 404;
     } catch {
       return false;
     }

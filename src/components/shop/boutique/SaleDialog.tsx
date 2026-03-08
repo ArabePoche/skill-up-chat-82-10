@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import type { BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
 
-interface SaleDialogProps {
+export interface SaleDialogProps {
   product: BoutiqueProduct | null;
   isOpen: boolean;
   onClose: () => void;

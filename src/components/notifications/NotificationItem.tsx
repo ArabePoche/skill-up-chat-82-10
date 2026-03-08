@@ -53,8 +53,8 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
   const { profile } = useAuth();
 
   const isAdmin = profile?.role === 'admin';
-  const isEnrollmentNotification = notification.type === 'enrollment_request' && 
-    notification.enrollment_id && 
+  const isEnrollmentNotification = notification.type === 'enrollment_request' &&
+    notification.enrollment_id &&
     notification.is_for_all_admins &&
     isAdmin;
 
@@ -144,6 +144,11 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
       formation_info: notification.formation_info,
       approved_by_admin: notification.approved_by_admin,
     }} />;
+  }
+
+  // Notification de réapprovisionnement
+  if (notification.type === 'product_restock') {
+    return <StandardNotificationCard notification={notification} />;
   }
 
   // Pour les autres types de notifications

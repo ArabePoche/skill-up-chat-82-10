@@ -43,7 +43,7 @@ class SyncManager {
 
     // Vérifier périodiquement la connexion (toutes les 60 secondes au lieu de 15)
     this.checkConnectionTimer = setInterval(() => this.checkConnection(), 60000);
-    
+
     // Vérification initiale
     this.checkConnection();
   }
@@ -74,43 +74,46 @@ class SyncManager {
       this.isOnline = false;
       this.isCheckingConnection = false;
     } else {
-      // navigator.onLine = true → vérifier avec un ping léger à Supabase
+      // navigator.onLine = true → vérifier avec un ping léger (sans passer par le client Supabase qui peut être mocké ou cacher des choses)
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000);
-        
-        const { error } = await supabase.from('formations').select('id').limit(1).abortSignal(controller.signal);
+
+        // Requête native HEAD sur l'URL Supabase pour vérifier la vraie connexion
+        // cache: 'no-store' est crucial pour forcer le passage outre le Service Worker
+        const pingResponse = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/rest/v1/', {
+          method: 'HEAD',
+          cache: 'no-store',
+          signal: controller.signal
+        });
+
         clearTimeout(timeout);
-        
-        if (error) {
-          const errorMessage = error.message?.toLowerCase() || '';
-          // Seuls les vrais problèmes réseau doivent passer en offline
-          const isNetworkError = errorMessage.includes('fetch') || 
-                                errorMessage.includes('network') ||
-                                errorMessage.includes('abort') ||
-                                errorMessage.includes('timeout') ||
-                                errorMessage.includes('failed to fetch');
-          
-          if (isNetworkError) {
-            console.log('📵 Network error detected:', errorMessage);
-            this.isOnline = false;
-          } else {
-            // Erreur Supabase (RLS, quota, etc.) ≠ perte de connexion
-            console.log('⚠️ Supabase error but network OK:', errorMessage);
-            this.isOnline = true;
-            this.reconnectAttempts = 0;
-          }
+
+        // 401 ou 404 indique que le serveur Supabase répond (donc réseau OK)
+        if (pingResponse.ok || pingResponse.status === 401 || pingResponse.status === 404) {
+          this.isOnline = true;
+          this.reconnectAttempts = 0;
         } else {
+          // Status 5xx indiquerait potentiellement un souci côté serveur, mais on considère le réseau OK
+          // Par sécurité, on le laisse en ligne si on a reçu une réponse HTTP
+          console.log('⚠️ Ping returned status:', pingResponse.status);
           this.isOnline = true;
           this.reconnectAttempts = 0;
         }
       } catch (err: unknown) {
-        // Seules les erreurs de type réseau (AbortError, TypeError fetch) = offline
+        // TypeError est souvent soulevé pour une vraie défaillance réseau dans fetch()
         const errName = err instanceof Error ? err.name : '';
-        if (errName === 'AbortError' || errName === 'TypeError') {
+        const errMsg = err instanceof Error ? err.message.toLowerCase() : '';
+
+        const isNetworkError = errName === 'AbortError' ||
+          errName === 'TypeError' ||
+          errMsg.includes('network') ||
+          errMsg.includes('failed to fetch');
+
+        if (isNetworkError) {
+          console.log('📵 Network error detected during ping:', errMsg || errName);
           this.isOnline = false;
         } else {
-          // Erreur inattendue, garder l'état actuel
           console.warn('⚠️ Unexpected check error, keeping state:', err);
         }
       }
@@ -121,7 +124,7 @@ class SyncManager {
     if (wasOnline !== this.isOnline) {
       console.log(`🔄 Connection status changed: ${wasOnline} -> ${this.isOnline}`);
       this.notifyCallbacks(this.isOnline);
-      
+
       if (this.isOnline) {
         toast.success('Connexion rétablie', {
           description: 'Synchronisation automatique en cours...',
@@ -149,23 +152,23 @@ class SyncManager {
       // 1. D'abord synchroniser toutes les mutations en attente
       const pendingMutations = await offlineStore.getPendingMutations();
       const total = pendingMutations.length;
-      
+
       if (total > 0) {
         console.log(`📤 Syncing ${total} pending mutations...`);
-        
+
         for (let i = 0; i < pendingMutations.length; i++) {
           const mutation = pendingMutations[i];
           this.notifySyncEvent({ type: 'progress', current: i + 1, total });
-          
+
           try {
             const success = await this.syncMutation(mutation);
-            
+
             if (success) {
               await offlineStore.removePendingMutation(mutation.id);
               console.log(`✅ Mutation ${mutation.id} synced`);
             } else {
               await offlineStore.incrementMutationRetry(mutation.id);
-              
+
               if (mutation.retryCount >= 5) {
                 await offlineStore.removePendingMutation(mutation.id);
                 console.warn(`❌ Mutation ${mutation.id} abandoned after 5 retries`);
@@ -180,7 +183,7 @@ class SyncManager {
 
       // 2. Synchroniser les formations offline
       const offlineFormations = await offlineStore.getAllFormations();
-      
+
       for (const formation of offlineFormations) {
         await this.syncFormation(formation.id);
       }
@@ -190,7 +193,7 @@ class SyncManager {
 
       console.log('✅ Sync completed');
       this.notifySyncEvent({ type: 'complete', message: 'Synchronisation terminée' });
-      
+
       // Notifier du succès si des mutations ont été sync
       if (total > 0) {
         toast.success(`${total} modification(s) synchronisée(s)`);
@@ -210,28 +213,40 @@ class SyncManager {
     switch (mutation.type) {
       case 'message':
         return this.syncMessageMutation(mutation.payload);
-      
+
       case 'progress':
         return this.syncProgressMutation(mutation.payload);
-      
+
       case 'profile':
         return this.syncProfileMutation(mutation.payload);
-      
+
       case 'grade':
         return this.syncGradeMutation(mutation.payload);
-      
+
       case 'attendance':
         return this.syncAttendanceMutation(mutation.payload);
-      
+
       case 'payment':
         return this.syncPaymentMutation(mutation.payload);
-      
+
       case 'note':
         return this.syncNoteMutation(mutation.payload);
-      
+
+      case 'transfer':
+        return this.syncTransferMutation(mutation.payload);
+
+      case 'return':
+        return this.syncReturnMutation(mutation.payload);
+
+      case 'update_boutique_product':
+        return this.syncUpdateBoutiqueProductMutation(mutation.payload);
+
+      case 'delete_boutique_product':
+        return this.syncDeleteBoutiqueProductMutation(mutation.payload);
+
       case 'generic':
         return this.syncGenericMutation(mutation.payload);
-      
+
       default:
         console.warn('Unknown mutation type:', mutation.type);
         return false;
@@ -315,10 +330,185 @@ class SyncManager {
     return false;
   }
 
+  private async syncTransferMutation(payload: any): Promise<boolean> {
+    try {
+      const { boutiqueProductId, quantity, sellerId } = payload;
+
+      // 1. Récupérer l'état actuel sur le serveur
+      const { data: boutiqueProduct, error: fetchError } = await supabase
+        .from('physical_shop_products')
+        .select('*')
+        .eq('id', boutiqueProductId)
+        .single();
+
+      if (fetchError || !boutiqueProduct) return false;
+
+      const newMarketplaceQty = boutiqueProduct.marketplace_quantity + quantity;
+
+      // 2. Mettre à jour physical_shop_products
+      const { error: updateError } = await supabase
+        .from('physical_shop_products')
+        .update({
+          marketplace_quantity: newMarketplaceQty,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', boutiqueProductId);
+
+      if (updateError) return false;
+
+      // 3. Créer ou mettre à jour dans 'products'
+      if (boutiqueProduct.product_id) {
+        const { error: productError } = await supabase
+          .from('products')
+          .update({
+            stock: newMarketplaceQty,
+            quantity: newMarketplaceQty,
+            is_active: newMarketplaceQty > 0,
+          })
+          .eq('id', boutiqueProduct.product_id);
+
+        if (productError) return false;
+      } else {
+        const { data: newProduct, error: insertError } = await supabase
+          .from('products')
+          .insert({
+            title: boutiqueProduct.name,
+            description: boutiqueProduct.description,
+            price: boutiqueProduct.price,
+            image_url: boutiqueProduct.image_url,
+            seller_id: sellerId,
+            is_active: true,
+            stock: newMarketplaceQty,
+            quantity: newMarketplaceQty,
+            product_type: 'physical',
+          })
+          .select()
+          .single();
+
+        if (insertError) return false;
+
+        // Lier le produit marketplace au produit boutique
+        await supabase
+          .from('physical_shop_products')
+          .update({ product_id: newProduct.id })
+          .eq('id', boutiqueProductId);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error syncing transfer mutation:', err);
+      return false;
+    }
+  }
+
+  private async syncReturnMutation(payload: any): Promise<boolean> {
+    try {
+      const { boutiqueProductId, quantity } = payload;
+
+      // 1. Récupérer l'état actuel sur le serveur
+      const { data: boutiqueProduct, error: fetchError } = await supabase
+        .from('physical_shop_products')
+        .select('*')
+        .eq('id', boutiqueProductId)
+        .single();
+
+      if (fetchError || !boutiqueProduct) return false;
+
+      const newMarketplaceQty = Math.max(0, boutiqueProduct.marketplace_quantity - quantity);
+
+      // 2. Mettre à jour physical_shop_products
+      const { error: updateError } = await supabase
+        .from('physical_shop_products')
+        .update({
+          marketplace_quantity: newMarketplaceQty,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', boutiqueProductId);
+
+      if (updateError) return false;
+
+      // 3. Mettre à jour dans 'products' ( Marketplace )
+      if (boutiqueProduct.product_id) {
+        const { error: productError } = await supabase
+          .from('products')
+          .update({
+            stock: newMarketplaceQty,
+            quantity: newMarketplaceQty,
+            is_active: newMarketplaceQty > 0, // Désactiver si stock = 0
+          })
+          .eq('id', boutiqueProduct.product_id);
+
+        if (productError) return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error syncing return mutation:', err);
+      return false;
+    }
+  }
+
+  private async syncUpdateBoutiqueProductMutation(payload: any): Promise<boolean> {
+    try {
+      const { id, shop_id, ...updates } = payload;
+
+      // 1. Mise à jour de la boutique
+      const { data, error } = await supabase
+        .from('physical_shop_products')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) return false;
+
+      // 2. Propagation vers le Marketplace s'il y a un product_id lié
+      if (data.product_id) {
+        const productUpdates: any = {};
+        if (updates.name !== undefined) productUpdates.title = updates.name;
+        if (updates.description !== undefined) productUpdates.description = updates.description;
+        if (updates.price !== undefined) productUpdates.price = updates.price;
+        if (updates.image_url !== undefined) productUpdates.image_url = updates.image_url;
+
+        if (Object.keys(productUpdates).length > 0) {
+          const { error: marketplaceError } = await supabase
+            .from('products')
+            .update(productUpdates)
+            .eq('id', data.product_id);
+
+          if (marketplaceError) {
+            console.error('⚠️ Failed to sync update to marketplace:', marketplaceError);
+            // On continue quand même car la boutique est à jour
+          }
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error syncing update mutation:', err);
+      return false;
+    }
+  }
+
+  private async syncDeleteBoutiqueProductMutation(payload: any): Promise<boolean> {
+    try {
+      const { id } = payload;
+      const { error } = await supabase
+        .from('physical_shop_products')
+        .delete()
+        .eq('id', id);
+
+      return !error;
+    } catch (err) {
+      console.error('Error syncing delete mutation:', err);
+      return false;
+    }
+  }
+
   private async syncGenericMutation(payload: any): Promise<boolean> {
     try {
       const { table, operation, data, id } = payload;
-      
+
       if (operation === 'insert') {
         const { error } = await (supabase as any).from(table).insert(data);
         return !error;
@@ -376,7 +566,7 @@ class SyncManager {
         if (error) {
           console.error('Failed to sync message:', error);
           await offlineStore.incrementMutationRetry(mutation.id);
-          
+
           // Si trop de tentatives, supprimer la mutation
           if (mutation.retryCount >= 5) {
             await offlineStore.removePendingMutation(mutation.id);

@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useFormations } from '@/hooks/useFormations';
-import { Upload, Link as LinkIcon } from 'lucide-react';
+import { Upload, Link as LinkIcon, Camera } from 'lucide-react';
+import VideoRecorderComponent from './VideoRecorderComponent';
 
 interface EnhancedVideoCreateFormProps {
   onSuccess: () => void;
@@ -21,7 +22,7 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
   const { user, profile } = useAuth();
   const { uploadFile, isUploading } = useFileUpload();
   const { data: allFormations = [] } = useFormations();
-  
+
   // Filtrer les formations selon le rôle de l'utilisateur
   const formations = React.useMemo(() => {
     // Si admin, afficher toutes les formations
@@ -31,7 +32,7 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
     // Sinon, afficher uniquement les formations dont l'utilisateur est auteur
     return allFormations.filter(formation => formation.author_id === user?.id);
   }, [allFormations, profile?.role, user?.id]);
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -40,10 +41,10 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
     video_type: 'classic' as 'lesson' | 'promo' | 'classic',
     formation_id: '',
   });
-  
+
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
-  const [uploadMethod, setUploadMethod] = useState<'url' | 'upload'>('url');
+  const [uploadMethod, setUploadMethod] = useState<'url' | 'upload' | 'record'>('url');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -110,8 +111,8 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
       return;
     }
 
-    if (uploadMethod === 'upload' && !selectedVideoFile) {
-      toast.error('Veuillez sélectionner un fichier vidéo');
+    if ((uploadMethod === 'upload' || uploadMethod === 'record') && !selectedVideoFile) {
+      toast.error('Veuillez fournir un fichier vidéo');
       return;
     }
 
@@ -126,7 +127,7 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
       let thumbnailUrl = formData.thumbnail_url;
 
       // Uploader la vidéo si un fichier est sélectionné
-      if (uploadMethod === 'upload' && selectedVideoFile) {
+      if ((uploadMethod === 'upload' || uploadMethod === 'record') && selectedVideoFile) {
         console.log('Upload de la vidéo:', selectedVideoFile.name);
         videoUrl = await uploadVideoFile(selectedVideoFile);
         console.log('Vidéo uploadée:', videoUrl);
@@ -166,7 +167,7 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
         toast.error("Création non appliquée (pas d'autorisation ou données invalides)");
         return;
       }
-      
+
       toast.success('Vidéo créée avec succès');
       onSuccess();
     } catch (error) {
@@ -187,7 +188,7 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
           required
         />
       </div>
-      
+
       <div>
         <Label htmlFor="description">Description</Label>
         <Textarea
@@ -202,8 +203,8 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
       {/* Onglets pour choisir entre URL et Upload */}
       <div>
         <Label>Vidéo</Label>
-        <Tabs value={uploadMethod} onValueChange={(value) => setUploadMethod(value as 'url' | 'upload')}>
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={uploadMethod} onValueChange={(value) => setUploadMethod(value as 'url' | 'upload' | 'record')}>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="url" className="flex items-center gap-2">
               <LinkIcon size={16} />
               URL
@@ -212,8 +213,12 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
               <Upload size={16} />
               Upload
             </TabsTrigger>
+            <TabsTrigger value="record" className="flex items-center gap-2">
+              <Camera size={16} />
+              Filmer
+            </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="url" className="mt-3">
             <Input
               type="url"
@@ -223,7 +228,7 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
               required={uploadMethod === 'url'}
             />
           </TabsContent>
-          
+
           <TabsContent value="upload" className="mt-3">
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
               <div className="text-center">
@@ -234,13 +239,38 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
                   onChange={handleVideoFileSelect}
                   className="mt-2"
                 />
-                {selectedVideoFile && (
+                {selectedVideoFile && uploadMethod === 'upload' && (
                   <p className="mt-2 text-sm text-green-600">
                     Fichier sélectionné: {selectedVideoFile.name}
                   </p>
                 )}
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="record" className="mt-3">
+            {selectedVideoFile && uploadMethod === 'record' ? (
+              <div className="border border-green-500 bg-green-50 p-4 rounded-lg text-center">
+                <p className="text-green-700 font-medium mb-3">Vidéo enregistrée avec succès !</p>
+                <div className="flex justify-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setSelectedVideoFile(null)}
+                  >
+                    Effacer et recommencer
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <VideoRecorderComponent
+                onRecordComplete={(file) => {
+                  setSelectedVideoFile(file);
+                  toast.success("Vidéo prête pour l'envoi : " + file.name);
+                }}
+                onCancel={() => setUploadMethod('upload')}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -275,7 +305,7 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
         <Label htmlFor="video_type">Type de vidéo</Label>
         <Select
           value={formData.video_type}
-          onValueChange={(value: 'lesson' | 'promo' | 'classic') => 
+          onValueChange={(value: 'lesson' | 'promo' | 'classic') =>
             handleInputChange('video_type', value)
           }
         >
@@ -326,11 +356,11 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
       )}
 
       <div className="flex space-x-2">
-        <Button 
-          type="submit" 
-          className="flex-1" 
+        <Button
+          type="submit"
+          className="flex-1"
           disabled={
-            isUploading || 
+            isUploading ||
             (formations.length === 0 && (formData.video_type === 'promo' || formData.video_type === 'lesson'))
           }
         >
