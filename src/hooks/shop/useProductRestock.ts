@@ -1,3 +1,7 @@
+/**
+ * Hook de gestion des abonnements de réapprovisionnement produit
+ * Permet aux utilisateurs de s'abonner/désabonner aux notifications de restock
+ */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,12 +14,12 @@ export const useProductRestock = (productId?: string, userId?: string) => {
         queryKey: ['restock-subscription', productId, userId],
         queryFn: async () => {
             if (!productId || !userId) return false;
-            const { data, error } = await supabase
-                .from('product_restock_subscriptions')
+            const { data, error } = await (supabase
+                .from('product_restock_subscriptions' as any)
                 .select('id')
                 .eq('product_id', productId)
                 .eq('user_id', userId)
-                .maybeSingle();
+                .maybeSingle() as any);
 
             if (error) throw error;
             return !!data;
@@ -26,9 +30,9 @@ export const useProductRestock = (productId?: string, userId?: string) => {
     const subscribe = useMutation({
         mutationFn: async () => {
             if (!productId || !userId) throw new Error('Product ID and User ID are required');
-            const { error } = await supabase
-                .from('product_restock_subscriptions')
-                .insert({ product_id: productId, user_id: userId });
+            const { error } = await (supabase
+                .from('product_restock_subscriptions' as any)
+                .insert({ product_id: productId, user_id: userId }) as any);
 
             if (error) throw error;
         },
@@ -45,11 +49,11 @@ export const useProductRestock = (productId?: string, userId?: string) => {
     const unsubscribe = useMutation({
         mutationFn: async () => {
             if (!productId || !userId) throw new Error('Product ID and User ID are required');
-            const { error } = await supabase
-                .from('product_restock_subscriptions')
+            const { error } = await (supabase
+                .from('product_restock_subscriptions' as any)
                 .delete()
                 .eq('product_id', productId)
-                .eq('user_id', userId);
+                .eq('user_id', userId) as any);
 
             if (error) throw error;
         },
