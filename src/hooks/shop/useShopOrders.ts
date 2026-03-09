@@ -46,6 +46,8 @@ export const useShopOrders = () => {
     queryFn: async () => {
       if (!user) return [];
 
+      console.log('📦 [useShopOrders] Fetching orders for seller:', user.id);
+
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -61,7 +63,12 @@ export const useShopOrders = () => {
         .eq('seller_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [useShopOrders] Error fetching orders:', error);
+        throw error;
+      }
+
+      console.log('✅ [useShopOrders] Found', data?.length || 0, 'orders');
 
       // Récupérer les profils des acheteurs
       const buyerIds = [...new Set((data || []).map(o => o.user_id).filter(Boolean))] as string[];
