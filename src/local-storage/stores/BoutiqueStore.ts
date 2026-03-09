@@ -15,6 +15,7 @@ export interface LocalBoutiqueProduct {
     stockQuantity: number;
     marketplaceQuantity: number;
     imageUrl?: string;
+    barcode?: string;
     updatedAt: number;
 }
 

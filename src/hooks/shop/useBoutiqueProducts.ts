@@ -20,6 +20,7 @@ export interface BoutiqueProduct {
     stock_quantity: number;
     marketplace_quantity: number;
     image_url?: string | null;
+    barcode?: string | null;
     created_at: string;
     updated_at: string;
 }
