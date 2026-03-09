@@ -194,10 +194,10 @@ const BoutiqueManagement: React.FC = () => {
     };
 
     // Loading state
-    if (shopLoading || shopsLoading) {
+    if (shopsLoading) {
         return (
             <div className="flex items-center justify-center p-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
         );
     }
