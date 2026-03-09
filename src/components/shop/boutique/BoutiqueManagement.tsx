@@ -260,6 +260,14 @@ const BoutiqueManagement: React.FC = () => {
                             </span>
                         )}
                         <Button
+                            onClick={() => setInventoryOpen(true)}
+                            size="sm"
+                            className="bg-white/20 hover:bg-white/30 text-white border-0"
+                        >
+                            <PackageSearch size={16} className="mr-1" />
+                            Inventaire
+                        </Button>
+                        <Button
                             onClick={openNewProductForm}
                             size="sm"
                             className="bg-white/20 hover:bg-white/30 text-white border-0"
