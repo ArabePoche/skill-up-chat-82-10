@@ -51,26 +51,6 @@ const BoutiqueTopTabs: React.FC<BoutiqueTopTabsProps> = ({
                         <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-[3px] bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full shadow-lg shadow-emerald-500/30 animate-[scaleIn_0.2s_ease-out]" />
                     )}
                 </button>
-
-                {/* Dashboard Tab (si boutique existante) */}
-                {showDashboard && (
-                    <>
-                        <div className="w-px h-6 bg-white/20" />
-                        <button
-                            onClick={() => onViewChange('dashboard')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-bold transition-all duration-300 relative ${activeView === 'dashboard'
-                                    ? 'text-white'
-                                    : 'text-white/50 hover:text-white/80'
-                                }`}
-                        >
-                            <BarChart3 size={18} />
-                            <span>Ventes</span>
-                            {activeView === 'dashboard' && (
-                                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-[3px] bg-gradient-to-r from-purple-400 to-purple-500 rounded-full shadow-lg shadow-purple-500/30 animate-[scaleIn_0.2s_ease-out]" />
-                            )}
-                        </button>
-                    </>
-                )}
             </div>
         </div>
     );
