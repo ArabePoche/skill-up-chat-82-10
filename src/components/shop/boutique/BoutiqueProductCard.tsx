@@ -1,5 +1,5 @@
-import React from 'react';
-import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, ShoppingCart, MoreVertical, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, MoreVertical, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
