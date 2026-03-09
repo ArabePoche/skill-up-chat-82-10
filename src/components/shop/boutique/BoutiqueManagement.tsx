@@ -40,7 +40,8 @@ import {
     useReturnFromMarketplace,
     type BoutiqueProduct,
 } from '@/hooks/shop/useBoutiqueProducts';
-import { useCreateBoutiqueSale, type SaleInput } from '@/hooks/shop/useBoutiqueSales';
+import { useCreateCartSale } from '@/hooks/shop/useBoutiqueSales';
+import { usePosCart } from '@/hooks/shop/usePosCart';
 import BoutiqueProductCard from './BoutiqueProductCard';
 import TransferDialog, { TransferDialogProps } from './TransferDialog';
 import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
