@@ -37,6 +37,7 @@ interface PosCashRegisterProps {
   open: boolean;
   onClose: () => void;
   products: BoutiqueProduct[];
+  shopId: string;
   shopName: string;
   shopAddress?: string;
   cartItems: PosCartItem[];
