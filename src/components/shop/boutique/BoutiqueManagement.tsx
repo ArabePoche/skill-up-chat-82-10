@@ -474,31 +474,6 @@ const BoutiqueManagement: React.FC = () => {
                 isLoading={returnFromMarketplace.isPending}
             />
 
-            {/* Panier POS */}
-            <PosCartDrawer
-                open={cartOpen}
-                onOpenChange={setCartOpen}
-                items={posCart.items}
-                totalAmount={posCart.totalAmount}
-                totalItems={posCart.totalItems}
-                onUpdateQuantity={posCart.updateQuantity}
-                onRemoveItem={posCart.removeItem}
-                onClearCart={posCart.clearCart}
-                onConfirmSale={async (data) => {
-                    if (!shop?.id) return;
-                    await cartSale.mutateAsync({
-                        shopId: shop.id,
-                        items: posCart.items,
-                        customerName: data.customerName,
-                        paymentMethod: data.paymentMethod,
-                        notes: data.notes,
-                    });
-                    posCart.clearCart();
-                }}
-                isProcessing={cartSale.isPending}
-                shopName={shop.name}
-            />
-
             {/* Caisse POS plein écran */}
             <PosCashRegister
                 open={posOpen}
