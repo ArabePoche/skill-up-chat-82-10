@@ -666,6 +666,8 @@ const BoutiqueManagement: React.FC = () => {
                     </button>
                 </div>
             )}
+            </>
+            )}
         </div>
     );
 };
