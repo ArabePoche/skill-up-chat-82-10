@@ -67,6 +67,7 @@ export const useBoutiqueProducts = (shopId?: string) => {
                     stockQuantity: p.stock_quantity || 0,
                     marketplaceQuantity: p.marketplace_quantity || 0,
                     imageUrl: p.image_url || undefined,
+                    barcode: p.barcode || undefined,
                     updatedAt: Date.now(),
                 }));
                 await boutiqueProductStore.putMany(localProducts);
