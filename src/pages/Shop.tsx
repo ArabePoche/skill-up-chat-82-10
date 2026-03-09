@@ -18,9 +18,8 @@ import FormationSections from '@/components/shop/FormationSections';
 import ProductSections from '@/components/shop/ProductSections';
 import ServiceSections from '@/components/shop/ServiceSections';
 import CartDrawer from '@/components/shop/cart/CartDrawer';
-import BoutiqueTopTabs, { type BoutiqueView } from '@/components/shop/boutique/BoutiqueTopTabs';
+import BoutiqueTopTabs from '@/components/shop/boutique/BoutiqueTopTabs';
 import BoutiqueManagement from '@/components/shop/boutique/BoutiqueManagement';
-import TodaySalesDashboard from '@/components/shop/boutique/TodaySalesDashboard';
 import { useTranslation } from 'react-i18next';
 
 const Shop = () => {
