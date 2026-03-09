@@ -88,12 +88,17 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
   } | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  // Ouvre automatiquement le panier mobile si des articles sont déjà présents à l'ouverture
+  // Ouvre automatiquement le panier mobile à l'ouverture de la caisse si des articles sont déjà présents
   useEffect(() => {
-    if (open && isMobile && totalItems > 0 && !mobileCartOpen) {
+    if (open && isMobile && totalItems > 0) {
       setMobileCartOpen(true);
+      setStep('browse');
+    } else if (!open) {
+      // Reset de l'état quand on ferme la caisse globale
+      setMobileCartOpen(false);
+      setStep('browse');
     }
-  }, [open, isMobile, totalItems, mobileCartOpen]);
+  }, [open, isMobile]);
 
   const filteredProducts = useMemo(() =>
     products.filter(p =>
