@@ -3,11 +3,11 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, ShoppingCart } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
-import SaleDialog, { SaleDialogProps } from './SaleDialog';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
+import PosCartDrawer from './PosCartDrawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,7 +40,8 @@ import {
     useReturnFromMarketplace,
     type BoutiqueProduct,
 } from '@/hooks/shop/useBoutiqueProducts';
-import { useCreateBoutiqueSale, type SaleInput } from '@/hooks/shop/useBoutiqueSales';
+import { useCreateCartSale } from '@/hooks/shop/useBoutiqueSales';
+import { usePosCart } from '@/hooks/shop/usePosCart';
 import BoutiqueProductCard from './BoutiqueProductCard';
 import TransferDialog, { TransferDialogProps } from './TransferDialog';
 import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
@@ -55,7 +56,8 @@ const BoutiqueManagement: React.FC = () => {
     const deleteProduct = useDeleteBoutiqueProduct();
     const transferToMarketplace = useTransferToMarketplace();
     const returnFromMarketplace = useReturnFromMarketplace();
-    const createSale = useCreateBoutiqueSale();
+    const cartSale = useCreateCartSale();
+    const posCart = usePosCart();
 
     // UI State
     const [searchQuery, setSearchQuery] = useState('');
@@ -64,10 +66,10 @@ const BoutiqueManagement: React.FC = () => {
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
     const [transferProduct, setTransferProduct] = useState<BoutiqueProduct | null>(null);
     const [returningProduct, setReturningProduct] = useState<BoutiqueProduct | null>(null);
-    const [sellingProduct, setSellingProduct] = useState<BoutiqueProduct | null>(null);
     const [shopName, setShopName] = useState('');
     const [shopAddress, setShopAddress] = useState('');
     const [inventoryOpen, setInventoryOpen] = useState(false);
+    const [cartOpen, setCartOpen] = useState(false);
 
     // Form state
     const [formName, setFormName] = useState('');
@@ -250,6 +252,19 @@ const BoutiqueManagement: React.FC = () => {
                             </span>
                         )}
                         <Button
+                            onClick={() => setCartOpen(true)}
+                            size="sm"
+                            className="bg-white/20 hover:bg-white/30 text-white border-0 relative"
+                        >
+                            <ShoppingCart size={16} className="mr-1" />
+                            Panier
+                            {posCart.totalItems > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                                    {posCart.totalItems}
+                                </span>
+                            )}
+                        </Button>
+                        <Button
                             onClick={() => setInventoryOpen(true)}
                             size="sm"
                             className="bg-white/20 hover:bg-white/30 text-white border-0"
@@ -321,7 +336,8 @@ const BoutiqueManagement: React.FC = () => {
                                     onDelete={(id) => setDeletingProductId(id)}
                                     onTransfer={(p) => setTransferProduct(p)}
                                     onReturn={(p) => setReturningProduct(p)}
-                                    onSell={(p) => setSellingProduct(p)}
+                                    onAddToCart={(p) => posCart.addItem(p)}
+                                    cartQuantity={posCart.items.find(i => i.product.id === product.id)?.quantity || 0}
                                 />
                             ))}
                         </div>
@@ -448,27 +464,29 @@ const BoutiqueManagement: React.FC = () => {
                 isLoading={returnFromMarketplace.isPending}
             />
 
-            {/* Dialog vente POS */}
-            <SaleDialog
-                product={sellingProduct}
-                isOpen={!!sellingProduct}
-                onClose={() => setSellingProduct(null)}
-                onConfirm={async (data) => {
+            {/* Panier POS */}
+            <PosCartDrawer
+                open={cartOpen}
+                onOpenChange={setCartOpen}
+                items={posCart.items}
+                totalAmount={posCart.totalAmount}
+                totalItems={posCart.totalItems}
+                onUpdateQuantity={posCart.updateQuantity}
+                onRemoveItem={posCart.removeItem}
+                onClearCart={posCart.clearCart}
+                onConfirmSale={async (data) => {
                     if (!shop?.id) return;
-                    const saleData: SaleInput = {
-                        shop_id: shop.id,
-                        product_id: data.productId,
-                        quantity: data.quantity,
-                        unit_price: data.unitPrice,
-                        total_amount: data.totalAmount,
-                        customer_name: data.customerName,
-                        payment_method: data.paymentMethod,
+                    await cartSale.mutateAsync({
+                        shopId: shop.id,
+                        items: posCart.items,
+                        customerName: data.customerName,
+                        paymentMethod: data.paymentMethod,
                         notes: data.notes,
-                    };
-                    await createSale.mutateAsync(saleData);
-                    setSellingProduct(null);
+                    });
+                    posCart.clearCart();
                 }}
-                isLoading={createSale.isPending}
+                isProcessing={cartSale.isPending}
+                shopName={shop.name}
             />
 
             {/* Confirmation suppression */}

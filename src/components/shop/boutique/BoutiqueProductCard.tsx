@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, ShoppingCart, MoreVertical } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, ShoppingCart, MoreVertical, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -15,7 +15,8 @@ interface BoutiqueProductCardProps {
     onDelete: (productId: string) => void;
     onTransfer: (product: BoutiqueProduct) => void;
     onReturn: (product: BoutiqueProduct) => void;
-    onSell: (product: BoutiqueProduct) => void;
+    onAddToCart: (product: BoutiqueProduct) => void;
+    cartQuantity?: number;
 }
 
 const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
@@ -24,7 +25,8 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     onDelete,
     onTransfer,
     onReturn,
-    onSell,
+    onAddToCart,
+    cartQuantity = 0,
 }) => {
     const availableStock = product.stock_quantity - product.marketplace_quantity;
 
@@ -44,7 +46,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                     </div>
                 )}
 
-                {/* Meatball Menu - Absolute Positioned */}
+                {/* Meatball Menu */}
                 <div className="absolute top-2 left-2 z-10">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -65,8 +67,15 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                     </DropdownMenu>
                 </div>
 
+                {/* Badge panier */}
+                {cartQuantity > 0 && (
+                    <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow">
+                        {cartQuantity}
+                    </div>
+                )}
+
                 {/* Badge marketplace */}
-                {product.marketplace_quantity > 0 && (
+                {product.marketplace_quantity > 0 && cartQuantity === 0 && (
                     <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
                         {product.marketplace_quantity} en ligne
                     </div>
@@ -93,19 +102,19 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
 
                 {/* Actions Section */}
                 <div className="flex flex-col gap-2">
-                    {/* Block Vendre */}
+                    {/* Bouton Ajouter au panier */}
                     <Button
                         variant="default"
                         size="sm"
-                        onClick={() => onSell(product)}
+                        onClick={() => onAddToCart(product)}
                         disabled={availableStock <= 0}
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-8 shadow-sm font-bold"
                     >
-                        <ShoppingCart size={12} className="mr-2" />
-                        Vendre
+                        <Plus size={12} className="mr-1" />
+                        Ajouter au panier
                     </Button>
 
-                    {/* Ligne Publier & Récupérer */}
+                    {/* Publier & Récupérer */}
                     <div className="grid grid-cols-2 gap-2">
                         <Button
                             variant="outline"
