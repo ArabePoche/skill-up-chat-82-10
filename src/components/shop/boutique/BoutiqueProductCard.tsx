@@ -1,5 +1,5 @@
-import React from 'react';
-import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, ShoppingCart, MoreVertical, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, MoreVertical, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -15,7 +15,7 @@ interface BoutiqueProductCardProps {
     onDelete: (productId: string) => void;
     onTransfer: (product: BoutiqueProduct) => void;
     onReturn: (product: BoutiqueProduct) => void;
-    onAddToCart: (product: BoutiqueProduct) => void;
+    onAddToCart: (product: BoutiqueProduct, qty?: number) => void;
     cartQuantity?: number;
 }
 
@@ -28,6 +28,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     onAddToCart,
     cartQuantity = 0,
 }) => {
+    const [qty, setQty] = useState(1);
     const availableStock = product.stock_quantity - product.marketplace_quantity;
 
     return (
@@ -102,17 +103,38 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
 
                 {/* Actions Section */}
                 <div className="flex flex-col gap-2">
-                    {/* Bouton Ajouter au panier */}
-                    <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => onAddToCart(product)}
-                        disabled={availableStock <= 0}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-8 shadow-sm font-bold"
-                    >
-                        <Plus size={12} className="mr-1" />
-                        Ajouter au panier
-                    </Button>
+                    {/* Sélecteur quantité + Ajouter au panier */}
+                    <div className="flex items-center gap-1">
+                        <div className="flex items-center border border-gray-200 rounded-md h-8">
+                            <button
+                                type="button"
+                                onClick={() => setQty(q => Math.max(1, q - 1))}
+                                className="px-1.5 h-full text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                                disabled={qty <= 1}
+                            >
+                                <Minus size={12} />
+                            </button>
+                            <span className="text-xs font-bold w-6 text-center">{qty}</span>
+                            <button
+                                type="button"
+                                onClick={() => setQty(q => Math.min(availableStock, q + 1))}
+                                className="px-1.5 h-full text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                                disabled={qty >= availableStock}
+                            >
+                                <Plus size={12} />
+                            </button>
+                        </div>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => { onAddToCart(product, qty); setQty(1); }}
+                            disabled={availableStock <= 0}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-8 shadow-sm font-bold"
+                        >
+                            <ShoppingCart size={12} className="mr-1" />
+                            Ajouter
+                        </Button>
+                    </div>
 
                     {/* Publier & Récupérer */}
                     <div className="grid grid-cols-2 gap-2">

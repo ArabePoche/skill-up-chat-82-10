@@ -232,7 +232,7 @@ const BoutiqueManagement: React.FC = () => {
 
     // Boutique existante : vue de gestion
     return (
-        <div className="pb-16">
+        <div className="pb-16 bg-white min-h-screen">
             {/* Header boutique */}
             <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-4 shadow-md">
                 <div className="flex items-center justify-between">
@@ -336,7 +336,7 @@ const BoutiqueManagement: React.FC = () => {
                                     onDelete={(id) => setDeletingProductId(id)}
                                     onTransfer={(p) => setTransferProduct(p)}
                                     onReturn={(p) => setReturningProduct(p)}
-                                    onAddToCart={(p) => posCart.addItem(p)}
+                                    onAddToCart={(p, qty) => posCart.addItem(p, qty)}
                                     cartQuantity={posCart.items.find(i => i.product.id === product.id)?.quantity || 0}
                                 />
                             ))}
