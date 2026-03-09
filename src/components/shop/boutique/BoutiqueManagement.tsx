@@ -265,18 +265,6 @@ const BoutiqueManagement: React.FC = () => {
                             )}
                         </Button>
                         <Button
-                            onClick={() => setCartOpen(true)}
-                            size="icon"
-                            className="bg-white/20 hover:bg-white/30 text-white border-0 relative h-8 w-8"
-                        >
-                            <ShoppingCart size={16} />
-                            {posCart.totalItems > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                                    {posCart.totalItems}
-                                </span>
-                            )}
-                        </Button>
-                        <Button
                             onClick={() => setInventoryOpen(true)}
                             size="icon"
                             className="bg-white/20 hover:bg-white/30 text-white border-0 h-8 w-8"
