@@ -283,6 +283,9 @@ const BoutiqueManagement: React.FC = () => {
                 </div>
             </div>
 
+            {/* Dashboard ventes du jour */}
+            <TodaySalesDashboard shopId={shop.id} />
+
             {/* Liste des produits */}
             <div className="p-3 sm:p-4">
                 {/* Barre de recherche */}
