@@ -56,7 +56,8 @@ const BoutiqueManagement: React.FC = () => {
     const deleteProduct = useDeleteBoutiqueProduct();
     const transferToMarketplace = useTransferToMarketplace();
     const returnFromMarketplace = useReturnFromMarketplace();
-    const createSale = useCreateBoutiqueSale();
+    const cartSale = useCreateCartSale();
+    const posCart = usePosCart();
 
     // UI State
     const [searchQuery, setSearchQuery] = useState('');
