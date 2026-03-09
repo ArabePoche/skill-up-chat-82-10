@@ -5,21 +5,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { physicalShopStore, type LocalPhysicalShop } from '@/local-storage/stores/BoutiqueStore';
+import { physicalShopStore } from '@/local-storage/stores/BoutiqueStore';
 import { toast } from 'sonner';
-import { useEffect, useState } from 'react';
 
 export const usePhysicalShop = () => {
     const { user } = useAuth();
-    const [cachedShop, setCachedShop] = useState<LocalPhysicalShop | null>(null);
-
-    // Charger le cache au montage
-    useEffect(() => {
-        if (!user?.id) return;
-        physicalShopStore.getByOwner(user.id).then(shops => {
-            if (shops.length > 0) setCachedShop(shops[0]);
-        }).catch(() => { });
-    }, [user?.id]);
 
     const query = useQuery({
         queryKey: ['physical-shop', user?.id],
@@ -39,32 +29,18 @@ export const usePhysicalShop = () => {
 
             // Mettre en cache IndexedDB (non bloquant)
             if (data) {
-                try {
-                    const localShop: LocalPhysicalShop = {
-                        id: data.id,
-                        ownerId: data.owner_id,
-                        name: data.name,
-                        address: data.address,
-                        updatedAt: Date.now(),
-                    };
-                    await physicalShopStore.put(localShop);
-                    setCachedShop(localShop);
-                } catch (cacheError) {
-                    console.warn('🏪 [usePhysicalShop] Cache IndexedDB failed (non-blocking):', cacheError);
-                }
+                physicalShopStore.put({
+                    id: data.id,
+                    ownerId: data.owner_id,
+                    name: data.name,
+                    address: data.address,
+                    updatedAt: Date.now(),
+                }).catch(err => console.warn('🏪 Cache IndexedDB failed:', err));
             }
 
             return data;
         },
         enabled: !!user?.id,
-        initialData: cachedShop ? {
-            id: cachedShop.id,
-            owner_id: cachedShop.ownerId,
-            name: cachedShop.name,
-            address: cachedShop.address,
-            created_at: '',
-            updated_at: '',
-        } : undefined,
         staleTime: 1000 * 60 * 5,
     });
 
