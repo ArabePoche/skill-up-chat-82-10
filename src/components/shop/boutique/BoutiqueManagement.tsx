@@ -113,6 +113,7 @@ const BoutiqueManagement: React.FC = () => {
         setFormName('');
         setFormDescription('');
         setFormPrice('');
+        setFormCostPrice('');
         setFormStock('');
         setFormImageUrl('');
         setShowProductForm(true);
