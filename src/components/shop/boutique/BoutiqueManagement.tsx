@@ -36,7 +36,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
-import { usePhysicalShop, useCreatePhysicalShop } from '@/hooks/shop/usePhysicalShop';
+import { useCreatePhysicalShop } from '@/hooks/shop/usePhysicalShop';
 import MultiShopDashboard from '../multi-boutique/MultiShopDashboard';
 import { useUserShops } from '@/hooks/shop/useMultiShop';
 import {
