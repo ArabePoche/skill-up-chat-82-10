@@ -380,9 +380,27 @@ const BoutiqueManagement: React.FC = () => {
                             {products?.filter(p => p.marketplace_quantity > 0).length || 0}
                         </span>
                     </div>
+                {/* Onglets Boutique / Clients */}
+                <div className="flex border-b border-white/20">
+                    <button
+                        onClick={() => setActiveView('shop')}
+                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'shop' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <Package size={14} className="inline mr-1" /> Boutique
+                    </button>
+                    <button
+                        onClick={() => setActiveView('customers')}
+                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'customers' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <Users size={14} className="inline mr-1" /> Clients
+                    </button>
                 </div>
             </div>
 
+            {activeView === 'customers' ? (
+                <CustomerManagement shopId={shop.id} />
+            ) : (
+            <>
             {/* Dashboard ventes du jour */}
             <TodaySalesDashboard shopId={shop.id} />
 
