@@ -8,7 +8,7 @@ import { useServices } from '@/components/shop/services/hooks/useServices';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { useUserInterests } from '@/hooks/useUserInterests';
-import { useIsShopOwner } from '@/hooks/shop/usePhysicalShop';
+import { useIsShopOwner, usePhysicalShop } from '@/hooks/shop/usePhysicalShop';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ShopHeader from '@/components/shop/ShopHeader';
@@ -18,8 +18,9 @@ import FormationSections from '@/components/shop/FormationSections';
 import ProductSections from '@/components/shop/ProductSections';
 import ServiceSections from '@/components/shop/ServiceSections';
 import CartDrawer from '@/components/shop/cart/CartDrawer';
-import BoutiqueTopTabs from '@/components/shop/boutique/BoutiqueTopTabs';
+import BoutiqueTopTabs, { type BoutiqueView } from '@/components/shop/boutique/BoutiqueTopTabs';
 import BoutiqueManagement from '@/components/shop/boutique/BoutiqueManagement';
+import TodaySalesDashboard from '@/components/shop/boutique/TodaySalesDashboard';
 import { useTranslation } from 'react-i18next';
 
 const Shop = () => {
@@ -30,12 +31,13 @@ const Shop = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
-  const [mainView, setMainView] = useState<'marketplace' | 'gestion'>('marketplace');
+  const [mainView, setMainView] = useState<BoutiqueView>('marketplace');
   const { user } = useAuth();
   const navigate = useNavigate();
   const { cartItemsCount, addToCart } = useCart();
   const { data: userInterests = [] } = useUserInterests();
   const { data: isShopOwner } = useIsShopOwner();
+  const { data: shop } = usePhysicalShop();
 
   const { data: formations, isLoading: formationsLoading } = useShopFormations(activeCategory);
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
