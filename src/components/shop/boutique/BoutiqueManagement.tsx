@@ -232,7 +232,7 @@ const BoutiqueManagement: React.FC = () => {
 
     // Boutique existante : vue de gestion
     return (
-        <div className="pb-16">
+        <div className="pb-16 bg-white min-h-screen">
             {/* Header boutique */}
             <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-4 shadow-md">
                 <div className="flex items-center justify-between">
