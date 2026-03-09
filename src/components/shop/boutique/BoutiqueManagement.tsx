@@ -336,7 +336,7 @@ const BoutiqueManagement: React.FC = () => {
                                     onDelete={(id) => setDeletingProductId(id)}
                                     onTransfer={(p) => setTransferProduct(p)}
                                     onReturn={(p) => setReturningProduct(p)}
-                                    onAddToCart={(p) => posCart.addItem(p)}
+                                    onAddToCart={(p, qty) => posCart.addItem(p, qty)}
                                     cartQuantity={posCart.items.find(i => i.product.id === product.id)?.quantity || 0}
                                 />
                             ))}

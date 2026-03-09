@@ -28,6 +28,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     onAddToCart,
     cartQuantity = 0,
 }) => {
+    const [qty, setQty] = useState(1);
     const availableStock = product.stock_quantity - product.marketplace_quantity;
 
     return (
