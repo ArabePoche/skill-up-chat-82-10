@@ -6285,6 +6285,70 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_stock_transfers: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          from_shop_id: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          status: string
+          to_shop_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          from_shop_id: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          status?: string
+          to_shop_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          from_shop_id?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          status?: string
+          to_shop_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_stock_transfers_from_shop_id_fkey"
+            columns: ["from_shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_stock_transfers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shop_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_stock_transfers_to_shop_id_fkey"
+            columns: ["to_shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_visitors: {
         Row: {
           country: string | null
@@ -8451,6 +8515,10 @@ export type Database = {
       clean_expired_visitors: { Args: never; Returns: undefined }
       cleanup_expired_media_links: { Args: never; Returns: undefined }
       cleanup_expired_stories: { Args: never; Returns: undefined }
+      complete_shop_transfer: {
+        Args: { transfer_id: string }
+        Returns: boolean
+      }
       decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
       delete_student_cascade: {
         Args: { p_student_id: string }
@@ -8537,6 +8605,16 @@ export type Database = {
       get_user_sent_message_ids: {
         Args: { p_user_id: string }
         Returns: string[]
+      }
+      get_user_shops: {
+        Args: { user_id: string }
+        Returns: {
+          address: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }[]
       }
       get_user_usage: {
         Args: { p_formation_id: string; p_user_id: string }
