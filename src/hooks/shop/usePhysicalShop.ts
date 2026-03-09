@@ -5,9 +5,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { physicalShopStore, type LocalPhysicalShop } from '@/local-storage/stores/BoutiqueStore';
+import { physicalShopStore } from '@/local-storage/stores/BoutiqueStore';
 import { toast } from 'sonner';
-import { useEffect, useState } from 'react';
 
 export const usePhysicalShop = () => {
     const { user } = useAuth();
