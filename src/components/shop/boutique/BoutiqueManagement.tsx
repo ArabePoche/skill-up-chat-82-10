@@ -195,13 +195,31 @@ const BoutiqueManagement: React.FC = () => {
         );
     }
 
-    // Si l'utilisateur a plusieurs boutiques, on affiche le dashboard multi-boutiques
-    // au lieu de la vue d'une seule boutique par défaut.
-    const urlParams = new URLSearchParams(window.location.search);
-    const shopIdFromUrl = urlParams.get('id');
-    
-    if (userShops && userShops.length > 1 && !shopIdFromUrl) {
-        return <MultiShopDashboard />;
+    const hasMultipleShops = userShops && userShops.length > 1;
+
+    // Si multi-shop settings est ouvert
+    if (showMultiShopSettings) {
+        return (
+            <div className="pb-16 bg-background min-h-screen">
+                <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-3 sm:p-4 shadow-md">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+                            <Settings2 size={18} />
+                            Gestion multi-boutiques
+                        </h2>
+                        <Button
+                            onClick={() => setShowMultiShopSettings(false)}
+                            size="sm"
+                            variant="ghost"
+                            className="text-white hover:bg-white/20"
+                        >
+                            ← Retour
+                        </Button>
+                    </div>
+                </div>
+                <MultiShopDashboard />
+            </div>
+        );
     }
 
     // Pas de boutique : formulaire de création
