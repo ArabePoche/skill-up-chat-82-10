@@ -3,7 +3,7 @@
  * Mobile : produits plein écran + barre panier en bas qui s'ouvre en overlay
  * Desktop : grille produits à gauche + sidebar panier/encaissement à droite
  */
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
