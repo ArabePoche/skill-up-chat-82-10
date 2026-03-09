@@ -402,6 +402,17 @@ const BoutiqueManagement: React.FC = () => {
                         <Package size={14} className="inline mr-1" /> Boutique
                     </button>
                     <button
+                        onClick={() => setActiveView('orders')}
+                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors relative ${activeView === 'orders' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <Bell size={14} className="inline mr-1" /> Commandes
+                        {pendingCount > 0 && (
+                            <span className="absolute -top-1 right-2 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                                {pendingCount}
+                            </span>
+                        )}
+                    </button>
+                    <button
                         onClick={() => setActiveView('customers')}
                         className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'customers' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
                     >
