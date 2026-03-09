@@ -100,6 +100,14 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                         <Package size={10} />
                         Stock : {availableStock}{cartQuantity > 0 ? ` (${remainingStock} dispo)` : ''}
                     </div>
+
+                    {/* Barcode */}
+                    {product.barcode && (
+                        <div className="flex items-center gap-1 mt-1 text-[9px] text-gray-400 font-mono">
+                            <Barcode size={10} />
+                            {product.barcode}
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions Section */}

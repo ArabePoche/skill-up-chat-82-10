@@ -431,6 +431,9 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
                 </div>
                 <p className="font-semibold text-[11px] text-gray-900 line-clamp-1">{product.name}</p>
                 <p className="font-bold text-emerald-600 text-xs">{formatCurrency(product.price)}</p>
+                {product.barcode && (
+                  <p className="text-[8px] text-gray-400 font-mono truncate">{product.barcode}</p>
+                )}
                 <p className="text-[9px] text-gray-400">Stock: {remaining}</p>
                 {inCart > 0 && (
                   <div className="absolute top-1.5 right-1.5 bg-emerald-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
