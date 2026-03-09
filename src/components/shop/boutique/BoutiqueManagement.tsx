@@ -7,7 +7,6 @@ import { Plus, Store, Package, WifiOff, Search, PackageSearch, ShoppingCart, Cal
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
-import PosCartDrawer from './PosCartDrawer';
 import PosCashRegister from './PosCashRegister';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
