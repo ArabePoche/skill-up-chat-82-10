@@ -5,12 +5,11 @@
 import React from 'react';
 import { Store, ShoppingBag, BarChart3 } from 'lucide-react';
 
-export type BoutiqueView = 'marketplace' | 'gestion' | 'dashboard';
+export type BoutiqueView = 'marketplace' | 'gestion';
 
 interface BoutiqueTopTabsProps {
     activeView: BoutiqueView;
     onViewChange: (view: BoutiqueView) => void;
-    showDashboard?: boolean;
 }
 
 const BoutiqueTopTabs: React.FC<BoutiqueTopTabsProps> = ({ 
