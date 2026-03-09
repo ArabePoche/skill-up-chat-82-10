@@ -90,7 +90,7 @@ const Shop = () => {
       : servicesLoading;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0">
+    <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
       {/* Onglets TikTok-style pour les propriétaires de boutique */}
       {isShopOwner && (
         <BoutiqueTopTabs activeView={mainView} onViewChange={setMainView} />
