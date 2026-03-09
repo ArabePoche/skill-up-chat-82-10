@@ -15,7 +15,7 @@ interface BoutiqueProductCardProps {
     onDelete: (productId: string) => void;
     onTransfer: (product: BoutiqueProduct) => void;
     onReturn: (product: BoutiqueProduct) => void;
-    onAddToCart: (product: BoutiqueProduct) => void;
+    onAddToCart: (product: BoutiqueProduct, qty?: number) => void;
     cartQuantity?: number;
 }
 
