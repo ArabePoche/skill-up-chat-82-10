@@ -150,6 +150,8 @@ const BoutiqueManagement: React.FC = () => {
             cost_price: parseFloat(formCostPrice) || 0,
             stock_quantity: parseInt(formStock) || 0,
             image_url: formImageUrl.trim() || undefined,
+            category: formCategory.trim() || undefined,
+            location: formLocation.trim() || undefined,
         };
 
         try {
