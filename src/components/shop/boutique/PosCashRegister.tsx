@@ -75,8 +75,7 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
   const [notes, setNotes] = useState('');
   const [amountReceived, setAmountReceived] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
-  // Ouvre automatiquement le panier mobile si des articles sont déjà présents
-  const [mobileCartOpen, setMobileCartOpen] = useState(() => totalItems > 0);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [receiptData, setReceiptData] = useState<{
     items: PosCartItem[];
     total: number;
@@ -88,6 +87,13 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
     type: CheckoutType;
   } | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Ouvre automatiquement le panier mobile si des articles sont déjà présents à l'ouverture
+  useEffect(() => {
+    if (open && isMobile && totalItems > 0 && !mobileCartOpen) {
+      setMobileCartOpen(true);
+    }
+  }, [open, isMobile, totalItems, mobileCartOpen]);
 
   const filteredProducts = useMemo(() =>
     products.filter(p =>
