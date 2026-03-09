@@ -1,8 +1,9 @@
 /**
  * Onglet boutique du profil - affiche et gère les produits/services de l'utilisateur
+ * Permet aussi de créer une boutique physique
  */
 import React, { useState } from 'react';
-import { Plus, Package } from 'lucide-react';
+import { Plus, Package, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +28,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { usePhysicalShop } from '@/hooks/shop/usePhysicalShop';
+import { useUserShops } from '@/hooks/shop/useMultiShop';
+import CreateShopDialog from '@/components/shop/multi-boutique/CreateShopDialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
 
 interface ShopTabProps {
   userId?: string;
