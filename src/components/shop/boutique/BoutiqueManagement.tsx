@@ -501,6 +501,34 @@ const BoutiqueManagement: React.FC = () => {
                 shopName={shop.name}
             />
 
+            {/* Caisse POS plein écran */}
+            <PosCashRegister
+                open={posOpen}
+                onClose={() => setPosOpen(false)}
+                products={products || []}
+                shopName={shop.name}
+                shopAddress={shop.address}
+                cartItems={posCart.items}
+                totalAmount={posCart.totalAmount}
+                totalItems={posCart.totalItems}
+                onAddItem={(p, qty) => posCart.addItem(p, qty)}
+                onUpdateQuantity={posCart.updateQuantity}
+                onRemoveItem={posCart.removeItem}
+                onClearCart={posCart.clearCart}
+                onConfirmSale={async (data) => {
+                    if (!shop?.id) return;
+                    await cartSale.mutateAsync({
+                        shopId: shop.id,
+                        items: posCart.items,
+                        customerName: data.customerName,
+                        paymentMethod: data.paymentMethod,
+                        notes: data.notes,
+                    });
+                    posCart.clearCart();
+                }}
+                isProcessing={cartSale.isPending}
+            />
+
             {/* Confirmation suppression */}
             <AlertDialog open={!!deletingProductId} onOpenChange={(open) => !open && setDeletingProductId(null)}>
                 <AlertDialogContent>
