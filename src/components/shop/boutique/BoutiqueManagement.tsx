@@ -3,7 +3,7 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
@@ -517,6 +517,29 @@ const BoutiqueManagement: React.FC = () => {
                 onOpenChange={setInventoryOpen}
                 shopId={shop.id}
             />
+
+            {/* Floating sell button when cart has items */}
+            {posCart.totalItems > 0 && (
+                <div className="fixed bottom-20 left-0 right-0 z-40 px-4">
+                    <button
+                        onClick={() => setPosOpen(true)}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-xl px-5 py-3.5 flex items-center justify-between active:scale-[0.98] transition-all"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <ShoppingCart size={22} />
+                                <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                                    {posCart.totalItems}
+                                </span>
+                            </div>
+                            <span className="font-bold text-sm">Ouvrir la caisse</span>
+                        </div>
+                        <span className="font-bold text-lg">
+                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(posCart.totalAmount)}
+                        </span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

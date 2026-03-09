@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, MoreVertical, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, MoreVertical, Plus, Minus, ShoppingCart, Barcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -100,6 +100,14 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                         <Package size={10} />
                         Stock : {availableStock}{cartQuantity > 0 ? ` (${remainingStock} dispo)` : ''}
                     </div>
+
+                    {/* Barcode */}
+                    {product.barcode && (
+                        <div className="flex items-center gap-1 mt-1 text-[9px] text-gray-400 font-mono">
+                            <Barcode size={10} />
+                            {product.barcode}
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions Section */}

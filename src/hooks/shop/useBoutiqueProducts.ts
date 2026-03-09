@@ -20,6 +20,7 @@ export interface BoutiqueProduct {
     stock_quantity: number;
     marketplace_quantity: number;
     image_url?: string | null;
+    barcode?: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -66,6 +67,7 @@ export const useBoutiqueProducts = (shopId?: string) => {
                     stockQuantity: p.stock_quantity || 0,
                     marketplaceQuantity: p.marketplace_quantity || 0,
                     imageUrl: p.image_url || undefined,
+                    barcode: p.barcode || undefined,
                     updatedAt: Date.now(),
                 }));
                 await boutiqueProductStore.putMany(localProducts);
@@ -87,6 +89,7 @@ export const useBoutiqueProducts = (shopId?: string) => {
                 stock_quantity: p.stockQuantity,
                 marketplace_quantity: p.marketplaceQuantity,
                 image_url: p.imageUrl || null,
+                barcode: p.barcode || null,
                 created_at: '',
                 updated_at: '',
             } as BoutiqueProduct))
@@ -131,6 +134,7 @@ export const useCreateBoutiqueProduct = () => {
                 stockQuantity: data.stock_quantity || 0,
                 marketplaceQuantity: 0,
                 imageUrl: data.image_url || undefined,
+                barcode: data.barcode || undefined,
                 updatedAt: Date.now(),
             });
 
