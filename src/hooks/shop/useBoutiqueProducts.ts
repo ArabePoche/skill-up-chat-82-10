@@ -134,6 +134,7 @@ export const useCreateBoutiqueProduct = () => {
                 stockQuantity: data.stock_quantity || 0,
                 marketplaceQuantity: 0,
                 imageUrl: data.image_url || undefined,
+                barcode: data.barcode || undefined,
                 updatedAt: Date.now(),
             });
 
