@@ -389,6 +389,7 @@ const BoutiqueManagement: React.FC = () => {
                             {products?.filter(p => p.marketplace_quantity > 0).length || 0}
                         </span>
                     </div>
+                </div>
                 {/* Onglets Boutique / Clients */}
                 <div className="flex border-b border-white/20">
                     <button
