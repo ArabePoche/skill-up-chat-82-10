@@ -40,15 +40,21 @@ interface ShopTabProps {
 
 const ShopTab: React.FC<ShopTabProps> = ({ userId }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isOwnProfile = !userId || userId === user?.id;
 
+  // Services
   const { data: services, isLoading } = useUserServices(userId || user?.id);
   const createService = useCreateService();
   const updateService = useUpdateService();
   const deleteService = useDeleteService();
   const addServiceFiles = useAddServiceFiles();
 
+  // Boutiques physiques
+  const { data: userShops, isLoading: isLoadingShops } = useUserShops();
+
   const [showForm, setShowForm] = useState(false);
+  const [showCreateShopDialog, setShowCreateShopDialog] = useState(false);
   const [editingService, setEditingService] = useState<ServiceWithFiles | undefined>();
   const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
 
