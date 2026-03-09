@@ -423,6 +423,8 @@ const BoutiqueManagement: React.FC = () => {
 
             {activeView === 'customers' ? (
                 <CustomerManagement shopId={shop.id} />
+            ) : activeView === 'orders' ? (
+                <ShopOrdersPanel />
             ) : (
                 <div>
                     {/* Dashboard ventes du jour */}
