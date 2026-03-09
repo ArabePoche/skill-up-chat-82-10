@@ -3,11 +3,12 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, ShoppingCart } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, ShoppingCart, Calculator } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
 import PosCartDrawer from './PosCartDrawer';
+import PosCashRegister from './PosCashRegister';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,6 +71,7 @@ const BoutiqueManagement: React.FC = () => {
     const [shopAddress, setShopAddress] = useState('');
     const [inventoryOpen, setInventoryOpen] = useState(false);
     const [cartOpen, setCartOpen] = useState(false);
+    const [posOpen, setPosOpen] = useState(false);
 
     // Form state
     const [formName, setFormName] = useState('');
@@ -251,6 +253,19 @@ const BoutiqueManagement: React.FC = () => {
                                 <WifiOff size={10} /> Hors ligne
                             </span>
                         )}
+                        <Button
+                            onClick={() => setPosOpen(true)}
+                            size="sm"
+                            className="bg-white/20 hover:bg-white/30 text-white border-0 h-8 gap-1.5 text-xs font-bold"
+                        >
+                            <Calculator size={14} />
+                            Caisse
+                            {posCart.totalItems > 0 && (
+                                <span className="bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center ml-0.5">
+                                    {posCart.totalItems}
+                                </span>
+                            )}
+                        </Button>
                         <Button
                             onClick={() => setCartOpen(true)}
                             size="icon"
@@ -484,6 +499,34 @@ const BoutiqueManagement: React.FC = () => {
                 }}
                 isProcessing={cartSale.isPending}
                 shopName={shop.name}
+            />
+
+            {/* Caisse POS plein écran */}
+            <PosCashRegister
+                open={posOpen}
+                onClose={() => setPosOpen(false)}
+                products={products || []}
+                shopName={shop.name}
+                shopAddress={shop.address}
+                cartItems={posCart.items}
+                totalAmount={posCart.totalAmount}
+                totalItems={posCart.totalItems}
+                onAddItem={(p, qty) => posCart.addItem(p, qty)}
+                onUpdateQuantity={posCart.updateQuantity}
+                onRemoveItem={posCart.removeItem}
+                onClearCart={posCart.clearCart}
+                onConfirmSale={async (data) => {
+                    if (!shop?.id) return;
+                    await cartSale.mutateAsync({
+                        shopId: shop.id,
+                        items: posCart.items,
+                        customerName: data.customerName,
+                        paymentMethod: data.paymentMethod,
+                        notes: data.notes,
+                    });
+                    posCart.clearCart();
+                }}
+                isProcessing={cartSale.isPending}
             />
 
             {/* Confirmation suppression */}
