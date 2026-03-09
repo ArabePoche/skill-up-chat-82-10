@@ -96,6 +96,9 @@ const BoutiqueManagement: React.FC = () => {
     const [formCostPrice, setFormCostPrice] = useState('');
     const [formStock, setFormStock] = useState('');
     const [formImageUrl, setFormImageUrl] = useState('');
+    const [formCategory, setFormCategory] = useState('');
+    const [formLocation, setFormLocation] = useState('');
+    const [filterCategory, setFilterCategory] = useState('all');
 
     const isOnline = navigator.onLine;
 
