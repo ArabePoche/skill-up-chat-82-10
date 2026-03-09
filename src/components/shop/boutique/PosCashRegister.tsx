@@ -527,9 +527,10 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
         {/* Mobile : overlay panier */}
         {isMobile && mobileCartOpen && (
           <div className="absolute inset-0 z-10 flex flex-col" style={{ top: '52px' }}>
-            <div className="flex-1 bg-black/40" onClick={() => setMobileCartOpen(false)} />
-            <div className="bg-white flex flex-col max-h-[85vh] rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-200">
-              <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
+            <div className="flex-1 bg-black/40" onClick={() => step === 'browse' && setMobileCartOpen(false)} />
+            <div className="bg-white flex flex-col rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-200"
+              style={{ maxHeight: 'calc(100vh - 52px)', height: step === 'checkout' ? 'calc(100vh - 52px)' : '85vh' }}>
+              <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-2 mb-1 shrink-0" />
               <CartContent />
             </div>
           </div>
