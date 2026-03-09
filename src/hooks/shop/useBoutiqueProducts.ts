@@ -170,8 +170,11 @@ export const useUpdateBoutiqueProduct = () => {
             name?: string;
             description?: string;
             price?: number;
+            cost_price?: number;
             stock_quantity?: number;
             image_url?: string;
+            category?: string;
+            location?: string;
         }) => {
             const { id, shop_id, ...updates } = product;
 
