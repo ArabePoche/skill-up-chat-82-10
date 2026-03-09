@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Store, Package, WifiOff, Search } from 'lucide-react';
+import TodaySalesDashboard from './TodaySalesDashboard';
 import SaleDialog, { SaleDialogProps } from './SaleDialog';
 import ProductImageUploader from './ProductImageUploader';
 import { Button } from '@/components/ui/button';
@@ -281,6 +282,9 @@ const BoutiqueManagement: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Dashboard ventes du jour */}
+            <TodaySalesDashboard shopId={shop.id} />
 
             {/* Liste des produits */}
             <div className="p-3 sm:p-4">
