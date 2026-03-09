@@ -139,6 +139,7 @@ const BoutiqueManagement: React.FC = () => {
             name: formName.trim(),
             description: formDescription.trim() || undefined,
             price: parseFloat(formPrice) || 0,
+            cost_price: parseFloat(formCostPrice) || 0,
             stock_quantity: parseInt(formStock) || 0,
             image_url: formImageUrl.trim() || undefined,
         };
