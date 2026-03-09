@@ -92,6 +92,7 @@ const BoutiqueManagement: React.FC = () => {
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
     const [formPrice, setFormPrice] = useState('');
+    const [formCostPrice, setFormCostPrice] = useState('');
     const [formStock, setFormStock] = useState('');
     const [formImageUrl, setFormImageUrl] = useState('');
 
