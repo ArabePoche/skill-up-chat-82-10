@@ -101,6 +101,22 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                         Stock : {availableStock}{cartQuantity > 0 ? ` (${remainingStock} dispo)` : ''}
                     </div>
 
+                    {/* Category & Location */}
+                    {(product.category || product.location) && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {product.category && (
+                                <span className="bg-purple-50 text-purple-600 text-[9px] font-medium px-1.5 py-0.5 rounded">
+                                    {product.category}
+                                </span>
+                            )}
+                            {product.location && (
+                                <span className="bg-amber-50 text-amber-600 text-[9px] font-medium px-1.5 py-0.5 rounded">
+                                    📍 {product.location}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     {/* Barcode */}
                     {product.barcode && (
                         <div className="flex items-center gap-1 mt-1 text-[9px] text-gray-400 font-mono">
