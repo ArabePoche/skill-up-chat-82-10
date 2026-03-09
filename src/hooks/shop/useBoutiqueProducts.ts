@@ -17,6 +17,7 @@ export interface BoutiqueProduct {
     name: string;
     description?: string | null;
     price: number;
+    cost_price: number;
     stock_quantity: number;
     marketplace_quantity: number;
     image_url?: string | null;

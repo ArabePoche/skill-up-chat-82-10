@@ -3,11 +3,12 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2 } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
 import PosCashRegister from './PosCashRegister';
+import CustomerManagement from './CustomerManagement';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,11 +88,12 @@ const BoutiqueManagement: React.FC = () => {
     const [inventoryOpen, setInventoryOpen] = useState(false);
     const [posOpen, setPosOpen] = useState(false);
     const [showMultiShopSettings, setShowMultiShopSettings] = useState(false);
-
+    const [activeView, setActiveView] = useState<'shop' | 'customers'>('shop');
     // Form state
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
     const [formPrice, setFormPrice] = useState('');
+    const [formCostPrice, setFormCostPrice] = useState('');
     const [formStock, setFormStock] = useState('');
     const [formImageUrl, setFormImageUrl] = useState('');
 
@@ -112,6 +114,7 @@ const BoutiqueManagement: React.FC = () => {
         setFormName('');
         setFormDescription('');
         setFormPrice('');
+        setFormCostPrice('');
         setFormStock('');
         setFormImageUrl('');
         setShowProductForm(true);
@@ -123,6 +126,7 @@ const BoutiqueManagement: React.FC = () => {
         setFormName(product.name);
         setFormDescription(product.description || '');
         setFormPrice(product.price.toString());
+        setFormCostPrice((product.cost_price || 0).toString());
         setFormStock(product.stock_quantity.toString());
         setFormImageUrl(product.image_url || '');
         setShowProductForm(true);
@@ -136,6 +140,7 @@ const BoutiqueManagement: React.FC = () => {
             name: formName.trim(),
             description: formDescription.trim() || undefined,
             price: parseFloat(formPrice) || 0,
+            cost_price: parseFloat(formCostPrice) || 0,
             stock_quantity: parseInt(formStock) || 0,
             image_url: formImageUrl.trim() || undefined,
         };
@@ -375,9 +380,27 @@ const BoutiqueManagement: React.FC = () => {
                             {products?.filter(p => p.marketplace_quantity > 0).length || 0}
                         </span>
                     </div>
+                {/* Onglets Boutique / Clients */}
+                <div className="flex border-b border-white/20">
+                    <button
+                        onClick={() => setActiveView('shop')}
+                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'shop' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <Package size={14} className="inline mr-1" /> Boutique
+                    </button>
+                    <button
+                        onClick={() => setActiveView('customers')}
+                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'customers' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <Users size={14} className="inline mr-1" /> Clients
+                    </button>
                 </div>
             </div>
 
+            {activeView === 'customers' ? (
+                <CustomerManagement shopId={shop.id} />
+            ) : (
+            <div>
             {/* Dashboard ventes du jour */}
             <TodaySalesDashboard shopId={shop.id} />
 
@@ -404,7 +427,7 @@ const BoutiqueManagement: React.FC = () => {
 
                     return productsLoading ? (
                         <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                         </div>
                     ) : filtered && filtered.length > 0 ? (
                         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -428,9 +451,9 @@ const BoutiqueManagement: React.FC = () => {
                         </div>
                     ) : (
                         <div className="text-center py-16">
-                            <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                            <p className="text-gray-500 mb-4">Aucun produit dans votre boutique</p>
-                            <Button onClick={openNewProductForm} className="bg-emerald-600 hover:bg-emerald-700">
+                            <Package size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+                            <p className="text-muted-foreground mb-4">Aucun produit dans votre boutique</p>
+                            <Button onClick={openNewProductForm}>
                                 <Plus size={16} className="mr-2" />
                                 Ajouter un produit
                             </Button>
@@ -438,6 +461,8 @@ const BoutiqueManagement: React.FC = () => {
                     );
                 })()}
             </div>
+            </div>
+            )}
 
             {/* Dialog produit (ajout/modification) */}
             <Dialog open={showProductForm} onOpenChange={(open) => {
@@ -475,7 +500,7 @@ const BoutiqueManagement: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label htmlFor="product-price">Prix (€)</Label>
+                                <Label htmlFor="product-price">Prix de vente</Label>
                                 <Input
                                     id="product-price"
                                     type="number"
@@ -483,20 +508,41 @@ const BoutiqueManagement: React.FC = () => {
                                     step="0.01"
                                     value={formPrice}
                                     onChange={(e) => setFormPrice(e.target.value)}
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="product-stock">Stock</Label>
-                                <Input
-                                    id="product-stock"
-                                    type="number"
-                                    min="0"
-                                    value={formStock}
-                                    onChange={(e) => setFormStock(e.target.value)}
                                     placeholder="0"
                                 />
                             </div>
+                            <div>
+                                <Label htmlFor="product-cost">Prix d'achat</Label>
+                                <Input
+                                    id="product-cost"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={formCostPrice}
+                                    onChange={(e) => setFormCostPrice(e.target.value)}
+                                    placeholder="0"
+                                />
+                            </div>
+                        </div>
+                        {formPrice && formCostPrice && parseFloat(formPrice) > 0 && parseFloat(formCostPrice) > 0 && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-xs text-center">
+                                Marge : <span className="font-bold text-primary">
+                                    {((parseFloat(formPrice) - parseFloat(formCostPrice)) / parseFloat(formPrice) * 100).toFixed(0)}%
+                                </span> · Bénéfice/unité : <span className="font-bold text-primary">
+                                    {(parseFloat(formPrice) - parseFloat(formCostPrice)).toLocaleString('fr-FR')} FCFA
+                                </span>
+                            </div>
+                        )}
+                        <div>
+                            <Label htmlFor="product-stock">Stock</Label>
+                            <Input
+                                id="product-stock"
+                                type="number"
+                                min="0"
+                                value={formStock}
+                                onChange={(e) => setFormStock(e.target.value)}
+                                placeholder="0"
+                            />
                         </div>
                         <div>
                             <Label>Image du produit</Label>

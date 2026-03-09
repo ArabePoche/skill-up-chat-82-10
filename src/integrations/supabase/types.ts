@@ -2594,6 +2594,7 @@ export type Database = {
       physical_shop_products: {
         Row: {
           barcode: string | null
+          cost_price: number | null
           created_at: string | null
           description: string | null
           id: string
@@ -2608,6 +2609,7 @@ export type Database = {
         }
         Insert: {
           barcode?: string | null
+          cost_price?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2622,6 +2624,7 @@ export type Database = {
         }
         Update: {
           barcode?: string | null
+          cost_price?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2653,7 +2656,9 @@ export type Database = {
       }
       physical_shop_sales: {
         Row: {
+          cost_price: number | null
           created_at: string
+          customer_id: string | null
           customer_name: string | null
           id: string
           notes: string | null
@@ -2666,7 +2671,9 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          cost_price?: number | null
           created_at?: string
+          customer_id?: string | null
           customer_name?: string | null
           id?: string
           notes?: string | null
@@ -2679,7 +2686,9 @@ export type Database = {
           unit_price: number
         }
         Update: {
+          cost_price?: number | null
           created_at?: string
+          customer_id?: string | null
           customer_name?: string | null
           id?: string
           notes?: string | null
@@ -2692,6 +2701,13 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "physical_shop_sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "shop_customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "physical_shop_sales_product_id_fkey"
             columns: ["product_id"]
@@ -6284,6 +6300,114 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      shop_customer_credits: {
+        Row: {
+          amount: number
+          created_at: string | null
+          customer_id: string
+          description: string | null
+          id: string
+          sale_id: string | null
+          shop_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          customer_id: string
+          description?: string | null
+          id?: string
+          sale_id?: string | null
+          shop_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          customer_id?: string
+          description?: string | null
+          id?: string
+          sale_id?: string | null
+          shop_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_customer_credits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "shop_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_customer_credits_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shop_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_customer_credits_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_customers: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          loyalty_points: number | null
+          name: string
+          notes: string | null
+          phone: string | null
+          shop_id: string
+          total_purchases: number | null
+          total_spent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          loyalty_points?: number | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          shop_id: string
+          total_purchases?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          loyalty_points?: number | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          shop_id?: string
+          total_purchases?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_customers_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shop_messages: {
         Row: {
