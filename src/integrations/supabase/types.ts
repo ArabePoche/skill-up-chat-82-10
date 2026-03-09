@@ -2593,6 +2593,7 @@ export type Database = {
       }
       physical_shop_products: {
         Row: {
+          barcode: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -2606,6 +2607,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          barcode?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2619,6 +2621,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          barcode?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
