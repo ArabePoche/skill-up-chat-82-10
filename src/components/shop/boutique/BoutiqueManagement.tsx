@@ -3,11 +3,12 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, ShoppingCart } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, ShoppingCart, Calculator } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
 import PosCartDrawer from './PosCartDrawer';
+import PosCashRegister from './PosCashRegister';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
