@@ -113,8 +113,11 @@ export const useCreateBoutiqueProduct = () => {
             name: string;
             description?: string;
             price: number;
+            cost_price?: number;
             stock_quantity: number;
             image_url?: string;
+            category?: string;
+            location?: string;
         }) => {
             const { data, error } = await supabase
                 .from('physical_shop_products')
