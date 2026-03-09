@@ -158,7 +158,7 @@ const ShopTab: React.FC<ShopTabProps> = ({ userId }) => {
                 >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Store size={16} className="text-emerald-600" />
+                      <Store size={16} className="text-primary" />
                       {shop.name}
                     </CardTitle>
                     {shop.address && (
