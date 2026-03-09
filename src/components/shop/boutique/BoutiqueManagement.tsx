@@ -479,7 +479,7 @@ const BoutiqueManagement: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label htmlFor="product-price">Prix (€)</Label>
+                                <Label htmlFor="product-price">Prix de vente</Label>
                                 <Input
                                     id="product-price"
                                     type="number"
@@ -487,20 +487,41 @@ const BoutiqueManagement: React.FC = () => {
                                     step="0.01"
                                     value={formPrice}
                                     onChange={(e) => setFormPrice(e.target.value)}
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="product-stock">Stock</Label>
-                                <Input
-                                    id="product-stock"
-                                    type="number"
-                                    min="0"
-                                    value={formStock}
-                                    onChange={(e) => setFormStock(e.target.value)}
                                     placeholder="0"
                                 />
                             </div>
+                            <div>
+                                <Label htmlFor="product-cost">Prix d'achat</Label>
+                                <Input
+                                    id="product-cost"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={formCostPrice}
+                                    onChange={(e) => setFormCostPrice(e.target.value)}
+                                    placeholder="0"
+                                />
+                            </div>
+                        </div>
+                        {formPrice && formCostPrice && parseFloat(formPrice) > 0 && parseFloat(formCostPrice) > 0 && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-xs text-center">
+                                Marge : <span className="font-bold text-primary">
+                                    {((parseFloat(formPrice) - parseFloat(formCostPrice)) / parseFloat(formPrice) * 100).toFixed(0)}%
+                                </span> · Bénéfice/unité : <span className="font-bold text-primary">
+                                    {(parseFloat(formPrice) - parseFloat(formCostPrice)).toLocaleString('fr-FR')} FCFA
+                                </span>
+                            </div>
+                        )}
+                        <div>
+                            <Label htmlFor="product-stock">Stock</Label>
+                            <Input
+                                id="product-stock"
+                                type="number"
+                                min="0"
+                                value={formStock}
+                                onChange={(e) => setFormStock(e.target.value)}
+                                placeholder="0"
+                            />
                         </div>
                         <div>
                             <Label>Image du produit</Label>
