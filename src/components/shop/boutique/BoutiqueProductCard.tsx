@@ -118,9 +118,9 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                             <span className="text-xs font-bold w-6 text-center">{qty}</span>
                             <button
                                 type="button"
-                                onClick={() => setQty(q => Math.min(availableStock, q + 1))}
+                                onClick={() => setQty(q => Math.min(remainingStock, q + 1))}
                                 className="px-1.5 h-full text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                                disabled={qty >= availableStock}
+                                disabled={qty >= remainingStock}
                             >
                                 <Plus size={12} />
                             </button>
@@ -129,11 +129,11 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                             variant="default"
                             size="sm"
                             onClick={() => { onAddToCart(product, qty); setQty(1); }}
-                            disabled={availableStock <= 0}
+                            disabled={remainingStock <= 0}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-8 shadow-sm font-bold"
                         >
                             <ShoppingCart size={12} className="mr-1" />
-                            Ajouter
+                            {remainingStock <= 0 ? 'Stock épuisé' : 'Ajouter'}
                         </Button>
                     </div>
 
