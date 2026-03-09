@@ -122,9 +122,17 @@ export const useCreateBoutiqueProduct = () => {
             const { data, error } = await supabase
                 .from('physical_shop_products')
                 .insert({
-                    ...product,
+                    shop_id: product.shop_id,
+                    name: product.name,
+                    description: product.description,
+                    price: product.price,
+                    cost_price: product.cost_price,
+                    stock_quantity: product.stock_quantity,
+                    image_url: product.image_url,
                     marketplace_quantity: 0,
-                })
+                    category: product.category,
+                    location: product.location,
+                } as any)
                 .select()
                 .single();
 
