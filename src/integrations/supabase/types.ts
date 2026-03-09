@@ -6285,6 +6285,61 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean
+          receiver_shop_id: string
+          sender_id: string
+          sender_shop_id: string
+          transfer_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          receiver_shop_id: string
+          sender_id: string
+          sender_shop_id: string
+          transfer_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          receiver_shop_id?: string
+          sender_id?: string
+          sender_shop_id?: string
+          transfer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_messages_receiver_shop_id_fkey"
+            columns: ["receiver_shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_messages_sender_shop_id_fkey"
+            columns: ["sender_shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_messages_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "shop_stock_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_stock_transfers: {
         Row: {
           completed_at: string | null
