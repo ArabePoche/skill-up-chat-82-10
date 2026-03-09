@@ -89,6 +89,7 @@ export const useBoutiqueProducts = (shopId?: string) => {
                 stock_quantity: p.stockQuantity,
                 marketplace_quantity: p.marketplaceQuantity,
                 image_url: p.imageUrl || null,
+                barcode: p.barcode || null,
                 created_at: '',
                 updated_at: '',
             } as BoutiqueProduct))
