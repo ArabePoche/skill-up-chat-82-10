@@ -670,6 +670,7 @@ const BoutiqueManagement: React.FC = () => {
                 open={posOpen}
                 onClose={() => setPosOpen(false)}
                 products={products || []}
+                shopId={shop.id}
                 shopName={shop.name}
                 shopAddress={shop.address}
                 cartItems={posCart.items}

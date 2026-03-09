@@ -378,9 +378,29 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
               )}
 
               <div>
-                <Label className="text-xs" htmlFor="pos-cust">Client (optionnel)</Label>
-                <Input id="pos-cust" value={customerName} onChange={e => setCustomerName(e.target.value)}
-                  placeholder="Nom du client" className="mt-1" />
+                <Label className="text-xs" htmlFor="pos-cust">Client</Label>
+                <div className="mt-1 space-y-1">
+                  {shopCustomers && shopCustomers.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-1.5">
+                      {shopCustomers.slice(0, 8).map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setCustomerName(c.name)}
+                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                            customerName === c.name
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-muted text-foreground border-border hover:bg-accent'
+                          }`}
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <Input id="pos-cust" value={customerName} onChange={e => setCustomerName(e.target.value)}
+                    placeholder="Nom du client (optionnel)" />
+                </div>
               </div>
               <div>
                 <Label className="text-xs" htmlFor="pos-note">Notes (optionnel)</Label>
