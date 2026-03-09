@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Store, Package, WifiOff, Search } from 'lucide-react';
+import TodaySalesDashboard from './TodaySalesDashboard';
 import SaleDialog, { SaleDialogProps } from './SaleDialog';
 import ProductImageUploader from './ProductImageUploader';
 import { Button } from '@/components/ui/button';
