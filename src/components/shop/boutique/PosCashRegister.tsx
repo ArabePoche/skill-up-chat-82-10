@@ -63,11 +63,12 @@ const formatCurrency = (amount: number) =>
   }).format(amount);
 
 const PosCashRegister: React.FC<PosCashRegisterProps> = ({
-  open, onClose, products, shopName, shopAddress,
+  open, onClose, products, shopId, shopName, shopAddress,
   cartItems, totalAmount, totalItems,
   onAddItem, onUpdateQuantity, onRemoveItem, onClearCart,
   onConfirmSale, isProcessing,
 }) => {
+  const { data: shopCustomers } = useShopCustomers(shopId);
   const isMobile = useIsMobile();
   const [step, setStep] = useState<PosStep>('browse');
   const [searchQuery, setSearchQuery] = useState('');
