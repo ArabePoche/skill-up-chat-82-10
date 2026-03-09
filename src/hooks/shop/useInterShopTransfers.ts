@@ -147,7 +147,7 @@ export const useCompleteInterShopTransfer = () => {
   return useMutation({
     mutationFn: async (transferId: string) => {
       const { data, error } = await supabase.rpc('complete_shop_transfer', {
-        p_transfer_id: transferId
+        transfer_id: transferId
       });
 
       if (error) throw error;
