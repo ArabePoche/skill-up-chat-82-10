@@ -69,7 +69,6 @@ const BoutiqueManagement: React.FC = () => {
     const [shopName, setShopName] = useState('');
     const [shopAddress, setShopAddress] = useState('');
     const [inventoryOpen, setInventoryOpen] = useState(false);
-    const [cartOpen, setCartOpen] = useState(false);
     const [posOpen, setPosOpen] = useState(false);
 
     // Form state
