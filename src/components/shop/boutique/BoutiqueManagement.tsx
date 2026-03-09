@@ -3,7 +3,7 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2 } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
