@@ -8,7 +8,7 @@ import { useServices } from '@/components/shop/services/hooks/useServices';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { useUserInterests } from '@/hooks/useUserInterests';
-import { useIsShopOwner, usePhysicalShop } from '@/hooks/shop/usePhysicalShop';
+import { useIsShopOwner } from '@/hooks/shop/usePhysicalShop';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ShopHeader from '@/components/shop/ShopHeader';

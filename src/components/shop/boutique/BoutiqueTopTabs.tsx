@@ -3,7 +3,7 @@
  * Marketplace | Gestion boutique | Dashboard
  */
 import React from 'react';
-import { Store, ShoppingBag, BarChart3 } from 'lucide-react';
+import { Store, ShoppingBag } from 'lucide-react';
 
 export type BoutiqueView = 'marketplace' | 'gestion';
 
