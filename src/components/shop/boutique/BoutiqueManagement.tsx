@@ -56,16 +56,6 @@ const BoutiqueManagement: React.FC = () => {
     const transferToMarketplace = useTransferToMarketplace();
     const returnFromMarketplace = useReturnFromMarketplace();
     const createSale = useCreateBoutiqueSale();
-    // Debug logging
-    console.log('🛒 [BoutiqueManagement] Render:', {
-        userId: user?.id,
-        shopId: shop?.id,
-        shopLoading,
-        shopError: shopError?.message,
-        productsCount: products?.length,
-        productsLoading,
-        productsError: productsError?.message,
-    });
 
     // UI State
     const [searchQuery, setSearchQuery] = useState('');
