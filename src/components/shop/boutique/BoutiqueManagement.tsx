@@ -3,7 +3,7 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2 } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
@@ -29,6 +29,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
 import { usePhysicalShop, useCreatePhysicalShop } from '@/hooks/shop/usePhysicalShop';
 import MultiShopDashboard from '../multi-boutique/MultiShopDashboard';
