@@ -124,7 +124,7 @@ const ShopTab: React.FC<ShopTabProps> = ({ userId }) => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingShops) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -133,8 +133,68 @@ const ShopTab: React.FC<ShopTabProps> = ({ userId }) => {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Header avec bouton d'ajout */}
+    <div className="p-4 space-y-6">
+      {/* Section Boutiques physiques */}
+      {isOwnProfile && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Store size={20} className="text-primary" />
+              Mes boutiques
+            </h2>
+            <Button onClick={() => setShowCreateShopDialog(true)} size="sm" variant="outline">
+              <Plus size={16} className="mr-2" />
+              Nouvelle boutique
+            </Button>
+          </div>
+
+          {userShops && userShops.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {userShops.map((shop) => (
+                <Card 
+                  key={shop.id} 
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => navigate(`/shop?id=${shop.id}`)}
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Store size={16} className="text-emerald-600" />
+                      {shop.name}
+                    </CardTitle>
+                    {shop.address && (
+                      <CardDescription className="text-xs">{shop.address}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>{shop.products_count} produits</span>
+                      <span>{shop.total_stock_units} en stock</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <Store size={40} className="text-muted-foreground mb-3" />
+                <p className="text-muted-foreground text-center mb-4">
+                  Vous n'avez pas encore de boutique physique
+                </p>
+                <Button onClick={() => setShowCreateShopDialog(true)}>
+                  <Plus size={16} className="mr-2" />
+                  Créer ma boutique
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Séparateur */}
+      {isOwnProfile && <hr className="border-border" />}
+
+      {/* Section Services */}
       {isOwnProfile && (
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Mes services</h2>
@@ -176,7 +236,7 @@ const ShopTab: React.FC<ShopTabProps> = ({ userId }) => {
         </div>
       )}
 
-      {/* Dialog de création/modification */}
+      {/* Dialog de création/modification service */}
       <Dialog open={showForm} onOpenChange={(open) => {
         setShowForm(open);
         if (!open) setEditingService(undefined);
@@ -219,6 +279,12 @@ const ShopTab: React.FC<ShopTabProps> = ({ userId }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog de création de boutique */}
+      <CreateShopDialog 
+        open={showCreateShopDialog} 
+        onOpenChange={setShowCreateShopDialog} 
+      />
     </div>
   );
 };
