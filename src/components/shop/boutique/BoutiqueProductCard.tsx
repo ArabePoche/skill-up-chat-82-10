@@ -30,6 +30,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
 }) => {
     const [qty, setQty] = useState(1);
     const availableStock = product.stock_quantity - product.marketplace_quantity;
+    const remainingStock = availableStock - cartQuantity;
 
     return (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col group">
@@ -97,7 +98,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
 
                     <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${availableStock <= 0 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
                         <Package size={10} />
-                        Stock : {availableStock}
+                        Stock : {availableStock}{cartQuantity > 0 ? ` (${remainingStock} dispo)` : ''}
                     </div>
                 </div>
 
@@ -117,9 +118,9 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                             <span className="text-xs font-bold w-6 text-center">{qty}</span>
                             <button
                                 type="button"
-                                onClick={() => setQty(q => Math.min(availableStock, q + 1))}
+                                onClick={() => setQty(q => Math.min(remainingStock, q + 1))}
                                 className="px-1.5 h-full text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                                disabled={qty >= availableStock}
+                                disabled={qty >= remainingStock}
                             >
                                 <Plus size={12} />
                             </button>
@@ -128,11 +129,11 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                             variant="default"
                             size="sm"
                             onClick={() => { onAddToCart(product, qty); setQty(1); }}
-                            disabled={availableStock <= 0}
+                            disabled={remainingStock <= 0}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] h-8 shadow-sm font-bold"
                         >
                             <ShoppingCart size={12} className="mr-1" />
-                            Ajouter
+                            {remainingStock <= 0 ? 'Stock épuisé' : 'Ajouter'}
                         </Button>
                     </div>
 
