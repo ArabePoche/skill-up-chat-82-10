@@ -461,6 +461,8 @@ const BoutiqueManagement: React.FC = () => {
                     );
                 })()}
             </div>
+            </>
+            )}
 
             {/* Dialog produit (ajout/modification) */}
             <Dialog open={showProductForm} onOpenChange={(open) => {
