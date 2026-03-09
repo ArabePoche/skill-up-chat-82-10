@@ -91,7 +91,8 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
   const filteredProducts = useMemo(() =>
     products.filter(p =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+      (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.barcode || '').includes(searchQuery)
     ), [products, searchQuery]
   );
 
