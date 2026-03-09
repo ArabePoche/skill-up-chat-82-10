@@ -90,7 +90,8 @@ const BoutiqueManagement: React.FC = () => {
     const [inventoryOpen, setInventoryOpen] = useState(false);
     const [posOpen, setPosOpen] = useState(false);
     const [showMultiShopSettings, setShowMultiShopSettings] = useState(false);
-    const [activeView, setActiveView] = useState<'shop' | 'customers'>('shop');
+    const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders'>('shop');
+    const { pendingCount } = useShopOrders();
     // Form state
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
