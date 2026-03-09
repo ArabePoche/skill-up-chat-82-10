@@ -214,7 +214,7 @@ export const useUpdateBoutiqueProduct = () => {
             // Mise à jour de la table boutique
             const { data, error } = await supabase
                 .from('physical_shop_products')
-                .update({ ...updates, updated_at: new Date().toISOString() })
+                .update({ ...updates, updated_at: new Date().toISOString() } as any)
                 .eq('id', id)
                 .select()
                 .single();
