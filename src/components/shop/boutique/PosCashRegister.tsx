@@ -28,6 +28,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
 import type { PosCartItem } from '@/hooks/shop/usePosCart';
+import { useShopCustomers, type ShopCustomer } from '@/hooks/shop/useShopCustomers';
 
 type PosStep = 'browse' | 'checkout';
 type CheckoutType = 'sale' | 'quote';
