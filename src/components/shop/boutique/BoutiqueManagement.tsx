@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePhysicalShop, useCreatePhysicalShop } from '@/hooks/shop/usePhysicalShop';
+import MultiShopDashboard from '../multi-boutique/MultiShopDashboard';
+import { useUserShops } from '@/hooks/shop/useMultiShop';
 import {
     useBoutiqueProducts,
     useCreateBoutiqueProduct,
