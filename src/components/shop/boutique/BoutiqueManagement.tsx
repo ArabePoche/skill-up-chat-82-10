@@ -50,6 +50,7 @@ import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
 
 const BoutiqueManagement: React.FC = () => {
     const { user } = useAuth();
+    const { data: userShops, isLoading: shopsLoading } = useUserShops();
     const { data: shop, isLoading: shopLoading, error: shopError } = usePhysicalShop();
     const { data: products, isLoading: productsLoading, error: productsError } = useBoutiqueProducts(shop?.id);
     const createShop = useCreatePhysicalShop();
