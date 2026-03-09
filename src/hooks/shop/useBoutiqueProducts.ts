@@ -22,6 +22,8 @@ export interface BoutiqueProduct {
     marketplace_quantity: number;
     image_url?: string | null;
     barcode?: string | null;
+    category?: string | null;
+    location?: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -111,15 +113,26 @@ export const useCreateBoutiqueProduct = () => {
             name: string;
             description?: string;
             price: number;
+            cost_price?: number;
             stock_quantity: number;
             image_url?: string;
+            category?: string;
+            location?: string;
         }) => {
             const { data, error } = await supabase
                 .from('physical_shop_products')
                 .insert({
-                    ...product,
+                    shop_id: product.shop_id,
+                    name: product.name,
+                    description: product.description,
+                    price: product.price,
+                    cost_price: product.cost_price,
+                    stock_quantity: product.stock_quantity,
+                    image_url: product.image_url,
                     marketplace_quantity: 0,
-                })
+                    category: product.category,
+                    location: product.location,
+                } as any)
                 .select()
                 .single();
 
@@ -165,8 +178,11 @@ export const useUpdateBoutiqueProduct = () => {
             name?: string;
             description?: string;
             price?: number;
+            cost_price?: number;
             stock_quantity?: number;
             image_url?: string;
+            category?: string;
+            location?: string;
         }) => {
             const { id, shop_id, ...updates } = product;
 
@@ -198,7 +214,7 @@ export const useUpdateBoutiqueProduct = () => {
             // Mise à jour de la table boutique
             const { data, error } = await supabase
                 .from('physical_shop_products')
-                .update({ ...updates, updated_at: new Date().toISOString() })
+                .update({ ...updates, updated_at: new Date().toISOString() } as any)
                 .eq('id', id)
                 .select()
                 .single();

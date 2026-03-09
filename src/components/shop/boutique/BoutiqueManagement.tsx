@@ -96,6 +96,9 @@ const BoutiqueManagement: React.FC = () => {
     const [formCostPrice, setFormCostPrice] = useState('');
     const [formStock, setFormStock] = useState('');
     const [formImageUrl, setFormImageUrl] = useState('');
+    const [formCategory, setFormCategory] = useState('');
+    const [formLocation, setFormLocation] = useState('');
+    const [filterCategory, setFilterCategory] = useState('all');
 
     const isOnline = navigator.onLine;
 
@@ -117,6 +120,8 @@ const BoutiqueManagement: React.FC = () => {
         setFormCostPrice('');
         setFormStock('');
         setFormImageUrl('');
+        setFormCategory('');
+        setFormLocation('');
         setShowProductForm(true);
     };
 
@@ -129,6 +134,8 @@ const BoutiqueManagement: React.FC = () => {
         setFormCostPrice((product.cost_price || 0).toString());
         setFormStock(product.stock_quantity.toString());
         setFormImageUrl(product.image_url || '');
+        setFormCategory(product.category || '');
+        setFormLocation(product.location || '');
         setShowProductForm(true);
     };
 
@@ -143,6 +150,8 @@ const BoutiqueManagement: React.FC = () => {
             cost_price: parseFloat(formCostPrice) || 0,
             stock_quantity: parseInt(formStock) || 0,
             image_url: formImageUrl.trim() || undefined,
+            category: formCategory.trim() || undefined,
+            location: formLocation.trim() || undefined,
         };
 
         try {
@@ -380,6 +389,7 @@ const BoutiqueManagement: React.FC = () => {
                             {products?.filter(p => p.marketplace_quantity > 0).length || 0}
                         </span>
                     </div>
+                </div>
                 {/* Onglets Boutique / Clients */}
                 <div className="flex border-b border-white/20">
                     <button
@@ -400,68 +410,97 @@ const BoutiqueManagement: React.FC = () => {
             {activeView === 'customers' ? (
                 <CustomerManagement shopId={shop.id} />
             ) : (
-            <div>
-            {/* Dashboard ventes du jour */}
-            <TodaySalesDashboard shopId={shop.id} />
+                <div>
+                    {/* Dashboard ventes du jour */}
+                    <TodaySalesDashboard shopId={shop.id} />
 
-            {/* Liste des produits */}
-            <div className="p-3 sm:p-4">
-                {/* Barre de recherche */}
-                {products && products.length > 0 && (
-                    <div className="relative mb-4">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Rechercher un produit..."
-                            className="pl-9"
-                        />
-                    </div>
-                )}
+                    {/* Filtre par catégorie */}
+                    {(() => {
+                        const cats = [...new Set((products || []).map(p => p.category).filter(Boolean))] as string[];
+                        if (cats.length === 0) return null;
+                        return (
+                            <div className="px-3 sm:px-4 pt-3">
+                                <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
+                                    <button
+                                        onClick={() => setFilterCategory('all')}
+                                        className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors ${filterCategory === 'all' ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                                    >
+                                        Tout ({products?.length || 0})
+                                    </button>
+                                    {cats.map(cat => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => setFilterCategory(cat)}
+                                            className={`px-3 py-1 rounded-full text-xs whitespace-nowrap transition-colors ${filterCategory === cat ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                                        >
+                                            {cat} ({products?.filter(p => p.category === cat).length})
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
 
-                {(() => {
-                    const filtered = products?.filter(p =>
-                        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
-                    );
-
-                    return productsLoading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                        </div>
-                    ) : filtered && filtered.length > 0 ? (
-                        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-                            {filtered.map(product => (
-                                <BoutiqueProductCard
-                                    key={product.id}
-                                    product={product}
-                                    onEdit={openEditProductForm}
-                                    onDelete={(id) => setDeletingProductId(id)}
-                                    onTransfer={(p) => setTransferProduct(p)}
-                                    onReturn={(p) => setReturningProduct(p)}
-                                    onAddToCart={(p, qty) => posCart.addItem(p, qty)}
-                                    cartQuantity={posCart.items.find(i => i.product.id === product.id)?.quantity || 0}
+                    {/* Liste des produits */}
+                    <div className="p-3 sm:p-4">
+                        {/* Barre de recherche */}
+                        {products && products.length > 0 && (
+                            <div className="relative mb-4">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Rechercher un produit..."
+                                    className="pl-9"
                                 />
-                            ))}
-                        </div>
-                    ) : searchQuery ? (
-                        <div className="text-center py-12">
-                            <Search size={48} className="mx-auto text-muted-foreground/30 mb-4" />
-                            <p className="text-muted-foreground">Aucun produit trouvé pour "{searchQuery}"</p>
-                        </div>
-                    ) : (
-                        <div className="text-center py-16">
-                            <Package size={48} className="mx-auto text-muted-foreground/30 mb-4" />
-                            <p className="text-muted-foreground mb-4">Aucun produit dans votre boutique</p>
-                            <Button onClick={openNewProductForm}>
-                                <Plus size={16} className="mr-2" />
-                                Ajouter un produit
-                            </Button>
-                        </div>
-                    );
-                })()}
-            </div>
-            </div>
+                            </div>
+                        )}
+
+                        {(() => {
+                            const filtered = products?.filter(p => {
+                                const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                    (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+                                const matchCategory = filterCategory === 'all' || p.category === filterCategory;
+                                return matchSearch && matchCategory;
+                            });
+
+                            return productsLoading ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                                </div>
+                            ) : filtered && filtered.length > 0 ? (
+                                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                                    {filtered.map(product => (
+                                        <BoutiqueProductCard
+                                            key={product.id}
+                                            product={product}
+                                            onEdit={openEditProductForm}
+                                            onDelete={(id) => setDeletingProductId(id)}
+                                            onTransfer={(p) => setTransferProduct(p)}
+                                            onReturn={(p) => setReturningProduct(p)}
+                                            onAddToCart={(p, qty) => posCart.addItem(p, qty)}
+                                            cartQuantity={posCart.items.find(i => i.product.id === product.id)?.quantity || 0}
+                                        />
+                                    ))}
+                                </div>
+                            ) : searchQuery || filterCategory !== 'all' ? (
+                                <div className="text-center py-12">
+                                    <Search size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+                                    <p className="text-muted-foreground">Aucun produit trouvé</p>
+                                </div>
+                            ) : (
+                                <div className="text-center py-16">
+                                    <Package size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+                                    <p className="text-muted-foreground mb-4">Aucun produit dans votre boutique</p>
+                                    <Button onClick={openNewProductForm}>
+                                        <Plus size={16} className="mr-2" />
+                                        Ajouter un produit
+                                    </Button>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
             )}
 
             {/* Dialog produit (ajout/modification) */}
@@ -533,6 +572,26 @@ const BoutiqueManagement: React.FC = () => {
                                 </span>
                             </div>
                         )}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="product-category">Catégorie</Label>
+                                <Input
+                                    id="product-category"
+                                    value={formCategory}
+                                    onChange={(e) => setFormCategory(e.target.value)}
+                                    placeholder="Ex: Électronique, Vêtements..."
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="product-location">Emplacement</Label>
+                                <Input
+                                    id="product-location"
+                                    value={formLocation}
+                                    onChange={(e) => setFormLocation(e.target.value)}
+                                    placeholder="Ex: Rayon A, Étagère 3..."
+                                />
+                            </div>
+                        </div>
                         <div>
                             <Label htmlFor="product-stock">Stock</Label>
                             <Input

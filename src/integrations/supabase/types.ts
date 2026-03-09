@@ -2594,11 +2594,13 @@ export type Database = {
       physical_shop_products: {
         Row: {
           barcode: string | null
+          category: string | null
           cost_price: number | null
           created_at: string | null
           description: string | null
           id: string
           image_url: string | null
+          location: string | null
           marketplace_quantity: number | null
           name: string
           price: number | null
@@ -2609,11 +2611,13 @@ export type Database = {
         }
         Insert: {
           barcode?: string | null
+          category?: string | null
           cost_price?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          location?: string | null
           marketplace_quantity?: number | null
           name: string
           price?: number | null
@@ -2624,11 +2628,13 @@ export type Database = {
         }
         Update: {
           barcode?: string | null
+          category?: string | null
           cost_price?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          location?: string | null
           marketplace_quantity?: number | null
           name?: string
           price?: number | null
