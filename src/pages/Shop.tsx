@@ -30,13 +30,12 @@ const Shop = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
-  const [mainView, setMainView] = useState<BoutiqueView>('marketplace');
+  const [mainView, setMainView] = useState<'marketplace' | 'gestion'>('marketplace');
   const { user } = useAuth();
   const navigate = useNavigate();
   const { cartItemsCount, addToCart } = useCart();
   const { data: userInterests = [] } = useUserInterests();
   const { data: isShopOwner } = useIsShopOwner();
-  const { data: shop } = usePhysicalShop();
 
   const { data: formations, isLoading: formationsLoading } = useShopFormations(activeCategory);
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
