@@ -180,12 +180,21 @@ const BoutiqueManagement: React.FC = () => {
     };
 
     // Loading state
-    if (shopLoading) {
+    if (shopLoading || shopsLoading) {
         return (
             <div className="flex items-center justify-center p-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
             </div>
         );
+    }
+
+    // Si l'utilisateur a plusieurs boutiques, on affiche le dashboard multi-boutiques
+    // au lieu de la vue d'une seule boutique par défaut.
+    const urlParams = new URLSearchParams(window.location.search);
+    const shopIdFromUrl = urlParams.get('id');
+    
+    if (userShops && userShops.length > 1 && !shopIdFromUrl) {
+        return <MultiShopDashboard />;
     }
 
     // Pas de boutique : formulaire de création
