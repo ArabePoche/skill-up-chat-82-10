@@ -3,7 +3,7 @@
  * Mobile : produits plein écran + barre panier en bas qui s'ouvre en overlay
  * Desktop : grille produits à gauche + sidebar panier/encaissement à droite
  */
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -87,6 +87,18 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
     type: CheckoutType;
   } | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Ouvre automatiquement le panier mobile à l'ouverture de la caisse si des articles sont déjà présents
+  useEffect(() => {
+    if (open && isMobile && totalItems > 0) {
+      setMobileCartOpen(true);
+      setStep('browse');
+    } else if (!open) {
+      // Reset de l'état quand on ferme la caisse globale
+      setMobileCartOpen(false);
+      setStep('browse');
+    }
+  }, [open, isMobile]);
 
   const filteredProducts = useMemo(() =>
     products.filter(p =>
