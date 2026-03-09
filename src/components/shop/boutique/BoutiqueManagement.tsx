@@ -501,6 +501,13 @@ const BoutiqueManagement: React.FC = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Drawer Inventaire */}
+            <InventoryDrawer
+                open={inventoryOpen}
+                onOpenChange={setInventoryOpen}
+                shopId={shop.id}
+            />
         </div>
     );
 };
