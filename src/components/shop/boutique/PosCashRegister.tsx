@@ -75,7 +75,8 @@ const PosCashRegister: React.FC<PosCashRegisterProps> = ({
   const [notes, setNotes] = useState('');
   const [amountReceived, setAmountReceived] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
-  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  // Ouvre automatiquement le panier mobile si des articles sont déjà présents
+  const [mobileCartOpen, setMobileCartOpen] = useState(() => totalItems > 0);
   const [receiptData, setReceiptData] = useState<{
     items: PosCartItem[];
     total: number;
