@@ -15,7 +15,6 @@ interface BoutiqueTopTabsProps {
 const BoutiqueTopTabs: React.FC<BoutiqueTopTabsProps> = ({ 
     activeView, 
     onViewChange,
-    showDashboard = false 
 }) => {
     return (
         <div className="sticky top-0 z-50 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 shadow-xl">
