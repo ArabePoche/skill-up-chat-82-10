@@ -66,10 +66,10 @@ const BoutiqueManagement: React.FC = () => {
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
     const [transferProduct, setTransferProduct] = useState<BoutiqueProduct | null>(null);
     const [returningProduct, setReturningProduct] = useState<BoutiqueProduct | null>(null);
-    const [sellingProduct, setSellingProduct] = useState<BoutiqueProduct | null>(null);
     const [shopName, setShopName] = useState('');
     const [shopAddress, setShopAddress] = useState('');
     const [inventoryOpen, setInventoryOpen] = useState(false);
+    const [cartOpen, setCartOpen] = useState(false);
 
     // Form state
     const [formName, setFormName] = useState('');
