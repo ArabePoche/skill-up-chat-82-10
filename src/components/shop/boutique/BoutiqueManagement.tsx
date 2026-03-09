@@ -234,30 +234,29 @@ const BoutiqueManagement: React.FC = () => {
     return (
         <div className="pb-16 bg-white min-h-screen">
             {/* Header boutique */}
-            <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-4 shadow-md">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-lg font-bold flex items-center gap-2">
-                            <Store size={20} />
-                            {shop.name}
+            <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-3 sm:p-4 shadow-md">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                        <h2 className="text-base sm:text-lg font-bold flex items-center gap-2 truncate">
+                            <Store size={18} className="shrink-0" />
+                            <span className="truncate">{shop.name}</span>
                         </h2>
                         {shop.address && (
-                            <p className="text-emerald-100 text-xs mt-0.5">{shop.address}</p>
+                            <p className="text-emerald-100 text-xs mt-0.5 truncate">{shop.address}</p>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
                         {!isOnline && (
-                            <span className="flex items-center gap-1 text-xs bg-orange-500/80 px-2 py-1 rounded-full">
-                                <WifiOff size={12} /> Hors ligne
+                            <span className="flex items-center gap-1 text-[10px] bg-orange-500/80 px-1.5 py-0.5 rounded-full">
+                                <WifiOff size={10} /> Hors ligne
                             </span>
                         )}
                         <Button
                             onClick={() => setCartOpen(true)}
-                            size="sm"
-                            className="bg-white/20 hover:bg-white/30 text-white border-0 relative"
+                            size="icon"
+                            className="bg-white/20 hover:bg-white/30 text-white border-0 relative h-8 w-8"
                         >
-                            <ShoppingCart size={16} className="mr-1" />
-                            Panier
+                            <ShoppingCart size={16} />
                             {posCart.totalItems > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
                                     {posCart.totalItems}
@@ -266,30 +265,28 @@ const BoutiqueManagement: React.FC = () => {
                         </Button>
                         <Button
                             onClick={() => setInventoryOpen(true)}
-                            size="sm"
-                            className="bg-white/20 hover:bg-white/30 text-white border-0"
+                            size="icon"
+                            className="bg-white/20 hover:bg-white/30 text-white border-0 h-8 w-8"
                         >
-                            <PackageSearch size={16} className="mr-1" />
-                            Inventaire
+                            <PackageSearch size={16} />
                         </Button>
                         <Button
                             onClick={openNewProductForm}
-                            size="sm"
-                            className="bg-white/20 hover:bg-white/30 text-white border-0"
+                            size="icon"
+                            className="bg-white/20 hover:bg-white/30 text-white border-0 h-8 w-8"
                         >
-                            <Plus size={16} className="mr-1" />
-                            Produit
+                            <Plus size={16} />
                         </Button>
                     </div>
                 </div>
 
                 {/* Stats rapides */}
-                <div className="flex gap-4 mt-3 text-xs">
-                    <div className="bg-white/15 rounded-lg px-3 py-1.5 backdrop-blur-sm">
+                <div className="flex gap-3 mt-2.5 text-xs">
+                    <div className="bg-white/15 rounded-lg px-2.5 py-1 backdrop-blur-sm">
                         <span className="text-emerald-100">Produits : </span>
                         <span className="font-bold">{products?.length || 0}</span>
                     </div>
-                    <div className="bg-white/15 rounded-lg px-3 py-1.5 backdrop-blur-sm">
+                    <div className="bg-white/15 rounded-lg px-2.5 py-1 backdrop-blur-sm">
                         <span className="text-emerald-100">En ligne : </span>
                         <span className="font-bold">
                             {products?.filter(p => p.marketplace_quantity > 0).length || 0}
