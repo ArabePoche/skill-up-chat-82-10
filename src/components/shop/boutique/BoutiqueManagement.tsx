@@ -36,7 +36,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
-import { usePhysicalShop, useCreatePhysicalShop } from '@/hooks/shop/usePhysicalShop';
+import { useCreatePhysicalShop } from '@/hooks/shop/usePhysicalShop';
 import MultiShopDashboard from '../multi-boutique/MultiShopDashboard';
 import { useUserShops } from '@/hooks/shop/useMultiShop';
 import {
@@ -57,9 +57,16 @@ import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
 const BoutiqueManagement: React.FC = () => {
     const { user } = useAuth();
     const { data: userShops, isLoading: shopsLoading } = useUserShops();
-    const { data: shop, isLoading: shopLoading, error: shopError } = usePhysicalShop();
-    const { data: products, isLoading: productsLoading, error: productsError } = useBoutiqueProducts(shop?.id);
     const createShop = useCreatePhysicalShop();
+    
+    // Récupérer l'ID de boutique depuis l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const shopIdFromUrl = urlParams.get('id');
+    
+    // Déterminer la boutique active : celle de l'URL ou la première disponible
+    const shop = userShops?.find(s => s.id === shopIdFromUrl) || userShops?.[0] || null;
+    
+    const { data: products, isLoading: productsLoading, error: productsError } = useBoutiqueProducts(shop?.id);
     const createProduct = useCreateBoutiqueProduct();
     const updateProduct = useUpdateBoutiqueProduct();
     const deleteProduct = useDeleteBoutiqueProduct();
@@ -187,10 +194,10 @@ const BoutiqueManagement: React.FC = () => {
     };
 
     // Loading state
-    if (shopLoading || shopsLoading) {
+    if (shopsLoading) {
         return (
             <div className="flex items-center justify-center p-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
         );
     }
