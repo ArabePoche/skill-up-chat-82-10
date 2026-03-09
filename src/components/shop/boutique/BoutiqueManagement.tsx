@@ -400,7 +400,7 @@ const BoutiqueManagement: React.FC = () => {
             {activeView === 'customers' ? (
                 <CustomerManagement shopId={shop.id} />
             ) : (
-            <>
+            <div>
             {/* Dashboard ventes du jour */}
             <TodaySalesDashboard shopId={shop.id} />
 
@@ -427,7 +427,7 @@ const BoutiqueManagement: React.FC = () => {
 
                     return productsLoading ? (
                         <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                         </div>
                     ) : filtered && filtered.length > 0 ? (
                         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -451,9 +451,9 @@ const BoutiqueManagement: React.FC = () => {
                         </div>
                     ) : (
                         <div className="text-center py-16">
-                            <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                            <p className="text-gray-500 mb-4">Aucun produit dans votre boutique</p>
-                            <Button onClick={openNewProductForm} className="bg-emerald-600 hover:bg-emerald-700">
+                            <Package size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+                            <p className="text-muted-foreground mb-4">Aucun produit dans votre boutique</p>
+                            <Button onClick={openNewProductForm}>
                                 <Plus size={16} className="mr-2" />
                                 Ajouter un produit
                             </Button>
@@ -461,7 +461,7 @@ const BoutiqueManagement: React.FC = () => {
                     );
                 })()}
             </div>
-            </>
+            </div>
             )}
 
             {/* Dialog produit (ajout/modification) */}
