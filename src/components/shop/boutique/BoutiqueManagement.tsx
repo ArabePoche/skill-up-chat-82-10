@@ -571,6 +571,26 @@ const BoutiqueManagement: React.FC = () => {
                                 </span>
                             </div>
                         )}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="product-category">Catégorie</Label>
+                                <Input
+                                    id="product-category"
+                                    value={formCategory}
+                                    onChange={(e) => setFormCategory(e.target.value)}
+                                    placeholder="Ex: Électronique, Vêtements..."
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="product-location">Emplacement</Label>
+                                <Input
+                                    id="product-location"
+                                    value={formLocation}
+                                    onChange={(e) => setFormLocation(e.target.value)}
+                                    placeholder="Ex: Rayon A, Étagère 3..."
+                                />
+                            </div>
+                        </div>
                         <div>
                             <Label htmlFor="product-stock">Stock</Label>
                             <Input
