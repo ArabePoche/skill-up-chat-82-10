@@ -451,27 +451,29 @@ const BoutiqueManagement: React.FC = () => {
                 isLoading={returnFromMarketplace.isPending}
             />
 
-            {/* Dialog vente POS */}
-            <SaleDialog
-                product={sellingProduct}
-                isOpen={!!sellingProduct}
-                onClose={() => setSellingProduct(null)}
-                onConfirm={async (data) => {
+            {/* Panier POS */}
+            <PosCartDrawer
+                open={cartOpen}
+                onOpenChange={setCartOpen}
+                items={posCart.items}
+                totalAmount={posCart.totalAmount}
+                totalItems={posCart.totalItems}
+                onUpdateQuantity={posCart.updateQuantity}
+                onRemoveItem={posCart.removeItem}
+                onClearCart={posCart.clearCart}
+                onConfirmSale={async (data) => {
                     if (!shop?.id) return;
-                    const saleData: SaleInput = {
-                        shop_id: shop.id,
-                        product_id: data.productId,
-                        quantity: data.quantity,
-                        unit_price: data.unitPrice,
-                        total_amount: data.totalAmount,
-                        customer_name: data.customerName,
-                        payment_method: data.paymentMethod,
+                    await cartSale.mutateAsync({
+                        shopId: shop.id,
+                        items: posCart.items,
+                        customerName: data.customerName,
+                        paymentMethod: data.paymentMethod,
                         notes: data.notes,
-                    };
-                    await createSale.mutateAsync(saleData);
-                    setSellingProduct(null);
+                    });
+                    posCart.clearCart();
                 }}
-                isLoading={createSale.isPending}
+                isProcessing={cartSale.isPending}
+                shopName={shop.name}
             />
 
             {/* Confirmation suppression */}
