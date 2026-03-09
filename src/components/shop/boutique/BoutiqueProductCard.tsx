@@ -30,6 +30,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
 }) => {
     const [qty, setQty] = useState(1);
     const availableStock = product.stock_quantity - product.marketplace_quantity;
+    const remainingStock = availableStock - cartQuantity;
 
     return (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col group">
