@@ -3,10 +3,11 @@
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
 import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import SaleDialog, { SaleDialogProps } from './SaleDialog';
 import ProductImageUploader from './ProductImageUploader';
+import InventoryDrawer from './InventoryDrawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -76,6 +77,7 @@ const BoutiqueManagement: React.FC = () => {
     const [sellingProduct, setSellingProduct] = useState<BoutiqueProduct | null>(null);
     const [shopName, setShopName] = useState('');
     const [shopAddress, setShopAddress] = useState('');
+    const [inventoryOpen, setInventoryOpen] = useState(false);
 
     // Form state
     const [formName, setFormName] = useState('');
@@ -257,6 +259,14 @@ const BoutiqueManagement: React.FC = () => {
                                 <WifiOff size={12} /> Hors ligne
                             </span>
                         )}
+                        <Button
+                            onClick={() => setInventoryOpen(true)}
+                            size="sm"
+                            className="bg-white/20 hover:bg-white/30 text-white border-0"
+                        >
+                            <PackageSearch size={16} className="mr-1" />
+                            Inventaire
+                        </Button>
                         <Button
                             onClick={openNewProductForm}
                             size="sm"
@@ -491,6 +501,13 @@ const BoutiqueManagement: React.FC = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Drawer Inventaire */}
+            <InventoryDrawer
+                open={inventoryOpen}
+                onOpenChange={setInventoryOpen}
+                shopId={shop.id}
+            />
         </div>
     );
 };
