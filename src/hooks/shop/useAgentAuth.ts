@@ -24,7 +24,7 @@ export const useAgentAuth = (shopId?: string) => {
             const savedId = localStorage.getItem(STORAGE_KEY);
             if (savedId && shopId) {
                 try {
-                    const { data, error } = await supabase
+        const { data, error } = await supabase
                         .from('shop_agents' as any)
                         .select('*')
                         .eq('id', savedId)
@@ -32,13 +32,14 @@ export const useAgentAuth = (shopId?: string) => {
                         .single();
 
                     if (data && !error) {
+                        const d = data as any;
                         setActiveAgent({
-                            agentId: data.id,
-                            firstName: data.first_name,
-                            lastName: data.last_name,
-                            role: data.role,
-                            shopId: data.shop_id,
-                            isUnlocked: false, // Toujours verrouillé au rafraîchissement
+                            agentId: d.id,
+                            firstName: d.first_name,
+                            lastName: d.last_name,
+                            role: d.role,
+                            shopId: d.shop_id,
+                            isUnlocked: false,
                         });
                     }
                 } catch (err) {
