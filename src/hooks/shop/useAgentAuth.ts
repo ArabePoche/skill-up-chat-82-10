@@ -71,18 +71,19 @@ export const useAgentAuth = (shopId?: string) => {
             return null;
         }
 
+        const d = data as any;
         const session: AgentSession = {
-            agentId: data.id,
-            firstName: data.first_name,
-            lastName: data.last_name,
-            role: data.role,
-            shopId: data.shop_id,
+            agentId: d.id,
+            firstName: d.first_name,
+            lastName: d.last_name,
+            role: d.role,
+            shopId: d.shop_id,
             isUnlocked: true,
         };
 
         setActiveAgent(session);
-        localStorage.setItem(STORAGE_KEY, data.id);
-        toast.success(`Bienvenue, ${data.first_name}`);
+        localStorage.setItem(STORAGE_KEY, d.id);
+        toast.success(`Bienvenue, ${d.first_name}`);
         return session;
     }, [shopId]);
 

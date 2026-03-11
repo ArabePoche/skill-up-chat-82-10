@@ -151,7 +151,7 @@ export const useBoutiqueSalesHistory = (shopId?: string) => {
         .limit(100);
 
       if (error) throw error;
-      return data;
+      return (data as any[]) || [];
     },
     enabled: !!shopId,
   });

@@ -19,6 +19,7 @@ export interface ShopWithProducts {
   id: string;
   name: string;
   address?: string;
+  owner_id?: string;
   products_count: number;
   total_stock_value: number;
   total_stock_units: number;
