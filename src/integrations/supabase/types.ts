@@ -2662,6 +2662,7 @@ export type Database = {
       }
       physical_shop_sales: {
         Row: {
+          agent_id: string | null
           cost_price: number | null
           created_at: string
           customer_id: string | null
@@ -2673,10 +2674,12 @@ export type Database = {
           quantity: number
           shop_id: string
           sold_at: string
+          status: string | null
           total_amount: number
           unit_price: number
         }
         Insert: {
+          agent_id?: string | null
           cost_price?: number | null
           created_at?: string
           customer_id?: string | null
@@ -2688,10 +2691,12 @@ export type Database = {
           quantity?: number
           shop_id: string
           sold_at?: string
+          status?: string | null
           total_amount: number
           unit_price: number
         }
         Update: {
+          agent_id?: string | null
           cost_price?: number | null
           created_at?: string
           customer_id?: string | null
@@ -2703,10 +2708,18 @@ export type Database = {
           quantity?: number
           shop_id?: string
           sold_at?: string
+          status?: string | null
           total_amount?: number
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "physical_shop_sales_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "shop_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "physical_shop_sales_customer_id_fkey"
             columns: ["customer_id"]
@@ -6307,6 +6320,66 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_agents: {
+        Row: {
+          created_at: string | null
+          first_name: string
+          id: string
+          last_name: string
+          password_hash: string | null
+          pin_code: string | null
+          role: string
+          shop_id: string
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          password_hash?: string | null
+          pin_code?: string | null
+          role: string
+          shop_id: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          password_hash?: string | null
+          pin_code?: string | null
+          role?: string
+          shop_id?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_agents_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_agents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_customer_credits: {
         Row: {
           amount: number
@@ -8724,6 +8797,7 @@ export type Database = {
         }[]
       }
       generate_parental_code: { Args: never; Returns: string }
+      get_agent_shop_ids: { Args: { _user_id: string }; Returns: string[] }
       get_exercise_global_status: {
         Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
         Returns: string
@@ -8864,6 +8938,10 @@ export type Database = {
         | { Args: { _school_id: string; _user_id: string }; Returns: boolean }
       is_school_owner_or_teacher: {
         Args: { user_id: string }
+        Returns: boolean
+      }
+      is_shop_agent: {
+        Args: { p_shop_id: string; p_user_id: string }
         Returns: boolean
       }
       is_student_enrolled: {

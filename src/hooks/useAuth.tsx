@@ -12,6 +12,7 @@ interface Profile {
   username?: string;
   avatar_url?: string;
   is_teacher?: boolean;
+  role?: string;
   email?: string;
   is_shop_owner?: boolean;
 }
