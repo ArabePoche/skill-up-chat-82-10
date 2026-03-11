@@ -25,52 +25,45 @@ export const useSupabaseStatus = (): SupabaseStatus => {
     setError(null);
 
     try {
-      // Fait une requête simple pour vérifier si Supabase répond
-      const { error: dbError } = await supabase
-        .from('formations')
-        .select('id')
-        .limit(1)
-        .maybeSingle();
+      // Ping léger HEAD pour vérifier uniquement la connectivité réseau
+      // Ne pas utiliser de requête DB qui peut échouer pour des raisons non-réseau
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
 
-      if (dbError) {
-        // Vérifie si c'est une erreur 402 (quota dépassé / service suspendu)
-        const errorMessage = dbError.message || '';
-        
-        if (errorMessage.includes('402') || 
-            errorMessage.includes('restricted') || 
-            errorMessage.includes('quota') ||
-            errorMessage.includes('payment')) {
-          console.warn('⚠️ Supabase service is restricted (billing issue)');
-          setError('Service Supabase suspendu - Mode offline activé');
-          setIsAvailable(false);
-          return false;
-        }
+      const response = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/rest/v1/', {
+        method: 'HEAD',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
 
-        // Autres erreurs de connexion
-        if (dbError.code === 'PGRST301' || 
-            errorMessage.includes('network') ||
-            errorMessage.includes('fetch')) {
-          console.warn('⚠️ Supabase is not reachable');
-          setError('Supabase inaccessible - Mode offline activé');
-          setIsAvailable(false);
-          return false;
-        }
+      clearTimeout(timeout);
 
-        // Erreur RLS ou autre - Supabase fonctionne
-        console.log('✅ Supabase is available (RLS or other error, but service is running)');
-        setIsAvailable(true);
-        return true;
-      }
-
-      console.log('✅ Supabase is available');
+      // Toute réponse HTTP (même 401, 402, 403, 500) = le serveur répond = réseau OK
+      console.log('✅ Supabase is reachable (status:', response.status, ')');
       setIsAvailable(true);
       return true;
 
     } catch (err: any) {
-      console.error('❌ Error checking Supabase status:', err);
-      setError('Erreur de connexion à Supabase');
-      setIsAvailable(false);
-      return false;
+      const errName = err?.name || '';
+      const errMsg = (err?.message || '').toLowerCase();
+
+      // Seules les erreurs réseau réelles déclenchent le mode offline
+      const isNetworkError = errName === 'AbortError' ||
+        errName === 'TypeError' ||
+        errMsg.includes('network') ||
+        errMsg.includes('failed to fetch');
+
+      if (isNetworkError) {
+        console.warn('📵 Supabase unreachable (network error):', errMsg || errName);
+        setError('Pas de connexion réseau');
+        setIsAvailable(false);
+        return false;
+      }
+
+      // Erreur inattendue mais pas réseau → on reste en ligne
+      console.warn('⚠️ Unexpected error checking Supabase, staying online:', err);
+      setIsAvailable(true);
+      return true;
     } finally {
       setIsChecking(false);
       setLastCheck(new Date());
