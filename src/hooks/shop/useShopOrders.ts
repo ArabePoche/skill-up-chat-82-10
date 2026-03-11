@@ -57,7 +57,7 @@ export const useShopOrders = () => {
           order_items (
             id, quantity, price, selected_size, selected_color,
             product_id,
-            products ( id, name, image_url )
+            products ( id, title, image_url )
           )
         `)
         .eq('seller_id', user.id)
@@ -102,7 +102,11 @@ export const useShopOrders = () => {
           price: item.price,
           selected_size: item.selected_size,
           selected_color: item.selected_color,
-          product: item.products || null,
+          product: item.products ? {
+            id: item.products.id,
+            name: item.products.title,
+            image_url: item.products.image_url
+          } : null,
         })),
       })) as OrderWithDetails[];
     },
@@ -123,7 +127,19 @@ export const useShopOrders = () => {
           table: 'orders',
           filter: `seller_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          // Jouer un son si c'est une nouvelle commande
+          if (payload.eventType === 'INSERT') {
+            const audio = new Audio('/sounds/notification-order.mp3');
+            audio.play().catch(e => console.error('Error playing sound:', e));
+            toast.success('Nouvelle commande reçue !', {
+              duration: 5000,
+              action: {
+                label: 'Voir',
+                onClick: () => window.location.reload() // Ou navigation si possible, mais le refresh query suffit
+              }
+            });
+          }
           queryClient.invalidateQueries({ queryKey: ['shop-orders', user.id] });
         }
       )

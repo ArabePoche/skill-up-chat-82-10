@@ -21,6 +21,9 @@ import CartDrawer from '@/components/shop/cart/CartDrawer';
 import BoutiqueTopTabs from '@/components/shop/boutique/BoutiqueTopTabs';
 import BoutiqueManagement from '@/components/shop/boutique/BoutiqueManagement';
 import { useTranslation } from 'react-i18next';
+import { useAgentAuth } from '@/hooks/shop/useAgentAuth';
+import { AgentLockScreen } from '@/components/shop/boutique/AgentLockScreen';
+import { usePhysicalShop } from '@/hooks/shop/usePhysicalShop';
 
 const Shop = () => {
   const { t } = useTranslation();
@@ -35,13 +38,15 @@ const Shop = () => {
   const navigate = useNavigate();
   const { cartItemsCount, addToCart } = useCart();
   const { data: userInterests = [] } = useUserInterests();
-  const { data: isShopOwner } = useIsShopOwner();
+  const { data: isShopOwner, isLoading: isShopOwnerLoading } = useIsShopOwner();
 
   const { data: formations, isLoading: formationsLoading } = useShopFormations(activeCategory);
   const { data: formationCategories, isLoading: formationCategoriesLoading } = useFormationCategories();
   const { data: products, isLoading: productsLoading } = useProducts(activeCategory);
   const { data: productCategories, isLoading: productCategoriesLoading } = useProductCategories();
   const { data: services, isLoading: servicesLoading } = useServices(activeCategory);
+  const { data: shop } = usePhysicalShop();
+  const { activeAgent, login, unlock, logout } = useAgentAuth(shop?.id);
 
   const handleViewDetails = useCallback((formationId: string) => {
     console.log('Shop: Navigating to formation details:', formationId);
@@ -90,10 +95,28 @@ const Shop = () => {
       : servicesLoading;
 
   return (
-    <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
-      {/* Onglets TikTok-style pour les propriétaires de boutique */}
+    <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0 relative">
+      {/* Onglets TikTok-style pour les propriétaires de boutique - Visible sur mobile en sticky */}
       {isShopOwner && (
-        <BoutiqueTopTabs activeView={mainView} onViewChange={setMainView} />
+        <div className="md:hidden sticky top-0 left-0 right-0 z-[100] bg-white">
+          <BoutiqueTopTabs activeView={mainView} onViewChange={setMainView} />
+        </div>
+      )}
+      {isShopOwner && (
+        <div className="hidden md:block pt-4">
+          <BoutiqueTopTabs activeView={mainView} onViewChange={setMainView} />
+        </div>
+      )}
+
+      {/* Lock screen pour les agents/proprios */}
+      {isShopOwner && shop && (
+        <AgentLockScreen
+          shopId={shop.id}
+          activeAgent={activeAgent}
+          onLogin={login}
+          onUnlock={unlock}
+          onLogout={logout}
+        />
       )}
 
       {/* Vue Gestion boutique */}

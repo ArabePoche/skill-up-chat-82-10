@@ -79,7 +79,8 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
 
   const uploadVideoFile = async (file: File): Promise<string> => {
     try {
-      const result = await uploadFile(file, 'lesson_discussion_files');
+      const bucket = formData.video_type === 'lesson' ? 'lesson_discussion_files' : 'tiktok_feed_media';
+      const result = await uploadFile(file, bucket);
       return result.fileUrl;
     } catch (error) {
       console.error('Erreur upload vidéo:', error);
@@ -89,7 +90,8 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
 
   const uploadThumbnailFile = async (file: File): Promise<string> => {
     try {
-      const result = await uploadFile(file, 'lesson_discussion_files');
+      const bucket = formData.video_type === 'lesson' ? 'lesson_discussion_files' : 'tiktok_feed_media';
+      const result = await uploadFile(file, bucket);
       return result.fileUrl;
     } catch (error) {
       console.error('Erreur upload miniature:', error);

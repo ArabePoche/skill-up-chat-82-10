@@ -7,6 +7,7 @@ import { startOfDay, endOfDay } from 'date-fns';
 
 export interface TodaySalesStats {
   totalRevenue: number;
+  totalProfit: number;
   totalSales: number;
   totalItems: number;
   averageTicket: number;
@@ -16,7 +17,7 @@ export interface TodaySalesStats {
     quantity: number;
     revenue: number;
   }[];
-  salesByHour: { hour: number; revenue: number; count: number }[];
+  salesByHour: { hour: number; revenue: number; profit: number; count: number }[];
   paymentMethods: { method: string; total: number; count: number }[];
 }
 
@@ -40,6 +41,7 @@ export const useTodaySalesStats = (shopId?: string) => {
           total_amount,
           payment_method,
           sold_at,
+          cost_price,
           product_id,
           physical_shop_products!physical_shop_sales_product_id_fkey(name)
         `)
@@ -53,7 +55,15 @@ export const useTodaySalesStats = (shopId?: string) => {
       const salesData = sales || [];
 
       // Calculer les stats globales
-      const totalRevenue = salesData.reduce((sum: number, s: any) => sum + Number(s.total_amount), 0);
+      let totalProfit = 0;
+      
+      const totalRevenue = salesData.reduce((sum: number, s: any) => {
+        const amount = Number(s.total_amount);
+        const cost = Number(s.cost_price || 0) * s.quantity;
+        totalProfit += (amount - cost);
+        return sum + amount;
+      }, 0);
+
       const totalSales = salesData.length;
       const totalItems = salesData.reduce((sum: number, s: any) => sum + s.quantity, 0);
       const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
@@ -76,18 +86,31 @@ export const useTodaySalesStats = (shopId?: string) => {
         .slice(0, 5);
 
       // Ventes par heure
-      const hourMap = new Map<number, { revenue: number; count: number }>();
+      const hourMap = new Map<number, { revenue: number; profit: number; count: number }>();
+      
+      // Initialiser toutes les heures de 8h à 20h (optionnel, mais mieux pour le graph)
+      for (let i = 8; i <= 20; i++) {
+         hourMap.set(i, { revenue: 0, profit: 0, count: 0 });
+      }
+
       salesData.forEach((sale: any) => {
         const hour = new Date(sale.sold_at).getHours();
-        const existing = hourMap.get(hour) || { revenue: 0, count: 0 };
+        const existing = hourMap.get(hour) || { revenue: 0, profit: 0, count: 0 };
+        const amount = Number(sale.total_amount);
+        const cost = Number(sale.cost_price || 0) * sale.quantity;
+        
         hourMap.set(hour, {
-          revenue: existing.revenue + Number(sale.total_amount),
+          revenue: existing.revenue + amount,
+          profit: existing.profit + (amount - cost),
           count: existing.count + 1,
         });
       });
+      
       const salesByHour = Array.from(hourMap.entries())
         .map(([hour, data]) => ({ hour, ...data }))
-        .sort((a, b) => a.hour - b.hour);
+        .sort((a, b) => a.hour - b.hour)
+        // Filtrer les heures hors plage seulement si elles sont vides
+        .filter(h => h.revenue > 0 || (h.hour >= 8 && h.hour <= 20));
 
       // Par méthode de paiement
       const methodMap = new Map<string, { total: number; count: number }>();
@@ -105,6 +128,7 @@ export const useTodaySalesStats = (shopId?: string) => {
 
       return {
         totalRevenue,
+        totalProfit,
         totalSales,
         totalItems,
         averageTicket,

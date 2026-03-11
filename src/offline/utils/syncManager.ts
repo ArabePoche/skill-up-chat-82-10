@@ -247,6 +247,12 @@ class SyncManager {
       case 'generic':
         return this.syncGenericMutation(mutation.payload);
 
+      case 'create_boutique_sale':
+        return this.syncCreateBoutiqueSaleMutation(mutation.payload);
+
+      case 'cancel_boutique_sale':
+        return this.syncCancelBoutiqueSaleMutation(mutation.payload);
+
       default:
         console.warn('Unknown mutation type:', mutation.type);
         return false;
@@ -501,6 +507,86 @@ class SyncManager {
       return !error;
     } catch (err) {
       console.error('Error syncing delete mutation:', err);
+      return false;
+    }
+  }
+
+  private async syncCreateBoutiqueSaleMutation(payload: any): Promise<boolean> {
+    try {
+      const { shopId, items, customerName, paymentMethod, notes } = payload;
+
+      for (const item of items) {
+        // Enregistrer la vente
+        const { error: saleErr } = await (supabase as any)
+          .from('physical_shop_sales')
+          .insert({
+            shop_id: shopId,
+            product_id: item.id,
+            quantity: item.quantity,
+            unit_price: item.price,
+            total_amount: item.price * item.quantity,
+            customer_name: customerName,
+            payment_method: paymentMethod,
+            notes: notes
+          });
+
+        if (saleErr) return false;
+
+        // Mettre à jour le stock
+        const { data: product, error: fetchErr } = await supabase
+          .from('physical_shop_products')
+          .select('stock_quantity')
+          .eq('id', item.id)
+          .single();
+
+        if (fetchErr || !product) return false;
+
+        const newStock = product.stock_quantity - item.quantity;
+        const { error: updateErr } = await supabase
+          .from('physical_shop_products')
+          .update({ stock_quantity: newStock })
+          .eq('id', item.id);
+
+        if (updateErr) return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error syncing create sale:', err);
+      return false;
+    }
+  }
+
+  private async syncCancelBoutiqueSaleMutation(payload: any): Promise<boolean> {
+    try {
+      const { id, product_id, quantity } = payload;
+
+      // 1. Marquer comme annulée
+      const { error: cancelError } = await (supabase as any)
+        .from('physical_shop_sales')
+        .update({ status: 'canceled' })
+        .eq('id', id);
+
+      if (cancelError) return false;
+
+      // 2. Restaurer stock
+      const { data: product, error: fetchErr } = await supabase
+        .from('physical_shop_products')
+        .select('stock_quantity')
+        .eq('id', product_id)
+        .single();
+
+      if (fetchErr || !product) return false;
+
+      const newStock = product.stock_quantity + quantity;
+      await supabase
+        .from('physical_shop_products')
+        .update({ stock_quantity: newStock })
+        .eq('id', product_id);
+
+      return true;
+    } catch (err) {
+      console.error('Error syncing cancel sale:', err);
       return false;
     }
   }

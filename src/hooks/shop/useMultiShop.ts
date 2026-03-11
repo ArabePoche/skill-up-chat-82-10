@@ -38,7 +38,15 @@ export const useUserShops = () => {
     queryFn: async (): Promise<ShopWithProducts[]> => {
       if (!user?.id) return [];
 
-      const { data, error } = await supabase
+      // On récupère les IDs des shops où l'utilisateur est agent
+      const { data: agentShops } = await supabase
+        .from('shop_agents' as any)
+        .select('shop_id')
+        .eq('user_id', user.id);
+
+      const shopIds = ((agentShops as any) || []).map((as: any) => as.shop_id);
+
+      let query = supabase
         .from('physical_shops')
         .select(`
           *,
@@ -47,9 +55,15 @@ export const useUserShops = () => {
             marketplace_quantity,
             price
           )
-        `)
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false });
+        `);
+
+      if (shopIds.length > 0) {
+        query = query.or(`owner_id.eq.${user.id},id.in.(${shopIds.join(',')})`);
+      } else {
+        query = query.eq('owner_id', user.id);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
 

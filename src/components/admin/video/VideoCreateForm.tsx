@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 interface VideoCreateFormProps {
   onSuccess: () => void;
@@ -15,6 +16,7 @@ interface VideoCreateFormProps {
 
 const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }) => {
   const { user } = useAuth();
+  const { uploadFile, isUploading } = useFileUpload();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -47,6 +49,8 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
     }
 
     try {
+      const bucket = formData.video_type === 'lesson' ? 'lesson_discussion_files' : 'tiktok_feed_media';
+
       const videoData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
@@ -63,7 +67,7 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
         .insert(videoData);
 
       if (error) throw error;
-      
+
       toast.success('Vidéo créée avec succès');
       onSuccess();
     } catch (error) {
@@ -84,7 +88,7 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
           required
         />
       </div>
-      
+
       <div>
         <Label htmlFor="description">Description</Label>
         <Textarea
@@ -95,7 +99,7 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
           rows={3}
         />
       </div>
-      
+
       <div>
         <Label htmlFor="video_url">URL de la vidéo</Label>
         <Input
@@ -107,7 +111,7 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
           required
         />
       </div>
-      
+
       <div>
         <Label htmlFor="thumbnail_url">URL de la miniature</Label>
         <Input
@@ -123,7 +127,7 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
         <Label htmlFor="video_type">Type de vidéo</Label>
         <Select
           value={formData.video_type}
-          onValueChange={(value: 'lesson' | 'promo' | 'classic') => 
+          onValueChange={(value: 'lesson' | 'promo' | 'classic') =>
             handleInputChange('video_type', value)
           }
         >
@@ -164,7 +168,7 @@ const VideoCreateForm: React.FC<VideoCreateFormProps> = ({ onSuccess, onCancel }
           </div>
         </>
       )}
-      
+
       <div className="flex space-x-2">
         <Button type="submit" className="flex-1">
           Créer

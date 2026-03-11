@@ -12,6 +12,7 @@ interface ShopHeaderProps {
   setSearchQuery: (query: string) => void;
   cartItemsCount?: number;
   onCartClick: () => void;
+  className?: string;
 }
 
 const ShopHeader: React.FC<ShopHeaderProps> = ({
@@ -20,12 +21,13 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
   searchQuery,
   setSearchQuery,
   cartItemsCount = 0,
-  onCartClick
+  onCartClick,
+  className
 }) => {
   const { t } = useTranslation();
-  
+
   return (
-    <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white sticky top-0 z-40 shadow-lg">
+    <div className={`bg-gradient-to-r from-blue-900 to-blue-700 text-white sticky z-40 shadow-lg ${className || 'top-0'}`}>
       {/* Header principal */}
       <div className="px-[0.5rem] sm:px-[1rem] py-[0.5rem] sm:py-[0.75rem]">
         <div className="flex items-center justify-between mb-[0.5rem] sm:mb-[0.75rem]">
@@ -36,12 +38,12 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
             </Button>
             <h1 className="text-[1.125rem] sm:text-[1.25rem] font-bold">EducaShop</h1>
           </div>
-          
+
           {/* Panier */}
           <div className="relative">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="text-white hover:bg-white/20 w-[2rem] h-[2rem] sm:w-[2.5rem] sm:h-[2.5rem]"
               onClick={onCartClick}
             >
@@ -66,8 +68,8 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white text-black border-0 focus:ring-2 focus:ring-orange-500 rounded-sm text-[0.875rem] sm:text-base h-[2rem] sm:h-[2.5rem]"
             />
-            <Button 
-              size="icon" 
+            <Button
+              size="icon"
               className="absolute right-0 top-0 h-full bg-orange-500 hover:bg-orange-600 rounded-l-none w-[2rem] sm:w-[2.5rem]"
             >
               <Search className="w-[0.875rem] h-[0.875rem] sm:hidden" />
@@ -82,31 +84,28 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
         <div className="flex space-x-[0.5rem] sm:space-x-[1rem] border-b border-white/20 overflow-x-auto">
           <button
             onClick={() => setActiveTab('formations')}
-            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${
-              activeTab === 'formations'
+            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${activeTab === 'formations'
                 ? 'border-orange-500 text-white bg-white/10 shadow-lg'
                 : 'border-transparent text-white/70 hover:text-white hover:bg-white/5'
-            }`}
+              }`}
           >
             {t('shop.formations')}
           </button>
           <button
             onClick={() => setActiveTab('products')}
-            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${
-              activeTab === 'products'
+            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${activeTab === 'products'
                 ? 'border-orange-500 text-white bg-white/10 shadow-lg'
                 : 'border-transparent text-white/70 hover:text-white hover:bg-white/5'
-            }`}
+              }`}
           >
             {t('shop.products')}
           </button>
           <button
             onClick={() => setActiveTab('services')}
-            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${
-              activeTab === 'services'
+            className={`pb-[0.5rem] sm:pb-[0.75rem] px-[1rem] sm:px-[1.5rem] font-semibold transition-all duration-200 border-b-[3px] whitespace-nowrap text-[0.875rem] sm:text-base rounded-t-md ${activeTab === 'services'
                 ? 'border-orange-500 text-white bg-white/10 shadow-lg'
                 : 'border-transparent text-white/70 hover:text-white hover:bg-white/5'
-            }`}
+              }`}
           >
             {t('shop.services', 'Services')}
           </button>

@@ -2,15 +2,21 @@
  * Page principale de gestion de la boutique physique
  * Permet d'ajouter/modifier/supprimer des produits et de les transférer vers le marketplace
  */
-import React, { useState } from 'react';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell, Check, ChevronsUpDown, History } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
-import PosCashRegister from './PosCashRegister';
+import EmbeddedPos from './EmbeddedPos';
 import CustomerManagement from './CustomerManagement';
 import ShopOrdersPanel from './ShopOrdersPanel';
+import { BoutiqueAgentsManager } from './BoutiqueAgentsManager';
+import BoutiqueSalesHistory from './BoutiqueSalesHistory';
 import { useShopOrders } from '@/hooks/shop/useShopOrders';
+import { useShopAgents } from '@/hooks/shop/useShopAgents';
+import { useAgentAuth } from '@/hooks/shop/useAgentAuth';
+import { AgentLockScreen } from './AgentLockScreen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +28,20 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -57,18 +77,76 @@ import BoutiqueProductCard from './BoutiqueProductCard';
 import TransferDialog, { TransferDialogProps } from './TransferDialog';
 import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
 
+// Composant Autocomplete simple et robuste pour éviter les problèmes de focus dans les Dialogs
+const SimpleAutocomplete = ({
+    value,
+    onChange,
+    options,
+    placeholder,
+    label
+}: {
+    value: string;
+    onChange: (val: string) => void;
+    options: string[];
+    placeholder: string;
+    label: string;
+}) => {
+    const [open, setOpen] = useState(false);
+    const [focused, setFocused] = useState(false);
+
+    // Filtrer les options basées sur la saisie
+    const filtered = options.filter(o => o.toLowerCase().includes(value.toLowerCase()));
+
+    return (
+        <div className="relative">
+            <Label>{label}</Label>
+            <Input
+                value={value}
+                onChange={e => { onChange(e.target.value); setOpen(true); }}
+                onFocus={() => { setFocused(true); setOpen(true); }}
+                onBlur={() => {
+                    setFocused(false);
+                    // Petit délai pour permettre le clic sur l'option
+                    setTimeout(() => setOpen(false), 200);
+                }}
+                placeholder={placeholder}
+                className="mt-1"
+            />
+            {open && focused && filtered.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {filtered.map(opt => (
+                        <div
+                            key={opt}
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-emerald-50 text-gray-700"
+                            onMouseDown={(e) => {
+                                // onMouseDown fires before onBlur
+                                e.preventDefault();
+                                onChange(opt);
+                                setOpen(false);
+                            }}
+                        >
+                            {opt}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const BoutiqueManagement: React.FC = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const { data: userShops, isLoading: shopsLoading } = useUserShops();
     const createShop = useCreatePhysicalShop();
-    
+
     // Récupérer l'ID de boutique depuis l'URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const shopIdFromUrl = urlParams.get('id');
-    
+    const [searchParams] = useSearchParams();
+    const shopIdFromUrl = searchParams.get('id');
+
     // Déterminer la boutique active : celle de l'URL ou la première disponible
     const shop = userShops?.find(s => s.id === shopIdFromUrl) || userShops?.[0] || null;
-    
+
     const { data: products, isLoading: productsLoading, error: productsError } = useBoutiqueProducts(shop?.id);
     const createProduct = useCreateBoutiqueProduct();
     const updateProduct = useUpdateBoutiqueProduct();
@@ -90,7 +168,13 @@ const BoutiqueManagement: React.FC = () => {
     const [inventoryOpen, setInventoryOpen] = useState(false);
     const [posOpen, setPosOpen] = useState(false);
     const [showMultiShopSettings, setShowMultiShopSettings] = useState(false);
-    const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders'>('shop');
+    const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders' | 'sales' | 'agents'>('shop');
+    const { data: currentShopAgents } = useShopAgents(shop?.id);
+    const isOwnerOrPDG = useMemo(() => {
+        if (!user || !shop) return false;
+        if (shop.owner_id === user.id) return true;
+        return currentShopAgents?.some(a => a.user_id === user.id && a.role === 'PDG' && a.status === 'active') || false;
+    }, [user, shop, currentShopAgents]);
     const { pendingCount } = useShopOrders();
     // Form state
     const [formName, setFormName] = useState('');
@@ -98,10 +182,26 @@ const BoutiqueManagement: React.FC = () => {
     const [formPrice, setFormPrice] = useState('');
     const [formCostPrice, setFormCostPrice] = useState('');
     const [formStock, setFormStock] = useState('');
-    const [formImageUrl, setFormImageUrl] = useState('');
     const [formCategory, setFormCategory] = useState('');
     const [formLocation, setFormLocation] = useState('');
+    const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
     const [filterCategory, setFilterCategory] = useState('all');
+
+    const { activeAgent, login, unlock, logout } = useAgentAuth(shop?.id);
+
+    // Combobox states
+    // Plus nécessaire avec SimpleAutocomplete
+
+    // Dériver les catégories et emplacements uniques
+    const uniqueCategories = useMemo(() => {
+        const cats = new Set(products?.map(p => p.category).filter(Boolean) as string[]);
+        return Array.from(cats).sort();
+    }, [products]);
+
+    const uniqueLocations = useMemo(() => {
+        const locs = new Set(products?.map(p => p.location).filter(Boolean) as string[]);
+        return Array.from(locs).sort();
+    }, [products]);
 
     const isOnline = navigator.onLine;
 
@@ -294,6 +394,14 @@ const BoutiqueManagement: React.FC = () => {
     // Boutique existante : vue de gestion
     return (
         <div className="pb-16 bg-white min-h-screen">
+            <AgentLockScreen
+                shopId={shop.id}
+                activeAgent={activeAgent}
+                onLogin={login}
+                onUnlock={unlock}
+                onLogout={logout}
+            />
+
             {/* Header boutique */}
             <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-3 sm:p-4 shadow-md">
                 <div className="flex items-center justify-between gap-2">
@@ -312,7 +420,7 @@ const BoutiqueManagement: React.FC = () => {
                                         <DropdownMenuItem
                                             key={s.id}
                                             onClick={() => {
-                                                window.location.href = `/shop?id=${s.id}`;
+                                                navigate(`/shop?id=${s.id}`);
                                             }}
                                             className={`flex items-center gap-3 p-3 ${s.id === shop.id ? 'bg-accent' : ''}`}
                                         >
@@ -413,22 +521,43 @@ const BoutiqueManagement: React.FC = () => {
                         )}
                     </button>
                     <button
+                        onClick={() => setActiveView('sales')}
+                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'sales' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <History size={14} className="inline mr-1" /> Ventes
+                    </button>
+                    <button
                         onClick={() => setActiveView('customers')}
                         className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'customers' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
                     >
                         <Users size={14} className="inline mr-1" /> Clients
                     </button>
+                    {isOwnerOrPDG && (
+                        <button
+                            onClick={() => setActiveView('agents')}
+                            className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'agents' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                        >
+                            <Users size={14} className="inline mr-1" /> Agents
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {activeView === 'customers' ? (
+            {activeView === 'agents' ? (
+                <BoutiqueAgentsManager shopId={shop.id} />
+            ) : activeView === 'customers' ? (
                 <CustomerManagement shopId={shop.id} />
             ) : activeView === 'orders' ? (
                 <ShopOrdersPanel />
+            ) : activeView === 'sales' ? (
+                <BoutiqueSalesHistory shopId={shop.id} />
             ) : (
                 <div>
                     {/* Dashboard ventes du jour */}
-                    <TodaySalesDashboard shopId={shop.id} />
+                    <TodaySalesDashboard
+                        shopId={shop.id}
+                        onViewHistory={() => setActiveView('sales')}
+                    />
 
                     {/* Filtre par catégorie */}
                     {(() => {
@@ -457,64 +586,57 @@ const BoutiqueManagement: React.FC = () => {
                         );
                     })()}
 
-                    {/* Liste des produits */}
+                    {/* Liste des produits et Caisse Intégrée */}
                     <div className="p-3 sm:p-4">
                         {/* Barre de recherche */}
-                        {products && products.length > 0 && (
-                            <div className="relative mb-4">
-                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Rechercher un produit..."
-                                    className="pl-9"
-                                />
+                        <div className="relative mb-4">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Rechercher un produit..."
+                                className="pl-9"
+                            />
+                        </div>
+
+                        {/* Caisse Intégrée */}
+                        {productsLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                             </div>
+                        ) : (
+                            <EmbeddedPos
+                                products={products || []}
+                                shopId={shop.id}
+                                shopName={shop.name}
+                                shopAddress={shop.address}
+                                cartItems={posCart.items}
+                                totalAmount={posCart.totalAmount}
+                                totalItems={posCart.totalItems}
+                                onAddItem={(p, qty) => posCart.addItem(p, qty)}
+                                onUpdateQuantity={posCart.updateQuantity}
+                                onRemoveItem={posCart.removeItem}
+                                onClearCart={posCart.clearCart}
+                                onConfirmSale={async (data) => {
+                                    if (!shop?.id) return;
+                                    await cartSale.mutateAsync({
+                                        shopId: shop.id,
+                                        items: posCart.items,
+                                        customerName: data.customerName,
+                                        paymentMethod: data.paymentMethod,
+                                        notes: data.notes,
+                                    });
+                                    posCart.clearCart();
+                                }}
+                                isProcessing={cartSale.isPending}
+                                searchQuery={searchQuery}
+                                filterCategory={filterCategory}
+                                onEditProduct={openEditProductForm}
+                                onDeleteProduct={(id) => setDeletingProductId(id)}
+                                onTransferProduct={(p) => setTransferProduct(p)}
+                                onReturnProduct={(p) => setReturningProduct(p)}
+                            />
                         )}
-
-                        {(() => {
-                            const filtered = products?.filter(p => {
-                                const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                    (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
-                                const matchCategory = filterCategory === 'all' || p.category === filterCategory;
-                                return matchSearch && matchCategory;
-                            });
-
-                            return productsLoading ? (
-                                <div className="flex items-center justify-center py-12">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                                </div>
-                            ) : filtered && filtered.length > 0 ? (
-                                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-                                    {filtered.map(product => (
-                                        <BoutiqueProductCard
-                                            key={product.id}
-                                            product={product}
-                                            onEdit={openEditProductForm}
-                                            onDelete={(id) => setDeletingProductId(id)}
-                                            onTransfer={(p) => setTransferProduct(p)}
-                                            onReturn={(p) => setReturningProduct(p)}
-                                            onAddToCart={(p, qty) => posCart.addItem(p, qty)}
-                                            cartQuantity={posCart.items.find(i => i.product.id === product.id)?.quantity || 0}
-                                        />
-                                    ))}
-                                </div>
-                            ) : searchQuery || filterCategory !== 'all' ? (
-                                <div className="text-center py-12">
-                                    <Search size={48} className="mx-auto text-muted-foreground/30 mb-4" />
-                                    <p className="text-muted-foreground">Aucun produit trouvé</p>
-                                </div>
-                            ) : (
-                                <div className="text-center py-16">
-                                    <Package size={48} className="mx-auto text-muted-foreground/30 mb-4" />
-                                    <p className="text-muted-foreground mb-4">Aucun produit dans votre boutique</p>
-                                    <Button onClick={openNewProductForm}>
-                                        <Plus size={16} className="mr-2" />
-                                        Ajouter un produit
-                                    </Button>
-                                </div>
-                            );
-                        })()}
                     </div>
                 </div>
             )}
@@ -590,21 +712,21 @@ const BoutiqueManagement: React.FC = () => {
                         )}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label htmlFor="product-category">Catégorie</Label>
-                                <Input
-                                    id="product-category"
+                                <SimpleAutocomplete
+                                    label="Catégorie"
                                     value={formCategory}
-                                    onChange={(e) => setFormCategory(e.target.value)}
-                                    placeholder="Ex: Électronique, Vêtements..."
+                                    onChange={setFormCategory}
+                                    options={uniqueCategories}
+                                    placeholder="Ex: Électronique"
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="product-location">Emplacement</Label>
-                                <Input
-                                    id="product-location"
+                                <SimpleAutocomplete
+                                    label="Emplacement"
                                     value={formLocation}
-                                    onChange={(e) => setFormLocation(e.target.value)}
-                                    placeholder="Ex: Rayon A, Étagère 3..."
+                                    onChange={setFormLocation}
+                                    options={uniqueLocations}
+                                    placeholder="Ex: Rayon A"
                                 />
                             </div>
                         </div>
@@ -665,34 +787,6 @@ const BoutiqueManagement: React.FC = () => {
                 isLoading={returnFromMarketplace.isPending}
             />
 
-            {/* Caisse POS plein écran */}
-            <PosCashRegister
-                open={posOpen}
-                onClose={() => setPosOpen(false)}
-                products={products || []}
-                shopId={shop.id}
-                shopName={shop.name}
-                shopAddress={shop.address}
-                cartItems={posCart.items}
-                totalAmount={posCart.totalAmount}
-                totalItems={posCart.totalItems}
-                onAddItem={(p, qty) => posCart.addItem(p, qty)}
-                onUpdateQuantity={posCart.updateQuantity}
-                onRemoveItem={posCart.removeItem}
-                onClearCart={posCart.clearCart}
-                onConfirmSale={async (data) => {
-                    if (!shop?.id) return;
-                    await cartSale.mutateAsync({
-                        shopId: shop.id,
-                        items: posCart.items,
-                        customerName: data.customerName,
-                        paymentMethod: data.paymentMethod,
-                        notes: data.notes,
-                    });
-                    posCart.clearCart();
-                }}
-                isProcessing={cartSale.isPending}
-            />
 
             {/* Confirmation suppression */}
             <AlertDialog open={!!deletingProductId} onOpenChange={(open) => !open && setDeletingProductId(null)}>
@@ -721,29 +815,6 @@ const BoutiqueManagement: React.FC = () => {
                 onOpenChange={setInventoryOpen}
                 shopId={shop.id}
             />
-
-            {/* Floating sell button when cart has items */}
-            {posCart.totalItems > 0 && (
-                <div className="fixed bottom-20 left-0 right-0 z-40 px-4">
-                    <button
-                        onClick={() => setPosOpen(true)}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-xl px-5 py-3.5 flex items-center justify-between active:scale-[0.98] transition-all"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <ShoppingCart size={22} />
-                                <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                                    {posCart.totalItems}
-                                </span>
-                            </div>
-                            <span className="font-bold text-sm">Ouvrir la caisse</span>
-                        </div>
-                        <span className="font-bold text-lg">
-                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(posCart.totalAmount)}
-                        </span>
-                    </button>
-                </div>
-            )}
         </div>
     );
 };

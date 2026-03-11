@@ -2,8 +2,10 @@
  * Hook pour enregistrer les ventes en boutique physique (POS)
  * Supporte la vente multi-produits via panier
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { boutiqueProductStore } from '@/local-storage/stores/BoutiqueStore';
+import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
 import type { PosCartItem } from './usePosCart';
 
@@ -24,6 +26,7 @@ export interface CartSaleInput {
   customerName?: string;
   paymentMethod: string;
   notes?: string;
+  agentId?: string; // ID de l'agent qui effectue la vente
 }
 
 /**
@@ -34,25 +37,34 @@ export const useCreateCartSale = () => {
 
   return useMutation({
     mutationFn: async (sale: CartSaleInput) => {
-      const results = [];
-
+      // 1. Mise à jour locale du stock (optimiste)
       for (const item of sale.items) {
-        // 1. Vérifier le stock
-        const { data: product, error: fetchErr } = await supabase
-          .from('physical_shop_products')
-          .select('stock_quantity, marketplace_quantity')
-          .eq('id', item.product.id)
-          .single();
-
-        if (fetchErr || !product) throw fetchErr || new Error(`Produit introuvable: ${item.product.name}`);
-
-        const available = product.stock_quantity - product.marketplace_quantity;
-        if (item.quantity > available) {
-          throw new Error(`Stock insuffisant pour "${item.product.name}". Disponible : ${available}`);
+        const existing = await boutiqueProductStore.get(item.product.id);
+        if (existing) {
+          await boutiqueProductStore.put({
+            ...existing,
+            stockQuantity: existing.stockQuantity - item.quantity,
+            updatedAt: Date.now()
+          });
         }
+      }
 
-        // 2. Enregistrer la vente
-        const { data, error } = await (supabase as any)
+      // 2. Gestion Offline
+      if (!navigator.onLine) {
+        console.log('📵 App status: offline. Queueing sale mutation.');
+        await offlineStore.addPendingMutation({
+          type: 'create_boutique_sale',
+          payload: sale
+        });
+        return { success: true, offline: true };
+      }
+
+      // 3. Mode Online
+      console.log('🌐 App status: online. Syncing sale with Supabase.');
+      const results = [];
+      for (const item of sale.items) {
+        // Enregistrer la vente
+        const { data, error: saleErr } = await (supabase as any)
           .from('physical_shop_sales')
           .insert({
             shop_id: sale.shopId,
@@ -63,20 +75,26 @@ export const useCreateCartSale = () => {
             customer_name: sale.customerName || null,
             payment_method: sale.paymentMethod || 'cash',
             notes: sale.notes || null,
+            agent_id: sale.agentId || null,
           })
           .select()
           .single();
 
-        if (error) throw error;
+        if (saleErr) throw saleErr;
 
-        // 3. Décrémenter le stock
-        const newStock = product.stock_quantity - item.quantity;
+        // Mettre à jour le stock sur le serveur
+        const { data: product, error: fetchErr } = await supabase
+          .from('physical_shop_products')
+          .select('stock_quantity')
+          .eq('id', item.product.id)
+          .single();
+
+        if (fetchErr) throw fetchErr;
+
+        const newStock = (product.stock_quantity || 0) - item.quantity;
         const { error: updateErr } = await supabase
           .from('physical_shop_products')
-          .update({
-            stock_quantity: newStock,
-            updated_at: new Date().toISOString(),
-          })
+          .update({ stock_quantity: newStock })
           .eq('id', item.product.id);
 
         if (updateErr) throw updateErr;
@@ -86,11 +104,18 @@ export const useCreateCartSale = () => {
 
       return results;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data: any, variables) => {
       queryClient.invalidateQueries({ queryKey: ['boutique-products', variables.shopId] });
       queryClient.invalidateQueries({ queryKey: ['today-sales-stats', variables.shopId] });
       queryClient.invalidateQueries({ queryKey: ['inventory-stats', variables.shopId] });
-      toast.success(`${variables.items.length} article(s) vendu(s) !`);
+      queryClient.invalidateQueries({ queryKey: ['boutique-sales-history', variables.shopId] });
+
+      const isOffline = data && data.offline;
+      toast.success(
+        isOffline
+          ? `${variables.items.length} article(s) vendus (hors ligne) !`
+          : `${variables.items.length} article(s) vendus !`
+      );
     },
     onError: (error: any) => {
       console.error('Erreur vente POS:', error);
@@ -100,63 +125,105 @@ export const useCreateCartSale = () => {
 };
 
 /**
- * Enregistrer une vente POS simple (un seul produit) - rétrocompatibilité
+ * Récupérer l'historique des ventes
  */
-export const useCreateBoutiqueSale = () => {
+export const useBoutiqueSalesHistory = (shopId?: string) => {
+  return useQuery({
+    queryKey: ['boutique-sales-history', shopId],
+    queryFn: async () => {
+      if (!shopId) return [];
+
+      const { data, error } = await supabase
+        .from('physical_shop_sales' as any)
+        .select(`
+          *,
+          product:physical_shop_products (
+            name,
+            image_url
+          ),
+          agent:shop_agents (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('shop_id', shopId)
+        .order('sold_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!shopId,
+  });
+};
+
+/**
+ * Annuler une vente et restaurer le stock
+ */
+export const useCancelBoutiqueSale = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (sale: SaleInput) => {
+    mutationFn: async (sale: { id: string; shop_id: string; product_id: string; quantity: number }) => {
+      // 1. Mise à jour locale du stock (optimiste)
+      const existing = await boutiqueProductStore.get(sale.product_id);
+      if (existing) {
+        await boutiqueProductStore.put({
+          ...existing,
+          stockQuantity: existing.stockQuantity + sale.quantity,
+          updatedAt: Date.now()
+        });
+      }
+
+      // 2. Gestion Offline
+      if (!navigator.onLine) {
+        console.log('📵 App status: offline. Queueing cancel mutation.');
+        await offlineStore.addPendingMutation({
+          type: 'cancel_boutique_sale',
+          payload: sale
+        });
+        return { id: sale.id, offline: true };
+      }
+
+      // 3. Mode Online
+      console.log('🌐 App status: online. Syncing cancel with Supabase.');
+
+      // Marquer la vente comme annulée
+      const { error: cancelError } = await supabase
+        .from('physical_shop_sales' as any)
+        .update({ status: 'canceled' })
+        .eq('id', sale.id);
+
+      if (cancelError) throw cancelError;
+
+      // Restaurer le stock sur le serveur
       const { data: product, error: fetchErr } = await supabase
         .from('physical_shop_products')
-        .select('stock_quantity, marketplace_quantity')
+        .select('stock_quantity')
         .eq('id', sale.product_id)
         .single();
 
-      if (fetchErr || !product) throw fetchErr || new Error('Produit introuvable');
+      if (fetchErr) throw fetchErr;
 
-      const available = product.stock_quantity - product.marketplace_quantity;
-      if (sale.quantity > available) {
-        throw new Error(`Stock insuffisant. Disponible : ${available}`);
-      }
-
-      const { data, error } = await (supabase as any)
-        .from('physical_shop_sales')
-        .insert({
-          shop_id: sale.shop_id,
-          product_id: sale.product_id,
-          quantity: sale.quantity,
-          unit_price: sale.unit_price,
-          total_amount: sale.total_amount,
-          customer_name: sale.customer_name || null,
-          payment_method: sale.payment_method || 'cash',
-          notes: sale.notes || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newStock = product.stock_quantity - sale.quantity;
+      const newStock = (product.stock_quantity || 0) + sale.quantity;
       const { error: updateErr } = await supabase
         .from('physical_shop_products')
-        .update({
-          stock_quantity: newStock,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ stock_quantity: newStock })
         .eq('id', sale.product_id);
 
       if (updateErr) throw updateErr;
 
-      return data;
+      return { id: sale.id };
     },
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['boutique-sales-history', variables.shop_id] });
       queryClient.invalidateQueries({ queryKey: ['boutique-products', variables.shop_id] });
-      toast.success('Vente enregistrée !');
+      queryClient.invalidateQueries({ queryKey: ['today-sales-stats', variables.shop_id] });
+      toast.success('Vente annulée avec succès.');
     },
     onError: (error: any) => {
-      console.error('Erreur vente POS:', error);
-      toast.error(error.message || 'Erreur lors de la vente');
+      console.error('Erreur annulation vente:', error);
+      toast.error("Erreur lors de l'annulation de la vente");
     },
   });
 };

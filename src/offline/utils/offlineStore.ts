@@ -55,7 +55,7 @@ interface CachedQuery {
 
 interface PendingMutation {
   id: string;
-  type: 'message' | 'reaction' | 'progress' | 'profile' | 'grade' | 'attendance' | 'payment' | 'note' | 'transfer' | 'return' | 'update_boutique_product' | 'delete_boutique_product' | 'generic';
+  type: 'message' | 'reaction' | 'progress' | 'profile' | 'grade' | 'attendance' | 'payment' | 'note' | 'transfer' | 'return' | 'update_boutique_product' | 'delete_boutique_product' | 'create_boutique_sale' | 'cancel_boutique_sale' | 'generic';
   payload: any;
   createdAt: number;
   retryCount: number;

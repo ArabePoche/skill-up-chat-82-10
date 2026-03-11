@@ -15,30 +15,48 @@ export const usePhysicalShop = () => {
         queryKey: ['physical-shop', user?.id],
         queryFn: async () => {
             console.log('🏪 [usePhysicalShop] Fetching shop for user:', user!.id);
-            const { data, error } = await supabase
+            // On cherche d'abord si l'utilisateur est propriétaire
+            const { data: ownShop, error: ownError } = await supabase
                 .from('physical_shops')
                 .select('*')
                 .eq('owner_id', user!.id)
                 .maybeSingle();
 
-            if (error) {
-                console.error('🏪 [usePhysicalShop] Error:', error);
-                throw error;
+            if (ownShop) return ownShop;
+
+            // Sinon on cherche s'il est agent dans une boutique
+            const { data: agentData, error: agentError } = await supabase
+                .from('shop_agents' as any)
+                .select('shop_id')
+                .eq('user_id', user!.id)
+                .maybeSingle();
+
+            let agentShop = null;
+            if (agentData) {
+                const { data: fetchedAgentShop } = await supabase
+                    .from('physical_shops')
+                    .select('*')
+                    .eq('id', (agentData as any).shop_id)
+                    .maybeSingle();
+                agentShop = fetchedAgentShop;
             }
-            console.log('🏪 [usePhysicalShop] Result:', data);
+
+            const shopToCache = ownShop || agentShop;
 
             // Mettre en cache IndexedDB (non bloquant)
-            if (data) {
-                physicalShopStore.put({
-                    id: data.id,
-                    ownerId: data.owner_id,
-                    name: data.name,
-                    address: data.address,
-                    updatedAt: Date.now(),
-                }).catch(err => console.warn('🏪 Cache IndexedDB failed:', err));
+            if (shopToCache) {
+                import('@/local-storage/stores/BoutiqueStore').then(({ physicalShopStore }) => {
+                    physicalShopStore.put({
+                        id: shopToCache.id,
+                        ownerId: shopToCache.owner_id,
+                        name: shopToCache.name,
+                        address: shopToCache.address,
+                        updatedAt: Date.now(),
+                    }).catch(err => console.warn('🏪 Cache IndexedDB failed:', err));
+                });
             }
 
-            return data;
+            return shopToCache;
         },
         enabled: !!user?.id,
         staleTime: 1000 * 60 * 5,
@@ -97,27 +115,31 @@ export const useIsShopOwner = () => {
         queryKey: ['is-shop-owner', user?.id],
         queryFn: async () => {
             console.log('🔍 [useIsShopOwner] Checking for user:', user!.id);
-            const { data, error } = await supabase
+
+            // Propriétaire ?
+            const { data: shops, error: shopError } = await supabase
                 .from('physical_shops')
                 .select('id')
                 .eq('owner_id', user!.id)
-                .maybeSingle();
+                .limit(1);
 
-            if (error) {
-                console.error('🔍 [useIsShopOwner] Error:', error);
-                // En cas d'erreur (offline), utiliser le cache localStorage
-                if (cacheKey) {
-                    const cached = localStorage.getItem(cacheKey);
-                    if (cached !== null) {
-                        console.log('🔍 [useIsShopOwner] Using cached value:', cached);
-                        return cached === 'true';
-                    }
-                }
-                throw error;
+            if (shops && shops.length > 0) {
+                console.log('🔍 [useIsShopOwner] User is owner');
+                if (cacheKey) localStorage.setItem(cacheKey, 'true');
+                return true;
             }
-            const result = !!data;
-            console.log('🔍 [useIsShopOwner] Result:', result);
-            // Persister dans localStorage pour le mode offline
+
+            // Agent ?
+            const { data: agentData, error: agentError } = await supabase
+                .from('shop_agents' as any)
+                .select('id')
+                .eq('user_id', user!.id)
+                .eq('status', 'active')
+                .limit(1);
+
+            const result = !!(agentData && agentData.length > 0);
+            console.log('🔍 [useIsShopOwner] Result (Agent check):', result);
+
             if (cacheKey) {
                 localStorage.setItem(cacheKey, String(result));
             }

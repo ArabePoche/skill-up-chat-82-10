@@ -3,7 +3,6 @@
  */
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import {
   DollarSign,
   ShoppingBag,
@@ -13,16 +12,27 @@ import {
   Package,
   Clock,
   Receipt,
+  Wallet,
 } from 'lucide-react';
 import { useTodaySalesStats } from '@/hooks/shop/useTodaySalesStats';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid
+} from 'recharts';
 
 interface TodaySalesDashboardProps {
   shopId: string;
+  onViewHistory?: () => void;
 }
 
-const TodaySalesDashboard: React.FC<TodaySalesDashboardProps> = ({ shopId }) => {
+const TodaySalesDashboard: React.FC<TodaySalesDashboardProps> = ({ shopId, onViewHistory }) => {
   const { data: stats, isLoading, error } = useTodaySalesStats(shopId);
 
   if (isLoading) {
@@ -63,7 +73,17 @@ const TodaySalesDashboard: React.FC<TodaySalesDashboardProps> = ({ shopId }) => 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Ventes du jour</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-foreground">Ventes du jour</h2>
+            {onViewHistory && (
+              <button
+                onClick={onViewHistory}
+                className="text-xs text-blue-600 hover:text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 transition-colors"
+              >
+                Voir tout l'historique
+              </button>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
           </p>
@@ -77,7 +97,7 @@ const TodaySalesDashboard: React.FC<TodaySalesDashboardProps> = ({ shopId }) => 
       </div>
 
       {/* Stats principales */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-200/50">
           <CardContent className="p-4 text-center">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-2">
@@ -109,6 +129,18 @@ const TodaySalesDashboard: React.FC<TodaySalesDashboardProps> = ({ shopId }) => 
             <p className="text-xs text-purple-600/80">Panier moyen</p>
           </CardContent>
         </Card>
+
+        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-200/50">
+          <CardContent className="p-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-2">
+              <Wallet size={20} className="text-amber-600" />
+            </div>
+            <div className="text-xl font-bold text-amber-700">
+              {formatCurrency(stats.totalProfit)}
+            </div>
+            <p className="text-xs text-amber-600/80">Bénéfice net</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Ventes par heure */}
@@ -121,27 +153,50 @@ const TodaySalesDashboard: React.FC<TodaySalesDashboardProps> = ({ shopId }) => 
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {stats.salesByHour.map((hourData) => (
-                <div key={hourData.hour} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-12">
-                    {hourData.hour.toString().padStart(2, '0')}h
-                  </span>
-                  <div className="flex-1">
-                    <Progress
-                      value={(hourData.revenue / maxHourRevenue) * 100}
-                      className="h-6"
-                      indicatorClassName="bg-gradient-to-r from-primary/80 to-primary"
-                    />
-                  </div>
-                  <span className="text-xs font-medium w-20 text-right">
-                    {formatCurrency(hourData.revenue)}
-                  </span>
-                  <span className="text-xs text-muted-foreground w-8">
-                    ({hourData.count})
-                  </span>
-                </div>
-              ))}
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.salesByHour}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="hour"
+                    tickFormatter={(h) => `${h}h`}
+                    tick={{ fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white border shadow-sm rounded-lg p-2 text-xs">
+                            <p className="font-bold mb-1">{label}h00 - {label}h59</p>
+                            <p className="text-emerald-600 font-bold">
+                              {formatCurrency(payload[0].value as number)}
+                            </p>
+                            <p className="text-gray-500">
+                              {payload[0].payload.count} vente(s)
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    fill="#10b981"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>

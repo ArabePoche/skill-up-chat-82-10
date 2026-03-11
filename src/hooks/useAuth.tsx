@@ -12,9 +12,8 @@ interface Profile {
   username?: string;
   avatar_url?: string;
   is_teacher?: boolean;
-  role?: 'user' | 'admin';
-  is_verified?: boolean;
   email?: string;
+  is_shop_owner?: boolean;
 }
 
 interface AuthContextType {
@@ -48,14 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(cached.user);
         setSession(cached.session);
         setIsOfflineMode(true);
-        
+
         // Charger aussi le profil caché
         const profile = await authStore.getCachedProfile(cached.user.id);
         if (profile) {
           console.log('📦 Using cached profile (offline mode)');
           setCachedProfile(profile as Profile);
         }
-        
+
         return true;
       }
     } catch (error) {
@@ -77,14 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const retryConnection = useCallback(async () => {
     setLoading(true);
     setSupabaseError(null);
-    
+
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
       if (error) {
         throw error;
       }
-      
+
       if (session) {
         setSession(session);
         setUser(session.user);
@@ -107,57 +106,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('❌ No user ID');
         return null;
       }
-      
+
       console.log('🔍 Fetching profile for user:', user.id);
-      
+
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, first_name, last_name, username, avatar_url, is_teacher, role, is_verified, email')
+          .select('id, first_name, last_name, username, avatar_url, is_teacher, role, is_verified, email, is_shop_owner')
           .eq('id', user.id)
           .single();
-        
+
         if (error) {
           // Vérifie si c'est une erreur 402 ou de connexion
           const errorMessage = error.message || '';
-          if (errorMessage.includes('402') || 
-              errorMessage.includes('restricted') || 
-              errorMessage.includes('quota')) {
+          if (errorMessage.includes('402') ||
+            errorMessage.includes('restricted') ||
+            errorMessage.includes('quota')) {
             console.warn('⚠️ Supabase restricted, using cached profile');
             setIsOfflineMode(true);
             setSupabaseError('Service Supabase suspendu');
-            
+
             // Essayer de récupérer le profil depuis le cache
             const cachedProfile = await authStore.getCachedProfile(user.id);
             if (cachedProfile) {
               return cachedProfile as Profile;
             }
           }
-          
+
           console.error('❌ Error fetching profile:', error);
           return null;
         }
-        
+
         // Sauvegarder le profil dans le cache
         if (data) {
           await authStore.saveProfile(data);
           setIsOfflineMode(false);
           setSupabaseError(null);
         }
-        
+
         console.log('✅ Profile loaded in useAuth:', data);
         return data as Profile;
       } catch (err: any) {
         console.error('❌ Network error fetching profile:', err);
         setIsOfflineMode(true);
-        
+
         // Fallback sur le cache
         const cachedProfile = await authStore.getCachedProfile(user.id);
         if (cachedProfile) {
           console.log('📦 Using cached profile');
           return cachedProfile as Profile;
         }
-        
+
         return null;
       }
     },
@@ -179,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // pour ne pas rater l'événement PASSWORD_RECOVERY
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      
+
       console.log('Auth state changed:', event, session?.user?.email);
 
       // Rediriger vers /reset-password si l'événement est PASSWORD_RECOVERY
@@ -194,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
-      
+
       if (session) {
         setSession(session);
         setUser(session.user);
@@ -214,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authStore.clearAll();
         }, 0);
       }
-      
+
       setLoading(false);
     });
 
@@ -223,10 +222,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Charger la session depuis le cache
         const hasCachedSession = await loadCachedSession();
-        
+
         // Vérifier si on est vraiment en ligne
         const isReallyOnline = syncManager.getOnlineStatus();
-        
+
         if (!isReallyOnline && hasCachedSession) {
           console.log('📵 Offline mode with cached session - skipping Supabase');
           if (mounted) {
@@ -238,19 +237,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Vérification de la session existante avec fallback offline
         try {
           const { data: { session: existingSession }, error } = await supabase.auth.getSession();
-          
+
           if (error) {
             console.warn('⚠️ Supabase auth error, trying cache:', error.message);
-            
+
             const errorMessage = error.message || '';
-            if (errorMessage.includes('402') || 
-                errorMessage.includes('restricted') || 
-                errorMessage.includes('quota')) {
+            if (errorMessage.includes('402') ||
+              errorMessage.includes('restricted') ||
+              errorMessage.includes('quota')) {
               setSupabaseError('Service Supabase suspendu - Mode offline');
             } else {
               setSupabaseError(error.message);
             }
-            
+
             if (!hasCachedSession) {
               await loadCachedSession();
             }
@@ -259,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             return;
           }
-          
+
           if (existingSession && mounted) {
             setSession(existingSession);
             setUser(existingSession.user);
@@ -269,18 +268,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null);
             setSession(null);
           }
-          
+
           if (mounted) {
             setLoading(false);
           }
         } catch (err: any) {
           console.warn('⚠️ Network error, trying cache:', err);
           setSupabaseError('Erreur de connexion');
-          
+
           if (!hasCachedSession) {
             await loadCachedSession();
           }
-          
+
           if (mounted) {
             setLoading(false);
           }
@@ -304,10 +303,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      
+
       // Nettoyer le cache offline
       await authStore.clearAll();
-      
+
       // Nettoyer le stockage local de manière plus complète
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -317,7 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      
+
       // Nettoyer le sessionStorage aussi
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
@@ -329,27 +328,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Déconnexion globale avec timeout
       try {
         const signOutPromise = supabase.auth.signOut({ scope: 'global' });
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Sign out timeout')), 5000)
         );
-        
+
         await Promise.race([signOutPromise, timeoutPromise]);
       } catch (err) {
         console.warn('Sign out from Supabase failed (might be offline):', err);
       }
-      
+
       // Reset des états locaux
       setUser(null);
       setSession(null);
       setIsOfflineMode(false);
       setSupabaseError(null);
       setCachedProfile(null);
-      
+
       // Rafraîchir la page après déconnexion
       window.location.reload();
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
-      
+
       // Force le nettoyage même en cas d'erreur
       setUser(null);
       setSession(null);
@@ -357,7 +356,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authStore.clearAll();
       localStorage.clear();
       sessionStorage.clear();
-      
+
       // Rafraîchir la page même en cas d'erreur
       window.location.reload();
     } finally {
@@ -368,14 +367,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = signOut; // Alias pour compatibilité
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      profile: effectiveProfile || null, 
-      loading, 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      profile: effectiveProfile || null,
+      loading,
       isOfflineMode,
       supabaseError,
-      signOut, 
+      signOut,
       logout,
       retryConnection
     }}>
@@ -398,7 +397,7 @@ export const useAuth = () => {
  */
 export const useUserRole = () => {
   const { user, isOfflineMode, profile } = useAuth();
-  
+
   return useQuery({
     queryKey: ['user-role', user?.id],
     queryFn: async () => {
@@ -416,7 +415,7 @@ export const useUserRole = () => {
 
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
-        
+
         if (!authUser) {
           // Fallback sur le profil caché
           if (profile) {
