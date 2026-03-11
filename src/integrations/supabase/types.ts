@@ -8797,6 +8797,7 @@ export type Database = {
         }[]
       }
       generate_parental_code: { Args: never; Returns: string }
+      get_agent_shop_ids: { Args: { _user_id: string }; Returns: string[] }
       get_exercise_global_status: {
         Args: { p_exercise_id: string; p_lesson_id: string; p_user_id: string }
         Returns: string
