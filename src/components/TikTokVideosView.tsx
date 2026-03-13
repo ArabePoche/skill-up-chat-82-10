@@ -83,8 +83,10 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
   }, [currentVideoIndex, targetVideoId, displayedVideos, location.pathname, navigate]);
 
   // Intersection Observer pour la lecture automatique
+  // Ne dépend que de displayedVideos.length pour éviter les re-créations inutiles
+  const videosLength = displayedVideos?.length ?? 0;
   useEffect(() => {
-    if (!displayedVideos || displayedVideos.length === 0) return;
+    if (videosLength === 0) return;
     
     const observer = new IntersectionObserver(
       (entries) => {
@@ -103,7 +105,7 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     });
 
     return () => observer.disconnect();
-  }, [displayedVideos]);
+  }, [videosLength]);
 
   // Charger plus de vidéos quand on approche de la fin
   useEffect(() => {
