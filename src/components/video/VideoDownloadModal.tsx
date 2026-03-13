@@ -33,6 +33,7 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [downloadStage, setDownloadStage] = useState('');
   const { t } = useTranslation();
 
   const handleDownload = async () => {
@@ -40,6 +41,7 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
 
     setIsDownloading(true);
     setProgress(0);
+    setDownloadStage('Préparation du téléchargement');
 
     try {
       toast.info('Préparation du téléchargement...');
@@ -50,35 +52,18 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
         authorName,
         fileName: `${videoTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`,
         onProgress: (p) => setProgress(p),
+        onStageChange: (stage) => setDownloadStage(stage),
       });
 
       toast.success('Vidéo téléchargée avec succès !');
       onClose();
     } catch (error: any) {
       console.error('Erreur téléchargement vidéo:', error);
-      // Fallback: téléchargement direct sans watermark
-      try {
-        const response = await fetch(videoUrl);
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = `${videoTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        setTimeout(() => {
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
-        }, 0);
-        toast.success('Vidéo téléchargée (sans watermark)');
-        onClose();
-      } catch {
-        toast.error('Impossible de télécharger cette vidéo');
-      }
+      toast.error(error?.message || 'Impossible de télécharger cette vidéo avec watermark');
     } finally {
       setIsDownloading(false);
       setProgress(0);
+      setDownloadStage('');
     }
   };
 
@@ -106,7 +91,7 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
             <span className="text-base">🔒</span>
             <span>
-              Un watermark "EducaTok" sera ajouté à la vidéo téléchargée
+              Un watermark "EducaTok" sera incrusté sur la vidéo téléchargée
             </span>
           </div>
 
@@ -120,7 +105,7 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
             {isDownloading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Téléchargement... {progress > 0 ? `${progress}%` : ''}
+                {downloadStage || 'Téléchargement...'} {progress > 0 ? `${progress}%` : ''}
               </>
             ) : (
               <>
@@ -132,11 +117,18 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
 
           {/* Barre de progression */}
           {isDownloading && progress > 0 && (
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
+            <div className="space-y-2">
+              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              {downloadStage && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {downloadStage}
+                </p>
+              )}
             </div>
           )}
 

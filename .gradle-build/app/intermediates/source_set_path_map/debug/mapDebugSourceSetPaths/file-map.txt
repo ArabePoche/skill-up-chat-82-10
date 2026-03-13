@@ -1,0 +1,58 @@
+com.educatok.islahmedia.app-webkit-1.12.1-0 C:\Users\DELL\.gradle\caches\8.11.1\transforms\004adb2a00388f9f20379d8067c44366\transformed\webkit-1.12.1\res
+com.educatok.islahmedia.app-activity-ktx-1.9.3-1 C:\Users\DELL\.gradle\caches\8.11.1\transforms\0377abea37e113d7deab9e8598bbf2af\transformed\activity-ktx-1.9.3\res
+com.educatok.islahmedia.app-lifecycle-runtime-2.6.2-2 C:\Users\DELL\.gradle\caches\8.11.1\transforms\089951ecab6edcaea1f47dd29366a0ea\transformed\lifecycle-runtime-2.6.2\res
+com.educatok.islahmedia.app-activity-1.9.3-3 C:\Users\DELL\.gradle\caches\8.11.1\transforms\0909659b656a33e93a366fe431f53960\transformed\activity-1.9.3\res
+com.educatok.islahmedia.app-drawerlayout-1.1.1-4 C:\Users\DELL\.gradle\caches\8.11.1\transforms\12114730a760cbd8f96fde56793b9268\transformed\drawerlayout-1.1.1\res
+com.educatok.islahmedia.app-profileinstaller-1.3.1-5 C:\Users\DELL\.gradle\caches\8.11.1\transforms\1d6dbcb2b13c5c33b874878397a4e16f\transformed\profileinstaller-1.3.1\res
+com.educatok.islahmedia.app-transition-1.5.0-6 C:\Users\DELL\.gradle\caches\8.11.1\transforms\222a4af7f6516eed578ab08b75711028\transformed\transition-1.5.0\res
+com.educatok.islahmedia.app-play-services-basement-18.3.0-7 C:\Users\DELL\.gradle\caches\8.11.1\transforms\3412ec388de6b4248a393b6c81721313\transformed\play-services-basement-18.3.0\res
+com.educatok.islahmedia.app-constraintlayout-2.1.0-8 C:\Users\DELL\.gradle\caches\8.11.1\transforms\38c3cb5c50416464a6b3bc0e586b1eba\transformed\constraintlayout-2.1.0\res
+com.educatok.islahmedia.app-core-runtime-2.2.0-9 C:\Users\DELL\.gradle\caches\8.11.1\transforms\3c127fd31148e8ce0abf9fcafe15197a\transformed\core-runtime-2.2.0\res
+com.educatok.islahmedia.app-appcompat-1.7.0-10 C:\Users\DELL\.gradle\caches\8.11.1\transforms\409bec993bf807d8aa6ae5edeb501957\transformed\appcompat-1.7.0\res
+com.educatok.islahmedia.app-core-ktx-1.15.0-11 C:\Users\DELL\.gradle\caches\8.11.1\transforms\482a4958b63d59ce4b10c55f9ac26b20\transformed\core-ktx-1.15.0\res
+com.educatok.islahmedia.app-viewpager2-1.0.0-12 C:\Users\DELL\.gradle\caches\8.11.1\transforms\484a18a56f42485df7fb59deaf1a0ec1\transformed\viewpager2-1.0.0\res
+com.educatok.islahmedia.app-dynamicanimation-1.1.0-13 C:\Users\DELL\.gradle\caches\8.11.1\transforms\486789687f043b6fe3cf5f875a718a6d\transformed\dynamicanimation-1.1.0\res
+com.educatok.islahmedia.app-cardview-1.0.0-14 C:\Users\DELL\.gradle\caches\8.11.1\transforms\49d6e70646e48b9b3de68512083b1b54\transformed\cardview-1.0.0\res
+com.educatok.islahmedia.app-material-1.13.0-15 C:\Users\DELL\.gradle\caches\8.11.1\transforms\4e0db9c3701cbfa1dc151f817ee6d0d3\transformed\material-1.13.0\res
+com.educatok.islahmedia.app-tracing-1.2.0-16 C:\Users\DELL\.gradle\caches\8.11.1\transforms\4f81bf2345a05d301c91b7880a020fa6\transformed\tracing-1.2.0\res
+com.educatok.islahmedia.app-firebase-messaging-24.1.0-17 C:\Users\DELL\.gradle\caches\8.11.1\transforms\56f6bd3b1ce1c311b85f7026cfbcad88\transformed\firebase-messaging-24.1.0\res
+com.educatok.islahmedia.app-lifecycle-livedata-core-2.6.2-18 C:\Users\DELL\.gradle\caches\8.11.1\transforms\5c29f8ae446d4d78c64b5b6a111d49a0\transformed\lifecycle-livedata-core-2.6.2\res
+com.educatok.islahmedia.app-lifecycle-viewmodel-ktx-2.6.2-19 C:\Users\DELL\.gradle\caches\8.11.1\transforms\5c83326f04d805b0a7beefb7d7ffe6be\transformed\lifecycle-viewmodel-ktx-2.6.2\res
+com.educatok.islahmedia.app-emoji2-views-helper-1.3.0-20 C:\Users\DELL\.gradle\caches\8.11.1\transforms\63298d825a8f96174a90c8f8803e11f7\transformed\emoji2-views-helper-1.3.0\res
+com.educatok.islahmedia.app-startup-runtime-1.1.1-21 C:\Users\DELL\.gradle\caches\8.11.1\transforms\64c379ee38b59ec346601c9b9ebfc21c\transformed\startup-runtime-1.1.1\res
+com.educatok.islahmedia.app-lifecycle-process-2.6.2-22 C:\Users\DELL\.gradle\caches\8.11.1\transforms\66f8ac6c8c31d32295997d1857c88701\transformed\lifecycle-process-2.6.2\res
+com.educatok.islahmedia.app-savedstate-ktx-1.2.1-23 C:\Users\DELL\.gradle\caches\8.11.1\transforms\671efde5c8da9a84e35972911876dfad\transformed\savedstate-ktx-1.2.1\res
+com.educatok.islahmedia.app-lifecycle-viewmodel-2.6.2-24 C:\Users\DELL\.gradle\caches\8.11.1\transforms\6dbb7e3e497fd98bd95fa9e7304fbe5b\transformed\lifecycle-viewmodel-2.6.2\res
+com.educatok.islahmedia.app-core-splashscreen-1.0.1-25 C:\Users\DELL\.gradle\caches\8.11.1\transforms\6fe2b345b72c2c3d34cba82f67817abd\transformed\core-splashscreen-1.0.1\res
+com.educatok.islahmedia.app-lifecycle-runtime-ktx-2.6.2-26 C:\Users\DELL\.gradle\caches\8.11.1\transforms\74a8528bad3a02bacca3c5d49da953e3\transformed\lifecycle-runtime-ktx-2.6.2\res
+com.educatok.islahmedia.app-firebase-common-21.0.0-27 C:\Users\DELL\.gradle\caches\8.11.1\transforms\7989b4eeb5f61dd88349cc1631616126\transformed\firebase-common-21.0.0\res
+com.educatok.islahmedia.app-coordinatorlayout-1.2.0-28 C:\Users\DELL\.gradle\caches\8.11.1\transforms\849d2463ff2f4d5fa6040a58a8e1a61b\transformed\coordinatorlayout-1.2.0\res
+com.educatok.islahmedia.app-savedstate-1.2.1-29 C:\Users\DELL\.gradle\caches\8.11.1\transforms\94fdc6b4c0bd4d0c422906e9672706bf\transformed\savedstate-1.2.1\res
+com.educatok.islahmedia.app-biometric-1.1.0-30 C:\Users\DELL\.gradle\caches\8.11.1\transforms\99713b7c49073d9cb74607681a64bd42\transformed\biometric-1.1.0\res
+com.educatok.islahmedia.app-appcompat-resources-1.7.0-31 C:\Users\DELL\.gradle\caches\8.11.1\transforms\abc16ab029344aaecb0bdf761b2f9969\transformed\appcompat-resources-1.7.0\res
+com.educatok.islahmedia.app-lifecycle-viewmodel-savedstate-2.6.2-32 C:\Users\DELL\.gradle\caches\8.11.1\transforms\b03ebc3fe080459a7cf7d5a9bb3b3852\transformed\lifecycle-viewmodel-savedstate-2.6.2\res
+com.educatok.islahmedia.app-emoji2-1.3.0-33 C:\Users\DELL\.gradle\caches\8.11.1\transforms\b4b00780f69fc990da0351482ab3fa66\transformed\emoji2-1.3.0\res
+com.educatok.islahmedia.app-play-services-base-18.0.1-34 C:\Users\DELL\.gradle\caches\8.11.1\transforms\ba6c84a12d6f54e3e98f6314227924e4\transformed\play-services-base-18.0.1\res
+com.educatok.islahmedia.app-graphics-shapes-release-35 C:\Users\DELL\.gradle\caches\8.11.1\transforms\bc77d58e0e487411989eceb97a8d1740\transformed\graphics-shapes-release\res
+com.educatok.islahmedia.app-fragment-1.8.4-36 C:\Users\DELL\.gradle\caches\8.11.1\transforms\c322c32ead15580877f278ab5fae7796\transformed\fragment-1.8.4\res
+com.educatok.islahmedia.app-lifecycle-livedata-2.6.2-37 C:\Users\DELL\.gradle\caches\8.11.1\transforms\c80f7e73c3ad50e5b40f895d39d4073c\transformed\lifecycle-livedata-2.6.2\res
+com.educatok.islahmedia.app-recyclerview-1.2.1-38 C:\Users\DELL\.gradle\caches\8.11.1\transforms\cebc3e3a7ed2f7bf35b2bd8e8bdcae79\transformed\recyclerview-1.2.1\res
+com.educatok.islahmedia.app-core-1.15.0-39 C:\Users\DELL\.gradle\caches\8.11.1\transforms\db103ef1f67cb3b42ab7ce97a6e8850a\transformed\core-1.15.0\res
+com.educatok.islahmedia.app-annotation-experimental-1.4.1-40 C:\Users\DELL\.gradle\caches\8.11.1\transforms\e6612a72386dd75d6203f6cb7d1042a3\transformed\annotation-experimental-1.4.1\res
+com.educatok.islahmedia.app-debug-41 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\aparajita-capacitor-biometric-auth\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-pngs-42 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\app\generated\res\pngs\debug
+com.educatok.islahmedia.app-res-43 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\app\generated\res\processDebugGoogleServices
+com.educatok.islahmedia.app-resValues-44 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\app\generated\res\resValues\debug
+com.educatok.islahmedia.app-packageDebugResources-45 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\app\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.educatok.islahmedia.app-packageDebugResources-46 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\app\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.educatok.islahmedia.app-debug-47 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\app\intermediates\merged_res\debug\mergeDebugResources
+com.educatok.islahmedia.app-debug-48 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-android\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-49 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-app\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-50 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-camera\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-51 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-community-contacts\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-52 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-community-media\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-53 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-cordova-android-plugins\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-54 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-filesystem\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-55 E:\Mes logiciels\plateforme\skill-up-chat-82-10\.gradle-build\capacitor-push-notifications\intermediates\packaged_res\debug\packageDebugResources
+com.educatok.islahmedia.app-debug-56 E:\Mes logiciels\plateforme\skill-up-chat-82-10\android\app\src\debug\res
+com.educatok.islahmedia.app-main-57 E:\Mes logiciels\plateforme\skill-up-chat-82-10\android\app\src\main\res

@@ -11,7 +11,14 @@ interface DownloadOptions {
   authorName: string;
   fileName: string;
   onProgress?: (percent: number) => void;
+  onStageChange?: (stage: string) => void;
 }
+
+const WATERMARK_FETCH_PROGRESS_MAX = 35;
+const WATERMARK_METADATA_PROGRESS = 45;
+const WATERMARK_RENDER_START = 50;
+const WATERMARK_RENDER_END = 92;
+const WATERMARK_SAVE_PROGRESS = 97;
 
 /**
  * Dessine le watermark TikTok-style sur un canvas
@@ -26,38 +33,46 @@ function drawWatermark(
   ctx.save();
 
   // — Watermark principal en haut à gauche —
-  ctx.globalAlpha = 0.35;
+  ctx.globalAlpha = 0.72;
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0,0,0,0.6)';
-  ctx.shadowBlur = 4;
-  ctx.shadowOffsetX = 1;
-  ctx.shadowOffsetY = 1;
+  ctx.strokeStyle = 'rgba(0,0,0,0.95)';
+  ctx.lineWidth = Math.max(2, Math.round(width * 0.003));
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
 
-  const mainSize = Math.max(18, Math.round(width * 0.045));
+  const mainSize = Math.max(24, Math.round(width * 0.06));
   ctx.font = `bold ${mainSize}px "Arial", sans-serif`;
   ctx.textAlign = 'left';
-  ctx.fillText(watermarkText, 20, mainSize + 15);
+  ctx.strokeText(watermarkText, 20, mainSize + 18);
+  ctx.fillText(watermarkText, 20, mainSize + 18);
 
   // — Nom de l'auteur en bas à gauche —
-  const authorSize = Math.max(14, Math.round(width * 0.035));
+  const authorSize = Math.max(18, Math.round(width * 0.042));
   ctx.font = `600 ${authorSize}px "Arial", sans-serif`;
-  ctx.fillText(`@${authorName}`, 20, height - 20);
+  ctx.strokeText(`@${authorName}`, 20, height - 24);
+  ctx.fillText(`@${authorName}`, 20, height - 24);
 
   // — Watermark répété en diagonale au centre —
-  ctx.globalAlpha = 0.1;
-  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 0.22;
+  ctx.shadowBlur = 4;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
-  const diagSize = Math.max(28, Math.round(width * 0.07));
+  ctx.lineWidth = Math.max(1.5, Math.round(width * 0.002));
+  const diagSize = Math.max(34, Math.round(width * 0.085));
   ctx.font = `bold ${diagSize}px "Arial", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   ctx.translate(width / 2, height / 2);
   ctx.rotate(-Math.PI / 6);
-  for (let row = -2; row <= 2; row++) {
-    for (let col = -2; col <= 2; col++) {
-      ctx.fillText(watermarkText, col * width * 0.4, row * height * 0.25);
+  for (let row = -3; row <= 3; row++) {
+    for (let col = -3; col <= 3; col++) {
+      const x = col * width * 0.28;
+      const y = row * height * 0.18;
+      ctx.strokeText(watermarkText, x, y);
+      ctx.fillText(watermarkText, x, y);
     }
   }
 
@@ -89,7 +104,7 @@ async function fetchVideoAsBlob(
     chunks.push(value);
     loaded += value.length;
     if (total > 0) {
-      onProgress?.(Math.round((loaded / total) * 40));
+      onProgress?.(Math.round((loaded / total) * WATERMARK_FETCH_PROGRESS_MAX));
     }
   }
 
@@ -98,71 +113,76 @@ async function fetchVideoAsBlob(
 }
 
 /**
- * Détecte si l'utilisateur est sur un appareil mobile
+ * Retourne le mime type le plus compatible pour MediaRecorder.
  */
-function isMobileDevice(): boolean {
-  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
+function getSupportedRecorderMimeType(): string {
+  if (typeof MediaRecorder === 'undefined') {
+    return '';
+  }
+
+  const mimeTypes = [
+    'video/mp4;codecs=h264,aac',
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ];
+
+  for (const mime of mimeTypes) {
+    if (MediaRecorder.isTypeSupported(mime)) {
+      return mime;
+    }
+  }
+
+  return '';
 }
 
 /**
- * Téléchargement direct en MP4 (mobile) — utilise la galerie native si disponible
+ * Retourne l'extension du fichier selon le mime type final.
  */
-async function downloadDirectMp4(
-  videoUrl: string,
-  fileName: string,
-  onProgress?: (percent: number) => void
-): Promise<void> {
-  onProgress?.(2);
-
-  // Télécharger le fichier en blob
-  const response = await fetch(videoUrl);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-  const contentLength = response.headers.get('content-length');
-  const total = contentLength ? parseInt(contentLength, 10) : 0;
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('ReadableStream non supporté');
-
-  const chunks: BlobPart[] = [];
-  let loaded = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.length;
-    if (total > 0) {
-      onProgress?.(Math.round((loaded / total) * 70));
-    }
+function getFileExtensionForMimeType(mimeType: string): string {
+  if (mimeType.includes('mp4')) {
+    return 'mp4';
   }
 
-  const blob = new Blob(chunks, { type: 'video/mp4' });
-  onProgress?.(75);
+  return 'webm';
+}
 
-  // Sur plateforme native (Capacitor) → sauvegarder dans la galerie
+/**
+ * Sauvegarde un blob vidéo final sur l'appareil ou via téléchargement web.
+ */
+async function saveOutputVideo(
+  blob: Blob,
+  fileName: string,
+  mimeType: string,
+  onProgress?: (percent: number) => void,
+  onStageChange?: (stage: string) => void
+): Promise<void> {
+  onStageChange?.('Enregistrement de la vidéo');
+  onProgress?.(WATERMARK_SAVE_PROGRESS);
+
   try {
     const { isNativePlatform, saveMediaToDevice } = await import('@/file-manager/utils/mediaGallery');
     if (isNativePlatform()) {
-      const mp4FileName = fileName.replace(/\.\w+$/, '.mp4');
-      const result = await saveMediaToDevice(blob, mp4FileName, 'video/mp4');
-      onProgress?.(100);
+      const result = await saveMediaToDevice(blob, fileName, mimeType);
       if (!result.success) {
         throw new Error(result.error || 'Sauvegarde dans la galerie échouée');
       }
+
+      onProgress?.(100);
       return;
     }
-  } catch (e: any) {
-    // Si l'import échoue ou si ce n'est pas natif, fallback web
+  } catch (error) {
     console.log('📱 Fallback web pour le téléchargement vidéo');
   }
 
-  // Fallback web : téléchargement classique via <a>
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = blobUrl;
-  a.download = fileName.replace(/\.\w+$/, '.mp4');
+  a.download = fileName;
   a.style.display = 'none';
   a.rel = 'noopener';
   document.body.appendChild(a);
@@ -177,8 +197,8 @@ async function downloadDirectMp4(
 
 /**
  * Télécharge une vidéo et l'encode avec un watermark via Canvas + MediaRecorder.
- * Sur mobile : télécharge le MP4 original directement (compatibilité maximale).
- * Sur desktop : re-encode en WebM avec watermark.
+ * Priorité: produire une vidéo avec watermark sur desktop comme sur mobile.
+ * Si l'encodage navigateur n'est pas supporté, une erreur est renvoyée.
  */
 export async function downloadVideoWithWatermark({
   videoUrl,
@@ -186,20 +206,27 @@ export async function downloadVideoWithWatermark({
   authorName,
   fileName,
   onProgress,
+  onStageChange,
 }: DownloadOptions): Promise<void> {
-  // Mobile → téléchargement MP4 direct (pas de re-encodage WebM)
-  if (isMobileDevice()) {
-    return downloadDirectMp4(videoUrl, fileName, onProgress);
-  }
-
-  // Desktop → re-encodage avec watermark
   return new Promise(async (resolve, reject) => {
     let localBlobUrl: string | null = null;
+    let canvasStream: MediaStream | null = null;
+    let combinedStream: MediaStream | null = null;
 
     try {
+      const selectedMime = getSupportedRecorderMimeType();
+      if (!selectedMime) {
+        throw new Error('Votre appareil ne supporte pas l\'encodage vidéo avec watermark');
+      }
+
+      const finalExtension = getFileExtensionForMimeType(selectedMime);
+      const outputFileName = fileName.replace(/\.\w+$/, `.${finalExtension}`);
+
+      onStageChange?.('Téléchargement de la vidéo');
       onProgress?.(2);
       localBlobUrl = await fetchVideoAsBlob(videoUrl, onProgress);
-      onProgress?.(40);
+      onProgress?.(WATERMARK_FETCH_PROGRESS_MAX);
+      onStageChange?.('Préparation du watermark');
 
       const video = document.createElement('video');
       video.muted = false;
@@ -222,16 +249,19 @@ export async function downloadVideoWithWatermark({
         throw new Error('Métadonnées vidéo invalides');
       }
 
-      onProgress?.(45);
+      onProgress?.(WATERMARK_METADATA_PROGRESS);
 
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
 
-      const canvasStream = canvas.captureStream(30);
+      if (typeof canvas.captureStream !== 'function') {
+        throw new Error('Le captureStream du canvas est indisponible sur cet appareil');
+      }
 
-      let combinedStream: MediaStream;
+      canvasStream = canvas.captureStream(30);
+
       try {
         const videoElementStream = (video as any).captureStream() as MediaStream;
         const audioTracks = videoElementStream.getAudioTracks();
@@ -247,25 +277,6 @@ export async function downloadVideoWithWatermark({
         combinedStream = canvasStream;
       }
 
-      const mimeTypes = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm;codecs=vp9',
-        'video/webm;codecs=vp8',
-        'video/webm',
-      ];
-      let selectedMime = '';
-      for (const mime of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mime)) {
-          selectedMime = mime;
-          break;
-        }
-      }
-
-      if (!selectedMime) {
-        throw new Error('Aucun codec vidéo supporté par le navigateur');
-      }
-
       const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType: selectedMime,
         videoBitsPerSecond: 4_000_000,
@@ -278,30 +289,30 @@ export async function downloadVideoWithWatermark({
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: selectedMime });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName.replace(/\.\w+$/, '.webm');
-        a.style.display = 'none';
-        a.rel = 'noopener';
-        document.body.appendChild(a);
-        setTimeout(() => {
-          a.click();
-          document.body.removeChild(a);
-        }, 0);
-
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
-        }, 5000);
-
-        onProgress?.(100);
-        resolve();
+        void saveOutputVideo(blob, outputFileName, selectedMime, onProgress, onStageChange)
+          .then(() => {
+            resolve();
+          })
+          .catch((error) => {
+            reject(error);
+          })
+          .finally(() => {
+            if (localBlobUrl) {
+              URL.revokeObjectURL(localBlobUrl);
+              localBlobUrl = null;
+            }
+            canvasStream?.getTracks().forEach((track) => track.stop());
+            combinedStream?.getTracks().forEach((track) => track.stop());
+          });
       };
 
       mediaRecorder.onerror = (e) => {
-        if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
+        if (localBlobUrl) {
+          URL.revokeObjectURL(localBlobUrl);
+          localBlobUrl = null;
+        }
+        canvasStream?.getTracks().forEach((track) => track.stop());
+        combinedStream?.getTracks().forEach((track) => track.stop());
         reject(e);
       };
 
@@ -310,6 +321,7 @@ export async function downloadVideoWithWatermark({
       mediaRecorder.start(100);
       video.currentTime = 0;
       await video.play();
+      onStageChange?.('Application du watermark');
 
       const renderFrame = () => {
         if (video.ended || video.paused) {
@@ -323,8 +335,11 @@ export async function downloadVideoWithWatermark({
         drawWatermark(ctx, width, height, watermarkText, authorName);
 
         if (duration > 0) {
-          const pct = Math.round(45 + (video.currentTime / duration) * 50);
-          onProgress?.(Math.min(pct, 95));
+          const pct = Math.round(
+            WATERMARK_RENDER_START +
+              (video.currentTime / duration) * (WATERMARK_RENDER_END - WATERMARK_RENDER_START)
+          );
+          onProgress?.(Math.min(pct, WATERMARK_RENDER_END));
         }
 
         requestAnimationFrame(renderFrame);
@@ -341,7 +356,11 @@ export async function downloadVideoWithWatermark({
       };
 
     } catch (error) {
-      if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
+      if (localBlobUrl) {
+        URL.revokeObjectURL(localBlobUrl);
+      }
+      canvasStream?.getTracks().forEach((track) => track.stop());
+      combinedStream?.getTracks().forEach((track) => track.stop());
       reject(error);
     }
   });
