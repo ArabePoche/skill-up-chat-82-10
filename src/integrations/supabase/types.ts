@@ -8778,6 +8778,10 @@ export type Database = {
         Returns: boolean
       }
       decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
+      decrement_stock: {
+        Args: { product_id: string; quantity: number }
+        Returns: undefined
+      }
       delete_student_cascade: {
         Args: { p_student_id: string }
         Returns: undefined
@@ -8916,6 +8920,10 @@ export type Database = {
             Returns: number
           }
       increment_post_comments: { Args: { post_id: string }; Returns: undefined }
+      increment_stock: {
+        Args: { product_id: string; quantity: number }
+        Returns: undefined
+      }
       initialize_first_lesson: {
         Args: { p_lesson_id: string; p_user_id: string }
         Returns: undefined
@@ -9047,6 +9055,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      return_from_marketplace: {
+        Args: { boutique_product_id: string; quantity: number }
+        Returns: undefined
+      }
       send_welcome_message: {
         Args: {
           p_exercise_id?: string
@@ -9058,9 +9070,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      transfer_to_marketplace: {
+        Args: {
+          boutique_product_id: string
+          quantity: number
+          seller_id: string
+        }
+        Returns: undefined
+      }
       unlock_exercise_submission: {
         Args: { p_message_id: string; p_teacher_id: string }
         Returns: Json
+      }
+      update_boutique_product: {
+        Args: { product_id: string; updates: Json }
+        Returns: undefined
       }
       update_student_payment_progress_for_student: {
         Args: { p_school_id: string; p_student_id: string }
