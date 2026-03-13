@@ -32,49 +32,33 @@ function drawWatermark(
 ) {
   ctx.save();
 
-  // — Watermark principal en haut à gauche —
-  ctx.globalAlpha = 0.72;
+  const paddingX = Math.round(width * 0.04);
+  const paddingY = Math.round(height * 0.04);
+
+  // — Logo "EducaTok" en bas à gauche —
+  ctx.globalAlpha = 0.75;
   ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = 'rgba(0,0,0,0.95)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
   ctx.lineWidth = Math.max(2, Math.round(width * 0.003));
-  ctx.shadowColor = 'rgba(0,0,0,0.9)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetX = 2;
-  ctx.shadowOffsetY = 2;
-
-  const mainSize = Math.max(24, Math.round(width * 0.06));
-  ctx.font = `bold ${mainSize}px "Arial", sans-serif`;
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetX = 1;
+  ctx.shadowOffsetY = 1;
   ctx.textAlign = 'left';
-  ctx.strokeText(watermarkText, 20, mainSize + 18);
-  ctx.fillText(watermarkText, 20, mainSize + 18);
+  ctx.textBaseline = 'bottom';
 
-  // — Nom de l'auteur en bas à gauche —
-  const authorSize = Math.max(18, Math.round(width * 0.042));
+  const logoSize = Math.max(22, Math.round(width * 0.055));
+  ctx.font = `bold ${logoSize}px "Arial", sans-serif`;
+  const logoY = height - paddingY - Math.round(logoSize * 0.9);
+  ctx.strokeText(watermarkText, paddingX, logoY);
+  ctx.fillText(watermarkText, paddingX, logoY);
+
+  // — @user juste en dessous du logo —
+  const authorSize = Math.max(16, Math.round(width * 0.038));
   ctx.font = `600 ${authorSize}px "Arial", sans-serif`;
-  ctx.strokeText(`@${authorName}`, 20, height - 24);
-  ctx.fillText(`@${authorName}`, 20, height - 24);
-
-  // — Watermark répété en diagonale au centre —
-  ctx.globalAlpha = 0.22;
-  ctx.shadowBlur = 4;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
-  ctx.lineWidth = Math.max(1.5, Math.round(width * 0.002));
-  const diagSize = Math.max(34, Math.round(width * 0.085));
-  ctx.font = `bold ${diagSize}px "Arial", sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  ctx.translate(width / 2, height / 2);
-  ctx.rotate(-Math.PI / 6);
-  for (let row = -3; row <= 3; row++) {
-    for (let col = -3; col <= 3; col++) {
-      const x = col * width * 0.28;
-      const y = row * height * 0.18;
-      ctx.strokeText(watermarkText, x, y);
-      ctx.fillText(watermarkText, x, y);
-    }
-  }
+  const authorY = height - paddingY;
+  ctx.strokeText(`@${authorName}`, paddingX, authorY);
+  ctx.fillText(`@${authorName}`, paddingX, authorY);
 
   ctx.restore();
 }
