@@ -238,7 +238,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full bg-black overflow-hidden">
+    <div className="relative w-full h-full bg-black overflow-hidden" {...longPressHandlers}>
       {/* Conteneur vidéo responsive */}
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Vidéos YouTube */}
