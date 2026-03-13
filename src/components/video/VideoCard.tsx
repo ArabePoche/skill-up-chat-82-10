@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import VideoCommentsModal from './VideoCommentsModal';
 import VideoShareModal from './VideoShareModal';
+import VideoDownloadModal from './VideoDownloadModal';
 import SeriesEpisodesModal from './SeriesEpisodesModal';
 import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ import { useVideoSeries } from '@/hooks/useVideoSeries';
 import { useVideoViews } from '@/hooks/useVideoViews';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { useTranslation } from 'react-i18next';
+import { useLongPress } from '@/hooks/useLongPress';
 
 interface Video {
   id: string;
@@ -62,9 +64,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [showSeries, setShowSeries] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Long press pour ouvrir le modal de téléchargement
+  const handleLongPress = useCallback(() => {
+    setShowDownload(true);
+  }, []);
+
+  const longPressHandlers = useLongPress({ onLongPress: handleLongPress });
 
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
   const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id);
@@ -228,7 +238,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full bg-black overflow-hidden">
+    <div className="relative w-full h-full bg-black overflow-hidden" {...longPressHandlers}>
       {/* Conteneur vidéo responsive */}
       <div className="absolute inset-0 flex items-center justify-center">
         {/* Vidéos YouTube */}
@@ -500,6 +510,15 @@ const VideoCard: React.FC<VideoCardProps> = ({
           currentVideoId={video.id}
         />
       )}
+
+      {/* Modal de téléchargement (appui long) */}
+      <VideoDownloadModal
+        isOpen={showDownload}
+        onClose={() => setShowDownload(false)}
+        videoUrl={video.video_url}
+        videoTitle={video.title}
+        authorName={video.profiles?.username || video.profiles?.first_name || 'user'}
+      />
     </div>
   );
 };
