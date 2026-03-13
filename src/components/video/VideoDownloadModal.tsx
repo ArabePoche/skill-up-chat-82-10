@@ -102,11 +102,11 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
             </p>
           </div>
 
-          {/* Info téléchargement */}
+          {/* Info watermark */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-            <span className="text-base">📥</span>
+            <span className="text-base">🔒</span>
             <span>
-              La vidéo sera téléchargée au format MP4
+              Un watermark "EducaTok" sera ajouté à la vidéo téléchargée
             </span>
           </div>
 
