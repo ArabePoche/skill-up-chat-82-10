@@ -2,11 +2,11 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-    namespace "Come.islahmedia.educatok"
+    namespace "com.educatok.islahmedia"
     compileSdk 35
 
     defaultConfig {
-        applicationId "Come.islahmedia.educatok"
+        applicationId "com.educatok.islahmedia"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion 35
         versionCode 2

@@ -12,6 +12,7 @@ export interface ShopAgent {
     pin_code: string | null;
     username?: string;
     password_hash?: string;
+    avatar_url?: string | null; // optional picture for agent
     status: 'active' | 'inactive';
     created_at: string;
 }
@@ -105,6 +106,79 @@ export const useDeleteShopAgent = () => {
         onError: (error: any) => {
             console.error('Erreur suppression agent:', error);
             toast.error("Erreur lors de la suppression");
+        },
+    });
+};
+
+// ------------------------------------------------------------------
+// Additional utilities for shop agent management
+// ------------------------------------------------------------------
+
+/**
+ * Reset an agent password to a provided value.  Owner or admin
+ * can use this hook to generate a temporary password.
+ */
+export const useResetShopAgentPassword = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, shop_id, newPassword }: { id: string; shop_id: string; newPassword: string }) => {
+            const { error } = await supabase
+                .from('shop_agents' as any)
+                .update({ password_hash: newPassword })
+                .eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['shop-agents', variables.shop_id] });
+            toast.success('Mot de passe réinitialisé');
+        },
+        onError: (error: any) => {
+            console.error('Erreur reset password:', error);
+            toast.error("Impossible de réinitialiser le mot de passe");
+        },
+    });
+};
+
+/**
+ * Upload an avatar image for a shop agent. The file is pushed to
+ * the usual `avatars` storage bucket and the agent row is updated
+ * with the public URL.  shopId is required to invalidate the
+ * corresponding query cache.
+ */
+export const useShopAgentAvatarUpload = (shopId: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ agentId, file }: { agentId: string; file: File }) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `shop_agents/${agentId}/${Date.now()}.${fileExt}`;
+
+            const { error: uploadErr } = await supabase.storage
+                .from('avatars')
+                .upload(fileName, file, { cacheControl: '3600', upsert: false });
+            if (uploadErr) throw uploadErr;
+
+            const { data: urlData } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(fileName);
+            const avatarUrl = urlData.publicUrl;
+
+            const { error: updateErr } = await supabase
+                .from('shop_agents' as any)
+                .update({ avatar_url: avatarUrl })
+                .eq('id', agentId);
+            if (updateErr) throw updateErr;
+
+            return avatarUrl;
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['shop-agents', shopId] });
+            toast.success('Avatar agent mis à jour');
+        },
+        onError: (error: any) => {
+            console.error('Erreur upload avatar agent:', error);
+            toast.error("Erreur lors de l'upload de l'avatar");
         },
     });
 };

@@ -6,8 +6,8 @@
 import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
-import { registerRoute, NavigationRoute, Route } from 'workbox-routing';
-import { StaleWhileRevalidate, CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
+import { registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate, CacheFirst, NetworkOnly } from 'workbox-strategies';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -101,19 +101,11 @@ registerRoute(
   })
 );
 
-// Cache pour les requêtes API Supabase (Network First avec fallback cache)
+// Les requêtes API Supabase restent en réseau uniquement pour éviter les faux
+// états hors ligne ou les réponses périmées sur les flux dynamiques.
 registerRoute(
-  ({ url }) => url.hostname.includes('supabase.co'),
-  new NetworkFirst({
-    cacheName: 'api-cache',
-    networkTimeoutSeconds: 10,
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-        maxAgeSeconds: 24 * 60 * 60, // 24 heures
-      }),
-    ],
-  })
+  ({ url, request }) => url.hostname.includes('supabase.co') && request.destination !== 'image',
+  new NetworkOnly()
 );
 
 // ====== NAVIGATION OFFLINE HANDLER ======

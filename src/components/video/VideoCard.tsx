@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -68,6 +68,9 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [showSeries, setShowSeries] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [iframeReady, setIframeReady] = useState(false);
+  const [hasMediaError, setHasMediaError] = useState(false);
+  const [mediaRetryKey, setMediaRetryKey] = useState(0);
 
   // Long press pour ouvrir le modal de téléchargement
   const handleLongPress = useCallback(() => {
@@ -76,9 +79,18 @@ const VideoCard: React.FC<VideoCardProps> = ({
 
   const longPressHandlers = useLongPress({ onLongPress: handleLongPress });
 
-  const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
-  const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id);
-  const { data: seriesData } = useVideoSeries(video.id);
+  const shouldLoadEngagementData = isActive || showComments || showShare || showSeries;
+  const vimeoPlayerId = useMemo(() => `vimeo-player-${video.id}`, [video.id]);
+
+  const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count, {
+    enabled: shouldLoadEngagementData,
+  });
+  const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id, {
+    enabled: shouldLoadEngagementData,
+  });
+  const { data: seriesData } = useVideoSeries(video.id, {
+    enabled: shouldLoadEngagementData,
+  });
   
   // Tracker les vues
   useVideoViews(video.id, isActive);
@@ -100,7 +112,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
 
       return count ?? video.comments_count;
     },
-    enabled: !!video.id,
+    enabled: shouldLoadEngagementData && !!video.id,
     staleTime: 60000, // Cache pendant 1 minute
     refetchInterval: false, // Désactivé - invalidation manuelle
   });
@@ -109,6 +121,49 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const isYouTube = video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be');
   const isVimeo = video.video_url.includes('vimeo.com');
   const isMp4 = video.video_url.endsWith('.mp4') || video.video_url.includes('.mp4');
+
+  useEffect(() => {
+    setIsLoading(true);
+    setIframeReady(false);
+    setIsPlaying(false);
+    setHasMediaError(false);
+  }, [video.id, video.video_url, mediaRetryKey]);
+
+  useEffect(() => {
+    if (!isActive || !isLoading || hasMediaError) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setHasMediaError(true);
+      setIsLoading(false);
+    }, 12000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [hasMediaError, isActive, isLoading, video.id, mediaRetryKey]);
+
+  const postYouTubeCommand = (command: 'playVideo' | 'pauseVideo' | 'mute' | 'unMute') => {
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({
+        event: 'command',
+        func: command,
+        args: [],
+      }),
+      '*',
+    );
+  };
+
+  const postVimeoCommand = (method: 'play' | 'pause' | 'setVolume', value?: number) => {
+    iframeRef.current?.contentWindow?.postMessage(
+      {
+        method,
+        value,
+      },
+      '*',
+    );
+  };
 
   // Extraction de l'ID YouTube
   const getYouTubeId = (url: string) => {
@@ -162,6 +217,25 @@ const VideoCard: React.FC<VideoCardProps> = ({
     };
   }, [isActive, isMp4, isMuted]);
 
+  useEffect(() => {
+    if (!iframeReady || !iframeRef.current) {
+      return;
+    }
+
+    if (isYouTube) {
+      postYouTubeCommand(isMuted ? 'mute' : 'unMute');
+      postYouTubeCommand(isActive ? 'playVideo' : 'pauseVideo');
+      setIsPlaying(isActive);
+      return;
+    }
+
+    if (isVimeo) {
+      postVimeoCommand('setVolume', isMuted ? 0 : 1);
+      postVimeoCommand(isActive ? 'play' : 'pause');
+      setIsPlaying(isActive);
+    }
+  }, [iframeReady, isActive, isMuted, isYouTube, isVimeo]);
+
   const handleVideoClick = () => {
     if (isMp4 && videoRef.current) {
       if (isPlaying) {
@@ -172,7 +246,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
         setIsPlaying(true);
       }
     } else if (isYouTube || isVimeo) {
-      setIsPlaying(!isPlaying);
+      const shouldPlay = !isPlaying;
+
+      if (isYouTube) {
+        postYouTubeCommand(shouldPlay ? 'playVideo' : 'pauseVideo');
+      }
+
+      if (isVimeo) {
+        postVimeoCommand(shouldPlay ? 'play' : 'pause');
+      }
+
+      setIsPlaying(shouldPlay);
     }
   };
 
@@ -237,6 +321,10 @@ const VideoCard: React.FC<VideoCardProps> = ({
     // Ne pas notifier le parent pour éviter le refetch qui perturbe la position
   };
 
+  const retryMediaLoad = () => {
+    setMediaRetryKey((previousKey) => previousKey + 1);
+  };
+
   return (
     <div className="relative w-full h-full bg-black overflow-hidden" {...longPressHandlers}>
       {/* Conteneur vidéo responsive */}
@@ -244,8 +332,9 @@ const VideoCard: React.FC<VideoCardProps> = ({
         {/* Vidéos YouTube */}
         {isYouTube && (
           <iframe
+            key={`youtube-${video.id}-${mediaRetryKey}`}
             ref={iframeRef}
-            src={`https://www.youtube.com/embed/${getYouTubeId(video.video_url)}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=${getYouTubeId(video.video_url)}`}
+            src={`https://www.youtube.com/embed/${getYouTubeId(video.video_url)}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=${getYouTubeId(video.video_url)}&enablejsapi=1&playsinline=1`}
             className="absolute inset-0 w-full h-full"
             style={{
               width: '100vw',
@@ -255,14 +344,24 @@ const VideoCard: React.FC<VideoCardProps> = ({
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
-            onLoad={() => setIsLoading(false)}
+            onLoad={() => {
+              setHasMediaError(false);
+              setIsLoading(false);
+              setIframeReady(true);
+            }}
+            onError={() => {
+              setHasMediaError(true);
+              setIsLoading(false);
+            }}
           />
         )}
 
         {/* Vidéos Vimeo */}
         {isVimeo && (
           <iframe
-            src={`https://player.vimeo.com/video/${getVimeoId(video.video_url)}?autoplay=${isActive ? 1 : 0}&loop=1&muted=${isMuted ? 1 : 0}&controls=0&background=1`}
+            key={`vimeo-${video.id}-${mediaRetryKey}`}
+            ref={iframeRef}
+            src={`https://player.vimeo.com/video/${getVimeoId(video.video_url)}?autoplay=${isActive ? 1 : 0}&loop=1&muted=${isMuted ? 1 : 0}&controls=0&background=1&api=1&player_id=${vimeoPlayerId}`}
             className="absolute inset-0 w-full h-full"
             style={{
               width: '100vw',
@@ -272,13 +371,23 @@ const VideoCard: React.FC<VideoCardProps> = ({
             frameBorder="0"
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
-            onLoad={() => setIsLoading(false)}
+            title={video.title}
+            onLoad={() => {
+              setHasMediaError(false);
+              setIsLoading(false);
+              setIframeReady(true);
+            }}
+            onError={() => {
+              setHasMediaError(true);
+              setIsLoading(false);
+            }}
           />
         )}
 
         {/* Vidéos MP4 */}
         {isMp4 && (
           <video
+            key={`mp4-${video.id}-${mediaRetryKey}`}
             ref={videoRef}
             src={video.video_url}
             poster={video.thumbnail_url}
@@ -291,10 +400,27 @@ const VideoCard: React.FC<VideoCardProps> = ({
             muted={isMuted}
             loop
             playsInline
+            preload={isActive ? 'auto' : 'metadata'}
             onClick={handleVideoClick}
-            onLoadedData={() => setIsLoading(false)}
+            onLoadedData={() => {
+              setHasMediaError(false);
+              setIsLoading(false);
+            }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
+            onError={() => {
+              setHasMediaError(true);
+              setIsLoading(false);
+            }}
+          />
+        )}
+
+        {(isYouTube || isVimeo) && (
+          <button
+            type="button"
+            onClick={handleVideoClick}
+            aria-label={isPlaying ? t('video.pause') : t('video.play')}
+            className="absolute inset-0 z-[1] bg-transparent"
           />
         )}
 
@@ -302,6 +428,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </div>
+        )}
+
+        {hasMediaError && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/75 px-6 text-white">
+            <div className="max-w-xs text-center">
+              <p className="text-sm text-white/80">Impossible de charger cette video pour le moment.</p>
+              <Button onClick={retryMediaLoad} className="mt-4 bg-white text-black hover:bg-white/90">
+                Reessayer
+              </Button>
+            </div>
           </div>
         )}
 
@@ -313,6 +450,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
               size="icon"
               className="w-16 h-16 rounded-full bg-black/30 text-white hover:bg-black/50 pointer-events-auto"
               onClick={handleVideoClick}
+              aria-label={t('video.play')}
             >
               <Play size={32} />
             </Button>

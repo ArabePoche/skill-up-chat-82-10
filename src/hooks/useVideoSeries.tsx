@@ -4,7 +4,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useVideoSeries = (videoId: string | undefined) => {
+interface UseVideoSeriesOptions {
+  enabled?: boolean;
+}
+
+export const useVideoSeries = (videoId: string | undefined, options?: UseVideoSeriesOptions) => {
   return useQuery({
     queryKey: ['video-series', videoId],
     queryFn: async () => {
@@ -50,6 +54,6 @@ export const useVideoSeries = (videoId: string | undefined) => {
         episodes: episodes || [],
       };
     },
-    enabled: !!videoId,
+    enabled: (options?.enabled ?? true) && !!videoId,
   });
 };

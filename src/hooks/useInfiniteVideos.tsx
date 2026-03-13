@@ -31,20 +31,8 @@ export const useInfiniteVideos = () => {
 
   const query = useInfiniteQuery({
     queryKey: ['infinite-videos', user?.id],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async () => {
       const pageSize = 3;
-
-      // Récupérer les centres d'intérêt de l'utilisateur
-      let userInterests: string[] = [];
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('interests')
-          .eq('id', user.id)
-          .single();
-        
-        userInterests = profile?.interests || [];
-      }
 
       // Exclure les vidéos déjà affichées dans cette session
       const displayedIds = Array.from(displayedVideosRef.current);
@@ -84,7 +72,7 @@ export const useInfiniteVideos = () => {
 
       if (error) {
         console.error('Error fetching videos:', error);
-        return [];
+        throw error;
       }
 
       // Mélanger le pool aléatoirement (Fisher-Yates) puis prendre pageSize
@@ -110,6 +98,9 @@ export const useInfiniteVideos = () => {
       return lastPage.length === 3 ? allPages.length : undefined;
     },
     initialPageParam: 0,
+    retry: 1,
+    retryDelay: 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Flatten les pages pour obtenir un array simple

@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useCallback, useEffect, createContext, useContext, useMemo } from 'react';
+import React, { useState, useRef, useEffect, createContext, useContext, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import VideoCard from '@/components/video/VideoCard';
 import { useInfiniteVideos } from '@/hooks/useInfiniteVideos';
@@ -39,17 +39,42 @@ const GlobalSoundContext = createContext<{
 
 export const useGlobalSound = () => useContext(GlobalSoundContext);
 
-const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId }) => {
+const SOUND_PREFERENCE_KEY = 'tiktok-feed-muted';
+
+const TikTokVideosView: React.FC<{
+  targetVideoId?: string;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
+}> = ({ targetVideoId, scrollContainerRef }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { data: videos = [], fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteVideos();
-  const { data: targetVideo, isLoading: isLoadingTargetVideo } = useVideoById(targetVideoId);
+  const {
+    data: videos = [],
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isLoadingVideos,
+    isError: isVideosError,
+    refetch: refetchVideos,
+    error: videosError,
+  } = useInfiniteVideos();
+  const {
+    data: targetVideo,
+    isLoading: isLoadingTargetVideo,
+    isError: isTargetVideoError,
+    refetch: refetchTargetVideo,
+    error: targetVideoError,
+  } = useVideoById(targetVideoId);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [globalMuted, setGlobalMuted] = useState(false); // Son activé par défaut
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [globalMuted, setGlobalMuted] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return window.localStorage.getItem(SOUND_PREFERENCE_KEY) === 'true';
+  });
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const hasScrolledRef = useRef(false);
+  const visibleRatiosRef = useRef<Map<number, number>>(new Map());
 
   // Fusionner la vidéo cible avec le flux si elle n'est pas déjà présente
   const displayedVideos = useMemo(() => {
@@ -65,22 +90,35 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
 
   // Contrôle global du son
   const toggleGlobalMute = () => {
-    setGlobalMuted(!globalMuted);
+    setGlobalMuted((previousMuted) => !previousMuted);
   };
 
-  // Détecter le changement de vidéo pour mettre à jour la route
   useEffect(() => {
-    // Si on est sur /video/:id avec une vidéo ciblée
-    if (targetVideoId && (location.pathname.startsWith('/video/') || location.pathname.startsWith('/videos/'))) {
-      // Trouver l'index de la vidéo ciblée
-      const targetIndex = displayedVideos.findIndex((v: any) => v.id === targetVideoId);
-      
-      // Si la vidéo courante n'est plus la vidéo ciblée, revenir à /video
-      if (targetIndex !== -1 && currentVideoIndex !== targetIndex) {
-        navigate('/video', { replace: true });
-      }
+    if (typeof window === 'undefined') {
+      return;
     }
-  }, [currentVideoIndex, targetVideoId, displayedVideos, location.pathname, navigate]);
+
+    window.localStorage.setItem(SOUND_PREFERENCE_KEY, String(globalMuted));
+  }, [globalMuted]);
+
+  // Garder l'URL synchronisée avec la vidéo réellement visible lors d'un deep link.
+  useEffect(() => {
+    if (!location.pathname.startsWith('/video/') && !location.pathname.startsWith('/videos/')) {
+      return;
+    }
+
+    const currentVideo = displayedVideos[currentVideoIndex];
+    if (!currentVideo) {
+      return;
+    }
+
+    const pathPrefix = location.pathname.startsWith('/videos/') ? '/videos' : '/video';
+    const expectedPath = `${pathPrefix}/${currentVideo.id}`;
+
+    if (location.pathname !== expectedPath) {
+      navigate(expectedPath, { replace: true });
+    }
+  }, [currentVideoIndex, displayedVideos, location.pathname, navigate]);
 
   // Intersection Observer pour la lecture automatique
   // Ne dépend que de displayedVideos.length pour éviter les re-créations inutiles
@@ -91,21 +129,42 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const videoIndex = parseInt(entry.target.getAttribute('data-video-index') || '0');
-          if (entry.isIntersecting && entry.intersectionRatio > 0.7) {
-            setCurrentVideoIndex(videoIndex);
+          const videoIndex = parseInt(entry.target.getAttribute('data-video-index') || '0', 10);
+          visibleRatiosRef.current.set(videoIndex, entry.intersectionRatio);
+        });
+
+        let bestIndex = currentVideoIndex;
+        let bestRatio = 0;
+
+        entries.forEach((entry) => {
+          const videoIndex = parseInt(entry.target.getAttribute('data-video-index') || '0', 10);
+          const ratio = visibleRatiosRef.current.get(videoIndex) || 0;
+
+          if (entry.isIntersecting && ratio >= bestRatio && ratio >= 0.55) {
+            bestRatio = ratio;
+            bestIndex = videoIndex;
           }
         });
+
+        if (bestIndex !== currentVideoIndex) {
+          setCurrentVideoIndex(bestIndex);
+        }
       },
-      { threshold: 0.7 }
+      {
+        root: scrollContainerRef?.current || null,
+        threshold: [0.25, 0.55, 0.8],
+      }
     );
 
     videoRefs.current.forEach((ref) => {
       if (ref) observer.observe(ref);
     });
 
-    return () => observer.disconnect();
-  }, [videosLength]);
+    return () => {
+      visibleRatiosRef.current.clear();
+      observer.disconnect();
+    };
+  }, [currentVideoIndex, videosLength, scrollContainerRef]);
 
   // Charger plus de vidéos quand on approche de la fin
   useEffect(() => {
@@ -138,40 +197,71 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
     // Les compteurs de commentaires seront mis à jour localement par le hook
   };
 
-  // Si on attend une vidéo ciblée spécifique, afficher le loader jusqu'à ce qu'elle soit chargée
-  if (targetVideoId && isLoadingTargetVideo) {
+  const retryLoading = () => {
+    refetchVideos();
+    if (targetVideoId) {
+      refetchTargetVideo();
+    }
+  };
+
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const shouldShowInitialSpinner = (isLoadingVideos && videos.length === 0) || (targetVideoId && isLoadingTargetVideo);
+  const shouldShowErrorState = (videos.length === 0 && isVideosError) || (targetVideoId && isTargetVideoError);
+
+  const errorMessage = isOffline
+    ? "La connexion semble indisponible. Verifie Internet puis reessaie."
+    : "Impossible de charger le flux video pour le moment.";
+
+  if (shouldShowInitialSpinner) {
     return (
       <div className="h-full flex items-center justify-center text-white bg-black">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  if (shouldShowErrorState) {
+    return (
+      <div className="h-full flex items-center justify-center bg-black px-6 text-white">
+        <div className="max-w-sm text-center">
+          <h2 className="text-lg font-semibold">Chargement interrompu</h2>
+          <p className="mt-2 text-sm text-white/70">{errorMessage}</p>
+          <Button onClick={retryLoading} className="mt-4 bg-white text-black hover:bg-white/90">
+            Reessayer
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (targetVideoId && !isLoadingTargetVideo && !targetVideo && displayedVideos.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center bg-black px-6 text-white">
+        <div className="max-w-sm text-center">
+          <h2 className="text-lg font-semibold">Video introuvable</h2>
+          <p className="mt-2 text-sm text-white/70">Cette video n'est plus disponible ou a ete retiree.</p>
+          <Button onClick={() => navigate('/video', { replace: true })} className="mt-4 bg-white text-black hover:bg-white/90">
+            Retour au flux
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (!displayedVideos || displayedVideos.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-white bg-black">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      <div className="h-full flex items-center justify-center bg-black px-6 text-white">
+        <div className="max-w-sm text-center">
+          <h2 className="text-lg font-semibold">Aucune video disponible</h2>
+          <p className="mt-2 text-sm text-white/70">Le flux est vide pour le moment. Reviens un peu plus tard.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <GlobalSoundContext.Provider value={{ isMuted: globalMuted, toggleMute: toggleGlobalMute }}>
-      <div 
-        ref={containerRef}
-        className="relative h-full w-full bg-black overflow-y-auto snap-y snap-mandatory"
-        style={{ 
-          scrollbarWidth: 'none', 
-          msOverflowStyle: 'none'
-        }}
-      >
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `
-        }} />
+      <div className="tiktok-feed relative h-full w-full bg-black">
         
         {/* Contrôle global du son */}
         <div className="fixed top-4 left-4 z-50">
@@ -180,6 +270,7 @@ const TikTokVideosView: React.FC<{ targetVideoId?: string }> = ({ targetVideoId 
             size="icon"
             onClick={toggleGlobalMute}
             className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 border border-white/20"
+            aria-label={globalMuted ? 'Activer le son du flux' : 'Couper le son du flux'}
           >
             {globalMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </Button>

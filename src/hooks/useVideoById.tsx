@@ -27,12 +27,19 @@ export const useVideoById = (videoId: string | undefined) => {
         .single();
 
       if (error) {
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+
         console.error('Error fetching video by id:', error);
-        return null;
+        throw error;
       }
 
       return data;
     },
     enabled: !!videoId,
+    retry: 1,
+    retryDelay: 1000,
+    refetchOnWindowFocus: false,
   });
 };

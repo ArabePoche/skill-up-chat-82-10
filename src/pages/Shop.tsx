@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useShopFormations, useFormationCategories } from '@/hooks/useShopFormations';
 import { useProducts } from '@/hooks/useProducts';
 import { useProductCategories } from '@/hooks/useProductCategories';
@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useAgentAuth } from '@/hooks/shop/useAgentAuth';
 import { AgentLockScreen } from '@/components/shop/boutique/AgentLockScreen';
 import { usePhysicalShop } from '@/hooks/shop/usePhysicalShop';
+import { useUserShops } from '@/hooks/shop/useMultiShop';
 
 const Shop = () => {
   const { t } = useTranslation();
@@ -36,6 +37,7 @@ const Shop = () => {
   const [mainView, setMainView] = useState<'marketplace' | 'gestion'>('marketplace');
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { cartItemsCount, addToCart } = useCart();
   const { data: userInterests = [] } = useUserInterests();
   const { data: isShopOwner, isLoading: isShopOwnerLoading } = useIsShopOwner();
@@ -45,8 +47,19 @@ const Shop = () => {
   const { data: products, isLoading: productsLoading } = useProducts(activeCategory);
   const { data: productCategories, isLoading: productCategoriesLoading } = useProductCategories();
   const { data: services, isLoading: servicesLoading } = useServices(activeCategory);
-  const { data: shop } = usePhysicalShop();
-  const { activeAgent, login, unlock, logout } = useAgentAuth(shop?.id);
+  const { data: physicalShop } = usePhysicalShop();
+  const { data: userShops } = useUserShops();
+  const shopIdFromUrl = searchParams.get('id');
+  const shop = userShops?.find((candidate) => candidate.id === shopIdFromUrl) || userShops?.[0] || physicalShop;
+  const {
+    activeAgent,
+    inactivityMinutes,
+    updateInactivityMinutes,
+    login,
+    unlock,
+    forgotPassword,
+    updateProfile,
+  } = useAgentAuth(shop?.id, { lockScopeActive: isShopOwner && mainView === 'gestion' });
 
   const handleViewDetails = useCallback((formationId: string) => {
     console.log('Shop: Navigating to formation details:', formationId);
@@ -95,7 +108,7 @@ const Shop = () => {
       : servicesLoading;
 
   return (
-    <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0 relative">
+    <div className={`min-h-screen bg-white pb-16 md:pb-0 relative ${isShopOwner ? 'md:pt-0' : 'md:pt-16'}`}>
       {/* Onglets TikTok-style pour les propriétaires de boutique - Visible sur mobile en sticky */}
       {isShopOwner && (
         <div className="md:hidden sticky top-0 left-0 right-0 z-[100] bg-white">
@@ -103,25 +116,36 @@ const Shop = () => {
         </div>
       )}
       {isShopOwner && (
-        <div className="hidden md:block pt-4">
+        <div className="hidden md:block">
           <BoutiqueTopTabs activeView={mainView} onViewChange={setMainView} />
         </div>
       )}
 
       {/* Lock screen pour les agents/proprios */}
-      {isShopOwner && shop && (
+      {isShopOwner && shop && mainView !== 'gestion' && !activeAgent?.isUnlocked && (
         <AgentLockScreen
           shopId={shop.id}
           activeAgent={activeAgent}
+          inactivityMinutes={inactivityMinutes}
+          onInactivityMinutesChange={updateInactivityMinutes}
           onLogin={login}
           onUnlock={unlock}
-          onLogout={logout}
+          forgotPassword={forgotPassword}
+          updateProfile={updateProfile}
         />
       )}
 
       {/* Vue Gestion boutique */}
       {isShopOwner && mainView === 'gestion' ? (
-        <BoutiqueManagement />
+        <BoutiqueManagement
+          activeAgent={activeAgent}
+          inactivityMinutes={inactivityMinutes}
+          onInactivityMinutesChange={updateInactivityMinutes}
+          onLogin={login}
+          onUnlock={unlock}
+          forgotPassword={forgotPassword}
+          updateProfile={updateProfile}
+        />
       ) : (
         <>
           <ShopHeader

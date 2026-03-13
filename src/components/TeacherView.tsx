@@ -119,9 +119,9 @@ const TeacherView: React.FC<TeacherViewProps> = ({ formation, onBack }) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#e5ddd5] pb-16 md:pt-16 md:pb-0">
+    <div className="min-h-screen bg-[#e5ddd5] pb-16 md:pb-0">
       {/* Header - Style WhatsApp pour prof */}
-      <div className="bg-[#25d366] text-white sticky top-0 md:top-16 z-40">
+      <div className="bg-[#25d366] text-white sticky top-0 z-40">
         <div className="flex items-center p-4">
           <button
             onClick={onBack}

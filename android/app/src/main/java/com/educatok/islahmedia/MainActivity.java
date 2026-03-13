@@ -1,4 +1,4 @@
-package Come.islahmedia.educatok;
+package com.educatok.islahmedia;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
