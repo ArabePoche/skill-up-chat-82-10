@@ -37,7 +37,7 @@ export async function downloadVideoWithWatermark({
     const reader = response.body?.getReader();
     if (!reader) throw new Error('ReadableStream non supporté');
 
-    const chunks: Uint8Array[] = [];
+    const chunks: BlobPart[] = [];
     let loaded = 0;
 
     while (true) {
