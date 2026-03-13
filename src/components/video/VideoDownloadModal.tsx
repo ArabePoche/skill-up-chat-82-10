@@ -58,13 +58,19 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
       console.error('Erreur téléchargement vidéo:', error);
       // Fallback: téléchargement direct sans watermark
       try {
+        const response = await fetch(videoUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = videoUrl;
+        link.href = blobUrl;
         link.download = `${videoTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`;
-        link.target = '_blank';
+        link.style.display = 'none';
         document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        setTimeout(() => {
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+        }, 0);
         toast.success('Vidéo téléchargée (sans watermark)');
         onClose();
       } catch {
