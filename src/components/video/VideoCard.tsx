@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import VideoCommentsModal from './VideoCommentsModal';
 import VideoShareModal from './VideoShareModal';
+import VideoDownloadModal from './VideoDownloadModal';
 import SeriesEpisodesModal from './SeriesEpisodesModal';
 import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ import { useVideoSeries } from '@/hooks/useVideoSeries';
 import { useVideoViews } from '@/hooks/useVideoViews';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { useTranslation } from 'react-i18next';
+import { useLongPress } from '@/hooks/useLongPress';
 
 interface Video {
   id: string;
