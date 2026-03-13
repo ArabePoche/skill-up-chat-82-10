@@ -69,18 +69,17 @@ class SyncManager {
 
     const wasOnline = this.isOnline;
 
-    // Si le navigateur dit qu'on est hors ligne, c'est fiable
+    // Se fier uniquement à navigator.onLine pour détecter l'absence totale d'internet
+    // Les timeouts et lenteurs réseau ne doivent PAS déclencher le mode hors ligne
     if (!navigator.onLine) {
       this.isOnline = false;
       this.isCheckingConnection = false;
     } else {
-      // navigator.onLine = true → vérifier avec un ping léger (sans passer par le client Supabase qui peut être mocké ou cacher des choses)
+      // navigator.onLine = true → on fait un ping léger pour confirmer
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), 15000);
 
-        // Requête native HEAD sur l'URL Supabase pour vérifier la vraie connexion
-        // cache: 'no-store' est crucial pour forcer le passage outre le Service Worker
         const pingResponse = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/rest/v1/', {
           method: 'HEAD',
           cache: 'no-store',
@@ -89,32 +88,30 @@ class SyncManager {
 
         clearTimeout(timeout);
 
-        // 401 ou 404 indique que le serveur Supabase répond (donc réseau OK)
-        if (pingResponse.ok || pingResponse.status === 401 || pingResponse.status === 404) {
-          this.isOnline = true;
-          this.reconnectAttempts = 0;
-        } else {
-          // Status 5xx indiquerait potentiellement un souci côté serveur, mais on considère le réseau OK
-          // Par sécurité, on le laisse en ligne si on a reçu une réponse HTTP
-          console.log('⚠️ Ping returned status:', pingResponse.status);
-          this.isOnline = true;
-          this.reconnectAttempts = 0;
-        }
+        // Toute réponse HTTP = le réseau fonctionne
+        this.isOnline = true;
+        this.reconnectAttempts = 0;
       } catch (err: unknown) {
-        // TypeError est souvent soulevé pour une vraie défaillance réseau dans fetch()
         const errName = err instanceof Error ? err.name : '';
         const errMsg = err instanceof Error ? err.message.toLowerCase() : '';
 
-        const isNetworkError = errName === 'AbortError' ||
-          errName === 'TypeError' ||
-          errMsg.includes('network') ||
-          errMsg.includes('failed to fetch');
-
-        if (isNetworkError) {
-          console.log('📵 Network error detected during ping:', errMsg || errName);
-          this.isOnline = false;
+        // AbortError = timeout → connexion lente mais présente, on reste en ligne
+        if (errName === 'AbortError') {
+          console.log('⏱️ Ping timeout (connexion lente), on reste en ligne');
+          // Ne PAS passer hors ligne pour un simple timeout
         } else {
-          console.warn('⚠️ Unexpected check error, keeping state:', err);
+          // TypeError / failed to fetch = vraie absence de réseau
+          const isRealNetworkFailure =
+            errName === 'TypeError' ||
+            errMsg.includes('failed to fetch') ||
+            errMsg.includes('network');
+
+          if (isRealNetworkFailure && !navigator.onLine) {
+            console.log('📵 Vraie absence de réseau détectée');
+            this.isOnline = false;
+          } else {
+            console.warn('⚠️ Erreur ping ignorée, on reste en ligne:', errName, errMsg);
+          }
         }
       }
       this.isCheckingConnection = false;
