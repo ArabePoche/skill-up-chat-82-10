@@ -179,6 +179,7 @@ async function saveOutputVideo(
     console.log('📱 Fallback web pour le téléchargement vidéo');
   }
 
+  // Fallback web: clic synchrone (évite le blocage mobile avec setTimeout)
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = blobUrl;
@@ -186,12 +187,10 @@ async function saveOutputVideo(
   a.style.display = 'none';
   a.rel = 'noopener';
   document.body.appendChild(a);
-  setTimeout(() => {
-    a.click();
-    document.body.removeChild(a);
-  }, 0);
+  a.click();
+  document.body.removeChild(a);
 
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   onProgress?.(100);
 }
 
