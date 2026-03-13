@@ -114,18 +114,42 @@ const VideoCard: React.FC<VideoCardProps> = ({
 
   // Gestion de la lecture automatique selon le type de vidéo
   useEffect(() => {
-    if (isMp4 && videoRef.current) {
-      videoRef.current.muted = isMuted;
-      if (isActive) {
-        videoRef.current.play().then(() => {
-          setIsPlaying(true);
-        }).catch(console.error);
+    const video = videoRef.current;
+    if (!isMp4 || !video) return;
+
+    video.muted = isMuted;
+
+    let cancelled = false;
+
+    if (isActive) {
+      // Attendre que la vidéo soit prête avant de lancer play()
+      const tryPlay = () => {
+        if (cancelled) return;
+        const playPromise = video.play();
+        if (playPromise) {
+          playPromise
+            .then(() => { if (!cancelled) setIsPlaying(true); })
+            .catch((err) => {
+              // AbortError = vidéo démontée ou remplacée, on ignore silencieusement
+              if (err.name !== 'AbortError') console.error(err);
+            });
+        }
+      };
+
+      if (video.readyState >= 2) {
+        tryPlay();
       } else {
-        videoRef.current.pause();
-        videoRef.current.currentTime = 0; // Remettre au début quand on quitte
-        setIsPlaying(false);
+        video.addEventListener('canplay', tryPlay, { once: true });
       }
+    } else {
+      video.pause();
+      video.currentTime = 0;
+      setIsPlaying(false);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [isActive, isMp4, isMuted]);
 
   const handleVideoClick = () => {
