@@ -291,11 +291,7 @@ export async function downloadVideoWithWatermark({
   onProgress,
   onStageChange,
 }: DownloadOptions): Promise<void> {
-  // Sur mobile, télécharger directement le MP4 sans watermark
-  if (isMobileDevice()) {
-    return downloadDirectMp4(videoUrl, fileName, onProgress, onStageChange);
-  }
-
+  // Watermark sur toutes les plateformes (desktop + mobile)
   return new Promise(async (resolve, reject) => {
     let localBlobUrl: string | null = null;
     let canvasStream: MediaStream | null = null;
