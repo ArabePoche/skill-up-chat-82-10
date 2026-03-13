@@ -196,9 +196,93 @@ async function saveOutputVideo(
 }
 
 /**
+ * Détecte si on est sur un appareil mobile (navigateur web mobile)
+ */
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+/**
+ * Téléchargement direct MP4 sur mobile (sans watermark, compatible partout)
+ * Utilise saveMediaToDevice sur natif, sinon window.open en fallback web mobile
+ */
+async function downloadDirectMp4(
+  videoUrl: string,
+  fileName: string,
+  onProgress?: (percent: number) => void,
+  onStageChange?: (stage: string) => void
+): Promise<void> {
+  onStageChange?.('Téléchargement de la vidéo');
+  onProgress?.(2);
+
+  // Télécharger la vidéo en blob
+  const response = await fetch(videoUrl);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  const contentLength = response.headers.get('content-length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('ReadableStream non supporté');
+
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    if (total > 0) {
+      onProgress?.(Math.round((loaded / total) * 85));
+    }
+  }
+
+  const blob = new Blob(chunks, { type: 'video/mp4' });
+  const mp4FileName = fileName.replace(/\.\w+$/, '.mp4');
+
+  onStageChange?.('Enregistrement de la vidéo');
+  onProgress?.(90);
+
+  // Essayer la sauvegarde native (Capacitor)
+  try {
+    const { isNativePlatform, saveMediaToDevice } = await import('@/file-manager/utils/mediaGallery');
+    if (isNativePlatform()) {
+      const result = await saveMediaToDevice(blob, mp4FileName, 'video/mp4');
+      if (!result.success) {
+        throw new Error(result.error || 'Sauvegarde échouée');
+      }
+      onProgress?.(100);
+      return;
+    }
+  } catch {
+    console.log('📱 Fallback web mobile pour le téléchargement vidéo');
+  }
+
+  // Fallback web mobile: utiliser un lien avec URL blob + window.open
+  const blobUrl = URL.createObjectURL(blob);
+  onProgress?.(95);
+
+  // Sur mobile web, window.open est plus fiable que <a>.click()
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = mp4FileName;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+
+  // Forcer le clic de façon synchrone (pas dans un setTimeout)
+  link.click();
+  document.body.removeChild(link);
+
+  // Petit délai puis libérer la mémoire
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  onProgress?.(100);
+}
+
+/**
  * Télécharge une vidéo et l'encode avec un watermark via Canvas + MediaRecorder.
- * Priorité: produire une vidéo avec watermark sur desktop comme sur mobile.
- * Si l'encodage navigateur n'est pas supporté, une erreur est renvoyée.
+ * Sur mobile: télécharge le MP4 original directement (compatible partout).
+ * Sur desktop: re-encode avec watermark via Canvas.
  */
 export async function downloadVideoWithWatermark({
   videoUrl,
@@ -208,6 +292,11 @@ export async function downloadVideoWithWatermark({
   onProgress,
   onStageChange,
 }: DownloadOptions): Promise<void> {
+  // Sur mobile, télécharger directement le MP4 sans watermark
+  if (isMobileDevice()) {
+    return downloadDirectMp4(videoUrl, fileName, onProgress, onStageChange);
+  }
+
   return new Promise(async (resolve, reject) => {
     let localBlobUrl: string | null = null;
     let canvasStream: MediaStream | null = null;
