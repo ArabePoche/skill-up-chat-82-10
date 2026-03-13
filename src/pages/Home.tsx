@@ -50,8 +50,8 @@ const Home = () => {
     switch (activeTab) {
       case 'videos':
         return (
-          <div ref={videosRef} className="h-full overflow-y-auto snap-y snap-mandatory">
-            <TikTokVideosView targetVideoId={isVideoRoute ? id : undefined} />
+          <div ref={videosRef} className="h-full overflow-y-auto snap-y snap-mandatory overscroll-y-contain bg-black">
+            <TikTokVideosView targetVideoId={isVideoRoute ? id : undefined} scrollContainerRef={videosRef} />
           </div>
         );
       case 'posts':
@@ -64,8 +64,8 @@ const Home = () => {
         return <SearchView />;
       default:
         return (
-          <div ref={videosRef} className="h-full overflow-y-auto snap-y snap-mandatory">
-            <TikTokVideosView targetVideoId={isVideoRoute ? id : undefined} />
+          <div ref={videosRef} className="h-full overflow-y-auto snap-y snap-mandatory overscroll-y-contain bg-black">
+            <TikTokVideosView targetVideoId={isVideoRoute ? id : undefined} scrollContainerRef={videosRef} />
           </div>
         );
     }

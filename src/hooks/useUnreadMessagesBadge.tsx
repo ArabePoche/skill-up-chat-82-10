@@ -11,36 +11,48 @@ export const useUnreadMessagesBadge = (formationId?: string) => {
     queryFn: async () => {
       if (!user?.id || !formationId) return 0;
 
-      // Vérifier si l'utilisateur est professeur via teacher_formations
-      const { data: teacherCheck } = await supabase
-        .from('teachers')
-        .select(`
-          id,
-          teacher_formations!inner (
-            formation_id
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('teacher_formations.formation_id', formationId)
-        .single();
-
-      if (!teacherCheck) return 0;
-
-      // Compter les messages non lus (où read_by_teachers est null)
-      const { data: unreadMessages, error } = await supabase
-        .from('lesson_messages')
-        .select('id', { count: 'exact' })
-        .eq('formation_id', formationId)
-        .is('read_by_teachers', null) // Messages non lus par aucun prof
-        .neq('sender_id', user.id) // Exclure ses propres messages
-        .eq('is_system_message', false); // Exclure les messages système
+      // Utiliser la RPC dédiée pour appliquer exactement la même logique
+      // que les autres compteurs de non lus côté professeur.
+      const { data: unreadCount, error } = await supabase.rpc('get_formation_unread_count', {
+        p_formation_id: formationId,
+        p_teacher_id: user.id,
+      });
 
       if (error) {
-        console.error('Error counting unread messages:', error);
-        return 0;
+        console.error('Error counting unread messages via RPC, falling back:', error);
+
+        // Fallback défensif si la RPC n'est pas disponible dans l'environnement.
+        const { data: fallbackTeacherCheck } = await supabase
+          .from('teachers')
+          .select(`
+            id,
+            teacher_formations!inner (
+              formation_id
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('teacher_formations.formation_id', formationId)
+          .maybeSingle();
+
+        if (!fallbackTeacherCheck) return 0;
+
+        const { count: fallbackCount, error: fallbackError } = await supabase
+          .from('lesson_messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('formation_id', formationId)
+          .is('read_by_teachers', null)
+          .neq('sender_id', user.id)
+          .eq('is_system_message', false);
+
+        if (fallbackError) {
+          console.error('Error counting unread messages (fallback):', fallbackError);
+          return 0;
+        }
+
+        return fallbackCount || 0;
       }
 
-      return unreadMessages?.length || 0;
+      return unreadCount || 0;
     },
     enabled: !!user?.id && !!formationId,
     refetchInterval: 10000, // Rafraîchir toutes les 10 secondes

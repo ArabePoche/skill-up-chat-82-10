@@ -6,9 +6,14 @@ import { toast } from 'sonner';
 /**
  * Hook pour gérer le système d'amitié avec demandes
  */
-export const useFollow = (targetUserId?: string) => {
+interface UseFollowOptions {
+  enabled?: boolean;
+}
+
+export const useFollow = (targetUserId?: string, options?: UseFollowOptions) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const isEnabled = options?.enabled ?? true;
 
   // Vérifier le statut de la relation avec l'utilisateur
   const { data: friendshipStatus } = useQuery({
@@ -47,7 +52,7 @@ export const useFollow = (targetUserId?: string) => {
 
       return { status: 'none', requestId: null };
     },
-    enabled: !!user?.id && !!targetUserId && user.id !== targetUserId,
+    enabled: isEnabled && !!user?.id && !!targetUserId && user.id !== targetUserId,
   });
 
   // Envoyer une demande d'amitié

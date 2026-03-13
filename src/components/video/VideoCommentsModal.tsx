@@ -24,7 +24,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { comments, isLoading, isSubmitting, addComment } = useVideoComments(videoId);
+  const { comments, commentsCount, isLoading, isSubmitting, addComment } = useVideoComments(videoId);
   const [newComment, setNewComment] = useState('');
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -88,7 +88,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">
-                    {t('video.commentCount', { count: comments.length })}
+                    {t('video.commentCount', { count: commentsCount })}
                   </span>
                 </div>
                 

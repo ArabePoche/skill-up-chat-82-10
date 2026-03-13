@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useShopAgents, useCreateShopAgent, useUpdateShopAgent, useDeleteShopAgent, ShopAgent } from '@/hooks/shop/useShopAgents';
+import React, { useState, useEffect } from 'react';
+import { useShopAgents, useCreateShopAgent, useUpdateShopAgent, useDeleteShopAgent, useResetShopAgentPassword, useShopAgentAvatarUpload, ShopAgent } from '@/hooks/shop/useShopAgents';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,7 +14,10 @@ import {
     X,
     Lock,
     User as UserIcon,
-    Search
+    Search,
+    Key,
+    Camera,
+    RefreshCcw
 } from 'lucide-react';
 import {
     Dialog,
@@ -32,6 +35,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface BoutiqueAgentsManagerProps {
     shopId: string;
@@ -51,14 +55,18 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
         pin_code: '',
         username: '',
         password: '',
+        avatarFile: null as File | null,
     });
+    const [newAvatarPreview, setNewAvatarPreview] = useState<string | null>(null);
 
-    const [editingAgent, setEditingAgent] = useState<ShopAgent | null>(null);
+
+    const uploadAvatar = useShopAgentAvatarUpload(shopId);
+    const resetPasswordMut = useResetShopAgentPassword();
 
     const handleAddAgent = async () => {
         if (!newAgent.first_name || !newAgent.last_name) return;
 
-        await createAgent.mutateAsync({
+        const created: any = await createAgent.mutateAsync({
             shop_id: shopId,
             first_name: newAgent.first_name,
             last_name: newAgent.last_name,
@@ -69,7 +77,13 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
             user_id: null,
         });
 
-        setNewAgent({ first_name: '', last_name: '', role: 'vendeur', pin_code: '', username: '', password: '' });
+        // upload avatar if set
+        if (newAgent.avatarFile && created?.id) {
+            await uploadAvatar.mutateAsync({ agentId: created.id, file: newAgent.avatarFile });
+        }
+
+        setNewAgent({ first_name: '', last_name: '', role: 'vendeur', pin_code: '', username: '', password: '', avatarFile: null });
+        setNewAvatarPreview(null);
         setIsAddDialogOpen(false);
     };
 
@@ -86,6 +100,7 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
             deleteAgent.mutate({ id: agentId, shop_id: shopId });
         }
     };
+
 
     const getRoleBadge = (role: string) => {
         switch (role) {
@@ -159,6 +174,29 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Avatar</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={e => {
+                                        const file = e.target.files?.[0] || null;
+                                        setNewAgent(prev => ({ ...prev, avatarFile: file } as any));
+                                        if (file) {
+                                            setNewAvatarPreview(URL.createObjectURL(file));
+                                        } else {
+                                            setNewAvatarPreview(null);
+                                        }
+                                    }}
+                                />
+                                {newAvatarPreview && (
+                                    <img
+                                        src={newAvatarPreview}
+                                        className="w-16 h-16 rounded-full mt-2"
+                                        alt="aperçu avatar"
+                                    />
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Identifiant</label>
@@ -202,6 +240,7 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -209,9 +248,15 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
                     <Card key={agent.id} className={`overflow-hidden transition-all duration-300 ${agent.status === 'inactive' ? 'opacity-60 grayscale' : 'hover:shadow-lg border-primary/10'}`}>
                         <CardHeader className="p-4 pb-2 border-b bg-muted/30">
                             <div className="flex justify-between items-start">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border-2 border-white shadow-sm">
-                                    <UserIcon className="w-5 h-5" />
-                                </div>
+                                <Avatar className="w-10 h-10">
+                                    {agent.avatar_url ? (
+                                        <AvatarImage src={agent.avatar_url} />
+                                    ) : (
+                                        <AvatarFallback className="bg-primary/10 text-primary">
+                                            <UserIcon className="w-5 h-5" />
+                                        </AvatarFallback>
+                                    )}
+                                </Avatar>
                                 {getRoleBadge(agent.role)}
                             </div>
                         </CardHeader>

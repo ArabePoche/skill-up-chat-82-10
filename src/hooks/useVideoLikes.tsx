@@ -1,12 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 
-export const useVideoLikes = (videoId: string, initialLikesCount: number = 0) => {
+interface UseVideoLikesOptions {
+  enabled?: boolean;
+}
+
+export const useVideoLikes = (
+  videoId: string,
+  initialLikesCount: number = 0,
+  options?: UseVideoLikesOptions,
+) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const isEnabled = options?.enabled ?? true;
 
   // Vérifie si l'utilisateur a liké la vidéo
   const { data: userLike } = useQuery({
@@ -28,7 +36,7 @@ export const useVideoLikes = (videoId: string, initialLikesCount: number = 0) =>
 
       return data;
     },
-    enabled: !!user?.id && !!videoId,
+    enabled: isEnabled && !!user?.id && !!videoId,
   });
 
   // Compte dynamique des likes
@@ -47,7 +55,7 @@ export const useVideoLikes = (videoId: string, initialLikesCount: number = 0) =>
 
       return count ?? initialLikesCount;
     },
-    enabled: !!videoId,
+    enabled: isEnabled && !!videoId,
   });
 
   // Fonction de mutation like/unlike

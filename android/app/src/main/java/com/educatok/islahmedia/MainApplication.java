@@ -1,4 +1,4 @@
-package com.islamedia.com;
+package com.educatok.islahmedia;
 
 import android.app.Application;
 import com.google.firebase.FirebaseApp;

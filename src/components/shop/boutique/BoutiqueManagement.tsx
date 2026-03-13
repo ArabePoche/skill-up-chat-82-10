@@ -15,7 +15,7 @@ import { BoutiqueAgentsManager } from './BoutiqueAgentsManager';
 import BoutiqueSalesHistory from './BoutiqueSalesHistory';
 import { useShopOrders } from '@/hooks/shop/useShopOrders';
 import { useShopAgents } from '@/hooks/shop/useShopAgents';
-import { useAgentAuth } from '@/hooks/shop/useAgentAuth';
+import { AgentSession } from '@/hooks/shop/useAgentAuth';
 import { AgentLockScreen } from './AgentLockScreen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,7 +134,25 @@ const SimpleAutocomplete = ({
     );
 };
 
-const BoutiqueManagement: React.FC = () => {
+interface BoutiqueManagementProps {
+    activeAgent: AgentSession | null;
+    inactivityMinutes: number;
+    onInactivityMinutesChange: (minutes: number) => void;
+    onLogin: (username: string, pass: string) => Promise<any>;
+    onUnlock: (pin: string) => Promise<boolean>;
+    forgotPassword: () => Promise<void>;
+    updateProfile: (updates: Partial<{ first_name: string; last_name: string; password_hash: string; pin_code: string; avatar_url: string; }>) => Promise<boolean>;
+}
+
+const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
+    activeAgent,
+    inactivityMinutes,
+    onInactivityMinutesChange,
+    onLogin,
+    onUnlock,
+    forgotPassword,
+    updateProfile,
+}) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { data: userShops, isLoading: shopsLoading } = useUserShops();
@@ -186,8 +204,6 @@ const BoutiqueManagement: React.FC = () => {
     const [formLocation, setFormLocation] = useState('');
     const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
     const [filterCategory, setFilterCategory] = useState('all');
-
-    const { activeAgent, login, unlock, logout } = useAgentAuth(shop?.id);
 
     // Combobox states
     // Plus nécessaire avec SimpleAutocomplete
@@ -394,13 +410,18 @@ const BoutiqueManagement: React.FC = () => {
     // Boutique existante : vue de gestion
     return (
         <div className="pb-16 bg-white min-h-screen">
-            <AgentLockScreen
-                shopId={shop.id}
-                activeAgent={activeAgent}
-                onLogin={login}
-                onUnlock={unlock}
-                onLogout={logout}
-            />
+            {!activeAgent?.isUnlocked && (
+                <AgentLockScreen
+                    shopId={shop.id}
+                    activeAgent={activeAgent}
+                    inactivityMinutes={inactivityMinutes}
+                    onInactivityMinutesChange={onInactivityMinutesChange}
+                    onLogin={onLogin}
+                    onUnlock={onUnlock}
+                    forgotPassword={forgotPassword}
+                    updateProfile={updateProfile}
+                />
+            )}
 
             {/* Header boutique */}
             <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-3 sm:p-4 shadow-md">
@@ -485,6 +506,20 @@ const BoutiqueManagement: React.FC = () => {
                         >
                             <Plus size={16} />
                         </Button>
+                        {activeAgent?.isUnlocked && (
+                            <AgentLockScreen
+                                shopId={shop.id}
+                                activeAgent={activeAgent}
+                                inactivityMinutes={inactivityMinutes}
+                                onInactivityMinutesChange={onInactivityMinutesChange}
+                                triggerMode="inline"
+                                triggerClassName="bg-white/20 hover:bg-white/30 text-white border-0 h-8 w-8 rounded-md overflow-hidden"
+                                onLogin={onLogin}
+                                onUnlock={onUnlock}
+                                forgotPassword={forgotPassword}
+                                updateProfile={updateProfile}
+                            />
+                        )}
                     </div>
                 </div>
 
