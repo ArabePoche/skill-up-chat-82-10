@@ -107,7 +107,7 @@ function isMobileDevice(): boolean {
 }
 
 /**
- * Téléchargement direct en MP4 (mobile) — conserve le format original sans re-encodage
+ * Téléchargement direct en MP4 (mobile) — utilise la galerie native si disponible
  */
 async function downloadDirectMp4(
   videoUrl: string,
@@ -115,11 +115,53 @@ async function downloadDirectMp4(
   onProgress?: (percent: number) => void
 ): Promise<void> {
   onProgress?.(2);
-  const localBlobUrl = await fetchVideoAsBlob(videoUrl, onProgress);
-  onProgress?.(80);
 
+  // Télécharger le fichier en blob
+  const response = await fetch(videoUrl);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  const contentLength = response.headers.get('content-length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('ReadableStream non supporté');
+
+  const chunks: BlobPart[] = [];
+  let loaded = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    if (total > 0) {
+      onProgress?.(Math.round((loaded / total) * 70));
+    }
+  }
+
+  const blob = new Blob(chunks, { type: 'video/mp4' });
+  onProgress?.(75);
+
+  // Sur plateforme native (Capacitor) → sauvegarder dans la galerie
+  try {
+    const { isNativePlatform, saveMediaToDevice } = await import('@/file-manager/utils/mediaGallery');
+    if (isNativePlatform()) {
+      const mp4FileName = fileName.replace(/\.\w+$/, '.mp4');
+      const result = await saveMediaToDevice(blob, mp4FileName, 'video/mp4');
+      onProgress?.(100);
+      if (!result.success) {
+        throw new Error(result.error || 'Sauvegarde dans la galerie échouée');
+      }
+      return;
+    }
+  } catch (e: any) {
+    // Si l'import échoue ou si ce n'est pas natif, fallback web
+    console.log('📱 Fallback web pour le téléchargement vidéo');
+  }
+
+  // Fallback web : téléchargement classique via <a>
+  const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = localBlobUrl;
+  a.href = blobUrl;
   a.download = fileName.replace(/\.\w+$/, '.mp4');
   a.style.display = 'none';
   a.rel = 'noopener';
@@ -129,7 +171,7 @@ async function downloadDirectMp4(
     document.body.removeChild(a);
   }, 0);
 
-  setTimeout(() => URL.revokeObjectURL(localBlobUrl), 5000);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
   onProgress?.(100);
 }
 
