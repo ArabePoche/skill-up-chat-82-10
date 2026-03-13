@@ -64,9 +64,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [showSeries, setShowSeries] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Long press pour ouvrir le modal de téléchargement
+  const handleLongPress = useCallback(() => {
+    setShowDownload(true);
+  }, []);
+
+  const longPressHandlers = useLongPress({ onLongPress: handleLongPress });
 
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count);
   const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id);
