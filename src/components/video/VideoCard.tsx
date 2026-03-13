@@ -510,6 +510,15 @@ const VideoCard: React.FC<VideoCardProps> = ({
           currentVideoId={video.id}
         />
       )}
+
+      {/* Modal de téléchargement (appui long) */}
+      <VideoDownloadModal
+        isOpen={showDownload}
+        onClose={() => setShowDownload(false)}
+        videoUrl={video.video_url}
+        videoTitle={video.title}
+        authorName={video.profiles?.username || video.profiles?.first_name || 'user'}
+      />
     </div>
   );
 };
