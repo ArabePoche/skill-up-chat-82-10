@@ -1,6 +1,7 @@
 /**
  * Utilitaire pour télécharger une vidéo avec un watermark style TikTok
- * Utilise Canvas + MediaRecorder pour encoder la vidéo avec le watermark
+ * Télécharge d'abord la vidéo en blob local pour éviter les problèmes CORS,
+ * puis utilise Canvas + MediaRecorder pour encoder avec le watermark.
  */
 
 interface DownloadOptions {
@@ -21,39 +22,83 @@ function drawWatermark(
   watermarkText: string,
   authorName: string
 ) {
-  const now = Date.now();
-  const opacity = 0.3 + Math.sin(now / 2000) * 0.05; // Légère pulsation
-
   ctx.save();
 
   // — Watermark principal en haut à gauche —
-  ctx.globalAlpha = opacity;
+  ctx.globalAlpha = 0.35;
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
   ctx.shadowBlur = 4;
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
 
-  const mainSize = Math.max(16, width * 0.04);
+  const mainSize = Math.max(18, Math.round(width * 0.045));
   ctx.font = `bold ${mainSize}px "Arial", sans-serif`;
+  ctx.textAlign = 'left';
   ctx.fillText(watermarkText, 20, mainSize + 15);
 
   // — Nom de l'auteur en bas à gauche —
-  const authorSize = Math.max(12, width * 0.03);
+  const authorSize = Math.max(14, Math.round(width * 0.035));
   ctx.font = `600 ${authorSize}px "Arial", sans-serif`;
   ctx.fillText(`@${authorName}`, 20, height - 20);
 
-  // — Watermark discret en diagonale au centre —
-  ctx.globalAlpha = 0.08;
+  // — Watermark répété en diagonale au centre —
+  ctx.globalAlpha = 0.1;
   ctx.shadowBlur = 0;
-  const diagSize = Math.max(24, width * 0.06);
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  const diagSize = Math.max(28, Math.round(width * 0.07));
   ctx.font = `bold ${diagSize}px "Arial", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Motif diagonal répété (comme TikTok)
   ctx.translate(width / 2, height / 2);
   ctx.rotate(-Math.PI / 6);
-  ctx.textAlign = 'center';
-  ctx.fillText(watermarkText, 0, 0);
+  for (let row = -2; row <= 2; row++) {
+    for (let col = -2; col <= 2; col++) {
+      ctx.fillText(
+        watermarkText,
+        col * width * 0.4,
+        row * height * 0.25
+      );
+    }
+  }
 
   ctx.restore();
+}
+
+/**
+ * Télécharge le fichier vidéo en blob local pour éviter le CORS
+ */
+async function fetchVideoAsBlob(
+  videoUrl: string,
+  onProgress?: (percent: number) => void
+): Promise<string> {
+  const response = await fetch(videoUrl);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  const contentLength = response.headers.get('content-length');
+  const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('ReadableStream non supporté');
+
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    if (total > 0) {
+      onProgress?.(Math.round((loaded / total) * 40)); // 0-40% pour le download
+    }
+  }
+
+  const blob = new Blob(chunks, { type: 'video/mp4' });
+  return URL.createObjectURL(blob);
 }
 
 /**
@@ -67,14 +112,20 @@ export async function downloadVideoWithWatermark({
   onProgress,
 }: DownloadOptions): Promise<void> {
   return new Promise(async (resolve, reject) => {
+    let localBlobUrl: string | null = null;
+
     try {
-      // 1. Créer un élément vidéo hors-écran
+      // 1. Télécharger la vidéo en blob local (contourne CORS)
+      onProgress?.(2);
+      localBlobUrl = await fetchVideoAsBlob(videoUrl, onProgress);
+      onProgress?.(40);
+
+      // 2. Créer un élément vidéo depuis le blob local
       const video = document.createElement('video');
-      video.crossOrigin = 'anonymous';
       video.muted = true;
       video.playsInline = true;
       video.preload = 'auto';
-      video.src = videoUrl;
+      video.src = localBlobUrl;
 
       await new Promise<void>((res, rej) => {
         video.oncanplaythrough = () => res();
@@ -90,18 +141,18 @@ export async function downloadVideoWithWatermark({
         throw new Error('Métadonnées vidéo invalides');
       }
 
-      onProgress?.(10);
+      onProgress?.(45);
 
-      // 2. Créer le canvas pour le compositing
+      // 3. Créer le canvas pour le compositing
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
 
-      // 3. Capturer le flux canvas
-      const stream = canvas.captureStream(30); // 30 FPS
+      // 4. Capturer le flux canvas
+      const stream = canvas.captureStream(30);
 
-      // 4. Trouver un codec supporté
+      // 5. Trouver un codec supporté
       const mimeTypes = [
         'video/webm;codecs=vp9',
         'video/webm;codecs=vp8',
@@ -117,7 +168,7 @@ export async function downloadVideoWithWatermark({
       }
 
       if (!selectedMime) {
-        throw new Error('Aucun codec vidéo supporté');
+        throw new Error('Aucun codec vidéo supporté par le navigateur');
       }
 
       const mediaRecorder = new MediaRecorder(stream, {
@@ -138,26 +189,36 @@ export async function downloadVideoWithWatermark({
         // Déclencher le téléchargement
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileName.replace(/\.mp4$/, `.${ext}`);
+        a.download = fileName.replace(/\.\w+$/, `.${ext}`);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
+        }, 5000);
+
         onProgress?.(100);
         resolve();
       };
 
-      mediaRecorder.onerror = (e) => reject(e);
+      mediaRecorder.onerror = (e) => {
+        if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
+        reject(e);
+      };
 
-      // 5. Lire la vidéo et dessiner frame par frame
-      mediaRecorder.start(100); // Enregistrer par segments de 100ms
+      // 6. Accélérer la lecture pour un traitement plus rapide
+      video.playbackRate = 4.0; // 4x plus rapide
+      mediaRecorder.start(100);
       video.currentTime = 0;
       await video.play();
 
       const renderFrame = () => {
         if (video.ended || video.paused) {
-          mediaRecorder.stop();
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
           return;
         }
 
@@ -167,9 +228,9 @@ export async function downloadVideoWithWatermark({
         // Dessiner le watermark par-dessus
         drawWatermark(ctx, width, height, watermarkText, authorName);
 
-        // Progression
+        // Progression (45% - 95%)
         if (duration > 0) {
-          const pct = Math.round(10 + (video.currentTime / duration) * 85);
+          const pct = Math.round(45 + (video.currentTime / duration) * 50);
           onProgress?.(Math.min(pct, 95));
         }
 
@@ -184,10 +245,11 @@ export async function downloadVideoWithWatermark({
           if (mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
           }
-        }, 200);
+        }, 300);
       };
 
     } catch (error) {
+      if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
       reject(error);
     }
   });
