@@ -186,13 +186,18 @@ export async function downloadVideoWithWatermark({
         const blob = new Blob(chunks, { type: selectedMime });
         const url = URL.createObjectURL(blob);
 
-        // Déclencher le téléchargement
+        // Déclencher le téléchargement sans rafraîchir la page
         const a = document.createElement('a');
         a.href = url;
         a.download = fileName.replace(/\.\w+$/, `.${ext}`);
+        a.style.display = 'none';
+        a.rel = 'noopener';
         document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Utiliser setTimeout pour éviter le refresh de la page
+        setTimeout(() => {
+          a.click();
+          document.body.removeChild(a);
+        }, 0);
 
         setTimeout(() => {
           URL.revokeObjectURL(url);
