@@ -98,8 +98,45 @@ async function fetchVideoAsBlob(
 }
 
 /**
+ * Détecte si l'utilisateur est sur un appareil mobile
+ */
+function isMobileDevice(): boolean {
+  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
+
+/**
+ * Téléchargement direct en MP4 (mobile) — conserve le format original sans re-encodage
+ */
+async function downloadDirectMp4(
+  videoUrl: string,
+  fileName: string,
+  onProgress?: (percent: number) => void
+): Promise<void> {
+  onProgress?.(2);
+  const localBlobUrl = await fetchVideoAsBlob(videoUrl, onProgress);
+  onProgress?.(80);
+
+  const a = document.createElement('a');
+  a.href = localBlobUrl;
+  a.download = fileName.replace(/\.\w+$/, '.mp4');
+  a.style.display = 'none';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  setTimeout(() => {
+    a.click();
+    document.body.removeChild(a);
+  }, 0);
+
+  setTimeout(() => URL.revokeObjectURL(localBlobUrl), 5000);
+  onProgress?.(100);
+}
+
+/**
  * Télécharge une vidéo et l'encode avec un watermark via Canvas + MediaRecorder.
- * Combine la piste vidéo du canvas avec la piste audio de la vidéo originale.
+ * Sur mobile : télécharge le MP4 original directement (compatibilité maximale).
+ * Sur desktop : re-encode en WebM avec watermark.
  */
 export async function downloadVideoWithWatermark({
   videoUrl,
@@ -108,18 +145,22 @@ export async function downloadVideoWithWatermark({
   fileName,
   onProgress,
 }: DownloadOptions): Promise<void> {
+  // Mobile → téléchargement MP4 direct (pas de re-encodage WebM)
+  if (isMobileDevice()) {
+    return downloadDirectMp4(videoUrl, fileName, onProgress);
+  }
+
+  // Desktop → re-encodage avec watermark
   return new Promise(async (resolve, reject) => {
     let localBlobUrl: string | null = null;
 
     try {
-      // 1. Télécharger la vidéo en blob local (contourne CORS)
       onProgress?.(2);
       localBlobUrl = await fetchVideoAsBlob(videoUrl, onProgress);
       onProgress?.(40);
 
-      // 2. Créer un élément vidéo depuis le blob local
       const video = document.createElement('video');
-      video.muted = false; // Garder l'audio actif
+      video.muted = false;
       video.playsInline = true;
       video.preload = 'auto';
       video.crossOrigin = 'anonymous';
@@ -141,24 +182,18 @@ export async function downloadVideoWithWatermark({
 
       onProgress?.(45);
 
-      // 3. Créer le canvas pour le compositing
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
 
-      // 4. Combiner piste vidéo (canvas) + piste audio (vidéo originale)
       const canvasStream = canvas.captureStream(30);
 
-      // Capturer l'audio depuis la vidéo avec captureStream
-      // On doit muter la vidéo pour le navigateur mais capturer l'audio
       let combinedStream: MediaStream;
       try {
         const videoElementStream = (video as any).captureStream() as MediaStream;
         const audioTracks = videoElementStream.getAudioTracks();
-
         if (audioTracks.length > 0) {
-          // Combiner les pistes vidéo du canvas + audio de la vidéo
           combinedStream = new MediaStream([
             ...canvasStream.getVideoTracks(),
             ...audioTracks,
@@ -167,11 +202,9 @@ export async function downloadVideoWithWatermark({
           combinedStream = canvasStream;
         }
       } catch {
-        // Fallback si captureStream n'est pas supporté sur l'élément vidéo
         combinedStream = canvasStream;
       }
 
-      // 5. Trouver un codec supporté
       const mimeTypes = [
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
@@ -230,9 +263,8 @@ export async function downloadVideoWithWatermark({
         reject(e);
       };
 
-      // 6. Lecture à vitesse normale pour un encoding correct
       video.playbackRate = 1.0;
-      video.volume = 0; // Pas de son dans le navigateur, mais audio capturé
+      video.volume = 0;
       mediaRecorder.start(100);
       video.currentTime = 0;
       await video.play();
@@ -245,13 +277,9 @@ export async function downloadVideoWithWatermark({
           return;
         }
 
-        // Dessiner la frame vidéo
         ctx.drawImage(video, 0, 0, width, height);
-
-        // Dessiner le watermark par-dessus
         drawWatermark(ctx, width, height, watermarkText, authorName);
 
-        // Progression (45% - 95%)
         if (duration > 0) {
           const pct = Math.round(45 + (video.currentTime / duration) * 50);
           onProgress?.(Math.min(pct, 95));
@@ -262,7 +290,6 @@ export async function downloadVideoWithWatermark({
 
       requestAnimationFrame(renderFrame);
 
-      // Arrêter l'enregistrement quand la vidéo se termine
       video.onended = () => {
         setTimeout(() => {
           if (mediaRecorder.state === 'recording') {
