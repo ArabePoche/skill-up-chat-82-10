@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell } from 'lucide-react';
+import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell, Megaphone } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
