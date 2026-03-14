@@ -453,16 +453,35 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
               <Button variant="ghost" size="icon" onClick={() => setStep('form')}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <h3 className="font-semibold text-sm">
-                Aperçu — {publishType === 'post' ? '📝 Post' : '🔵 Statut'}
-              </h3>
+              <h3 className="font-semibold text-sm flex-1">Aperçu de l'annonce</h3>
+              {/* Switcher de prévisualisation si les 2 types sont sélectionnés */}
+              {publishAsPost && publishAsStatus && (
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={previewMode === 'post' ? 'default' : 'outline'}
+                    onClick={() => setPreviewMode('post')}
+                    className="text-xs h-7 px-2"
+                  >
+                    📝 Post
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewMode === 'status' ? 'default' : 'outline'}
+                    onClick={() => setPreviewMode('status')}
+                    className="text-xs h-7 px-2"
+                  >
+                    🔵 Statut
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {publishType === 'post' ? (
+            {/* Déterminer quel aperçu afficher */}
+            {((publishAsPost && !publishAsStatus) || (publishAsPost && publishAsStatus && previewMode === 'post')) ? (
               /* Prévisualisation Post */
               <div className="p-4">
                 <div className="border rounded-xl overflow-hidden bg-background shadow-sm">
-                  {/* Header du post */}
                   <div className="p-4 flex items-center gap-3 border-b bg-muted/20">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <Briefcase className="w-5 h-5 text-primary" />
@@ -472,39 +491,35 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                       <p className="text-[10px] text-muted-foreground">Sponsorisé · 📢 Recrutement</p>
                     </div>
                   </div>
-                  {/* Corps */}
+                  {/* Médias dans le post */}
+                  {mediaFiles.length > 0 && (
+                    <div className={`grid ${mediaFiles.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-0.5`}>
+                      {mediaFiles.map((media, idx) => (
+                        <div key={idx} className={`${mediaFiles.length === 1 ? 'aspect-video' : 'aspect-square'} overflow-hidden bg-muted`}>
+                          {media.type === 'image' ? (
+                            <img src={media.url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <video src={media.url} className="w-full h-full object-cover" muted controls />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="p-4 space-y-3">
                     <h4 className="font-bold text-base">{title}</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                      {description}
-                    </p>
-
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{description}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {skills.map(s => (
                         <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
                       ))}
                     </div>
-
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground pt-2">
-                      {location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {location}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="w-3 h-3" /> {contractType}
-                      </span>
-                      {salaryRange && (
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="w-3 h-3" /> {salaryRange}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {EXPERIENCE_LEVELS.find(e => e.value === experienceLevel)?.label}
-                      </span>
+                      {location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {location}</span>}
+                      <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {contractType}</span>
+                      {salaryRange && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {salaryRange}</span>}
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {EXPERIENCE_LEVELS.find(e => e.value === experienceLevel)?.label}</span>
                     </div>
                   </div>
-                  {/* Footer */}
                   <div className="p-3 border-t bg-muted/10 flex items-center justify-between text-xs text-muted-foreground">
                     <span>~{reach.toLocaleString('fr-FR')} personnes atteintes</span>
                     <span>{duration} jours</span>
@@ -514,11 +529,20 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
             ) : (
               /* Prévisualisation Statut */
               <div className="p-4 flex justify-center">
-                <div className="w-64 h-96 rounded-2xl bg-gradient-to-br from-primary/80 to-primary overflow-hidden relative shadow-lg flex flex-col justify-end">
+                <div className="w-64 h-96 rounded-2xl overflow-hidden relative shadow-lg flex flex-col justify-end">
+                  {/* Fond : média ou gradient */}
+                  {mediaFiles.length > 0 && mediaFiles[0].type === 'image' ? (
+                    <img src={mediaFiles[0].url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : mediaFiles.length > 0 && mediaFiles[0].type === 'video' ? (
+                    <video src={mediaFiles[0].url} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                  )}
+                  <div className="absolute inset-0 bg-black/20" />
                   <div className="absolute inset-0 flex items-center justify-center p-6">
-                    <div className="text-center text-primary-foreground">
+                    <div className="text-center text-white">
                       <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-80" />
-                      <h4 className="text-lg font-bold leading-tight">{title}</h4>
+                      <h4 className="text-lg font-bold leading-tight drop-shadow">{title}</h4>
                       {location && (
                         <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1">
                           <MapPin className="w-3 h-3" /> {location}
@@ -540,9 +564,13 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
 
             {/* Résumé budget */}
             <div className="p-4 border-t bg-muted/10">
-              <div className="flex items-center justify-between text-sm mb-3">
+              <div className="flex items-center justify-between text-sm mb-1">
                 <span className="text-muted-foreground">Budget</span>
                 <span className="font-bold text-primary">{formatBudget(budget)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                <span>Publication : {[publishAsPost && '📝 Post', publishAsStatus && '🔵 Statut'].filter(Boolean).join(' + ')}</span>
+                <span>{mediaFiles.length} média(s)</span>
               </div>
               <Button
                 className="w-full gap-2"
