@@ -220,6 +220,15 @@ export const useApproveRecruitmentAd = () => {
         const hasImage = mediaUrls.some(url => !url.match(/\.(mp4|webm|mov)/));
         const firstMedia = mediaUrls[0] || null;
 
+        const storyDescription = [
+          ad.description || '',
+          '',
+          (ad.skills || []).length > 0 ? `🔧 Compétences : ${ad.skills.join(', ')}` : '',
+          ad.location ? `📍 ${ad.location}` : '',
+          ad.salary_range ? `💰 ${ad.salary_range}` : '',
+          `📋 ${ad.contract_type} · ${ad.experience_level}`,
+        ].filter(Boolean).join('\n');
+
         await supabase
           .from('user_stories')
           .insert({
@@ -228,8 +237,9 @@ export const useApproveRecruitmentAd = () => {
             content_text: `📢 ${ad.title}`,
             media_url: firstMedia,
             background_color: '#2563eb',
-            description: `${ad.description || ''}\n📍 ${ad.location || ''} · ${ad.contract_type}`,
-          });
+            description: storyDescription,
+            recruitment_ad_id: ad.id,
+          } as any);
       }
 
       // 4. Notifier les candidats correspondants
