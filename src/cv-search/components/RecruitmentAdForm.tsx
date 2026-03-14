@@ -178,36 +178,44 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
   const isValid = title.trim().length >= 3 && description.trim().length >= 10 && budget >= 500 && (publishAsPost || publishAsStatus);
 
   const handleSubmit = async () => {
-    if (!user?.id || !isValid) return;
+    if (!user?.id || !isValid) {
+      console.error('❌ Validation échouée:', { userId: user?.id, isValid, title, description, budget, publishAsPost, publishAsStatus });
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
     const publishType = publishAsPost && publishAsStatus ? 'post' : publishAsPost ? 'post' : 'status';
-    await createAd.mutateAsync({
-      owner_id: user.id,
-      shop_id: shopId,
-      title: title.trim(),
-      description: description.trim(),
-      skills,
-      location: location.trim(),
-      salary_range: salaryRange.trim(),
-      contract_type: contractType,
-      experience_level: experienceLevel,
-      media_urls: mediaFiles.map(m => m.url),
-      publish_type: publishType,
-      publish_as_post: publishAsPost,
-      publish_as_status: publishAsStatus,
-      budget,
-    });
-    // Reset
-    setTitle('');
-    setDescription('');
-    setSkills([]);
-    setLocation('');
-    setSalaryRange('');
-    setBudget(1000);
-    setMediaFiles([]);
-    setPublishAsPost(true);
-    setPublishAsStatus(false);
-    setStep('form');
-    onOpenChange(false);
+    try {
+      await createAd.mutateAsync({
+        owner_id: user.id,
+        shop_id: shopId,
+        title: title.trim(),
+        description: description.trim(),
+        skills,
+        location: location.trim(),
+        salary_range: salaryRange.trim(),
+        contract_type: contractType,
+        experience_level: experienceLevel,
+        media_urls: mediaFiles.map(m => m.url),
+        publish_type: publishType,
+        publish_as_post: publishAsPost,
+        publish_as_status: publishAsStatus,
+        budget,
+      });
+      // Reset
+      setTitle('');
+      setDescription('');
+      setSkills([]);
+      setLocation('');
+      setSalaryRange('');
+      setBudget(1000);
+      setMediaFiles([]);
+      setPublishAsPost(true);
+      setPublishAsStatus(false);
+      setStep('form');
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error('❌ Erreur soumission annonce:', err);
+    }
   };
 
   const formatBudget = (v: number) => `${v.toLocaleString('fr-FR')} FCFA`;
