@@ -29,6 +29,9 @@ export interface RecruitmentAd {
   expires_at: string | null;
   created_at: string;
   updated_at: string;
+  positions: string[];
+  required_documents: string[];
+  full_address: string;
 }
 
 export interface CreateRecruitmentAdInput {
