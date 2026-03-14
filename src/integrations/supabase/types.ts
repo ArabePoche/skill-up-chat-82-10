@@ -3004,6 +3004,10 @@ export type Database = {
         Row: {
           age_range: Json | null
           author_id: string
+          boost_budget: number | null
+          boost_estimated_reach: number | null
+          boost_expires_at: string | null
+          boost_status: string | null
           comments_count: number
           content: string
           created_at: string
@@ -3012,6 +3016,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          is_boosted: boolean | null
           likes_count: number
           post_type: string
           recruitment_ad_id: string | null
@@ -3022,6 +3027,10 @@ export type Database = {
         Insert: {
           age_range?: Json | null
           author_id: string
+          boost_budget?: number | null
+          boost_estimated_reach?: number | null
+          boost_expires_at?: string | null
+          boost_status?: string | null
           comments_count?: number
           content: string
           created_at?: string
@@ -3030,6 +3039,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_boosted?: boolean | null
           likes_count?: number
           post_type: string
           recruitment_ad_id?: string | null
@@ -3040,6 +3050,10 @@ export type Database = {
         Update: {
           age_range?: Json | null
           author_id?: string
+          boost_budget?: number | null
+          boost_estimated_reach?: number | null
+          boost_expires_at?: string | null
+          boost_status?: string | null
           comments_count?: number
           content?: string
           created_at?: string
@@ -3048,6 +3062,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_boosted?: boolean | null
           likes_count?: number
           post_type?: string
           recruitment_ad_id?: string | null
@@ -3779,6 +3794,7 @@ export type Database = {
       }
       recruitment_ads: {
         Row: {
+          ad_type: string
           budget: number
           contract_type: string | null
           created_at: string
@@ -3793,11 +3809,15 @@ export type Database = {
           media_urls: string[] | null
           owner_id: string
           positions: string[] | null
+          product_id: string | null
+          product_name: string | null
+          product_price: number | null
           publish_as_post: boolean | null
           publish_as_status: boolean | null
           publish_type: string
           required_documents: string[] | null
           salary_range: string | null
+          service_description: string | null
           shop_id: string | null
           skills: string[] | null
           status: string
@@ -3805,6 +3825,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ad_type?: string
           budget?: number
           contract_type?: string | null
           created_at?: string
@@ -3819,11 +3840,15 @@ export type Database = {
           media_urls?: string[] | null
           owner_id: string
           positions?: string[] | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
           publish_as_post?: boolean | null
           publish_as_status?: boolean | null
           publish_type?: string
           required_documents?: string[] | null
           salary_range?: string | null
+          service_description?: string | null
           shop_id?: string | null
           skills?: string[] | null
           status?: string
@@ -3831,6 +3856,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ad_type?: string
           budget?: number
           contract_type?: string | null
           created_at?: string
@@ -3845,11 +3871,15 @@ export type Database = {
           media_urls?: string[] | null
           owner_id?: string
           positions?: string[] | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
           publish_as_post?: boolean | null
           publish_as_status?: boolean | null
           publish_type?: string
           required_documents?: string[] | null
           salary_range?: string | null
+          service_description?: string | null
           shop_id?: string | null
           skills?: string[] | null
           status?: string
@@ -3857,6 +3887,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recruitment_ads_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shop_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recruitment_ads_shop_id_fkey"
             columns: ["shop_id"]
