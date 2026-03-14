@@ -141,8 +141,8 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
     setPhotoPreview(null);
   };
 
-  const needsPhoto = requiredDocuments.includes('photo');
-  const needsCv = requiredDocuments.includes('cv');
+  const needsPhoto = effectiveDocs.includes('photo');
+  const needsCv = effectiveDocs.includes('cv');
 
   const isFormValid = () => {
     if (!motivation.trim()) return false;
