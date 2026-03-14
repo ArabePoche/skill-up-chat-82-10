@@ -150,7 +150,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
     if (!acceptTerms || !acceptDataProcessing) return false;
     if (needsPhoto && !photoFile) return false;
     if (needsCv && !useExistingCv && !cvFile) return false;
-    if (positions.length > 0 && !selectedPosition) return false;
+    if (effectivePositions.length > 0 && !selectedPosition) return false;
     return true;
   };
 
