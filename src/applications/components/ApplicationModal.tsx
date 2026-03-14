@@ -236,11 +236,11 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           )}
 
           {/* Sélection du poste si plusieurs */}
-          {positions.length > 0 && (
+          {effectivePositions.length > 0 && (
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Poste visé *</Label>
               <RadioGroup value={selectedPosition} onValueChange={setSelectedPosition}>
-                {positions.map(pos => (
+                {effectivePositions.map(pos => (
                   <div key={pos} className="flex items-center space-x-2">
                     <RadioGroupItem value={pos} id={`pos-${pos}`} />
                     <Label htmlFor={`pos-${pos}`} className="text-sm cursor-pointer">{pos}</Label>
