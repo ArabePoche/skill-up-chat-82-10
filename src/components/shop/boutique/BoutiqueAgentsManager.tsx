@@ -43,6 +43,7 @@ interface BoutiqueAgentsManagerProps {
 }
 
 export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ shopId }) => {
+    const navigate = useNavigate();
     const { data: agents, isLoading } = useShopAgents(shopId);
     const createAgent = useCreateShopAgent();
     const updateAgent = useUpdateShopAgent();
