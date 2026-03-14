@@ -175,10 +175,11 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     }
   };
 
-  const isValid = title.trim().length >= 3 && description.trim().length >= 10 && budget >= 500;
+  const isValid = title.trim().length >= 3 && description.trim().length >= 10 && budget >= 500 && (publishAsPost || publishAsStatus);
 
   const handleSubmit = async () => {
     if (!user?.id || !isValid) return;
+    const publishType = publishAsPost && publishAsStatus ? 'post' : publishAsPost ? 'post' : 'status';
     await createAd.mutateAsync({
       owner_id: user.id,
       shop_id: shopId,
@@ -189,7 +190,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
       salary_range: salaryRange.trim(),
       contract_type: contractType,
       experience_level: experienceLevel,
-      media_urls: [],
+      media_urls: mediaFiles.map(m => m.url),
       publish_type: publishType,
       budget,
     });
@@ -200,6 +201,9 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     setLocation('');
     setSalaryRange('');
     setBudget(1000);
+    setMediaFiles([]);
+    setPublishAsPost(true);
+    setPublishAsStatus(false);
     setStep('form');
     onOpenChange(false);
   };
