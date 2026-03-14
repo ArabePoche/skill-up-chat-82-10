@@ -90,6 +90,8 @@ const AdminDashboard = () => {
         return <UsersManagement />;
       case 'push-notifications':
         return <PushNotificationSender />;
+      case 'recruitment-ads':
+        return <RecruitmentAdsManagement />;
       default:
         return <DashboardStats />;
     }

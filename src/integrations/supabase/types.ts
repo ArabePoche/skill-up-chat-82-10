@@ -3780,6 +3780,8 @@ export type Database = {
           location: string | null
           media_urls: string[] | null
           owner_id: string
+          publish_as_post: boolean | null
+          publish_as_status: boolean | null
           publish_type: string
           salary_range: string | null
           shop_id: string | null
@@ -3801,6 +3803,8 @@ export type Database = {
           location?: string | null
           media_urls?: string[] | null
           owner_id: string
+          publish_as_post?: boolean | null
+          publish_as_status?: boolean | null
           publish_type?: string
           salary_range?: string | null
           shop_id?: string | null
@@ -3822,6 +3826,8 @@ export type Database = {
           location?: string | null
           media_urls?: string[] | null
           owner_id?: string
+          publish_as_post?: boolean | null
+          publish_as_status?: boolean | null
           publish_type?: string
           salary_range?: string | null
           shop_id?: string | null
