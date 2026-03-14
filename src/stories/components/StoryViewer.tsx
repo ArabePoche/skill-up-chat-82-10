@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Send, Eye, Mic } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Send, Eye, Mic, Briefcase } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import StoryViewersModal from './StoryViewersModal';
 import { useNavigate } from 'react-router-dom';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { ApplicationModal } from '@/applications/components/ApplicationModal';
+import { useCheckExistingApplication } from '@/applications/hooks/useApplications';
 
 interface StoryViewerProps {
   stories: any[];
@@ -41,9 +43,18 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const { user } = useAuth();
   const story = stories[currentStoryIndex];
   
-  // Vérifier si c'est ma story
+  // Détection story de recrutement
+  const isRecruitmentStory = !!(story as any)?.recruitment_ad_id;
   const isMyStory = story?.user_id === user?.id;
   const viewsCount = story?.story_views?.length || 0;
+
+  // Vérifier candidature existante pour stories de recrutement
+  const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+  const { data: existingApplication } = useCheckExistingApplication(
+    user?.id || '',
+    isRecruitmentStory ? (story as any).recruitment_ad_id : '',
+    'recruitment_ad'
+  );
 
   useEffect(() => {
     if (story?.id && story?.user_id) {
@@ -387,7 +398,34 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         </div>
       </div>
 
-      {/* Reply section - AMÉLIORÉ POUR MOBILE - Caché pour ma propre story */}
+      {/* Bouton Postuler pour stories de recrutement */}
+      {isRecruitmentStory && !isMyStory && user && (
+        <div className="absolute bottom-44 sm:bottom-48 left-4 right-4 z-40">
+          {existingApplication ? (
+            <Button
+              disabled
+              className="w-full bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-full"
+            >
+              <Briefcase className="mr-2 h-4 w-4" />
+              {existingApplication.status === 'approved' 
+                ? '✅ Candidature acceptée'
+                : existingApplication.status === 'rejected'
+                ? '❌ Candidature refusée'
+                : '📨 Candidature envoyée'}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => { setIsPaused(true); setApplicationModalOpen(true); }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full font-semibold"
+            >
+              <Briefcase className="mr-2 h-4 w-4" />
+              Postuler à cette offre
+            </Button>
+          )}
+        </div>
+      )}
+
+
       {!isMyStory && (
         <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-40">
           {showReplyInput ? (
@@ -464,6 +502,18 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           isOpen={showViewersModal}
           onClose={handleCloseViewers}
           storyId={story.id}
+        />
+      )}
+
+      {/* Modal de candidature pour stories de recrutement */}
+      {isRecruitmentStory && applicationModalOpen && (
+        <ApplicationModal
+          isOpen={applicationModalOpen}
+          onClose={() => { setApplicationModalOpen(false); setIsPaused(false); }}
+          userId={user?.id || ''}
+          recruiterId={story.user_id}
+          sourceId={(story as any).recruitment_ad_id}
+          sourceType="recruitment_ad"
         />
       )}
     </div>
