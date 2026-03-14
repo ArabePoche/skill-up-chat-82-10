@@ -535,6 +535,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
           sourceId={post.id}
           sourceType="post"
           postContent={post.content}
+          requiredDocuments={post.recruitment_ad?.required_documents || []}
+          positions={post.recruitment_ad?.positions || []}
         />
       )}
     </div>
