@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Send, Eye, Mic } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Send, Eye, Mic, Briefcase } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import StoryViewersModal from './StoryViewersModal';
 import { useNavigate } from 'react-router-dom';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { ApplicationModal } from '@/applications/components/ApplicationModal';
+import { useCheckExistingApplication } from '@/applications/hooks/useApplications';
 
 interface StoryViewerProps {
   stories: any[];
