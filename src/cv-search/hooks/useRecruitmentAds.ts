@@ -1,6 +1,7 @@
 /**
  * Hook pour gérer les annonces de recrutement payantes
  * CRUD + estimation de portée selon le budget
+ * Flux : création → pending_approval → admin approuve → publication dans posts/stories
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,9 +20,11 @@ export interface RecruitmentAd {
   experience_level: string;
   media_urls: string[];
   publish_type: 'post' | 'status';
+  publish_as_post: boolean;
+  publish_as_status: boolean;
   budget: number;
   estimated_reach: number;
-  status: 'draft' | 'pending_payment' | 'active' | 'expired' | 'cancelled';
+  status: 'draft' | 'pending_approval' | 'pending_payment' | 'active' | 'rejected' | 'expired' | 'cancelled';
   is_active: boolean;
   expires_at: string | null;
   created_at: string;
@@ -45,13 +48,9 @@ export interface CreateRecruitmentAdInput {
 
 /**
  * Estime la portée en fonction du budget (FCFA)
- * Modèle simplifié : ~10 vues par 100 FCFA de base, avec bonus dégressif
  */
 export const estimateReach = (budget: number): number => {
   if (budget <= 0) return 0;
-  // Base: 10 vues / 100 FCFA pour les premiers 5000
-  // Puis 8 vues / 100 FCFA jusqu'à 20000
-  // Puis 5 vues / 100 FCFA au-delà
   let reach = 0;
   if (budget <= 5000) {
     reach = Math.floor(budget / 100) * 10;
@@ -73,6 +72,7 @@ export const estimateDuration = (budget: number): number => {
   return 30;
 };
 
+/** Récupérer les annonces d'un utilisateur */
 export const useRecruitmentAds = (ownerId?: string) => {
   return useQuery({
     queryKey: ['recruitment-ads', ownerId],
@@ -90,6 +90,24 @@ export const useRecruitmentAds = (ownerId?: string) => {
   });
 };
 
+/** Récupérer toutes les annonces en attente d'approbation (admin) */
+export const usePendingRecruitmentAds = () => {
+  return useQuery({
+    queryKey: ['recruitment-ads', 'pending'],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from('recruitment_ads' as any)
+        .select('*')
+        .eq('status', 'pending_approval')
+        .order('created_at', { ascending: false }) as any);
+
+      if (error) throw error;
+      return data as RecruitmentAd[];
+    },
+  });
+};
+
+/** Créer une annonce (statut pending_approval, pas de publication immédiate) */
 export const useCreateRecruitmentAd = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -114,9 +132,11 @@ export const useCreateRecruitmentAd = () => {
           experience_level: input.experience_level,
           media_urls: input.media_urls,
           publish_type: input.publish_type,
+          publish_as_post: input.publish_as_post,
+          publish_as_status: input.publish_as_status,
           budget: input.budget,
           estimated_reach,
-          status: 'pending_payment', // En attente de paiement
+          status: 'pending_approval',
           is_active: false,
           expires_at,
         })
@@ -124,22 +144,55 @@ export const useCreateRecruitmentAd = () => {
         .single() as any);
 
       if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: '📢 Annonce soumise !',
+        description: "Votre annonce est en attente d'approbation par un administrateur.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['recruitment-ads'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erreur',
+        description: error.message || "Impossible de créer l'annonce",
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-      // === Créer un vrai Post si publishAsPost ===
-      if (input.publish_as_post) {
-        const postContent = `📢 **${input.title}**\n\n${input.description}\n\n` +
-          (input.skills.length > 0 ? `🔧 Compétences : ${input.skills.join(', ')}\n` : '') +
-          (input.location ? `📍 ${input.location}\n` : '') +
-          (input.salary_range ? `💰 ${input.salary_range}\n` : '') +
-          `📋 ${input.contract_type} · ${input.experience_level}`;
+/** Admin approuve une annonce → publie dans posts/stories + notifie les candidats */
+export const useApproveRecruitmentAd = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ad: RecruitmentAd) => {
+      // 1. Mettre à jour le statut
+      const { error: updateError } = await (supabase
+        .from('recruitment_ads' as any)
+        .update({ status: 'active', is_active: true })
+        .eq('id', ad.id) as any);
+
+      if (updateError) throw updateError;
+
+      // 2. Créer un Post si demandé
+      if (ad.publish_as_post) {
+        const postContent = `📢 **${ad.title}**\n\n${ad.description || ''}\n\n` +
+          ((ad.skills || []).length > 0 ? `🔧 Compétences : ${ad.skills.join(', ')}\n` : '') +
+          (ad.location ? `📍 ${ad.location}\n` : '') +
+          (ad.salary_range ? `💰 ${ad.salary_range}\n` : '') +
+          `📋 ${ad.contract_type} · ${ad.experience_level}`;
 
         const { data: postData, error: postError } = await supabase
           .from('posts')
           .insert({
             content: postContent,
             post_type: 'recruitment',
-            author_id: input.owner_id,
-            image_url: input.media_urls[0] || null,
+            author_id: ad.owner_id,
+            image_url: (ad.media_urls || [])[0] || null,
             is_active: true,
             likes_count: 0,
             comments_count: 0,
@@ -147,8 +200,8 @@ export const useCreateRecruitmentAd = () => {
           .select()
           .single();
 
-        if (!postError && postData && input.media_urls.length > 0) {
-          const mediaRows = input.media_urls.map((url, idx) => ({
+        if (!postError && postData && (ad.media_urls || []).length > 0) {
+          const mediaRows = ad.media_urls.map((url, idx) => ({
             post_id: postData.id,
             file_url: url,
             file_type: url.match(/\.(mp4|webm|mov)/) ? 'video' : 'image',
@@ -158,26 +211,27 @@ export const useCreateRecruitmentAd = () => {
         }
       }
 
-      // === Créer un vrai Statut (Story) si publishAsStatus ===
-      if (input.publish_as_status) {
-        const hasImage = input.media_urls.some(url => !url.match(/\.(mp4|webm|mov)/));
-        const hasVideo = input.media_urls.some(url => url.match(/\.(mp4|webm|mov)/));
-        const firstMedia = input.media_urls[0] || null;
+      // 3. Créer un Statut (Story) si demandé
+      if (ad.publish_as_status) {
+        const mediaUrls = ad.media_urls || [];
+        const hasVideo = mediaUrls.some(url => url.match(/\.(mp4|webm|mov)/));
+        const hasImage = mediaUrls.some(url => !url.match(/\.(mp4|webm|mov)/));
+        const firstMedia = mediaUrls[0] || null;
 
         await supabase
           .from('user_stories')
           .insert({
-            user_id: input.owner_id,
+            user_id: ad.owner_id,
             content_type: hasVideo ? 'video' : hasImage ? 'image' : 'text',
-            content_text: `📢 ${input.title}`,
+            content_text: `📢 ${ad.title}`,
             media_url: firstMedia,
             background_color: '#2563eb',
-            description: `${input.description}\n📍 ${input.location || ''} · ${input.contract_type}`,
+            description: `${ad.description || ''}\n📍 ${ad.location || ''} · ${ad.contract_type}`,
           });
       }
 
-      // Envoyer des notifications aux candidats correspondants
-      if (input.skills.length > 0) {
+      // 4. Notifier les candidats correspondants
+      if ((ad.skills || []).length > 0) {
         const { data: matchingCvs } = await supabase
           .from('public_cvs')
           .select('user_id')
@@ -186,29 +240,36 @@ export const useCreateRecruitmentAd = () => {
         const matchedUserIds = (matchingCvs || [])
           .filter((cv: any) => {
             const cvString = JSON.stringify(cv).toLowerCase();
-            return input.skills.some(s => cvString.includes(s.toLowerCase()));
+            return ad.skills.some(s => cvString.includes(s.toLowerCase()));
           })
           .map((cv: any) => cv.user_id)
-          .filter((id: string) => id !== input.owner_id);
+          .filter((id: string) => id !== ad.owner_id);
 
         if (matchedUserIds.length > 0) {
           const notifications = matchedUserIds.map((userId: string) => ({
             user_id: userId,
             type: 'recruitment_ad',
             title: '📢 Nouvelle offre de recrutement',
-            message: `"${input.title}" correspond à votre profil – Consultez l'annonce !`,
+            message: `"${ad.title}" correspond à votre profil – Consultez l'annonce !`,
             is_read: false,
           }));
           await supabase.from('notifications').insert(notifications);
         }
       }
 
-      return data;
+      // 5. Notifier le propriétaire
+      await supabase.from('notifications').insert({
+        user_id: ad.owner_id,
+        type: 'recruitment_ad',
+        title: '✅ Annonce approuvée',
+        message: `Votre annonce "${ad.title}" a été approuvée et publiée !`,
+        is_read: false,
+      });
     },
     onSuccess: () => {
       toast({
-        title: '📢 Annonce créée !',
-        description: 'Votre annonce est visible dans les posts et/ou statuts.',
+        title: '✅ Annonce approuvée',
+        description: "L'annonce a été publiée dans les posts/statuts.",
       });
       queryClient.invalidateQueries({ queryKey: ['recruitment-ads'] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -217,7 +278,47 @@ export const useCreateRecruitmentAd = () => {
     onError: (error: any) => {
       toast({
         title: 'Erreur',
-        description: error.message || "Impossible de créer l'annonce",
+        description: error.message || "Impossible d'approuver l'annonce",
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+/** Admin rejette une annonce */
+export const useRejectRecruitmentAd = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ adId, ownerId, title }: { adId: string; ownerId: string; title: string }) => {
+      const { error } = await (supabase
+        .from('recruitment_ads' as any)
+        .update({ status: 'rejected', is_active: false })
+        .eq('id', adId) as any);
+
+      if (error) throw error;
+
+      // Notifier le propriétaire
+      await supabase.from('notifications').insert({
+        user_id: ownerId,
+        type: 'recruitment_ad',
+        title: '❌ Annonce refusée',
+        message: `Votre annonce "${title}" n'a pas été approuvée. Contactez le support pour plus d'informations.`,
+        is_read: false,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: '❌ Annonce refusée',
+        description: 'Le propriétaire a été notifié.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['recruitment-ads'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erreur',
+        description: error.message || "Impossible de refuser l'annonce",
         variant: 'destructive',
       });
     },

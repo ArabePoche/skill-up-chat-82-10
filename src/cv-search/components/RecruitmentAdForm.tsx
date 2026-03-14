@@ -580,10 +580,10 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 disabled={createAd.isPending}
               >
                 <Send className="w-4 h-4" />
-                {createAd.isPending ? 'Publication...' : 'Publier l\'annonce'}
+                {createAd.isPending ? 'Soumission...' : "Soumettre l'annonce"}
               </Button>
               <p className="text-[10px] text-center text-muted-foreground mt-2">
-                Le paiement mobile money / carte sera demandé pour activer la diffusion
+                Votre annonce sera examinée par un administrateur avant publication
               </p>
             </div>
           </div>

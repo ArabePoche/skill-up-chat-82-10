@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell } from 'lucide-react';
+import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell, Megaphone } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -78,6 +78,11 @@ const menuItems = [
     title: 'Notifications Push',
     value: 'push-notifications',
     icon: Bell,
+  },
+  {
+    title: 'Annonces Recrutement',
+    value: 'recruitment-ads',
+    icon: Megaphone,
   },
 ];
 
