@@ -402,7 +402,8 @@ export const useUpdatePost = () => {
       imageFiles,
       removedMediaIds,
       removeImage,
-      recruitmentOptions
+      recruitmentOptions,
+      boostOptions,
     }: {
       postId: string;
       content: string;
@@ -417,6 +418,13 @@ export const useUpdatePost = () => {
         geographicZones?: string[];
         ageRange?: {min?: number; max?: number};
         gender?: string;
+      };
+      boostOptions?: {
+        is_boosted: boolean;
+        boost_budget: number;
+        boost_estimated_reach: number;
+        boost_status: string;
+        boost_expires_at: string;
       };
     }) => {
       // Gestion des uploads (single ou multiple)
