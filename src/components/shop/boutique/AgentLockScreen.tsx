@@ -6,7 +6,9 @@ import {
     Fingerprint,
     ChevronRight,
     RefreshCcw,
-    Keyboard
+    Keyboard,
+    LogOut,
+    Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
