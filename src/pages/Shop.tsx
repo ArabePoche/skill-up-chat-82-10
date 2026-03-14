@@ -30,7 +30,7 @@ import { useMyAgentStatus } from '@/hooks/shop/useShopAgentRequests';
 import AgentRequestDialog from '@/components/shop/boutique/AgentRequestDialog';
 import PendingAgentRequestsPanel from '@/components/shop/boutique/PendingAgentRequestsPanel';
 import { Badge } from '@/components/ui/badge';
-import { Clock, UserPlus } from 'lucide-react';
+import { Clock, UserPlus, Lock, LogOut } from 'lucide-react';
 
 const Shop = () => {
   const { t } = useTranslation();
@@ -79,6 +79,8 @@ const Shop = () => {
     updateInactivityMinutes,
     login,
     unlock,
+    lock,
+    logout,
     forgotPassword,
     updateProfile,
   } = useAgentAuth(shop?.id, { lockScopeActive: canAccessGestion && mainView === 'gestion' });
@@ -180,6 +182,28 @@ const Shop = () => {
       {/* Vue Gestion boutique */}
       {canAccessGestion && mainView === 'gestion' ? (
         <div>
+          {/* Barre de session agent */}
+          {activeAgent?.isUnlocked && (
+            <div className="flex items-center justify-between bg-muted/50 border-b px-4 py-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {activeAgent.firstName} {activeAgent.lastName}
+                </span>
+                <Badge variant="secondary" className="text-xs">{activeAgent.role}</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={lock} className="text-muted-foreground hover:text-foreground">
+                  <Lock size={16} className="mr-1" />
+                  Verrouiller
+                </Button>
+                <Button variant="ghost" size="sm" onClick={logout} className="text-destructive hover:text-destructive">
+                  <LogOut size={16} className="mr-1" />
+                  Déconnexion
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Panneau des demandes en attente (visible par le propriétaire) */}
           {isShopOwner && shop && (
             <div className="p-4">
