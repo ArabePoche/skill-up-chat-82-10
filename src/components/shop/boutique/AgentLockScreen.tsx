@@ -409,7 +409,9 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                                 <Input
                                     id="new-pin"
                                     value={profileForm.pin_code}
-                                    onChange={e => setProfileForm(prev => ({ ...prev, pin_code: e.target.value }))}
+                                    onChange={e => setProfileForm(prev => ({ ...prev, pin_code: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                                    maxLength={6}
+                                    placeholder="6 chiffres"
                                     className="bg-white/10 border-white/20 text-white"
                                 />
                             </div>
