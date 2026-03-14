@@ -61,7 +61,23 @@ const CvSearchPage: React.FC<CvSearchPageProps> = ({ shopId }) => {
               Trouvez les profils qui correspondent à vos besoins
             </p>
           </div>
+          <Button
+            onClick={() => setAdFormOpen(true)}
+            className="gap-2 shrink-0"
+            size="sm"
+          >
+            <Megaphone className="w-4 h-4" />
+            <span className="hidden sm:inline">Lancer une annonce</span>
+            <span className="sm:hidden">Annonce</span>
+          </Button>
         </div>
+
+        {/* Formulaire d'annonce */}
+        <RecruitmentAdForm
+          open={adFormOpen}
+          onOpenChange={setAdFormOpen}
+          shopId={shopId}
+        />
 
         {/* Filtres */}
         <CvSearchFiltersBar
