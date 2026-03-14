@@ -147,15 +147,19 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   const needsPhoto = effectiveDocs.some(d => d === 'photo' || d.toLowerCase().includes('photo'));
   const needsCv = effectiveDocs.some(d => d === 'cv' || d.toLowerCase() === 'cv');
 
-  const isFormValid = () => {
-    if (!motivation.trim()) return false;
-    if (!availableImmediately) return false;
-    if (!acceptTerms || !acceptDataProcessing) return false;
-    if (needsPhoto && !photoFile) return false;
-    if (needsCv && !useExistingCv && !cvFile) return false;
-    if (effectivePositions.length > 0 && !selectedPosition) return false;
-    return true;
+  const getMissingFields = (): string[] => {
+    const missing: string[] = [];
+    if (!motivation.trim()) missing.push('Motivation');
+    if (!availableImmediately) missing.push('Disponibilité');
+    if (!acceptTerms) missing.push('Conditions générales');
+    if (!acceptDataProcessing) missing.push('Traitement des données');
+    if (needsPhoto && !photoFile) missing.push('Photo');
+    if (needsCv && !useExistingCv && !cvFile) missing.push('CV');
+    if (effectivePositions.length > 0 && !selectedPosition) missing.push('Poste visé');
+    return missing;
   };
+
+  const isFormValid = () => getMissingFields().length === 0;
 
   const handleSubmit = async () => {
     if (!isFormValid()) return;
@@ -426,6 +430,14 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
               </span>
             </label>
           </div>
+
+          {/* Indicateur des champs manquants */}
+          {getMissingFields().length > 0 && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-md p-2.5 text-xs text-destructive">
+              <p className="font-semibold mb-1">Champs obligatoires manquants :</p>
+              <p>{getMissingFields().join(', ')}</p>
+            </div>
+          )}
 
           {/* Boutons d'action */}
           <div className="flex justify-end gap-2">
