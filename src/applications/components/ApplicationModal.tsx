@@ -159,7 +159,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
 
     try {
       const fullMessage = [
-        positions.length > 0 ? `📌 Poste visé : ${selectedPosition}` : '',
+        effectivePositions.length > 0 ? `📌 Poste visé : ${selectedPosition}` : '',
         `\n💬 Pourquoi ce poste ?\n${motivation.trim()}`,
         `\n⏰ Disponibilité immédiate : ${availableImmediately === 'yes' ? 'Oui' : 'Non'}`,
         message.trim() ? `\n📝 Message complémentaire :\n${message.trim()}` : '',
