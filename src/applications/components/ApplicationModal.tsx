@@ -67,9 +67,32 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   const [existingCvName, setExistingCvName] = useState<string | null>(null);
   const [useExistingCv, setUseExistingCv] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState('');
+  const [fetchedPositions, setFetchedPositions] = useState<string[]>([]);
+  const [fetchedDocs, setFetchedDocs] = useState<string[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { mutateAsync: submitApplication, isPending } = useSubmitApplication();
+
+  // Résoudre les positions et documents: props ou fetch depuis recruitment_ads
+  const effectivePositions = positions.length > 0 ? positions : fetchedPositions;
+  const effectiveDocs = requiredDocuments.length > 0 ? requiredDocuments : fetchedDocs;
+
+  // Fetch recruitment_ad data si non fourni via props
+  useEffect(() => {
+    if (!isOpen || !sourceId || (positions.length > 0 && requiredDocuments.length > 0)) return;
+    const fetchAdData = async () => {
+      const { data } = await (supabase
+        .from('recruitment_ads' as any)
+        .select('positions, required_documents')
+        .eq('id', sourceId)
+        .maybeSingle() as any);
+      if (data) {
+        if (data.positions) setFetchedPositions(data.positions);
+        if (data.required_documents) setFetchedDocs(data.required_documents);
+      }
+    };
+    fetchAdData();
+  }, [isOpen, sourceId, positions.length, requiredDocuments.length]);
 
   // Vérifier si le candidat a déjà un CV public
   useEffect(() => {
