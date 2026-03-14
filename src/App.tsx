@@ -37,6 +37,7 @@ import Conversations from '@/pages/Conversations';
 import UploadVideo from '@/pages/UploadVideo';
 import PublicCv from '@/pages/PublicCv';
 import School from '@/pages/School';
+import CvSearchPage from '@/cv-search/CvSearchPage';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
@@ -104,6 +105,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/formation/:formationId/pricing" element={<FormationPricingPage />} />
         <Route path="/cv/:cvId" element={<PublicCv />} />
+        <Route path="/cv-search" element={<CvSearchPage />} />
         
         {/* Nouvelles routes cours explicites */}
         <Route path="/cours" element={<CoursIndex />} />
