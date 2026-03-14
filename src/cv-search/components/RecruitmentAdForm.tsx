@@ -3,7 +3,7 @@
  * Inclut : titre, description, compétences, localisation, salaire, contrat, expérience, médias
  * Prévisualisation en mode Post ou Statut avant publication
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -38,9 +39,14 @@ import {
   Calendar,
   ArrowLeft,
   Send,
+  ImagePlus,
+  Loader2,
 } from 'lucide-react';
 import { estimateReach, estimateDuration, useCreateRecruitmentAd } from '../hooks/useRecruitmentAds';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { compressImage } from '@/utils/imageCompression';
+import { toast } from 'sonner';
 
 interface RecruitmentAdFormProps {
   open: boolean;
@@ -78,11 +84,77 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
   const [salaryRange, setSalaryRange] = useState('');
   const [contractType, setContractType] = useState('CDI');
   const [experienceLevel, setExperienceLevel] = useState('junior');
-  const [publishType, setPublishType] = useState<'post' | 'status'>('post');
+  const [publishAsPost, setPublishAsPost] = useState(true);
+  const [publishAsStatus, setPublishAsStatus] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'post' | 'status'>('post');
   const [budget, setBudget] = useState(1000);
+  const [mediaFiles, setMediaFiles] = useState<{ url: string; type: 'image' | 'video'; name: string }[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
 
   const reach = useMemo(() => estimateReach(budget), [budget]);
   const duration = useMemo(() => estimateDuration(budget), [budget]);
+
+  /** Upload de médias (photos/vidéos) vers Supabase Storage */
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !user?.id) return;
+
+    setIsUploadingMedia(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (mediaFiles.length >= 5) {
+          toast.error('Maximum 5 médias par annonce');
+          break;
+        }
+
+        const isVideo = file.type.startsWith('video/');
+        const isImage = file.type.startsWith('image/');
+        if (!isVideo && !isImage) {
+          toast.error(`${file.name}: type non supporté`);
+          continue;
+        }
+
+        // Compresser les images, garder les vidéos telles quelles
+        let uploadFile: File | Blob = file;
+        if (isImage) {
+          uploadFile = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 1200, quality: 0.8 });
+        }
+
+        const ext = file.name.split('.').pop();
+        const path = `recruitment-ads/${user.id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(path, uploadFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          toast.error(`Erreur upload: ${uploadError.message}`);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(path);
+
+        setMediaFiles(prev => [...prev, {
+          url: publicUrl,
+          type: isVideo ? 'video' : 'image',
+          name: file.name,
+        }]);
+      }
+      toast.success('Média(s) ajouté(s) !');
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur upload');
+    } finally {
+      setIsUploadingMedia(false);
+      if (mediaInputRef.current) mediaInputRef.current.value = '';
+    }
+  };
+
+  const removeMedia = (index: number) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const addSkill = () => {
     const trimmed = skillInput.trim();
@@ -103,10 +175,11 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     }
   };
 
-  const isValid = title.trim().length >= 3 && description.trim().length >= 10 && budget >= 500;
+  const isValid = title.trim().length >= 3 && description.trim().length >= 10 && budget >= 500 && (publishAsPost || publishAsStatus);
 
   const handleSubmit = async () => {
     if (!user?.id || !isValid) return;
+    const publishType = publishAsPost && publishAsStatus ? 'post' : publishAsPost ? 'post' : 'status';
     await createAd.mutateAsync({
       owner_id: user.id,
       shop_id: shopId,
@@ -117,7 +190,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
       salary_range: salaryRange.trim(),
       contract_type: contractType,
       experience_level: experienceLevel,
-      media_urls: [],
+      media_urls: mediaFiles.map(m => m.url),
       publish_type: publishType,
       budget,
     });
@@ -128,6 +201,9 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     setLocation('');
     setSalaryRange('');
     setBudget(1000);
+    setMediaFiles([]);
+    setPublishAsPost(true);
+    setPublishAsStatus(false);
     setStep('form');
     onOpenChange(false);
   };
@@ -249,29 +325,70 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 </div>
               </div>
 
-              {/* Type de publication */}
+              {/* Type de publication (multi-sélection) */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Type de publication</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={publishType === 'post' ? 'default' : 'outline'}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setPublishType('post')}
-                  >
-                    📝 Post
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={publishType === 'status' ? 'default' : 'outline'}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setPublishType('status')}
-                  >
-                    🔵 Statut
-                  </Button>
+                <Label className="text-xs font-semibold">Type de publication *</Label>
+                <p className="text-[10px] text-muted-foreground">Vous pouvez choisir les deux</p>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer flex-1 border rounded-lg p-2.5 hover:bg-muted/30 transition-colors">
+                    <Checkbox checked={publishAsPost} onCheckedChange={(v) => setPublishAsPost(!!v)} />
+                    <span className="text-sm">📝 Post</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer flex-1 border rounded-lg p-2.5 hover:bg-muted/30 transition-colors">
+                    <Checkbox checked={publishAsStatus} onCheckedChange={(v) => setPublishAsStatus(!!v)} />
+                    <span className="text-sm">🔵 Statut</span>
+                  </label>
                 </div>
+                {!publishAsPost && !publishAsStatus && (
+                  <p className="text-[10px] text-destructive">Sélectionnez au moins un type</p>
+                )}
+              </div>
+
+              {/* Upload de médias */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Photos / Vidéos</Label>
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleMediaSelect}
+                />
+                {mediaFiles.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {mediaFiles.map((media, idx) => (
+                      <div key={idx} className="relative rounded-lg overflow-hidden border aspect-square bg-muted">
+                        {media.type === 'image' ? (
+                          <img src={media.url} alt={media.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <video src={media.url} className="w-full h-full object-cover" muted />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeMedia(idx)}
+                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 shadow"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  disabled={isUploadingMedia || mediaFiles.length >= 5}
+                  onClick={() => mediaInputRef.current?.click()}
+                >
+                  {isUploadingMedia ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Upload en cours...</>
+                  ) : (
+                    <><ImagePlus className="w-4 h-4" /> Ajouter des médias ({mediaFiles.length}/5)</>
+                  )}
+                </Button>
               </div>
 
               {/* Budget & portée */}
@@ -336,16 +453,35 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
               <Button variant="ghost" size="icon" onClick={() => setStep('form')}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <h3 className="font-semibold text-sm">
-                Aperçu — {publishType === 'post' ? '📝 Post' : '🔵 Statut'}
-              </h3>
+              <h3 className="font-semibold text-sm flex-1">Aperçu de l'annonce</h3>
+              {/* Switcher de prévisualisation si les 2 types sont sélectionnés */}
+              {publishAsPost && publishAsStatus && (
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={previewMode === 'post' ? 'default' : 'outline'}
+                    onClick={() => setPreviewMode('post')}
+                    className="text-xs h-7 px-2"
+                  >
+                    📝 Post
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewMode === 'status' ? 'default' : 'outline'}
+                    onClick={() => setPreviewMode('status')}
+                    className="text-xs h-7 px-2"
+                  >
+                    🔵 Statut
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {publishType === 'post' ? (
+            {/* Déterminer quel aperçu afficher */}
+            {((publishAsPost && !publishAsStatus) || (publishAsPost && publishAsStatus && previewMode === 'post')) ? (
               /* Prévisualisation Post */
               <div className="p-4">
                 <div className="border rounded-xl overflow-hidden bg-background shadow-sm">
-                  {/* Header du post */}
                   <div className="p-4 flex items-center gap-3 border-b bg-muted/20">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <Briefcase className="w-5 h-5 text-primary" />
@@ -355,39 +491,35 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                       <p className="text-[10px] text-muted-foreground">Sponsorisé · 📢 Recrutement</p>
                     </div>
                   </div>
-                  {/* Corps */}
+                  {/* Médias dans le post */}
+                  {mediaFiles.length > 0 && (
+                    <div className={`grid ${mediaFiles.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-0.5`}>
+                      {mediaFiles.map((media, idx) => (
+                        <div key={idx} className={`${mediaFiles.length === 1 ? 'aspect-video' : 'aspect-square'} overflow-hidden bg-muted`}>
+                          {media.type === 'image' ? (
+                            <img src={media.url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <video src={media.url} className="w-full h-full object-cover" muted controls />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="p-4 space-y-3">
                     <h4 className="font-bold text-base">{title}</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                      {description}
-                    </p>
-
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{description}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {skills.map(s => (
                         <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
                       ))}
                     </div>
-
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground pt-2">
-                      {location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {location}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="w-3 h-3" /> {contractType}
-                      </span>
-                      {salaryRange && (
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="w-3 h-3" /> {salaryRange}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {EXPERIENCE_LEVELS.find(e => e.value === experienceLevel)?.label}
-                      </span>
+                      {location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {location}</span>}
+                      <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {contractType}</span>
+                      {salaryRange && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {salaryRange}</span>}
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {EXPERIENCE_LEVELS.find(e => e.value === experienceLevel)?.label}</span>
                     </div>
                   </div>
-                  {/* Footer */}
                   <div className="p-3 border-t bg-muted/10 flex items-center justify-between text-xs text-muted-foreground">
                     <span>~{reach.toLocaleString('fr-FR')} personnes atteintes</span>
                     <span>{duration} jours</span>
@@ -397,11 +529,20 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
             ) : (
               /* Prévisualisation Statut */
               <div className="p-4 flex justify-center">
-                <div className="w-64 h-96 rounded-2xl bg-gradient-to-br from-primary/80 to-primary overflow-hidden relative shadow-lg flex flex-col justify-end">
+                <div className="w-64 h-96 rounded-2xl overflow-hidden relative shadow-lg flex flex-col justify-end">
+                  {/* Fond : média ou gradient */}
+                  {mediaFiles.length > 0 && mediaFiles[0].type === 'image' ? (
+                    <img src={mediaFiles[0].url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : mediaFiles.length > 0 && mediaFiles[0].type === 'video' ? (
+                    <video src={mediaFiles[0].url} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-primary" />
+                  )}
+                  <div className="absolute inset-0 bg-black/20" />
                   <div className="absolute inset-0 flex items-center justify-center p-6">
-                    <div className="text-center text-primary-foreground">
+                    <div className="text-center text-white">
                       <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-80" />
-                      <h4 className="text-lg font-bold leading-tight">{title}</h4>
+                      <h4 className="text-lg font-bold leading-tight drop-shadow">{title}</h4>
                       {location && (
                         <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1">
                           <MapPin className="w-3 h-3" /> {location}
@@ -423,9 +564,13 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
 
             {/* Résumé budget */}
             <div className="p-4 border-t bg-muted/10">
-              <div className="flex items-center justify-between text-sm mb-3">
+              <div className="flex items-center justify-between text-sm mb-1">
                 <span className="text-muted-foreground">Budget</span>
                 <span className="font-bold text-primary">{formatBudget(budget)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                <span>Publication : {[publishAsPost && '📝 Post', publishAsStatus && '🔵 Statut'].filter(Boolean).join(' + ')}</span>
+                <span>{mediaFiles.length} média(s)</span>
               </div>
               <Button
                 className="w-full gap-2"
