@@ -192,6 +192,8 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
       experience_level: experienceLevel,
       media_urls: mediaFiles.map(m => m.url),
       publish_type: publishType,
+      publish_as_post: publishAsPost,
+      publish_as_status: publishAsStatus,
       budget,
     });
     // Reset
