@@ -516,6 +516,15 @@ export const useUpdatePost = () => {
         }
       }
 
+      // Ajouter les options de boost
+      if (boostOptions) {
+        updateData.is_boosted = boostOptions.is_boosted;
+        updateData.boost_budget = boostOptions.boost_budget;
+        updateData.boost_estimated_reach = boostOptions.boost_estimated_reach;
+        updateData.boost_status = boostOptions.boost_status;
+        updateData.boost_expires_at = boostOptions.boost_expires_at;
+      }
+
       const { data, error } = await supabase
         .from('posts')
         .update(updateData)
