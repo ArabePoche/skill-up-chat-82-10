@@ -51,6 +51,8 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
     triggerClassName,
     onLogin,
     onUnlock,
+    onLock,
+    onLogout,
     forgotPassword,
     updateProfile
 }) => {
