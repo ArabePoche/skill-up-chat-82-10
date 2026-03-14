@@ -1,12 +1,18 @@
+/**
+ * Modal de création/édition de post
+ * Inclut le choix de catégorie, options de recrutement, images, et option boost payant
+ */
 import React, { useState, useEffect } from 'react';
-import { X, Image, Briefcase, Info, Star, Trash2, Megaphone, GraduationCap } from 'lucide-react';
+import { X, Image, Briefcase, Info, Star, Trash2, Megaphone, GraduationCap, Sparkles, Rocket, Users, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePost, useUpdatePost } from '@/posts/hooks/usePosts';
 import { toast } from 'sonner';
 import { compressImage, formatFileSize } from '@/utils/imageCompression';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { estimateReach, estimateDuration } from '@/cv-search/hooks/useRecruitmentAds';
 import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
 import {
   AlertDialog,
@@ -34,11 +40,13 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   const [removedMediaIds, setRemovedMediaIds] = useState<string[]>([]);
   const [removeMainImage, setRemoveMainImage] = useState(false);
   const [compressionDialog, setCompressionDialog] = useState<{
-    open: boolean;
-    files: File[];
-    originalSizes: number[];
+    open: boolean; files: File[]; originalSizes: number[];
   }>({ open: false, files: [], originalSizes: [] });
   
+  // Boost
+  const [boostEnabled, setBoostEnabled] = useState(false);
+  const [boostBudget, setBoostBudget] = useState(1000);
+
   // États pour les options de recrutement
   const [requiredProfiles, setRequiredProfiles] = useState<string[]>([]);
   const [newProfile, setNewProfile] = useState('');
@@ -56,67 +64,40 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
   const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
   const isPending = isCreating || isUpdating;
 
-  // Récupérer le profil pour vérifier si l'utilisateur est vérifié
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_verified')
-        .eq('id', user.id)
-        .single();
+      const { data, error } = await supabase.from('profiles').select('is_verified').eq('id', user.id).single();
       if (error) throw error;
       return data;
     },
     enabled: !!user?.id,
   });
 
-  // Charger les données du post à éditer
   useEffect(() => {
     if (editPost) {
       setContent(editPost.content || '');
       setPostType(editPost.post_type || null);
-      // Charger les médias existants (post_media)
       if (editPost.media && Array.isArray(editPost.media)) {
-        setExistingMedia(editPost.media.map((m: any) => ({
-          id: m.id,
-          file_url: m.file_url,
-          file_type: m.file_type
-        })));
-      } else {
-        setExistingMedia([]);
-      }
-      setImageFiles([]);
-      setImagePreviews([]);
-      setRemovedMediaIds([]);
-      setRemoveMainImage(false);
-      
-      // Charger les options de recrutement si c'est un post de recrutement
+        setExistingMedia(editPost.media.map((m: any) => ({ id: m.id, file_url: m.file_url, file_type: m.file_type })));
+      } else { setExistingMedia([]); }
+      setImageFiles([]); setImagePreviews([]); setRemovedMediaIds([]); setRemoveMainImage(false);
+      setBoostEnabled(editPost.is_boosted || false);
+      setBoostBudget(editPost.boost_budget || 1000);
       if (editPost.post_type === 'recruitment') {
         setRequiredProfiles(editPost.required_profiles || []);
         setRequiredDocuments(editPost.required_documents || []);
         setGeographicZones(editPost.geographic_zones || []);
-        if (editPost.age_range) {
-          setAgeMin(editPost.age_range.min?.toString() || '');
-          setAgeMax(editPost.age_range.max?.toString() || '');
-        }
+        if (editPost.age_range) { setAgeMin(editPost.age_range.min?.toString() || ''); setAgeMax(editPost.age_range.max?.toString() || ''); }
         setGender(editPost.gender || 'all');
       }
     } else {
-      setContent('');
-      setPostType(null);
-      setImageFiles([]);
-      setImagePreviews([]);
-      setExistingMedia([]);
-      setRemovedMediaIds([]);
-      setRemoveMainImage(false);
-      setRequiredProfiles([]);
-      setRequiredDocuments([]);
-      setGeographicZones([]);
-      setAgeMin('');
-      setAgeMax('');
-      setGender('all');
+      setContent(''); setPostType(null); setImageFiles([]); setImagePreviews([]);
+      setExistingMedia([]); setRemovedMediaIds([]); setRemoveMainImage(false);
+      setRequiredProfiles([]); setRequiredDocuments([]); setGeographicZones([]);
+      setAgeMin(''); setAgeMax(''); setGender('all');
+      setBoostEnabled(false); setBoostBudget(1000);
     }
   }, [editPost]);
 
@@ -131,61 +112,27 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
-    // Calculer le nombre total d'images (existantes non supprimées + nouvelles)
     const currentImageCount = existingMedia.length - removedMediaIds.length + imageFiles.length;
-    
-    // Vérifier le nombre total de fichiers (max 5)
-    if (currentImageCount + files.length > 5) {
-      toast.error('Maximum 5 images autorisées');
-      return;
-    }
-    
-    // Séparer les fichiers selon leur taille
-    const oversizedFiles: File[] = [];
-    const validFiles: File[] = [];
-    const oversizedSizes: number[] = [];
-    
+    if (currentImageCount + files.length > 5) { toast.error('Maximum 5 images autorisées'); return; }
+    const oversizedFiles: File[] = []; const validFiles: File[] = []; const oversizedSizes: number[] = [];
     for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) {
-        oversizedFiles.push(file);
-        oversizedSizes.push(file.size);
-      } else {
-        validFiles.push(file);
-      }
+      if (file.size > 5 * 1024 * 1024) { oversizedFiles.push(file); oversizedSizes.push(file.size); }
+      else { validFiles.push(file); }
     }
-    
-    // Si des fichiers dépassent 5MB, proposer la compression
     if (oversizedFiles.length > 0) {
-      setCompressionDialog({
-        open: true,
-        files: oversizedFiles,
-        originalSizes: oversizedSizes,
-      });
-      
-      // Ajouter directement les fichiers valides
-      if (validFiles.length > 0) {
-        await addFilesToPreview(validFiles);
-      }
+      setCompressionDialog({ open: true, files: oversizedFiles, originalSizes: oversizedSizes });
+      if (validFiles.length > 0) await addFilesToPreview(validFiles);
       return;
     }
-    
-    // Tous les fichiers sont valides
     await addFilesToPreview(files);
   };
 
   const addFilesToPreview = async (files: File[]) => {
-    const newFiles = [...imageFiles, ...files];
-    setImageFiles(newFiles);
-    
-    // Créer les aperçus
+    const newFiles = [...imageFiles, ...files]; setImageFiles(newFiles);
     const newPreviews = [...imagePreviews];
     for (const file of files) {
       const reader = new FileReader();
-      const preview = await new Promise<string>((resolve) => {
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.readAsDataURL(file);
-      });
+      const preview = await new Promise<string>((resolve) => { reader.onload = (e) => resolve(e.target?.result as string); reader.readAsDataURL(file); });
       newPreviews.push(preview);
     }
     setImagePreviews(newPreviews);
@@ -193,124 +140,76 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
 
   const handleCompressAndAdd = async () => {
     const { files } = compressionDialog;
-    
     try {
       toast.loading('Compression des images en cours...');
-      
       const compressedFiles: File[] = [];
-      for (const file of files) {
-        const compressed = await compressImage(file);
-        compressedFiles.push(compressed);
-      }
-      
-      toast.dismiss();
-      toast.success(`${compressedFiles.length} image(s) compressée(s) avec succès`);
-      
+      for (const file of files) { compressedFiles.push(await compressImage(file)); }
+      toast.dismiss(); toast.success(`${compressedFiles.length} image(s) compressée(s)`);
       await addFilesToPreview(compressedFiles);
       setCompressionDialog({ open: false, files: [], originalSizes: [] });
     } catch (error) {
-      toast.dismiss();
-      toast.error('Erreur lors de la compression des images');
-      console.error('Compression error:', error);
+      toast.dismiss(); toast.error('Erreur lors de la compression');
       setCompressionDialog({ open: false, files: [], originalSizes: [] });
     }
   };
 
   const removeImage = (index: number) => {
-    const newFiles = imageFiles.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    setImageFiles(newFiles);
-    setImagePreviews(newPreviews);
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
   const handleSubmit = () => {
-    if (!user) {
-      toast.error('Vous devez être connecté pour créer un post');
-      return;
-    }
+    if (!user) { toast.error('Vous devez être connecté'); return; }
+    if (!content.trim()) { toast.error("Le contenu ne peut pas être vide"); return; }
+    if (!postType) { toast.error('Veuillez choisir une catégorie'); return; }
 
-    if (!content.trim()) {
-      toast.error("Le contenu du post ne peut pas être vide");
-      return;
-    }
-
-    if (!postType) {
-      toast.error('Veuillez choisir une catégorie');
-      return;
-    }
-
-    // Préparer les options de recrutement si applicable
     let recruitmentOptions = undefined;
     if (postType === 'recruitment') {
-      const ageRange = (ageMin || ageMax) ? {
-        min: ageMin ? parseInt(ageMin) : undefined,
-        max: ageMax ? parseInt(ageMax) : undefined
-      } : undefined;
-      
+      const ageRange = (ageMin || ageMax) ? { min: ageMin ? parseInt(ageMin) : undefined, max: ageMax ? parseInt(ageMax) : undefined } : undefined;
       recruitmentOptions = {
         requiredProfiles: requiredProfiles.length > 0 ? requiredProfiles : undefined,
         requiredDocuments: requiredDocuments.length > 0 ? requiredDocuments : undefined,
         geographicZones: geographicZones.length > 0 ? geographicZones : undefined,
-        ageRange,
-        gender: gender !== 'all' ? gender : undefined
+        ageRange, gender: gender !== 'all' ? gender : undefined
       };
     }
 
+    // Boost options
+    const boostOptions = boostEnabled ? {
+      is_boosted: true,
+      boost_budget: boostBudget,
+      boost_estimated_reach: estimateReach(boostBudget),
+      boost_status: 'pending_approval',
+      boost_expires_at: new Date(Date.now() + estimateDuration(boostBudget) * 24 * 60 * 60 * 1000).toISOString(),
+    } : undefined;
+
     if (editPost) {
-      // Mode édition
       updatePost({
-        postId: editPost.id,
-        content: content.trim(),
-        postType,
+        postId: editPost.id, content: content.trim(), postType,
         imageFiles: imageFiles.length > 0 ? imageFiles : undefined,
         removedMediaIds: removedMediaIds.length > 0 ? removedMediaIds : undefined,
-        removeImage: removeMainImage,
-        recruitmentOptions
-      }, {
-        onSuccess: () => {
-          setContent('');
-          setPostType(null);
-          setImageFiles([]);
-          setImagePreviews([]);
-          setExistingMedia([]);
-          setRemovedMediaIds([]);
-          setRemoveMainImage(false);
-          setRequiredProfiles([]);
-          setRequiredDocuments([]);
-          setGeographicZones([]);
-          setAgeMin('');
-          setAgeMax('');
-          setGender('all');
-          onClose();
-        }
-      });
+        removeImage: removeMainImage, recruitmentOptions, boostOptions,
+      }, { onSuccess: () => { resetForm(); onClose(); } });
     } else {
-      // Mode création
       createPost({
-        content: content.trim(),
-        postType,
-        imageFiles: imageFiles,
-        authorId: user.id,
-        recruitmentOptions
-      }, {
-        onSuccess: () => {
-          setContent('');
-          setPostType(null);
-          setImageFiles([]);
-          setImagePreviews([]);
-          setRequiredProfiles([]);
-          setRequiredDocuments([]);
-          setGeographicZones([]);
-          setAgeMin('');
-          setAgeMax('');
-          setGender('all');
-          onClose();
-        }
-      });
+        content: content.trim(), postType, imageFiles, authorId: user.id,
+        recruitmentOptions, boostOptions,
+      }, { onSuccess: () => { resetForm(); onClose(); } });
     }
   };
 
+  const resetForm = () => {
+    setContent(''); setPostType(null); setImageFiles([]); setImagePreviews([]);
+    setExistingMedia([]); setRemovedMediaIds([]); setRemoveMainImage(false);
+    setRequiredProfiles([]); setRequiredDocuments([]); setGeographicZones([]);
+    setAgeMin(''); setAgeMax(''); setGender('all');
+    setBoostEnabled(false); setBoostBudget(1000);
+  };
+
   if (!isOpen) return null;
+
+  const boostReach = estimateReach(boostBudget);
+  const boostDuration = estimateDuration(boostBudget);
 
   return (
     <>
@@ -318,41 +217,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
       <AlertDialog open={compressionDialog.open} onOpenChange={(open) => !open && setCompressionDialog({ open: false, files: [], originalSizes: [] })}>
         <AlertDialogContent className="bg-gray-900 border-gray-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">
-              Images trop volumineuses
-            </AlertDialogTitle>
+            <AlertDialogTitle className="text-white">Images trop volumineuses</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-300">
               {compressionDialog.files.length > 1 ? (
-                <>
-                  {compressionDialog.files.length} images dépassent 5 MB :
-                  <ul className="mt-2 space-y-1">
-                    {compressionDialog.files.map((file, index) => (
-                      <li key={index} className="text-sm">
-                        • {file.name} ({formatFileSize(compressionDialog.originalSizes[index])})
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <>
-                  L'image <strong>{compressionDialog.files[0]?.name}</strong> ({formatFileSize(compressionDialog.originalSizes[0])}) dépasse la limite de 5 MB.
-                </>
-              )}
-              <p className="mt-3">
-                Voulez-vous compresser {compressionDialog.files.length > 1 ? 'ces images' : 'cette image'} automatiquement ?
-              </p>
+                <>{compressionDialog.files.length} images dépassent 5 MB :
+                  <ul className="mt-2 space-y-1">{compressionDialog.files.map((file, index) => (
+                    <li key={index} className="text-sm">• {file.name} ({formatFileSize(compressionDialog.originalSizes[index])})</li>
+                  ))}</ul></>
+              ) : (<>L'image <strong>{compressionDialog.files[0]?.name}</strong> ({formatFileSize(compressionDialog.originalSizes[0])}) dépasse 5 MB.</>)}
+              <p className="mt-3">Compresser automatiquement ?</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700">
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCompressAndAdd}
-              className="bg-edu-primary hover:bg-edu-primary/90 text-white"
-            >
-              Compresser
-            </AlertDialogAction>
+            <AlertDialogCancel className="bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700">Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCompressAndAdd} className="bg-edu-primary hover:bg-edu-primary/90 text-white">Compresser</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -362,52 +240,29 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
       <div className="bg-gray-900 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-white text-lg font-semibold">
-            {editPost ? 'Modifier le post' : 'Créer un post'}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-gray-400 hover:text-white"
-          >
-            <X size={20} />
-          </Button>
+          <h2 className="text-white text-lg font-semibold">{editPost ? 'Modifier le post' : 'Créer un post'}</h2>
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white"><X size={20} /></Button>
         </div>
 
         {/* Content */}
         <div className="p-4 space-y-4">
           {/* Type de post */}
           <div>
-            <label className="text-white text-sm font-medium mb-2 block">
-              Catégorie (obligatoire)
-            </label>
+            <label className="text-white text-sm font-medium mb-2 block">Catégorie (obligatoire)</label>
             <div className="flex flex-wrap gap-2">
               {postTypes.map((type) => {
                 const Icon = type.icon;
                 const isRecruitment = type.value === 'recruitment';
-                // @ts-ignore - is_verified sera disponible après régénération des types
                 const isVerified = (profile as any)?.is_verified;
                 const isLocked = isRecruitment && !isVerified;
-                
                 return (
-                  <button
-                    key={type.value}
-                    onClick={() => {
-                      if (isLocked) {
-                        setShowVerificationDialog(true);
-                        return;
-                      }
-                      setPostType(type.value);
-                    }}
+                  <button key={type.value}
+                    onClick={() => { if (isLocked) { setShowVerificationDialog(true); return; } setPostType(type.value); }}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      postType === type.value
-                        ? 'bg-edu-primary text-white'
-                        : isLocked
-                        ? 'bg-gray-800/50 text-gray-500 cursor-pointer hover:bg-gray-800/70'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
+                      postType === type.value ? 'bg-edu-primary text-white'
+                      : isLocked ? 'bg-gray-800/50 text-gray-500 cursor-pointer hover:bg-gray-800/70'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}>
                     <Icon size={16} className={postType === type.value ? 'text-white' : isLocked ? 'text-gray-600' : type.color} />
                     <span>{type.label}</span>
                   </button>
@@ -418,19 +273,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
 
           {/* Contenu */}
           <div>
-            <label className="text-white text-sm font-medium mb-2 block">
-              Contenu
-            </label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Quoi de neuf ?"
-              className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-edu-primary resize-none"
-              maxLength={2000}
-            />
-            <div className="text-right text-xs text-gray-400 mt-1">
-              {content.length}/2000
-            </div>
+            <label className="text-white text-sm font-medium mb-2 block">Contenu</label>
+            <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Quoi de neuf ?"
+              className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-edu-primary resize-none" maxLength={2000} />
+            <div className="text-right text-xs text-gray-400 mt-1">{content.length}/2000</div>
           </div>
 
           {/* Options de recrutement */}
@@ -440,48 +286,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
               
               {/* Profils recherchés */}
               <div>
-                <label className="text-white text-sm font-medium mb-2 block">
-                  Profils recherchés
-                </label>
+                <label className="text-white text-sm font-medium mb-2 block">Profils recherchés</label>
                 <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newProfile}
-                    onChange={(e) => setNewProfile(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && newProfile.trim()) {
-                        setRequiredProfiles([...requiredProfiles, newProfile.trim()]);
-                        setNewProfile('');
-                      }
-                    }}
+                  <input type="text" value={newProfile} onChange={(e) => setNewProfile(e.target.value)}
+                    onKeyPress={(e) => { if (e.key === 'Enter' && newProfile.trim()) { setRequiredProfiles([...requiredProfiles, newProfile.trim()]); setNewProfile(''); } }}
                     placeholder="Ex: Développeur Full Stack"
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (newProfile.trim()) {
-                        setRequiredProfiles([...requiredProfiles, newProfile.trim()]);
-                        setNewProfile('');
-                      }
-                    }}
-                    className="bg-edu-primary hover:bg-edu-primary/90"
-                    size="sm"
-                  >
-                    Ajouter
-                  </Button>
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary" />
+                  <Button type="button" onClick={() => { if (newProfile.trim()) { setRequiredProfiles([...requiredProfiles, newProfile.trim()]); setNewProfile(''); } }} className="bg-edu-primary hover:bg-edu-primary/90" size="sm">Ajouter</Button>
                 </div>
                 {requiredProfiles.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {requiredProfiles.map((profile, index) => (
+                    {requiredProfiles.map((p, index) => (
                       <span key={index} className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
-                        {profile}
-                        <button
-                          onClick={() => setRequiredProfiles(requiredProfiles.filter((_, i) => i !== index))}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          <X size={14} />
-                        </button>
+                        {p}
+                        <button onClick={() => setRequiredProfiles(requiredProfiles.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-300"><X size={14} /></button>
                       </span>
                     ))}
                   </div>
@@ -490,36 +308,13 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
 
               {/* Documents requis */}
               <div>
-                <label className="text-white text-sm font-medium mb-2 block">
-                  Documents à fournir
-                </label>
+                <label className="text-white text-sm font-medium mb-2 block">Documents à fournir</label>
                 <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newDocument}
-                    onChange={(e) => setNewDocument(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && newDocument.trim()) {
-                        setRequiredDocuments([...requiredDocuments, { name: newDocument.trim(), required: true }]);
-                        setNewDocument('');
-                      }
-                    }}
+                  <input type="text" value={newDocument} onChange={(e) => setNewDocument(e.target.value)}
+                    onKeyPress={(e) => { if (e.key === 'Enter' && newDocument.trim()) { setRequiredDocuments([...requiredDocuments, { name: newDocument.trim(), required: true }]); setNewDocument(''); } }}
                     placeholder="Ex: CV, Lettre de motivation"
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (newDocument.trim()) {
-                        setRequiredDocuments([...requiredDocuments, { name: newDocument.trim(), required: true }]);
-                        setNewDocument('');
-                      }
-                    }}
-                    className="bg-edu-primary hover:bg-edu-primary/90"
-                    size="sm"
-                  >
-                    Ajouter
-                  </Button>
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary" />
+                  <Button type="button" onClick={() => { if (newDocument.trim()) { setRequiredDocuments([...requiredDocuments, { name: newDocument.trim(), required: true }]); setNewDocument(''); } }} className="bg-edu-primary hover:bg-edu-primary/90" size="sm">Ajouter</Button>
                 </div>
                 {requiredDocuments.length > 0 && (
                   <div className="space-y-2">
@@ -528,24 +323,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
                         <span className="text-white text-sm">{doc.name}</span>
                         <div className="flex items-center gap-2">
                           <label className="flex items-center gap-2 text-xs text-gray-400">
-                            <input
-                              type="checkbox"
-                              checked={doc.required}
-                              onChange={(e) => {
-                                const updated = [...requiredDocuments];
-                                updated[index].required = e.target.checked;
-                                setRequiredDocuments(updated);
-                              }}
-                              className="accent-edu-primary"
-                            />
+                            <input type="checkbox" checked={doc.required} onChange={(e) => { const updated = [...requiredDocuments]; updated[index].required = e.target.checked; setRequiredDocuments(updated); }} className="accent-edu-primary" />
                             Obligatoire
                           </label>
-                          <button
-                            onClick={() => setRequiredDocuments(requiredDocuments.filter((_, i) => i !== index))}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <X size={16} />
-                          </button>
+                          <button onClick={() => setRequiredDocuments(requiredDocuments.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-300"><X size={16} /></button>
                         </div>
                       </div>
                     ))}
@@ -555,96 +336,43 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
 
               {/* Zones géographiques */}
               <div>
-                <label className="text-white text-sm font-medium mb-2 block">
-                  Zones géographiques
-                </label>
+                <label className="text-white text-sm font-medium mb-2 block">Zones géographiques</label>
                 <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newZone}
-                    onChange={(e) => setNewZone(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && newZone.trim()) {
-                        setGeographicZones([...geographicZones, newZone.trim()]);
-                        setNewZone('');
-                      }
-                    }}
+                  <input type="text" value={newZone} onChange={(e) => setNewZone(e.target.value)}
+                    onKeyPress={(e) => { if (e.key === 'Enter' && newZone.trim()) { setGeographicZones([...geographicZones, newZone.trim()]); setNewZone(''); } }}
                     placeholder="Ex: Mali, Paris, Burkina"
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (newZone.trim()) {
-                        setGeographicZones([...geographicZones, newZone.trim()]);
-                        setNewZone('');
-                      }
-                    }}
-                    className="bg-edu-primary hover:bg-edu-primary/90"
-                    size="sm"
-                  >
-                    Ajouter
-                  </Button>
+                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary" />
+                  <Button type="button" onClick={() => { if (newZone.trim()) { setGeographicZones([...geographicZones, newZone.trim()]); setNewZone(''); } }} className="bg-edu-primary hover:bg-edu-primary/90" size="sm">Ajouter</Button>
                 </div>
                 {geographicZones.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {geographicZones.map((zone, index) => (
                       <span key={index} className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
                         {zone}
-                        <button
-                          onClick={() => setGeographicZones(geographicZones.filter((_, i) => i !== index))}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          <X size={14} />
-                        </button>
+                        <button onClick={() => setGeographicZones(geographicZones.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-300"><X size={14} /></button>
                       </span>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Âge */}
+              {/* Âge + Sexe */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-white text-sm font-medium mb-2 block">
-                    Âge minimum
-                  </label>
-                  <input
-                    type="number"
-                    value={ageMin}
-                    onChange={(e) => setAgeMin(e.target.value)}
-                    placeholder="18"
-                    min="16"
-                    max="99"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
-                  />
+                  <label className="text-white text-sm font-medium mb-2 block">Âge minimum</label>
+                  <input type="number" value={ageMin} onChange={(e) => setAgeMin(e.target.value)} placeholder="18" min="16" max="99"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary" />
                 </div>
                 <div>
-                  <label className="text-white text-sm font-medium mb-2 block">
-                    Âge maximum
-                  </label>
-                  <input
-                    type="number"
-                    value={ageMax}
-                    onChange={(e) => setAgeMax(e.target.value)}
-                    placeholder="65"
-                    min="16"
-                    max="99"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary"
-                  />
+                  <label className="text-white text-sm font-medium mb-2 block">Âge maximum</label>
+                  <input type="number" value={ageMax} onChange={(e) => setAgeMax(e.target.value)} placeholder="65" min="16" max="99"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-edu-primary" />
                 </div>
               </div>
-
-              {/* Sexe */}
               <div>
-                <label className="text-white text-sm font-medium mb-2 block">
-                  Sexe
-                </label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-edu-primary"
-                >
+                <label className="text-white text-sm font-medium mb-2 block">Sexe</label>
+                <select value={gender} onChange={(e) => setGender(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-edu-primary">
                   <option value="all">Tous</option>
                   <option value="male">Homme</option>
                   <option value="female">Femme</option>
@@ -655,11 +383,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
 
           {/* Images */}
           <div>
-            <label className="text-white text-sm font-medium mb-2 block">
-              Images (optionnel - max 5)
-            </label>
-
-            {/* Images existantes (mode édition) */}
+            <label className="text-white text-sm font-medium mb-2 block">Images (optionnel - max 5)</label>
             {editPost && existingMedia.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-xs text-gray-400 mb-2">Images existantes</h4>
@@ -668,109 +392,104 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
                     const isMarkedForRemoval = removedMediaIds.includes(media.id);
                     return (
                       <div key={media.id} className="relative group">
-                        <img 
-                          src={media.file_url} 
-                          alt="Média existant"
-                          className={`w-full h-32 object-cover rounded-lg ${isMarkedForRemoval ? 'opacity-50 grayscale' : ''}`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRemovedMediaIds(prev => 
-                              isMarkedForRemoval 
-                                ? prev.filter(id => id !== media.id)
-                                : [...prev, media.id]
-                            );
-                          }}
-                          className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition"
-                        >
+                        <img src={media.file_url} alt="Média existant" className={`w-full h-32 object-cover rounded-lg ${isMarkedForRemoval ? 'opacity-50 grayscale' : ''}`} />
+                        <button type="button" onClick={() => setRemovedMediaIds(prev => isMarkedForRemoval ? prev.filter(id => id !== media.id) : [...prev, media.id])}
+                          className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition">
                           {isMarkedForRemoval ? 'Annuler' : 'Supprimer'}
                         </button>
-                        {isMarkedForRemoval && (
-                          <span className="absolute bottom-2 left-2 bg-red-600/80 text-white text-[10px] px-1.5 py-0.5 rounded">
-                            À supprimer
-                          </span>
-                        )}
+                        {isMarkedForRemoval && <span className="absolute bottom-2 left-2 bg-red-600/80 text-white text-[10px] px-1.5 py-0.5 rounded">À supprimer</span>}
                       </div>
                     );
                   })}
                 </div>
               </div>
             )}
-
-            {/* Image principale (legacy) */}
             {editPost && editPost.image_url && !removeMainImage && (
               <div className="mb-3">
                 <h4 className="text-xs text-gray-400 mb-2">Image principale</h4>
                 <div className="relative">
-                  <img 
-                    src={editPost.image_url} 
-                    alt="Image principale"
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setRemoveMainImage(true)}
-                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
-                  >
-                    Supprimer
-                  </button>
+                  <img src={editPost.image_url} alt="Image principale" className="w-full h-32 object-cover rounded-lg" />
+                  <button type="button" onClick={() => setRemoveMainImage(true)} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">Supprimer</button>
                 </div>
               </div>
             )}
-            
-            {/* Upload de nouvelles images */}
             <div className="flex items-center space-x-3 mb-3">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageSelect}
-                className="hidden"
-                id="image-upload"
-                disabled={imageFiles.length + existingMedia.length - removedMediaIds.length >= 5}
-              />
-              <label
-                htmlFor="image-upload"
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                  imageFiles.length + existingMedia.length - removedMediaIds.length >= 5
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
-                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                }`}
-              >
+              <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" id="image-upload"
+                disabled={imageFiles.length + existingMedia.length - removedMediaIds.length >= 5} />
+              <label htmlFor="image-upload" className={`flex items-center space-x-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                imageFiles.length + existingMedia.length - removedMediaIds.length >= 5 ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+              }`}>
                 <Image size={16} className="text-gray-400" />
-                <span className="text-sm">
-                  {imageFiles.length + existingMedia.length - removedMediaIds.length >= 5 ? 'Maximum atteint' : 'Ajouter des images'}
-                </span>
+                <span className="text-sm">{imageFiles.length + existingMedia.length - removedMediaIds.length >= 5 ? 'Maximum atteint' : 'Ajouter des images'}</span>
               </label>
               {(imageFiles.length > 0 || existingMedia.length > 0) && (
-                <span className="text-sm text-gray-400">
-                  {imageFiles.length + existingMedia.length - removedMediaIds.length}/5 image(s)
-                </span>
+                <span className="text-sm text-gray-400">{imageFiles.length + existingMedia.length - removedMediaIds.length}/5 image(s)</span>
               )}
             </div>
-            
-            {/* Aperçus des nouvelles images */}
             {imagePreviews.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
                 {imagePreviews.map((preview, index) => (
                   <div key={index} className="relative">
-                    <img 
-                      src={preview} 
-                      alt={`Aperçu ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
-                    />
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                    <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                      Nouvelle image
-                    </div>
+                    <img src={preview} alt={`Aperçu ${index + 1}`} className="w-full h-32 object-cover rounded-lg" />
+                    <button onClick={() => removeImage(index)} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"><Trash2 size={14} /></button>
+                    <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">Nouvelle image</div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* === BOOST PAYANT / GRATUIT === */}
+          <div className="border-t border-gray-800 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-white text-sm font-medium flex items-center gap-2">
+                <Rocket size={16} className="text-yellow-400" />
+                Booster ce post
+              </label>
+              <button
+                onClick={() => setBoostEnabled(!boostEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${boostEnabled ? 'bg-edu-primary' : 'bg-gray-700'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${boostEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {!boostEnabled && (
+              <p className="text-xs text-gray-500">Publication gratuite — visibilité normale</p>
+            )}
+
+            {boostEnabled && (
+              <div className="space-y-3 bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                <div className="flex items-center gap-2 text-xs text-yellow-400 mb-2">
+                  <Sparkles size={14} />
+                  <span>Votre post sera mis en avant auprès de plus de personnes</span>
+                </div>
+                <div className="space-y-2">
+                  <Slider
+                    value={[boostBudget]}
+                    onValueChange={([v]) => setBoostBudget(v)}
+                    min={500} max={50000} step={500}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">500 FCFA</span>
+                    <span className="font-bold text-yellow-400">{boostBudget.toLocaleString('fr-FR')} FCFA</span>
+                    <span className="text-gray-500">50 000 FCFA</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="bg-gray-900 rounded-lg p-3 text-center border border-gray-700">
+                    <Users size={16} className="mx-auto mb-1 text-yellow-400" />
+                    <p className="text-lg font-bold text-white">{boostReach.toLocaleString('fr-FR')}</p>
+                    <p className="text-[10px] text-gray-500">Personnes atteintes</p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-3 text-center border border-gray-700">
+                    <Calendar size={16} className="mx-auto mb-1 text-yellow-400" />
+                    <p className="text-lg font-bold text-white">{boostDuration}</p>
+                    <p className="text-[10px] text-gray-500">Jours de boost</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-500 text-center">Le boost sera activé après validation par un administrateur</p>
               </div>
             )}
           </div>
@@ -778,30 +497,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, edit
 
         {/* Footer */}
         <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-800">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="border-gray-600 text-gray-300 hover:bg-gray-800"
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!content.trim() || !postType || isPending}
-            className="bg-edu-primary hover:bg-edu-primary/90 text-white"
-          >
-            {isPending ? (editPost ? 'Modification...' : 'Publication...') : (editPost ? 'Modifier' : 'Publier')}
+          <Button variant="outline" onClick={onClose} className="border-gray-600 text-gray-300 hover:bg-gray-800">Annuler</Button>
+          <Button onClick={handleSubmit} disabled={!content.trim() || !postType || isPending} className="bg-edu-primary hover:bg-edu-primary/90 text-white">
+            {isPending
+              ? (editPost ? 'Modification...' : 'Publication...')
+              : boostEnabled
+                ? `Publier & Booster (${boostBudget.toLocaleString('fr-FR')} FCFA)`
+                : (editPost ? 'Modifier' : 'Publier (gratuit)')
+            }
           </Button>
         </div>
       </div>
     </div>
 
-    {/* Dialog de vérification requis */}
-    <VerificationRequiredDialog
-      open={showVerificationDialog}
-      onOpenChange={setShowVerificationDialog}
-      featureName="La publication de posts de recrutement"
-    />
+    <VerificationRequiredDialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog} featureName="La publication de posts de recrutement" />
     </>
   );
 };

@@ -248,7 +248,8 @@ export const useCreatePost = () => {
       postType, 
       imageFiles, 
       authorId,
-      recruitmentOptions
+      recruitmentOptions,
+      boostOptions,
     }: {
       content: string;
       postType: 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' | 'general';
@@ -260,6 +261,13 @@ export const useCreatePost = () => {
         geographicZones?: string[];
         ageRange?: {min?: number; max?: number};
         gender?: string;
+      };
+      boostOptions?: {
+        is_boosted: boolean;
+        boost_budget: number;
+        boost_estimated_reach: number;
+        boost_status: string;
+        boost_expires_at: string;
       };
     }) => {
       try {
@@ -325,6 +333,15 @@ export const useCreatePost = () => {
           }
         }
 
+        // Ajouter les options de boost si présentes
+        if (boostOptions) {
+          postData.is_boosted = boostOptions.is_boosted;
+          postData.boost_budget = boostOptions.boost_budget;
+          postData.boost_estimated_reach = boostOptions.boost_estimated_reach;
+          postData.boost_status = boostOptions.boost_status;
+          postData.boost_expires_at = boostOptions.boost_expires_at;
+        }
+
         console.log('Inserting post data:', postData);
 
         const { data, error } = await supabase
@@ -385,7 +402,8 @@ export const useUpdatePost = () => {
       imageFiles,
       removedMediaIds,
       removeImage,
-      recruitmentOptions
+      recruitmentOptions,
+      boostOptions,
     }: {
       postId: string;
       content: string;
@@ -400,6 +418,13 @@ export const useUpdatePost = () => {
         geographicZones?: string[];
         ageRange?: {min?: number; max?: number};
         gender?: string;
+      };
+      boostOptions?: {
+        is_boosted: boolean;
+        boost_budget: number;
+        boost_estimated_reach: number;
+        boost_status: string;
+        boost_expires_at: string;
       };
     }) => {
       // Gestion des uploads (single ou multiple)
@@ -489,6 +514,15 @@ export const useUpdatePost = () => {
         if (recruitmentOptions.gender !== undefined) {
           updateData.gender = recruitmentOptions.gender;
         }
+      }
+
+      // Ajouter les options de boost
+      if (boostOptions) {
+        updateData.is_boosted = boostOptions.is_boosted;
+        updateData.boost_budget = boostOptions.boost_budget;
+        updateData.boost_estimated_reach = boostOptions.boost_estimated_reach;
+        updateData.boost_status = boostOptions.boost_status;
+        updateData.boost_expires_at = boostOptions.boost_expires_at;
       }
 
       const { data, error } = await supabase
