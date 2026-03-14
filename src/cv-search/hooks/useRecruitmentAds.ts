@@ -142,6 +142,9 @@ export const useCreateRecruitmentAd = () => {
           status: 'pending_approval',
           is_active: false,
           expires_at,
+          positions: input.positions || [],
+          required_documents: input.required_documents || [],
+          full_address: input.full_address || '',
         })
         .select()
         .single() as any);
