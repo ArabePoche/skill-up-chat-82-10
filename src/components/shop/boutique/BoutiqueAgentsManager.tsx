@@ -20,6 +20,7 @@ import {
     Camera,
     RefreshCcw
 } from 'lucide-react';
+import PendingAgentRequestsPanel from './PendingAgentRequestsPanel';
 import {
     Dialog,
     DialogContent,
