@@ -25,6 +25,12 @@ import { useAgentAuth } from '@/hooks/shop/useAgentAuth';
 import { AgentLockScreen } from '@/components/shop/boutique/AgentLockScreen';
 import { usePhysicalShop } from '@/hooks/shop/usePhysicalShop';
 import { useUserShops } from '@/hooks/shop/useMultiShop';
+import { useIsShopAgent } from '@/hooks/shop/useShopAgentRequests';
+import { useMyAgentStatus } from '@/hooks/shop/useShopAgentRequests';
+import AgentRequestDialog from '@/components/shop/boutique/AgentRequestDialog';
+import PendingAgentRequestsPanel from '@/components/shop/boutique/PendingAgentRequestsPanel';
+import { Badge } from '@/components/ui/badge';
+import { Clock, UserPlus } from 'lucide-react';
 
 const Shop = () => {
   const { t } = useTranslation();
@@ -35,6 +41,7 @@ const Shop = () => {
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000000]);
   const [mainView, setMainView] = useState<'marketplace' | 'gestion'>('marketplace');
+  const [showAgentRequestDialog, setShowAgentRequestDialog] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -49,8 +56,23 @@ const Shop = () => {
   const { data: services, isLoading: servicesLoading } = useServices(activeCategory);
   const { data: physicalShop } = usePhysicalShop();
   const { data: userShops } = useUserShops();
+  const { data: agentStatuses } = useIsShopAgent();
   const shopIdFromUrl = searchParams.get('id');
   const shop = userShops?.find((candidate) => candidate.id === shopIdFromUrl) || userShops?.[0] || physicalShop;
+
+  // Vérifier si l'utilisateur est agent actif dans la boutique courante
+  const isActiveAgent = agentStatuses?.some(
+    (a) => a.shop_id === shop?.id && a.status === 'active'
+  );
+  const isPendingAgent = agentStatuses?.some(
+    (a) => a.shop_id === shop?.id && a.status === 'pending'
+  );
+
+  // L'utilisateur peut voir les onglets s'il est propriétaire OU agent actif
+  const canAccessGestion = isShopOwner || isActiveAgent;
+  // Montrer les onglets si propriétaire, agent actif, ou agent en attente
+  const showTabs = isShopOwner || isActiveAgent || isPendingAgent;
+
   const {
     activeAgent,
     inactivityMinutes,
@@ -59,20 +81,32 @@ const Shop = () => {
     unlock,
     forgotPassword,
     updateProfile,
-  } = useAgentAuth(shop?.id, { lockScopeActive: isShopOwner && mainView === 'gestion' });
+  } = useAgentAuth(shop?.id, { lockScopeActive: canAccessGestion && mainView === 'gestion' });
 
   const handleViewDetails = useCallback((formationId: string) => {
     console.log('Shop: Navigating to formation details:', formationId);
     navigate(`/formation/${formationId}`);
   }, [navigate]);
 
+  // Quand un agent en attente ou non-agent clique sur Gestion
+  const handleViewChange = (view: 'marketplace' | 'gestion') => {
+    if (view === 'gestion' && !canAccessGestion) {
+      if (isPendingAgent) {
+        // Agent en attente: juste informer
+        return;
+      }
+      // Pas encore agent : ouvrir le dialog de demande
+      setShowAgentRequestDialog(true);
+      return;
+    }
+    setMainView(view);
+  };
+
   const filteredFormations = formations?.filter(formation => {
     const title = formation.title || '';
     const description = formation.description || '';
     const query = searchQuery.toLowerCase();
-
-    return title.toLowerCase().includes(query) ||
-      description.toLowerCase().includes(query);
+    return title.toLowerCase().includes(query) || description.toLowerCase().includes(query);
   }) || [];
 
   const filteredProducts = products?.filter(product => {
@@ -80,9 +114,7 @@ const Shop = () => {
     const description = product.description || '';
     const query = searchQuery.toLowerCase();
     const inPriceRange = product.price >= priceRange[0] && product.price <= priceRange[1];
-
-    return (title.toLowerCase().includes(query) ||
-      description.toLowerCase().includes(query)) && inPriceRange;
+    return (title.toLowerCase().includes(query) || description.toLowerCase().includes(query)) && inPriceRange;
   }) || [];
 
   const filteredServices = services?.filter(service => {
@@ -90,9 +122,7 @@ const Shop = () => {
     const description = service.description || '';
     const query = searchQuery.toLowerCase();
     const inPriceRange = service.price >= priceRange[0] && service.price <= priceRange[1];
-
-    return (name.toLowerCase().includes(query) ||
-      description.toLowerCase().includes(query)) && inPriceRange;
+    return (name.toLowerCase().includes(query) || description.toLowerCase().includes(query)) && inPriceRange;
   }) || [];
 
   const currentCategories = activeTab === 'formations'
@@ -108,21 +138,33 @@ const Shop = () => {
       : servicesLoading;
 
   return (
-    <div className={`min-h-screen bg-white pb-16 md:pb-0 relative ${isShopOwner ? 'md:pt-0' : 'md:pt-16'}`}>
-      {/* Onglets TikTok-style pour les propriétaires de boutique - Visible sur mobile en sticky */}
-      {isShopOwner && (
-        <div className="md:hidden sticky top-0 left-0 right-0 z-[100] bg-white">
-          <BoutiqueTopTabs activeView={mainView} onViewChange={setMainView} />
-        </div>
-      )}
-      {isShopOwner && (
-        <div className="hidden md:block">
-          <BoutiqueTopTabs activeView={mainView} onViewChange={setMainView} />
-        </div>
+    <div className={`min-h-screen bg-background pb-16 md:pb-0 relative ${showTabs ? 'md:pt-0' : 'md:pt-16'}`}>
+      {/* Onglets TikTok-style pour les propriétaires/agents */}
+      {showTabs && (
+        <>
+          <div className="md:hidden sticky top-0 left-0 right-0 z-[100] bg-background">
+            <BoutiqueTopTabs activeView={mainView} onViewChange={handleViewChange} />
+            {isPendingAgent && !canAccessGestion && mainView === 'marketplace' && (
+              <div className="bg-muted/50 px-4 py-2 text-xs text-muted-foreground flex items-center gap-2">
+                <Clock size={14} />
+                Votre demande d'accès est en attente d'approbation
+              </div>
+            )}
+          </div>
+          <div className="hidden md:block">
+            <BoutiqueTopTabs activeView={mainView} onViewChange={handleViewChange} />
+            {isPendingAgent && !canAccessGestion && (
+              <div className="bg-muted/50 px-4 py-2 text-xs text-muted-foreground flex items-center gap-2 justify-center">
+                <Clock size={14} />
+                Votre demande d'accès est en attente d'approbation
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Lock screen pour les agents/proprios */}
-      {isShopOwner && shop && mainView !== 'gestion' && !activeAgent?.isUnlocked && (
+      {canAccessGestion && shop && mainView !== 'gestion' && !activeAgent?.isUnlocked && (
         <AgentLockScreen
           shopId={shop.id}
           activeAgent={activeAgent}
@@ -136,16 +178,24 @@ const Shop = () => {
       )}
 
       {/* Vue Gestion boutique */}
-      {isShopOwner && mainView === 'gestion' ? (
-        <BoutiqueManagement
-          activeAgent={activeAgent}
-          inactivityMinutes={inactivityMinutes}
-          onInactivityMinutesChange={updateInactivityMinutes}
-          onLogin={login}
-          onUnlock={unlock}
-          forgotPassword={forgotPassword}
-          updateProfile={updateProfile}
-        />
+      {canAccessGestion && mainView === 'gestion' ? (
+        <div>
+          {/* Panneau des demandes en attente (visible par le propriétaire) */}
+          {isShopOwner && shop && (
+            <div className="p-4">
+              <PendingAgentRequestsPanel shopId={shop.id} />
+            </div>
+          )}
+          <BoutiqueManagement
+            activeAgent={activeAgent}
+            inactivityMinutes={inactivityMinutes}
+            onInactivityMinutesChange={updateInactivityMinutes}
+            onLogin={login}
+            onUnlock={unlock}
+            forgotPassword={forgotPassword}
+            updateProfile={updateProfile}
+          />
+        </div>
       ) : (
         <>
           <ShopHeader
@@ -197,7 +247,7 @@ const Shop = () => {
             {/* Contenu principal */}
             <div className="flex-1 min-w-0">
               {/* Filters top bar mobile */}
-              <div className="md:hidden p-2 sm:p-4 bg-white border-b">
+              <div className="md:hidden p-2 sm:p-4 bg-background border-b">
                 <div className="flex items-center justify-between gap-2">
                   <Button
                     variant="outline"
@@ -222,7 +272,7 @@ const Shop = () => {
               <div className="p-2 sm:p-4 lg:p-6">
                 {isLoading ? (
                   <div className="flex justify-center py-12">
-                    <div className="text-gray-500">{t('common.loading')}</div>
+                    <div className="text-muted-foreground">{t('common.loading')}</div>
                   </div>
                 ) : activeTab === 'formations' ? (
                   <FormationSections
@@ -247,6 +297,16 @@ const Shop = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Dialog de demande d'accès agent */}
+      {shop && (
+        <AgentRequestDialog
+          open={showAgentRequestDialog}
+          onOpenChange={setShowAgentRequestDialog}
+          shopId={shop.id}
+          shopName={shop.name}
+        />
       )}
     </div>
   );

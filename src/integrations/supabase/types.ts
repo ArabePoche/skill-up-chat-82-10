@@ -6520,12 +6520,15 @@ export type Database = {
       }
       shop_agents: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
+          email: string | null
           first_name: string
           id: string
           last_name: string
           password_hash: string | null
           pin_code: string | null
+          requested_role: string | null
           role: string
           shop_id: string
           status: string | null
@@ -6534,12 +6537,15 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
+          email?: string | null
           first_name: string
           id?: string
           last_name: string
           password_hash?: string | null
           pin_code?: string | null
+          requested_role?: string | null
           role: string
           shop_id: string
           status?: string | null
@@ -6548,12 +6554,15 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
+          email?: string | null
           first_name?: string
           id?: string
           last_name?: string
           password_hash?: string | null
           pin_code?: string | null
+          requested_role?: string | null
           role?: string
           shop_id?: string
           status?: string | null
