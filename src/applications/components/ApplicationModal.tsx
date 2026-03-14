@@ -219,14 +219,14 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
           )}
 
           {/* Documents requis par le recruteur */}
-          {requiredDocuments.length > 0 && (
+          {effectiveDocs.length > 0 && (
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
               <p className="text-xs font-semibold text-primary mb-1.5 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
                 Documents requis par le recruteur
               </p>
               <div className="flex flex-wrap gap-1">
-                {requiredDocuments.map(doc => (
+                {effectiveDocs.map(doc => (
                   <Badge key={doc} variant="outline" className="text-[10px]">
                     {DOC_LABELS[doc] || doc}
                   </Badge>
