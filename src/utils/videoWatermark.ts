@@ -448,6 +448,9 @@ export async function downloadVideoWithWatermark({
       await video.play();
       onStageChange?.('Application du watermark');
 
+      // Précharger le logo
+      const logoImg = await loadLogoImage();
+
       const renderFrame = () => {
         if (video.ended || video.paused) {
           if (mediaRecorder.state === 'recording') {
@@ -457,7 +460,7 @@ export async function downloadVideoWithWatermark({
         }
 
         ctx.drawImage(video, 0, 0, width, height);
-        drawWatermark(ctx, width, height, watermarkText, authorName);
+        drawWatermark(ctx, width, height, watermarkText, authorName, video.currentTime, logoImg);
 
         if (duration > 0) {
           const pct = Math.round(
