@@ -333,6 +333,15 @@ export const useCreatePost = () => {
           }
         }
 
+        // Ajouter les options de boost si présentes
+        if (boostOptions) {
+          postData.is_boosted = boostOptions.is_boosted;
+          postData.boost_budget = boostOptions.boost_budget;
+          postData.boost_estimated_reach = boostOptions.boost_estimated_reach;
+          postData.boost_status = boostOptions.boost_status;
+          postData.boost_expires_at = boostOptions.boost_expires_at;
+        }
+
         console.log('Inserting post data:', postData);
 
         const { data, error } = await supabase
