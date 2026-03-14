@@ -3766,6 +3766,80 @@ export type Database = {
           },
         ]
       }
+      recruitment_ads: {
+        Row: {
+          budget: number
+          contract_type: string | null
+          created_at: string
+          description: string | null
+          estimated_reach: number
+          experience_level: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          location: string | null
+          media_urls: string[] | null
+          owner_id: string
+          publish_type: string
+          salary_range: string | null
+          shop_id: string | null
+          skills: string[] | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          budget?: number
+          contract_type?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_reach?: number
+          experience_level?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          media_urls?: string[] | null
+          owner_id: string
+          publish_type?: string
+          salary_range?: string | null
+          shop_id?: string | null
+          skills?: string[] | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          budget?: number
+          contract_type?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_reach?: number
+          experience_level?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          media_urls?: string[] | null
+          owner_id?: string
+          publish_type?: string
+          salary_range?: string | null
+          shop_id?: string | null
+          skills?: string[] | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruitment_ads_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_videos: {
         Row: {
           id: string
