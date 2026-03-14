@@ -431,6 +431,14 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
             </label>
           </div>
 
+          {/* Indicateur des champs manquants */}
+          {getMissingFields().length > 0 && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-md p-2.5 text-xs text-destructive">
+              <p className="font-semibold mb-1">Champs obligatoires manquants :</p>
+              <p>{getMissingFields().join(', ')}</p>
+            </div>
+          )}
+
           {/* Boutons d'action */}
           <div className="flex justify-end gap-2">
             <Button
