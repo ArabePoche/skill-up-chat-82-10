@@ -6,7 +6,9 @@ import {
     Fingerprint,
     ChevronRight,
     RefreshCcw,
-    Keyboard
+    Keyboard,
+    LogOut,
+    Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -14,6 +16,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useShopAgentAvatarUpload, useShopAgents } from '@/hooks/shop/useShopAgents';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { AgentSession } from '@/hooks/shop/useAgentAuth';
 import { Capacitor } from '@capacitor/core';
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
@@ -27,6 +36,8 @@ interface AgentLockScreenProps {
     triggerClassName?: string;
     onLogin: (username: string, pass: string) => Promise<any>;
     onUnlock: (pin: string) => Promise<boolean>;
+    onLock?: () => void;
+    onLogout?: () => void;
     forgotPassword: () => Promise<void>;
     updateProfile: (updates: Partial<{ first_name:string; last_name:string; password_hash:string; pin_code:string; avatar_url:string; }>) => Promise<boolean>;
 }
@@ -40,6 +51,8 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
     triggerClassName,
     onLogin,
     onUnlock,
+    onLock,
+    onLogout,
     forgotPassword,
     updateProfile
 }) => {
@@ -230,22 +243,53 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
             ? 'h-8 w-8 rounded-md overflow-hidden border border-white/30 bg-white/20 hover:bg-white/30 transition'
             : 'fixed top-3 right-3 z-[111] w-11 h-11 rounded-full overflow-hidden border border-white/30 shadow-lg bg-slate-900/80 backdrop-blur';
 
+        const avatarContent = activeAgent?.avatarUrl ? (
+            <img src={activeAgent.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+        ) : (
+            <span className="w-full h-full flex items-center justify-center">
+                <User className="w-5 h-5 text-white" />
+            </span>
+        );
+
         return (
-            <button
-                type="button"
-                onClick={openSettingsPanel}
-                className={triggerClassName || defaultTriggerClassName}
-                aria-label="Ouvrir les parametres du compte"
-                title="Parametres du compte"
-            >
-                {activeAgent?.avatarUrl ? (
-                    <img src={activeAgent.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                ) : (
-                    <span className="w-full h-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-white" />
-                    </span>
-                )}
-            </button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <button
+                        type="button"
+                        className={triggerClassName || defaultTriggerClassName}
+                        aria-label="Menu du compte"
+                        title="Menu du compte"
+                    >
+                        {avatarContent}
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                    <div className="px-3 py-2 text-sm">
+                        <p className="font-medium">{activeAgent?.firstName} {activeAgent?.lastName}</p>
+                        <p className="text-xs text-muted-foreground">{activeAgent?.role}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={openSettingsPanel} className="gap-2">
+                        <Settings size={16} />
+                        Paramètres
+                    </DropdownMenuItem>
+                    {onLock && (
+                        <DropdownMenuItem onClick={onLock} className="gap-2">
+                            <Lock size={16} />
+                            Verrouiller
+                        </DropdownMenuItem>
+                    )}
+                    {onLogout && (
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={onLogout} className="gap-2 text-destructive focus:text-destructive">
+                                <LogOut size={16} />
+                                Déconnexion
+                            </DropdownMenuItem>
+                        </>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
         );
     }
 
