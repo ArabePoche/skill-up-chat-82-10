@@ -28,7 +28,7 @@ import { useUserShops } from '@/hooks/shop/useMultiShop';
 import { useIsShopAgent } from '@/hooks/shop/useShopAgentRequests';
 import { useMyAgentStatus } from '@/hooks/shop/useShopAgentRequests';
 import AgentRequestDialog from '@/components/shop/boutique/AgentRequestDialog';
-import PendingAgentRequestsPanel from '@/components/shop/boutique/PendingAgentRequestsPanel';
+
 import { Badge } from '@/components/ui/badge';
 import { Clock, UserPlus } from 'lucide-react';
 
@@ -182,12 +182,6 @@ const Shop = () => {
       {/* Vue Gestion boutique */}
       {canAccessGestion && mainView === 'gestion' ? (
         <div>
-          {/* Panneau des demandes en attente (visible par le propriétaire) */}
-          {isShopOwner && shop && (
-            <div className="p-4">
-              <PendingAgentRequestsPanel shopId={shop.id} />
-            </div>
-          )}
           <BoutiqueManagement
             activeAgent={activeAgent}
             inactivityMinutes={inactivityMinutes}
