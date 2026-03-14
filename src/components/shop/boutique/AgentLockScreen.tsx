@@ -462,7 +462,7 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                             <div className="space-y-8">
                             {/* Affichage des points du PIN */}
                             <div className="flex justify-center gap-4">
-                                {[...Array(activeAgent?.role === 'vendeur' ? 4 : 6)].map((_, i) => (
+                                {[...Array(6)].map((_, i) => (
                                     <div
                                         key={i}
                                         className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-blue-500 scale-125 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-white/10 border border-white/20'
