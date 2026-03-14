@@ -504,6 +504,17 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           storyId={story.id}
         />
       )}
+
+      {/* Modal de candidature pour stories de recrutement */}
+      {isRecruitmentStory && applicationModalOpen && (
+        <ApplicationModal
+          isOpen={applicationModalOpen}
+          onClose={() => { setApplicationModalOpen(false); setIsPaused(false); }}
+          recruiterId={story.user_id}
+          sourceId={(story as any).recruitment_ad_id}
+          sourceType="recruitment_ad"
+        />
+      )}
     </div>
   );
 };

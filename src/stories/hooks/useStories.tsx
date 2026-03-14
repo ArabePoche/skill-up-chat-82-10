@@ -51,6 +51,16 @@ export const useStories = () => {
           story_views (
             viewer_id,
             viewed_at
+          ),
+          recruitment_ads (
+            id,
+            title,
+            description,
+            skills,
+            location,
+            salary_range,
+            contract_type,
+            experience_level
           )
         `)
         .eq('is_active', true)
