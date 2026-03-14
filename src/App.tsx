@@ -105,6 +105,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/formation/:formationId/pricing" element={<FormationPricingPage />} />
         <Route path="/cv/:cvId" element={<PublicCv />} />
+        <Route path="/cv-search" element={<CvSearchPage />} />
         
         {/* Nouvelles routes cours explicites */}
         <Route path="/cours" element={<CoursIndex />} />
