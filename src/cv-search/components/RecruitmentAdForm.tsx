@@ -325,29 +325,70 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 </div>
               </div>
 
-              {/* Type de publication */}
+              {/* Type de publication (multi-sélection) */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Type de publication</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={publishType === 'post' ? 'default' : 'outline'}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setPublishType('post')}
-                  >
-                    📝 Post
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={publishType === 'status' ? 'default' : 'outline'}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setPublishType('status')}
-                  >
-                    🔵 Statut
-                  </Button>
+                <Label className="text-xs font-semibold">Type de publication *</Label>
+                <p className="text-[10px] text-muted-foreground">Vous pouvez choisir les deux</p>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer flex-1 border rounded-lg p-2.5 hover:bg-muted/30 transition-colors">
+                    <Checkbox checked={publishAsPost} onCheckedChange={(v) => setPublishAsPost(!!v)} />
+                    <span className="text-sm">📝 Post</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer flex-1 border rounded-lg p-2.5 hover:bg-muted/30 transition-colors">
+                    <Checkbox checked={publishAsStatus} onCheckedChange={(v) => setPublishAsStatus(!!v)} />
+                    <span className="text-sm">🔵 Statut</span>
+                  </label>
                 </div>
+                {!publishAsPost && !publishAsStatus && (
+                  <p className="text-[10px] text-destructive">Sélectionnez au moins un type</p>
+                )}
+              </div>
+
+              {/* Upload de médias */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Photos / Vidéos</Label>
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleMediaSelect}
+                />
+                {mediaFiles.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {mediaFiles.map((media, idx) => (
+                      <div key={idx} className="relative rounded-lg overflow-hidden border aspect-square bg-muted">
+                        {media.type === 'image' ? (
+                          <img src={media.url} alt={media.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <video src={media.url} className="w-full h-full object-cover" muted />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeMedia(idx)}
+                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 shadow"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  disabled={isUploadingMedia || mediaFiles.length >= 5}
+                  onClick={() => mediaInputRef.current?.click()}
+                >
+                  {isUploadingMedia ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Upload en cours...</>
+                  ) : (
+                    <><ImagePlus className="w-4 h-4" /> Ajouter des médias ({mediaFiles.length}/5)</>
+                  )}
+                </Button>
               </div>
 
               {/* Budget & portée */}
