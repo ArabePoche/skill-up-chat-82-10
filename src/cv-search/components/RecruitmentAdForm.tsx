@@ -70,18 +70,8 @@ const EXPERIENCE_LEVELS = [
   { value: 'senior', label: 'Senior (5+ ans)' },
 ];
 
-/** Documents que le recruteur peut exiger */
-const AVAILABLE_DOCUMENTS = [
-  { value: 'cv', label: 'CV' },
-  { value: 'lettre_motivation', label: 'Lettre de motivation' },
-  { value: 'diplome', label: 'Diplôme(s)' },
-  { value: 'photo', label: 'Photo d\'identité' },
-  { value: 'carte_identite', label: 'Carte d\'identité' },
-  { value: 'certificat_travail', label: 'Certificat de travail' },
-  { value: 'casier_judiciaire', label: 'Casier judiciaire' },
-  { value: 'permis', label: 'Permis de conduire' },
-  { value: 'references', label: 'Références professionnelles' },
-];
+/** Suggestions courantes de documents */
+const DOCUMENT_SUGGESTIONS = ['CV', 'Lettre de motivation', 'Diplôme(s)', 'Photo d\'identité', 'Carte d\'identité', 'Certificat de travail', 'Casier judiciaire', 'Permis de conduire', 'Références professionnelles'];
 
 const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChange, shopId }) => {
   const { user } = useAuth();
@@ -109,7 +99,8 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
   // Nouveaux champs
   const [positions, setPositions] = useState<string[]>([]);
   const [positionInput, setPositionInput] = useState('');
-  const [requiredDocuments, setRequiredDocuments] = useState<string[]>(['cv', 'photo']);
+  const [requiredDocuments, setRequiredDocuments] = useState<string[]>([]);
+  const [docInput, setDocInput] = useState('');
 
   const reach = useMemo(() => estimateReach(budget), [budget]);
   const duration = useMemo(() => estimateDuration(budget), [budget]);
@@ -197,10 +188,23 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     setPositions(positions.filter(p => p !== pos));
   };
 
-  const toggleDocument = (docValue: string) => {
-    setRequiredDocuments(prev =>
-      prev.includes(docValue) ? prev.filter(d => d !== docValue) : [...prev, docValue]
-    );
+  const addDocument = () => {
+    const trimmed = docInput.trim();
+    if (trimmed && !requiredDocuments.includes(trimmed)) {
+      setRequiredDocuments([...requiredDocuments, trimmed]);
+      setDocInput('');
+    }
+  };
+
+  const removeDocument = (doc: string) => {
+    setRequiredDocuments(requiredDocuments.filter(d => d !== doc));
+  };
+
+  const handleDocKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addDocument();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -257,7 +261,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
       setPublishAsPost(true);
       setPublishAsStatus(false);
       setPositions([]);
-      setRequiredDocuments(['cv', 'photo']);
+      setRequiredDocuments([]);
       setStep('form');
       onOpenChange(false);
     } catch (err: any) {
@@ -421,21 +425,45 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 </div>
               </div>
 
-              {/* Documents requis */}
+              {/* Documents requis - saisie libre */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-primary" />
                   Documents à fournir par le candidat
                 </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {AVAILABLE_DOCUMENTS.map((doc) => (
-                    <label key={doc.value} className="flex items-center gap-2 cursor-pointer border rounded-lg p-2 hover:bg-muted/30 transition-colors text-sm">
-                      <Checkbox
-                        checked={requiredDocuments.includes(doc.value)}
-                        onCheckedChange={() => toggleDocument(doc.value)}
-                      />
-                      <span className="text-xs">{doc.label}</span>
-                    </label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ex: CV, Diplôme, Permis..."
+                    value={docInput}
+                    onChange={(e) => setDocInput(e.target.value)}
+                    onKeyDown={handleDocKeyDown}
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" variant="outline" onClick={addDocument}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {requiredDocuments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {requiredDocuments.map((doc) => (
+                      <Badge key={doc} variant="secondary" className="gap-1 text-xs">
+                        {doc}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => removeDocument(doc)} />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {/* Suggestions rapides */}
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {DOCUMENT_SUGGESTIONS.filter(s => !requiredDocuments.includes(s)).slice(0, 5).map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setRequiredDocuments(prev => [...prev, s])}
+                      className="text-[10px] px-2 py-0.5 rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    >
+                      + {s}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -644,7 +672,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                         <div className="flex flex-wrap gap-1">
                           {requiredDocuments.map(d => (
                             <Badge key={d} variant="outline" className="text-[9px]">
-                              {AVAILABLE_DOCUMENTS.find(ad => ad.value === d)?.label || d}
+                              {d}
                             </Badge>
                           ))}
                         </div>

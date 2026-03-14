@@ -30,7 +30,7 @@ interface ApplicationModalProps {
   positions?: string[];
 }
 
-/** Noms lisibles des documents */
+/** Noms lisibles des documents (fallback pour anciens formats) */
 const DOC_LABELS: Record<string, string> = {
   cv: 'CV',
   lettre_motivation: 'Lettre de motivation',
@@ -42,6 +42,9 @@ const DOC_LABELS: Record<string, string> = {
   permis: 'Permis de conduire',
   references: 'Références professionnelles',
 };
+
+/** Résout le label d'un document (supporte ancien format clé et nouveau format texte libre) */
+const getDocLabel = (doc: string) => DOC_LABELS[doc] || doc;
 
 export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   isOpen,
@@ -141,8 +144,8 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
     setPhotoPreview(null);
   };
 
-  const needsPhoto = effectiveDocs.includes('photo');
-  const needsCv = effectiveDocs.includes('cv');
+  const needsPhoto = effectiveDocs.some(d => d === 'photo' || d.toLowerCase().includes('photo'));
+  const needsCv = effectiveDocs.some(d => d === 'cv' || d.toLowerCase() === 'cv');
 
   const isFormValid = () => {
     if (!motivation.trim()) return false;
@@ -228,7 +231,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
               <div className="flex flex-wrap gap-1">
                 {effectiveDocs.map(doc => (
                   <Badge key={doc} variant="outline" className="text-[10px]">
-                    {DOC_LABELS[doc] || doc}
+                    {getDocLabel(doc)}
                   </Badge>
                 ))}
               </div>

@@ -103,11 +103,11 @@ export const CvResultCard: React.FC<CvResultCardProps> = ({ cv, currentUserId, s
               <Eye size={12} className="mr-1" />
               Voir le CV
             </Button>
-            {currentUserId && currentUserId !== cv.user_id && (
+            {currentUserId && (
               <Button
                 size="sm"
                 className="flex-1 text-xs"
-                disabled={!!existingInvitation}
+                disabled={currentUserId === cv.user_id || !!existingInvitation}
                 onClick={() => setInviteOpen(true)}
               >
                 {existingInvitation ? (
@@ -115,6 +115,8 @@ export const CvResultCard: React.FC<CvResultCardProps> = ({ cv, currentUserId, s
                     <Check size={12} className="mr-1" />
                     Déjà invité
                   </>
+                ) : currentUserId === cv.user_id ? (
+                  <span className="text-xs">Mon CV</span>
                 ) : (
                   <>
                     <Send size={12} className="mr-1" />
