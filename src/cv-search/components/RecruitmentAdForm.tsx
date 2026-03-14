@@ -3,7 +3,7 @@
  * Inclut : titre, description, compétences, localisation, salaire, contrat, expérience, médias
  * Prévisualisation en mode Post ou Statut avant publication
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -38,9 +39,14 @@ import {
   Calendar,
   ArrowLeft,
   Send,
+  ImagePlus,
+  Loader2,
 } from 'lucide-react';
 import { estimateReach, estimateDuration, useCreateRecruitmentAd } from '../hooks/useRecruitmentAds';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { compressImage } from '@/utils/imageCompression';
+import { toast } from 'sonner';
 
 interface RecruitmentAdFormProps {
   open: boolean;
