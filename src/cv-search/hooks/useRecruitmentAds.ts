@@ -38,6 +38,8 @@ export interface CreateRecruitmentAdInput {
   experience_level: string;
   media_urls: string[];
   publish_type: 'post' | 'status';
+  publish_as_post: boolean;
+  publish_as_status: boolean;
   budget: number;
 }
 
