@@ -49,12 +49,12 @@ const PendingAgentRequestsPanel: React.FC<PendingAgentRequestsPanelProps> = ({ s
   };
 
   return (
-    <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
+    <Card className="border-primary/20 bg-primary/5">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Clock size={18} className="text-orange-500" />
+          <Clock size={18} className="text-primary" />
           Demandes d'accès en attente
-          <Badge variant="secondary" className="ml-auto bg-orange-100 text-orange-700">
+          <Badge variant="secondary" className="ml-auto">
             {requests.length}
           </Badge>
         </CardTitle>
