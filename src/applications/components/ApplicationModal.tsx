@@ -231,7 +231,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
               <div className="flex flex-wrap gap-1">
                 {effectiveDocs.map(doc => (
                   <Badge key={doc} variant="outline" className="text-[10px]">
-                    {DOC_LABELS[doc] || doc}
+                    {getDocLabel(doc)}
                   </Badge>
                 ))}
               </div>
