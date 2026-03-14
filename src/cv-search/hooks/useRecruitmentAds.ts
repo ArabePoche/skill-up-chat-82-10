@@ -125,6 +125,57 @@ export const useCreateRecruitmentAd = () => {
 
       if (error) throw error;
 
+      // === Créer un vrai Post si publishAsPost ===
+      if (input.publish_as_post) {
+        const postContent = `📢 **${input.title}**\n\n${input.description}\n\n` +
+          (input.skills.length > 0 ? `🔧 Compétences : ${input.skills.join(', ')}\n` : '') +
+          (input.location ? `📍 ${input.location}\n` : '') +
+          (input.salary_range ? `💰 ${input.salary_range}\n` : '') +
+          `📋 ${input.contract_type} · ${input.experience_level}`;
+
+        const { data: postData, error: postError } = await supabase
+          .from('posts')
+          .insert({
+            content: postContent,
+            post_type: 'recruitment',
+            author_id: input.owner_id,
+            image_url: input.media_urls[0] || null,
+            is_active: true,
+            likes_count: 0,
+            comments_count: 0,
+          })
+          .select()
+          .single();
+
+        if (!postError && postData && input.media_urls.length > 0) {
+          const mediaRows = input.media_urls.map((url, idx) => ({
+            post_id: postData.id,
+            file_url: url,
+            file_type: url.match(/\.(mp4|webm|mov)/) ? 'video' : 'image',
+            order_index: idx,
+          }));
+          await supabase.from('post_media').insert(mediaRows);
+        }
+      }
+
+      // === Créer un vrai Statut (Story) si publishAsStatus ===
+      if (input.publish_as_status) {
+        const hasImage = input.media_urls.some(url => !url.match(/\.(mp4|webm|mov)/));
+        const hasVideo = input.media_urls.some(url => url.match(/\.(mp4|webm|mov)/));
+        const firstMedia = input.media_urls[0] || null;
+
+        await supabase
+          .from('user_stories')
+          .insert({
+            user_id: input.owner_id,
+            content_type: hasVideo ? 'video' : hasImage ? 'image' : 'text',
+            content_text: `📢 ${input.title}`,
+            media_url: firstMedia,
+            background_color: '#2563eb',
+            description: `${input.description}\n📍 ${input.location || ''} · ${input.contract_type}`,
+          });
+      }
+
       // Envoyer des notifications aux candidats correspondants
       if (input.skills.length > 0) {
         const { data: matchingCvs } = await supabase
@@ -157,9 +208,11 @@ export const useCreateRecruitmentAd = () => {
     onSuccess: () => {
       toast({
         title: '📢 Annonce créée !',
-        description: 'En attente de paiement pour diffusion.',
+        description: 'Votre annonce est visible dans les posts et/ou statuts.',
       });
       queryClient.invalidateQueries({ queryKey: ['recruitment-ads'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['stories'] });
     },
     onError: (error: any) => {
       toast({
