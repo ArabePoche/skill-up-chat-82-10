@@ -38,7 +38,7 @@ export const useMyAgentStatus = (shopId?: string) => {
         .maybeSingle();
 
       if (error) throw error;
-      return data as { id: string; status: string; role: string; requested_role: string | null } | null;
+      return data as unknown as { id: string; status: string; role: string; requested_role: string | null } | null;
     },
     enabled: !!user?.id && !!shopId,
   });
