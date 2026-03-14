@@ -84,11 +84,77 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
   const [salaryRange, setSalaryRange] = useState('');
   const [contractType, setContractType] = useState('CDI');
   const [experienceLevel, setExperienceLevel] = useState('junior');
-  const [publishType, setPublishType] = useState<'post' | 'status'>('post');
+  const [publishAsPost, setPublishAsPost] = useState(true);
+  const [publishAsStatus, setPublishAsStatus] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'post' | 'status'>('post');
   const [budget, setBudget] = useState(1000);
+  const [mediaFiles, setMediaFiles] = useState<{ url: string; type: 'image' | 'video'; name: string }[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
 
   const reach = useMemo(() => estimateReach(budget), [budget]);
   const duration = useMemo(() => estimateDuration(budget), [budget]);
+
+  /** Upload de médias (photos/vidéos) vers Supabase Storage */
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !user?.id) return;
+
+    setIsUploadingMedia(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (mediaFiles.length >= 5) {
+          toast.error('Maximum 5 médias par annonce');
+          break;
+        }
+
+        const isVideo = file.type.startsWith('video/');
+        const isImage = file.type.startsWith('image/');
+        if (!isVideo && !isImage) {
+          toast.error(`${file.name}: type non supporté`);
+          continue;
+        }
+
+        // Compresser les images, garder les vidéos telles quelles
+        let uploadFile: File | Blob = file;
+        if (isImage) {
+          uploadFile = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 1200, quality: 0.8 });
+        }
+
+        const ext = file.name.split('.').pop();
+        const path = `recruitment-ads/${user.id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(path, uploadFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          toast.error(`Erreur upload: ${uploadError.message}`);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(path);
+
+        setMediaFiles(prev => [...prev, {
+          url: publicUrl,
+          type: isVideo ? 'video' : 'image',
+          name: file.name,
+        }]);
+      }
+      toast.success('Média(s) ajouté(s) !');
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur upload');
+    } finally {
+      setIsUploadingMedia(false);
+      if (mediaInputRef.current) mediaInputRef.current.value = '';
+    }
+  };
+
+  const removeMedia = (index: number) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const addSkill = () => {
     const trimmed = skillInput.trim();
