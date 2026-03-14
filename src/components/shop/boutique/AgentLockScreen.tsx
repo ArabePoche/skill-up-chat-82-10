@@ -36,6 +36,8 @@ interface AgentLockScreenProps {
     triggerClassName?: string;
     onLogin: (username: string, pass: string) => Promise<any>;
     onUnlock: (pin: string) => Promise<boolean>;
+    onLock?: () => void;
+    onLogout?: () => void;
     forgotPassword: () => Promise<void>;
     updateProfile: (updates: Partial<{ first_name:string; last_name:string; password_hash:string; pin_code:string; avatar_url:string; }>) => Promise<boolean>;
 }
