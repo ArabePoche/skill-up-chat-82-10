@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShopAgents, useCreateShopAgent, useUpdateShopAgent, useDeleteShopAgent, useResetShopAgentPassword, useShopAgentAvatarUpload, ShopAgent } from '@/hooks/shop/useShopAgents';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,7 @@ interface BoutiqueAgentsManagerProps {
 }
 
 export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ shopId }) => {
+    const navigate = useNavigate();
     const { data: agents, isLoading } = useShopAgents(shopId);
     const createAgent = useCreateShopAgent();
     const updateAgent = useUpdateShopAgent();
@@ -125,121 +127,13 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
                     </p>
                 </div>
 
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="gap-2 bg-gradient-to-r from-primary to-primary-foreground text-white border-none shadow-premium transition-all hover:scale-105 active:scale-95">
-                            <UserPlus className="w-4 h-4" />
-                            Recruter un agent
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>Nouvel Agent Local</DialogTitle>
-                            <DialogDescription>
-                                Créez un compte spécifique pour votre boutique.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Prénom</label>
-                                    <Input
-                                        placeholder="Ex: Jean"
-                                        value={newAgent.first_name}
-                                        onChange={(e) => setNewAgent({ ...newAgent, first_name: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Nom</label>
-                                    <Input
-                                        placeholder="Ex: Dupont"
-                                        value={newAgent.last_name}
-                                        onChange={(e) => setNewAgent({ ...newAgent, last_name: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Rôle</label>
-                                <Select
-                                    value={newAgent.role}
-                                    onValueChange={(v: any) => setNewAgent({ ...newAgent, role: v })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Choisir un rôle" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="vendeur">Vendeur (Ventes uniquement)</SelectItem>
-                                        <SelectItem value="comptable">Comptable (Ventes + Stats)</SelectItem>
-                                        <SelectItem value="PDG">PDG (Gestion totale)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Avatar</label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={e => {
-                                        const file = e.target.files?.[0] || null;
-                                        setNewAgent(prev => ({ ...prev, avatarFile: file } as any));
-                                        if (file) {
-                                            setNewAvatarPreview(URL.createObjectURL(file));
-                                        } else {
-                                            setNewAvatarPreview(null);
-                                        }
-                                    }}
-                                />
-                                {newAvatarPreview && (
-                                    <img
-                                        src={newAvatarPreview}
-                                        className="w-16 h-16 rounded-full mt-2"
-                                        alt="aperçu avatar"
-                                    />
-                                )}
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Identifiant</label>
-                                    <Input
-                                        placeholder="Username"
-                                        value={newAgent.username}
-                                        onChange={(e) => setNewAgent({ ...newAgent, username: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Mot de passe</label>
-                                    <Input
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={newAgent.password}
-                                        onChange={(e) => setNewAgent({ ...newAgent, password: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium flex items-center gap-2">
-                                    <Lock className="w-3 h-3" /> Code PIN (Accès rapide)
-                                </label>
-                                <Input
-                                    type="password"
-                                    placeholder="4-6 chiffres"
-                                    maxLength={6}
-                                    value={newAgent.pin_code}
-                                    onChange={(e) => setNewAgent({ ...newAgent, pin_code: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Annuler</Button>
-                            <Button
-                                onClick={handleAddAgent}
-                                disabled={!newAgent.first_name || !newAgent.last_name}
-                            >
-                                Ajouter l'agent
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <Button 
+                    onClick={() => navigate('/cv-search')}
+                    className="gap-2 bg-gradient-to-r from-primary to-primary-foreground text-white border-none shadow-premium transition-all hover:scale-105 active:scale-95"
+                >
+                    <Search className="w-4 h-4" />
+                    Recruter via CV publics
+                </Button>
 
             </div>
 
