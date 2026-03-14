@@ -44,6 +44,9 @@ export interface CreateRecruitmentAdInput {
   publish_as_post: boolean;
   publish_as_status: boolean;
   budget: number;
+  positions?: string[];
+  required_documents?: string[];
+  full_address?: string;
 }
 
 /**
