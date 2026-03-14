@@ -196,7 +196,9 @@ export const useApproveRecruitmentAd = () => {
             is_active: true,
             likes_count: 0,
             comments_count: 0,
-          })
+            recruitment_ad_id: ad.id,
+            required_profiles: ad.skills || [],
+          } as any)
           .select()
           .single();
 
