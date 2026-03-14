@@ -77,14 +77,14 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
     const fetchExistingCv = async () => {
       const { data } = await supabase
         .from('public_cvs')
-        .select('id, full_name')
+        .select('id, title')
         .eq('user_id', userId)
         .eq('is_public', true)
         .maybeSingle();
 
       if (data) {
         setExistingCvUrl(`/cv/${data.id}`);
-        setExistingCvName(data.full_name || 'Mon CV');
+        setExistingCvName(data.title || 'Mon CV');
         setUseExistingCv(true);
       }
     };
