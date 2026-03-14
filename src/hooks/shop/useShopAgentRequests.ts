@@ -60,7 +60,7 @@ export const useIsShopAgent = () => {
         .in('status', ['active', 'pending']);
 
       if (error) throw error;
-      return data as { id: string; shop_id: string; status: string; role: string }[] | null;
+      return data as unknown as { id: string; shop_id: string; status: string; role: string }[] | null;
     },
     enabled: !!user?.id,
   });
