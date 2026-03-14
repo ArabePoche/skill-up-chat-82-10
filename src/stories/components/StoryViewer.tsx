@@ -510,9 +510,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         <ApplicationModal
           isOpen={applicationModalOpen}
           onClose={() => { setApplicationModalOpen(false); setIsPaused(false); }}
+          userId={user?.id || ''}
           recruiterId={story.user_id}
           sourceId={(story as any).recruitment_ad_id}
           sourceType="recruitment_ad"
+        />
         />
       )}
     </div>
