@@ -40,7 +40,7 @@ const RecruitmentAdsManagement: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Megaphone className="w-5 h-5" />
-          Annonces de recrutement en attente
+          Annonces en attente
         </h2>
         <Badge variant="secondary" className="text-sm">
           {pendingAds.length} en attente
