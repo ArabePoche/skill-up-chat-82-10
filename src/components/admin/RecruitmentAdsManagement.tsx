@@ -6,7 +6,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, MapPin, Briefcase, DollarSign, Clock, Users, Megaphone, Image } from 'lucide-react';
+import { Check, X, MapPin, Briefcase, DollarSign, Clock, Users, Megaphone, Image, ShoppingBag } from 'lucide-react';
 import {
   usePendingRecruitmentAds,
   useApproveRecruitmentAd,
