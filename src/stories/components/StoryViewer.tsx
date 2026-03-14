@@ -515,7 +515,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           sourceId={(story as any).recruitment_ad_id}
           sourceType="recruitment_ad"
         />
-        />
       )}
     </div>
   );
