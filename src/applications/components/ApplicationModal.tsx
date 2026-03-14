@@ -30,7 +30,7 @@ interface ApplicationModalProps {
   positions?: string[];
 }
 
-/** Noms lisibles des documents */
+/** Noms lisibles des documents (fallback pour anciens formats) */
 const DOC_LABELS: Record<string, string> = {
   cv: 'CV',
   lettre_motivation: 'Lettre de motivation',
@@ -42,6 +42,9 @@ const DOC_LABELS: Record<string, string> = {
   permis: 'Permis de conduire',
   references: 'Références professionnelles',
 };
+
+/** Résout le label d'un document (supporte ancien format clé et nouveau format texte libre) */
+const getDocLabel = (doc: string) => DOC_LABELS[doc] || doc;
 
 export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   isOpen,
