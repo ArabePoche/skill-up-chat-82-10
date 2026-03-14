@@ -57,10 +57,15 @@ const RecruitmentAdsManagement: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {pendingAds.map((ad) => (
-            <Card key={ad.id} className="border-l-4 border-l-yellow-500">
+            <Card key={ad.id} className={`border-l-4 ${ad.ad_type === 'product' ? 'border-l-green-500' : 'border-l-yellow-500'}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant={ad.ad_type === 'product' ? 'secondary' : 'default'} className="text-[10px]">
+                        {ad.ad_type === 'product' ? '🛍️ Produit' : '💼 Recrutement'}
+                      </Badge>
+                    </div>
                     <CardTitle className="text-base">{ad.title}</CardTitle>
                     <p className="text-xs text-muted-foreground mt-1">
                       Soumise le {new Date(ad.created_at).toLocaleDateString('fr-FR', {
