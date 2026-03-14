@@ -18,6 +18,7 @@ import { TeacherApplicationsList } from '@/teacher-application/components/Teache
 import VerificationRequestsManagement from '@/components/admin/VerificationRequestsManagement';
 import StudentPaymentTracking from '@/components/admin/payments/StudentPaymentTracking';
 import PushNotificationSender from '@/components/admin/PushNotificationSender';
+import RecruitmentAdsManagement from '@/components/admin/RecruitmentAdsManagement';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
