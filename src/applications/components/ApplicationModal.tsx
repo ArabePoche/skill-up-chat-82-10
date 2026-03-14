@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Upload, FileText, X, Camera, CheckCircle2, AlertCircle, User } from 'lucide-react';
+import { Upload, FileText, X, Camera, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useSubmitApplication } from '../hooks/useApplications';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
