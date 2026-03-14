@@ -19,9 +19,7 @@ const WATERMARK_METADATA_PROGRESS = 45;
 const WATERMARK_RENDER_START = 50;
 const WATERMARK_RENDER_END = 92;
 const WATERMARK_SAVE_PROGRESS = 97;
-
-/** Durée en secondes avant de changer de côté */
-const WATERMARK_SWITCH_INTERVAL = 6;
+const WATERMARK_SWITCH_INTERVAL = 8;
 
 /**
  * Charge le logo de l'app en tant qu'image pour le watermark.
@@ -86,8 +84,7 @@ async function loadLogoImage(): Promise<HTMLImageElement | null> {
 
 /**
  * Dessine le watermark TikTok-style sur un canvas.
- * Alterne gauche (0-6s) / droite (6-12s) / gauche… toutes les 6 secondes.
- * Affiche le logo de l'app + le texte "EducaTok" + @user en dessous.
+ * Alterne gauche/droite dans la vidéo, avec un logo centré sur le bloc de texte.
  */
 function drawWatermark(
   ctx: CanvasRenderingContext2D,
@@ -101,9 +98,6 @@ function drawWatermark(
   ctx.save();
 
   const paddingX = Math.round(width * 0.04);
-  const paddingY = Math.round(height * 0.06);
-
-  // Déterminer le côté selon le temps (alterne toutes les 6s)
   const cycle = Math.floor(currentTime / WATERMARK_SWITCH_INTERVAL);
   const isRight = cycle % 2 === 1;
 
@@ -124,14 +118,24 @@ function drawWatermark(
   const blockHeight = logoIconSize + Math.round(textSize * 1.2) + Math.round(authorSize * 1.2);
   const startY = Math.round((height - blockHeight) / 2);
 
-  // Position X selon le côté
-  const xAnchor = isRight ? width - paddingX : paddingX;
-  ctx.textAlign = isRight ? 'right' : 'left';
+  ctx.font = `bold ${textSize}px "Arial", sans-serif`;
+  const watermarkWidth = ctx.measureText(watermarkText).width;
+  ctx.font = `600 ${authorSize}px "Arial", sans-serif`;
+  const authorWidth = ctx.measureText(`@${authorName}`).width;
+  const blockWidth = Math.max(logoIconSize, watermarkWidth, authorWidth);
+
+  // Position X selon le côté, en gardant le logo centré sur le texte.
+  const halfBlockWidth = Math.round(blockWidth / 2);
+  const xAnchor = isRight
+    ? width - paddingX - halfBlockWidth
+    : paddingX + halfBlockWidth;
+
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
   // 1. Logo image
   if (logoImage) {
-    const logoX = isRight ? xAnchor - logoIconSize : xAnchor;
+    const logoX = Math.round(xAnchor - logoIconSize / 2);
     ctx.shadowBlur = 12;
     ctx.globalAlpha = 0.85;
     ctx.drawImage(logoImage, logoX, startY, logoIconSize, logoIconSize);
