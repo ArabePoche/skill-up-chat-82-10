@@ -70,18 +70,8 @@ const EXPERIENCE_LEVELS = [
   { value: 'senior', label: 'Senior (5+ ans)' },
 ];
 
-/** Documents que le recruteur peut exiger */
-const AVAILABLE_DOCUMENTS = [
-  { value: 'cv', label: 'CV' },
-  { value: 'lettre_motivation', label: 'Lettre de motivation' },
-  { value: 'diplome', label: 'Diplôme(s)' },
-  { value: 'photo', label: 'Photo d\'identité' },
-  { value: 'carte_identite', label: 'Carte d\'identité' },
-  { value: 'certificat_travail', label: 'Certificat de travail' },
-  { value: 'casier_judiciaire', label: 'Casier judiciaire' },
-  { value: 'permis', label: 'Permis de conduire' },
-  { value: 'references', label: 'Références professionnelles' },
-];
+/** Suggestions courantes de documents */
+const DOCUMENT_SUGGESTIONS = ['CV', 'Lettre de motivation', 'Diplôme(s)', 'Photo d\'identité', 'Carte d\'identité', 'Certificat de travail', 'Casier judiciaire', 'Permis de conduire', 'Références professionnelles'];
 
 const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChange, shopId }) => {
   const { user } = useAuth();
