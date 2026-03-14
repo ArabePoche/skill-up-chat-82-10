@@ -1,7 +1,7 @@
 /**
  * Formulaire de création d'annonce de recrutement avec prévisualisation
  * Inclut : titre, description, compétences, localisation, salaire, contrat, expérience, médias
- * Prévisualisation en mode Post ou Statut avant publication
+ * + postes recherchés, adresse complète, documents requis
  */
 import React, { useState, useMemo, useRef } from 'react';
 import {
@@ -41,6 +41,7 @@ import {
   Send,
   ImagePlus,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import { estimateReach, estimateDuration, useCreateRecruitmentAd } from '../hooks/useRecruitmentAds';
 import { useAuth } from '@/hooks/useAuth';
@@ -69,11 +70,23 @@ const EXPERIENCE_LEVELS = [
   { value: 'senior', label: 'Senior (5+ ans)' },
 ];
 
+/** Documents que le recruteur peut exiger */
+const AVAILABLE_DOCUMENTS = [
+  { value: 'cv', label: 'CV' },
+  { value: 'lettre_motivation', label: 'Lettre de motivation' },
+  { value: 'diplome', label: 'Diplôme(s)' },
+  { value: 'photo', label: 'Photo d\'identité' },
+  { value: 'carte_identite', label: 'Carte d\'identité' },
+  { value: 'certificat_travail', label: 'Certificat de travail' },
+  { value: 'casier_judiciaire', label: 'Casier judiciaire' },
+  { value: 'permis', label: 'Permis de conduire' },
+  { value: 'references', label: 'Références professionnelles' },
+];
+
 const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChange, shopId }) => {
   const { user } = useAuth();
   const createAd = useCreateRecruitmentAd();
 
-  // Step: 'form' | 'preview'
   const [step, setStep] = useState<'form' | 'preview'>('form');
 
   const [title, setTitle] = useState('');
@@ -81,6 +94,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
   const [location, setLocation] = useState('');
+  const [fullAddress, setFullAddress] = useState('');
   const [salaryRange, setSalaryRange] = useState('');
   const [contractType, setContractType] = useState('CDI');
   const [experienceLevel, setExperienceLevel] = useState('junior');
@@ -92,10 +106,14 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
+  // Nouveaux champs
+  const [positions, setPositions] = useState<string[]>([]);
+  const [positionInput, setPositionInput] = useState('');
+  const [requiredDocuments, setRequiredDocuments] = useState<string[]>(['cv', 'photo']);
+
   const reach = useMemo(() => estimateReach(budget), [budget]);
   const duration = useMemo(() => estimateDuration(budget), [budget]);
 
-  /** Upload de médias (photos/vidéos) vers Supabase Storage */
   const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !user?.id) return;
@@ -115,7 +133,6 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
           continue;
         }
 
-        // Compresser les images, garder les vidéos telles quelles
         let uploadFile: File | Blob = file;
         if (isImage) {
           uploadFile = await compressImage(file, { maxSizeMB: 2, maxWidthOrHeight: 1200, quality: 0.8 });
@@ -168,6 +185,24 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     setSkills(skills.filter(s => s !== skill));
   };
 
+  const addPosition = () => {
+    const trimmed = positionInput.trim();
+    if (trimmed && !positions.includes(trimmed)) {
+      setPositions([...positions, trimmed]);
+      setPositionInput('');
+    }
+  };
+
+  const removePosition = (pos: string) => {
+    setPositions(positions.filter(p => p !== pos));
+  };
+
+  const toggleDocument = (docValue: string) => {
+    setRequiredDocuments(prev =>
+      prev.includes(docValue) ? prev.filter(d => d !== docValue) : [...prev, docValue]
+    );
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -175,11 +210,17 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     }
   };
 
-  const isValid = title.trim().length >= 3 && description.trim().length >= 10 && budget >= 500 && (publishAsPost || publishAsStatus);
+  const handlePositionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addPosition();
+    }
+  };
+
+  const isValid = title.trim().length >= 3 && description.trim().length >= 10 && budget >= 500 && (publishAsPost || publishAsStatus) && positions.length > 0;
 
   const handleSubmit = async () => {
     if (!user?.id || !isValid) {
-      console.error('❌ Validation échouée:', { userId: user?.id, isValid, title, description, budget, publishAsPost, publishAsStatus });
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
@@ -200,17 +241,23 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
         publish_as_post: publishAsPost,
         publish_as_status: publishAsStatus,
         budget,
+        positions,
+        required_documents: requiredDocuments,
+        full_address: fullAddress.trim(),
       });
       // Reset
       setTitle('');
       setDescription('');
       setSkills([]);
       setLocation('');
+      setFullAddress('');
       setSalaryRange('');
       setBudget(1000);
       setMediaFiles([]);
       setPublishAsPost(true);
       setPublishAsStatus(false);
+      setPositions([]);
+      setRequiredDocuments(['cv', 'photo']);
       setStep('form');
       onOpenChange(false);
     } catch (err: any) {
@@ -246,6 +293,36 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                   onChange={(e) => setTitle(e.target.value)}
                   maxLength={100}
                 />
+              </div>
+
+              {/* Postes recherchés */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Poste(s) recherché(s) *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ex: Caissier, Vendeur, Manager..."
+                    value={positionInput}
+                    onChange={(e) => setPositionInput(e.target.value)}
+                    onKeyDown={handlePositionKeyDown}
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" variant="outline" onClick={addPosition}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {positions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {positions.map((p) => (
+                      <Badge key={p} variant="default" className="gap-1 text-xs">
+                        {p}
+                        <X className="w-3 h-3 cursor-pointer" onClick={() => removePosition(p)} />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {positions.length === 0 && (
+                  <p className="text-[10px] text-destructive">Ajoutez au moins un poste</p>
+                )}
               </div>
 
               {/* Description */}
@@ -289,10 +366,19 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 )}
               </div>
 
-              {/* Localisation + Salaire */}
+              {/* Adresse complète + Localisation */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Adresse complète</Label>
+                <Input
+                  placeholder="Ex: Rue 123, Quartier Commerce, Ville, Pays"
+                  value={fullAddress}
+                  onChange={(e) => setFullAddress(e.target.value)}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Localisation</Label>
+                  <Label className="text-xs font-semibold">Ville / Quartier</Label>
                   <Input
                     placeholder="Ville, Quartier..."
                     value={location}
@@ -335,7 +421,26 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 </div>
               </div>
 
-              {/* Type de publication (multi-sélection) */}
+              {/* Documents requis */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-primary" />
+                  Documents à fournir par le candidat
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {AVAILABLE_DOCUMENTS.map((doc) => (
+                    <label key={doc.value} className="flex items-center gap-2 cursor-pointer border rounded-lg p-2 hover:bg-muted/30 transition-colors text-sm">
+                      <Checkbox
+                        checked={requiredDocuments.includes(doc.value)}
+                        onCheckedChange={() => toggleDocument(doc.value)}
+                      />
+                      <span className="text-xs">{doc.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Type de publication */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Type de publication *</Label>
                 <p className="text-[10px] text-muted-foreground">Vous pouvez choisir les deux</p>
@@ -464,7 +569,6 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <h3 className="font-semibold text-sm flex-1">Aperçu de l'annonce</h3>
-              {/* Switcher de prévisualisation si les 2 types sont sélectionnés */}
               {publishAsPost && publishAsStatus && (
                 <div className="flex gap-1">
                   <Button
@@ -487,9 +591,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
               )}
             </div>
 
-            {/* Déterminer quel aperçu afficher */}
             {((publishAsPost && !publishAsStatus) || (publishAsPost && publishAsStatus && previewMode === 'post')) ? (
-              /* Prévisualisation Post */
               <div className="p-4">
                 <div className="border rounded-xl overflow-hidden bg-background shadow-sm">
                   <div className="p-4 flex items-center gap-3 border-b bg-muted/20">
@@ -501,7 +603,6 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                       <p className="text-[10px] text-muted-foreground">Sponsorisé · 📢 Recrutement</p>
                     </div>
                   </div>
-                  {/* Médias dans le post */}
                   {mediaFiles.length > 0 && (
                     <div className={`grid ${mediaFiles.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-0.5`}>
                       {mediaFiles.map((media, idx) => (
@@ -517,6 +618,13 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                   )}
                   <div className="p-4 space-y-3">
                     <h4 className="font-bold text-base">{title}</h4>
+                    {positions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {positions.map(p => (
+                          <Badge key={p} variant="default" className="text-[10px]">🎯 {p}</Badge>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{description}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {skills.map(s => (
@@ -524,11 +632,24 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                       ))}
                     </div>
                     <div className="flex flex-wrap gap-3 text-xs text-muted-foreground pt-2">
-                      {location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {location}</span>}
+                      {fullAddress && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {fullAddress}</span>}
+                      {!fullAddress && location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {location}</span>}
                       <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {contractType}</span>
                       {salaryRange && <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {salaryRange}</span>}
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {EXPERIENCE_LEVELS.find(e => e.value === experienceLevel)?.label}</span>
                     </div>
+                    {requiredDocuments.length > 0 && (
+                      <div className="pt-2 border-t">
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-1">📎 Documents requis :</p>
+                        <div className="flex flex-wrap gap-1">
+                          {requiredDocuments.map(d => (
+                            <Badge key={d} variant="outline" className="text-[9px]">
+                              {AVAILABLE_DOCUMENTS.find(ad => ad.value === d)?.label || d}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="p-3 border-t bg-muted/10 flex items-center justify-between text-xs text-muted-foreground">
                     <span>~{reach.toLocaleString('fr-FR')} personnes atteintes</span>
@@ -537,10 +658,8 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                 </div>
               </div>
             ) : (
-              /* Prévisualisation Statut */
               <div className="p-4 flex justify-center">
                 <div className="w-64 h-96 rounded-2xl overflow-hidden relative shadow-lg flex flex-col justify-end">
-                  {/* Fond : média ou gradient */}
                   {mediaFiles.length > 0 && mediaFiles[0].type === 'image' ? (
                     <img src={mediaFiles[0].url} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : mediaFiles.length > 0 && mediaFiles[0].type === 'video' ? (
@@ -553,6 +672,9 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                     <div className="text-center text-white">
                       <Megaphone className="w-10 h-10 mx-auto mb-3 opacity-80" />
                       <h4 className="text-lg font-bold leading-tight drop-shadow">{title}</h4>
+                      {positions.length > 0 && (
+                        <p className="text-xs mt-1 opacity-90">🎯 {positions.join(', ')}</p>
+                      )}
                       {location && (
                         <p className="text-xs mt-2 opacity-80 flex items-center justify-center gap-1">
                           <MapPin className="w-3 h-3" /> {location}
