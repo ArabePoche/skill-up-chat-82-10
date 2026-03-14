@@ -29,6 +29,7 @@ const CvSearchPage: React.FC<CvSearchPageProps> = ({ shopId }) => {
   const [filters, setFilters] = useState<CvSearchFilters>(emptyFilters);
   const [activeFilters, setActiveFilters] = useState<CvSearchFilters>(emptyFilters);
   const [hasSearched, setHasSearched] = useState(false);
+  const [adFormOpen, setAdFormOpen] = useState(false);
 
   const { data: results, isLoading } = useSearchCvs(activeFilters, hasSearched);
 
