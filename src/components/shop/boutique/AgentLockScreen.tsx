@@ -512,7 +512,7 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                                 <Button
                                     onClick={handleQuickUnlock}
                                     className="w-full bg-blue-600 hover:bg-blue-700 h-11 font-bold"
-                                    disabled={isProcessing || pin.length < 4}
+                                    disabled={isProcessing || pin.length < 6}
                                 >
                                     Déverrouiller
                                 </Button>
