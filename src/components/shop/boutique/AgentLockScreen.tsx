@@ -409,7 +409,9 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                                 <Input
                                     id="new-pin"
                                     value={profileForm.pin_code}
-                                    onChange={e => setProfileForm(prev => ({ ...prev, pin_code: e.target.value }))}
+                                    onChange={e => setProfileForm(prev => ({ ...prev, pin_code: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                                    maxLength={6}
+                                    placeholder="6 chiffres"
                                     className="bg-white/10 border-white/20 text-white"
                                 />
                             </div>
@@ -462,7 +464,7 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                             <div className="space-y-8">
                             {/* Affichage des points du PIN */}
                             <div className="flex justify-center gap-4">
-                                {[...Array(activeAgent?.role === 'vendeur' ? 4 : 6)].map((_, i) => (
+                                {[...Array(6)].map((_, i) => (
                                     <div
                                         key={i}
                                         className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-blue-500 scale-125 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-white/10 border border-white/20'
@@ -510,7 +512,7 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                                 <Button
                                     onClick={handleQuickUnlock}
                                     className="w-full bg-blue-600 hover:bg-blue-700 h-11 font-bold"
-                                    disabled={isProcessing || pin.length < 4}
+                                    disabled={isProcessing || pin.length < 6}
                                 >
                                     Déverrouiller
                                 </Button>
