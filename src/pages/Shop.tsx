@@ -28,7 +28,7 @@ import { useUserShops } from '@/hooks/shop/useMultiShop';
 import { useIsShopAgent } from '@/hooks/shop/useShopAgentRequests';
 import { useMyAgentStatus } from '@/hooks/shop/useShopAgentRequests';
 import AgentRequestDialog from '@/components/shop/boutique/AgentRequestDialog';
-import PendingAgentRequestsPanel from '@/components/shop/boutique/PendingAgentRequestsPanel';
+
 import { Badge } from '@/components/ui/badge';
 import { Clock, UserPlus } from 'lucide-react';
 
