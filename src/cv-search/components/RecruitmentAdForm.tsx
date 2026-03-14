@@ -188,10 +188,23 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
     setPositions(positions.filter(p => p !== pos));
   };
 
-  const toggleDocument = (docValue: string) => {
-    setRequiredDocuments(prev =>
-      prev.includes(docValue) ? prev.filter(d => d !== docValue) : [...prev, docValue]
-    );
+  const addDocument = () => {
+    const trimmed = docInput.trim();
+    if (trimmed && !requiredDocuments.includes(trimmed)) {
+      setRequiredDocuments([...requiredDocuments, trimmed]);
+      setDocInput('');
+    }
+  };
+
+  const removeDocument = (doc: string) => {
+    setRequiredDocuments(requiredDocuments.filter(d => d !== doc));
+  };
+
+  const handleDocKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addDocument();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
