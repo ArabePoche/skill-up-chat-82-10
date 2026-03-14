@@ -79,6 +79,11 @@ const menuItems = [
     value: 'push-notifications',
     icon: Bell,
   },
+  {
+    title: 'Annonces Recrutement',
+    value: 'recruitment-ads',
+    icon: Megaphone,
+  },
 ];
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
