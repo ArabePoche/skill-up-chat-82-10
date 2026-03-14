@@ -20,23 +20,60 @@ const WATERMARK_RENDER_START = 50;
 const WATERMARK_RENDER_END = 92;
 const WATERMARK_SAVE_PROGRESS = 97;
 
+/** Durée en secondes avant de changer de côté */
+const WATERMARK_SWITCH_INTERVAL = 6;
+
 /**
- * Dessine le watermark TikTok-style sur un canvas
+ * Charge le logo de l'app en tant qu'image pour le watermark.
+ * Mis en cache après le premier chargement.
+ */
+let cachedLogoImage: HTMLImageElement | null = null;
+let logoLoadPromise: Promise<HTMLImageElement | null> | null = null;
+
+async function loadLogoImage(): Promise<HTMLImageElement | null> {
+  if (cachedLogoImage) return cachedLogoImage;
+  if (logoLoadPromise) return logoLoadPromise;
+
+  logoLoadPromise = new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    // Import statique du logo depuis les assets
+    img.onload = () => {
+      cachedLogoImage = img;
+      resolve(img);
+    };
+    img.onerror = () => resolve(null);
+    // On utilise le chemin relatif vers le module importé
+    img.src = new URL('../assets/educatok-logo.png', import.meta.url).href;
+  });
+
+  return logoLoadPromise;
+}
+
+/**
+ * Dessine le watermark TikTok-style sur un canvas.
+ * Alterne gauche (0-6s) / droite (6-12s) / gauche… toutes les 6 secondes.
+ * Affiche le logo de l'app + le texte "EducaTok" + @user en dessous.
  */
 function drawWatermark(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   watermarkText: string,
-  authorName: string
+  authorName: string,
+  currentTime: number,
+  logoImage: HTMLImageElement | null
 ) {
   ctx.save();
 
   const paddingX = Math.round(width * 0.04);
-  const paddingY = Math.round(height * 0.04);
+  const paddingY = Math.round(height * 0.06);
 
-  // — Logo "EducaTok" en bas à gauche —
-  ctx.globalAlpha = 0.75;
+  // Déterminer le côté selon le temps (alterne toutes les 6s)
+  const cycle = Math.floor(currentTime / WATERMARK_SWITCH_INTERVAL);
+  const isRight = cycle % 2 === 1;
+
+  ctx.globalAlpha = 0.8;
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = 'rgba(0,0,0,0.85)';
   ctx.lineWidth = Math.max(2, Math.round(width * 0.003));
@@ -44,21 +81,41 @@ function drawWatermark(
   ctx.shadowBlur = 8;
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
 
-  const logoSize = Math.max(22, Math.round(width * 0.055));
-  ctx.font = `bold ${logoSize}px "Arial", sans-serif`;
-  const logoY = height - paddingY - Math.round(logoSize * 0.9);
-  ctx.strokeText(watermarkText, paddingX, logoY);
-  ctx.fillText(watermarkText, paddingX, logoY);
+  const logoIconSize = Math.round(width * 0.09); // taille du logo image
+  const textSize = Math.max(18, Math.round(width * 0.042));
+  const authorSize = Math.max(14, Math.round(width * 0.032));
 
-  // — @user juste en dessous du logo —
-  const authorSize = Math.max(16, Math.round(width * 0.038));
+  // Position Y centrée verticalement
+  const blockHeight = logoIconSize + Math.round(textSize * 1.2) + Math.round(authorSize * 1.2);
+  const startY = Math.round((height - blockHeight) / 2);
+
+  // Position X selon le côté
+  const xAnchor = isRight ? width - paddingX : paddingX;
+  ctx.textAlign = isRight ? 'right' : 'left';
+  ctx.textBaseline = 'top';
+
+  // 1. Logo image
+  if (logoImage) {
+    const logoX = isRight ? xAnchor - logoIconSize : xAnchor;
+    ctx.shadowBlur = 12;
+    ctx.globalAlpha = 0.85;
+    ctx.drawImage(logoImage, logoX, startY, logoIconSize, logoIconSize);
+  }
+
+  // 2. Texte "EducaTok" sous le logo
+  ctx.globalAlpha = 0.8;
+  ctx.shadowBlur = 8;
+  const textY = startY + logoIconSize + Math.round(textSize * 0.3);
+  ctx.font = `bold ${textSize}px "Arial", sans-serif`;
+  ctx.strokeText(watermarkText, xAnchor, textY);
+  ctx.fillText(watermarkText, xAnchor, textY);
+
+  // 3. @user sous le texte
+  const authorY = textY + Math.round(textSize * 1.3);
   ctx.font = `600 ${authorSize}px "Arial", sans-serif`;
-  const authorY = height - paddingY;
-  ctx.strokeText(`@${authorName}`, paddingX, authorY);
-  ctx.fillText(`@${authorName}`, paddingX, authorY);
+  ctx.strokeText(`@${authorName}`, xAnchor, authorY);
+  ctx.fillText(`@${authorName}`, xAnchor, authorY);
 
   ctx.restore();
 }
@@ -391,6 +448,9 @@ export async function downloadVideoWithWatermark({
       await video.play();
       onStageChange?.('Application du watermark');
 
+      // Précharger le logo
+      const logoImg = await loadLogoImage();
+
       const renderFrame = () => {
         if (video.ended || video.paused) {
           if (mediaRecorder.state === 'recording') {
@@ -400,7 +460,7 @@ export async function downloadVideoWithWatermark({
         }
 
         ctx.drawImage(video, 0, 0, width, height);
-        drawWatermark(ctx, width, height, watermarkText, authorName);
+        drawWatermark(ctx, width, height, watermarkText, authorName, video.currentTime, logoImg);
 
         if (duration > 0) {
           const pct = Math.round(
