@@ -6,9 +6,9 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileSearch, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CvSearchFiltersBar } from '../components/CvSearchFiltersBar';
-import { CvResultCard } from '../components/CvResultCard';
-import { useSearchCvs, CvSearchFilters } from '../hooks/useSearchCvs';
+import { CvSearchFiltersBar } from './components/CvSearchFiltersBar';
+import { CvResultCard } from './components/CvResultCard';
+import { useSearchCvs, CvSearchFilters } from './hooks/useSearchCvs';
 import { useAuth } from '@/hooks/useAuth';
 
 const emptyFilters: CvSearchFilters = {
