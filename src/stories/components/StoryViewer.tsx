@@ -398,36 +398,34 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         </div>
       </div>
 
-      {/* Bouton Postuler pour stories de recrutement */}
-      {isRecruitmentStory && !isMyStory && user && (
-        <div className="absolute bottom-44 sm:bottom-48 left-4 right-4 z-40">
-          {existingApplication ? (
-            <Button
-              disabled
-              className="w-full bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-full"
-            >
-              <Briefcase className="mr-2 h-4 w-4" />
-              {existingApplication.status === 'approved' 
-                ? '✅ Candidature acceptée'
-                : existingApplication.status === 'rejected'
-                ? '❌ Candidature refusée'
-                : '📨 Candidature envoyée'}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => { setIsPaused(true); setApplicationModalOpen(true); }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full font-semibold"
-            >
-              <Briefcase className="mr-2 h-4 w-4" />
-              Postuler à cette offre
-            </Button>
-          )}
-        </div>
-      )}
-
 
       {!isMyStory && (
-        <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-40">
+        <div className="absolute bottom-20 sm:bottom-24 left-4 right-4 z-40 space-y-2">
+          {/* Bouton Postuler inline pour stories de recrutement */}
+          {isRecruitmentStory && user && !showReplyInput && (
+            existingApplication ? (
+              <Button
+                disabled
+                className="w-full bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-full"
+              >
+                <Briefcase className="mr-2 h-4 w-4" />
+                {existingApplication.status === 'approved' 
+                  ? '✅ Candidature acceptée'
+                  : existingApplication.status === 'rejected'
+                  ? '❌ Candidature refusée'
+                  : '📨 Candidature envoyée'}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => { setIsPaused(true); setApplicationModalOpen(true); }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full font-semibold"
+              >
+                <Briefcase className="mr-2 h-4 w-4" />
+                Postuler à cette offre
+              </Button>
+            )
+          )}
+
           {showReplyInput ? (
           <div className="flex items-center space-x-2 sm:space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 sm:py-3">
             <Button

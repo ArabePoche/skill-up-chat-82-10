@@ -34,6 +34,7 @@ interface Post {
 export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' = 'all', userId?: string) => {
   return useQuery({
     queryKey: ['posts', filter, userId],
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
