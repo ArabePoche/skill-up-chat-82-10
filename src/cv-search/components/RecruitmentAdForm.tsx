@@ -261,7 +261,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
       setPublishAsPost(true);
       setPublishAsStatus(false);
       setPositions([]);
-      setRequiredDocuments(['cv', 'photo']);
+      setRequiredDocuments([]);
       setStep('form');
       onOpenChange(false);
     } catch (err: any) {
