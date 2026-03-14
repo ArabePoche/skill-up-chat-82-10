@@ -520,6 +520,8 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                                 triggerClassName="bg-white/20 hover:bg-white/30 text-white border-0 h-8 w-8 rounded-md overflow-hidden"
                                 onLogin={onLogin}
                                 onUnlock={onUnlock}
+                                onLock={onLock}
+                                onLogout={onLogout}
                                 forgotPassword={forgotPassword}
                                 updateProfile={updateProfile}
                             />
