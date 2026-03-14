@@ -3014,6 +3014,7 @@ export type Database = {
           is_active: boolean
           likes_count: number
           post_type: string
+          recruitment_ad_id: string | null
           required_documents: Json | null
           required_profiles: string[] | null
           updated_at: string
@@ -3031,6 +3032,7 @@ export type Database = {
           is_active?: boolean
           likes_count?: number
           post_type: string
+          recruitment_ad_id?: string | null
           required_documents?: Json | null
           required_profiles?: string[] | null
           updated_at?: string
@@ -3048,11 +3050,20 @@ export type Database = {
           is_active?: boolean
           likes_count?: number
           post_type?: string
+          recruitment_ad_id?: string | null
           required_documents?: Json | null
           required_profiles?: string[] | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_recruitment_ad_id_fkey"
+            columns: ["recruitment_ad_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_ads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_categories: {
         Row: {
@@ -8341,6 +8352,7 @@ export type Database = {
           is_active: boolean
           likes_count: number | null
           media_url: string | null
+          recruitment_ad_id: string | null
           user_id: string
         }
         Insert: {
@@ -8354,6 +8366,7 @@ export type Database = {
           is_active?: boolean
           likes_count?: number | null
           media_url?: string | null
+          recruitment_ad_id?: string | null
           user_id: string
         }
         Update: {
@@ -8367,9 +8380,17 @@ export type Database = {
           is_active?: boolean
           likes_count?: number | null
           media_url?: string | null
+          recruitment_ad_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_stories_recruitment_ad_id_fkey"
+            columns: ["recruitment_ad_id"]
+            isOneToOne: false
+            referencedRelation: "recruitment_ads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_stories_user_id_fkey"
             columns: ["user_id"]
