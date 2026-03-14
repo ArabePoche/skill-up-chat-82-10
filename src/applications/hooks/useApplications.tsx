@@ -70,7 +70,8 @@ export const useSubmitApplication = () => {
       sourceId,
       sourceType,
       message,
-      cvFile
+      cvFile,
+      photoFile
     }: {
       userId: string;
       recruiterId: string;
@@ -78,6 +79,7 @@ export const useSubmitApplication = () => {
       sourceType: string;
       message: string;
       cvFile?: File;
+      photoFile?: File;
     }) => {
       let cvUrl: string | null = null;
 
@@ -97,6 +99,24 @@ export const useSubmitApplication = () => {
           .getPublicUrl(fileName);
 
         cvUrl = publicUrl;
+      }
+
+      // Upload de la photo si présente
+      let photoUrl: string | null = null;
+      if (photoFile) {
+        const ext = photoFile.name.split('.').pop();
+        const photoPath = `${userId}/photo-${Date.now()}.${ext}`;
+
+        const { error: photoError } = await supabase.storage
+          .from('application-files')
+          .upload(photoPath, photoFile);
+
+        if (!photoError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('application-files')
+            .getPublicUrl(photoPath);
+          photoUrl = publicUrl;
+        }
       }
 
       // Créer la candidature

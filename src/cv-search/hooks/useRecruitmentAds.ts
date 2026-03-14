@@ -29,6 +29,9 @@ export interface RecruitmentAd {
   expires_at: string | null;
   created_at: string;
   updated_at: string;
+  positions: string[];
+  required_documents: string[];
+  full_address: string;
 }
 
 export interface CreateRecruitmentAdInput {
@@ -44,6 +47,9 @@ export interface CreateRecruitmentAdInput {
   publish_as_post: boolean;
   publish_as_status: boolean;
   budget: number;
+  positions?: string[];
+  required_documents?: string[];
+  full_address?: string;
 }
 
 /**
@@ -139,6 +145,9 @@ export const useCreateRecruitmentAd = () => {
           status: 'pending_approval',
           is_active: false,
           expires_at,
+          positions: input.positions || [],
+          required_documents: input.required_documents || [],
+          full_address: input.full_address || '',
         })
         .select()
         .single() as any);

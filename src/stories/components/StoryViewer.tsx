@@ -512,6 +512,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           recruiterId={story.user_id}
           sourceId={(story as any).recruitment_ad_id}
           sourceType="recruitment_ad"
+          requiredDocuments={(story as any).recruitment_ads?.required_documents || []}
+          positions={(story as any).recruitment_ads?.positions || []}
         />
       )}
     </div>

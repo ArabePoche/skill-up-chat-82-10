@@ -3786,14 +3786,17 @@ export type Database = {
           estimated_reach: number
           experience_level: string | null
           expires_at: string | null
+          full_address: string | null
           id: string
           is_active: boolean | null
           location: string | null
           media_urls: string[] | null
           owner_id: string
+          positions: string[] | null
           publish_as_post: boolean | null
           publish_as_status: boolean | null
           publish_type: string
+          required_documents: string[] | null
           salary_range: string | null
           shop_id: string | null
           skills: string[] | null
@@ -3809,14 +3812,17 @@ export type Database = {
           estimated_reach?: number
           experience_level?: string | null
           expires_at?: string | null
+          full_address?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
           media_urls?: string[] | null
           owner_id: string
+          positions?: string[] | null
           publish_as_post?: boolean | null
           publish_as_status?: boolean | null
           publish_type?: string
+          required_documents?: string[] | null
           salary_range?: string | null
           shop_id?: string | null
           skills?: string[] | null
@@ -3832,14 +3838,17 @@ export type Database = {
           estimated_reach?: number
           experience_level?: string | null
           expires_at?: string | null
+          full_address?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
           media_urls?: string[] | null
           owner_id?: string
+          positions?: string[] | null
           publish_as_post?: boolean | null
           publish_as_status?: boolean | null
           publish_type?: string
+          required_documents?: string[] | null
           salary_range?: string | null
           shop_id?: string | null
           skills?: string[] | null
