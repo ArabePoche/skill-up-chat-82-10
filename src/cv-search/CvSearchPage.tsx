@@ -4,10 +4,11 @@
  */
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileSearch, Users } from 'lucide-react';
+import { ArrowLeft, FileSearch, Users, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CvSearchFiltersBar } from './components/CvSearchFiltersBar';
 import { CvResultCard } from './components/CvResultCard';
+import RecruitmentAdForm from './components/RecruitmentAdForm';
 import { useSearchCvs, CvSearchFilters } from './hooks/useSearchCvs';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -28,6 +29,7 @@ const CvSearchPage: React.FC<CvSearchPageProps> = ({ shopId }) => {
   const [filters, setFilters] = useState<CvSearchFilters>(emptyFilters);
   const [activeFilters, setActiveFilters] = useState<CvSearchFilters>(emptyFilters);
   const [hasSearched, setHasSearched] = useState(false);
+  const [adFormOpen, setAdFormOpen] = useState(false);
 
   const { data: results, isLoading } = useSearchCvs(activeFilters, hasSearched);
 
@@ -59,7 +61,23 @@ const CvSearchPage: React.FC<CvSearchPageProps> = ({ shopId }) => {
               Trouvez les profils qui correspondent à vos besoins
             </p>
           </div>
+          <Button
+            onClick={() => setAdFormOpen(true)}
+            className="gap-2 shrink-0"
+            size="sm"
+          >
+            <Megaphone className="w-4 h-4" />
+            <span className="hidden sm:inline">Lancer une annonce</span>
+            <span className="sm:hidden">Annonce</span>
+          </Button>
         </div>
+
+        {/* Formulaire d'annonce */}
+        <RecruitmentAdForm
+          open={adFormOpen}
+          onOpenChange={setAdFormOpen}
+          shopId={shopId}
+        />
 
         {/* Filtres */}
         <CvSearchFiltersBar
