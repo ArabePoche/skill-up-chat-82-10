@@ -79,6 +79,8 @@ const Shop = () => {
     updateInactivityMinutes,
     login,
     unlock,
+    lock,
+    logout,
     forgotPassword,
     updateProfile,
   } = useAgentAuth(shop?.id, { lockScopeActive: canAccessGestion && mainView === 'gestion' });
