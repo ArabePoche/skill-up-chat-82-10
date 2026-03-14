@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShopAgents, useCreateShopAgent, useUpdateShopAgent, useDeleteShopAgent, useResetShopAgentPassword, useShopAgentAvatarUpload, ShopAgent } from '@/hooks/shop/useShopAgents';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
