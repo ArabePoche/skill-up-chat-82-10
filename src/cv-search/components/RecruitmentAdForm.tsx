@@ -672,7 +672,7 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
                         <div className="flex flex-wrap gap-1">
                           {requiredDocuments.map(d => (
                             <Badge key={d} variant="outline" className="text-[9px]">
-                              {AVAILABLE_DOCUMENTS.find(ad => ad.value === d)?.label || d}
+                              {d}
                             </Badge>
                           ))}
                         </div>
