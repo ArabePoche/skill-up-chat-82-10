@@ -182,28 +182,6 @@ const Shop = () => {
       {/* Vue Gestion boutique */}
       {canAccessGestion && mainView === 'gestion' ? (
         <div>
-          {/* Barre de session agent */}
-          {activeAgent?.isUnlocked && (
-            <div className="flex items-center justify-between bg-muted/50 border-b px-4 py-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {activeAgent.firstName} {activeAgent.lastName}
-                </span>
-                <Badge variant="secondary" className="text-xs">{activeAgent.role}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={lock} className="text-muted-foreground hover:text-foreground">
-                  <Lock size={16} className="mr-1" />
-                  Verrouiller
-                </Button>
-                <Button variant="ghost" size="sm" onClick={logout} className="text-destructive hover:text-destructive">
-                  <LogOut size={16} className="mr-1" />
-                  Déconnexion
-                </Button>
-              </div>
-            </div>
-          )}
-
           {/* Panneau des demandes en attente (visible par le propriétaire) */}
           {isShopOwner && shop && (
             <div className="p-4">
@@ -216,6 +194,8 @@ const Shop = () => {
             onInactivityMinutesChange={updateInactivityMinutes}
             onLogin={login}
             onUnlock={unlock}
+            onLock={lock}
+            onLogout={logout}
             forgotPassword={forgotPassword}
             updateProfile={updateProfile}
           />
