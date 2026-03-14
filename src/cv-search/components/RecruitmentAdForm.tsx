@@ -99,7 +99,8 @@ const RecruitmentAdForm: React.FC<RecruitmentAdFormProps> = ({ open, onOpenChang
   // Nouveaux champs
   const [positions, setPositions] = useState<string[]>([]);
   const [positionInput, setPositionInput] = useState('');
-  const [requiredDocuments, setRequiredDocuments] = useState<string[]>(['cv', 'photo']);
+  const [requiredDocuments, setRequiredDocuments] = useState<string[]>([]);
+  const [docInput, setDocInput] = useState('');
 
   const reach = useMemo(() => estimateReach(budget), [budget]);
   const duration = useMemo(() => estimateDuration(budget), [budget]);
