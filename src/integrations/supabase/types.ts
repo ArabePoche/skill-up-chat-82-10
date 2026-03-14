@@ -748,6 +748,67 @@ export type Database = {
           },
         ]
       }
+      cv_invitations: {
+        Row: {
+          created_at: string | null
+          cv_id: string
+          cv_owner_id: string
+          id: string
+          inviter_id: string
+          job_listing_id: string | null
+          message: string | null
+          shop_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cv_id: string
+          cv_owner_id: string
+          id?: string
+          inviter_id: string
+          job_listing_id?: string | null
+          message?: string | null
+          shop_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cv_id?: string
+          cv_owner_id?: string
+          id?: string
+          inviter_id?: string
+          job_listing_id?: string | null
+          message?: string | null
+          shop_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cv_invitations_cv_id_fkey"
+            columns: ["cv_id"]
+            isOneToOne: false
+            referencedRelation: "public_cvs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cv_invitations_job_listing_id_fkey"
+            columns: ["job_listing_id"]
+            isOneToOne: false
+            referencedRelation: "shop_job_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cv_invitations_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_usage: {
         Row: {
           created_at: string | null
@@ -6488,6 +6549,56 @@ export type Database = {
           },
         ]
       }
+      shop_job_listings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          experience_level: string | null
+          id: string
+          is_active: boolean | null
+          keywords: string[] | null
+          location: string | null
+          owner_id: string
+          shop_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          experience_level?: string | null
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          location?: string | null
+          owner_id: string
+          shop_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          experience_level?: string | null
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          location?: string | null
+          owner_id?: string
+          shop_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_job_listings_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_messages: {
         Row: {
           content: string
@@ -9058,6 +9169,38 @@ export type Database = {
       return_from_marketplace: {
         Args: { boutique_product_id: string; quantity: number }
         Returns: undefined
+      }
+      search_public_cvs: {
+        Args: {
+          search_education?: string
+          search_experience?: string
+          search_location?: string
+          search_query?: string
+        }
+        Returns: {
+          certifications: Json
+          created_at: string
+          education: Json
+          experiences: Json
+          hobbies: Json
+          id: string
+          is_public: boolean
+          languages: Json
+          personal_info: Json
+          projects: Json
+          references: Json
+          section_order: string[]
+          skills: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "public_cvs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       send_welcome_message: {
         Args: {
