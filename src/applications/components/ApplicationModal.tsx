@@ -150,6 +150,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
         sourceType,
         message: fullMessage,
         cvFile: cvFile || undefined,
+        photoFile: photoFile || undefined,
       });
       
       // Réinitialiser et fermer
