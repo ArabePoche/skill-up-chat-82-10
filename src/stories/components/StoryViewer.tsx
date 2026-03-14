@@ -43,9 +43,18 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const { user } = useAuth();
   const story = stories[currentStoryIndex];
   
-  // Vérifier si c'est ma story
+  // Détection story de recrutement
+  const isRecruitmentStory = !!(story as any)?.recruitment_ad_id;
   const isMyStory = story?.user_id === user?.id;
   const viewsCount = story?.story_views?.length || 0;
+
+  // Vérifier candidature existante pour stories de recrutement
+  const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+  const { data: existingApplication } = useCheckExistingApplication(
+    user?.id || '',
+    isRecruitmentStory ? (story as any).recruitment_ad_id : '',
+    'recruitment_ad'
+  );
 
   useEffect(() => {
     if (story?.id && story?.user_id) {
