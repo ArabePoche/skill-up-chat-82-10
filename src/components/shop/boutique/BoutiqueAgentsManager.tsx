@@ -21,6 +21,7 @@ import {
     RefreshCcw
 } from 'lucide-react';
 import PendingAgentRequestsPanel from './PendingAgentRequestsPanel';
+import ShopApplicationsPanel from './ShopApplicationsPanel';
 import {
     Dialog,
     DialogContent,
