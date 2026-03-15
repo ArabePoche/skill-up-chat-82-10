@@ -123,9 +123,14 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
     enabled: !!shopId,
   });
 
-  // Mutation pour mettre à jour le statut
+  // Mutation pour mettre à jour le statut et créer l'agent si accepté
   const updateStatus = useMutation({
-    mutationFn: async ({ applicationId, status }: { applicationId: string; status: 'accepted' | 'rejected' }) => {
+    mutationFn: async ({ applicationId, status, userId, profile }: { 
+      applicationId: string; 
+      status: 'accepted' | 'rejected';
+      userId: string;
+      profile?: { first_name: string; last_name: string };
+    }) => {
       console.log('📋 [ShopApplicationsPanel] Updating application', applicationId, 'to', status);
       const { data, error } = await supabase
         .from('applications')
@@ -139,10 +144,33 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
       if (!data || data.length === 0) {
         throw new Error('Impossible de mettre à jour : vérifiez vos permissions');
       }
+
+      // Si accepté, créer automatiquement un agent dans shop_agents
+      if (status === 'accepted' && profile) {
+        console.log('📋 [ShopApplicationsPanel] Creating shop agent for user:', userId);
+        const { error: agentError } = await supabase
+          .from('shop_agents' as any)
+          .insert({
+            shop_id: shopId,
+            user_id: userId,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            role: 'vendeur',
+            status: 'active',
+          });
+        if (agentError) {
+          console.error('❌ [ShopApplicationsPanel] Agent creation error:', agentError);
+          // Ne pas bloquer si l'agent existe déjà
+          if (!agentError.message?.includes('duplicate')) {
+            throw new Error("Candidature acceptée mais erreur lors de l'ajout comme agent: " + agentError.message);
+          }
+        }
+      }
     },
     onSuccess: (_, variables) => {
-      toast.success(variables.status === 'accepted' ? 'Candidature acceptée' : 'Candidature refusée');
+      toast.success(variables.status === 'accepted' ? 'Candidature acceptée — agent ajouté !' : 'Candidature refusée');
       queryClient.invalidateQueries({ queryKey: ['shop-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['shop-agents', shopId] });
     },
     onError: (err: any) => toast.error(err?.message || 'Erreur lors de la mise à jour'),
   });
@@ -214,7 +242,12 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
                     size="sm"
                     className="h-8 px-3"
                     disabled={updateStatus.isPending}
-                    onClick={() => updateStatus.mutate({ applicationId: app.id, status: 'accepted' })}
+                    onClick={() => updateStatus.mutate({ 
+                      applicationId: app.id, 
+                      status: 'accepted',
+                      userId: app.user_id,
+                      profile: app.profile ? { first_name: app.profile.first_name, last_name: app.profile.last_name } : undefined,
+                    })}
                   >
                     {updateStatus.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   </Button>
@@ -223,7 +256,11 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
                     variant="destructive"
                     className="h-8 px-3"
                     disabled={updateStatus.isPending}
-                    onClick={() => updateStatus.mutate({ applicationId: app.id, status: 'rejected' })}
+                    onClick={() => updateStatus.mutate({ 
+                      applicationId: app.id, 
+                      status: 'rejected',
+                      userId: app.user_id,
+                    })}
                   >
                     {updateStatus.isPending ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
                   </Button>
