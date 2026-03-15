@@ -58,7 +58,9 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
     onLock,
     onLogout,
     forgotPassword,
-    updateProfile
+    updateProfile,
+    needsSetup = false,
+    setupAgentId,
 }) => {
     const [mode, setMode] = useState<'login' | 'unlock'>(activeAgent ? 'unlock' : 'login');
     const [username, setUsername] = useState('');
