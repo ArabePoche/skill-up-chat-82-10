@@ -12,10 +12,10 @@ interface ApplicationsListProps {
 export const ApplicationsList: React.FC<ApplicationsListProps> = ({ recruiterId }) => {
   const { data: applications, isLoading } = useApplications(recruiterId);
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateApplicationStatus();
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('pending');
 
   const handleApprove = async (applicationId: string) => {
-    await updateStatus({ applicationId, status: 'approved' });
+    await updateStatus({ applicationId, status: 'accepted' });
   };
 
   const handleReject = async (applicationId: string) => {
