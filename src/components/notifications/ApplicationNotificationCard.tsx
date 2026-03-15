@@ -89,9 +89,9 @@ const ApplicationNotificationCard: React.FC<ApplicationNotificationCardProps> = 
     try {
       await updateStatus({
         applicationId: notification.application_id,
-        status: 'approved'
+        status: 'accepted'
       });
-      setLocalStatus('approved');
+      setLocalStatus('accepted');
       queryClient.invalidateQueries({ queryKey: ['application', notification.application_id] });
     } catch (error) {
       console.error('Erreur lors de l\'approbation:', error);
