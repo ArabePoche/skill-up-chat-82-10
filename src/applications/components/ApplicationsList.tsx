@@ -39,14 +39,14 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ recruiterId 
   }
 
   const pendingApplications = applications.filter(app => app.status === 'pending');
-  const approvedApplications = applications.filter(app => app.status === 'approved');
+  const approvedApplications = applications.filter(app => app.status === 'accepted');
   const rejectedApplications = applications.filter(app => app.status === 'rejected');
 
   const getFilteredApplications = () => {
     switch (activeTab) {
       case 'pending':
         return pendingApplications;
-      case 'approved':
+      case 'accepted':
         return approvedApplications;
       case 'rejected':
         return rejectedApplications;
