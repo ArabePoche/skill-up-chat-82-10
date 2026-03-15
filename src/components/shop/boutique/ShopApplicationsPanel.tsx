@@ -228,7 +228,7 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
                     size="sm"
                     className="h-8 px-3"
                     disabled={updateStatus.isPending}
-                    onClick={() => updateStatus.mutate({ applicationId: app.id, status: 'approved' })}
+                    onClick={() => updateStatus.mutate({ applicationId: app.id, status: 'accepted' })}
                   >
                     {updateStatus.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   </Button>
