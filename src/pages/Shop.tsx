@@ -165,34 +165,34 @@ const Shop = () => {
         </>
       )}
 
-      {/* Lock screen pour les agents/proprios */}
-      {canAccessGestion && shop && mainView !== 'gestion' && !activeAgent?.isUnlocked && (
-        <AgentLockScreen
-          shopId={shop.id}
-          activeAgent={activeAgent}
-          inactivityMinutes={inactivityMinutes}
-          onInactivityMinutesChange={updateInactivityMinutes}
-          onLogin={login}
-          onUnlock={unlock}
-          forgotPassword={forgotPassword}
-          updateProfile={updateProfile}
-        />
-      )}
-
       {/* Vue Gestion boutique */}
       {canAccessGestion && mainView === 'gestion' ? (
         <div>
-          <BoutiqueManagement
-            activeAgent={activeAgent}
-            inactivityMinutes={inactivityMinutes}
-            onInactivityMinutesChange={updateInactivityMinutes}
-            onLogin={login}
-            onUnlock={unlock}
-            onLock={lock}
-            onLogout={logout}
-            forgotPassword={forgotPassword}
-            updateProfile={updateProfile}
-          />
+          {/* Lock screen : seulement en vue gestion si l'agent n'est pas déverrouillé */}
+          {shop && !activeAgent?.isUnlocked ? (
+            <AgentLockScreen
+              shopId={shop.id}
+              activeAgent={activeAgent}
+              inactivityMinutes={inactivityMinutes}
+              onInactivityMinutesChange={updateInactivityMinutes}
+              onLogin={login}
+              onUnlock={unlock}
+              forgotPassword={forgotPassword}
+              updateProfile={updateProfile}
+            />
+          ) : (
+            <BoutiqueManagement
+              activeAgent={activeAgent}
+              inactivityMinutes={inactivityMinutes}
+              onInactivityMinutesChange={updateInactivityMinutes}
+              onLogin={login}
+              onUnlock={unlock}
+              onLock={lock}
+              onLogout={logout}
+              forgotPassword={forgotPassword}
+              updateProfile={updateProfile}
+            />
+          )}
         </div>
       ) : (
         <>
