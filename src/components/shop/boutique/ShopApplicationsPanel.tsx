@@ -174,7 +174,7 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved': return <Badge className="bg-emerald-100 text-emerald-700 border-0">Acceptée</Badge>;
+      case 'accepted': return <Badge className="bg-emerald-100 text-emerald-700 border-0">Acceptée</Badge>;
       case 'rejected': return <Badge variant="destructive" className="border-0">Refusée</Badge>;
       default: return <Badge variant="secondary"><Clock size={12} className="mr-1" /> En attente</Badge>;
     }
