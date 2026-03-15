@@ -39,43 +39,86 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Récupérer les candidatures adressées au propriétaire
+  // Récupérer uniquement les candidatures liées à cette boutique
   const { data: applications, isLoading, error } = useQuery({
-    queryKey: ['shop-applications', user?.id, shopId],
+    queryKey: ['shop-applications', shopId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      console.log('📋 [ShopApplicationsPanel] Fetching applications for shop:', shopId);
 
-      console.log('📋 [ShopApplicationsPanel] Fetching applications for recruiter:', user.id);
+      // 1. Récupérer les annonces de recrutement liées à cette boutique
+      const { data: shopAds, error: adsError } = await supabase
+        .from('recruitment_ads')
+        .select('id')
+        .eq('shop_id', shopId);
 
-      const { data, error } = await supabase
-        .from('applications')
-        .select('*')
-        .eq('recruiter_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ [ShopApplicationsPanel] Error:', error);
-        throw error;
+      if (adsError) {
+        console.error('❌ [ShopApplicationsPanel] Error fetching ads:', adsError);
+        throw adsError;
       }
 
-      console.log('📋 [ShopApplicationsPanel] Found', data?.length, 'applications');
+      if (!shopAds || shopAds.length === 0) {
+        console.log('📋 [ShopApplicationsPanel] No recruitment ads for this shop');
+        return [];
+      }
 
-      if (!data || data.length === 0) return [];
+      const adIds = shopAds.map(ad => ad.id);
+      console.log('📋 [ShopApplicationsPanel] Found', adIds.length, 'recruitment ads for shop');
 
-      // Récupérer les profils des candidats
-      const userIds = data.map(app => app.user_id);
+      // 2. Récupérer les posts liés à ces annonces
+      const { data: linkedPosts } = await supabase
+        .from('posts')
+        .select('id')
+        .in('recruitment_ad_id', adIds);
+
+      const postIds = linkedPosts?.map(p => p.id) || [];
+
+      // 3. Récupérer les candidatures : source_type='recruitment_ad' + source_id IN adIds
+      //    OU source_type='post' + source_id IN postIds
+      let allApplications: any[] = [];
+
+      const { data: adApps, error: adAppsError } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('source_type', 'recruitment_ad')
+        .in('source_id', adIds)
+        .order('created_at', { ascending: false });
+
+      if (adAppsError) throw adAppsError;
+      if (adApps) allApplications.push(...adApps);
+
+      if (postIds.length > 0) {
+        const { data: postApps, error: postAppsError } = await supabase
+          .from('applications')
+          .select('*')
+          .eq('source_type', 'post')
+          .in('source_id', postIds)
+          .order('created_at', { ascending: false });
+
+        if (postAppsError) throw postAppsError;
+        if (postApps) allApplications.push(...postApps);
+      }
+
+      console.log('📋 [ShopApplicationsPanel] Found', allApplications.length, 'applications for this shop');
+
+      if (allApplications.length === 0) return [];
+
+      // 4. Récupérer les profils des candidats
+      const userIds = [...new Set(allApplications.map(app => app.user_id))];
 
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, avatar_url, phone')
         .in('id', userIds);
 
-      return data.map(app => ({
+      // Trier par date décroissante
+      allApplications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      return allApplications.map(app => ({
         ...app,
         profile: profiles?.find(p => p.id === app.user_id),
       })) as ApplicationWithProfile[];
     },
-    enabled: !!user?.id,
+    enabled: !!shopId,
   });
 
   // Mutation pour mettre à jour le statut
