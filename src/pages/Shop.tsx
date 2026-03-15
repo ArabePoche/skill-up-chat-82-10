@@ -185,6 +185,8 @@ const Shop = () => {
               onUnlock={unlock}
               forgotPassword={forgotPassword}
               updateProfile={updateProfile}
+              needsSetup={agentNeedsSetup}
+              setupAgentId={myAgentStatus?.id}
             />
           ) : (
             <BoutiqueManagement
