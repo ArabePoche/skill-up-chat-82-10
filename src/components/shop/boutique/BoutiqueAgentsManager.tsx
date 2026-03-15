@@ -21,6 +21,7 @@ import {
     RefreshCcw
 } from 'lucide-react';
 import PendingAgentRequestsPanel from './PendingAgentRequestsPanel';
+import ShopApplicationsPanel from './ShopApplicationsPanel';
 import {
     Dialog,
     DialogContent,
@@ -117,8 +118,11 @@ export const BoutiqueAgentsManager: React.FC<BoutiqueAgentsManagerProps> = ({ sh
 
     return (
         <div className="space-y-6 p-4">
-            {/* Candidatures en attente */}
+            {/* Demandes d'accès agent en attente */}
             <PendingAgentRequestsPanel shopId={shopId} />
+
+            {/* Candidatures reçues via posts/stories */}
+            <ShopApplicationsPanel shopId={shopId} />
 
             <div className="flex items-center justify-between pb-2">
                 <div>
