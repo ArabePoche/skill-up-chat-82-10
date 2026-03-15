@@ -317,7 +317,9 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                     </div>
                     <CardTitle className="text-2xl font-bold">Accès Sécurisé</CardTitle>
                     <CardDescription className="text-slate-400">
-                        {mode === 'login'
+                        {mode === 'setup'
+                            ? "Créez vos identifiants pour accéder à la gestion"
+                            : mode === 'login'
                             ? "Veuillez vous identifier pour accéder à la boutique"
                             : `Session de ${activeAgent?.firstName}`}
                     </CardDescription>
