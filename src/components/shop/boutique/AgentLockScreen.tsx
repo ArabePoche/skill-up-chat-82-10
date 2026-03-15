@@ -40,6 +40,10 @@ interface AgentLockScreenProps {
     onLogout?: () => void;
     forgotPassword: () => Promise<void>;
     updateProfile: (updates: Partial<{ first_name:string; last_name:string; password_hash:string; pin_code:string; avatar_url:string; }>) => Promise<boolean>;
+    /** Si true, l'agent n'a pas encore configuré ses identifiants */
+    needsSetup?: boolean;
+    /** L'ID de l'agent dans shop_agents (pour la création de compte) */
+    setupAgentId?: string;
 }
 
 export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
