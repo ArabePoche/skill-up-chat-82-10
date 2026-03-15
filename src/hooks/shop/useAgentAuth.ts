@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface AgentSession {
     agentId: string;
@@ -29,8 +30,29 @@ interface UseAgentAuthOptions {
     lockScopeActive?: boolean;
 }
 
+interface CreateAgentAccountInput {
+    firstName: string;
+    lastName: string;
+    username: string;
+    password: string;
+    pinCode: string;
+}
+
+interface ShopAgentRow {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email?: string | null;
+    role: 'PDG' | 'comptable' | 'vendeur';
+    shop_id: string;
+    avatar_url?: string | null;
+    username?: string | null;
+    password_hash?: string | null;
+}
+
 export const useAgentAuth = (shopId?: string, options?: UseAgentAuthOptions) => {
     const lockScopeActive = options?.lockScopeActive ?? true;
+    const { user } = useAuth();
     const [activeAgent, setActiveAgent] = useState<AgentSession | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [inactivityMinutes, setInactivityMinutes] = useState<number>(DEFAULT_INACTIVITY_MINUTES);
@@ -44,6 +66,12 @@ export const useAgentAuth = (shopId?: string, options?: UseAgentAuthOptions) => 
 
         const clamped = Math.min(MAX_INACTIVITY_MINUTES, Math.max(MIN_INACTIVITY_MINUTES, next));
         setInactivityMinutes(clamped);
+    }, []);
+
+    const persistSession = useCallback((session: AgentSession) => {
+        setActiveAgent(session);
+        localStorage.setItem(LEGACY_STORAGE_KEY, session.agentId);
+        localStorage.setItem(getAgentStorageKey(session.shopId), session.agentId);
     }, []);
 
     // Charger l'agent mémorisé au démarrage
@@ -172,12 +200,117 @@ export const useAgentAuth = (shopId?: string, options?: UseAgentAuthOptions) => 
             isUnlocked: true,
         };
 
-        setActiveAgent(session);
-        localStorage.setItem(LEGACY_STORAGE_KEY, d.id);
-        localStorage.setItem(getAgentStorageKey(shopId), d.id);
+        persistSession(session);
         toast.success(`Bienvenue, ${d.first_name}`);
         return session;
-    }, [shopId]);
+    }, [persistSession, shopId]);
+
+    const createAccount = useCallback(async ({
+        firstName,
+        lastName,
+        username,
+        password,
+        pinCode,
+    }: CreateAgentAccountInput) => {
+        if (!shopId || !user?.id) {
+            toast.error('Compte introuvable');
+            return null;
+        }
+
+        const cleanFirstName = firstName.trim();
+        const cleanLastName = lastName.trim();
+        const cleanUsername = username.trim();
+        const cleanPassword = password.trim();
+        const cleanPinCode = pinCode.trim();
+
+        if (!cleanFirstName || !cleanLastName || !cleanUsername || !cleanPassword) {
+            toast.error('Tous les champs sont obligatoires');
+            return null;
+        }
+
+        if (!/^\d{4,6}$/.test(cleanPinCode)) {
+            toast.error('Le PIN doit contenir entre 4 et 6 chiffres');
+            return null;
+        }
+
+        const { data: linkedAgentData, error: linkedAgentError } = await supabase
+            .from('shop_agents' as any)
+            .select('*')
+            .eq('shop_id', shopId)
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .maybeSingle();
+
+        const linkedAgent: ShopAgentRow | null = linkedAgentData as unknown as ShopAgentRow | null;
+
+        if (linkedAgentError || !linkedAgent) {
+            toast.error('Aucun profil agent actif trouve pour ce compte');
+            return null;
+        }
+
+        if (linkedAgent.username && linkedAgent.password_hash) {
+            toast.error('Ce compte boutique existe deja');
+            return null;
+        }
+
+        const { data: existingUsernameData, error: usernameError } = await supabase
+            .from('shop_agents' as any)
+            .select('id')
+            .eq('shop_id', shopId)
+            .eq('username', cleanUsername)
+            .neq('id', linkedAgent.id)
+            .maybeSingle();
+
+        const existingUsername: Pick<ShopAgentRow, 'id'> | null = existingUsernameData as unknown as Pick<ShopAgentRow, 'id'> | null;
+
+        if (usernameError) {
+            console.error('Username check error', usernameError);
+            toast.error('Impossible de verifier le nom utilisateur');
+            return null;
+        }
+
+        if (existingUsername) {
+            toast.error('Cet identifiant est deja utilise dans cette boutique');
+            return null;
+        }
+
+        const { data: updatedAgentData, error } = await supabase
+            .from('shop_agents' as any)
+            .update({
+                first_name: cleanFirstName,
+                last_name: cleanLastName,
+                username: cleanUsername,
+                password_hash: cleanPassword,
+                pin_code: cleanPinCode,
+                email: linkedAgent.email || user.email || null,
+            })
+            .eq('id', linkedAgent.id)
+            .select('*')
+            .single();
+
+        const data: ShopAgentRow | null = updatedAgentData as unknown as ShopAgentRow | null;
+
+        if (error || !data) {
+            console.error('Create agent account error', error);
+            toast.error('Impossible de creer le compte boutique');
+            return null;
+        }
+
+        const session: AgentSession = {
+            agentId: data.id,
+            firstName: data.first_name,
+            lastName: data.last_name,
+            email: data.email,
+            role: data.role,
+            shopId: data.shop_id,
+            avatarUrl: data.avatar_url || null,
+            isUnlocked: true,
+        };
+
+        persistSession(session);
+        toast.success('Compte boutique cree');
+        return session;
+    }, [persistSession, shopId, user?.email, user?.id]);
 
     const unlock = useCallback(async (pinOrPass: string) => {
         if (!activeAgent) return false;
@@ -336,6 +469,7 @@ export const useAgentAuth = (shopId?: string, options?: UseAgentAuthOptions) => 
         inactivityMinutes,
         updateInactivityMinutes,
         login,
+        createAccount,
         unlock,
         lock,
         logout,

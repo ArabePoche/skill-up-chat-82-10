@@ -78,6 +78,7 @@ const Shop = () => {
     inactivityMinutes,
     updateInactivityMinutes,
     login,
+    createAccount,
     unlock,
     lock,
     logout,
@@ -176,6 +177,7 @@ const Shop = () => {
               inactivityMinutes={inactivityMinutes}
               onInactivityMinutesChange={updateInactivityMinutes}
               onLogin={login}
+              onCreateAccount={createAccount}
               onUnlock={unlock}
               forgotPassword={forgotPassword}
               updateProfile={updateProfile}
@@ -186,6 +188,7 @@ const Shop = () => {
               inactivityMinutes={inactivityMinutes}
               onInactivityMinutesChange={updateInactivityMinutes}
               onLogin={login}
+              onCreateAccount={createAccount}
               onUnlock={unlock}
               onLock={lock}
               onLogout={logout}

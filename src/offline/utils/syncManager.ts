@@ -510,7 +510,7 @@ class SyncManager {
 
   private async syncCreateBoutiqueSaleMutation(payload: any): Promise<boolean> {
     try {
-      const { shopId, items, customerName, paymentMethod, notes } = payload;
+      const { shopId, items, customerName, paymentMethod, notes, agentId } = payload;
 
       for (const item of items) {
         // Enregistrer la vente
@@ -518,22 +518,26 @@ class SyncManager {
           .from('physical_shop_sales')
           .insert({
             shop_id: shopId,
-            product_id: item.id,
+            product_id: item.product?.id || item.id, // Support fallback
             quantity: item.quantity,
-            unit_price: item.price,
-            total_amount: item.price * item.quantity,
+            unit_price: item.product?.price || item.price,
+            total_amount: (item.product?.price || item.price) * item.quantity,
+            cost_price: item.product?.cost_price || item.cost_price || 0,
             customer_name: customerName,
             payment_method: paymentMethod,
-            notes: notes
+            notes: notes,
+            agent_id: agentId || null
           });
 
         if (saleErr) return false;
 
         // Mettre à jour le stock
+        const productId = item.product?.id || item.id;
+        
         const { data: product, error: fetchErr } = await supabase
           .from('physical_shop_products')
           .select('stock_quantity')
-          .eq('id', item.id)
+          .eq('id', productId)
           .single();
 
         if (fetchErr || !product) return false;
@@ -542,7 +546,7 @@ class SyncManager {
         const { error: updateErr } = await supabase
           .from('physical_shop_products')
           .update({ stock_quantity: newStock })
-          .eq('id', item.id);
+          .eq('id', productId);
 
         if (updateErr) return false;
       }

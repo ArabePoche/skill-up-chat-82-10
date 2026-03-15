@@ -14,14 +14,6 @@ import {
   Settings2,
   User as UserIcon
 } from 'lucide-react';
-import { useShopAgents } from '@/hooks/shop/useShopAgents';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,7 +52,6 @@ interface EmbeddedPosProps {
     customerName?: string;
     paymentMethod: string;
     notes?: string;
-    agentId?: string;
   }) => Promise<void>;
   isProcessing: boolean;
   searchQuery: string;
@@ -97,8 +88,6 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
   const [amountReceived, setAmountReceived] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
-  const [agentId, setAgentId] = useState<string>('');
-  const { data: agents } = useShopAgents(shopId);
   const [receiptData, setReceiptData] = useState<{
     items: PosCartItem[];
     total: number;
@@ -142,7 +131,6 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
         customerName: customerName.trim() || undefined,
         paymentMethod,
         notes: notes.trim() || undefined,
-        agentId: agentId || undefined,
       });
     }
     setReceiptData({
@@ -166,7 +154,6 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
     setNotes('');
     setAmountReceived('');
     setCheckoutType('sale');
-    setAgentId('');
     setMobileCartOpen(false);
   };
 
@@ -363,21 +350,6 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
               )}
 
               <div className="space-y-3">
-                <div>
-                  <Label className="text-xs font-medium text-gray-500" htmlFor="pos-agent">Vendeur / Agent *</Label>
-                  <Select value={agentId} onValueChange={setAgentId}>
-                    <SelectTrigger id="pos-agent" className="mt-1">
-                      <SelectValue placeholder="Qui effectue cette vente ?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents?.filter(a => a.status === 'active').map(agent => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.first_name} {agent.last_name} ({agent.role})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div>
                   <Label className="text-xs font-medium text-gray-500" htmlFor="pos-cust">Client</Label>
                   <Input id="pos-cust" value={customerName} onChange={e => setCustomerName(e.target.value)}

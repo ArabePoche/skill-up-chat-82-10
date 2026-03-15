@@ -17,6 +17,7 @@ import { useShopOrders } from '@/hooks/shop/useShopOrders';
 import { useShopAgents } from '@/hooks/shop/useShopAgents';
 import { AgentSession } from '@/hooks/shop/useAgentAuth';
 import { AgentLockScreen } from './AgentLockScreen';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -76,6 +77,8 @@ import { usePosCart } from '@/hooks/shop/usePosCart';
 import BoutiqueProductCard from './BoutiqueProductCard';
 import TransferDialog, { TransferDialogProps } from './TransferDialog';
 import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
+import { CameraBarcodeScanner } from './CameraBarcodeScanner';
+import { ScanBarcode } from 'lucide-react';
 
 // Composant Autocomplete simple et robuste pour éviter les problèmes de focus dans les Dialogs
 const SimpleAutocomplete = ({
@@ -189,6 +192,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
     const [shopAddress, setShopAddress] = useState('');
     const [inventoryOpen, setInventoryOpen] = useState(false);
     const [posOpen, setPosOpen] = useState(false);
+    const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [showMultiShopSettings, setShowMultiShopSettings] = useState(false);
     const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders' | 'sales' | 'agents'>('shop');
     const { data: currentShopAgents } = useShopAgents(shop?.id);
@@ -222,6 +226,26 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
         const locs = new Set(products?.map(p => p.location).filter(Boolean) as string[]);
         return Array.from(locs).sort();
     }, [products]);
+
+    // Handle barcode scanner
+    useBarcodeScanner((barcode) => {
+        if (!products) return;
+        
+        // Trouver le produit correspondant
+        const product = products.find(p => p.barcode === barcode);
+        if (product) {
+            // Ajouter 1 au panier
+            posCart.addItem(product, 1);
+            
+            // Notification visuelle ou sonore légère optionnelle (optionnelle car le panier se met à jour)
+            // L'ajout a déjà une notification de toast dans `usePosCart` 
+            
+            // Optionnellement effacer la recherche en cours si ça correspond 
+            if (searchQuery === barcode) {
+                setSearchQuery('');
+            }
+        }
+    }, activeView === 'shop' && activeAgent?.isUnlocked === true);
 
     const isOnline = navigator.onLine;
 
@@ -529,30 +553,17 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                     </div>
                 </div>
 
-                {/* Stats rapides */}
-                <div className="flex gap-3 mt-2.5 text-xs">
-                    <div className="bg-white/15 rounded-lg px-2.5 py-1 backdrop-blur-sm">
-                        <span className="text-emerald-100">Produits : </span>
-                        <span className="font-bold">{products?.length || 0}</span>
-                    </div>
-                    <div className="bg-white/15 rounded-lg px-2.5 py-1 backdrop-blur-sm">
-                        <span className="text-emerald-100">En ligne : </span>
-                        <span className="font-bold">
-                            {products?.filter(p => p.marketplace_quantity > 0).length || 0}
-                        </span>
-                    </div>
-                </div>
-                {/* Onglets Boutique / Clients */}
-                <div className="flex border-b border-white/20">
+                {/* Second ligne : Navigation */}
+                <div className="flex bg-white/10 dark:bg-white/5 border-t border-white/10 mt-2 overflow-x-auto no-scrollbar">
                     <button
                         onClick={() => setActiveView('shop')}
-                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors ${activeView === 'shop' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                        className={`flex-1 min-w-[80px] py-2 text-xs font-medium text-center transition-colors ${activeView === 'shop' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
                     >
-                        <Package size={14} className="inline mr-1" /> Boutique
+                        <Store size={14} className="inline mr-1" /> Boutique
                     </button>
                     <button
                         onClick={() => setActiveView('orders')}
-                        className={`flex-1 py-2 text-xs font-medium text-center transition-colors relative ${activeView === 'orders' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                        className={`relative flex-1 min-w-[100px] py-2 text-xs font-medium text-center transition-colors ${activeView === 'orders' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
                     >
                         <Bell size={14} className="inline mr-1" /> Commandes
                         {pendingCount > 0 && (
@@ -630,14 +641,25 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                     {/* Liste des produits et Caisse Intégrée */}
                     <div className="p-3 sm:p-4">
                         {/* Barre de recherche */}
-                        <div className="relative mb-4">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Rechercher un produit..."
-                                className="pl-9"
-                            />
+                        <div className="relative mb-4 flex gap-2">
+                            <div className="relative flex-1">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Rechercher un produit..."
+                                    className="pl-9"
+                                />
+                            </div>
+                            <Button 
+                                onClick={() => setShowCameraScanner(true)}
+                                variant="outline" 
+                                size="icon"
+                                className="shrink-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                title="Scanner un code-barres"
+                            >
+                                <ScanBarcode size={20} />
+                            </Button>
                         </div>
 
                         {/* Caisse Intégrée */}
@@ -666,6 +688,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                                         customerName: data.customerName,
                                         paymentMethod: data.paymentMethod,
                                         notes: data.notes,
+                                        agentId: activeAgent?.agentId,
                                     });
                                     posCart.clearCart();
                                 }}
@@ -828,6 +851,19 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                 isLoading={returnFromMarketplace.isPending}
             />
 
+            {/* Scanner caméra */}
+            {showCameraScanner && (
+                <CameraBarcodeScanner
+                    onClose={() => setShowCameraScanner(false)}
+                    onScan={(barcode) => {
+                        if (!products) return;
+                        const product = products.find(p => p.barcode === barcode);
+                        if (product) {
+                            posCart.addItem(product, 1);
+                        }
+                    }}
+                />
+            )}
 
             {/* Confirmation suppression */}
             <AlertDialog open={!!deletingProductId} onOpenChange={(open) => !open && setDeletingProductId(null)}>
