@@ -140,17 +140,27 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
   // Mutation pour mettre à jour le statut
   const updateStatus = useMutation({
     mutationFn: async ({ applicationId, status }: { applicationId: string; status: 'approved' | 'rejected' }) => {
-      const { error } = await supabase
+      console.log('📋 [ShopApplicationsPanel] Updating application', applicationId, 'to', status);
+      const { data, error } = await supabase
         .from('applications')
-        .update({ status })
-        .eq('id', applicationId);
-      if (error) throw error;
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', applicationId)
+        .select();
+      if (error) {
+        console.error('❌ [ShopApplicationsPanel] Update error:', error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        console.error('❌ [ShopApplicationsPanel] No rows updated - likely RLS issue');
+        throw new Error('Impossible de mettre à jour : vérifiez vos permissions');
+      }
+      console.log('✅ [ShopApplicationsPanel] Updated successfully:', data);
     },
     onSuccess: (_, variables) => {
       toast.success(variables.status === 'approved' ? 'Candidature acceptée' : 'Candidature refusée');
       queryClient.invalidateQueries({ queryKey: ['shop-applications'] });
     },
-    onError: () => toast.error('Erreur lors de la mise à jour'),
+    onError: (err: any) => toast.error(err?.message || 'Erreur lors de la mise à jour'),
   });
 
   if (isLoading) return null;
