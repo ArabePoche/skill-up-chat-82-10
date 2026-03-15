@@ -60,6 +60,9 @@ const Shop = () => {
   const shopIdFromUrl = searchParams.get('id');
   const shop = userShops?.find((candidate) => candidate.id === shopIdFromUrl) || userShops?.[0] || physicalShop;
 
+  // Vérifie le statut agent de l'utilisateur courant pour cette boutique (inclut needsSetup)
+  const { data: myAgentStatus } = useMyAgentStatus(shop?.id);
+
   // Vérifier si l'utilisateur est agent actif dans la boutique courante
   const isActiveAgent = agentStatuses?.some(
     (a) => a.shop_id === shop?.id && a.status === 'active'
@@ -67,6 +70,9 @@ const Shop = () => {
   const isPendingAgent = agentStatuses?.some(
     (a) => a.shop_id === shop?.id && a.status === 'pending'
   );
+
+  // L'agent approuvé n'a pas encore créé son compte (pas de username/password)
+  const agentNeedsSetup = isActiveAgent && myAgentStatus?.needsSetup === true;
 
   // L'utilisateur peut voir les onglets s'il est propriétaire OU agent actif
   const canAccessGestion = isShopOwner || isActiveAgent;
@@ -181,6 +187,8 @@ const Shop = () => {
               onUnlock={unlock}
               forgotPassword={forgotPassword}
               updateProfile={updateProfile}
+              needsSetup={agentNeedsSetup}
+              setupAgentId={myAgentStatus?.id}
             />
           ) : (
             <BoutiqueManagement

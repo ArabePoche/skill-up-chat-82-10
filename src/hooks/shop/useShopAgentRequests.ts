@@ -32,13 +32,21 @@ export const useMyAgentStatus = (shopId?: string) => {
 
       const { data, error } = await supabase
         .from('shop_agents' as any)
-        .select('id, status, role, requested_role')
+        .select('id, status, role, requested_role, password_hash, username')
         .eq('user_id', user.id)
         .eq('shop_id', shopId)
         .maybeSingle();
 
       if (error) throw error;
-      return data as unknown as { id: string; status: string; role: string; requested_role: string | null } | null;
+      if (!data) return null;
+      const agent = data as any;
+      return {
+        id: agent.id,
+        status: agent.status,
+        role: agent.role,
+        requested_role: agent.requested_role,
+        needsSetup: !agent.password_hash && !agent.username,
+      } as { id: string; status: string; role: string; requested_role: string | null; needsSetup: boolean };
     },
     enabled: !!user?.id && !!shopId,
   });

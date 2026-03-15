@@ -40,6 +40,10 @@ interface AgentLockScreenProps {
     onLogout?: () => void;
     forgotPassword: () => Promise<void>;
     updateProfile: (updates: Partial<{ first_name:string; last_name:string; password_hash:string; pin_code:string; avatar_url:string; }>) => Promise<boolean>;
+    /** Si true, l'agent n'a pas encore configuré ses identifiants */
+    needsSetup?: boolean;
+    /** L'ID de l'agent dans shop_agents (pour la création de compte) */
+    setupAgentId?: string;
 }
 
 export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
@@ -54,9 +58,12 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
     onLock,
     onLogout,
     forgotPassword,
-    updateProfile
+    updateProfile,
+    needsSetup = false,
+    setupAgentId,
 }) => {
-    const [mode, setMode] = useState<'login' | 'unlock'>(activeAgent ? 'unlock' : 'login');
+    const [mode, setMode] = useState<'login' | 'unlock' | 'setup'>(needsSetup ? 'setup' : (activeAgent ? 'unlock' : 'login'));
+    const [setupForm, setSetupForm] = useState({ username: '', password: '', confirmPassword: '', pin_code: '' });
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [pin, setPin] = useState('');
@@ -82,8 +89,12 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
     };
 
     useEffect(() => {
-        setMode(activeAgent ? 'unlock' : 'login');
-    }, [activeAgent]);
+        if (needsSetup) {
+            setMode('setup');
+        } else {
+            setMode(activeAgent ? 'unlock' : 'login');
+        }
+    }, [activeAgent, needsSetup]);
 
     useEffect(() => {
         setInactivityInput(String(inactivityMinutes));
@@ -306,14 +317,119 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
                     </div>
                     <CardTitle className="text-2xl font-bold">Accès Sécurisé</CardTitle>
                     <CardDescription className="text-slate-400">
-                        {mode === 'login'
+                        {mode === 'setup'
+                            ? "Créez vos identifiants pour accéder à la gestion"
+                            : mode === 'login'
                             ? "Veuillez vous identifier pour accéder à la boutique"
                             : `Session de ${activeAgent?.firstName}`}
                     </CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-6 pt-4">
-                    {mode === 'login' ? (
+                    {mode === 'setup' ? (
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!setupAgentId) return;
+                            if (setupForm.password.length < 4) {
+                                toast.error('Le mot de passe doit contenir au moins 4 caractères');
+                                return;
+                            }
+                            if (setupForm.password !== setupForm.confirmPassword) {
+                                toast.error('Les mots de passe ne correspondent pas');
+                                return;
+                            }
+                            if (!setupForm.username.trim()) {
+                                toast.error("Veuillez choisir un identifiant");
+                                return;
+                            }
+                            setIsProcessing(true);
+                            try {
+                                const updates: any = {
+                                    username: setupForm.username.trim(),
+                                    password_hash: setupForm.password,
+                                };
+                                if (setupForm.pin_code.length === 6) {
+                                    updates.pin_code = setupForm.pin_code;
+                                }
+                                const { error } = await (await import('@/integrations/supabase/client')).supabase
+                                    .from('shop_agents' as any)
+                                    .update(updates)
+                                    .eq('id', setupAgentId);
+                                if (error) throw error;
+                                toast.success('Compte créé ! Vous pouvez maintenant vous identifier.');
+                                setMode('login');
+                                setUsername(setupForm.username.trim());
+                            } catch (err) {
+                                console.error('Setup error:', err);
+                                toast.error('Erreur lors de la création du compte');
+                            } finally {
+                                setIsProcessing(false);
+                            }
+                        }} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="setup-username" className="text-slate-300">Identifiant</Label>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                                    <Input
+                                        id="setup-username"
+                                        value={setupForm.username}
+                                        onChange={e => setSetupForm(prev => ({ ...prev, username: e.target.value }))}
+                                        placeholder="Ex: jean.dupont"
+                                        className="bg-white/10 border-white/20 pl-10 text-white placeholder:text-slate-600"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="setup-pass" className="text-slate-300">Mot de passe</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                                    <Input
+                                        id="setup-pass"
+                                        type="password"
+                                        value={setupForm.password}
+                                        onChange={e => setSetupForm(prev => ({ ...prev, password: e.target.value }))}
+                                        placeholder="Min. 4 caractères"
+                                        className="bg-white/10 border-white/20 pl-10 text-white placeholder:text-slate-600"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="setup-confirm" className="text-slate-300">Confirmer le mot de passe</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                                    <Input
+                                        id="setup-confirm"
+                                        type="password"
+                                        value={setupForm.confirmPassword}
+                                        onChange={e => setSetupForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                        placeholder="••••••••"
+                                        className="bg-white/10 border-white/20 pl-10 text-white placeholder:text-slate-600"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="setup-pin" className="text-slate-300">Code PIN (optionnel)</Label>
+                                <Input
+                                    id="setup-pin"
+                                    value={setupForm.pin_code}
+                                    onChange={e => setSetupForm(prev => ({ ...prev, pin_code: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                                    maxLength={6}
+                                    placeholder="6 chiffres pour déverrouillage rapide"
+                                    className="bg-white/10 border-white/20 text-white placeholder:text-slate-600"
+                                />
+                            </div>
+                            <Button
+                                type="submit"
+                                className="w-full bg-green-600 hover:bg-green-700 h-11 font-bold shadow-lg shadow-green-600/20"
+                                disabled={isProcessing}
+                            >
+                                {isProcessing ? <RefreshCcw className="animate-spin w-5 h-5" /> : "Créer mon compte"}
+                            </Button>
+                        </form>
+                    ) : mode === 'login' ? (
                         <form onSubmit={handleFullLogin} autoComplete="off" className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="agent-user" className="text-slate-300">Identifiant / Email</Label>
