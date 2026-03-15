@@ -38,78 +38,95 @@ interface ApplicationWithProfile {
 const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId }) => {
   const queryClient = useQueryClient();
 
-  // Récupérer uniquement les candidatures liées à cette boutique
+  // Récupérer les candidatures liées à cette boutique
   const { data: applications, isLoading, error } = useQuery({
     queryKey: ['shop-applications', shopId],
     queryFn: async () => {
       console.log('📋 [ShopApplicationsPanel] Fetching applications for shop:', shopId);
 
-      // 1. Récupérer les annonces de recrutement liées à cette boutique
-      const { data: shopAds, error: adsError } = await supabase
+      // 1. Récupérer le propriétaire de la boutique
+      const { data: shop } = await supabase
+        .from('physical_shops')
+        .select('owner_id')
+        .eq('id', shopId)
+        .single();
+
+      if (!shop?.owner_id) {
+        console.log('📋 [ShopApplicationsPanel] No shop owner found');
+        return [];
+      }
+
+      console.log('📋 [ShopApplicationsPanel] Shop owner:', shop.owner_id);
+
+      // 2. Récupérer les annonces de recrutement liées à cette boutique (si shop_id renseigné)
+      const { data: shopAds } = await supabase
         .from('recruitment_ads')
         .select('id')
         .eq('shop_id', shopId);
 
-      if (adsError) {
-        console.error('❌ [ShopApplicationsPanel] Error fetching ads:', adsError);
-        throw adsError;
+      const adIds = shopAds?.map(ad => ad.id) || [];
+
+      // 3. Récupérer les posts de recrutement liés aux annonces OU directement par le propriétaire
+      let postIds: string[] = [];
+
+      if (adIds.length > 0) {
+        const { data: linkedPosts } = await supabase
+          .from('posts')
+          .select('id')
+          .in('recruitment_ad_id', adIds);
+        postIds = linkedPosts?.map(p => p.id) || [];
       }
 
-      if (!shopAds || shopAds.length === 0) {
-        console.log('📋 [ShopApplicationsPanel] No recruitment ads for this shop');
-        return [];
-      }
-
-      const adIds = shopAds.map(ad => ad.id);
-      console.log('📋 [ShopApplicationsPanel] Found', adIds.length, 'recruitment ads for shop');
-
-      // 2. Récupérer les posts liés à ces annonces
-      const { data: linkedPosts } = await supabase
+      // Aussi récupérer les posts de recrutement du propriétaire (fallback quand shop_id non lié)
+      const { data: ownerRecruitmentPosts } = await supabase
         .from('posts')
         .select('id')
-        .in('recruitment_ad_id', adIds);
+        .eq('author_id', shop.owner_id)
+        .eq('post_type', 'recruitment');
 
-      const postIds = linkedPosts?.map(p => p.id) || [];
+      if (ownerRecruitmentPosts) {
+        const ownerPostIds = ownerRecruitmentPosts.map(p => p.id);
+        postIds = [...new Set([...postIds, ...ownerPostIds])];
+      }
 
-      // 3. Récupérer les candidatures : source_type='recruitment_ad' + source_id IN adIds
-      //    OU source_type='post' + source_id IN postIds
+      // 4. Récupérer les candidatures
       let allApplications: any[] = [];
 
-      const { data: adApps, error: adAppsError } = await supabase
-        .from('applications')
-        .select('*')
-        .eq('source_type', 'recruitment_ad')
-        .in('source_id', adIds)
-        .order('created_at', { ascending: false });
+      // Via recruitment_ads directement
+      if (adIds.length > 0) {
+        const { data: adApps } = await supabase
+          .from('applications')
+          .select('*')
+          .eq('source_type', 'recruitment_ad')
+          .in('source_id', adIds);
+        if (adApps) allApplications.push(...adApps);
+      }
 
-      if (adAppsError) throw adAppsError;
-      if (adApps) allApplications.push(...adApps);
-
+      // Via les posts de recrutement
       if (postIds.length > 0) {
-        const { data: postApps, error: postAppsError } = await supabase
+        const { data: postApps } = await supabase
           .from('applications')
           .select('*')
           .eq('source_type', 'post')
-          .in('source_id', postIds)
-          .order('created_at', { ascending: false });
-
-        if (postAppsError) throw postAppsError;
+          .in('source_id', postIds);
         if (postApps) allApplications.push(...postApps);
       }
+
+      // Dédupliquer par id
+      const uniqueMap = new Map(allApplications.map(a => [a.id, a]));
+      allApplications = [...uniqueMap.values()];
 
       console.log('📋 [ShopApplicationsPanel] Found', allApplications.length, 'applications for this shop');
 
       if (allApplications.length === 0) return [];
 
-      // 4. Récupérer les profils des candidats
+      // 5. Récupérer les profils des candidats
       const userIds = [...new Set(allApplications.map(app => app.user_id))];
-
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, avatar_url, phone')
         .in('id', userIds);
 
-      // Trier par date décroissante
       allApplications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       return allApplications.map(app => ({
@@ -123,17 +140,27 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
   // Mutation pour mettre à jour le statut
   const updateStatus = useMutation({
     mutationFn: async ({ applicationId, status }: { applicationId: string; status: 'approved' | 'rejected' }) => {
-      const { error } = await supabase
+      console.log('📋 [ShopApplicationsPanel] Updating application', applicationId, 'to', status);
+      const { data, error } = await supabase
         .from('applications')
-        .update({ status })
-        .eq('id', applicationId);
-      if (error) throw error;
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', applicationId)
+        .select();
+      if (error) {
+        console.error('❌ [ShopApplicationsPanel] Update error:', error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        console.error('❌ [ShopApplicationsPanel] No rows updated - likely RLS issue');
+        throw new Error('Impossible de mettre à jour : vérifiez vos permissions');
+      }
+      console.log('✅ [ShopApplicationsPanel] Updated successfully:', data);
     },
     onSuccess: (_, variables) => {
       toast.success(variables.status === 'approved' ? 'Candidature acceptée' : 'Candidature refusée');
       queryClient.invalidateQueries({ queryKey: ['shop-applications'] });
     },
-    onError: () => toast.error('Erreur lors de la mise à jour'),
+    onError: (err: any) => toast.error(err?.message || 'Erreur lors de la mise à jour'),
   });
 
   if (isLoading) return null;
