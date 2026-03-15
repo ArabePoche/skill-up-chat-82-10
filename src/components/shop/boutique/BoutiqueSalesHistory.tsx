@@ -127,11 +127,14 @@ const BoutiqueSalesHistory: React.FC<BoutiqueSalesHistoryProps> = ({ shopId }) =
                                                 )}
 
                                                 <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                    {sale.payment_method === 'cash' ? (
+                                                    {(sale.payment_method?.startsWith('{') || sale.payment_method === 'split') ? (
+                                                        <span className="flex items-center gap-1"><CreditCard className="w-3.5 h-3.5 text-purple-500" /> Mixte</span>
+                                                    ) : sale.payment_method === 'cash' ? (
                                                         <Banknote className="w-3.5 h-3.5 text-emerald-500" />
                                                     ) : (
                                                         <CreditCard className="w-3.5 h-3.5 text-blue-500" />
                                                     )}
+                                                    <span>•</span>
                                                     {sale.quantity} unité(s)
                                                 </div>
 

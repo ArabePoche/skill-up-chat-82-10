@@ -115,7 +115,29 @@ export const useTodaySalesStats = (shopId?: string) => {
       // Par méthode de paiement
       const methodMap = new Map<string, { total: number; count: number }>();
       salesData.forEach((sale: any) => {
-        const method = sale.payment_method || 'cash';
+        const rawMethod = sale.payment_method || 'cash';
+
+        // Check if method is a JSON split payment like '{"cash": 2000, "mobile": 3000}'
+        if (rawMethod.startsWith('{')) {
+          try {
+            const splits = JSON.parse(rawMethod);
+            const methods = Object.keys(splits);
+            
+            methods.forEach(method => {
+              const amount = Number(splits[method]);
+              const existing = methodMap.get(method) || { total: 0, count: 0 };
+              methodMap.set(method, {
+                total: existing.total + amount,
+                count: existing.count + (1 / methods.length), // counts as a partial sale for average purposes
+              });
+            });
+            return;
+          } catch(e) {
+            // fallback if it was just a string starting with '{'
+          }
+        }
+
+        const method = rawMethod;
         const existing = methodMap.get(method) || { total: 0, count: 0 };
         methodMap.set(method, {
           total: existing.total + Number(sale.total_amount),

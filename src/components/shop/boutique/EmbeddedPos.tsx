@@ -83,7 +83,11 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
   const [step, setStep] = useState<PosStep>('browse');
   const [checkoutType, setCheckoutType] = useState<CheckoutType>('sale');
   const [customerName, setCustomerName] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentMethod, setPaymentMethod] = useState('cash'); // Fallback primary payment method
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [splitPayments, setSplitPayments] = useState<{ method: string, amount: number, received?: number }[]>([]);
+  const [splitAmountsReceived, setSplitAmountsReceived] = useState<{ [method: string]: string }>({});
+  
   const [notes, setNotes] = useState('');
   const [amountReceived, setAmountReceived] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
@@ -115,7 +119,11 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
     return Math.max(0, received - totalAmount);
   }, [amountReceived, totalAmount]);
 
-  const canFinalize = paymentMethod !== 'cash' || (parseFloat(amountReceived) || 0) >= totalAmount;
+  const splitTotal = useMemo(() => splitPayments.reduce((acc, curr) => acc + curr.amount, 0), [splitPayments]);
+
+  const canFinalize = isSplitMode 
+    ? (splitTotal >= totalAmount && totalAmount > 0)
+    : (paymentMethod !== 'cash' || (parseFloat(amountReceived) || 0) >= totalAmount);
 
   const handleNumPad = (val: string) => {
     if (val === 'C') setAmountReceived('');
@@ -123,13 +131,60 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
     else setAmountReceived(prev => prev + val);
   };
 
+  const handleNumPadForSplit = (methodValue: string, val: string) => {
+    setSplitAmountsReceived(prev => {
+      const current = prev[methodValue] || '';
+      let nextStr = current;
+      if (val === 'C') nextStr = '';
+      else if (val === '⌫') nextStr = current.slice(0, -1);
+      else nextStr = current + val;
+      
+      const newSplitReceived = { ...prev, [methodValue]: nextStr };
+      
+      // Update actual amount array based on received vs remaining
+      // We do not calculate automatic splits here, we just sync the input string.
+      return newSplitReceived;
+    });
+  };
+
+  const handleApplySplit = (methodValue: string) => {
+    const receivedAmount = parseFloat(splitAmountsReceived[methodValue]) || 0;
+    if (receivedAmount <= 0) return;
+    
+    const remainingToPay = Math.max(0, totalAmount - splitTotal);
+    const amountToApply = Math.min(receivedAmount, remainingToPay); // Cannot apply more than remaining to the cart sum
+    
+    if (amountToApply <= 0) return;
+
+    setSplitPayments(prev => {
+      const existing = prev.find(p => p.method === methodValue);
+      if (existing) {
+         return prev.map(p => p.method === methodValue ? { ...p, amount: p.amount + amountToApply, received: (p.received || 0) + receivedAmount } : p);
+      }
+      return [...prev, { method: methodValue, amount: amountToApply, received: receivedAmount }];
+    });
+    setSplitAmountsReceived(prev => ({ ...prev, [methodValue]: '' }));
+  };
+
+  const clearSplits = () => {
+    setSplitPayments([]);
+    setSplitAmountsReceived({});
+  };
+
   const quickAmounts = [500, 1000, 2000, 5000, 10000];
 
   const handleFinalize = async () => {
+    const finalPaymentMethod = isSplitMode 
+      ? JSON.stringify(splitPayments.reduce((acc, curr) => { 
+          acc[curr.method] = curr.amount; 
+          return acc; 
+        }, {} as Record<string, number>))
+      : paymentMethod;
+
     if (checkoutType === 'sale') {
       await onConfirmSale({
         customerName: customerName.trim() || undefined,
-        paymentMethod,
+        paymentMethod: finalPaymentMethod,
         notes: notes.trim() || undefined,
       });
     }
@@ -137,9 +192,9 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
       items: [...cartItems],
       total: totalAmount,
       customer: customerName.trim() || 'Client anonyme',
-      payment: paymentMethod,
-      amountReceived: parseFloat(amountReceived) || totalAmount,
-      change,
+      payment: finalPaymentMethod,
+      amountReceived: isSplitMode ? splitPayments.reduce((a, b) => a + (b.received || b.amount), 0) : (parseFloat(amountReceived) || totalAmount),
+      change: isSplitMode ? Math.max(0, splitPayments.reduce((a, b) => a + (b.received || b.amount), 0) - totalAmount) : change,
       date: new Date(),
       type: checkoutType,
     });
@@ -151,6 +206,8 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
     setStep('browse');
     setCustomerName('');
     setPaymentMethod('cash');
+    setIsSplitMode(false);
+    clearSplits();
     setNotes('');
     setAmountReceived('');
     setCheckoutType('sale');
@@ -286,9 +343,14 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
                 <p className="text-3xl font-bold text-emerald-700">{formatCurrency(totalAmount)}</p>
               </div>
 
-              {checkoutType === 'sale' && (
+              {checkoutType === 'sale' && !isSplitMode && (
                 <div>
-                  <Label className="text-xs mb-2 block font-medium text-gray-500">Mode de paiement</Label>
+                  <div className="flex justify-between items-center mb-2">
+                    <Label className="text-xs font-medium text-gray-500">Mode de paiement</Label>
+                    <button onClick={() => setIsSplitMode(true)} className="text-[10px] text-emerald-600 hover:underline">
+                      Paiement multiple (Mixte)
+                    </button>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { value: 'cash', label: 'Espèces', icon: <Banknote size={18} /> },
@@ -308,7 +370,7 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
                 </div>
               )}
 
-              {checkoutType === 'sale' && paymentMethod === 'cash' && (
+              {checkoutType === 'sale' && !isSplitMode && paymentMethod === 'cash' && (
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                   <Label className="text-xs mb-2 block font-medium text-gray-500">Montant reçu</Label>
                   <div className="flex gap-2 mb-3">
@@ -346,6 +408,106 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Bloc Paiement Multiple (Split) */}
+              {checkoutType === 'sale' && isSplitMode && (
+                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-xs font-medium text-gray-500">Paiement Multiple (Mixte)</Label>
+                    <button onClick={() => { setIsSplitMode(false); clearSplits(); }} className="text-[10px] text-red-500 hover:underline">
+                      Annuler
+                    </button>
+                  </div>
+
+                  {/* Liste des paiements ajoutés */}
+                  {splitPayments.length > 0 && (
+                    <div className="space-y-2 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                      {splitPayments.map((p, i) => (
+                        <div key={i} className="flex justify-between items-center text-sm border-b pb-1 last:border-0 last:pb-0">
+                          <span className="flex items-center gap-1.5 capitalize font-medium text-gray-700">
+                             {p.method === 'cash' ? <Banknote size={14} className="text-emerald-500"/> 
+                              : p.method === 'card' ? <CreditCard size={14} className="text-blue-500" />
+                              : <Smartphone size={14} className="text-purple-500" />}
+                             {p.method === 'cash' ? 'Espèces' : p.method === 'card' ? 'Carte' : 'Mobile'}
+                          </span>
+                          <div className="text-right">
+                             <span className="font-bold text-emerald-700">{formatCurrency(p.amount)}</span>
+                             {p.method === 'cash' && (p.received || 0) > p.amount && (
+                               <span className="text-[10px] text-gray-400 block -mt-1">(donné: {formatCurrency(p.received || 0)})</span>
+                             )}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {splitTotal < totalAmount && (
+                         <div className="pt-2 flex justify-between items-center text-xs font-bold text-orange-600">
+                           <span>Reste à payer :</span>
+                           <span>{formatCurrency(totalAmount - splitTotal)}</span>
+                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Saisie d'un nouveau paiement si reste */}
+                  {splitTotal < totalAmount && (
+                    <div className="pt-2 border-t mt-1 space-y-3">
+                       <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { value: 'cash', label: 'Espèces', icon: <Banknote size={14} /> },
+                            { value: 'card', label: 'Carte', icon: <CreditCard size={14} /> },
+                            { value: 'mobile', label: 'Mobile', icon: <Smartphone size={14} /> },
+                          ].map(m => (
+                            <button key={m.value} onClick={() => setPaymentMethod(m.value)}
+                              className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all ${paymentMethod === m.value
+                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500'
+                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}>
+                              {m.icon}
+                              <span className="text-[10px] font-medium">{m.label}</span>
+                            </button>
+                          ))}
+                       </div>
+
+                       <div className="flex gap-2">
+                          <Input
+                            value={splitAmountsReceived[paymentMethod] || ''}
+                            readOnly
+                            className="text-right font-mono text-lg font-bold"
+                            placeholder={formatCurrency(Math.max(0, totalAmount - splitTotal)).replace(/\s/g, '').replace('FCFA', '')}
+                          />
+                          <div className="bg-white px-3 py-2 rounded-md border text-sm font-bold text-gray-500">FCFA</div>
+                       </div>
+                       
+                       <div className="grid grid-cols-4 gap-1.5 mb-2">
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(key => (
+                          <button key={key} onClick={() => handleNumPadForSplit(paymentMethod, key)}
+                            className={`h-8 rounded-lg font-bold text-xs transition-all active:scale-95 shadow-sm border ${key === 'C' ? 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
+                                : key === '⌫' ? 'bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100'
+                                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                              }`}>
+                            {key === '⌫' ? <Delete size={14} className="mx-auto" /> : key}
+                          </button>
+                        ))}
+                      </div>
+
+                      <Button 
+                        onClick={() => handleApplySplit(paymentMethod)}
+                        disabled={!(parseFloat(splitAmountsReceived[paymentMethod]) > 0)}
+                        size="sm"
+                        className="w-full bg-slate-800 hover:bg-slate-900 text-white shadow-sm"
+                      >
+                         <Plus size={16} className="mr-2" /> Ajouter
+                      </Button>
+                    </div>
+                  )}
+
+                  {splitTotal >= totalAmount && (
+                    <div className="bg-emerald-100 rounded-lg p-2 text-center text-sm font-bold text-emerald-800 flex items-center justify-center gap-2">
+                      <Check size={16} /> Total atteint {isSplitMode && splitPayments.reduce((a,b)=>a+(b.received||b.amount),0) > totalAmount && `(Rendu ${formatCurrency(splitPayments.reduce((a,b)=>a+(b.received||b.amount),0) - totalAmount)})`}
+                    </div>
+                  )}
                 </div>
               )}
 
