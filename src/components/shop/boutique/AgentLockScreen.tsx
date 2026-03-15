@@ -89,8 +89,12 @@ export const AgentLockScreen: React.FC<AgentLockScreenProps> = ({
     };
 
     useEffect(() => {
-        setMode(activeAgent ? 'unlock' : 'login');
-    }, [activeAgent]);
+        if (needsSetup) {
+            setMode('setup');
+        } else {
+            setMode(activeAgent ? 'unlock' : 'login');
+        }
+    }, [activeAgent, needsSetup]);
 
     useEffect(() => {
         setInactivityInput(String(inactivityMinutes));
