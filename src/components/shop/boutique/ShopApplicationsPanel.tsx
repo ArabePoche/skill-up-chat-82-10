@@ -86,10 +86,11 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
+  if (isLoading || !user?.id) return null;
+
   const pendingApps = applications?.filter(a => a.status === 'pending') || [];
   const processedApps = applications?.filter(a => a.status !== 'pending') || [];
 
-  if (isLoading) return null;
   if (!applications || applications.length === 0) return null;
 
   const getStatusBadge = (status: string) => {
