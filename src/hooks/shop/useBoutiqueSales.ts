@@ -72,6 +72,7 @@ export const useCreateCartSale = () => {
             quantity: item.quantity,
             unit_price: item.product.price,
             total_amount: item.product.price * item.quantity,
+            cost_price: item.product.cost_price || 0,
             customer_name: sale.customerName || null,
             payment_method: sale.paymentMethod || 'cash',
             notes: sale.notes || null,
