@@ -40,10 +40,12 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
   const queryClient = useQueryClient();
 
   // Récupérer les candidatures adressées au propriétaire
-  const { data: applications, isLoading } = useQuery({
-    queryKey: ['shop-applications', user?.id],
+  const { data: applications, isLoading, error } = useQuery({
+    queryKey: ['shop-applications', user?.id, shopId],
     queryFn: async () => {
       if (!user?.id) return [];
+
+      console.log('📋 [ShopApplicationsPanel] Fetching applications for recruiter:', user.id);
 
       const { data, error } = await supabase
         .from('applications')
@@ -51,11 +53,17 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
         .eq('recruiter_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [ShopApplicationsPanel] Error:', error);
+        throw error;
+      }
+
+      console.log('📋 [ShopApplicationsPanel] Found', data?.length, 'applications');
+
+      if (!data || data.length === 0) return [];
 
       // Récupérer les profils des candidats
-      const userIds = data?.map(app => app.user_id) || [];
-      if (userIds.length === 0) return [];
+      const userIds = data.map(app => app.user_id);
 
       const { data: profiles } = await supabase
         .from('profiles')
@@ -86,12 +94,16 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
-  if (isLoading || !user?.id) return null;
+  if (isLoading) return null;
+  if (error) {
+    console.error('❌ [ShopApplicationsPanel] Query error:', error);
+    return null;
+  }
 
   const pendingApps = applications?.filter(a => a.status === 'pending') || [];
   const processedApps = applications?.filter(a => a.status !== 'pending') || [];
 
-  if (!applications || applications.length === 0) return null;
+  if (pendingApps.length === 0 && processedApps.length === 0) return null;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
