@@ -12,10 +12,10 @@ interface ApplicationsListProps {
 export const ApplicationsList: React.FC<ApplicationsListProps> = ({ recruiterId }) => {
   const { data: applications, isLoading } = useApplications(recruiterId);
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateApplicationStatus();
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('pending');
 
   const handleApprove = async (applicationId: string) => {
-    await updateStatus({ applicationId, status: 'approved' });
+    await updateStatus({ applicationId, status: 'accepted' });
   };
 
   const handleReject = async (applicationId: string) => {
@@ -39,14 +39,14 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ recruiterId 
   }
 
   const pendingApplications = applications.filter(app => app.status === 'pending');
-  const approvedApplications = applications.filter(app => app.status === 'approved');
+  const approvedApplications = applications.filter(app => app.status === 'accepted');
   const rejectedApplications = applications.filter(app => app.status === 'rejected');
 
   const getFilteredApplications = () => {
     switch (activeTab) {
       case 'pending':
         return pendingApplications;
-      case 'approved':
+      case 'accepted':
         return approvedApplications;
       case 'rejected':
         return rejectedApplications;
@@ -67,7 +67,7 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ recruiterId 
           <TabsTrigger value="pending">
             En attente ({pendingApplications.length})
           </TabsTrigger>
-          <TabsTrigger value="approved">
+          <TabsTrigger value="accepted">
             Approuvées ({approvedApplications.length})
           </TabsTrigger>
           <TabsTrigger value="rejected">

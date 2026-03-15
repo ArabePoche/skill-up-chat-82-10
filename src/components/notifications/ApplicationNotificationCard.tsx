@@ -89,9 +89,9 @@ const ApplicationNotificationCard: React.FC<ApplicationNotificationCardProps> = 
     try {
       await updateStatus({
         applicationId: notification.application_id,
-        status: 'approved'
+        status: 'accepted'
       });
-      setLocalStatus('approved');
+      setLocalStatus('accepted');
       queryClient.invalidateQueries({ queryKey: ['application', notification.application_id] });
     } catch (error) {
       console.error('Erreur lors de l\'approbation:', error);
@@ -113,8 +113,8 @@ const ApplicationNotificationCard: React.FC<ApplicationNotificationCardProps> = 
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved':
-        return <Badge className="bg-green-600">Approuvée</Badge>;
+      case 'accepted':
+        return <Badge className="bg-green-600">Acceptée</Badge>;
       case 'rejected':
         return <Badge variant="destructive">Rejetée</Badge>;
       case 'pending':

@@ -3022,6 +3022,7 @@ export type Database = {
           recruitment_ad_id: string | null
           required_documents: Json | null
           required_profiles: string[] | null
+          shop_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3045,6 +3046,7 @@ export type Database = {
           recruitment_ad_id?: string | null
           required_documents?: Json | null
           required_profiles?: string[] | null
+          shop_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3068,6 +3070,7 @@ export type Database = {
           recruitment_ad_id?: string | null
           required_documents?: Json | null
           required_profiles?: string[] | null
+          shop_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3076,6 +3079,13 @@ export type Database = {
             columns: ["recruitment_ad_id"]
             isOneToOne: false
             referencedRelation: "recruitment_ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
             referencedColumns: ["id"]
           },
         ]

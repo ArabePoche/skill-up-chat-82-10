@@ -24,8 +24,8 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
 }) => {
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved':
-        return <Badge className="bg-green-600">Approuvée</Badge>;
+      case 'accepted':
+        return <Badge className="bg-green-600">Acceptée</Badge>;
       case 'rejected':
         return <Badge variant="destructive">Rejetée</Badge>;
       case 'pending':
