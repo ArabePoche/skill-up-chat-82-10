@@ -38,61 +38,48 @@ interface ApplicationWithProfile {
 const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId }) => {
   const queryClient = useQueryClient();
 
-  // Récupérer les candidatures liées à cette boutique
+  // Récupérer les candidatures liées à cette boutique uniquement
   const { data: applications, isLoading, error } = useQuery({
     queryKey: ['shop-applications', shopId],
     queryFn: async () => {
       console.log('📋 [ShopApplicationsPanel] Fetching applications for shop:', shopId);
 
-      // 1. Récupérer le propriétaire de la boutique
-      const { data: shop } = await supabase
-        .from('physical_shops')
-        .select('owner_id')
-        .eq('id', shopId)
-        .single();
+      // 1. Récupérer les posts de recrutement liés à cette boutique (via shop_id)
+      const { data: shopPosts } = await supabase
+        .from('posts')
+        .select('id')
+        .eq('shop_id', shopId)
+        .eq('post_type', 'recruitment');
 
-      if (!shop?.owner_id) {
-        console.log('📋 [ShopApplicationsPanel] No shop owner found');
-        return [];
-      }
-
-      console.log('📋 [ShopApplicationsPanel] Shop owner:', shop.owner_id);
-
-      // 2. Récupérer les annonces de recrutement liées à cette boutique (si shop_id renseigné)
+      // 2. Récupérer les annonces de recrutement liées à cette boutique
       const { data: shopAds } = await supabase
         .from('recruitment_ads')
         .select('id')
         .eq('shop_id', shopId);
 
       const adIds = shopAds?.map(ad => ad.id) || [];
+      const postIds = shopPosts?.map(p => p.id) || [];
 
-      // 3. Récupérer les posts de recrutement liés aux annonces OU directement par le propriétaire
-      let postIds: string[] = [];
-
+      // 3. Aussi récupérer les posts liés aux annonces (recruitment_ad_id)
       if (adIds.length > 0) {
         const { data: linkedPosts } = await supabase
           .from('posts')
           .select('id')
           .in('recruitment_ad_id', adIds);
-        postIds = linkedPosts?.map(p => p.id) || [];
+        if (linkedPosts) {
+          linkedPosts.forEach(p => {
+            if (!postIds.includes(p.id)) postIds.push(p.id);
+          });
+        }
       }
 
-      // Aussi récupérer les posts de recrutement du propriétaire (fallback quand shop_id non lié)
-      const { data: ownerRecruitmentPosts } = await supabase
-        .from('posts')
-        .select('id')
-        .eq('author_id', shop.owner_id)
-        .eq('post_type', 'recruitment');
+      console.log('📋 [ShopApplicationsPanel] Found', postIds.length, 'posts and', adIds.length, 'ads for shop');
 
-      if (ownerRecruitmentPosts) {
-        const ownerPostIds = ownerRecruitmentPosts.map(p => p.id);
-        postIds = [...new Set([...postIds, ...ownerPostIds])];
-      }
+      if (postIds.length === 0 && adIds.length === 0) return [];
 
       // 4. Récupérer les candidatures
       let allApplications: any[] = [];
 
-      // Via recruitment_ads directement
       if (adIds.length > 0) {
         const { data: adApps } = await supabase
           .from('applications')
@@ -102,7 +89,6 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
         if (adApps) allApplications.push(...adApps);
       }
 
-      // Via les posts de recrutement
       if (postIds.length > 0) {
         const { data: postApps } = await supabase
           .from('applications')
@@ -112,7 +98,7 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
         if (postApps) allApplications.push(...postApps);
       }
 
-      // Dédupliquer par id
+      // Dédupliquer
       const uniqueMap = new Map(allApplications.map(a => [a.id, a]));
       allApplications = [...uniqueMap.values()];
 

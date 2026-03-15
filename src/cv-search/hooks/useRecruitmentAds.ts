@@ -218,6 +218,7 @@ export const useApproveRecruitmentAd = () => {
             comments_count: 0,
             recruitment_ad_id: ad.id,
             required_profiles: isRecruitment ? (ad.skills || []) : [],
+            shop_id: ad.shop_id || null,
           } as any)
           .select()
           .single();
