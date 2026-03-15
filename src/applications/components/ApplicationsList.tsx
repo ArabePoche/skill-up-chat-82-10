@@ -67,7 +67,7 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ recruiterId 
           <TabsTrigger value="pending">
             En attente ({pendingApplications.length})
           </TabsTrigger>
-          <TabsTrigger value="approved">
+          <TabsTrigger value="accepted">
             Approuvées ({approvedApplications.length})
           </TabsTrigger>
           <TabsTrigger value="rejected">

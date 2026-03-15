@@ -177,7 +177,7 @@ export const useUpdateApplicationStatus = () => {
       status
     }: {
       applicationId: string;
-      status: 'approved' | 'rejected';
+      status: 'accepted' | 'rejected';
     }) => {
       const { data, error } = await supabase
         .from('applications')
@@ -192,8 +192,8 @@ export const useUpdateApplicationStatus = () => {
     },
     onSuccess: (_, variables) => {
       toast({
-        title: variables.status === 'approved' ? "Candidature approuvée" : "Candidature rejetée",
-        description: variables.status === 'approved' 
+        title: variables.status === 'accepted' ? "Candidature acceptée" : "Candidature rejetée",
+        description: variables.status === 'accepted' 
           ? "Le candidat a été accepté." 
           : "Le candidat a été rejeté.",
       });
