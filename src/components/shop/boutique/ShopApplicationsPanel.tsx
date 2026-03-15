@@ -242,7 +242,12 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
                     size="sm"
                     className="h-8 px-3"
                     disabled={updateStatus.isPending}
-                    onClick={() => updateStatus.mutate({ applicationId: app.id, status: 'accepted' })}
+                    onClick={() => updateStatus.mutate({ 
+                      applicationId: app.id, 
+                      status: 'accepted',
+                      userId: app.user_id,
+                      profile: app.profile ? { first_name: app.profile.first_name, last_name: app.profile.last_name } : undefined,
+                    })}
                   >
                     {updateStatus.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   </Button>
@@ -251,7 +256,11 @@ const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId })
                     variant="destructive"
                     className="h-8 px-3"
                     disabled={updateStatus.isPending}
-                    onClick={() => updateStatus.mutate({ applicationId: app.id, status: 'rejected' })}
+                    onClick={() => updateStatus.mutate({ 
+                      applicationId: app.id, 
+                      status: 'rejected',
+                      userId: app.user_id,
+                    })}
                   >
                     {updateStatus.isPending ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
                   </Button>
