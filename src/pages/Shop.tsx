@@ -195,23 +195,6 @@ const Shop = () => {
           )}
         </div>
       ) : (
-
-      {/* Vue Gestion boutique */}
-      {canAccessGestion && mainView === 'gestion' ? (
-        <div>
-          <BoutiqueManagement
-            activeAgent={activeAgent}
-            inactivityMinutes={inactivityMinutes}
-            onInactivityMinutesChange={updateInactivityMinutes}
-            onLogin={login}
-            onUnlock={unlock}
-            onLock={lock}
-            onLogout={logout}
-            forgotPassword={forgotPassword}
-            updateProfile={updateProfile}
-          />
-        </div>
-      ) : (
         <>
           <ShopHeader
             activeTab={activeTab}
