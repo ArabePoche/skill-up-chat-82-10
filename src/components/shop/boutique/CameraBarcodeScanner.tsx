@@ -40,11 +40,12 @@ export const CameraBarcodeScanner: React.FC<CameraBarcodeScannerProps> = ({ onSc
             console.debug(error);
         };
 
-        scanner.render(onScanSuccess, onScanFailure)
-            .catch(err => {
-                setError("La caméra n'a pas pu être démarrée. Veuillez vérifier les permissions.");
-                console.error(err);
-            });
+        try {
+            scanner.render(onScanSuccess, onScanFailure);
+        } catch (err) {
+            setError("La caméra n'a pas pu être démarrée. Veuillez vérifier les permissions.");
+            console.error(err);
+        }
 
         return () => {
             if (scannerRef.current) {
