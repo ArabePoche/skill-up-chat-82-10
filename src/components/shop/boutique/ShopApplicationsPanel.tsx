@@ -36,7 +36,6 @@ interface ApplicationWithProfile {
 }
 
 const ShopApplicationsPanel: React.FC<ShopApplicationsPanelProps> = ({ shopId }) => {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Récupérer uniquement les candidatures liées à cette boutique
