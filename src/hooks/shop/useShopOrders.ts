@@ -127,9 +127,7 @@ export const useShopOrders = (shopId?: string) => {
   useEffect(() => {
     if (!user) return;
 
-    const channelFilter = shopId
-      ? `shop_id=eq.${shopId}`
-      : `seller_id=eq.${user.id}`;
+    const channelFilter = `seller_id=eq.${user.id}`;
 
     const channel = supabase
       .channel(shopId ? `shop-orders-${shopId}` : 'shop-orders-realtime')
