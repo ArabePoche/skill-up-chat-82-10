@@ -597,6 +597,12 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                             <Users size={14} className="inline mr-1" /> Agents
                         </button>
                     )}
+                    <button
+                        onClick={() => setActiveView('suppliers')}
+                        className={`flex-1 min-w-[80px] py-2 text-xs font-medium text-center transition-colors ${activeView === 'suppliers' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <Truck size={14} className="inline mr-1" /> Fournisseurs
+                    </button>
                 </div>
             </div>
 
