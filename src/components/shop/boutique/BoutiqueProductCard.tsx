@@ -177,6 +177,12 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                     </div>
                 </div>
             </div>
+            {/* Modal impression code-barres */}
+            <ProductBarcodePrint
+                isOpen={showBarcodePrint}
+                onClose={() => setShowBarcodePrint(false)}
+                product={product}
+            />
         </div>
     );
 };
