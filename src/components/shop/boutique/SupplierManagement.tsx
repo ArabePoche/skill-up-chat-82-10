@@ -151,7 +151,11 @@ const SupplierManagement: React.FC<SupplierManagementProps> = ({ shopId }) => {
     if (!order.items) return;
     await receiveOrder.mutateAsync({
       orderId: order.id,
-      receivedItems: order.items.map(i => ({ itemId: i.id, receivedQuantity: i.quantity })),
+      receivedItems: order.items.map(i => ({
+        itemId: i.id,
+        receivedQuantity: i.quantity,
+        productId: i.product_id,
+      })),
     });
     setSelectedOrder(null);
   };

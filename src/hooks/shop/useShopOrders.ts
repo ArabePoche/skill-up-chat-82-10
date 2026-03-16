@@ -63,11 +63,11 @@ export const useShopOrders = (shopId?: string) => {
         .order('created_at', { ascending: false });
 
       if (shopId) {
-        // Filtrer par boutique si spécifié (ex: vue caissier/vendeur)
-        // @ts-ignore - shop_id exists in DB but not yet in generated types
-        query = query.eq('shop_id', shopId);
+        // Filtrer par vendeur (le seller_id correspond au propriétaire de la boutique)
+        // On récupère d'abord les produits de la boutique pour identifier les commandes liées
+        query = query.eq('seller_id', user.id);
       } else {
-        // Sinon filtrer par vendeur (vue propriétaire global)
+        // Filtrer par vendeur (vue propriétaire global)
         query = query.eq('seller_id', user.id);
       }
 
@@ -127,9 +127,7 @@ export const useShopOrders = (shopId?: string) => {
   useEffect(() => {
     if (!user) return;
 
-    const channelFilter = shopId
-      ? `shop_id=eq.${shopId}`
-      : `seller_id=eq.${user.id}`;
+    const channelFilter = `seller_id=eq.${user.id}`;
 
     const channel = supabase
       .channel(shopId ? `shop-orders-${shopId}` : 'shop-orders-realtime')
