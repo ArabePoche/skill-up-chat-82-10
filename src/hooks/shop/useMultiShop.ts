@@ -79,6 +79,7 @@ export const useUserShops = () => {
           id: shop.id,
           name: shop.name,
           address: shop.address,
+          owner_id: shop.owner_id,
           products_count: products.length,
           total_stock_value: totalStockValue,
           total_stock_units: totalStockUnits,
