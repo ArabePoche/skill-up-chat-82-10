@@ -243,22 +243,23 @@ async function saveOutputVideo(
   onStageChange?.('Enregistrement de la vidéo');
   onProgress?.(WATERMARK_SAVE_PROGRESS);
 
-  try {
-    const { isNativePlatform, saveMediaToDevice } = await import('@/file-manager/utils/mediaGallery');
-    if (isNativePlatform()) {
-      const result = await saveMediaToDevice(blob, fileName, mimeType);
-      if (!result.success) {
-        throw new Error(result.error || 'Sauvegarde dans la galerie échouée');
-      }
+  const { isNativePlatform, saveMediaToDevice } = await import('@/file-manager/utils/mediaGallery');
 
-      onProgress?.(100);
-      return;
+  if (isNativePlatform()) {
+    // Sur Capacitor: sauvegarder directement dans la galerie
+    console.log('📱 Sauvegarde native, taille blob:', blob.size);
+    onStageChange?.('Sauvegarde dans la galerie...');
+    
+    const result = await saveMediaToDevice(blob, fileName, mimeType);
+    if (!result.success) {
+      throw new Error(result.error || 'Sauvegarde dans la galerie échouée');
     }
-  } catch (error) {
-    console.log('📱 Fallback web pour le téléchargement vidéo');
+
+    onProgress?.(100);
+    return;
   }
 
-  // Fallback web: clic synchrone (évite le blocage mobile avec setTimeout)
+  // Web: clic synchrone
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = blobUrl;
