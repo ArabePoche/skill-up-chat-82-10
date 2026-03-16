@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell, Check, ChevronsUpDown, History } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell, Check, ChevronsUpDown, History, ScanBarcode, Wand2, Barcode } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
@@ -78,8 +78,6 @@ import BoutiqueProductCard from './BoutiqueProductCard';
 import TransferDialog, { TransferDialogProps } from './TransferDialog';
 import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
 import { CameraBarcodeScanner } from './CameraBarcodeScanner';
-import { ScanBarcode } from 'lucide-react';
-
 // Composant Autocomplete simple et robuste pour éviter les problèmes de focus dans les Dialogs
 const SimpleAutocomplete = ({
     value,
@@ -201,7 +199,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
         if (shop.owner_id === user.id) return true;
         return currentShopAgents?.some(a => a.user_id === user.id && a.role === 'PDG' && a.status === 'active') || false;
     }, [user, shop, currentShopAgents]);
-    const { pendingCount } = useShopOrders();
+    const { pendingCount } = useShopOrders(shop?.id);
     // Form state
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
@@ -210,8 +208,12 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
     const [formStock, setFormStock] = useState('');
     const [formCategory, setFormCategory] = useState('');
     const [formLocation, setFormLocation] = useState('');
+    const [formBarcode, setFormBarcode] = useState('');
     const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
     const [filterCategory, setFilterCategory] = useState('all');
+
+    // State pour savoir d'ou vient la demande de scan (pos ou formulaire produit)
+    const [scanTarget, setScanTarget] = useState<'pos' | 'form'>('pos');
 
     // Combobox states
     // Plus nécessaire avec SimpleAutocomplete
@@ -229,6 +231,15 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
 
     // Handle barcode scanner
     useBarcodeScanner((barcode) => {
+        // En mode édition, si le formulaire est ouvert et a le focus, on pourrait vouloir remplir le champ.
+        // Mais useBarcodeScanner capture les frappes HID.
+        // Si le champ input est focus, pas de soucis, le navigateur gère.
+        // Si le formulaire est ouvert mais pas focus, on capture ici.
+        if (showProductForm) {
+            setFormBarcode(barcode);
+            return;
+        }
+
         if (!products) return;
         
         // Trouver le produit correspondant
@@ -269,6 +280,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
         setFormImageUrl('');
         setFormCategory('');
         setFormLocation('');
+        setFormBarcode('');
         setShowProductForm(true);
     };
 
@@ -283,6 +295,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
         setFormImageUrl(product.image_url || '');
         setFormCategory(product.category || '');
         setFormLocation(product.location || '');
+        setFormBarcode(product.barcode || '');
         setShowProductForm(true);
     };
 
@@ -299,6 +312,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
             image_url: formImageUrl.trim() || undefined,
             category: formCategory.trim() || undefined,
             location: formLocation.trim() || undefined,
+            barcode: formBarcode.trim() || undefined,
         };
 
         try {
@@ -448,6 +462,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                     onUnlock={onUnlock}
                     forgotPassword={forgotPassword}
                     updateProfile={updateProfile}
+                    onLogout={onLogout}
                 />
             )}
 
@@ -508,15 +523,15 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                             </span>
                         )}
                         <Button
-                            onClick={() => setPosOpen(true)}
-                            size="sm"
-                            className="bg-white/20 hover:bg-white/30 text-white border-0 h-8 gap-1.5 text-xs font-bold"
+                            onClick={() => setActiveView('orders')}
+                            size="icon"
+                            className={`bg-white/20 hover:bg-white/30 text-white border-0 h-8 w-8 ${activeView === 'orders' ? 'bg-white/40 ring-1 ring-white/50' : ''}`}
+                            title="Commandes"
                         >
-                            <Calculator size={14} />
-                            Caisse
-                            {posCart.totalItems > 0 && (
-                                <span className="bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center ml-0.5">
-                                    {posCart.totalItems}
+                            <Bell size={16} />
+                            {pendingCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                                    {pendingCount}
                                 </span>
                             )}
                         </Button>
@@ -560,17 +575,6 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                         className={`flex-1 min-w-[80px] py-2 text-xs font-medium text-center transition-colors ${activeView === 'shop' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
                     >
                         <Store size={14} className="inline mr-1" /> Boutique
-                    </button>
-                    <button
-                        onClick={() => setActiveView('orders')}
-                        className={`relative flex-1 min-w-[100px] py-2 text-xs font-medium text-center transition-colors ${activeView === 'orders' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
-                    >
-                        <Bell size={14} className="inline mr-1" /> Commandes
-                        {pendingCount > 0 && (
-                            <span className="absolute -top-1 right-2 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                                {pendingCount}
-                            </span>
-                        )}
                     </button>
                     <button
                         onClick={() => setActiveView('sales')}
@@ -730,6 +734,57 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                             />
                         </div>
                         <div>
+                            <Label htmlFor="product-barcode">Code-barres / EAN</Label>
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Barcode size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        id="product-barcode"
+                                        value={formBarcode}
+                                        onChange={(e) => setFormBarcode(e.target.value)}
+                                        placeholder="Scanner ou saisir..."
+                                        className="pl-9"
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                        setScanTarget('form');
+                                        setShowCameraScanner(true);
+                                    }}
+                                    title="Scanner avec la caméra"
+                                >
+                                    <ScanBarcode size={18} />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                        // Générer un EAN-13 factice (prefixe 200 interne)
+                                        const prefix = "200";
+                                        const random = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
+                                        const code = prefix + random;
+                                        // Calcul checksum ean13
+                                        let sum = 0;
+                                        for (let i = 0; i < 12; i++) {
+                                            sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3);
+                                        }
+                                        const check = (10 - (sum % 10)) % 10;
+                                        setFormBarcode(code + check);
+                                    }}
+                                    title="Générer automatiquement"
+                                >
+                                    <Wand2 size={18} />
+                                </Button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                                Laissez vide pour ignorer. Utilisez le bouton scan ou votre douchette.
+                            </p>
+                        </div>
+                        <div>
                             <Label htmlFor="product-desc">Description</Label>
                             <Textarea
                                 id="product-desc"
@@ -856,6 +911,12 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                 <CameraBarcodeScanner
                     onClose={() => setShowCameraScanner(false)}
                     onScan={(barcode) => {
+                        if (scanTarget === 'form') {
+                          setFormBarcode(barcode);
+                          setShowCameraScanner(false);
+                          return;
+                        }
+
                         if (!products) return;
                         const product = products.find(p => p.barcode === barcode);
                         if (product) {

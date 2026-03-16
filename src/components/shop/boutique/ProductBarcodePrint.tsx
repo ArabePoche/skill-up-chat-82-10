@@ -40,21 +40,27 @@ const ProductBarcodePrint: React.FC<ProductBarcodePrintProps> = ({
 
   // Générer le code-barres sur le canvas quand le dialog s'ouvre
   React.useEffect(() => {
-    if (isOpen && canvasRef.current && product.barcode) {
-      try {
-        JsBarcode(canvasRef.current, product.barcode, {
-          format: 'CODE128',
-          width: 2,
-          height: 60,
-          displayValue: true,
-          fontSize: 14,
-          margin: 10,
-          background: '#ffffff',
-          lineColor: '#000000',
-        });
-      } catch (e) {
-        console.error('Erreur génération code-barres:', e);
-      }
+    if (isOpen && product.barcode) {
+      // Use a timeout to ensure canvas is mounted in the DOM (Dialog portal)
+      const timer = setTimeout(() => {
+        if (canvasRef.current) {
+          try {
+            JsBarcode(canvasRef.current, product.barcode!, {
+              format: 'CODE128',
+              width: 2,
+              height: 60,
+              displayValue: true,
+              fontSize: 14,
+              margin: 10,
+              background: '#ffffff',
+              lineColor: '#000000',
+            });
+          } catch (e) {
+            console.error('Erreur génération code-barres:', e);
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, product.barcode]);
 

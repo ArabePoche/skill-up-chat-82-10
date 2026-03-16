@@ -37,18 +37,18 @@ export interface OrderWithDetails {
   }>;
 }
 
-export const useShopOrders = () => {
+export const useShopOrders = (shopId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ['shop-orders', user?.id],
+    queryKey: ['shop-orders', user?.id, shopId],
     queryFn: async () => {
       if (!user) return [];
 
-      console.log('📦 [useShopOrders] Fetching orders for seller:', user.id);
+      console.log('📦 [useShopOrders] Fetching orders:', { userId: user.id, shopId });
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select(`
           id, status, total_amount, created_at,
@@ -60,8 +60,17 @@ export const useShopOrders = () => {
             products ( id, title, image_url )
           )
         `)
-        .eq('seller_id', user.id)
         .order('created_at', { ascending: false });
+
+      if (shopId) {
+        // Filtrer par boutique si spécifié (ex: vue caissier/vendeur)
+        query = query.eq('shop_id' as any, shopId);
+      } else {
+        // Sinon filtrer par vendeur (vue propriétaire global)
+        query = query.eq('seller_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('❌ [useShopOrders] Error fetching orders:', error);
@@ -117,15 +126,19 @@ export const useShopOrders = () => {
   useEffect(() => {
     if (!user) return;
 
+    const channelFilter = shopId
+      ? `shop_id=eq.${shopId}`
+      : `seller_id=eq.${user.id}`;
+
     const channel = supabase
-      .channel('shop-orders-realtime')
+      .channel(shopId ? `shop-orders-${shopId}` : 'shop-orders-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `seller_id=eq.${user.id}`,
+          filter: channelFilter,
         },
         (payload) => {
           // Jouer un son si c'est une nouvelle commande
@@ -140,7 +153,7 @@ export const useShopOrders = () => {
               }
             });
           }
-          queryClient.invalidateQueries({ queryKey: ['shop-orders', user.id] });
+          queryClient.invalidateQueries({ queryKey: ['shop-orders', user.id, shopId] });
         }
       )
       .subscribe();
@@ -148,7 +161,7 @@ export const useShopOrders = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user, queryClient, shopId]);
 
   // Accepter une commande
   const acceptOrder = useMutation({
