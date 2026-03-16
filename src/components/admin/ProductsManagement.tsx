@@ -7,21 +7,34 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Edit, Trash2, Plus } from 'lucide-react';
+import { Edit, Trash2, Plus, ScanBarcode } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ProductImageUpload from './ProductImageUpload';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useUserRole } from '@/hooks/useAuth';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { CameraBarcodeScanner } from '@/components/shop/boutique/CameraBarcodeScanner';
 
 const ProductsManagement = () => {
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [productImages, setProductImages] = useState<File[]>([]);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [barcodeValue, setBarcodeValue] = useState('');
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   const { uploadFile, isUploading } = useFileUpload();
   const { data: userRole, isLoading: isLoadingRole } = useUserRole();
+
+  useBarcodeScanner(
+    (barcode) => {
+      setBarcodeValue(barcode);
+      toast.success(`Code-barres scanne: ${barcode}`);
+    },
+    isCreateDialogOpen && !isCameraScannerOpen,
+  );
   
   // Récupérer les catégories
   const { data: categories, isLoading: categoriesLoading } = useQuery({
@@ -79,6 +92,7 @@ const ProductsManagement = () => {
       condition?: 'new' | 'used';
       size?: string;
       color?: string;
+      barcode?: string;
       delivery_available?: boolean;
       images?: File[];
     }) => {
@@ -102,6 +116,7 @@ const ProductsManagement = () => {
           condition: productData.condition,
           size: productData.size,
           color: productData.color,
+          barcode: productData.barcode || null,
           delivery_available: productData.delivery_available,
           seller_id: user.id,
         })
@@ -133,6 +148,8 @@ const ProductsManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast.success('Produit créé avec succès');
+      setIsCreateDialogOpen(false);
+      setBarcodeValue('');
       setProductImages([]);
     },
     onError: (error) => {
@@ -212,6 +229,7 @@ const ProductsManagement = () => {
     const condition = formData.get('condition') as 'new' | 'used';
     const size = formData.get('size') as string;
     const color = formData.get('color') as string;
+    const barcode = (barcodeValue || (formData.get('barcode') as string) || '').trim();
     const delivery_available = formData.get('delivery_available') === 'on';
 
     // Récupérer le product_type depuis les données du type sélectionné
@@ -235,6 +253,7 @@ const ProductsManagement = () => {
       condition,
       size,
       color,
+      barcode: barcode || undefined,
       delivery_available,
       images: productImages,
     };
@@ -248,6 +267,7 @@ const ProductsManagement = () => {
     // Reset après soumission
     setSelectedCategory('');
     setSelectedType('');
+    setBarcodeValue('');
     setProductImages([]);
   };
 
@@ -266,7 +286,16 @@ const ProductsManagement = () => {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Gestion des produits</CardTitle>
         {userRole?.isAdmin && (
-          <Dialog>
+          <Dialog
+            open={isCreateDialogOpen}
+            onOpenChange={(open) => {
+              setIsCreateDialogOpen(open);
+              if (!open) {
+                setBarcodeValue('');
+                setIsCameraScannerOpen(false);
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="bg-[#25d366] hover:bg-[#25d366]/90">
                 <Plus size={16} className="mr-2" />
@@ -295,6 +324,26 @@ const ProductsManagement = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Stock</label>
                   <Input name="stock" type="number" min="0" defaultValue="0" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Code-barres</label>
+                <div className="flex gap-2">
+                  <Input
+                    name="barcode"
+                    value={barcodeValue}
+                    onChange={(e) => setBarcodeValue(e.target.value)}
+                    placeholder="Scannez avec la douchette ou saisissez le code"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCameraScannerOpen(true)}
+                  >
+                    <ScanBarcode size={16} className="mr-2" />
+                    Scanner
+                  </Button>
                 </div>
               </div>
               <div>
@@ -470,6 +519,16 @@ const ProductsManagement = () => {
           </TableBody>
         </Table>
       </CardContent>
+
+      {isCameraScannerOpen && (
+        <CameraBarcodeScanner
+          onClose={() => setIsCameraScannerOpen(false)}
+          onScan={(barcode) => {
+            setBarcodeValue(barcode);
+            toast.success(`Code-barres scanne: ${barcode}`);
+          }}
+        />
+      )}
     </Card>
   );
 };
