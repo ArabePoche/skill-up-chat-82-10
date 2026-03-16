@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell, Check, ChevronsUpDown, History, ScanBarcode, Wand2, Barcode } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell, Check, ChevronsUpDown, History, ScanBarcode, Wand2, Barcode, Truck } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
