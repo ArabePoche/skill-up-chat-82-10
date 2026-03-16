@@ -172,12 +172,17 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64 = reader.result as string;
-      // Retirer le préfixe data:xxx;base64,
-      const base64Data = base64.split(',')[1] || base64;
-      resolve(base64Data);
+      try {
+        const base64 = reader.result as string;
+        // Retirer le préfixe data:xxx;base64,
+        const base64Data = base64.split(',')[1] || base64;
+        resolve(base64Data);
+      } catch (e) {
+        reject(new Error('Erreur conversion base64'));
+      }
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error('Erreur lecture du fichier pour conversion base64'));
+    // Utiliser readAsDataURL - fonctionne pour les gros fichiers sur Capacitor
     reader.readAsDataURL(blob);
   });
 };
