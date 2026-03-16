@@ -64,7 +64,8 @@ export const useShopOrders = (shopId?: string) => {
 
       if (shopId) {
         // Filtrer par boutique si spécifié (ex: vue caissier/vendeur)
-        query = query.eq('shop_id' as any, shopId);
+        // @ts-ignore - shop_id exists in DB but not yet in generated types
+        query = query.eq('shop_id', shopId);
       } else {
         // Sinon filtrer par vendeur (vue propriétaire global)
         query = query.eq('seller_id', user.id);
