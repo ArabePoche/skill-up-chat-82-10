@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, MoreVertical, Plus, Minus, ShoppingCart, Barcode, Globe } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, Plus, Minus, ShoppingCart, Barcode, Globe, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ProductBarcodePrint from './ProductBarcodePrint';
 import {
     DropdownMenu,
     DropdownMenuContent,
