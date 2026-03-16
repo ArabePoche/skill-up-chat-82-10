@@ -30,6 +30,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     cartQuantity = 0,
 }) => {
     const [qty, setQty] = useState(1);
+    const [showBarcodePrint, setShowBarcodePrint] = useState(false);
     // Calcul du stock disponible (physique - panier)
     const availablePhysicalStock = product.stock_quantity - (product.marketplace_quantity || 0);
     const remainingStock = Math.max(0, availablePhysicalStock - cartQuantity);
