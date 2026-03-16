@@ -243,9 +243,9 @@ export const useSupplierOrders = (shopId?: string) => {
     onError: () => toast.error('Erreur lors de la création de la commande'),
   });
 
-  // Réceptionner une commande (marquer comme reçue + optionnel: mettre à jour le stock)
+  // Réceptionner une commande (marquer comme reçue + mettre à jour le stock)
   const receiveOrder = useMutation({
-    mutationFn: async ({ orderId, receivedItems }: { orderId: string; receivedItems: Array<{ itemId: string; receivedQuantity: number }> }) => {
+    mutationFn: async ({ orderId, receivedItems }: { orderId: string; receivedItems: Array<{ itemId: string; receivedQuantity: number; productId?: string | null }> }) => {
       // Mettre à jour le statut de la commande
       const { error: orderErr } = await supabase
         .from('supplier_orders' as any)
@@ -260,11 +260,46 @@ export const useSupplierOrders = (shopId?: string) => {
           .update({ received_quantity: item.receivedQuantity })
           .eq('id', item.itemId);
         if (error) throw error;
+
+        // Mettre à jour le stock du produit si lié à un produit boutique
+        if (item.productId && item.receivedQuantity > 0) {
+          // Récupérer le stock actuel
+          const { data: product } = await supabase
+            .from('physical_shop_products')
+            .select('stock_quantity')
+            .eq('id', item.productId)
+            .single();
+
+          if (product) {
+            const newStock = (product.stock_quantity || 0) + item.receivedQuantity;
+            const { error: stockErr } = await supabase
+              .from('physical_shop_products')
+              .update({ stock_quantity: newStock, updated_at: new Date().toISOString() })
+              .eq('id', item.productId);
+            if (stockErr) console.error('Erreur mise à jour stock:', stockErr);
+
+            // Enregistrer le mouvement d'inventaire
+            if (shopId) {
+              await supabase.from('inventory_movements').insert({
+                shop_id: shopId,
+                product_id: item.productId,
+                movement_type: 'supplier_reception',
+                quantity: item.receivedQuantity,
+                previous_stock: product.stock_quantity || 0,
+                new_stock: newStock,
+                reason: `Réception commande fournisseur #${orderId.slice(0, 8)}`,
+                reference_id: orderId,
+                created_by: user?.id,
+              });
+            }
+          }
+        }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supplier-orders', shopId] });
-      toast.success('Commande réceptionnée');
+      queryClient.invalidateQueries({ queryKey: ['boutique-products', shopId] });
+      toast.success('Commande réceptionnée — stocks mis à jour');
     },
     onError: () => toast.error('Erreur lors de la réception'),
   });
