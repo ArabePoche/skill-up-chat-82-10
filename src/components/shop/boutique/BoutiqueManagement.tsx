@@ -193,7 +193,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
     const [posOpen, setPosOpen] = useState(false);
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [showMultiShopSettings, setShowMultiShopSettings] = useState(false);
-    const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders' | 'sales' | 'agents'>('shop');
+    const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders' | 'sales' | 'agents' | 'suppliers'>('shop');
     const { data: currentShopAgents } = useShopAgents(shop?.id);
     const isOwnerOrPDG = useMemo(() => {
         if (!user || !shop) return false;
