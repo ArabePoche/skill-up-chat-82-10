@@ -56,6 +56,9 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                 
                 {/* Actions overlay (top-right) - Remplacé par boutons directs */}
                 <div className="absolute top-1 right-1 flex gap-1">
+                    <button onClick={() => setShowBarcodePrint(true)} className="h-6 w-6 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center hover:bg-white text-gray-600" title="Imprimer code-barres">
+                        <Printer size={12} />
+                    </button>
                     <button onClick={() => onEdit(product)} className="h-6 w-6 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center hover:bg-white text-blue-600">
                         <Edit2 size={12} />
                     </button>
