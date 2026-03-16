@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, MoreVertical, Plus, Minus, ShoppingCart, Barcode, Globe } from 'lucide-react';
+import { Package, ArrowUpRight, ArrowDownLeft, Edit2, Trash2, Plus, Minus, ShoppingCart, Barcode, Globe, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ProductBarcodePrint from './ProductBarcodePrint';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -29,6 +30,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     cartQuantity = 0,
 }) => {
     const [qty, setQty] = useState(1);
+    const [showBarcodePrint, setShowBarcodePrint] = useState(false);
     // Calcul du stock disponible (physique - panier)
     const availablePhysicalStock = product.stock_quantity - (product.marketplace_quantity || 0);
     const remainingStock = Math.max(0, availablePhysicalStock - cartQuantity);
@@ -54,6 +56,9 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                 
                 {/* Actions overlay (top-right) - Remplacé par boutons directs */}
                 <div className="absolute top-1 right-1 flex gap-1">
+                    <button onClick={() => setShowBarcodePrint(true)} className="h-6 w-6 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center hover:bg-white text-gray-600" title="Imprimer code-barres">
+                        <Printer size={12} />
+                    </button>
                     <button onClick={() => onEdit(product)} className="h-6 w-6 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center hover:bg-white text-blue-600">
                         <Edit2 size={12} />
                     </button>
@@ -172,6 +177,12 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                     </div>
                 </div>
             </div>
+            {/* Modal impression code-barres */}
+            <ProductBarcodePrint
+                isOpen={showBarcodePrint}
+                onClose={() => setShowBarcodePrint(false)}
+                product={product}
+            />
         </div>
     );
 };
