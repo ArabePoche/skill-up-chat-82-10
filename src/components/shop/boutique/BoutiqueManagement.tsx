@@ -606,7 +606,9 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                 </div>
             </div>
 
-            {activeView === 'agents' ? (
+            {activeView === 'suppliers' ? (
+                <SupplierManagement shopId={shop.id} />
+            ) : activeView === 'agents' ? (
                 <BoutiqueAgentsManager shopId={shop.id} />
             ) : activeView === 'customers' ? (
                 <CustomerManagement shopId={shop.id} />
