@@ -13,6 +13,7 @@ import CustomerManagement from './CustomerManagement';
 import ShopOrdersPanel from './ShopOrdersPanel';
 import { BoutiqueAgentsManager } from './BoutiqueAgentsManager';
 import BoutiqueSalesHistory from './BoutiqueSalesHistory';
+import SupplierManagement from './SupplierManagement';
 import { useShopOrders } from '@/hooks/shop/useShopOrders';
 import { useShopAgents } from '@/hooks/shop/useShopAgents';
 import { AgentSession } from '@/hooks/shop/useAgentAuth';
