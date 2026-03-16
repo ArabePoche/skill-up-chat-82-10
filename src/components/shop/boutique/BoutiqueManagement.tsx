@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell, Check, ChevronsUpDown, History, ScanBarcode, Wand2, Barcode } from 'lucide-react';
+import { Plus, Store, Package, WifiOff, Search, PackageSearch, Calculator, ShoppingCart, ChevronDown, Settings2, Users, Bell, Check, ChevronsUpDown, History, ScanBarcode, Wand2, Barcode, Truck } from 'lucide-react';
 import TodaySalesDashboard from './TodaySalesDashboard';
 import ProductImageUploader from './ProductImageUploader';
 import InventoryDrawer from './InventoryDrawer';
@@ -13,6 +13,7 @@ import CustomerManagement from './CustomerManagement';
 import ShopOrdersPanel from './ShopOrdersPanel';
 import { BoutiqueAgentsManager } from './BoutiqueAgentsManager';
 import BoutiqueSalesHistory from './BoutiqueSalesHistory';
+import SupplierManagement from './SupplierManagement';
 import { useShopOrders } from '@/hooks/shop/useShopOrders';
 import { useShopAgents } from '@/hooks/shop/useShopAgents';
 import { AgentSession } from '@/hooks/shop/useAgentAuth';
@@ -192,7 +193,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
     const [posOpen, setPosOpen] = useState(false);
     const [showCameraScanner, setShowCameraScanner] = useState(false);
     const [showMultiShopSettings, setShowMultiShopSettings] = useState(false);
-    const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders' | 'sales' | 'agents'>('shop');
+    const [activeView, setActiveView] = useState<'shop' | 'customers' | 'orders' | 'sales' | 'agents' | 'suppliers'>('shop');
     const { data: currentShopAgents } = useShopAgents(shop?.id);
     const isOwnerOrPDG = useMemo(() => {
         if (!user || !shop) return false;
@@ -596,10 +597,18 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                             <Users size={14} className="inline mr-1" /> Agents
                         </button>
                     )}
+                    <button
+                        onClick={() => setActiveView('suppliers')}
+                        className={`flex-1 min-w-[80px] py-2 text-xs font-medium text-center transition-colors ${activeView === 'suppliers' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white/80'}`}
+                    >
+                        <Truck size={14} className="inline mr-1" /> Fournisseurs
+                    </button>
                 </div>
             </div>
 
-            {activeView === 'agents' ? (
+            {activeView === 'suppliers' ? (
+                <SupplierManagement shopId={shop.id} />
+            ) : activeView === 'agents' ? (
                 <BoutiqueAgentsManager shopId={shop.id} />
             ) : activeView === 'customers' ? (
                 <CustomerManagement shopId={shop.id} />
