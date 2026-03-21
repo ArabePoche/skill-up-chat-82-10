@@ -169,7 +169,7 @@ export const useVideoComments = (videoId: string) => {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
       queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
