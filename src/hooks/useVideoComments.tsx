@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useEffect } from 'react';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 
 // Fonction pour mettre à jour le champ comments_count dans la table `videos` (compte tous les commentaires + réponses)
 const updateCommentsCount = async (videoId: string) => {
@@ -168,10 +169,11 @@ export const useVideoComments = (videoId: string) => {
       return data;
     },
     onSuccess: () => {
-      // ✅ Invalide ET refetch manuellement pour affichage immédiat
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
       queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
+      // 🎮 Animation gain Habbah pour commentaire
+      notifyHabbahGain(15, 'Commentaire');
     },
     onError: (error) => {
       console.error('Erreur ajout commentaire :', error);
