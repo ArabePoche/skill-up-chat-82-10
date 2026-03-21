@@ -169,10 +169,11 @@ export const useVideoComments = (videoId: string) => {
       return data;
     },
     onSuccess: () => {
-      // ✅ Invalide ET refetch manuellement pour affichage immédiat
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
       queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
+      // 🎮 Animation gain Habbah pour commentaire
+      notifyHabbahGain(15, 'Commentaire');
     },
     onError: (error) => {
       console.error('Erreur ajout commentaire :', error);
