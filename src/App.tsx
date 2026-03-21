@@ -10,6 +10,8 @@ import { useDeepLinks } from '@/hooks/useDeeplinks';
 import { registerServiceWorker } from '@/offline/utils/registerSW';
 import { syncManager } from '@/offline/utils/syncManager';
 import LanguageOnboarding from '@/components/LanguageOnboarding';
+import HabbahGainAnimation from '@/components/HabbahGainAnimation';
+import { useHabbahGainNotifier } from '@/hooks/useHabbahGainNotifier';
 
 
 import Formation from '@/pages/Formation';
@@ -147,6 +149,16 @@ const AppWithRouter: React.FC = () => {
   );
 };
 
+const AppWithHabbah: React.FC = () => {
+  const { gains, removeGain } = useHabbahGainNotifier();
+  return (
+    <>
+      <AppWithRouter />
+      <Toaster />
+      <HabbahGainAnimation gains={gains} onComplete={removeGain} />
+    </>
+  );
+};
 const App: React.FC = () => {
   const [showLanguageOnboarding, setShowLanguageOnboarding] = useState(
     !localStorage.getItem('languageSelected')
@@ -170,10 +182,7 @@ const App: React.FC = () => {
                     {showLanguageOnboarding ? (
                       <LanguageOnboarding onComplete={() => setShowLanguageOnboarding(false)} />
                     ) : (
-                      <>
-                        <AppWithRouter />
-                        <Toaster />
-                      </>
+                      <AppWithHabbah />
                     )}
                   </TabScrollProvider>
                 </NavigationProvider>

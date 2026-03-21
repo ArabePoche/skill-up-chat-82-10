@@ -3,6 +3,7 @@ import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
 import ConfettiAnimation from '@/components/ConfettiAnimation';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 
 interface VideoLikeProps {
   videoId: string;
@@ -25,6 +26,7 @@ const VideoLike: React.FC<VideoLikeProps> = ({
     if (!isLiked) {
       setShowConfetti(true);
       onLikeWithConfetti?.();
+      notifyHabbahGain(10, 'Like');
     }
   };
 
