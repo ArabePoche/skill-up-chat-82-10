@@ -26,6 +26,7 @@ const VideoLike: React.FC<VideoLikeProps> = ({
     if (!isLiked) {
       setShowConfetti(true);
       onLikeWithConfetti?.();
+      notifyHabbahGain(10, 'Like');
     }
   };
 
