@@ -748,6 +748,102 @@ export type Database = {
           },
         ]
       }
+      currency_antifraud_settings: {
+        Row: {
+          auto_block_enabled: boolean
+          id: string
+          pending_validation_delay_hours: number
+          pending_validation_enabled: boolean
+          suspicious_threshold_per_hour: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_block_enabled?: boolean
+          id?: string
+          pending_validation_delay_hours?: number
+          pending_validation_enabled?: boolean
+          suspicious_threshold_per_hour?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_block_enabled?: boolean
+          id?: string
+          pending_validation_delay_hours?: number
+          pending_validation_enabled?: boolean
+          suspicious_threshold_per_hour?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      currency_conversion_settings: {
+        Row: {
+          conversion_delay_hours: number
+          habbah_per_sb: number
+          id: string
+          is_conversion_enabled: boolean
+          max_conversions_per_day: number
+          max_conversions_per_month: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          conversion_delay_hours?: number
+          habbah_per_sb?: number
+          id?: string
+          is_conversion_enabled?: boolean
+          max_conversions_per_day?: number
+          max_conversions_per_month?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          conversion_delay_hours?: number
+          habbah_per_sb?: number
+          id?: string
+          is_conversion_enabled?: boolean
+          max_conversions_per_day?: number
+          max_conversions_per_month?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      currency_global_limits: {
+        Row: {
+          id: string
+          is_sb_enabled_for_digital: boolean
+          max_habbah_per_day: number
+          max_habbah_per_month: number
+          max_sb_percentage_for_digital: number
+          min_trust_score: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_sb_enabled_for_digital?: boolean
+          max_habbah_per_day?: number
+          max_habbah_per_month?: number
+          max_sb_percentage_for_digital?: number
+          min_trust_score?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_sb_enabled_for_digital?: boolean
+          max_habbah_per_day?: number
+          max_habbah_per_month?: number
+          max_sb_percentage_for_digital?: number
+          min_trust_score?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       cv_invitations: {
         Row: {
           created_at: string | null
@@ -1596,6 +1692,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      habbah_earning_rules: {
+        Row: {
+          action_label: string
+          action_type: string
+          cooldown_seconds: number
+          created_at: string
+          daily_limit: number
+          habbah_amount: number
+          id: string
+          is_active: boolean
+          monthly_limit: number
+          updated_at: string
+        }
+        Insert: {
+          action_label: string
+          action_type: string
+          cooldown_seconds?: number
+          created_at?: string
+          daily_limit?: number
+          habbah_amount?: number
+          id?: string
+          is_active?: boolean
+          monthly_limit?: number
+          updated_at?: string
+        }
+        Update: {
+          action_label?: string
+          action_type?: string
+          cooldown_seconds?: number
+          created_at?: string
+          daily_limit?: number
+          habbah_amount?: number
+          id?: string
+          is_active?: boolean
+          monthly_limit?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       habbah_events: {
         Row: {
