@@ -93,6 +93,8 @@ const AdminDashboard = () => {
         return <PushNotificationSender />;
       case 'recruitment-ads':
         return <RecruitmentAdsManagement />;
+      case 'currency-settings':
+        return <CurrencySettingsManagement />;
       default:
         return <DashboardStats />;
     }

@@ -84,6 +84,11 @@ const menuItems = [
     value: 'recruitment-ads',
     icon: Megaphone,
   },
+  {
+    title: 'Monnaie Virtuelle',
+    value: 'currency-settings',
+    icon: Coins,
+  },
 ];
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
