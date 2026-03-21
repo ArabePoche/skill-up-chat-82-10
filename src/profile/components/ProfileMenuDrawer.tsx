@@ -3,6 +3,7 @@ import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe, 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerification } from '@/hooks/useVerification';
+import { useUserWallet } from '@/hooks/useUserWallet';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import VerificationRequestModal from '@/verification/components/VerificationRequestModal';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
