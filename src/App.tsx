@@ -159,8 +159,7 @@ const AppWithHabbah: React.FC = () => {
     </>
   );
 };
-
-
+const App: React.FC = () => {
   const [showLanguageOnboarding, setShowLanguageOnboarding] = useState(
     !localStorage.getItem('languageSelected')
   );
