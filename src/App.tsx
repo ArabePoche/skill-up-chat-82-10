@@ -149,7 +149,18 @@ const AppWithRouter: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
+const AppWithHabbah: React.FC = () => {
+  const { gains, removeGain } = useHabbahGainNotifier();
+  return (
+    <>
+      <AppWithRouter />
+      <Toaster />
+      <HabbahGainAnimation gains={gains} onComplete={removeGain} />
+    </>
+  );
+};
+
+
   const [showLanguageOnboarding, setShowLanguageOnboarding] = useState(
     !localStorage.getItem('languageSelected')
   );
