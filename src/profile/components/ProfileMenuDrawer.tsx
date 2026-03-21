@@ -23,11 +23,9 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   const navigate = useNavigate();
   const { profile, user, logout } = useAuth();
   const { hasPendingRequest } = useVerification(user?.id);
+  const { wallet } = useUserWallet();
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const { t } = useTranslation();
-
-  // Importer le wallet pour afficher le solde dans le menu
-  const { useUserWallet } = require('@/hooks/useUserWallet');
 
   const handleLogout = async () => {
     await logout();
