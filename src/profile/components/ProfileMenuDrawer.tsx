@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe } from 'lucide-react';
+import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerification } from '@/hooks/useVerification';
+import { useUserWallet } from '@/hooks/useUserWallet';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import VerificationRequestModal from '@/verification/components/VerificationRequestModal';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -22,6 +23,7 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
   const navigate = useNavigate();
   const { profile, user, logout } = useAuth();
   const { hasPendingRequest } = useVerification(user?.id);
+  const { wallet } = useUserWallet();
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const { t } = useTranslation();
 
@@ -30,7 +32,10 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
     navigate('/auth');
   };
 
+  const formatWalletBalance = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
+
   const menuItems = [
+    { icon: Wallet, label: `Mon Portefeuille • ${formatWalletBalance(wallet?.soumboulah_cash || 0)} S.`, action: () => navigate('/wallet') },
     { icon: Settings, label: t('settings.general'), action: () => navigate('/complete-profile') },
     { icon: BookOpen, label: t('courses.myCourses'), action: () => navigate('/cours') },
     { icon: Award, label: t('profile.notifications'), action: () => {} },

@@ -1597,6 +1597,33 @@ export type Database = {
           },
         ]
       }
+      habbah_events: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          habbah_earned: number
+          id: string
+          reference_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          habbah_earned?: number
+          id?: string
+          reference_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          habbah_earned?: number
+          id?: string
+          reference_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       interview_evaluations: {
         Row: {
           created_at: string | null
@@ -8703,6 +8730,36 @@ export type Database = {
           },
         ]
       }
+      user_wallets: {
+        Row: {
+          created_at: string | null
+          habbah: number
+          id: string
+          soumboulah_bonus: number
+          soumboulah_cash: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          habbah?: number
+          id?: string
+          soumboulah_bonus?: number
+          soumboulah_cash?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          habbah?: number
+          id?: string
+          soumboulah_bonus?: number
+          soumboulah_cash?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       verification_requests: {
         Row: {
           created_at: string | null
@@ -8979,6 +9036,42 @@ export type Database = {
           },
         ]
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          reference_type: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       webrtc_signals: {
         Row: {
           call_session_id: string
@@ -9211,6 +9304,10 @@ export type Database = {
       complete_shop_transfer: {
         Args: { transfer_id: string }
         Returns: boolean
+      }
+      convert_habbah_to_bonus: {
+        Args: { p_habbah_amount: number; p_user_id: string }
+        Returns: Json
       }
       decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
       decrement_stock: {

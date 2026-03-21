@@ -38,6 +38,7 @@ import UploadVideo from '@/pages/UploadVideo';
 import PublicCv from '@/pages/PublicCv';
 import School from '@/pages/School';
 import CvSearchPage from '@/cv-search/CvSearchPage';
+import WalletScreen from '@/wallet/WalletScreen';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
@@ -137,6 +138,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/shop" element={<Layout />} />
         <Route path="/messages" element={<Layout />} />
         <Route path="/profil" element={<Layout />} />
+        <Route path="/wallet" element={<WalletScreen />} />
         
         {/* Page 404 */}
         <Route path="*" element={<NotFound />} />
