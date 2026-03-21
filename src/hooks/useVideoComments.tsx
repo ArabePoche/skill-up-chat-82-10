@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { useEffect } from 'react';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
 // Fonction pour mettre à jour le champ comments_count dans la table `videos` (compte tous les commentaires + réponses)
 const updateCommentsCount = async (videoId: string) => {
