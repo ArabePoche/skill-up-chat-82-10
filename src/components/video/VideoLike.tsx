@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
 import ConfettiAnimation from '@/components/ConfettiAnimation';
 import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
-import { useHabbahEarningRules } from '@/hooks/useHabbahEarningRules';
+import { useAuth } from '@/hooks/useAuth';
+import { recordHabbahGain } from '@/services/habbahService';
 
 interface VideoLikeProps {
   videoId: string;
@@ -19,16 +20,16 @@ const VideoLike: React.FC<VideoLikeProps> = ({
 }) => {
   const { isLiked, likesCount, toggleLike, isLoading } = useVideoLikes(videoId, initialLikesCount);
   const [showConfetti, setShowConfetti] = React.useState(false);
-  const { getReward } = useHabbahEarningRules();
+  const { user } = useAuth();
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleLike();
     
-    if (!isLiked) {
+    if (!isLiked && user?.id) {
       setShowConfetti(true);
       onLikeWithConfetti?.();
-      const reward = getReward('like');
+      const reward = await recordHabbahGain(user.id, 'like', videoId);
       if (reward) notifyHabbahGain(reward.amount, reward.label);
     }
   };
