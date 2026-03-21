@@ -172,10 +172,7 @@ const App: React.FC = () => {
                     {showLanguageOnboarding ? (
                       <LanguageOnboarding onComplete={() => setShowLanguageOnboarding(false)} />
                     ) : (
-                      <>
-                        <AppWithRouter />
-                        <Toaster />
-                      </>
+                      <AppWithHabbah />
                     )}
                   </TabScrollProvider>
                 </NavigationProvider>
