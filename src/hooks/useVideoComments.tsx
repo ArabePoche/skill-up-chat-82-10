@@ -173,14 +173,11 @@ export const useVideoComments = (videoId: string) => {
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
       queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
-      // 🎮 Animation gain Habbah dynamique depuis config admin
-      const { data: rule } = await supabaseClient
-        .from('habbah_earning_rules')
-        .select('habbah_amount, action_label')
-        .eq('action_type', 'comment')
-        .eq('is_active', true)
-        .maybeSingle();
-      if (rule) notifyHabbahGain(rule.habbah_amount, rule.action_label);
+      // 🎮 Enregistrer le gain Habbah en base + animation
+      if (user?.id) {
+        const reward = await recordHabbahGain(user.id, 'comment', videoId);
+        if (reward) notifyHabbahGain(reward.amount, reward.label);
+      }
     },
     onError: (error) => {
       console.error('Erreur ajout commentaire :', error);
