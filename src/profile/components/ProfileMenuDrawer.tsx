@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe } from 'lucide-react';
+import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerification } from '@/hooks/useVerification';
