@@ -290,6 +290,7 @@ const FormationPricing: React.FC<FormationPricingProps> = ({ formationId, classN
                   )}
                 </div>
 
+
                 <Button
                   onClick={() => handleSubscribe(option)}
                   disabled={isButtonDisabled(option)}
