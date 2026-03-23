@@ -37,6 +37,7 @@ interface TeacherStudentChatProps {
   formation: {
     id: string;
     title: string;
+    author?: string;
   };
   student: Student;
   lesson: {
