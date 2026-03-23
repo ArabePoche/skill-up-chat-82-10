@@ -1735,26 +1735,32 @@ export type Database = {
       habbah_events: {
         Row: {
           created_at: string | null
+          description: string | null
           event_type: string
           habbah_earned: number
           id: string
           reference_id: string | null
+          related_user_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          description?: string | null
           event_type: string
           habbah_earned?: number
           id?: string
           reference_id?: string | null
+          related_user_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
+          description?: string | null
           event_type?: string
           habbah_earned?: number
           id?: string
           reference_id?: string | null
+          related_user_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -9457,6 +9463,10 @@ export type Database = {
         Args: { comment_id: string; user_id: string }
         Returns: boolean
       }
+      earn_habbah: {
+        Args: { p_action_type: string; p_reference_id?: string }
+        Returns: Json
+      }
       find_contacts_by_phone: {
         Args: { phone_numbers: string[] }
         Returns: {
@@ -9772,6 +9782,33 @@ export type Database = {
           p_sender_id: string
         }
         Returns: undefined
+      }
+      transfer_habbah: {
+        Args: {
+          p_amount: number
+          p_reason?: string
+          p_recipient_id: string
+          p_reference_id?: string
+        }
+        Returns: Json
+      }
+      transfer_soumboulah_bonus: {
+        Args: {
+          p_amount: number
+          p_reason?: string
+          p_recipient_id: string
+          p_reference_id?: string
+        }
+        Returns: Json
+      }
+      transfer_soumboulah_cash: {
+        Args: {
+          p_amount: number
+          p_reason?: string
+          p_recipient_id: string
+          p_reference_id?: string
+        }
+        Returns: Json
       }
       transfer_to_marketplace: {
         Args: {
