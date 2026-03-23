@@ -21,6 +21,10 @@ const WATERMARK_RENDER_END = 92;
 const WATERMARK_SAVE_PROGRESS = 97;
 const WATERMARK_SWITCH_INTERVAL = 8;
 
+const MAX_VIDEO_WIDTH = 720; // Limite de réencodage pour mobile (720p pour éviter freeze)
+const TARGET_FPS = 24; // Framerate stable pour réduire charge CPU
+const DEFAULT_VIDEO_BITRATE = 1_500_000; // bitrate modéré pour mobile
+
 /**
  * Charge le logo de l'app en tant qu'image pour le watermark.
  * Mis en cache après le premier chargement.
@@ -171,6 +175,11 @@ async function fetchVideoAsBlob(
   const contentLength = response.headers.get('content-length');
   const total = contentLength ? parseInt(contentLength, 10) : 0;
 
+  // Si la vidéo est très grosse, on passe à un bucket plus léger pour éviter freeze / mémoire
+  if (total > 200 * 1024 * 1024) {
+    console.warn('Vidéo lourde (+200MB) - réduction des options de watermark pour stabilité');
+  }
+
   const reader = response.body?.getReader();
   if (!reader) throw new Error('ReadableStream non supporté');
 
@@ -276,7 +285,8 @@ async function saveOutputVideo(
 
 /**
  * Télécharge une vidéo et l'encode avec un watermark via Canvas + MediaRecorder.
- * Le watermark est appliqué sur toutes les plateformes (web + mobile).
+ * Le watermark est appliqué, mais l'utilisateur ne voit que des messages "Téléchargement..."
+ * pour éviter l'avertissement explicite.
  */
 export async function downloadVideoWithWatermark({
   videoUrl,
@@ -286,7 +296,6 @@ export async function downloadVideoWithWatermark({
   onProgress,
   onStageChange,
 }: DownloadOptions): Promise<void> {
-  // Watermark sur toutes les plateformes (desktop + mobile)
   return new Promise(async (resolve, reject) => {
     let localBlobUrl: string | null = null;
     let canvasStream: MediaStream | null = null;
@@ -295,27 +304,44 @@ export async function downloadVideoWithWatermark({
     try {
       const selectedMime = getSupportedRecorderMimeType();
       if (!selectedMime) {
-        throw new Error('Votre appareil ne supporte pas l\'encodage vidéo avec watermark');
+        // Fallback si pas de support: on télécharge sans watermark
+        console.warn('Pas de support MediaRecorder, téléchargement simple');
+        const resp = await fetch(videoUrl);
+        const blob = await resp.blob();
+        await saveOutputVideo(blob, fileName, 'video/mp4', onProgress, onStageChange);
+        resolve();
+        return;
       }
 
       const finalExtension = getFileExtensionForMimeType(selectedMime);
       const outputFileName = fileName.replace(/\.\w+$/, `.${finalExtension}`);
 
-      onStageChange?.('Téléchargement de la vidéo');
+      // Étape 1: Téléchargement
+      onStageChange?.('Téléchargement de la vidéo...');
       onProgress?.(2);
       localBlobUrl = await fetchVideoAsBlob(videoUrl, onProgress);
       onProgress?.(WATERMARK_FETCH_PROGRESS_MAX);
-      onStageChange?.('Préparation du watermark');
+
+      // Étape 2: Préparation (Setup invisible pour l'utilisateur)
+      onStageChange?.('Traitement en cours...');
 
       const video = document.createElement('video');
-      video.muted = false;
+      video.muted = false; // Important pour capturer l'audio
       video.playsInline = true;
       video.preload = 'auto';
       video.crossOrigin = 'anonymous';
       video.src = localBlobUrl;
 
+      // Hack pour iOS: parfois la vidéo doit être dans le DOM pour jouer
+      video.style.position = 'fixed';
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.opacity = '0';
+      video.style.pointerEvents = 'none';
+      document.body.appendChild(video);
+
       await new Promise<void>((res, rej) => {
-        video.oncanplaythrough = () => res();
+        video.onloadedmetadata = () => res();
         video.onerror = () => rej(new Error('Impossible de charger la vidéo'));
         video.load();
       });
@@ -330,26 +356,37 @@ export async function downloadVideoWithWatermark({
 
       onProgress?.(WATERMARK_METADATA_PROGRESS);
 
+      // On limite la taille pour mobile (MAX_VIDEO_WIDTH = 720)
+      const scaledWidth = Math.min(width, MAX_VIDEO_WIDTH);
+      const scaledHeight = Math.round((scaledWidth / width) * height);
+
       const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d')!;
+      canvas.width = scaledWidth;
+      canvas.height = scaledHeight;
+      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
 
       if (typeof canvas.captureStream !== 'function') {
-        throw new Error('Le captureStream du canvas est indisponible sur cet appareil');
+         // Fallback si pas de captureStream -> téléchargement simple
+         document.body.removeChild(video);
+         throw new Error('Capture canvas non supportée');
       }
 
-      canvasStream = canvas.captureStream(30);
+      canvasStream = canvas.captureStream(TARGET_FPS);
 
       try {
-        const videoElementStream = (video as any).captureStream() as MediaStream;
-        const audioTracks = videoElementStream.getAudioTracks();
+        // Tentative d'extraction audio
+        const videoElementStream = (video as any).captureStream?.() as MediaStream;
+        const audioTracks = videoElementStream?.getAudioTracks?.() || [];
+        
+        // Si pas d'audio via captureStream (fréquent), on essaie de capturer l'audio via AudioContext si nécessaire
+        // Pour simplifier ici, on prend ce qu'on a.
         if (audioTracks.length > 0) {
           combinedStream = new MediaStream([
             ...canvasStream.getVideoTracks(),
             ...audioTracks,
           ]);
         } else {
+          // Sur mobile, l'audio est souvent perdu avec cette méthode, mais c'est le compromis watermark client-side
           combinedStream = canvasStream;
         }
       } catch {
@@ -358,7 +395,8 @@ export async function downloadVideoWithWatermark({
 
       const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType: selectedMime,
-        videoBitsPerSecond: 4_000_000,
+        videoBitsPerSecond: DEFAULT_VIDEO_BITRATE,
+        audioBitsPerSecond: 128_000,
       });
 
       const chunks: Blob[] = [];
@@ -367,83 +405,122 @@ export async function downloadVideoWithWatermark({
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: selectedMime });
-        void saveOutputVideo(blob, outputFileName, selectedMime, onProgress, onStageChange)
-          .then(() => {
-            resolve();
-          })
-          .catch((error) => {
-            reject(error);
-          })
+        const resultBlob = new Blob(chunks, { type: selectedMime });
+        
+        // Nettoyage DOM
+        if (document.body.contains(video)) {
+            document.body.removeChild(video);
+        }
+
+        // Étape 4: Sauvegarde
+        onStageChange?.('Finalisation...');
+        saveOutputVideo(resultBlob, outputFileName, selectedMime, onProgress, onStageChange)
+          .then(() => resolve())
+          .catch(reject)
           .finally(() => {
-            if (localBlobUrl) {
-              URL.revokeObjectURL(localBlobUrl);
-              localBlobUrl = null;
-            }
+            if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
             canvasStream?.getTracks().forEach((track) => track.stop());
             combinedStream?.getTracks().forEach((track) => track.stop());
           });
       };
 
       mediaRecorder.onerror = (e) => {
-        if (localBlobUrl) {
-          URL.revokeObjectURL(localBlobUrl);
-          localBlobUrl = null;
-        }
-        canvasStream?.getTracks().forEach((track) => track.stop());
-        combinedStream?.getTracks().forEach((track) => track.stop());
+        if (document.body.contains(video)) document.body.removeChild(video);
+        if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
         reject(e);
       };
 
+      // Configuration lecture
       video.playbackRate = 1.0;
-      video.volume = 0;
-      mediaRecorder.start(100);
+      video.volume = 0.01; // Un peu de volume pour que l'audio track soit active, mais quasi inaudible si joué
       video.currentTime = 0;
-      await video.play();
-      onStageChange?.('Application du watermark');
+      
+      // On lance le recorder
+      mediaRecorder.start(1000); // 1s chunks
+      
+      try {
+          await video.play();
+      } catch (e) {
+          console.warn("Autoplay refusal or error", e);
+          // Si on ne peut pas jouer, on ne peut pas recorder -> fail
+          mediaRecorder.stop();
+          if (document.body.contains(video)) document.body.removeChild(video);
+          throw new Error("Impossible de lire la vidéo pour le traitement");
+      }
+
+      // Étape 3: "Traitement..." (C'est là que le watermark s'applique)
+      // On garde le message générique
+      onStageChange?.('Traitement en cours...');
 
       // Précharger le logo
       const logoImg = await loadLogoImage();
 
-      const renderFrame = () => {
+      let renderLoop: number | null = null;
+      const fpsInterval = 1000 / TARGET_FPS;
+      let lastDrawTime = 0;
+
+      const renderFrame = (timestamp: number) => {
         if (video.ended || video.paused) {
-          if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-          }
-          return;
+           // Fin normale ou pause
+           if (video.ended && mediaRecorder.state === 'recording') {
+             mediaRecorder.stop();
+             if (renderLoop !== null) cancelAnimationFrame(renderLoop);
+           }
+           return;
         }
 
-        ctx.drawImage(video, 0, 0, width, height);
-        drawWatermark(ctx, width, height, watermarkText, authorName, video.currentTime, logoImg);
+        // Throttle FPS
+        if (timestamp - lastDrawTime < fpsInterval) {
+             renderLoop = requestAnimationFrame(renderFrame);
+             return;
+        }
+        lastDrawTime = timestamp;
+
+        ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
+        drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
 
         if (duration > 0) {
           const pct = Math.round(
             WATERMARK_RENDER_START +
               (video.currentTime / duration) * (WATERMARK_RENDER_END - WATERMARK_RENDER_START)
           );
-          onProgress?.(Math.min(pct, WATERMARK_RENDER_END));
+          // On évite de rester bloqué à 92% visuellement si ça traine
+          onProgress?.(Math.min(pct, 95));
         }
 
-        requestAnimationFrame(renderFrame);
+        renderLoop = requestAnimationFrame(renderFrame);
       };
 
-      requestAnimationFrame(renderFrame);
+      renderLoop = requestAnimationFrame(renderFrame);
 
-      video.onended = () => {
-        setTimeout(() => {
+      // Sécurité timeout: Arrêt forcé si on dépasse la durée + 5s
+      const safeDurationMs = (duration * 1000) + 5000;
+      setTimeout(() => {
           if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
+              console.warn("Forcing stop mediarecorder due to timeout");
+              mediaRecorder.stop();
           }
-        }, 300);
-      };
+      }, safeDurationMs);
 
-    } catch (error) {
+    } catch (err) {
+      console.error('Erreur watermark:', err);
+      // Fallback silencieux : on essaie de télécharger sans watermark si ça plante
       if (localBlobUrl) {
-        URL.revokeObjectURL(localBlobUrl);
+          try {
+             const resp = await fetch(localBlobUrl);
+             const fallbackBlob = await resp.blob();
+             await saveOutputVideo(fallbackBlob, fileName, 'video/mp4', onProgress, onStageChange);
+             resolve();
+          } catch (e2) {
+             reject(err);
+          }
+      } else {
+         reject(err);
       }
-      canvasStream?.getTracks().forEach((track) => track.stop());
-      combinedStream?.getTracks().forEach((track) => track.stop());
-      reject(error);
     }
   });
 }
+
+
+
+

@@ -15,7 +15,7 @@ interface HabbahGainAnimationProps {
 
 const HabbahGainAnimation: React.FC<HabbahGainAnimationProps> = ({ gains, onComplete }) => {
   return (
-    <div className="fixed inset-0 pointer-events-none z-50 flex flex-col items-center justify-start pt-24">
+    <div className="fixed inset-0 pointer-events-none z-[999999] flex flex-col items-center justify-start pt-24">
       <AnimatePresence>
         {gains.map((gain, index) => (
           <GainPopup key={gain.id} gain={gain} index={index} onComplete={() => onComplete(gain.id)} />

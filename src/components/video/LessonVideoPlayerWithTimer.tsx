@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 import LessonVideoPlayer from '@/components/LessonVideoPlayer';
+import { useFormationAuthor } from '@/hooks/useFormationAuthor';
 
 interface LessonVideoPlayerWithTimerProps {
   src: string;
   formationId: string;
+  lessonId: string; // Add lessonId prop
   onUpgrade?: () => void;
   onPlayStateChange?: (isPlaying: boolean) => void;
   className?: string;
@@ -18,6 +20,7 @@ interface LessonVideoPlayerWithTimerProps {
 export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProps> = ({
   src,
   formationId,
+  lessonId,
   onUpgrade,
   onPlayStateChange,
   className = ''
@@ -25,6 +28,9 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
   const navigate = useNavigate();
   const [isPlaying, setIsPlaying] = useState(false);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
+  
+  // Hook pour récupérer l'auteur de la formation
+  const { data: formationAuthor } = useFormationAuthor(formationId);
 
   const {
     timeRemainingToday,
@@ -110,9 +116,18 @@ export const LessonVideoPlayerWithTimer: React.FC<LessonVideoPlayerWithTimerProp
     <div className={`relative ${className}`}>
       {/* Lecteur vidéo */}
       <LessonVideoPlayer 
+        lessonId={lessonId}
         url={src}
         className="w-full"
         onPlayStateChange={handlePlayStateChange}
+        authorName={
+          formationAuthor 
+            ? (formationAuthor.first_name || formationAuthor.last_name
+                ? `${formationAuthor.first_name || ''} ${formationAuthor.last_name || ''}`.trim()
+                : formationAuthor.username)
+            : 'Académie'
+        }
+        authorAvatarUrl={formationAuthor?.avatar_url}
       />
 
       {/* Timer en bas de la vidéo */}

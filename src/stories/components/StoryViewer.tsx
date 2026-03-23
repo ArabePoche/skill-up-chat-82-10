@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Send, Eye, Mic, Briefcase } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Send, Eye, Mic, Briefcase, Gift } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import StoryViewersModal from './StoryViewersModal';
+import GiftSelector from './GiftSelector';
 import { useNavigate } from 'react-router-dom';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { ApplicationModal } from '@/applications/components/ApplicationModal';
@@ -35,6 +36,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [savedProgress, setSavedProgress] = useState(0); // Sauvegarder la progression pendant la pause
   const [replyText, setReplyText] = useState('');
   const [showReplyInput, setShowReplyInput] = useState(false);
+  const [showGiftSelector, setShowGiftSelector] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [mediaDuration, setMediaDuration] = useState<number>(10); // Durée par défaut de 10s pour texte/image
@@ -165,6 +167,20 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     setShowReplyInput(false);
     setReplyText('');
     setIsPaused(false);
+  };
+
+  const handleOpenGift = () => {
+    setIsPaused(true);
+    setShowGiftSelector(true);
+  };
+
+  const handleCloseGift = () => {
+    setShowGiftSelector(false);
+    setIsPaused(false);
+  };
+
+  const handleGiftSent = (giftName: string, amount: number, currency: string) => {
+    handleCloseGift();
   };
 
   const handleReply = async () => {
@@ -460,13 +476,25 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             </Button>
           </div>
         ) : (
-          <Button
-            onClick={handleOpenReply}
-            variant="ghost"
-            className="w-full text-white border border-white/30 hover:bg-white/10 rounded-full py-2 sm:py-3 text-sm sm:text-base"
-          >
-            Répondre à {story.profiles?.first_name || 'cette story'}...
-          </Button>
+          <div className="flex items-center gap-2 w-full">
+            <Button
+              onClick={handleOpenReply}
+              variant="ghost"
+              className="flex-1 text-white border border-white/30 hover:bg-white/10 rounded-full py-2 sm:py-3 text-sm sm:text-base justify-start px-4"
+            >
+              Répondre à {story.profiles?.first_name || 'cette story'}...
+            </Button>
+            
+            <Button
+              onClick={handleOpenGift}
+              variant="ghost"
+              size="icon"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/30"
+              title="Envoyer un cadeau"
+            >
+              <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-pink-400" />
+            </Button>
+          </div>
         )}
         </div>
       )}
@@ -501,6 +529,20 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           onClose={handleCloseViewers}
           storyId={story.id}
         />
+      )}
+
+      {/* Modal de cadeaux */}
+      {showGiftSelector && (
+        <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50" onClick={handleCloseGift}>
+          <div onClick={e => e.stopPropagation()} className="w-full max-w-lg">
+            <GiftSelector
+              recipientId={story.user_id}
+              storyId={story.id}
+              onClose={handleCloseGift}
+              onGiftSent={handleGiftSent}
+            />
+          </div>
+        </div>
       )}
 
       {/* Modal de candidature pour stories de recrutement */}

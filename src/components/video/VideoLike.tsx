@@ -29,7 +29,9 @@ const VideoLike: React.FC<VideoLikeProps> = ({
     if (!isLiked && user?.id) {
       setShowConfetti(true);
       onLikeWithConfetti?.();
+      console.log('VideoLike: Calling recordHabbahGain', user.id, videoId);
       const reward = await recordHabbahGain(user.id, 'like', videoId);
+      console.log('VideoLike: recordHabbahGain result:', reward);
       if (reward) notifyHabbahGain(reward.amount, reward.label);
     }
   };

@@ -7,11 +7,13 @@
  * - Met à jour current_level automatiquement
  */
 import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { usePresence } from '@/contexts/PresenceContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useStreakConfig } from './useStreakConfig';
 import { ensureStreakRecord } from '../utils/streakInitializer';
+import { recordHabbahGain } from '@/services/habbahService';
 
 export const useStreakSessionTracker = () => {
   const { user } = useAuth();
@@ -97,8 +99,9 @@ export const useStreakSessionTracker = () => {
 
     if (!streak || !globalConfig) return;
 
-    // Si déjà validé aujourd'hui, ne rien faire
-    if (streak.last_activity_date === today) {
+    // Si déjà validé aujourd'hui ET que le seuil n'est pas encore atteint, ne rien faire
+    // Si le seuil est atteint, on continue pour valider et récompenser
+    if (streak.last_activity_date === today && streak.daily_minutes < globalConfig.minutes_per_day_required) {
       return;
     }
 
@@ -117,6 +120,15 @@ export const useStreakSessionTracker = () => {
     // Vérifier si l'utilisateur a atteint le seuil de minutes requis
     if (streak.daily_minutes >= globalConfig.minutes_per_day_required) {
       newStreak += 1;
+      
+      // Récompenser avec Habbah
+      const habbahResult = await recordHabbahGain(userId, 'daily_streak');
+      if (habbahResult) {
+        toast.success(`Bravo ! Streak validé : +${habbahResult.amount} Habbah`);
+      } else {
+        toast.success('Streak validé ! Continuez comme ça !');
+      }
+
       console.log(`✅ Streak validé! Minutes: ${streak.daily_minutes}/${globalConfig.minutes_per_day_required}`);
     }
 
@@ -167,6 +179,9 @@ export const useStreakSessionTracker = () => {
         .eq('user_id', userId);
       console.log('💾 Minutes ajoutées:', accumulatedMinutesRef.current, '→ total', newDaily);
       accumulatedMinutesRef.current = 0;
+
+      // Vérifier si le streak doit être validé avec le nouveau total
+      await validateDailyStreak(userId);
     }
   };
 
@@ -225,7 +240,9 @@ export const useStreakSessionTracker = () => {
     const initializeUserStreak = async () => {
       if (!user) return;
       
-      console.log('🔍 Vérification/Initialisation du streak au montage:', user.id);
+      if (import.meta.env.DEV) {
+        console.log('🔍 Vérification/Initialisation du streak au montage:', user.id);
+      }
       await initializeStreak(user.id);
     };
 
@@ -251,7 +268,9 @@ export const useStreakSessionTracker = () => {
       
       // Premier montage avec utilisateur connecté
       if (!previousUser) {
-        console.log('🔐 Connexion initiale détectée:', user.id);
+        if (import.meta.env.DEV) {
+          console.log('🔐 Connexion initiale détectée:', user.id);
+        }
         await handleLogin(user.id);
         previousUserRef.current = user.id;
         previousStatusRef.current = currentStatus;
@@ -298,7 +317,7 @@ export const useStreakSessionTracker = () => {
       }
     }, 60 * 1000);
     return () => clearInterval(interval);
-  }, [user, currentStatus]);
+  }, [user, currentStatus, globalConfig, levels]);
   
   // Vérifier le streak à minuit
   useEffect(() => {

@@ -22,7 +22,9 @@ export const ensureStreakRecord = async (userId: string): Promise<boolean> => {
 
     // Si l'enregistrement existe déjà, pas besoin d'en créer un nouveau
     if (existing) {
-      console.log('✅ Enregistrement streak existant pour:', userId);
+      if (import.meta.env.DEV) {
+        console.log('✅ Enregistrement streak existant pour:', userId);
+      }
       return true;
     }
 

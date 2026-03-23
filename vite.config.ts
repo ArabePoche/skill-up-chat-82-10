@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       strategies: 'generateSW',
       injectRegister: 'auto',
-      includeAssets: ['favicon.ico', 'icon-192x192.png', 'icon-512x512.png', 'offline.html'],
+      includeAssets: ['favicon.ico', 'icons/icon-192.webp', 'icons/icon-512.webp', 'offline.html'],
       workbox: {
         globPatterns: mode === 'production' ? ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'] : [],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
@@ -78,15 +78,15 @@ export default defineConfig(({ mode }) => ({
         orientation: 'portrait-primary',
         icons: [
           {
-            src: '/icon-192x192.png',
+            src: '/icons/icon-192.webp',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/webp',
             purpose: 'any'
           },
           {
-            src: '/icon-512x512.png',
+            src: '/icons/icon-512.webp',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/webp',
             purpose: 'any maskable'
           }
         ]

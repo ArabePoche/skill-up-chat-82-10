@@ -26,6 +26,8 @@ import { ApplicationModal } from '@/applications/components/ApplicationModal';
 import { useCheckExistingApplication } from '@/applications/hooks/useApplications';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { useTranslation } from 'react-i18next';
+import { recordHabbahGain } from '@/services/habbahService';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 
 interface PostCardProps {
   post: any;
@@ -133,6 +135,20 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
     commentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
+  const handleLike = async () => {
+    toggleLike();
+    
+    if (!isLiked && user?.id) {
+       // Gain Habbah
+       try {
+        const reward = await recordHabbahGain(user.id, 'post_like', post.id);
+        if (reward) notifyHabbahGain(reward.amount, reward.label);
+       } catch (error) {
+        console.error('Error logging habbah post like:', error);
+       }
+    }
+  };
+
   const handleShare = async () => {
     const postUrl = `${window.location.origin}/post/${post.id}`;
     try {
@@ -162,6 +178,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
     
     const typeInfo = types[type as keyof typeof types] || types.general;
     
+
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${typeInfo.color}`}>
         {t(typeInfo.labelKey)}
@@ -224,7 +241,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
   };
 
   return (
-    <div id={`post-${post.id}`} className="bg-gray-900 rounded-lg p-4 mb-4 border border-gray-800">
+    <div id={`post-${post.id}`} className="bg-white rounded-lg p-4 mb-4 border border-gray-200 shadow-sm">
       {/* En-tête du post */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center space-x-3 flex-1">
@@ -233,14 +250,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             onClick={() => post.author_id && navigate(`/profile/${post.author_id}`)}
           >
             <AvatarImage src={post.profiles?.avatar_url} />
-            <AvatarFallback className="bg-gray-700 text-white">
+            <AvatarFallback className="bg-gray-200 text-gray-700">
               <User size={20} />
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center space-x-2">
               <span 
-                className="font-semibold text-white cursor-pointer hover:underline flex items-center gap-1"
+                className="font-semibold text-gray-900 cursor-pointer hover:underline flex items-center gap-1"
                 onClick={() => post.author_id && navigate(`/profile/${post.author_id}`)}
               >
                 {post.profiles?.first_name || post.profiles?.username || t('posts.user')}
@@ -248,13 +265,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
               </span>
               {renderPostType(post.post_type)}
             </div>
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-gray-500">
               {formatDistanceToNow(new Date(post.created_at), {
                 addSuffix: true,
                 locale: getDateLocale()
               })}
               {post.updated_at && new Date(post.updated_at).getTime() !== new Date(post.created_at).getTime() && (
-                <span className="ml-2 text-xs text-gray-500 italic">• {t('posts.modified')}</span>
+                <span className="ml-2 text-xs text-gray-400 italic">• {t('posts.modified')}</span>
               )}
             </span>
           </div>
@@ -299,16 +316,16 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         {isAuthor && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-gray-500 hover:text-black">
                 <MoreHorizontal size={20} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-800 border-gray-700">
-              <DropdownMenuItem onClick={handleEdit} className="text-white hover:bg-gray-700">
+            <DropdownMenuContent className="bg-white border-gray-200 shadow-md">
+              <DropdownMenuItem onClick={handleEdit} className="text-gray-700 hover:bg-gray-100">
                 <Edit size={16} className="mr-2" />
                 {t('posts.edit')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDelete} className="text-red-400 hover:bg-gray-700">
+              <DropdownMenuItem onClick={handleDelete} className="text-red-600 hover:bg-gray-100">
                 <Trash2 size={16} className="mr-2" />
                 {t('posts.delete')}
               </DropdownMenuItem>
@@ -318,7 +335,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
       </div>
 
       {/* Contenu du post */}
-      <div className="text-white mb-3">
+      <div className="text-gray-900 mb-3">
         <p className="whitespace-pre-wrap break-words">
           {isLongContent && !isExpanded 
             ? `${post.content.substring(0, MAX_CONTENT_LENGTH)}...` 
@@ -329,7 +346,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-blue-400 hover:text-white mt-2 text-xs p-0 h-auto"
+            className="text-blue-600 hover:text-blue-800 mt-2 text-xs p-0 h-auto"
           >
             {isExpanded ? t('posts.readLess') : t('posts.readMore')}
           </Button>
@@ -344,15 +361,15 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         post.age_range || 
         (post.gender && post.gender !== 'all')
       ) && (
-        <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 space-y-3">
-          <h3 className="text-white font-semibold text-sm mb-2 flex items-center">
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+          <h3 className="text-gray-900 font-semibold text-sm mb-2 flex items-center">
             <Briefcase size={16} className="mr-2" />
             {t('posts.recruitmentDetails')}
           </h3>
           
           {post.required_profiles && post.required_profiles.length > 0 && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.profilesNeeded')}</h4>
+              <h4 className="text-gray-500 text-xs font-medium mb-1">{t('posts.profilesNeeded')}</h4>
               <div className="flex flex-wrap gap-2">
                 {post.required_profiles.map((profile: string, index: number) => (
                   <span key={index} className="bg-blue-600 text-white px-2 py-1 rounded text-xs">
@@ -365,12 +382,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {post.required_documents && post.required_documents.length > 0 && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.documentsToProvide')}</h4>
+              <h4 className="text-gray-500 text-xs font-medium mb-1">{t('posts.documentsToProvide')}</h4>
               <ul className="space-y-1">
                 {post.required_documents.map((doc: {name: string; required: boolean}, index: number) => (
-                  <li key={index} className="text-gray-400 text-xs flex items-center">
-                    <span className={`w-2 h-2 rounded-full mr-2 ${doc.required ? 'bg-red-500' : 'bg-gray-500'}`}></span>
-                    {doc.name} {doc.required && <span className="ml-1 text-red-400">({t('posts.required')})</span>}
+                  <li key={index} className="text-gray-600 text-xs flex items-center">
+                    <span className={`w-2 h-2 rounded-full mr-2 ${doc.required ? 'bg-red-500' : 'bg-gray-400'}`}></span>
+                    {doc.name} {doc.required && <span className="ml-1 text-red-500">({t('posts.required')})</span>}
                   </li>
                 ))}
               </ul>
@@ -379,10 +396,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {post.geographic_zones && post.geographic_zones.length > 0 && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.geographicZones')}</h4>
+              <h4 className="text-gray-500 text-xs font-medium mb-1">{t('posts.geographicZones')}</h4>
               <div className="flex flex-wrap gap-2">
                 {post.geographic_zones.map((zone: string, index: number) => (
-                  <span key={index} className="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">
+                  <span key={index} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs">
                     {zone}
                   </span>
                 ))}
@@ -392,8 +409,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {(post.age_range?.min || post.age_range?.max) && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.ageRequired')}</h4>
-              <p className="text-gray-400 text-xs">
+              <h4 className="text-gray-500 text-xs font-medium mb-1">{t('posts.ageRequired')}</h4>
+              <p className="text-gray-600 text-xs">
                 {post.age_range.min && post.age_range.max 
                   ? `${t('posts.between')} ${post.age_range.min} ${t('posts.and')} ${post.age_range.max} ${t('posts.years')}`
                   : post.age_range.min 
@@ -406,8 +423,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
 
           {post.gender && post.gender !== 'all' && (
             <div>
-              <h4 className="text-gray-300 text-xs font-medium mb-1">{t('posts.gender')}</h4>
-              <p className="text-gray-400 text-xs">
+              <h4 className="text-gray-500 text-xs font-medium mb-1">{t('posts.gender')}</h4>
+              <p className="text-gray-600 text-xs">
                 {post.gender === 'male' ? t('posts.male') : t('posts.female')}
               </p>
             </div>
@@ -419,9 +436,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
       {renderMedia()}
 
       {/* Compteurs des actions */}
-      <div className="flex items-center space-x-6 mt-4 pt-3 border-t border-gray-800 text-sm text-gray-400">
+      <div className="flex items-center space-x-6 mt-4 pt-3 border-t border-gray-100 text-sm text-gray-500">
         <div 
-          className="flex items-center cursor-pointer hover:text-red-400 transition-colors"
+          className="flex items-center cursor-pointer hover:text-red-500 transition-colors"
           onClick={() => setLikesModalOpen(true)}
         >
           <Heart size={16} className={`mr-1.5 ${isLiked ? 'text-red-500 fill-current' : ''}`} />
@@ -444,8 +461,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         <Button 
           variant="ghost" 
           size="sm" 
-          className={`flex-1 ${isLiked ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
-          onClick={() => toggleLike()}
+          className={`flex-1 ${isLiked ? 'text-red-500' : 'text-gray-600'} hover:text-red-500 hover:bg-gray-100`}
+          onClick={handleLike}
           disabled={isLikeLoading || !user}
         >
           <Heart size={18} className={`mr-2 ${isLiked ? 'fill-current' : ''}`} />
@@ -455,7 +472,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="flex-1 text-gray-400 hover:text-blue-400"
+          className="flex-1 text-gray-600 hover:text-blue-600 hover:bg-gray-100"
           onClick={handleComment}
         >
           <MessageCircle size={18} className="mr-2" />
@@ -465,7 +482,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onEdit }) => {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="flex-1 text-gray-400 hover:text-green-400"
+          className="flex-1 text-gray-600 hover:text-green-600 hover:bg-gray-100"
           onClick={handleShare}
         >
           <Share size={18} className="mr-2" />

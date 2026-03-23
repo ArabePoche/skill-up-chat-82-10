@@ -159,9 +159,29 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const handlePublishToStory = async () => {
     try {
+      let contentType: 'text' | 'image' | 'video' | 'audio' = 'text';
+      let mediaUrl: string | undefined = undefined;
+      const baseText = `✅ Exercice validé !`;
+      const description = message.content ? `\n\n${message.content}` : '';
+
+      if (message.file_url) {
+        if (message.file_type?.startsWith('image/')) {
+          contentType = 'image';
+          mediaUrl = message.file_url;
+        } else if (message.file_type?.startsWith('video/')) {
+          contentType = 'video';
+          mediaUrl = message.file_url;
+        } else if (message.file_type?.startsWith('audio/') || message.message_type === 'audio') {
+          contentType = 'audio';
+          mediaUrl = message.file_url;
+        }
+      }
+
       await createStory.mutateAsync({
-        content_type: 'text',
-        content_text: `✅ Exercice validé !\n\n${message.content}`,
+        content_type: contentType,
+        content_text: contentType === 'text' ? `${baseText}${description}` : baseText,
+        media_url: mediaUrl,
+        description: description.trim(),
         background_color: '#22c55e' // Vert pour exercice validé
       });
       toast.success('Exercice publié en story !');
@@ -245,6 +265,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   lessonId={message.lesson_id}
                   formationId={message.formation_id}
                   isOwnMessage={isOwnMessage}
+                  authorName={
+                    message.profiles
+                      ? (message.profiles.first_name || message.profiles.last_name
+                        ? `${message.profiles.first_name || ''} ${message.profiles.last_name || ''}`.trim()
+                        : message.profiles.username)
+                      : 'Utilisateur'
+                  }
+                  authorAvatarUrl={message.profiles?.avatar_url}
                 />
               </div>
             )}

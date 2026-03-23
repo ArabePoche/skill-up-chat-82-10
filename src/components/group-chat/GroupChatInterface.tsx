@@ -414,6 +414,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           <LessonVideoPlayerWithTimer
             src={selectedVideo.video_url}
             formationId={formation.id}
+            lessonId={selectedVideo.id.toString()}
             onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
             onPlayStateChange={() => {}}
             className="w-full h-full"

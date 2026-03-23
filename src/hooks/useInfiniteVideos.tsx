@@ -1,7 +1,11 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
+
+// Générer un identifiant de session unique au chargement du module
+// Ainsi, le cache ('infinite-videos') sera complètement neuf à chaque F5/rechargement d'application.
+const SESSION_ID = Math.random().toString(36).substring(7);
 
 interface Video {
   id: string;
@@ -29,14 +33,30 @@ export const useInfiniteVideos = () => {
   // Set pour tracker les vidéos déjà affichées dans cette session
   const displayedVideosRef = useRef<Set<string>>(new Set());
 
+  // Avoir une clé unique par lancement permet d'ignorer complètement le cache persistant global
   const query = useInfiniteQuery({
-    queryKey: ['infinite-videos', user?.id],
-    queryFn: async () => {
+    queryKey: ['infinite-videos', user?.id, SESSION_ID],
+    queryFn: async ({ pageParam = 0 }) => {
       const pageSize = 3;
+
+      // Si on demande la première page (refresh complet), on vide l'historique
+      if (pageParam === 0) {
+        displayedVideosRef.current.clear();
+      }
 
       // Exclure les vidéos déjà affichées dans cette session
       const displayedIds = Array.from(displayedVideosRef.current);
       
+      // 1. Déterminer combien de vidéos totales existent pour pouvoir piocher une page "au hasard"
+      const { count } = await supabase
+        .from('videos')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .neq('video_type', 'lesson');
+        
+      const totalCount = count || 0;
+      const poolSize = pageSize * 4;
+
       // Construire la requête avec filtrage intelligent
       let query = supabase
         .from('videos')
@@ -58,12 +78,18 @@ export const useInfiniteVideos = () => {
         query = query.not('id', 'in', `(${displayedIds.join(',')})`);
       }
       
-      // Algorithme de recommandation avec shuffle réel
-      // On récupère un pool plus large puis on mélange côté client
-      const poolSize = pageSize * 4;
-      query = query.limit(poolSize);
+      // 2. Créer un "offset" de départ totalement aléatoire 
+      // pour que chaque requête tape au hasard dans toutes les vidéos existantes
+      if (totalCount > poolSize) {
+        // La plage d'offset doit prendre en compte qu'on a déjà ignoré (affiché) `displayedIds.length` vidéos
+        const maxOffset = Math.max(0, totalCount - displayedIds.length - poolSize);
+        const randomOffset = Math.floor(Math.random() * maxOffset);
+        query = query.range(randomOffset, randomOffset + poolSize - 1);
+      } else {
+        query = query.limit(poolSize);
+      }
 
-      // Varier le tri pour diversifier le pool
+      // Varier le tri même si on est sur un offset, pour assurer un maximum d'aléatoire
       const sortOptions = ['likes_count', 'created_at', 'comments_count'] as const;
       const randomSortKey = sortOptions[Math.floor(Math.random() * sortOptions.length)];
       query = query.order(randomSortKey, { ascending: Math.random() > 0.5 });
@@ -100,6 +126,8 @@ export const useInfiniteVideos = () => {
     initialPageParam: 0,
     retry: 1,
     retryDelay: 1000,
+    staleTime: 1000 * 60 * 5, // 5 minutes (évite le refetch intempestif qui remplace la vidéo)
+    refetchOnMount: false, // Évite de recharger si le composant remonte
     refetchOnWindowFocus: false,
   });
 

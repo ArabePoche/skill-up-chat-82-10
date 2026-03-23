@@ -49,55 +49,80 @@ export const useUnreadMessagesByLevel = (formationId: string) => {
 
       const unreadCounts: Record<string, { level: number; lessons: Record<string, number> }> = {};
 
-      // Pour chaque niveau, compter les messages non lus
-      for (const level of levels) {
-        let levelUnreadCount = 0;
-        const lessonCounts: Record<string, number> = {};
+      if (teacherCheck) {
+        // Optimisation Professeurs : Récupérer tous les messages non lus en une seule requête
+        const { data: unreadMessages } = await supabase
+          .from('lesson_messages')
+          .select('id, level_id, lesson_id')
+          .eq('formation_id', formationId)
+          .is('read_by_teachers', null)
+          .neq('sender_id', user.id)
+          .eq('is_system_message', false);
 
-        if (level.lessons) {
-          for (const lesson of level.lessons) {
-            let lessonUnreadCount = 0;
+        if (unreadMessages) {
+          // Initialiser la structure pour tous les niveaux
+          levels.forEach(level => {
+            unreadCounts[level.id] = { level: 0, lessons: {} };
+            level.lessons?.forEach(lesson => {
+              unreadCounts[level.id].lessons[lesson.id] = 0;
+            });
+          });
 
-            if (teacherCheck) {
-              // Pour les professeurs : compter les messages non lus (où read_by_teacher est null)
-              const { count } = await supabase
-                .from('lesson_messages')
-                .select('*', { count: 'exact', head: true })
-                .eq('formation_id', formationId)
-                .eq('lesson_id', lesson.id)
-                .is('read_by_teachers', null) // Non lu par aucun prof
-                .neq('sender_id', user.id)
-                .eq('is_system_message', false); // Exclure les messages système
-
-              lessonUnreadCount = count || 0;
-            } else if (studentCheck) {
-              // Pour les étudiants : compter les messages système non lus qui leur sont adressés
-              const { count } = await supabase
-                .from('lesson_messages')
-                .select('*', { count: 'exact', head: true })
-                .eq('formation_id', formationId)
-                .eq('lesson_id', lesson.id)
-                .eq('receiver_id', user.id)
-                .eq('is_read', false)
-                .eq('is_system_message', true);
-
-              lessonUnreadCount = count || 0;
+          // Agréger les résultats
+          unreadMessages.forEach(msg => {
+            if (!msg.level_id) return;
+            
+            if (!unreadCounts[msg.level_id]) {
+              unreadCounts[msg.level_id] = { level: 0, lessons: {} };
             }
-
-            lessonCounts[lesson.id] = lessonUnreadCount;
-            levelUnreadCount += lessonUnreadCount;
-          }
+            
+            unreadCounts[msg.level_id].level++;
+            
+            if (msg.lesson_id) {
+               unreadCounts[msg.level_id].lessons[msg.lesson_id] = (unreadCounts[msg.level_id].lessons[msg.lesson_id] || 0) + 1;
+            }
+          });
         }
+      } else if (studentCheck) {
+        // Optimisation Étudiants : Récupérer tous les messages non lus en une seule requête
+        const { data: unreadMessages } = await supabase
+          .from('lesson_messages')
+          .select('id, level_id, lesson_id')
+          .eq('formation_id', formationId)
+          .eq('receiver_id', user.id)
+          .eq('is_read', false)
+          .eq('is_system_message', true);
 
-        unreadCounts[level.id] = {
-          level: levelUnreadCount,
-          lessons: lessonCounts
-        };
+         if (unreadMessages) {
+          // Initialiser la structure
+          levels.forEach(level => {
+             unreadCounts[level.id] = { level: 0, lessons: {} };
+              level.lessons?.forEach(lesson => {
+                unreadCounts[level.id].lessons[lesson.id] = 0;
+             });
+          });
+
+          // Agréger
+          unreadMessages.forEach(msg => {
+             if (!msg.level_id) return;
+
+             if (!unreadCounts[msg.level_id]) {
+               unreadCounts[msg.level_id] = { level: 0, lessons: {} };
+             }
+             
+             unreadCounts[msg.level_id].level++;
+             
+             if (msg.lesson_id) {
+                unreadCounts[msg.level_id].lessons[msg.lesson_id] = (unreadCounts[msg.level_id].lessons[msg.lesson_id] || 0) + 1;
+             }
+          });
+        }
       }
 
       return unreadCounts;
     },
     enabled: !!user?.id && !!formationId,
-    refetchInterval: 10000, // Rafraîchir toutes les 10 secondes
+    staleTime: 30000, 
+    refetchInterval: 60000, // Rafraîchir toutes les minutes c'est suffisant (le realtime gère l'immédiat)
   });
 };

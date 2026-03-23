@@ -147,22 +147,77 @@ const getDefaultExtension = (mediaType: MediaType): string => {
 
 /**
  * Sauvegarde un fichier temporairement pour le transfert vers la galerie
+ * Écrit par chunks pour éviter le dépassement de mémoire (base64)
  */
 const saveTempFile = async (
   blob: Blob,
   fileName: string
 ): Promise<string> => {
-  // Convertir le blob en base64
-  const base64 = await blobToBase64(blob);
+  // On commence par supprimer tout fichier existant
+  try {
+    await Filesystem.deleteFile({
+      path: fileName,
+      directory: Directory.Cache,
+    });
+  } catch (e) {
+    // Ignorer si le fichier n'existe pas
+  }
+
+  // Si le fichier est petit (< 5MB), on utilise l'écriture directe rapide
+  if (blob.size < 5 * 1024 * 1024) {
+    const base64 = await blobToBase64(blob);
+    const result = await Filesystem.writeFile({
+      path: fileName,
+      data: base64,
+      directory: Directory.Cache,
+    });
+    return result.uri;
+  }
+
+  // Pour les gros fichiers (vidéos), on écrit par morceaux (chunks)
+  // Taille du chunk: 1MB (compromis vitesse/mémoire pour la conversion base64)
+  const CHUNK_SIZE = 1024 * 1024;
+  let offset = 0;
   
-  // Sauvegarder dans le cache Capacitor
-  const result = await Filesystem.writeFile({
+  const totalChunks = Math.ceil(blob.size / CHUNK_SIZE);
+  console.log(`💾 Écriture fichier ${fileName} en ${totalChunks} chunks...`);
+
+  // Initialisation du fichier vide (pour garantir l'existence avant append)
+  await Filesystem.writeFile({
     path: fileName,
-    data: base64,
+    data: '',
     directory: Directory.Cache,
   });
 
-  return result.uri;
+  const CHUNKS_PER_YIELD = 5;
+  let chunkCount = 0;
+
+  while (offset < blob.size) {
+    const chunk = blob.slice(offset, offset + CHUNK_SIZE);
+    const base64Chunk = await blobToBase64(chunk);
+    
+    await Filesystem.appendFile({
+      path: fileName,
+      data: base64Chunk,
+      directory: Directory.Cache,
+    });
+    
+    offset += CHUNK_SIZE;
+    chunkCount++;
+    
+    // Pause pour éviter de geler l'interface sur mobile
+    if (chunkCount % CHUNKS_PER_YIELD === 0) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  }
+  
+  // Récupérer l'URI final
+  const uriResult = await Filesystem.getUri({
+    path: fileName,
+    directory: Directory.Cache,
+  });
+
+  return uriResult.uri;
 };
 
 /**

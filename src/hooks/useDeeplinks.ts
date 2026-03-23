@@ -118,6 +118,28 @@ export const useDeepLinks = () => {
     // Écouter les événements d'URL (quand l'app est ouverte via un lien)
     const urlListener = App.addListener('appUrlOpen', handleDeepLink);
 
+    // Écouter les événements de redirection venant des notifications push natives
+    const handlePushAction = (event: any) => {
+      const path = event.detail?.path;
+      if (path) {
+        console.log('[DeepLinks] Navigation via push:', path);
+        // Si c'est une URL complète (ex: https://...), on utilise le parser
+        if (path.startsWith('http')) {
+          const internalPath = parseDeepLinkUrl(path);
+          if (internalPath && location.pathname !== internalPath) {
+            navigate(internalPath);
+          }
+        } else {
+          // Sinon on navigue directement
+          if (location.pathname !== path) {
+            navigate(path);
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('push-notification-action', handlePushAction);
+
     // Vérifier si l'app a été lancée avec une URL (cold start)
     App.getLaunchUrl().then((launchUrl) => {
       if (launchUrl?.url) {
@@ -128,6 +150,7 @@ export const useDeepLinks = () => {
 
     return () => {
       urlListener.then(listener => listener.remove());
+      window.removeEventListener('push-notification-action', handlePushAction);
     };
   }, [handleDeepLink]);
 };

@@ -32,8 +32,10 @@ export const useMatchingUsers = () => {
     try {
       // Normaliser les numéros (enlever espaces, tirets, etc.)
       const normalizedNumbers = phoneNumbers.map(num =>
-        num.replace(/[\s\-\(\)]/g, '')
+        num.replace(/[^0-9+]/g, '')
       );
+      
+      console.log('🔍 Recherche de contacts avec les numéros normalization:', normalizedNumbers);
 
       // Appeler la fonction RPC sécurisée (SECURITY DEFINER, bypass RLS)
       const { data: matches, error } = await supabase

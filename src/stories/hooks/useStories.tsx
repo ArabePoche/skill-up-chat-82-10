@@ -34,8 +34,18 @@ export const useStories = () => {
   return useQuery({
     queryKey: ['stories'],
     queryFn: async () => {
+      if (!user) return [];
+
+      // Récupérer les amis (statut accepté)
+      const { data: friends } = await supabase
+        .from('friend_requests')
+        .select('sender_id, receiver_id')
+        .eq('status', 'accepted')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
       
-      
+      const friendIds = friends?.map(f => f.sender_id === user.id ? f.receiver_id : f.sender_id) || [];
+      const allowedUserIds = [user.id, ...friendIds];
+
       const { data, error } = await supabase
         .from('user_stories')
         .select(`
@@ -63,6 +73,7 @@ export const useStories = () => {
             experience_level
           )
         `)
+        .in('user_id', allowedUserIds)
         .eq('is_active', true)
         .gte('expires_at', new Date().toISOString())
         .order('created_at', { ascending: true });

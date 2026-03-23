@@ -2,34 +2,43 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Maximize2, Volume2, VolumeX, ThumbsUp, Share2, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useVideoLikes } from '@/hooks/useVideoLikes';
+import { useLessonVideoLikes } from '@/hooks/useLessonVideoLikes';
 import { useLessonVideoComments } from '@/hooks/useLessonVideoComments';
-import { useCommentLikes } from '@/hooks/useCommentLikes';
+import { useLessonCommentLikes } from '@/hooks/useLessonCommentLikes';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { recordHabbahGain } from '@/services/habbahService';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
+import { Trash2 } from 'lucide-react';
 
 interface LessonVideoPlayerProps {
-  videoId?: string;
+  lessonId?: string;
   url: string;
   className?: string;
   title?: string;
   views?: string;
   channelName?: string;
+  authorName?: string;
+  authorAvatarUrl?: string;
   onPlayStateChange?: (isPlaying: boolean) => void;
 }
 
 const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({ 
-  videoId,
+  lessonId,
   url, 
   className = "",
   title = "Vidéo de la leçon",
   views = "12 345 vues",
   channelName = "Formation Academy",
+  authorName,
+  authorAvatarUrl,
   onPlayStateChange
 }) => {
+  const displayAuthorName = authorName || channelName;
+
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -45,20 +54,32 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
   const [replyContent, setReplyContent] = useState('');
 
   // Hooks pour les likes et commentaires
-  const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = useVideoLikes(videoId || '', 0);
-  const { comments, commentsCount, addComment, isSubmitting } = useLessonVideoComments(videoId || '');
+  // Utilise lessonId pour les likes et commentaires
+  const { isLiked, likesCount, toggleLike, isLoading: isLikeLoading } = useLessonVideoLikes(lessonId || '', 0);
+  const { comments, commentsCount, addComment, deleteComment, isSubmitting } = useLessonVideoComments(lessonId || '');
 
-  const handleLikeClick = () => {
-    if (!videoId) return;
+  const handleLikeClick = async () => {
+    if (!lessonId) return;
     if (!user) {
       toast.error('Connectez-vous pour liker cette vidéo');
       return;
     }
+    const wasLiked = isLiked;
     toggleLike();
+
+    if (!wasLiked) {
+      // Habbah gain
+      try {
+        const reward = await recordHabbahGain(user.id, 'like', lessonId);
+        if (reward) notifyHabbahGain(reward.amount, reward.label);
+      } catch (error) {
+        console.error('Error logging habbah video like:', error);
+      }
+    }
   };
 
   const handleCommentSubmit = async () => {
-    if (!videoId) return;
+    if (!lessonId) return;
     if (!user) {
       toast.error('Connectez-vous pour commenter');
       return;
@@ -75,20 +96,31 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
   };
 
   const handleReplySubmit = async (parentId: string) => {
-    if (!videoId) return;
+    if (!lessonId) return;
     if (!user) {
       toast.error('Connectez-vous pour répondre');
       return;
     }
     if (!replyContent.trim()) return;
     
-    const success = await addComment(replyContent);
+    // addComment gère maintenant parentId
+    const success = await addComment(replyContent, parentId);
     if (success) {
       setReplyContent('');
       setReplyingTo(null);
       toast.success('Réponse ajoutée');
     } else {
       toast.error('Erreur lors de l\'ajout de la réponse');
+    }
+  };
+  
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Voulez-vous vraiment supprimer ce commentaire ?')) return;
+    const success = await deleteComment(commentId);
+    if (success) {
+      toast.success('Commentaire supprimé');
+    } else {
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -476,12 +508,13 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
           
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-primary-foreground font-semibold text-sm">
-                  {channelName.charAt(0)}
-                </span>
-              </div>
-              <span className="text-sm font-medium">{channelName}</span>
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={authorAvatarUrl} alt={displayAuthorName} />
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
+                  {displayAuthorName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium">{displayAuthorName}</span>
             </div>
           </div>
         </div>
@@ -523,7 +556,9 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
                   setReplyingTo={setReplyingTo}
                   setReplyContent={setReplyContent}
                   handleReplySubmit={handleReplySubmit}
+                  handleDeleteComment={handleDeleteComment}
                   isSubmitting={isSubmitting}
+                  currentUserId={user?.id}
                 />
               ))}
             </div>
@@ -542,14 +577,17 @@ const CommentItem = ({
   setReplyingTo, 
   setReplyContent, 
   handleReplySubmit,
-  isSubmitting 
+  handleDeleteComment,
+  isSubmitting,
+  currentUserId
 }: any) => {
-  const { isLiked, likesCount, toggleLike } = useCommentLikes(comment.id, comment.likes_count || 0);
-  const { user } = useAuth();
+  const { isLiked, likesCount, toggleLike } = useLessonCommentLikes(comment.id, comment.likes_count || 0);
 
   const displayName = comment.profiles?.first_name && comment.profiles?.last_name
     ? `${comment.profiles.first_name} ${comment.profiles.last_name}`
     : comment.profiles?.username || 'Utilisateur';
+
+  const isAuthor = currentUserId === comment.user_id;
 
   return (
     <div className="space-y-2">
@@ -561,11 +599,22 @@ const CommentItem = ({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">{displayName}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground mr-auto">
               {new Date(comment.created_at).toLocaleDateString('fr-FR')}
             </span>
+             {isAuthor && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                onClick={() => handleDeleteComment(comment.id)}
+                title="Supprimer"
+              >
+                <Trash2 size={14} />
+              </Button>
+            )}
           </div>
-          <p className="text-sm mt-1">{comment.content}</p>
+          <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
           <div className="flex items-center gap-2 mt-2">
             <Button
               variant="ghost"
@@ -626,7 +675,9 @@ const CommentItem = ({
                   setReplyingTo={setReplyingTo}
                   setReplyContent={setReplyContent}
                   handleReplySubmit={handleReplySubmit}
+                  handleDeleteComment={handleDeleteComment}
                   isSubmitting={isSubmitting}
+                  currentUserId={currentUserId}
                 />
               ))}
             </div>

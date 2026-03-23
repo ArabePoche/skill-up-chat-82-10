@@ -25,6 +25,10 @@ import VideoMessageSwitch from './video/VideoMessageSwitch';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { useLessonUnlocking } from '@/hooks/useLessonUnlocking';
+import { useMarkLessonAsCompleted } from '@/hooks/useMarkLessonAsCompleted';
+import { useQuiz } from '@/hooks/quiz/useQuiz';
+import { CheckCircle } from 'lucide-react';
 
 
 interface ChatInterfaceProps {
@@ -59,9 +63,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     formation.id
   );
   
-  const { data: exercises = [] } = useLessonExercises(lesson.id.toString());
+  const { data: exercises = [], isLoading: exercisesLoading } = useLessonExercises(lesson.id.toString());
   const { data: userRole } = useUserRole(formation.id);
   const { data: evaluations = [] } = useStudentEvaluations();
+
+  const { data: unlockedLessons } = useLessonUnlocking(formation.id);
+  const { data: quiz, isLoading: isQuizLoading } = useQuiz(lesson.id.toString());
+  const { mutate: markAsCompleted, isPending: isMarkingCompleted } = useMarkLessonAsCompleted();
+
+  const currentLessonProgress = unlockedLessons?.find((l: any) => l.lesson_id === lesson.id.toString());
+  const isCompleted = currentLessonProgress?.status === 'completed';
+
+  const handleMarkAsCompleted = () => {
+    markAsCompleted({ lessonId: lesson.id, formationId: formation.id });
+  };
   
   const sendMessageMutation = useSendMessage(lesson.id.toString(), formation.id);
   const markAsReadMutation = useMarkMessagesAsRead();
@@ -328,6 +343,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           <LessonVideoPlayerWithTimer
             src={lesson.video_url}
             formationId={formation.id}
+            lessonId={lesson.id.toString()}
             onUpgrade={() => navigate(`/formation/${formation.id}/pricing`)}
             onPlayStateChange={setIsVideoPlaying}
             className="w-full"
@@ -335,6 +351,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           {/* Quiz sous la vidéo - visible uniquement pour les élèves */}
           {userRole?.role !== 'teacher' && (
             <QuizPlayer lessonId={lesson.id.toString()} />
+          )}
+
+          {/* Bouton Terminer pour les leçons libres (sans quiz ni exercices) */}
+          {userRole?.role !== 'teacher' && !isCompleted && !quiz && !isQuizLoading && !exercisesLoading && (!exercises || exercises.length === 0) && (
+             <div className="p-4 flex justify-center bg-gray-900 border-t border-gray-800">
+               <Button 
+                onClick={handleMarkAsCompleted} 
+                disabled={isMarkingCompleted} 
+                className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
+               >
+                 <CheckCircle className="mr-2 h-4 w-4" />
+                 {t('lesson.markAsCompleted', 'Terminer la leçon')}
+               </Button>
+             </div>
           )}
         </div>
       )}

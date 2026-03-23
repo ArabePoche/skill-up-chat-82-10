@@ -1,5 +1,6 @@
 // Hook pour gérer le portefeuille multi-devises (Soumboulah Cash, Soumboulah Bonus, Habbah)
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -29,6 +30,32 @@ export interface WalletTransaction {
 export const useUserWallet = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Souscrire aux changements en temps réel du portefeuille
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`wallet-updates-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_wallets',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Wallet update via realtime:', payload);
+          queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
 
   // Récupérer le portefeuille (auto-création si inexistant)
   const walletQuery = useQuery({

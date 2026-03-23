@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
 import { useVideoComments } from '@/hooks/useVideoComments';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { recordHabbahGain } from '@/services/habbahService';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 
 interface Video {
   id: string;
@@ -24,7 +27,8 @@ const VideoActions: React.FC<VideoActionsProps> = ({
   onShareClick
 }) => {
   const [isSaved, setIsSaved] = useState(false);
-
+  const { user } = useAuth();
+  
   const {
     isLiked,
     likesCount,
@@ -37,9 +41,19 @@ const VideoActions: React.FC<VideoActionsProps> = ({
     isLoading: isCommentsLoading
   } = useVideoComments(video.id); // ✅ Importation du hook commentaire
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const wasLiked = isLiked;
     toggleLike();
+
+    if (!wasLiked && user?.id) {
+       try {
+         const reward = await recordHabbahGain(user.id, 'like', video.id);
+         if (reward) notifyHabbahGain(reward.amount, reward.label);
+       } catch (error) {
+         console.error('Error logging habbah video like:', error);
+       }
+    }
   };
 
   const handleComment = (e: React.MouseEvent) => {

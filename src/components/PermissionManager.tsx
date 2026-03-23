@@ -17,9 +17,11 @@ const PermissionManager = () => {
   useEffect(() => {
     const askPermissions = async () => {
       try {
-        // Caméra & galerie - demande toutes les permissions
-        await Camera.requestPermissions({ permissions: ['camera', 'photos'] });
-        console.log('Permissions caméra et photos demandées');
+        // Caméra & galerie - demande les permissions uniquement sur appareil natif
+        if (Capacitor.isNativePlatform()) {
+          await Camera.requestPermissions({ permissions: ['camera', 'photos'] });
+          console.log('Permissions caméra et photos demandées');
+        }
         
         // Contacts - demande la permission si disponible
         if (Capacitor.isNativePlatform() && Contacts) {

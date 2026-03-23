@@ -15,6 +15,7 @@ import LessonVideoPlayer from '../LessonVideoPlayer';
 import QuizPlayer from '../quiz/QuizPlayer';
 import { groupMessagesByDate } from '@/utils/dateUtils';
 import { useCachePreloader } from '@/file-manager/hooks/useCachePreloader';
+import { useFormationAuthor } from '@/hooks/useFormationAuthor';
 
 interface Message {
   id: string;
@@ -106,6 +107,9 @@ const MessageList: React.FC<MessageListProps> = ({
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialScrolled = useRef(false);
+
+  // Hook pour récupérer l'auteur de la formation
+  const { data: formationAuthor } = useFormationAuthor(formationId);
 
   // ⚡ OPTIMISATION: Extraire toutes les URLs de médias et précharger le cache
   const mediaUrls = useMemo(() => {
@@ -228,10 +232,21 @@ const MessageList: React.FC<MessageListProps> = ({
             >
               <LessonVideoPlayer 
                 url={message.video_url || ''}
-                videoId={message.lesson_id || undefined}
+                lessonId={message.lesson_id || undefined}
                 title={message.lesson_title || 'Vidéo de la leçon'}
                 views="Formation"
-                channelName="Académie"
+                authorName={
+                  message.profiles 
+                    ? (message.profiles.first_name || message.profiles.last_name 
+                      ? `${message.profiles.first_name || ''} ${message.profiles.last_name || ''}`.trim() 
+                      : message.profiles.username || 'Utilisateur')
+                    : (formationAuthor 
+                        ? (formationAuthor.first_name || formationAuthor.last_name
+                            ? `${formationAuthor.first_name || ''} ${formationAuthor.last_name || ''}`.trim()
+                            : formationAuthor.username)
+                        : 'Académie')
+                }
+                authorAvatarUrl={message.profiles?.avatar_url || formationAuthor?.avatar_url}
                 className="w-full rounded-lg overflow-hidden shadow-md"
               />
               {/* Quiz sous la vidéo correspondante - visible uniquement pour les élèves */}

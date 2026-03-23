@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { PlanLimitAlert } from '@/plan-limits/components/PlanLimitAlert';
 import LessonVideoPlayer from '@/components/LessonVideoPlayer';
+import { useFormationAuthor } from '@/hooks/useFormationAuthor';
 
 interface RestrictedVideoPlayerProps {
   src: string;
@@ -25,6 +26,9 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Hook pour récupérer l'auteur de la formation
+  const { data: formationAuthor } = useFormationAuthor(formationId);
 
   const {
     sessionTime,
@@ -121,6 +125,14 @@ export const RestrictedVideoPlayer: React.FC<RestrictedVideoPlayerProps> = ({
       <LessonVideoPlayer 
         url={src}
         className="w-full h-auto"
+        authorName={
+          formationAuthor 
+            ? (formationAuthor.first_name || formationAuthor.last_name
+                ? `${formationAuthor.first_name || ''} ${formationAuthor.last_name || ''}`.trim()
+                : formationAuthor.username)
+            : 'Académie'
+        }
+        authorAvatarUrl={formationAuthor?.avatar_url}
       />
       <video
         ref={videoRef}

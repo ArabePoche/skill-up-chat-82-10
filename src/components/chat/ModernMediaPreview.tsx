@@ -23,7 +23,9 @@ interface ModernMediaPreviewProps {
   isTeacher?: boolean;
   lessonId?: string;
   formationId?: string;
-  isOwnMessage?: boolean; // Si c'est le propre message de l'utilisateur - fichier déjà local
+  isOwnMessage?: boolean;
+  authorName?: string;
+  authorAvatarUrl?: string; // Add new props
 }
 
 const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
@@ -38,7 +40,9 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
   isTeacher = false,
   lessonId,
   formationId,
-  isOwnMessage = false
+  isOwnMessage = false,
+  authorName,
+  authorAvatarUrl
 }) => {
 const [showFullscreen, setShowFullscreen] = useState(false);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
@@ -122,7 +126,13 @@ const [showFullscreen, setShowFullscreen] = useState(false);
             
             {(isVideo || isYouTubeVideo) && (
               <div className="w-full max-h-[90vh]">
-                <LessonVideoPlayer url={fileUrl} className="w-full" />
+                <LessonVideoPlayer 
+                  url={fileUrl} 
+                  className="w-full" 
+                  lessonId={lessonId}
+                  authorName={authorName}
+                  authorAvatarUrl={authorAvatarUrl}
+                />
               </div>
             )}
           </div>
@@ -208,7 +218,13 @@ const [showFullscreen, setShowFullscreen] = useState(false);
 
       {isYouTubeVideo && (
         <div className="max-w-xs sm:max-w-sm">
-          <LessonVideoPlayer url={fileUrl} className="w-full" />
+          <LessonVideoPlayer 
+            url={fileUrl} 
+            className="w-full"
+            lessonId={lessonId} 
+            authorName={authorName}
+            authorAvatarUrl={authorAvatarUrl}
+          />
         </div>
       )}
 

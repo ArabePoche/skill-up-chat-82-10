@@ -78,75 +78,66 @@ export const useTeacherGroupDiscussions = (formationId: string) => {
 
       const studentIds = enrolledStudents?.map(e => e.user_id) || [];
 
-      const groupDiscussions: GroupDiscussion[] = [];
+      // Utiliser Promise.all pour paralléliser les requêtes par niveau
+      const groupDiscussionsPromises = levels.map(async (level) => {
+        if (!level.lessons || level.lessons.length === 0) return null;
 
-      // Pour chaque niveau, chercher les messages de groupe
-      for (const level of levels) {
-        if (!level.lessons || level.lessons.length === 0) continue;
-
-        const lessonIds = level.lessons.map(l => l.id);
-
-        // Récupérer les messages de groupe pour ce niveau (promotion_id NOT NULL)
-        const { data: groupMessages, error } = await supabase
+        // Récupérer le dernier message du niveau
+        const { data: latestMessages, error: latestError } = await supabase
           .from('lesson_messages')
-          .select(`
-            created_at,
-            content,
-            promotion_id,
-            sender_id
-          `)
+          .select('created_at, content, promotion_id, sender_id')
           .eq('formation_id', formationId)
-          .in('lesson_id', lessonIds)
+          .eq('level_id', level.id) // Utiliser level_id directement
           .not('promotion_id', 'is', null) // Messages de groupe uniquement
           .order('created_at', { ascending: false })
-          .limit(1); // On veut juste le dernier message pour l'affichage
+          .limit(1);
 
-        if (error) {
-          console.error('Error fetching group messages for level:', level.id, error);
-          continue;
-        }
+        if (latestError || !latestMessages || latestMessages.length === 0) return null;
 
-        if (!groupMessages || groupMessages.length === 0) continue;
+        const lastMessage = latestMessages[0];
 
-        // Compter les messages non lus pour ce niveau
-        let unreadCount = 0;
-        for (const lesson of level.lessons) {
-          const { count } = await supabase
+        // Compter les messages non lus pour ce niveau (une seule requête au lieu de boucle sur leçons)
+        // Utiliser level_id pour compter directement
+        const { count: unreadCount } = await supabase
             .from('lesson_messages')
             .select('*', { count: 'exact', head: true })
             .eq('formation_id', formationId)
-            .eq('lesson_id', lesson.id)
+            .eq('level_id', level.id)
             .not('promotion_id', 'is', null) // Messages de groupe
             .is('read_by_teachers', null) // Non lu par aucun prof
             .neq('sender_id', user.id) // Pas ses propres messages
             .eq('is_system_message', false);
 
-          unreadCount += count || 0;
-        }
-
-        // Compter le nombre d'étudiants qui participent aux discussions de ce niveau
-        const { data: participatingStudents } = await supabase
+        // Compter le nombre d'étudiants distincts (en récupérant que les IDs uniques)
+        // Ici on filtre aussi par `studentIds` pour être sûr qu'ils sont inscrits
+        const { data: participants } = await supabase
           .from('lesson_messages')
-          .select('sender_id', { count: 'exact' })
+          .select('sender_id')
           .eq('formation_id', formationId)
-          .in('lesson_id', lessonIds)
-          .not('promotion_id', 'is', null)
-          .in('sender_id', studentIds);
-
-        const uniqueStudents = new Set(participatingStudents?.map(m => m.sender_id) || []);
-
-        const lastMessage = groupMessages[0];
+          .eq('level_id', level.id)
+          .not('promotion_id', 'is', null);
+          
+        const uniqueStudents = new Set(
+          participants
+            ?.filter(p => studentIds.includes(p.sender_id))
+            .map(p => p.sender_id) 
+            || []
+        );
         
-        groupDiscussions.push({
+        return {
           level_id: level.id,
           level_title: level.title,
           level_order: level.order_index,
-          unread_count: unreadCount,
+          unread_count: unreadCount || 0,
           last_message_time: lastMessage.created_at,
           last_message_content: lastMessage.content,
           students_count: uniqueStudents.size
-        });
-      }
+        };
+      });
+
+      const results = await Promise.all(groupDiscussionsPromises);
+      
+      const groupDiscussions = results.filter((item): item is GroupDiscussion => item !== null);
 
       // Trier par messages non lus puis par ordre de niveau
       const sortedDiscussions = groupDiscussions.sort((a, b) => {
@@ -160,6 +151,6 @@ export const useTeacherGroupDiscussions = (formationId: string) => {
       return sortedDiscussions;
     },
     enabled: !!formationId && !!user?.id,
-    refetchInterval: 3000,
+    staleTime: 60000, 
   });
 };

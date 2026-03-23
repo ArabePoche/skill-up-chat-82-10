@@ -60,6 +60,31 @@ export const useIsLessonUnlocked = (lessonId: string | number, formationId: stri
     queryFn: async () => {
       if (!user?.id || !lessonId || !formationId) return false;
 
+      // Vérifier d'abord les restrictions liées au plan (ex: plan gratuit limité)
+      const { data: enrollment } = await supabase
+        .from('enrollment_requests')
+        .select('plan_type')
+        .eq('user_id', user.id)
+        .eq('formation_id', formationId)
+        .eq('status', 'approved')
+        .maybeSingle();
+
+      if (enrollment) {
+        const { data: pricingOption } = await supabase
+          .from('formation_pricing_options')
+          .select('lesson_access')
+          .eq('formation_id', formationId)
+          .eq('plan_type', enrollment.plan_type)
+          .maybeSingle();
+
+        // Si une liste d'accès spécifique est définie, vérifier si la leçon est dedans
+        if (pricingOption?.lesson_access && pricingOption.lesson_access.length > 0) {
+          if (!pricingOption.lesson_access.includes(lessonId.toString())) {
+            return false;
+          }
+        }
+      }
+
       // Récupérer la leçon et son mode de déblocage
       const { data: lesson } = await supabase
         .from('lessons')

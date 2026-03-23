@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import { downloadVideoWithWatermark } from '@/utils/videoWatermark';
+import { requestServerWatermarkVideo } from '@/services/watermarkService';
 import { useTranslation } from 'react-i18next';
 
 interface VideoDownloadModalProps {
@@ -46,6 +47,9 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
     try {
       toast.info('Préparation du téléchargement...');
 
+      // Retour temporaire à la méthode locale optimisée :
+      // Les "Edge Functions" de Supabase (Serverless) ne supportent pas l'exécution de logiciels lourds comme FFmpeg (ce qui causait l'erreur 500).
+      // On utilise donc le fallback local en attendant l'intégration d'une API tierce ou d'un worker Web.
       await downloadVideoWithWatermark({
         videoUrl,
         watermarkText: 'EducaTok',
@@ -89,9 +93,9 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
 
           {/* Info watermark */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-            <span className="text-base">🔒</span>
+            <span className="text-base">©</span>
             <span>
-              Un watermark "EducaTok" sera incrusté sur la vidéo téléchargée
+              Respectez les droits d'auteur et la propriété intellectuelle lors du partage de ce contenu.
             </span>
           </div>
 

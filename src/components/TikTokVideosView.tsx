@@ -277,21 +277,45 @@ const TikTokVideosView: React.FC<{
         </div>
         
         {/* Affichage de toutes les vidéos avec scroll fluide */}
-        {displayedVideos.map((video, index) => (
+        {displayedVideos.map((video, index) => {
+          // Utiliser l'index comme clé de repli si l'ID n'est pas unique (ce qui ne devrait pas arriver)
+          // Mais pour plus de robustesse, on combine ID et index si nécessaire
+          const uniqueKey = `${video.id}-${index}`;
+          
+          // Optimisation : rendu "fenêtré" (virtualisation légère)
+          // On ne rend que la vidéo active et ses voisines immédiates
+          const shouldRender = Math.abs(index - currentVideoIndex) <= 2;
+          
+          return (
           <div
-            key={video.id}
+            key={uniqueKey}
             ref={(el) => (videoRefs.current[index] = el)}
             data-video-index={index}
             className="relative h-screen w-full snap-start snap-always flex-shrink-0"
           >
-            <VideoCard
-              video={video}
-              isActive={index === currentVideoIndex}
-              onLikeWithConfetti={handleLikeWithConfetti}
-              onCommentAdded={handleCommentAdded}
-            />
+            {shouldRender ? (
+              <VideoCard
+                video={video}
+                isActive={index === currentVideoIndex}
+                onLikeWithConfetti={handleLikeWithConfetti}
+                onCommentAdded={handleCommentAdded}
+              />
+            ) : (
+               /* Placeholder léger pour les vidéos hors écran afin de libérer la mémoire */
+              <div className="w-full h-full relative bg-black overflow-hidden">
+                 {video.thumbnail_url && (
+                    <img 
+                        src={video.thumbnail_url} 
+                        alt="" 
+                        className="w-full h-full object-cover opacity-20 blur-md pointer-events-none"
+                        loading="lazy" 
+                    />
+                 )}
+              </div>
+            )}
           </div>
-        ))}
+        )})}
+
 
         {/* Chargement des vidéos suivantes */}
         {isFetchingNextPage && (

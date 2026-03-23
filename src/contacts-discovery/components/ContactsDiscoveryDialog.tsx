@@ -49,9 +49,15 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
 
   const handleSync = async () => {
     const phoneContacts = await requestContacts();
-    if (phoneContacts.length > 0) {
-      const allPhoneNumbers = phoneContacts.flatMap(c => c.phoneNumbers);
-      await findMatchingUsers(allPhoneNumbers);
+    // Même si aucun contact n'est trouvé, on marque comme synchronisé pour afficher le résultat vide
+    // au lieu de proposer à nouveau la synchronisation en boucle
+    if (phoneContacts) {
+      if (phoneContacts.length > 0) {
+        const allPhoneNumbers = phoneContacts.flatMap(c => c.phoneNumbers);
+        if (allPhoneNumbers.length > 0) {
+          await findMatchingUsers(allPhoneNumbers);
+        }
+      }
       setHasSynced(true);
     }
   };

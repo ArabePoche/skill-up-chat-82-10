@@ -198,9 +198,16 @@ const StoriesSection = () => {
       <div className="flex space-x-3 p-4 overflow-x-auto bg-white border-b">
         {/* Mon statut - Style WhatsApp */}
         <div className="flex-shrink-0 text-center">
-          <button
+          <div
             onClick={handleMyStoryClick}
-            className="relative"
+            className="relative cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleMyStoryClick();
+              }
+            }}
           >
             <div className={`w-14 h-14 rounded-full p-0.5 ${
               myStories.length > 0 
@@ -233,7 +240,7 @@ const StoriesSection = () => {
             >
               <Plus size={10} className="text-white" />
             </button>
-          </button>
+          </div>
           <p className="text-xs mt-1 text-center text-gray-600 max-w-[56px] truncate">
             Mon statut
           </p>

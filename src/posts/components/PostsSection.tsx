@@ -17,8 +17,24 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
   const [editingPost, setEditingPost] = useState<any>(null);
   const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
   const { user, profile } = useAuth();
-  const { data: posts, isLoading } = usePosts(activeFilter);
+  const { data: rawPosts, isLoading } = usePosts(activeFilter);
   const postRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Randomize posts order when data changes
+  const posts = React.useMemo(() => {
+    if (!rawPosts) return [];
+    
+    // Create a copy to sort/shuffle
+    const shuffled = [...rawPosts];
+    
+    // Fisher-Yates shuffle algorithm
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    return shuffled;
+  }, [rawPosts]);
 
   const handleEditPost = (post: any) => {
     setEditingPost(post);
@@ -106,11 +122,11 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
   }
 
   return (
-    <div className="p-4 pt-20 pb-20 bg-white min-h-screen">
+    <div className="p-4 pt-20 pb-20 bg-gray-50 min-h-screen">
       {/* Header avec filtres */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-white text-xl font-bold">{t('posts.title')}</h1>
+          <h1 className="text-gray-900 text-xl font-bold">{t('posts.title')}</h1>
           {user && (
             <Button
               onClick={() => setShowCreateModal(true)}
@@ -123,9 +139,9 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
         </div>
 
         {/* Composer "Quoi de neuf ?" - Toujours visible */}
-        <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-4 animate-fade-in">
+        <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm mb-4 animate-fade-in">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
               {profile?.avatar_url ? (
                 <img 
                   src={profile.avatar_url} 
@@ -133,18 +149,18 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
                   className="w-full h-full object-cover rounded-full"
                 />
               ) : (
-                <User size={20} className="text-gray-300" />
+                <User size={20} className="text-gray-400" />
               )}
             </div>
             {user ? (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="flex-1 text-left bg-gray-800 hover:bg-gray-700 text-gray-400 px-4 py-2 rounded-full transition-colors"
+                className="flex-1 text-left bg-gray-100 hover:bg-gray-200 text-gray-500 px-4 py-2 rounded-full transition-colors"
               >
                 {t('posts.whatsNew')}
               </button>
             ) : (
-              <div className="flex-1 bg-gray-800 text-gray-500 px-4 py-2 rounded-full cursor-not-allowed">
+              <div className="flex-1 bg-gray-100 text-gray-400 px-4 py-2 rounded-full cursor-not-allowed">
                 {t('posts.loginToShare')}
               </div>
             )}
@@ -152,7 +168,7 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
         </div>
 
         {/* Filtres */}
-        <div className="flex space-x-2 overflow-x-auto pb-2">
+        <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
           {filterButtons.map((filter) => {
             const Icon = filter.icon;
             return (
@@ -161,8 +177,8 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
                 onClick={() => setActiveFilter(filter.key)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                   activeFilter === filter.key
-                    ? 'bg-edu-primary text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-edu-primary text-white shadow-sm'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
                 <Icon size={16} />
@@ -187,7 +203,7 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
           ))
         ) : (
           <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
+            <div className="text-gray-500 mb-4">
               {activeFilter === 'all' 
                 ? t('posts.noPosts')
                 : t('posts.noPostsType', { type: filterButtons.find(f => f.key === activeFilter)?.label })
@@ -197,7 +213,7 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
               <Button
                 onClick={() => setShowCreateModal(true)}
                 variant="outline"
-                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                className="border-gray-300 text-gray-600 hover:bg-gray-50"
               >
                 {t('posts.createFirstPost')}
               </Button>

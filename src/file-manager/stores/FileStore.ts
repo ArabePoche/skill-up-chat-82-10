@@ -144,12 +144,14 @@ class FileStore {
 
   /**
    * Récupère un fichier par fileId
+   * Optimisé pour la lecture rapide (readonly)
    */
   async getFileById(fileId: string): Promise<FileRegistryEntry | null> {
     const db = await this.ensureDB();
 
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([FILES_STORE, BLOBS_STORE], 'readwrite');
+      // Transaction en lecture seule pour éviter les verrous d'écriture
+      const transaction = db.transaction([FILES_STORE, BLOBS_STORE], 'readonly');
 
       const filesStore = transaction.objectStore(FILES_STORE);
       const blobsStore = transaction.objectStore(BLOBS_STORE);
@@ -162,12 +164,6 @@ class FileStore {
 
       metadataRequest.onsuccess = () => {
         metadata = metadataRequest.result || null;
-        
-        // Mettre à jour lastAccessedAt
-        if (metadata) {
-          metadata.lastAccessedAt = Date.now();
-          filesStore.put(metadata);
-        }
       };
 
       blobRequest.onsuccess = () => {

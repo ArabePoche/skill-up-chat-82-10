@@ -13,66 +13,64 @@ export const recordHabbahGain = async (
   referenceId?: string,
 ): Promise<{ amount: number; label: string } | null> => {
   try {
-    // 1. Récupérer la règle active pour cette action
-    const { data: rule, error: ruleError } = await supabase
-      .from('habbah_earning_rules')
-      .select('*')
-      .eq('action_type', actionType)
-      .eq('is_active', true)
-      .maybeSingle();
+    // Appel de la fonction RPC sécurisée (gère les règles, le cooldown, et l'insertion en 1 requête)
+    const { data, error } = await supabase.rpc('earn_habbah', {
+      p_action_type: actionType,
+      p_reference_id: referenceId || null,
+    });
 
-    if (ruleError || !rule) return null;
-
-    // 2. Vérifier la limite journalière
-    const today = new Date().toISOString().split('T')[0];
-    const { count: dailyCount } = await supabase
-      .from('habbah_events')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('event_type', actionType)
-      .gte('created_at', `${today}T00:00:00Z`);
-
-    if ((dailyCount ?? 0) >= rule.daily_limit) {
-      console.log(`Limite journalière atteinte pour ${actionType}`);
-      return null;
+    if (error) {
+       console.error('Erreur RPC earn_habbah:', error);
+       return null;
     }
 
-    // 3. Insérer l'événement
-    const { error: insertError } = await supabase
-      .from('habbah_events')
-      .insert({
-        user_id: userId,
-        event_type: actionType,
-        habbah_earned: rule.habbah_amount,
-        reference_id: referenceId || null,
-      });
+    // Le backend renvoie un objet JSON { success: boolean, amount?: number, label?: string, message?: string }
+    const result = data as any;
 
-    if (insertError) {
-      console.error('Erreur insertion habbah_events:', insertError);
-      return null;
+    if (result && result.success) {
+      return { amount: result.amount, label: result.label };
     }
 
-    // 4. Mettre à jour le wallet — d'abord vérifier s'il existe
-    const { data: wallet } = await supabase
-      .from('user_wallets')
-      .select('id, habbah')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Si success est false (cooldown, limite atteinte, règle inactive), on ne fait rien
+    // console.log(`Habbah gain failed/skipped: ${result?.message}`);
+    return null;
 
-    if (wallet) {
-      await supabase
-        .from('user_wallets')
-        .update({ habbah: (wallet.habbah || 0) + rule.habbah_amount })
-        .eq('user_id', userId);
-    } else {
-      await supabase
-        .from('user_wallets')
-        .insert({ user_id: userId, habbah: rule.habbah_amount, soumboulah_cash: 0, soumboulah_bonus: 0 });
-    }
-
-    return { amount: rule.habbah_amount, label: rule.action_label };
   } catch (error) {
     console.error('Erreur recordHabbahGain:', error);
     return null;
+  }
+};
+
+/**
+ * Transfère des Habbah à un autre utilisateur
+ */
+export const transferHabbah = async (
+  recipientId: string,
+  amount: number,
+  reason: string = 'gift',
+  referenceId?: string
+): Promise<{ success: boolean; message: string; newBalance?: number }> => {
+  try {
+    const { data, error } = await supabase.rpc('transfer_habbah', {
+      p_recipient_id: recipientId,
+      p_amount: amount,
+      p_reason: reason, 
+      p_reference_id: referenceId
+    });
+
+    if (error) {
+      console.error('Erreur RPC transfer_habbah:', error);
+      return { success: false, message: error.message };
+    }
+
+    const result = data as any;
+    return {
+      success: result.success,
+      message: result.message,
+      newBalance: result.new_balance
+    };
+  } catch (error: any) {
+    console.error('Erreur transferHabbah:', error);
+    return { success: false, message: error.message || 'Erreur inconnue' };
   }
 };

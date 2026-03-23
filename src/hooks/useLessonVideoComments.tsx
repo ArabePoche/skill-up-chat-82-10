@@ -7,6 +7,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+
+interface Comment {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  lesson_id: string;
+  parent_id?: string | null;
+  profiles?: {
+    id: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    avatar_url: string;
+    is_verified?: boolean;
+  };
+  replies?: Comment[];
+  likes_count?: number;
+}
+
 export const useLessonVideoComments = (lessonId: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -28,13 +48,42 @@ export const useLessonVideoComments = (lessonId: string) => {
           )
         `)
         .eq('lesson_id', lessonId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true }); // Order by creation time for correct threading
 
       if (error) {
         console.error('Erreur récupération commentaires leçon:', error);
         return [];
       }
-      return data || [];
+      
+      // Organiser les commentaires en structure hiérarchique
+      const commentMap = new Map();
+      const rootComments: Comment[] = [];
+
+      // D'abord créer une map de tous les commentaires
+      data?.forEach((comment: any) => {
+        comment.replies = [];
+        commentMap.set(comment.id, comment);
+      });
+
+      // Ensuite organiser la hiérarchie
+      data?.forEach((comment: any) => {
+        if (comment.parent_id) {
+          const parent = commentMap.get(comment.parent_id);
+          if (parent) {
+            parent.replies.push(comment);
+          } else {
+            // Si parent non trouvé (ex: supprimé), traiter comme racine ou ignorer
+            rootComments.push(comment);
+          }
+        } else {
+          rootComments.push(comment);
+        }
+      });
+
+      // Trier les racines par date décroissante (plus récents en premier)
+      return rootComments.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     },
     enabled: !!lessonId,
   });
@@ -54,7 +103,7 @@ export const useLessonVideoComments = (lessonId: string) => {
   });
 
   const addCommentMutation = useMutation({
-    mutationFn: async ({ content }: { content: string }) => {
+    mutationFn: async ({ content, parentId }: { content: string, parentId?: string }) => {
       if (!user?.id) throw new Error('Non connecté');
 
       const { data, error } = await supabase
@@ -63,6 +112,7 @@ export const useLessonVideoComments = (lessonId: string) => {
           lesson_id: lessonId,
           user_id: user.id,
           content,
+          parent_id: parentId
         })
         .select(`
           *,
@@ -86,12 +136,40 @@ export const useLessonVideoComments = (lessonId: string) => {
     },
   });
 
-  const addComment = async (content: string): Promise<boolean> => {
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      if (!user?.id) throw new Error('Non connecté');
+      
+      const { error } = await supabase
+        .from('lesson_video_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', user.id); // Sécurité supplémentaire : seul l'auteur peut supprimer
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lesson-video-comments', lessonId] });
+      queryClient.invalidateQueries({ queryKey: ['lesson-video-comments-count', lessonId] });
+    },
+  });
+
+  const addComment = async (content: string, parentId?: string): Promise<boolean> => {
     try {
-      await addCommentMutation.mutateAsync({ content });
+      await addCommentMutation.mutateAsync({ content, parentId });
       return true;
     } catch (error) {
       console.error('Erreur ajout commentaire leçon:', error);
+      return false;
+    }
+  };
+
+  const deleteComment = async (commentId: string): Promise<boolean> => {
+    try {
+      await deleteCommentMutation.mutateAsync(commentId);
+      return true;
+    } catch (error) {
+      console.error('Erreur suppression commentaire:', error);
       return false;
     }
   };
@@ -101,6 +179,8 @@ export const useLessonVideoComments = (lessonId: string) => {
     commentsCount,
     isLoading: isCommentsLoading,
     addComment,
-    isSubmitting: addCommentMutation.isPending,
+    deleteComment,
+    isSubmitting: addCommentMutation.isPending || deleteCommentMutation.isPending,
   };
 };
+

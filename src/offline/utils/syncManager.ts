@@ -80,8 +80,16 @@ class SyncManager {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
 
+        // On utilise la clé publique (anon) pour éviter l'erreur 401
+        // Cela permet de faire un "vrai" ping autorisé
+        const SUPABASE_KEY = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppYXNhZmRiZnFxaGhkYXpveWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTQ5MTAsImV4cCI6MjA2NTQ5MDkxMH0.TXPwCkGAZRrn83pTsZHr2QFZwX03nBWdNPJN0s_jLKQ';
+        
         const pingResponse = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/rest/v1/', {
           method: 'HEAD',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
           cache: 'no-store',
           signal: controller.signal
         });

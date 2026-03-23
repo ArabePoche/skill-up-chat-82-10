@@ -199,6 +199,8 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
         <LessonVideoPlayer
           url={lesson.video_url || `https://example.com/lesson-${lesson.id}.mp4`}
           className="w-full aspect-video"
+          lessonId={lesson.id}
+          authorName={formation.author || 'Professeur'}
         />
       </div>
 

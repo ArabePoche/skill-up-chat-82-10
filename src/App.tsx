@@ -12,6 +12,7 @@ import { syncManager } from '@/offline/utils/syncManager';
 import LanguageOnboarding from '@/components/LanguageOnboarding';
 import HabbahGainAnimation from '@/components/HabbahGainAnimation';
 import { useHabbahGainNotifier } from '@/hooks/useHabbahGainNotifier';
+import { nativePushService } from '@/services/NativePushService';
 
 
 import Formation from '@/pages/Formation';
@@ -85,6 +86,8 @@ const AppWithRouter: React.FC = () => {
   // Sync offline data au lancement de l'app
   useEffect(() => {
     syncManager.startupSync();
+    // Initialiser les écouteurs de notification natifs (pour capturer les clics)
+    nativePushService.initEarlyWhenReady();
   }, []);
   
   return (

@@ -84,7 +84,8 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
         .eq('formation_id', formationId)
         .eq('level_id', levelId) // Filtrer par level_id pour avoir tous les messages du niveau
         .eq('is_system_message', false) // Exclure les messages système pour les profs
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) {
         console.error('Error fetching group messages:', error);
@@ -92,7 +93,8 @@ export const useTeacherGroupMessages = (formationId: string, levelId: string) =>
       }
 
       console.log('Teacher group messages found:', messages?.length || 0);
-      return messages || [];
+      // Remettre dans l'ordre chronologique pour l'affichage
+      return messages?.reverse() || [];
     },
     enabled: !!formationId && !!levelId && !!user?.id,
     staleTime: 30000, // Cache pendant 30 secondes

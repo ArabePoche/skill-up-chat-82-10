@@ -124,13 +124,13 @@ class AuthStore {
 
           // Vérifie si le cache est encore valide (30 jours)
           if (result.expiresAt < Date.now()) {
-            console.log('⚠️ Cached session expired');
+            if (import.meta.env.DEV) console.log('⚠️ Cached session expired');
             this.clearSession();
             resolve(null);
             return;
           }
 
-          console.log('📦 Retrieved cached session for offline use');
+          if (import.meta.env.DEV) console.log('📦 Retrieved cached session for offline use');
           resolve({ user: result.user, session: result.session });
         };
         request.onerror = () => reject(request.error);

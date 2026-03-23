@@ -169,13 +169,21 @@ export class NativePushService {
       console.log('👆 [NativePushService] Action notification:', JSON.stringify(notification));
       
       // Récupérer la page de redirection depuis les données FCM
-      const data = notification?.notification?.data;
-      const clickAction = data?.click_action || data?.clickAction || '/';
+      // Structure standard Capacitor: notification.notification.data
+      const data = notification?.notification?.data || notification?.data;
+      
+      // Chercher le chemin dans différentes propriétés communes
+      const clickAction = data?.click_action || data?.clickAction || data?.path || data?.redirect_to || '/';
+      
       console.log('🔗 [NativePushService] Redirection vers:', clickAction);
       
-      // Naviguer vers la page cible
+      // Naviguer vers la page cible via un CustomEvent pour React Router
       if (clickAction && clickAction !== '/') {
-        window.location.href = clickAction;
+        console.log('🚀 [NativePushService] Dispatch event push-notification-action');
+        const event = new CustomEvent('push-notification-action', { 
+            detail: { path: clickAction } 
+        });
+        window.dispatchEvent(event);
       }
     });
 

@@ -239,6 +239,9 @@ return postsWithProfilesAndMedia;
   });
 };
 
+import { recordHabbahGain } from '@/services/habbahService';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
+
 export const useCreatePost = () => {
   const queryClient = useQueryClient();
 
@@ -373,6 +376,15 @@ export const useCreatePost = () => {
         }
 
         console.log('Post created successfully:', data);
+        
+        // Enregistrer gain Habbah
+        try {
+          const reward = await recordHabbahGain(authorId, 'post_create', data.id);
+          if (reward) notifyHabbahGain(reward.amount, reward.label);
+        } catch (h_error) {
+          console.error("Error logging habbah gain for post:", h_error);
+        }
+
         return data;
       } catch (error: any) {
         console.error('Create post error:', error);

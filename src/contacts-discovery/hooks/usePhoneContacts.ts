@@ -5,16 +5,7 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
-
-// Import conditionnel du plugin Contacts
-let Contacts: any = null;
-try {
-  if (Capacitor.isNativePlatform()) {
-    Contacts = require('@capacitor-community/contacts').Contacts;
-  }
-} catch (error) {
-  console.warn('Capacitor Contacts plugin not available:', error);
-}
+import { Contacts } from '@capacitor-community/contacts';
 
 interface PhoneContact {
   name: string;
@@ -75,7 +66,7 @@ export const usePhoneContacts = () => {
               .filter((contact: any) => contact.phones && contact.phones.length > 0)
               .map((contact: any) => ({
                 name: contact.name?.display || 'Sans nom',
-                phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/\s+/g, '') || '') || []
+                phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/[^0-9+]/g, '') || '') || []
               }));
             
             setContacts(formattedContacts);
