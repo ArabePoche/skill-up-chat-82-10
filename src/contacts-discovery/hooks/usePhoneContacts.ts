@@ -5,7 +5,16 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
-import { Contacts } from '@capacitor-community/contacts';
+
+// Import conditionnel du plugin Contacts
+let Contacts: any = null;
+try {
+  if (Capacitor.isNativePlatform()) {
+    Contacts = require('@capacitor-community/contacts').Contacts;
+  }
+} catch (error) {
+  console.warn('Capacitor Contacts plugin not available:', error);
+}
 
 interface PhoneContact {
   name: string;
@@ -20,7 +29,27 @@ export const usePhoneContacts = () => {
   const requestContacts = async () => {
     setIsLoading(true);
     try {
-      // Vérifier PRIORITAIREMENT si on est sur une plateforme native avec Capacitor
+      // Vérifier si on est dans un iframe (comme la preview Lovable)
+      const isInIframe = window.self !== window.top;
+      
+      if (isInIframe) {
+        // En mode preview/iframe, utiliser des données de démo
+        toast({
+          title: "Mode démo",
+          description: "L'accès aux contacts n'est pas disponible en mode preview. Utilisation de contacts de démonstration.",
+        });
+        
+        // Données de démo pour tester
+        const demoContacts: PhoneContact[] = [
+          { name: 'Demo User 1', phoneNumbers: ['+33612345678'] },
+          { name: 'Demo User 2', phoneNumbers: ['+33687654321'] }
+        ];
+        
+        setContacts(demoContacts);
+        return demoContacts;
+      }
+
+      // Vérifier si on est sur une plateforme native avec Capacitor
       const isNativePlatform = Capacitor.isNativePlatform();
       
       if (isNativePlatform && Contacts) {
@@ -46,7 +75,7 @@ export const usePhoneContacts = () => {
               .filter((contact: any) => contact.phones && contact.phones.length > 0)
               .map((contact: any) => ({
                 name: contact.name?.display || 'Sans nom',
-                phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/[^0-9+]/g, '') || '') || []
+                phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/\s+/g, '') || '') || []
               }));
             
             setContacts(formattedContacts);
@@ -89,21 +118,7 @@ export const usePhoneContacts = () => {
         setContacts(formattedContacts);
         return formattedContacts;
       } else {
-        // Fallback : mode preview/iframe ou navigateur sans API contacts
-        const isInIframe = window.self !== window.top;
-        if (isInIframe) {
-          toast({
-            title: "Mode démo",
-            description: "L'accès aux contacts n'est pas disponible en mode preview.",
-          });
-          const demoContacts: PhoneContact[] = [
-            { name: 'Demo User 1', phoneNumbers: ['+33612345678'] },
-            { name: 'Demo User 2', phoneNumbers: ['+33687654321'] }
-          ];
-          setContacts(demoContacts);
-          return demoContacts;
-        }
-        
+        // Fallback pour le développement web
         toast({
           title: "Non disponible",
           description: "L'accès aux contacts n'est disponible que sur mobile",
