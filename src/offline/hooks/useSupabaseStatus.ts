@@ -30,8 +30,8 @@ export const useSupabaseStatus = (): SupabaseStatus => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/rest/v1/', {
-        method: 'HEAD',
+      const response = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/auth/v1/health', {
+        method: 'GET',
         cache: 'no-store',
         signal: controller.signal,
       });
