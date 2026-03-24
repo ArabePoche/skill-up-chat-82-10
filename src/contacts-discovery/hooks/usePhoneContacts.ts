@@ -89,7 +89,21 @@ export const usePhoneContacts = () => {
         setContacts(formattedContacts);
         return formattedContacts;
       } else {
-        // Fallback pour le développement web
+        // Fallback : mode preview/iframe ou navigateur sans API contacts
+        const isInIframe = window.self !== window.top;
+        if (isInIframe) {
+          toast({
+            title: "Mode démo",
+            description: "L'accès aux contacts n'est pas disponible en mode preview.",
+          });
+          const demoContacts: PhoneContact[] = [
+            { name: 'Demo User 1', phoneNumbers: ['+33612345678'] },
+            { name: 'Demo User 2', phoneNumbers: ['+33687654321'] }
+          ];
+          setContacts(demoContacts);
+          return demoContacts;
+        }
+        
         toast({
           title: "Non disponible",
           description: "L'accès aux contacts n'est disponible que sur mobile",
