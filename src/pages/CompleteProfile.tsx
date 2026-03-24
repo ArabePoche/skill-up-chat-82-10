@@ -329,7 +329,9 @@ const CompleteProfile = () => {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => {
-                        setFormData(prev => ({ ...prev, phone: e.target.value }));
+                        // Ne garder que les chiffres pour un format uniforme
+                        const digitsOnly = e.target.value.replace(/\D/g, '');
+                        setFormData(prev => ({ ...prev, phone: digitsOnly }));
                         setPhoneError('');
                       }}
                       className={`pl-10 ${phoneError ? 'border-red-500 focus:ring-red-500' : ''}`}
