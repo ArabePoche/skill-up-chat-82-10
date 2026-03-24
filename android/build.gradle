@@ -24,7 +24,7 @@ allprojects {
 
 // Use a dedicated workspace-level build directory to avoid stale Windows locks
 // on android/app/build intermediates.
-rootProject.buildDir = '../.gradle-build'
+rootProject.buildDir = '../.gradle-build-new'
 subprojects {
     buildDir = "${rootProject.buildDir}/${project.name}"
 }
