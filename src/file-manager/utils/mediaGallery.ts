@@ -1,6 +1,6 @@
 /**
- * Service pour sauvegarder les médias dans la galerie Android/iOS
- * Utilise @capacitor-community/media (v8+) pour l'intégration native
+ * Service pour sauvegarder les médias dans la galerie Android/iOS.
+ * Utilise @capacitor-community/media (v8+) pour l'intégration native.
  *
  * Comportement type WhatsApp:
  * - Les médias téléchargés apparaissent dans la galerie (images/vidéos)
@@ -23,15 +23,15 @@ let albumIdentifier: string | null = null;
 let permissionsRequested = false;
 
 /**
- * Vérifie si on est sur une plateforme native (Android/iOS)
+ * Vérifie si on est sur une plateforme native (Android/iOS).
  */
 export const isNativePlatform = (): boolean => {
   return Capacitor.isNativePlatform();
 };
 
 /**
- * Demande les permissions de stockage sur Android
- * Nécessaire pour écrire dans ExternalStorage (dossier Downloads)
+ * Demande les permissions de stockage sur Android.
+ * Nécessaire uniquement pour écrire dans les dossiers partagés.
  */
 export const requestStoragePermissions = async (): Promise<boolean> => {
   if (!isNativePlatform() || permissionsRequested) {
@@ -40,19 +40,17 @@ export const requestStoragePermissions = async (): Promise<boolean> => {
 
   try {
     const platform = Capacitor.getPlatform();
-    
+
     if (platform === 'android') {
-      // Sur Android 10+, on n'a pas besoin de permission pour le dossier Downloads
-      // Mais on doit quand même vérifier les permissions du Filesystem
       const permStatus = await Filesystem.checkPermissions();
-      
+
       if (permStatus.publicStorage !== 'granted') {
         const reqResult = await Filesystem.requestPermissions();
         permissionsRequested = true;
         return reqResult.publicStorage === 'granted';
       }
     }
-    
+
     permissionsRequested = true;
     return true;
   } catch (error) {
@@ -71,38 +69,59 @@ const getMediaPlugin = async (): Promise<typeof MediaPlugin | null> => {
 };
 
 /**
- * Crée ou récupère l'album EducTok dans la galerie
+ * Crée ou récupère l'album EducTok dans la galerie.
+ * Sur Android, on évite getAlbums() qui peut être lent et bloquant.
  */
 export const ensureAlbumExists = async (): Promise<string | null> => {
   if (albumIdentifier) return albumIdentifier;
-  
+
   const Media = await getMediaPlugin();
   if (!Media) return null;
 
+  if (Capacitor.getPlatform() === 'android') {
+    try {
+      const { path } = await Media.getAlbumsPath();
+      albumIdentifier = `${path}/${ALBUM_NAME}`;
+
+      try {
+        await Media.createAlbum({ name: ALBUM_NAME });
+        console.log('✅ Album Android créé:', ALBUM_NAME);
+      } catch (error: any) {
+        const message = String(error?.message || '').toLowerCase();
+        if (!message.includes('already exists')) {
+          console.warn('⚠️ Création album Android:', error);
+        }
+      }
+
+      console.log('📁 Album Android prêt:', albumIdentifier);
+      return albumIdentifier;
+    } catch (error) {
+      console.error('❌ Erreur création album Android:', error);
+      return null;
+    }
+  }
+
   try {
-    // Vérifier si l'album existe déjà
     const { albums } = await Media.getAlbums();
     const existingAlbum = albums.find(album => album.name === ALBUM_NAME);
-    
+
     if (existingAlbum) {
       albumIdentifier = existingAlbum.identifier;
       console.log('📁 Album existant trouvé:', ALBUM_NAME);
       return albumIdentifier;
     }
 
-    // Créer l'album s'il n'existe pas
     await Media.createAlbum({ name: ALBUM_NAME });
-    
-    // Récupérer l'identifiant du nouvel album
+
     const { albums: updatedAlbums } = await Media.getAlbums();
     const newAlbum = updatedAlbums.find(album => album.name === ALBUM_NAME);
-    
+
     if (newAlbum) {
       albumIdentifier = newAlbum.identifier;
       console.log('✅ Album créé:', ALBUM_NAME);
       return albumIdentifier;
     }
-    
+
     return null;
   } catch (error) {
     console.error('❌ Erreur création album:', error);
@@ -111,7 +130,7 @@ export const ensureAlbumExists = async (): Promise<string | null> => {
 };
 
 /**
- * Détermine le type de média à partir du MIME type
+ * Détermine le type de média à partir du MIME type.
  */
 export type MediaType = 'image' | 'video' | 'audio' | 'document';
 
@@ -123,18 +142,25 @@ export const getMediaType = (mimeType: string): MediaType => {
 };
 
 /**
- * Génère un nom de fichier unique avec timestamp
+ * Génère un nom de fichier unique avec timestamp.
  */
 export const generateFileName = (originalName: string, mediaType: MediaType): string => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const extension = originalName.split('.').pop() || getDefaultExtension(mediaType);
   const baseName = originalName.replace(/\.[^/.]+$/, '').slice(0, 30);
-  
+
   return `EducaTok_${mediaType}_${timestamp}_${baseName}.${extension}`;
 };
 
 /**
- * Retourne l'extension par défaut selon le type
+ * Retourne le nom sans extension pour l'API Android du plugin Media.
+ */
+const getBaseFileName = (fileName: string): string => {
+  return fileName.replace(/\.[^/.]+$/, '');
+};
+
+/**
+ * Retourne l'extension par défaut selon le type.
  */
 const getDefaultExtension = (mediaType: MediaType): string => {
   switch (mediaType) {
@@ -147,17 +173,11 @@ const getDefaultExtension = (mediaType: MediaType): string => {
 
 /**
  * Sauvegarde un fichier temporairement pour le transfert vers la galerie.
- * 
- * CORRECTIF: L'ancien code appendait des chunks base64 indépendants,
- * ce qui corrompait le fichier (le padding base64 de chaque chunk casse la concaténation).
- * Maintenant on convertit le blob entier en base64 en une seule passe,
- * avec un yield périodique pour ne pas geler l'UI.
  */
 const saveTempFile = async (
   blob: Blob,
   fileName: string
 ): Promise<string> => {
-  // Supprimer tout fichier existant
   try {
     await Filesystem.deleteFile({
       path: fileName,
@@ -169,11 +189,7 @@ const saveTempFile = async (
 
   console.log(`💾 Écriture fichier ${fileName} (${(blob.size / 1024 / 1024).toFixed(1)} MB)...`);
 
-  // Convertir le blob entier en base64 en une seule passe
-  // FileReader gère bien les gros fichiers sur Capacitor
   const base64 = await blobToBase64(blob);
-
-  // Yield pour laisser l'UI respirer avant l'écriture disque
   await new Promise(resolve => setTimeout(resolve, 10));
 
   const result = await Filesystem.writeFile({
@@ -187,7 +203,7 @@ const saveTempFile = async (
 };
 
 /**
- * Convertit un Blob en base64
+ * Convertit un Blob en base64.
  */
 const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -195,7 +211,6 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
     reader.onloadend = () => {
       try {
         const base64 = reader.result as string;
-        // Retirer le préfixe data:xxx;base64,
         const base64Data = base64.split(',')[1] || base64;
         resolve(base64Data);
       } catch (e) {
@@ -203,13 +218,12 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
       }
     };
     reader.onerror = () => reject(new Error('Erreur lecture du fichier pour conversion base64'));
-    // Utiliser readAsDataURL - fonctionne pour les gros fichiers sur Capacitor
     reader.readAsDataURL(blob);
   });
 };
 
 /**
- * Interface pour le résultat de sauvegarde
+ * Interface pour le résultat de sauvegarde.
  */
 export interface SaveToGalleryResult {
   success: boolean;
@@ -219,36 +233,40 @@ export interface SaveToGalleryResult {
 }
 
 /**
- * Sauvegarde une image dans la galerie Android/iOS
+ * Sauvegarde une image dans la galerie Android/iOS.
  */
 export const saveImageToGallery = async (
   blob: Blob,
   fileName: string
 ): Promise<SaveToGalleryResult> => {
   const Media = await getMediaPlugin();
-  
+
   if (!Media) {
     console.log('📱 Plateforme web - pas de sauvegarde galerie');
     return { success: true, savedToGallery: false };
   }
 
   try {
-    // S'assurer que l'album existe
     const albumId = await ensureAlbumExists();
-    
-    // Sauvegarder temporairement le fichier
+
+    if (!albumId) {
+      return {
+        success: false,
+        error: 'Album de destination inaccessible',
+        savedToGallery: false,
+      };
+    }
+
     const tempPath = await saveTempFile(blob, fileName);
     console.log('📁 Fichier temporaire créé:', tempPath);
 
-    // Sauvegarder dans la galerie
     const result = await Media.savePhoto({
       path: tempPath,
-      albumIdentifier: albumId || undefined,
+      albumIdentifier: albumId,
     });
 
     console.log('✅ Image sauvegardée dans la galerie:', result.filePath);
-    
-    // Nettoyer le fichier temporaire
+
     try {
       await Filesystem.deleteFile({
         path: fileName,
@@ -274,39 +292,69 @@ export const saveImageToGallery = async (
 };
 
 /**
- * Sauvegarde une vidéo dans la galerie Android/iOS
+ * Sauvegarde une vidéo dans la galerie Android/iOS.
+ * Sur Android, on passe directement une data URI au plugin pour éviter
+ * une écriture cache supplémentaire qui rallonge fortement la fin à 97 %.
  */
 export const saveVideoToGallery = async (
   blob: Blob,
-  fileName: string
+  fileName: string,
+  mimeType?: string
 ): Promise<SaveToGalleryResult> => {
   const Media = await getMediaPlugin();
-  
+
   if (!Media) {
     console.log('📱 Plateforme web - pas de sauvegarde galerie');
     return { success: true, savedToGallery: false };
   }
 
   try {
+    const platform = Capacitor.getPlatform();
     const albumId = await ensureAlbumExists();
+
+    if (!albumId) {
+      return {
+        success: false,
+        error: 'Album de destination inaccessible',
+        savedToGallery: false,
+      };
+    }
+
+    if (platform === 'android') {
+      const base64 = await blobToBase64(blob);
+      const result = await Media.saveVideo({
+        path: `data:${mimeType || blob.type || 'video/mp4'};base64,${base64}`,
+        albumIdentifier: albumId,
+        fileName: getBaseFileName(fileName),
+      });
+
+      console.log('✅ Vidéo sauvegardée dans la galerie Android:', result.filePath);
+
+      return {
+        success: true,
+        filePath: result.filePath,
+        savedToGallery: true,
+      };
+    }
+
     const tempPath = await saveTempFile(blob, fileName);
-    
     console.log('📁 Fichier vidéo temporaire créé:', tempPath);
 
     const result = await Media.saveVideo({
       path: tempPath,
-      albumIdentifier: albumId || undefined,
+      albumIdentifier: albumId,
     });
 
     console.log('✅ Vidéo sauvegardée dans la galerie:', result.filePath);
-    
-    // Nettoyer
+
     try {
       await Filesystem.deleteFile({
         path: fileName,
         directory: Directory.Cache,
       });
-    } catch (e) {}
+    } catch (e) {
+      // Ignorer les erreurs de nettoyage
+    }
 
     return {
       success: true,
@@ -324,9 +372,8 @@ export const saveVideoToGallery = async (
 };
 
 /**
- * Sauvegarde un audio dans le système de fichiers
- * Note: Les audios ne vont pas dans la galerie photos mais dans le dossier EducaTok
- * Utilise ExternalStorage sur Android pour être visible dans le gestionnaire de fichiers
+ * Sauvegarde un audio dans le système de fichiers.
+ * Les audios vont dans le dossier EducaTok dédié.
  */
 export const saveAudioToDevice = async (
   blob: Blob,
@@ -339,12 +386,9 @@ export const saveAudioToDevice = async (
   try {
     const base64 = await blobToBase64(blob);
     const platform = Capacitor.getPlatform();
-    
-    // Sur Android: utiliser ExternalStorage pour que les fichiers soient visibles
-    // Sur iOS: utiliser Documents (pas d'accès externe sur iOS)
     const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
     const basePath = platform === 'android' ? 'Download/EducaTok/Audio' : 'EducaTok/Audio';
-    
+
     const result = await Filesystem.writeFile({
       path: `${basePath}/${fileName}`,
       data: base64,
@@ -353,11 +397,11 @@ export const saveAudioToDevice = async (
     });
 
     console.log('✅ Audio sauvegardé:', result.uri);
-    
+
     return {
       success: true,
       filePath: result.uri,
-      savedToGallery: false, // Les audios ne vont pas dans la galerie photos
+      savedToGallery: false,
     };
   } catch (error: any) {
     console.error('❌ Erreur sauvegarde audio:', error);
@@ -370,8 +414,7 @@ export const saveAudioToDevice = async (
 };
 
 /**
- * Sauvegarde un document dans le système de fichiers
- * Utilise ExternalStorage sur Android pour être visible dans le gestionnaire de fichiers
+ * Sauvegarde un document dans le système de fichiers.
  */
 export const saveDocumentToDevice = async (
   blob: Blob,
@@ -384,12 +427,9 @@ export const saveDocumentToDevice = async (
   try {
     const base64 = await blobToBase64(blob);
     const platform = Capacitor.getPlatform();
-    
-    // Sur Android: utiliser ExternalStorage pour que les fichiers soient visibles
-    // Sur iOS: utiliser Documents (pas d'accès externe sur iOS)
     const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
     const basePath = platform === 'android' ? 'Download/EducaTok/Documents' : 'EducaTok/Documents';
-    
+
     const result = await Filesystem.writeFile({
       path: `${basePath}/${fileName}`,
       data: base64,
@@ -398,7 +438,7 @@ export const saveDocumentToDevice = async (
     });
 
     console.log('✅ Document sauvegardé:', result.uri);
-    
+
     return {
       success: true,
       filePath: result.uri,
@@ -415,32 +455,32 @@ export const saveDocumentToDevice = async (
 };
 
 /**
- * Sauvegarde un média dans la galerie/système de fichiers selon son type
- * Point d'entrée principal pour la sauvegarde de médias
- * 
- * Comportement:
- * - Images/Vidéos → Galerie Photos (album EducaTok)
- * - Audios → Dossier Download/EducaTok/Audio (visible dans gestionnaire fichiers)
- * - Documents → Dossier Download/EducaTok/Documents (visible dans gestionnaire fichiers)
+ * Sauvegarde un média dans la galerie/système de fichiers selon son type.
  */
 export const saveMediaToDevice = async (
   blob: Blob,
   fileName: string,
   mimeType: string
 ): Promise<SaveToGalleryResult> => {
-  // Demander les permissions de stockage si nécessaire (Android)
-  await requestStoragePermissions();
-  
   const mediaType = getMediaType(mimeType);
+
+  if (
+    isNativePlatform() &&
+    Capacitor.getPlatform() === 'android' &&
+    (mediaType === 'audio' || mediaType === 'document')
+  ) {
+    await requestStoragePermissions();
+  }
+
   const finalFileName = generateFileName(fileName, mediaType);
-  
+
   console.log(`📥 Sauvegarde ${mediaType}: ${finalFileName}`);
 
   switch (mediaType) {
     case 'image':
       return saveImageToGallery(blob, finalFileName);
     case 'video':
-      return saveVideoToGallery(blob, finalFileName);
+      return saveVideoToGallery(blob, finalFileName, mimeType);
     case 'audio':
       return saveAudioToDevice(blob, finalFileName);
     default:
