@@ -20,27 +20,7 @@ export const usePhoneContacts = () => {
   const requestContacts = async () => {
     setIsLoading(true);
     try {
-      // Vérifier si on est dans un iframe (comme la preview Lovable)
-      const isInIframe = window.self !== window.top;
-      
-      if (isInIframe) {
-        // En mode preview/iframe, utiliser des données de démo
-        toast({
-          title: "Mode démo",
-          description: "L'accès aux contacts n'est pas disponible en mode preview. Utilisation de contacts de démonstration.",
-        });
-        
-        // Données de démo pour tester
-        const demoContacts: PhoneContact[] = [
-          { name: 'Demo User 1', phoneNumbers: ['+33612345678'] },
-          { name: 'Demo User 2', phoneNumbers: ['+33687654321'] }
-        ];
-        
-        setContacts(demoContacts);
-        return demoContacts;
-      }
-
-      // Vérifier si on est sur une plateforme native avec Capacitor
+      // Vérifier PRIORITAIREMENT si on est sur une plateforme native avec Capacitor
       const isNativePlatform = Capacitor.isNativePlatform();
       
       if (isNativePlatform && Contacts) {
