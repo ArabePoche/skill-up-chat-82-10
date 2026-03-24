@@ -146,14 +146,18 @@ const getDefaultExtension = (mediaType: MediaType): string => {
 };
 
 /**
- * Sauvegarde un fichier temporairement pour le transfert vers la galerie
- * Écrit par chunks pour éviter le dépassement de mémoire (base64)
+ * Sauvegarde un fichier temporairement pour le transfert vers la galerie.
+ * 
+ * CORRECTIF: L'ancien code appendait des chunks base64 indépendants,
+ * ce qui corrompait le fichier (le padding base64 de chaque chunk casse la concaténation).
+ * Maintenant on convertit le blob entier en base64 en une seule passe,
+ * avec un yield périodique pour ne pas geler l'UI.
  */
 const saveTempFile = async (
   blob: Blob,
   fileName: string
 ): Promise<string> => {
-  // On commence par supprimer tout fichier existant
+  // Supprimer tout fichier existant
   try {
     await Filesystem.deleteFile({
       path: fileName,
@@ -163,61 +167,23 @@ const saveTempFile = async (
     // Ignorer si le fichier n'existe pas
   }
 
-  // Si le fichier est petit (< 5MB), on utilise l'écriture directe rapide
-  if (blob.size < 5 * 1024 * 1024) {
-    const base64 = await blobToBase64(blob);
-    const result = await Filesystem.writeFile({
-      path: fileName,
-      data: base64,
-      directory: Directory.Cache,
-    });
-    return result.uri;
-  }
+  console.log(`💾 Écriture fichier ${fileName} (${(blob.size / 1024 / 1024).toFixed(1)} MB)...`);
 
-  // Pour les gros fichiers (vidéos), on écrit par morceaux (chunks)
-  // Taille du chunk: 1MB (compromis vitesse/mémoire pour la conversion base64)
-  const CHUNK_SIZE = 1024 * 1024;
-  let offset = 0;
-  
-  const totalChunks = Math.ceil(blob.size / CHUNK_SIZE);
-  console.log(`💾 Écriture fichier ${fileName} en ${totalChunks} chunks...`);
+  // Convertir le blob entier en base64 en une seule passe
+  // FileReader gère bien les gros fichiers sur Capacitor
+  const base64 = await blobToBase64(blob);
 
-  // Initialisation du fichier vide (pour garantir l'existence avant append)
-  await Filesystem.writeFile({
+  // Yield pour laisser l'UI respirer avant l'écriture disque
+  await new Promise(resolve => setTimeout(resolve, 10));
+
+  const result = await Filesystem.writeFile({
     path: fileName,
-    data: '',
+    data: base64,
     directory: Directory.Cache,
   });
 
-  const CHUNKS_PER_YIELD = 5;
-  let chunkCount = 0;
-
-  while (offset < blob.size) {
-    const chunk = blob.slice(offset, offset + CHUNK_SIZE);
-    const base64Chunk = await blobToBase64(chunk);
-    
-    await Filesystem.appendFile({
-      path: fileName,
-      data: base64Chunk,
-      directory: Directory.Cache,
-    });
-    
-    offset += CHUNK_SIZE;
-    chunkCount++;
-    
-    // Pause pour éviter de geler l'interface sur mobile
-    if (chunkCount % CHUNKS_PER_YIELD === 0) {
-      await new Promise(resolve => setTimeout(resolve, 10));
-    }
-  }
-  
-  // Récupérer l'URI final
-  const uriResult = await Filesystem.getUri({
-    path: fileName,
-    directory: Directory.Cache,
-  });
-
-  return uriResult.uri;
+  console.log(`✅ Fichier temporaire écrit: ${result.uri}`);
+  return result.uri;
 };
 
 /**
