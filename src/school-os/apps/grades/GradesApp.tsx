@@ -23,6 +23,7 @@ import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListV
 import { SubjectGradeEntryView } from './components/SubjectGradeEntryView';
 import { BulletinsSection } from './components/BulletinsSection';
 import { CompositionsGradeEntry } from './components/CompositionsGradesEntry';
+import { GradesStatsView } from './components/GradesStatsView';
 import { ParentChildGrades } from './components/ParentChildGrades';
 import { ParentBulletinsView } from './components/ParentBulletinsView';
 import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
@@ -271,29 +272,22 @@ export const GradesApp: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      {/* Header compact */}
-      <div className="mb-2 flex-shrink-0">
-        <h2 className="text-lg sm:text-2xl font-bold">Notes & Bulletins</h2>
-      </div>
+    <div className="p-4 sm:p-6 h-full flex flex-col overflow-hidden">
 
       {/* Onglets principaux */}
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="grid w-full grid-cols-3 mb-2 flex-shrink-0">
-          <TabsTrigger value="grades" className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Saisie des Notes</span>
-            <span className="sm:hidden">Notes</span>
+        <TabsList className="grid w-full grid-cols-3 mb-1 flex-shrink-0">
+          <TabsTrigger value="grades" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <ClipboardList className="h-3.5 w-3.5" />
+            Notes
           </TabsTrigger>
-          <TabsTrigger value="bulletins" className="flex items-center gap-2">
-            <ScrollText className="h-4 w-4" />
-            <span className="hidden sm:inline">Bulletins</span>
-            <span className="sm:hidden">Bulletins</span>
+          <TabsTrigger value="bulletins" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <ScrollText className="h-3.5 w-3.5" />
+            Bulletins
           </TabsTrigger>
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Statistiques</span>
-            <span className="sm:hidden">Stats</span>
+          <TabsTrigger value="stats" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <BarChart3 className="h-3.5 w-3.5" />
+            Stats
           </TabsTrigger>
         </TabsList>
 
@@ -301,16 +295,14 @@ export const GradesApp: React.FC = () => {
         <TabsContent value="grades" className="flex-1 overflow-hidden m-0 flex flex-col">
           {/* Sous-onglets pour Évaluations et Compositions */}
           <Tabs value={gradeSubTab} onValueChange={(v) => setGradeSubTab(v as 'evaluations' | 'compositions')} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2 mb-2 flex-shrink-0">
-              <TabsTrigger value="evaluations" className="flex items-center gap-2">
-                <ClipboardList className="h-4 w-4" />
-                <span className="hidden sm:inline">Évaluations</span>
-                <span className="sm:hidden">Éval.</span>
+            <TabsList className="grid w-full grid-cols-2 mb-1 flex-shrink-0">
+              <TabsTrigger value="evaluations" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <ClipboardList className="h-3.5 w-3.5" />
+                Éval.
               </TabsTrigger>
-              <TabsTrigger value="compositions" className="flex items-center gap-2">
-                <FileCheck className="h-4 w-4" />
-                <span className="hidden sm:inline">Compositions</span>
-                <span className="sm:hidden">Compo.</span>
+              <TabsTrigger value="compositions" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <FileCheck className="h-3.5 w-3.5" />
+                Compo.
               </TabsTrigger>
             </TabsList>
 
@@ -485,7 +477,7 @@ export const GradesApp: React.FC = () => {
             </TabsContent>
 
             {/* Sous-onglet Compositions */}
-            <TabsContent value="compositions" className="flex-1 overflow-hidden m-0">
+            <TabsContent value="compositions" className="flex-1 overflow-hidden m-0 mt-0 flex flex-col">
               <CompositionsGradeEntry
                 availableClasses={availableClasses}
                 isTeacher={isTeacher}
@@ -504,16 +496,12 @@ export const GradesApp: React.FC = () => {
         </TabsContent>
 
         {/* Onglet Statistiques */}
-        <TabsContent value="stats" className="flex-1 overflow-hidden m-0">
-          <Card className="h-full flex items-center justify-center">
-            <div className="text-center py-12">
-              <BarChart3 className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Statistiques</h3>
-              <p className="text-muted-foreground">
-                Les statistiques des notes seront bientôt disponibles
-              </p>
-            </div>
-          </Card>
+        <TabsContent value="stats" className="flex-1 overflow-auto m-0">
+          <GradesStatsView
+            availableClasses={availableClasses}
+            schoolId={school?.id || ''}
+            schoolYearId={activeSchoolYear?.id || ''}
+          />
         </TabsContent>
       </Tabs>
     </div>
