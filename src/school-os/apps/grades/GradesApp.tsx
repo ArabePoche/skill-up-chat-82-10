@@ -275,21 +275,18 @@ export const GradesApp: React.FC = () => {
 
       {/* Onglets principaux */}
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="grid w-full grid-cols-3 mb-2 flex-shrink-0">
-          <TabsTrigger value="grades" className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Saisie des Notes</span>
-            <span className="sm:hidden">Notes</span>
+        <TabsList className="grid w-full grid-cols-3 mb-1 flex-shrink-0">
+          <TabsTrigger value="grades" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <ClipboardList className="h-3.5 w-3.5" />
+            Notes
           </TabsTrigger>
-          <TabsTrigger value="bulletins" className="flex items-center gap-2">
-            <ScrollText className="h-4 w-4" />
-            <span className="hidden sm:inline">Bulletins</span>
-            <span className="sm:hidden">Bulletins</span>
+          <TabsTrigger value="bulletins" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <ScrollText className="h-3.5 w-3.5" />
+            Bulletins
           </TabsTrigger>
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Statistiques</span>
-            <span className="sm:hidden">Stats</span>
+          <TabsTrigger value="stats" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <BarChart3 className="h-3.5 w-3.5" />
+            Stats
           </TabsTrigger>
         </TabsList>
 
