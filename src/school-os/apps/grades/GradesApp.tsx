@@ -272,15 +272,9 @@ export const GradesApp: React.FC = () => {
 
   return (
     <div className="p-6 h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="mb-4 flex-shrink-0">
-        <h2 className="text-2xl font-bold">Gestion des Notes & Bulletins</h2>
-        <p className="text-muted-foreground mt-1">
-          {isTeacher 
-            ? 'Saisissez les notes et générez les bulletins'
-            : 'Consultez et gérez les notes et bulletins de l\'école'
-          }
-        </p>
+      {/* Header compact */}
+      <div className="mb-2 flex-shrink-0">
+        <h2 className="text-lg sm:text-2xl font-bold">Notes & Bulletins</h2>
       </div>
 
       {/* Onglets principaux */}
