@@ -272,20 +272,14 @@ export const GradesApp: React.FC = () => {
 
   return (
     <div className="p-6 h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="mb-4 flex-shrink-0">
-        <h2 className="text-2xl font-bold">Gestion des Notes & Bulletins</h2>
-        <p className="text-muted-foreground mt-1">
-          {isTeacher 
-            ? 'Saisissez les notes et générez les bulletins'
-            : 'Consultez et gérez les notes et bulletins de l\'école'
-          }
-        </p>
+      {/* Header compact */}
+      <div className="mb-2 flex-shrink-0">
+        <h2 className="text-lg sm:text-2xl font-bold">Notes & Bulletins</h2>
       </div>
 
       {/* Onglets principaux */}
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="grid w-full grid-cols-3 mb-4 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-3 mb-2 flex-shrink-0">
           <TabsTrigger value="grades" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             <span className="hidden sm:inline">Saisie des Notes</span>
@@ -307,7 +301,7 @@ export const GradesApp: React.FC = () => {
         <TabsContent value="grades" className="flex-1 overflow-hidden m-0 flex flex-col">
           {/* Sous-onglets pour Évaluations et Compositions */}
           <Tabs value={gradeSubTab} onValueChange={(v) => setGradeSubTab(v as 'evaluations' | 'compositions')} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2 mb-2 flex-shrink-0">
               <TabsTrigger value="evaluations" className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" />
                 <span className="hidden sm:inline">Évaluations</span>

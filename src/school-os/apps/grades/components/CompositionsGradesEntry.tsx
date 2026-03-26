@@ -95,11 +95,11 @@ export const CompositionsGradeEntry: React.FC<CompositionsGradeEntryProps> = ({
       {/* Contenu */}
       {!selectedClassId ? (
         <Card className="flex-1 flex items-center justify-center">
-          <div className="text-center py-12">
-            <FileCheck className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Sélectionnez une classe</h3>
-            <p className="text-muted-foreground">
-              Choisissez une classe pour voir ses compositions et saisir les notes
+          <div className="text-center py-6">
+            <FileCheck className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+            <h3 className="text-base font-semibold mb-1">Sélectionnez une classe</h3>
+            <p className="text-sm text-muted-foreground">
+              Choisissez une classe pour voir ses compositions
             </p>
           </div>
         </Card>
