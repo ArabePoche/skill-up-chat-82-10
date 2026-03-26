@@ -495,16 +495,12 @@ export const GradesApp: React.FC = () => {
         </TabsContent>
 
         {/* Onglet Statistiques */}
-        <TabsContent value="stats" className="flex-1 overflow-hidden m-0">
-          <Card className="h-full flex items-center justify-center">
-            <div className="text-center py-12">
-              <BarChart3 className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Statistiques</h3>
-              <p className="text-muted-foreground">
-                Les statistiques des notes seront bientôt disponibles
-              </p>
-            </div>
-          </Card>
+        <TabsContent value="stats" className="flex-1 overflow-auto m-0">
+          <GradesStatsView
+            availableClasses={availableClasses}
+            schoolId={school?.id || ''}
+            schoolYearId={activeSchoolYear?.id || ''}
+          />
         </TabsContent>
       </Tabs>
     </div>
