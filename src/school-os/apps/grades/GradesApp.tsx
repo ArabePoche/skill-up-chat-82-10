@@ -476,7 +476,7 @@ export const GradesApp: React.FC = () => {
             </TabsContent>
 
             {/* Sous-onglet Compositions */}
-            <TabsContent value="compositions" className="flex-1 overflow-hidden m-0">
+            <TabsContent value="compositions" className="flex-1 overflow-hidden m-0 mt-0 flex flex-col">
               <CompositionsGradeEntry
                 availableClasses={availableClasses}
                 isTeacher={isTeacher}
