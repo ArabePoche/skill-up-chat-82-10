@@ -23,6 +23,7 @@ import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListV
 import { SubjectGradeEntryView } from './components/SubjectGradeEntryView';
 import { BulletinsSection } from './components/BulletinsSection';
 import { CompositionsGradeEntry } from './components/CompositionsGradesEntry';
+import { GradesStatsView } from './components/GradesStatsView';
 import { ParentChildGrades } from './components/ParentChildGrades';
 import { ParentBulletinsView } from './components/ParentBulletinsView';
 import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluations';
