@@ -301,7 +301,7 @@ export const GradesApp: React.FC = () => {
         <TabsContent value="grades" className="flex-1 overflow-hidden m-0 flex flex-col">
           {/* Sous-onglets pour Évaluations et Compositions */}
           <Tabs value={gradeSubTab} onValueChange={(v) => setGradeSubTab(v as 'evaluations' | 'compositions')} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2 mb-2 flex-shrink-0">
               <TabsTrigger value="evaluations" className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" />
                 <span className="hidden sm:inline">Évaluations</span>
