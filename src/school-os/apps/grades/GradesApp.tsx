@@ -279,7 +279,7 @@ export const GradesApp: React.FC = () => {
 
       {/* Onglets principaux */}
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="grid w-full grid-cols-3 mb-4 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-3 mb-2 flex-shrink-0">
           <TabsTrigger value="grades" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             <span className="hidden sm:inline">Saisie des Notes</span>
