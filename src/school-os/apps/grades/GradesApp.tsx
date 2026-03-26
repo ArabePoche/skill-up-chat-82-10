@@ -271,11 +271,7 @@ export const GradesApp: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      {/* Header compact */}
-      <div className="mb-2 flex-shrink-0">
-        <h2 className="text-lg sm:text-2xl font-bold">Notes & Bulletins</h2>
-      </div>
+    <div className="p-4 sm:p-6 h-full flex flex-col overflow-hidden">
 
       {/* Onglets principaux */}
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
