@@ -37,7 +37,7 @@ const Navbar = () => {
 
   return (
     // Section: Conteneur principal de la barre de navigation - utilise rem pour l'accessibilité
-    <nav className="bg-white border-t border-gray-200 px-[1rem] py-[0.25rem] relative">
+    <nav className="bg-white border-t border-gray-200 px-[16px] py-[4px] relative" style={{ fontSize: '16px' }}>
       <div className="flex justify-around items-center relative">
         {navItems.map((item, index) => {
           const isActive = isCurrentRoute(item.path);
