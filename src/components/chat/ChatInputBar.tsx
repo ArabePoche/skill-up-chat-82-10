@@ -345,7 +345,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               <Button
                 onClick={handleStartVoiceRecording}
                 disabled={isUploading}
-                className="bg-[#25d366] hover:bg-[#20c75a] p-[0.5rem] sm:p-[0.75rem] rounded-full shadow-lg min-w-[2.5rem] h-[2.5rem] sm:min-w-[3rem] sm:h-[3rem]"
+                className="bg-[#25d366] hover:bg-[#20c75a] p-[8px] sm:p-[12px] rounded-full shadow-lg min-w-[40px] h-[40px] sm:min-w-[48px] sm:h-[48px]"
                 size="icon"
               >
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[1rem] h-[1rem] sm:w-[1.125rem] sm:h-[1.125rem]">
