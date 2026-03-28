@@ -56,7 +56,7 @@ const Navbar = () => {
               >
                 {/* Conteneur principal du bouton spécial */}
                 <div className={`
-                  w-[3rem] h-[3rem] rounded-full flex items-center justify-center flex-col
+                  w-[48px] h-[48px] rounded-full flex items-center justify-center flex-col
                   transform -translate-y-2 shadow-lg transition-all duration-300
                   ${isActive 
                     ? 'bg-gradient-to-r from-edu-primary to-edu-secondary scale-110 shadow-xl' 
