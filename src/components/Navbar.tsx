@@ -96,7 +96,7 @@ const Navbar = () => {
             >
               <div className="relative">
                 {item.view === 'profil' ? (
-                  <Avatar className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''}`}>
+                  <Avatar className={`w-[20px] h-[20px] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''}`}>
                     <AvatarImage src={profile?.avatar_url || ''} alt={profile?.first_name || 'User'} />
                     <AvatarFallback className="text-[0.5rem] bg-edu-primary/10 text-edu-primary">
                       {profile?.first_name?.[0] || 'U'}
