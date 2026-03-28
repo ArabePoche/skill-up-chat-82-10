@@ -98,7 +98,7 @@ const Navbar = () => {
                 {item.view === 'profil' ? (
                   <Avatar className={`w-[20px] h-[20px] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''}`}>
                     <AvatarImage src={profile?.avatar_url || ''} alt={profile?.first_name || 'User'} />
-                    <AvatarFallback className="text-[0.5rem] bg-edu-primary/10 text-edu-primary">
+                    <AvatarFallback className="bg-edu-primary/10 text-edu-primary" style={{ fontSize: '8px' }}>
                       {profile?.first_name?.[0] || 'U'}
                     </AvatarFallback>
                   </Avatar>
