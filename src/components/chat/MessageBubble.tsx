@@ -178,14 +178,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         "🎉🔥 Alhamdoulillah ! Mon exercice a été validé !",
         "🏆✨ Victoire ! Exercice validé avec succès !",
         "💪🎊 Yes ! J'ai réussi mon exercice !",
-        "🌟🎉 Exercice validé ! Le travail paie toujours !",
         "🚀✅ Encore un exercice validé ! On ne lâche rien !"
       ];
       const joyText = joyTexts[Math.floor(Math.random() * joyTexts.length)];
 
       const recommendation = formationTitle
-        ? `\n\n👉 Je vous recommande vivement la formation "${formationTitle}" ! Rejoignez-nous et progressez ensemble ! 📚🤝`
-        : `\n\n👉 Je vous recommande cette formation ! Rejoignez-nous et progressez ensemble ! 📚🤝`;
+        ? `\n\n👉 Je vous recommande vivement la formation "${formationTitle}" ! Rejoignez-nous et progressons ensemble ! 📚🤝`
+        : `\n\n👉 Je vous recommande cette formation ! Rejoignez-nous et progressons ensemble ! 📚🤝`;
 
       const fullDescription = `${joyText}${recommendation}`;
 
@@ -209,7 +208,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         description: contentType !== 'text' ? fullDescription : undefined,
         background_color: '#22c55e'
       });
-      toast.success('Exercice publié en story avec recommandation ! 🎉');
+      toast.success('Exercice publié en story ! 🎉');
     } catch (error) {
       console.error('Error publishing to story:', error);
       toast.error('Erreur lors de la publication en story');
@@ -336,7 +335,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     disabled={createStory.isPending}
                   >
                     <Share2 className="h-3 w-3 mr-1" />
-                    Publier en story
+                    Publier en statut
                   </Button>
                 )}
               </div>
