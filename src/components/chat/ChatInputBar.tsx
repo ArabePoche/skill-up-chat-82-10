@@ -322,7 +322,8 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   stopTyping();
                 }}
                 placeholder="Tapez votre message..."
-                className="flex-1 bg-transparent outline-none text-[0.875rem] resize-none max-h-[4rem] sm:max-h-[5rem] py-[0.25rem] sm:py-[0.5rem] min-w-0 leading-normal"
+                className="flex-1 bg-transparent outline-none resize-none max-h-[64px] sm:max-h-[80px] py-[4px] sm:py-[8px] min-w-0 leading-normal"
+                style={{ fontSize: '14px', minHeight: '18px', height: 'auto' }}
                 rows={1}
                 style={{
                   minHeight: '1.125rem',
