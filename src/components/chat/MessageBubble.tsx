@@ -6,6 +6,7 @@ import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
 import ExerciseRejectionDetails from './ExerciseRejectionDetails';
 import StudentExerciseActions from './StudentExerciseActions';
+import { supabase } from '@/integrations/supabase/client';
 import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
 import { ValidatedByTeacherBadge } from './ValidatedByTeacherBadge';
@@ -161,8 +162,32 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     try {
       let contentType: 'text' | 'image' | 'video' | 'audio' = 'text';
       let mediaUrl: string | undefined = undefined;
-      const baseText = `✅ Exercice validé !`;
-      const description = message.content ? `\n\n${message.content}` : '';
+
+      // Récupérer le titre de la formation pour la recommandation
+      let formationTitle = '';
+      if (effectiveFormationId) {
+        const { data: formation } = await supabase
+          .from('formations')
+          .select('title')
+          .eq('id', effectiveFormationId)
+          .single();
+        formationTitle = formation?.title || '';
+      }
+
+      const joyTexts = [
+        "🎉🔥 Alhamdoulillah ! Mon exercice a été validé !",
+        "🏆✨ Victoire ! Exercice validé avec succès !",
+        "💪🎊 Yes ! J'ai réussi mon exercice !",
+        "🌟🎉 Exercice validé ! Le travail paie toujours !",
+        "🚀✅ Encore un exercice validé ! On ne lâche rien !"
+      ];
+      const joyText = joyTexts[Math.floor(Math.random() * joyTexts.length)];
+
+      const recommendation = formationTitle
+        ? `\n\n👉 Je vous recommande vivement la formation "${formationTitle}" ! Rejoignez-nous et progressez ensemble ! 📚🤝`
+        : `\n\n👉 Je vous recommande cette formation ! Rejoignez-nous et progressez ensemble ! 📚🤝`;
+
+      const fullDescription = `${joyText}${recommendation}`;
 
       if (message.file_url) {
         if (message.file_type?.startsWith('image/')) {
@@ -179,12 +204,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       await createStory.mutateAsync({
         content_type: contentType,
-        content_text: contentType === 'text' ? `${baseText}${description}` : baseText,
+        content_text: contentType === 'text' ? fullDescription : joyText,
         media_url: mediaUrl,
-        description: description.trim(),
-        background_color: '#22c55e' // Vert pour exercice validé
+        description: contentType !== 'text' ? fullDescription : undefined,
+        background_color: '#22c55e'
       });
-      toast.success('Exercice publié en story !');
+      toast.success('Exercice publié en story avec recommandation ! 🎉');
     } catch (error) {
       console.error('Error publishing to story:', error);
       toast.error('Erreur lors de la publication en story');
