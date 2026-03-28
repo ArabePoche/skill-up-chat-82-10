@@ -6,6 +6,7 @@ import ExerciseValidation from './ExerciseValidation';
 import ExerciseStatus from './ExerciseStatus';
 import ExerciseRejectionDetails from './ExerciseRejectionDetails';
 import StudentExerciseActions from './StudentExerciseActions';
+import { supabase } from '@/integrations/supabase/client';
 import ReplyReference from './ReplyReference';
 import FilePreviewBadge from './FilePreviewBadge';
 import { ValidatedByTeacherBadge } from './ValidatedByTeacherBadge';
