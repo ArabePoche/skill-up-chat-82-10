@@ -117,7 +117,8 @@ const Navbar = () => {
                 {showCartBadge && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1.5 -right-1.5 min-h-[1rem] min-w-[1rem] h-auto w-auto flex items-center justify-center p-[0.125rem] text-[0.65rem] leading-none animate-bounce"
+                    className="absolute -top-1.5 -right-1.5 min-h-[16px] min-w-[16px] h-auto w-auto flex items-center justify-center p-[2px] leading-none animate-bounce"
+                    style={{ fontSize: '10px' }}
                   >
                     {cartItemsCount > 99 ? '99+' : cartItemsCount}
                   </Badge>
