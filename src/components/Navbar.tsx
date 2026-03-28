@@ -64,10 +64,10 @@ const Navbar = () => {
                   }
                 `}>
                   <Icon 
-                    className={`w-[1.5rem] h-[1.5rem] text-white ${isActive ? 'animate-bounce-subtle' : ''}`} 
+                    className={`w-[20px] h-[20px] text-white ${isActive ? 'animate-bounce-subtle' : ''}`} 
                   />
                   {/* Label du bouton spécial déplacé à l'intérieur du cercle */}
-                  <span className="text-[0.65rem] font-bold text-white mt-0.5 transition-colors duration-200 leading-tight">
+                  <span className="font-bold text-white mt-0.5 transition-colors duration-200 leading-tight" style={{ fontSize: '10px' }}>
                     {item.label}
                   </span>
                 </div>
