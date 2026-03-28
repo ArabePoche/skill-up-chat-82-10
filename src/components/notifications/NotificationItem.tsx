@@ -69,12 +69,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => 
     notification.formation_id &&
     isAdmin;
 
-  const isFriendRequest = notification.type === 'friend_request' || (
-    !!notification.sender_id &&
-    !notification.enrollment_id &&
-    !notification.formation_id &&
-    !notification.payment_id
-  );
+  const isFriendRequest = notification.type === 'friend_request';
 
   const isReactionNotification = notification.type === 'post_reaction' || notification.type === 'video_reaction';
 
