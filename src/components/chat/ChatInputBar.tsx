@@ -322,12 +322,9 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   stopTyping();
                 }}
                 placeholder="Tapez votre message..."
-                className="flex-1 bg-transparent outline-none text-[0.875rem] resize-none max-h-[4rem] sm:max-h-[5rem] py-[0.25rem] sm:py-[0.5rem] min-w-0 leading-normal"
+                className="flex-1 bg-transparent outline-none resize-none max-h-[64px] sm:max-h-[80px] py-[4px] sm:py-[8px] min-w-0 leading-normal"
+                style={{ fontSize: '14px', minHeight: '18px', height: 'auto' }}
                 rows={1}
-                style={{
-                  minHeight: '1.125rem',
-                  height: 'auto'
-                }}
               />
               
               <EnhancedCameraCapture
@@ -339,19 +336,19 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
             {message.trim() ? (
               <Button
                 onClick={sendMessage}
-                className="bg-[#25d366] hover:bg-[#20c75a] p-[0.5rem] sm:p-[0.75rem] rounded-full shadow-lg min-w-[2.5rem] h-[2.5rem] sm:min-w-[3rem] sm:h-[3rem]"
+                className="bg-[#25d366] hover:bg-[#20c75a] p-[8px] sm:p-[12px] rounded-full shadow-lg min-w-[40px] h-[40px] sm:min-w-[48px] sm:h-[48px]"
                 size="icon"
               >
-                <Send className="w-[1rem] h-[1rem] sm:w-[1.125rem] sm:h-[1.125rem]" />
+                <Send className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px]" />
               </Button>
             ) : (
               <Button
                 onClick={handleStartVoiceRecording}
                 disabled={isUploading}
-                className="bg-[#25d366] hover:bg-[#20c75a] p-[0.5rem] sm:p-[0.75rem] rounded-full shadow-lg min-w-[2.5rem] h-[2.5rem] sm:min-w-[3rem] sm:h-[3rem]"
+                className="bg-[#25d366] hover:bg-[#20c75a] p-[8px] sm:p-[12px] rounded-full shadow-lg min-w-[40px] h-[40px] sm:min-w-[48px] sm:h-[48px]"
                 size="icon"
               >
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[1rem] h-[1rem] sm:w-[1.125rem] sm:h-[1.125rem]">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px]">
                   <path d="M12 1C13.1 1 14 1.9 14 3V11C14 12.1 13.1 13 12 13C10.9 13 10 12.1 10 11V3C10 1.9 10.9 1 12 1Z" fill="currentColor"/>
                   <path d="M19 11C19 15.4 15.4 19 11 19V21H13C13.6 21 14 21.4 14 22C14 22.6 13.6 23 13 23H11C10.4 23 10 22.6 10 22C10 21.4 10.4 21 11 21V19C6.6 19 3 15.4 3 11C3 10.4 3.4 10 4 10C4.6 10 5 10.4 5 11C5 14.3 7.7 17 11 17C14.3 17 17 14.3 17 11C17 10.4 17.4 10 18 10C18.6 10 19 10.4 19 11Z" fill="currentColor"/>
                 </svg>

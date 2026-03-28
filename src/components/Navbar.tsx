@@ -37,7 +37,7 @@ const Navbar = () => {
 
   return (
     // Section: Conteneur principal de la barre de navigation - utilise rem pour l'accessibilité
-    <nav className="bg-white border-t border-gray-200 px-[1rem] py-[0.25rem] relative">
+    <nav className="bg-white border-t border-gray-200 px-[16px] py-[4px] relative" style={{ fontSize: '16px' }}>
       <div className="flex justify-around items-center relative">
         {navItems.map((item, index) => {
           const isActive = isCurrentRoute(item.path);
@@ -56,7 +56,7 @@ const Navbar = () => {
               >
                 {/* Conteneur principal du bouton spécial */}
                 <div className={`
-                  w-[3rem] h-[3rem] rounded-full flex items-center justify-center flex-col
+                  w-[48px] h-[48px] rounded-full flex items-center justify-center flex-col
                   transform -translate-y-2 shadow-lg transition-all duration-300
                   ${isActive 
                     ? 'bg-gradient-to-r from-edu-primary to-edu-secondary scale-110 shadow-xl' 
@@ -64,10 +64,10 @@ const Navbar = () => {
                   }
                 `}>
                   <Icon 
-                    className={`w-[1.5rem] h-[1.5rem] text-white ${isActive ? 'animate-bounce-subtle' : ''}`} 
+                    className={`w-[20px] h-[20px] text-white ${isActive ? 'animate-bounce-subtle' : ''}`} 
                   />
                   {/* Label du bouton spécial déplacé à l'intérieur du cercle */}
-                  <span className="text-[0.65rem] font-bold text-white mt-0.5 transition-colors duration-200 leading-tight">
+                  <span className="font-bold text-white mt-0.5 transition-colors duration-200 leading-tight" style={{ fontSize: '10px' }}>
                     {item.label}
                   </span>
                 </div>
@@ -75,7 +75,7 @@ const Navbar = () => {
                 {/* Le label externe est supprimé car il est maintenant à l'intérieur du cercle */}
                 {/* Indicateur actif pour le bouton spécial */}
                 {isActive && (
-                  <div className="absolute -bottom-1 w-[0.5rem] h-[0.5rem] bg-edu-primary rounded-full animate-pulse" />
+                  <div className="absolute -bottom-1 w-[8px] h-[8px] bg-edu-primary rounded-full animate-pulse" />
                 )}
               </button>
             );
@@ -88,7 +88,7 @@ const Navbar = () => {
             <button
               key={item.view}
               onClick={() => handleNavigation(item)}
-              className={`flex flex-col items-center py-[0.25rem] px-[0.75rem] rounded-lg transition-all duration-200 relative ${
+              className={`flex flex-col items-center py-[4px] px-[12px] rounded-lg transition-all duration-200 relative ${
                 isActive
                   ? 'text-edu-primary bg-edu-primary/10'
                   : 'text-gray-600 hover:text-edu-primary hover:bg-gray-50'
@@ -96,19 +96,20 @@ const Navbar = () => {
             >
               <div className="relative">
                 {item.view === 'profil' ? (
-                  <Avatar className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''}`}>
+                  <Avatar className={`w-[20px] h-[20px] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''}`}>
                     <AvatarImage src={profile?.avatar_url || ''} alt={profile?.first_name || 'User'} />
-                    <AvatarFallback className="text-[0.5rem] bg-edu-primary/10 text-edu-primary">
+                    <AvatarFallback className="bg-edu-primary/10 text-edu-primary" style={{ fontSize: '8px' }}>
                       {profile?.first_name?.[0] || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 ) : (
-                  <Icon className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
+                  <Icon className={`w-[20px] h-[20px] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
                 )}
                 {showBadge && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1.5 -right-1.5 min-h-[1rem] min-w-[1rem] h-auto w-auto flex items-center justify-center p-[0.125rem] text-[0.65rem] leading-none"
+                    className="absolute -top-1.5 -right-1.5 min-h-[16px] min-w-[16px] h-auto w-auto flex items-center justify-center p-[2px] leading-none"
+                    style={{ fontSize: '10px' }}
                   >
                     {unreadCounts.total > 99 ? '99+' : unreadCounts.total}
                   </Badge>
@@ -116,13 +117,14 @@ const Navbar = () => {
                 {showCartBadge && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1.5 -right-1.5 min-h-[1rem] min-w-[1rem] h-auto w-auto flex items-center justify-center p-[0.125rem] text-[0.65rem] leading-none animate-bounce"
+                    className="absolute -top-1.5 -right-1.5 min-h-[16px] min-w-[16px] h-auto w-auto flex items-center justify-center p-[2px] leading-none animate-bounce"
+                    style={{ fontSize: '10px' }}
                   >
                     {cartItemsCount > 99 ? '99+' : cartItemsCount}
                   </Badge>
                 )}
               </div>
-              <span className="text-[0.75rem] font-medium leading-tight">{item.label}</span>
+              <span className="font-medium leading-tight" style={{ fontSize: '12px' }}>{item.label}</span>
             </button>
           );
         })}

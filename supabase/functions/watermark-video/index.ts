@@ -58,9 +58,8 @@ Deno.serve(async (req) => {
 
     const filter = buildWatermarkFilter(authorName, watermarkText);
 
-    const process = Deno.run({
-      cmd: [
-        'ffmpeg',
+    const command = new Deno.Command('ffmpeg', {
+      args: [
         '-y',
         '-i',
         inputPath,
@@ -84,11 +83,10 @@ Deno.serve(async (req) => {
       stderr: 'piped',
     });
 
-    const status = await process.status();
-    const rawError = new TextDecoder().decode(await process.stderrOutput());
-    process.close();
+    const output = await command.output();
+    const rawError = new TextDecoder().decode(output.stderr);
 
-    if (!status.success) {
+    if (!output.success) {
       await cleanTemp(inputPath, outputPath);
       return new Response(JSON.stringify({ error: 'ffmpeg failed', details: rawError }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
