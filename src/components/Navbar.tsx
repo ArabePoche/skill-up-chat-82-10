@@ -75,7 +75,7 @@ const Navbar = () => {
                 {/* Le label externe est supprimé car il est maintenant à l'intérieur du cercle */}
                 {/* Indicateur actif pour le bouton spécial */}
                 {isActive && (
-                  <div className="absolute -bottom-1 w-[0.5rem] h-[0.5rem] bg-edu-primary rounded-full animate-pulse" />
+                  <div className="absolute -bottom-1 w-[8px] h-[8px] bg-edu-primary rounded-full animate-pulse" />
                 )}
               </button>
             );
