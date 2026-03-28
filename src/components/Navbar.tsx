@@ -124,7 +124,7 @@ const Navbar = () => {
                   </Badge>
                 )}
               </div>
-              <span className="text-[0.75rem] font-medium leading-tight">{item.label}</span>
+              <span className="font-medium leading-tight" style={{ fontSize: '12px' }}>{item.label}</span>
             </button>
           );
         })}
