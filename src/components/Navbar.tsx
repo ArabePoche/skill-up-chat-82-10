@@ -103,7 +103,7 @@ const Navbar = () => {
                     </AvatarFallback>
                   </Avatar>
                 ) : (
-                  <Icon className={`w-[1.25rem] h-[1.25rem] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
+                  <Icon className={`w-[20px] h-[20px] mb-0.5 ${isActive ? 'animate-bounce-subtle' : ''} ${showCartBadge ? 'animate-pulse' : ''}`} />
                 )}
                 {showBadge && (
                   <Badge 
