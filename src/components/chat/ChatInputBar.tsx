@@ -325,10 +325,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 className="flex-1 bg-transparent outline-none resize-none max-h-[64px] sm:max-h-[80px] py-[4px] sm:py-[8px] min-w-0 leading-normal"
                 style={{ fontSize: '14px', minHeight: '18px', height: 'auto' }}
                 rows={1}
-                style={{
-                  minHeight: '1.125rem',
-                  height: 'auto'
-                }}
               />
               
               <EnhancedCameraCapture
