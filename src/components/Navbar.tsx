@@ -88,7 +88,7 @@ const Navbar = () => {
             <button
               key={item.view}
               onClick={() => handleNavigation(item)}
-              className={`flex flex-col items-center py-[0.25rem] px-[0.75rem] rounded-lg transition-all duration-200 relative ${
+              className={`flex flex-col items-center py-[4px] px-[12px] rounded-lg transition-all duration-200 relative ${
                 isActive
                   ? 'text-edu-primary bg-edu-primary/10'
                   : 'text-gray-600 hover:text-edu-primary hover:bg-gray-50'
