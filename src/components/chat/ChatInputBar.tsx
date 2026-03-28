@@ -271,7 +271,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               </div>
             </div>
           )}
-          <div className="flex items-end space-x-[0.5rem] sm:space-x-[0.75rem] max-w-full overflow-hidden">
+          <div className="flex items-end space-x-[0.5rem] sm:space-x-[0.75rem] max-w-full overflow-visible">
             
             <button 
               onClick={() => checkAuthAndExecute(() => fileInputRef.current?.click())}
@@ -289,7 +289,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               onChange={handleFileSelect}
             />
             
-            <div className="flex-1 flex items-end space-x-[0.25rem] sm:space-x-[0.5rem] bg-white rounded-3xl px-[0.75rem] sm:px-[1rem] py-[0.5rem] shadow-sm min-h-[2.5rem] sm:min-h-[3rem]">
+            <div className="flex-1 min-w-0 flex items-end space-x-[0.25rem] sm:space-x-[0.5rem] bg-white rounded-3xl px-[0.75rem] sm:px-[1rem] py-[0.5rem] shadow-sm min-h-[2.5rem] sm:min-h-[3rem]">
               <div className="relative">
                 <button
                   onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
