@@ -7,7 +7,6 @@
  * - Met à jour current_level automatiquement
  */
 import { useEffect, useRef } from 'react';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { usePresence } from '@/contexts/PresenceContext';
 import { useAuth } from '@/hooks/useAuth';
