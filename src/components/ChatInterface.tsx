@@ -141,7 +141,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
       content,
       messageType,
       file,
-      isExerciseSubmission: messageType === 'file' || messageType === 'image',
+      isExerciseSubmission: false,
       repliedToMessageId
     });
   };

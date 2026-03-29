@@ -176,6 +176,7 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
           senderName,
           type: 'message',
           contentPreview: data?.content,
+          messageType: data?.message_type,
           senderId: user.id,
         });
       }

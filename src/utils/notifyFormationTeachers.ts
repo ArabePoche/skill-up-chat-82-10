@@ -16,6 +16,8 @@ interface NotifyTeachersParams {
   contentPreview?: string;
   /** ID de l'expéditeur pour l'exclure s'il est aussi prof */
   senderId: string;
+  /** Type de média pour les messages avec fichier (image, audio, video, file) */
+  messageType?: string;
 }
 
 export const notifyFormationTeachers = async ({
@@ -24,6 +26,7 @@ export const notifyFormationTeachers = async ({
   type,
   contentPreview,
   senderId,
+  messageType,
 }: NotifyTeachersParams): Promise<void> => {
   try {
     // 1. Récupérer tous les teacher_id assignés à cette formation
@@ -77,11 +80,22 @@ export const notifyFormationTeachers = async ({
       ? `📞 Appel entrant`
       : `💬 Nouveau message`;
 
-    const message = type === 'exercise'
-      ? `${senderName} a soumis un exercice dans "${formationTitle}"`
-      : type === 'call'
-      ? `${senderName} vous appelle dans "${formationTitle}"`
-      : `${senderName} a envoyé un message dans "${formationTitle}"${contentPreview ? `: ${contentPreview.substring(0, 60)}` : ''}`;
+    let message: string;
+    if (type === 'exercise') {
+      message = `${senderName} a soumis un exercice dans "${formationTitle}"`;
+    } else if (type === 'call') {
+      message = `${senderName} vous appelle dans "${formationTitle}"`;
+    } else if (messageType === 'image') {
+      message = `${senderName} a envoyé une image dans "${formationTitle}"`;
+    } else if (messageType === 'audio') {
+      message = `${senderName} a envoyé un audio dans "${formationTitle}"`;
+    } else if (messageType === 'video') {
+      message = `${senderName} a envoyé une vidéo dans "${formationTitle}"`;
+    } else if (messageType === 'file') {
+      message = `${senderName} a envoyé un fichier dans "${formationTitle}"`;
+    } else {
+      message = `${senderName} a envoyé un message dans "${formationTitle}"${contentPreview ? `: ${contentPreview.substring(0, 60)}` : ''}`;
+    }
 
     // 5. Envoyer la notification push via l'edge function
     const notifType = type === 'call' ? 'incoming_call' 

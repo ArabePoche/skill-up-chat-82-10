@@ -244,7 +244,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         fileUrl,
         fileType,
         fileName,
-        isExerciseSubmission: messageType === 'file' || messageType === 'image',
+        isExerciseSubmission: false,
         promotionId: promotionId || '',
         repliedToMessageId
       });

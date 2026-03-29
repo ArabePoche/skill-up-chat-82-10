@@ -157,6 +157,7 @@ export const useSendPromotionMessage = (formationId: string) => {
           senderName,
           type: data.is_exercise_submission ? 'exercise' : 'message',
           contentPreview: data.content,
+          messageType: data.message_type,
           senderId: user.id,
         });
       }
