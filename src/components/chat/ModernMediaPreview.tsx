@@ -120,7 +120,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
                 src={fileUrl}
                 alt={fileName}
                 className="max-w-full max-h-[90vh] object-contain mx-auto"
-                autoDownload={false}
+                autoDownload={true}
               />
             )}
             
@@ -159,7 +159,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
               src={fileUrl}
               alt={fileName}
               className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg ${className}`}
-              autoDownload={false}
+              autoDownload={true}
             />
           </div>
           {/* Bouton d'annotation visible pour les profs */}

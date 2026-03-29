@@ -59,7 +59,6 @@ export const OfflineImage: React.FC<OfflineImageProps> = ({
   } = useOfflineMedia({
     remoteUrl: src,
     fileId,
-    mimeType: 'image/jpeg',
     autoDownload,
   });
 
