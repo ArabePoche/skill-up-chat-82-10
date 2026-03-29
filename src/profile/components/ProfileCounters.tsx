@@ -20,7 +20,7 @@ const ProfileCounters: React.FC<ProfileCountersProps> = ({
   const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [defaultTab, setDefaultTab] = useState<'following' | 'friends' | 'suggestions'>('friends');
-  const { streak, currentLevelDetails, isLoading: isStreakLoading } = useUserStreak(userId || '');
+  const { streak, earnedLevels, isLoading: isStreakLoading } = useUserStreak(userId || '');
 
   const openModal = (tab: 'following' | 'friends' | 'suggestions') => {
     setDefaultTab(tab);
