@@ -77,7 +77,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
           <DialogTitle className="sr-only">CV Maker pro</DialogTitle>
           
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-border shrink-0 gap-y-2">
             <div className="flex items-center gap-2">
               {mobileView === 'form' && (
                 <Button size="icon" variant="ghost" className="md:hidden" onClick={() => setMobileView('list')}>
@@ -86,7 +86,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
               )}
               <h2 className="font-bold text-lg">Mon CV</h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5">
                 {isPublic ? <Globe className="w-3.5 h-3.5 text-primary" /> : <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
                 <Label htmlFor="cv-public-toggle" className="text-xs cursor-pointer">
@@ -103,7 +103,7 @@ const CvBuilderModal: React.FC<Props> = ({ open, onOpenChange }) => {
                   <Share2 className="w-4 h-4 mr-1" /> Partager
                 </Button>
               )}
-              <Button size="sm" variant="actionBlue" onClick={handleSave} disabled={isSaving} className="rounded-full px-5 font-semibold text-base shadow-lg hover:scale-105 transition-transform">
+              <Button size="sm" variant="actionBlue" onClick={handleSave} disabled={isSaving} className="rounded-full px-3 sm:px-5 font-semibold text-sm sm:text-base shadow-lg hover:scale-105 transition-transform">
                 {isSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                 Sauvegarder
               </Button>
