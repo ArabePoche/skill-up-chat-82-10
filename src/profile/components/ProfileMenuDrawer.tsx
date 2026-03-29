@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Settings, BookOpen, Award, Bell, HelpCircle, LogOut, Shield, Globe, Wallet } from 'lucide-react';
+import { X, Settings, BookOpen, Bell, HelpCircle, LogOut, Shield, Globe, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerification } from '@/hooks/useVerification';
@@ -38,7 +38,6 @@ const ProfileMenuDrawer: React.FC<ProfileMenuDrawerProps> = ({
     { icon: Wallet, label: `Mon Portefeuille • ${formatWalletBalance(wallet?.soumboulah_cash || 0)} S.`, action: () => navigate('/wallet') },
     { icon: Settings, label: t('settings.general'), action: () => navigate('/complete-profile') },
     { icon: BookOpen, label: t('courses.myCourses'), action: () => navigate('/cours') },
-    { icon: Award, label: t('profile.notifications'), action: () => {} },
     { icon: Bell, label: t('profile.notifications'), action: () => { onClose(); onShowNotificationDialog(); } },
     { icon: HelpCircle, label: t('common.help', { defaultValue: 'Aide et support' }), action: () => {} }
   ];
