@@ -19,7 +19,7 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
   variant = 'full',
   className = '' 
 }) => {
-  const { streak, currentLevelDetails, nextLevelDetails, isLoading } = useUserStreak(userId);
+  const { streak, currentLevelDetails, nextLevelDetails, earnedLevels, isLoading } = useUserStreak(userId);
   const { todayUsage, requiredMinutes, isStreakValidated } = useStreakProgress(userId);
 
   if (isLoading || !streak) {
@@ -44,20 +44,21 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
     ? Math.max(0, nextLevelDetails.streaks_required - streak.current_streak)
     : 0;
 
-  // Mini variant - juste le badge
+  // Mini variant - badges obtenus + streak
   if (variant === 'mini') {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
-        {currentLevelDetails && (
-          <div
-            className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold"
-            style={{ 
-              backgroundColor: `${currentLevelDetails.level_color}20`,
-              color: currentLevelDetails.level_color 
-            }}
-          >
-            <span className="text-lg">{currentLevelDetails.level_badge}</span>
-            <span>{currentLevelDetails.level_name}</span>
+        {earnedLevels.length > 0 && (
+          <div className="flex items-center gap-0.5">
+            {earnedLevels.map(level => (
+              <span
+                key={level.id}
+                className="text-lg leading-none"
+                title={level.level_name}
+              >
+                {level.level_badge}
+              </span>
+            ))}
           </div>
         )}
         <div className="flex items-center gap-1 text-orange-500">
@@ -72,7 +73,7 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
   if (variant === 'compact') {
     return (
       <Card className={className}>
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {currentLevelDetails && (
@@ -100,6 +101,20 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
               <div className="text-xs text-muted-foreground">jours</div>
             </div>
           </div>
+          {earnedLevels.length > 0 && (
+            <div className="flex items-center gap-1.5 pt-1 border-t">
+              {earnedLevels.map(level => (
+                <div
+                  key={level.id}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+                  style={{ backgroundColor: `${level.level_color}20` }}
+                  title={level.level_name}
+                >
+                  {level.level_badge}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -198,6 +213,35 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({
             <div className="text-xs text-muted-foreground">Jours actifs</div>
           </div>
         </div>
+
+        {/* Badges obtenus – galons */}
+        {earnedLevels.length > 0 && (
+          <div className="pt-4 border-t space-y-2">
+            <div className="text-sm text-muted-foreground">Badges obtenus</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {earnedLevels.map(level => (
+                <div
+                  key={level.id}
+                  className="flex flex-col items-center gap-0.5"
+                  title={level.level_name}
+                >
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+                    style={{ backgroundColor: `${level.level_color}20` }}
+                  >
+                    {level.level_badge}
+                  </div>
+                  <span
+                    className="text-xs font-medium"
+                    style={{ color: level.level_color }}
+                  >
+                    {level.level_name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -108,6 +108,15 @@ export const useUserStreak = (userId?: string) => {
     return achievedLevel;
   }, [streak, allLevels]);
 
+  // Récupérer tous les niveaux déjà obtenus (paliers débloqués)
+  const earnedLevels = React.useMemo(() => {
+    if (!allLevels || allLevels.length === 0) return [];
+    if (!streak) return [];
+
+    const sorted = [...allLevels].sort((a, b) => a.streaks_required - b.streaks_required);
+    return sorted.filter(level => streak.current_streak >= level.streaks_required);
+  }, [streak, allLevels]);
+
   // Récupérer le prochain niveau (prochain palier)
   const nextLevelDetails = React.useMemo(() => {
     if (!streak || !allLevels || allLevels.length === 0) return null;
@@ -231,6 +240,7 @@ export const useUserStreak = (userId?: string) => {
     streak,
     currentLevelDetails,
     nextLevelDetails,
+    earnedLevels,
     isLoading,
     error,
     updateStreak: updateStreakMutation.mutate,
