@@ -152,16 +152,24 @@ export const useUserStreak = (userId?: string) => {
           yesterday.setDate(yesterday.getDate() - 1);
           const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-          // Si l'activité était hier, incrémenter
           if (lastActivity === yesterdayStr) {
+            // Activité hier → incrémenter normalement
             newStreak += 1;
+          } else if (lastActivity) {
+            // 🔥 Régression progressive : perdre 1 streak par jour manqué (pas de reset à 0)
+            const lastDate = new Date(lastActivity);
+            const todayDate = new Date(today);
+            const daysMissed = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) - 1;
+            newStreak = Math.max(0, newStreak - daysMissed);
+            // L'utilisateur est actif aujourd'hui, donc +1 après la pénalité
+            newStreak = Math.max(1, newStreak + 1);
           } else {
-            // Nouveau départ si on n'a pas eu d'activité hier
+            // Première activité
             newStreak = 1;
           }
         }
       } else {
-        // Décrémenter manuellement
+        // Décrémenter progressif (appelé par le check automatique)
         newStreak = Math.max(0, newStreak - 1);
       }
 
