@@ -5,10 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Upload } from 'lucide-react';
 import LessonVideoSelector from './LessonVideoSelector';
 import ExerciseFileUploader from './ExerciseFileUploader';
 import FormationPricingManager from './FormationPricingManager';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { toast } from 'sonner';
 
 interface FormationData {
   title: string;
@@ -64,6 +66,24 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
   formationId,
   onConfigurePricing
 }) => {
+  const { uploadFile, isUploading } = useFileUpload();
+  const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+
+  const handleThumbnailFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Veuillez sélectionner un fichier image');
+        return;
+      }
+      setSelectedThumbnailFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setThumbnailPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const [formationData, setFormationData] = useState<FormationData>({
     title: '',
     description: '',
@@ -284,9 +304,14 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
     updateExercise(levelIndex, lessonIndex, exerciseIndex, 'uploadedFiles', files);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formationData);
+    let dataToSubmit = { ...formationData };
+    if (selectedThumbnailFile) {
+      const result = await uploadFile(selectedThumbnailFile, 'lesson_discussion_files');
+      dataToSubmit = { ...dataToSubmit, thumbnailUrl: result.fileUrl };
+    }
+    onSubmit(dataToSubmit);
   };
 
   return (
@@ -372,12 +397,34 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
               />
             </div>
             <div>
-              <Label>URL de la miniature</Label>
-              <Input
-                value={formationData.thumbnailUrl}
-                onChange={(e) => setFormationData(prev => ({ ...prev, thumbnailUrl: e.target.value }))}
-                placeholder="https://..."
-              />
+              <Label>Miniature</Label>
+              <div className="space-y-2 mt-1">
+                {/* Preview: existing or newly selected */}
+                {(thumbnailPreview || formationData.thumbnailUrl) && (
+                  <div className="border border-border rounded-lg p-2">
+                    <img
+                      src={thumbnailPreview || formationData.thumbnailUrl}
+                      alt="Miniature"
+                      className="w-full h-32 object-cover rounded"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {thumbnailPreview ? 'Nouveau fichier sélectionné' : 'Miniature actuelle'}
+                    </p>
+                  </div>
+                )}
+                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedThumbnailFile ? selectedThumbnailFile.name : 'Uploader une image locale'}
+                  </p>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleThumbnailFileSelect}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -587,10 +634,10 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
       <div className="flex flex-col gap-3">
         <Button 
           type="submit" 
-          disabled={isLoading} 
+          disabled={isLoading || isUploading} 
           className="w-full bg-[#25d366] hover:bg-[#25d366]/90"
         >
-          {isLoading ? 'Traitement...' : (isEditing ? 'Mettre à jour la formation' : 'Créer la formation complète')}
+          {isUploading ? 'Upload en cours...' : isLoading ? 'Traitement...' : (isEditing ? 'Mettre à jour la formation' : 'Créer la formation complète')}
         </Button>
 
         {(formationId || isEditing) && onConfigurePricing && (
