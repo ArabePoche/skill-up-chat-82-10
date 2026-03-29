@@ -426,6 +426,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           label: string
           name: string
         }
@@ -433,6 +434,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           label: string
           name: string
         }
@@ -440,6 +442,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           label?: string
           name?: string
         }
@@ -1137,6 +1140,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          metadata: Json | null
           lesson_id: string
           title: string
           type: string | null
@@ -1146,6 +1150,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metadata?: Json | null
           lesson_id: string
           title: string
           type?: string | null
@@ -1155,6 +1160,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metadata?: Json | null
           lesson_id?: string
           title?: string
           type?: string | null
@@ -2849,6 +2855,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           image_url: string | null
           location: string | null
           marketplace_quantity: number | null
@@ -2866,6 +2873,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           image_url?: string | null
           location?: string | null
           marketplace_quantity?: number | null
@@ -2883,6 +2891,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           image_url?: string | null
           location?: string | null
           marketplace_quantity?: number | null
@@ -3424,6 +3433,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           label: string
           name: string
           updated_at: string | null
@@ -3433,6 +3443,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           label: string
           name: string
           updated_at?: string | null
@@ -3442,6 +3453,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           label?: string
           name?: string
           updated_at?: string | null
@@ -4956,6 +4968,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           name: string
           school_id: string | null
         }
@@ -4963,6 +4976,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           name: string
           school_id?: string | null
         }
@@ -4970,6 +4984,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           name?: string
           school_id?: string | null
         }
@@ -5549,6 +5564,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           is_system: boolean | null
           name: string
           school_id: string | null
@@ -5558,6 +5574,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           is_system?: boolean | null
           name: string
           school_id?: string | null
@@ -5567,6 +5584,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           is_system?: boolean | null
           name?: string
           school_id?: string | null
@@ -6274,6 +6292,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          metadata: Json | null
           payment_method: string | null
           reference_number: string | null
           school_id: string
@@ -6289,6 +6308,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           payment_method?: string | null
           reference_number?: string | null
           school_id: string
@@ -6304,6 +6324,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           payment_method?: string | null
           reference_number?: string | null
           school_id?: string
@@ -6577,6 +6598,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           title: string
           updated_at: string | null
           user_id: string
@@ -6586,6 +6608,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -6595,6 +6618,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -6793,6 +6817,7 @@ export type Database = {
           customer_id: string
           description: string | null
           id: string
+          metadata: Json | null
           sale_id: string | null
           shop_id: string
           type: string
@@ -6803,6 +6828,7 @@ export type Database = {
           customer_id: string
           description?: string | null
           id?: string
+          metadata?: Json | null
           sale_id?: string | null
           shop_id: string
           type: string
@@ -6813,6 +6839,7 @@ export type Database = {
           customer_id?: string
           description?: string | null
           id?: string
+          metadata?: Json | null
           sale_id?: string | null
           shop_id?: string
           type?: string
@@ -8048,6 +8075,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           name: string
           school_id: string | null
           updated_at: string | null
@@ -8058,6 +8086,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           name: string
           school_id?: string | null
           updated_at?: string | null
@@ -8068,6 +8097,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           name?: string
           school_id?: string | null
           updated_at?: string | null
@@ -8434,6 +8464,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          metadata: Json | null
           reference_id: string | null
           teacher_id: string
           transaction_type: string
@@ -8443,6 +8474,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           reference_id?: string | null
           teacher_id: string
           transaction_type: string
@@ -8452,6 +8484,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          metadata?: Json | null
           reference_id?: string | null
           teacher_id?: string
           transaction_type?: string
@@ -9205,6 +9238,7 @@ export type Database = {
           currency: string
           description: string | null
           id: string
+          metadata: Json | null
           reference_id: string | null
           reference_type: string | null
           transaction_type: string
@@ -9216,6 +9250,7 @@ export type Database = {
           currency: string
           description?: string | null
           id?: string
+          metadata?: Json | null
           reference_id?: string | null
           reference_type?: string | null
           transaction_type: string
@@ -9227,6 +9262,7 @@ export type Database = {
           currency?: string
           description?: string | null
           id?: string
+          metadata?: Json | null
           reference_id?: string | null
           reference_type?: string | null
           transaction_type?: string

@@ -5,6 +5,8 @@
 -- Diamond (4) : 30%
 -- ============================================================
 
+ALTER TABLE public.wallet_transactions ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
 -- 1. Étendre les types de transaction autorisés pour inclure 'commission'
 ALTER TABLE public.wallet_transactions DROP CONSTRAINT IF EXISTS wallet_transactions_transaction_type_check;
 
@@ -119,6 +121,13 @@ DECLARE
   v_commission_rate NUMERIC;
   v_commission      NUMERIC;
   v_net_amount      NUMERIC;
+  v_sender_name     TEXT;
+  v_recipient_name  TEXT;
+  v_base_reason     TEXT;
+  v_sender_avatar TEXT;
+  v_recipient_avatar TEXT;
+  v_sender_desc     TEXT;
+  v_recipient_desc  TEXT;
 BEGIN
   v_sender_id := auth.uid();
 
@@ -148,6 +157,40 @@ BEGIN
   v_commission      := ROUND(p_amount * v_commission_rate, 8);
   v_net_amount      := p_amount - v_commission;
 
+  -- Récupérer les profils avec avatar
+  SELECT first_name || ' ' || last_name, avatar_url INTO v_sender_name, v_sender_avatar FROM profiles WHERE id = v_sender_id;
+  SELECT first_name || ' ' || last_name, avatar_url INTO v_recipient_name, v_recipient_avatar FROM profiles WHERE id = p_recipient_id;
+
+  v_sender_name := COALESCE(v_sender_name, 'Utilisateur');
+  v_recipient_name := COALESCE(v_recipient_name, 'Utilisateur');
+
+  IF p_reason = 'gift' OR p_reason IS NULL OR trim(p_reason) = '' THEN
+    v_base_reason := 'Cadeau';
+  ELSE
+    v_base_reason := p_reason;
+  END IF;
+
+  
+  v_sender_desc := jsonb_build_object(
+    'type', 'gift_transfer',
+    'role', 'sender',
+    'gift_reason', v_base_reason,
+    'video_title', NULL,
+    'partner_id', p_recipient_id,
+    'partner_name', v_recipient_name,
+    'partner_avatar', v_recipient_avatar
+  )::text;
+
+  v_recipient_desc := jsonb_build_object(
+    'type', 'gift_transfer',
+    'role', 'receiver',
+    'gift_reason', v_base_reason,
+    'video_title', NULL,
+    'partner_id', v_sender_id,
+    'partner_name', v_sender_name,
+    'partner_avatar', v_sender_avatar
+  )::text;
+
   -- 1. Déduire la totalité du compte expéditeur
   UPDATE public.user_wallets
   SET soumboulah_cash = soumboulah_cash - p_amount,
@@ -166,14 +209,18 @@ BEGIN
   INSERT INTO public.wallet_transactions (
     user_id, currency, amount, transaction_type, description, reference_id, reference_type
   ) VALUES (
-    v_sender_id, 'soumboulah_cash', -p_amount, 'gift_sent', p_reason, p_reference_id, 'transfer'
+    v_sender_id, 'soumboulah_cash', -p_amount, 'gift_sent', 
+    v_sender_desc, 
+    p_reference_id, 'transfer'
   );
 
   -- 4. Historique : réception (montant net)
   INSERT INTO public.wallet_transactions (
     user_id, currency, amount, transaction_type, description, reference_id, reference_type
   ) VALUES (
-    p_recipient_id, 'soumboulah_cash', v_net_amount, 'gift_received', p_reason, p_reference_id, 'transfer'
+    p_recipient_id, 'soumboulah_cash', v_net_amount, 'gift_received', 
+    v_recipient_desc, 
+    p_reference_id, 'transfer'
   );
 
   -- 5. Historique : commission prélevée
@@ -182,7 +229,7 @@ BEGIN
       user_id, currency, amount, transaction_type, description, reference_id, reference_type
     ) VALUES (
       p_recipient_id, 'soumboulah_cash', -v_commission, 'commission',
-      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%)',
+      'Frais de plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%) sur le ' || LOWER(v_base_reason) || ' de ' || v_sender_name,
       p_reference_id, 'transfer'
     );
   END IF;
@@ -213,6 +260,13 @@ DECLARE
   v_commission_rate NUMERIC;
   v_commission      NUMERIC;
   v_net_amount      NUMERIC;
+  v_sender_name     TEXT;
+  v_recipient_name  TEXT;
+  v_base_reason     TEXT;
+  v_sender_avatar TEXT;
+  v_recipient_avatar TEXT;
+  v_sender_desc     TEXT;
+  v_recipient_desc  TEXT;
 BEGIN
   v_sender_id := auth.uid();
 
@@ -242,6 +296,40 @@ BEGIN
   v_commission      := ROUND(p_amount * v_commission_rate, 8);
   v_net_amount      := p_amount - v_commission;
 
+  -- Récupérer les profils avec avatar
+  SELECT first_name || ' ' || last_name, avatar_url INTO v_sender_name, v_sender_avatar FROM profiles WHERE id = v_sender_id;
+  SELECT first_name || ' ' || last_name, avatar_url INTO v_recipient_name, v_recipient_avatar FROM profiles WHERE id = p_recipient_id;
+
+  v_sender_name := COALESCE(v_sender_name, 'Utilisateur');
+  v_recipient_name := COALESCE(v_recipient_name, 'Utilisateur');
+
+  IF p_reason = 'gift' OR p_reason IS NULL OR trim(p_reason) = '' THEN
+    v_base_reason := 'Cadeau';
+  ELSE
+    v_base_reason := p_reason;
+  END IF;
+
+  
+  v_sender_desc := jsonb_build_object(
+    'type', 'gift_transfer',
+    'role', 'sender',
+    'gift_reason', v_base_reason,
+    'video_title', NULL,
+    'partner_id', p_recipient_id,
+    'partner_name', v_recipient_name,
+    'partner_avatar', v_recipient_avatar
+  )::text;
+
+  v_recipient_desc := jsonb_build_object(
+    'type', 'gift_transfer',
+    'role', 'receiver',
+    'gift_reason', v_base_reason,
+    'video_title', NULL,
+    'partner_id', v_sender_id,
+    'partner_name', v_sender_name,
+    'partner_avatar', v_sender_avatar
+  )::text;
+
   -- 1. Déduire la totalité du compte expéditeur
   UPDATE public.user_wallets
   SET soumboulah_bonus = soumboulah_bonus - p_amount,
@@ -260,14 +348,18 @@ BEGIN
   INSERT INTO public.wallet_transactions (
     user_id, currency, amount, transaction_type, description, reference_id, reference_type
   ) VALUES (
-    v_sender_id, 'soumboulah_bonus', -p_amount, 'gift_sent', p_reason, p_reference_id, 'transfer'
+    v_sender_id, 'soumboulah_bonus', -p_amount, 'gift_sent', 
+    v_sender_desc, 
+    p_reference_id, 'transfer'
   );
 
   -- 4. Historique : réception (montant net)
   INSERT INTO public.wallet_transactions (
     user_id, currency, amount, transaction_type, description, reference_id, reference_type
   ) VALUES (
-    p_recipient_id, 'soumboulah_bonus', v_net_amount, 'gift_received', p_reason, p_reference_id, 'transfer'
+    p_recipient_id, 'soumboulah_bonus', v_net_amount, 'gift_received', 
+    v_recipient_desc, 
+    p_reference_id, 'transfer'
   );
 
   -- 5. Historique : commission prélevée
@@ -276,7 +368,7 @@ BEGIN
       user_id, currency, amount, transaction_type, description, reference_id, reference_type
     ) VALUES (
       p_recipient_id, 'soumboulah_bonus', -v_commission, 'commission',
-      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%)',
+      'Frais de plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%) sur le ' || LOWER(v_base_reason) || ' de ' || v_sender_name,
       p_reference_id, 'transfer'
     );
   END IF;
@@ -312,6 +404,13 @@ DECLARE
   v_commission_rate     NUMERIC;
   v_commission          NUMERIC;
   v_net_amount          NUMERIC;
+  v_sender_name         TEXT;
+  v_recipient_name      TEXT;
+  v_base_reason         TEXT;
+  v_sender_desc         TEXT;
+  v_recipient_desc      TEXT;
+  v_sender_avatar TEXT;
+  v_recipient_avatar TEXT;
 BEGIN
   v_sender_id := auth.uid();
 
@@ -346,6 +445,59 @@ BEGIN
     v_description := COALESCE(p_reason, 'Cadeau envoyé');
   END IF;
 
+  -- Récupérer les profils avec avatar
+  SELECT first_name || ' ' || last_name, avatar_url INTO v_sender_name, v_sender_avatar FROM profiles WHERE id = v_sender_id;
+  SELECT first_name || ' ' || last_name, avatar_url INTO v_recipient_name, v_recipient_avatar FROM profiles WHERE id = p_recipient_id;
+
+  v_sender_name := COALESCE(v_sender_name, 'Utilisateur');
+  v_recipient_name := COALESCE(v_recipient_name, 'Utilisateur');
+
+  IF p_reason = 'gift' OR p_reason IS NULL OR trim(p_reason) = '' THEN
+    v_base_reason := 'Cadeau';
+  ELSE
+    v_base_reason := p_reason;
+  END IF;
+
+  IF v_video_title IS NOT NULL THEN
+    v_sender_desc := jsonb_build_object(
+      'type', 'gift_transfer',
+      'role', 'sender',
+      'gift_reason', v_base_reason,
+      'video_title', v_video_title,
+      'partner_id', p_recipient_id,
+      'partner_name', v_recipient_name,
+      'partner_avatar', v_recipient_avatar
+    )::text;
+    v_recipient_desc := jsonb_build_object(
+      'type', 'gift_transfer',
+      'role', 'receiver',
+      'gift_reason', v_base_reason,
+      'video_title', v_video_title,
+      'partner_id', v_sender_id,
+      'partner_name', v_sender_name,
+      'partner_avatar', v_sender_avatar
+    )::text;
+  ELSE
+    v_sender_desc := jsonb_build_object(
+      'type', 'gift_transfer',
+      'role', 'sender',
+      'gift_reason', v_base_reason,
+      'video_title', v_video_title,
+      'partner_id', p_recipient_id,
+      'partner_name', v_recipient_name,
+      'partner_avatar', v_recipient_avatar
+    )::text;
+    v_recipient_desc := jsonb_build_object(
+      'type', 'gift_transfer',
+      'role', 'receiver',
+      'gift_reason', v_base_reason,
+      'video_title', v_video_title,
+      'partner_id', v_sender_id,
+      'partner_name', v_sender_name,
+      'partner_avatar', v_sender_avatar
+    )::text;
+  END IF;
+
   -- Vérifier le solde de l'expéditeur
   SELECT habbah INTO v_sender_balance
   FROM user_wallets
@@ -370,7 +522,7 @@ BEGIN
   INSERT INTO habbah_events (
     user_id, habbah_earned, event_type, description, reference_id, related_user_id
   ) VALUES (
-    v_sender_id, -p_amount, 'transfer_sent', v_description,
+    v_sender_id, -p_amount, 'transfer_sent', v_sender_desc,
     p_recipient_id::text, p_recipient_id
   );
 
@@ -378,7 +530,7 @@ BEGIN
   INSERT INTO habbah_events (
     user_id, habbah_earned, event_type, description, reference_id, related_user_id
   ) VALUES (
-    p_recipient_id, v_net_amount, 'transfer_received', v_description,
+    p_recipient_id, v_net_amount, 'transfer_received', v_recipient_desc,
     p_reference_id, v_sender_id
   );
 
@@ -388,7 +540,7 @@ BEGIN
       user_id, currency, amount, transaction_type, description, reference_id, reference_type
     ) VALUES (
       p_recipient_id, 'habbah', -v_commission, 'commission',
-      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%)',
+      'Frais de plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%) sur le ' || LOWER(v_base_reason) || ' de ' || v_sender_name,
       p_reference_id, 'transfer'
     );
   END IF;
