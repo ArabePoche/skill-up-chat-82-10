@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp, AlertCircle, ArrowUpDown, Trophy, User } from 'lucide-react';
+import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp, AlertCircle, ArrowUpDown, Trophy, User, Lock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +40,8 @@ interface BulletinGenerationTabProps {
   }>;
   schoolId: string;
   schoolYearId: string;
+  canSeeLockedTemplates: boolean;
+  canUseProTemplates: boolean;
 }
 
 interface ManualClassNote {
@@ -48,10 +50,25 @@ interface ManualClassNote {
   score: number | null;
 }
 
+type TemplateTier = 'free' | 'pro';
+
+const getTemplateTier = (template: BulletinTemplate): TemplateTier => {
+  if (template.config && typeof template.config === 'object' && !Array.isArray(template.config)) {
+    const tier = (template.config as Record<string, unknown>).tier;
+    if (tier === 'free' || tier === 'pro') {
+      return tier;
+    }
+  }
+
+  return template.layout_type === 'modern' ? 'pro' : 'free';
+};
+
 export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({ 
   availableClasses,
   schoolId,
-  schoolYearId 
+  schoolYearId,
+  canSeeLockedTemplates,
+  canUseProTemplates,
 }) => {
   // Sélections principales
   const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -107,6 +124,16 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   const { data: templates = [] } = useBulletinTemplates(schoolId);
   const { data: appreciationTemplates = [] } = useBulletinAppreciations(schoolId);
 
+  const visibleTemplates = useMemo(
+    () => templates.filter((template) => getTemplateTier(template) === 'free' || canUseProTemplates || canSeeLockedTemplates),
+    [templates, canSeeLockedTemplates, canUseProTemplates]
+  );
+
+  const selectableTemplates = useMemo(
+    () => visibleTemplates.filter((template) => getTemplateTier(template) === 'free' || canUseProTemplates),
+    [visibleTemplates, canUseProTemplates]
+  );
+
   // Composition sélectionnée
   const selectedComposition = compositions.find(c => c.id === selectedCompositionId);
   
@@ -131,13 +158,22 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
 
   // Template par défaut
   useEffect(() => {
-    if (templates.length > 0 && !selectedTemplate) {
-      const defaultTemplate = templates.find(t => t.is_default);
+    if (selectableTemplates.length === 0) {
+      if (selectedTemplate) {
+        setSelectedTemplate('');
+      }
+      return;
+    }
+
+    const selectedTemplateStillAllowed = selectableTemplates.some((template) => template.id === selectedTemplate);
+
+    if (!selectedTemplate || !selectedTemplateStillAllowed) {
+      const defaultTemplate = selectableTemplates.find((template) => template.is_default) ?? selectableTemplates[0];
       if (defaultTemplate) {
         setSelectedTemplate(defaultTemplate.id);
       }
     }
-  }, [templates, selectedTemplate]);
+  }, [selectableTemplates, selectedTemplate]);
 
   // Récupérer la note de classe pour un étudiant et une matière
   const getClassNoteScore = (studentId: string, subjectId: string): number | null => {
@@ -309,8 +345,8 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
 
   // Template sélectionné
   const currentTemplate = useMemo(() => {
-    return templates.find(t => t.id === selectedTemplate) || null;
-  }, [templates, selectedTemplate]);
+    return selectableTemplates.find(t => t.id === selectedTemplate) || null;
+  }, [selectableTemplates, selectedTemplate]);
 
   const isLoading = loadingCompositions || loadingBulletin;
   
@@ -410,13 +446,25 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
                   <SelectValue placeholder="Sélectionner un template" />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name} {template.is_default && '(par défaut)'}
+                  {visibleTemplates.map((template) => {
+                    const isLocked = getTemplateTier(template) === 'pro' && !canUseProTemplates;
+
+                    return (
+                    <SelectItem key={template.id} value={template.id} disabled={isLocked}>
+                      <div className="flex items-center gap-2">
+                        <span>{template.name} {template.is_default && '(par défaut)'}</span>
+                        {isLocked && <Lock className="h-3.5 w-3.5 text-amber-600" />}
+                      </div>
                     </SelectItem>
-                  ))}
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {!canUseProTemplates && canSeeLockedTemplates && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Les templates Pro sont visibles mais verrouillés jusqu'à l'activation de School Pro.
+                </p>
+              )}
             </div>
           </div>
 

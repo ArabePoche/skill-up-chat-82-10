@@ -7,14 +7,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
 
 // Import conditionnel du plugin Contacts
-let Contacts: any = null;
-try {
-  if (Capacitor.isNativePlatform()) {
-    Contacts = require('@capacitor-community/contacts').Contacts;
-  }
-} catch (error) {
-  console.warn('Capacitor Contacts plugin not available:', error);
-}
+import { Contacts } from '@capacitor-community/contacts';
+// let Contacts: any = null;
+// try {
+//   if (Capacitor.isNativePlatform()) {
+//     Contacts = require('@capacitor-community/contacts').Contacts;
+//   }
+// } catch (error) {
+//   console.warn('Capacitor Contacts plugin not available:', error);
+// }
 
 interface PhoneContact {
   name: string;
@@ -30,6 +31,8 @@ export const usePhoneContacts = () => {
     setIsLoading(true);
     try {
       // Vérifier si on est dans un iframe (comme la preview Lovable)
+      // On désactive ce check car il force l'utilisation de données de démo même si on veut tester
+      /*
       const isInIframe = window.self !== window.top;
       
       if (isInIframe) {
@@ -48,6 +51,7 @@ export const usePhoneContacts = () => {
         setContacts(demoContacts);
         return demoContacts;
       }
+      */
 
       // Vérifier si on est sur une plateforme native avec Capacitor
       const isNativePlatform = Capacitor.isNativePlatform();
@@ -60,29 +64,61 @@ export const usePhoneContacts = () => {
           const permission = await Contacts.requestPermissions();
           console.log('🔐 Permission contacts:', permission);
           
-          if (permission.contacts === 'granted') {
-            // Récupérer tous les contacts
+          if (permission.contacts === 'granted' || permission.contacts === 'prompt') {
+            // TENTATIVE SANS PROJECTION POUR MAXIMISER COMPATIBILITÉ
+            // Certains téléphones bloquent si on demande une projection précise
             const result = await Contacts.getContacts({
-              projection: {
-                name: true,
-                phones: true,
-              }
+               // @ts-ignore
+               projection: {
+                  name: true,
+                  phones: true
+               }
             });
             
-            console.log('📇 Contacts récupérés:', result.contacts?.length || 0);
+            // Si le résultat est vide, on tente sans projection (fetch tout)
+            let rawContacts = result.contacts || [];
+            if (rawContacts.length === 0) {
+              console.log('⚠️ Réessai sans projection...');
+              try {
+                // @ts-ignore
+                const retryResult = await Contacts.getContacts({});
+                rawContacts = retryResult.contacts || [];
+              } catch (e) {
+                console.warn('Erreur fallback contacts:', e);
+              }
+            }
+            console.log('📇 Contacts bruts récupérés:', rawContacts.length);
             
-            const formattedContacts: PhoneContact[] = result.contacts
-              .filter((contact: any) => contact.phones && contact.phones.length > 0)
+            const formattedContacts: PhoneContact[] = rawContacts
+              .filter((contact: any) => {
+                 // Vérifier si le contact a au moins un numéro
+                 return contact.phones && Array.isArray(contact.phones) && contact.phones.length > 0;
+              })
               .map((contact: any) => ({
-                name: contact.name?.display || 'Sans nom',
-                phoneNumbers: contact.phones?.map((p: any) => p.number?.replace(/\s+/g, '') || '') || []
+                // Essayer tous les champs de nom possibles selon les versions d'Android/iOS
+                name: contact.name?.display || contact.displayName || contact.givenName || contact.name || 'Sans nom',
+                // Nettoyage strict : ne garder que chiffres et +
+                phoneNumbers: contact.phones
+                  .map((p: any) => typeof p === 'string' ? p.replace(/[^0-9+]/g, '') : p.number?.replace(/[^0-9+]/g, '') || '')
+                  .filter((num: string) => num.length > 0)
               }));
             
+            console.log('✅ Contacts formatés valides:', formattedContacts.length);
+
             setContacts(formattedContacts);
-            toast({
-              title: "Contacts chargés",
-              description: `${formattedContacts.length} contact(s) trouvé(s)`,
-            });
+            
+            if (formattedContacts.length === 0 && rawContacts.length > 0) {
+              toast({
+                title: "Attention",
+                description: `${rawContacts.length} contacts trouvés mais aucun avec un numéro valide.`,
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "Contacts chargés",
+                description: `${formattedContacts.length} contact(s) trouvé(s) sur ${rawContacts.length}`,
+              });
+            }
             return formattedContacts;
           } else {
             toast({

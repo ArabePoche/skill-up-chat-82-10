@@ -24,12 +24,21 @@ BEGIN
     AND EXISTS (
       SELECT 1 FROM unnest(phone_numbers) AS input_phone
       WHERE
-        -- Match exact : country_code + phone = input
-        (COALESCE(p.phone_country_code, '') || p.phone) = input_phone
-        -- Match partiel : le numéro du contact se termine par le phone du profil
-        OR input_phone LIKE '%' || p.phone
-        -- Match partiel inverse : le phone du profil se termine par les derniers chiffres du contact
-        OR p.phone LIKE '%' || RIGHT(input_phone, 9)
+        -- 1. Cas idéal : Match exact sur (code_pays + téléphone)
+        -- Ex: input="+22312345678" vs profile="12345678", code="+223"
+        (COALESCE(p.phone_country_code, '') || regexp_replace(p.phone, '[^0-9]', '', 'g')) = regexp_replace(input_phone, '[^0-9+]', '', 'g')
+        
+        -- 2. Cas local : Match exact sur téléphone seul (sans code pays)
+        -- Si l'utilisateur a enregistré "12345678" dans ses contacts
+        OR regexp_replace(p.phone, '[^0-9]', '', 'g') = regexp_replace(input_phone, '[^0-9]', '', 'g')
+
+        -- 3. Cas souple : Si le numéro input contient le téléphone du profil (avec ou sans zéro)
+        -- Permet de matcher "012345678" avec "12345678"
+        OR regexp_replace(input_phone, '[^0-9]', '', 'g') LIKE '%' || regexp_replace(p.phone, '[^0-9]', '', 'g')
+        
+        -- 4. Cas inverse : Si le téléphone complet (code+num) du profil contient le numéro input
+        -- Ex: profile="+223 70 12 34 56", input="70123456"
+        OR (COALESCE(p.phone_country_code, '') || regexp_replace(p.phone, '[^0-9]', '', 'g')) LIKE '%' || regexp_replace(input_phone, '[^0-9]', '', 'g')
     );
 END;
 $$;

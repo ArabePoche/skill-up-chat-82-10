@@ -14,11 +14,11 @@ interface DownloadOptions {
   onStageChange?: (stage: string) => void;
 }
 
-const WATERMARK_FETCH_PROGRESS_MAX = 35;
+const WATERMARK_FETCH_PROGRESS_MAX = 95;
 const WATERMARK_METADATA_PROGRESS = 45;
 const WATERMARK_RENDER_START = 50;
 const WATERMARK_RENDER_END = 92;
-const WATERMARK_SAVE_PROGRESS = 97;
+const WATERMARK_SAVE_PROGRESS = 98;
 const WATERMARK_SWITCH_INTERVAL = 8;
 
 const MAX_VIDEO_WIDTH = 720; // Limite de réencodage pour mobile (720p pour éviter freeze)
@@ -302,6 +302,30 @@ export async function downloadVideoWithWatermark({
     let combinedStream: MediaStream | null = null;
 
     try {
+      // FIX: Force direct download to prevent Audio/Video desync on mobile devices
+      // The canvas recording approach is not performant enough for real-time encoding on phone CPUs
+      if (true) {
+          onStageChange?.('Téléchargement...');
+          // Use the existing helper to get progress events
+          const url = await fetchVideoAsBlob(videoUrl, onProgress);
+          
+          // Convert back to blob for saving
+          const r = await fetch(url);
+          const b = await r.blob();
+          URL.revokeObjectURL(url);
+          
+          const mime = b.type || 'video/mp4';
+          // Fix extension if needed
+          let finalName = fileName;
+          if (mime.includes('mp4') && !finalName.endsWith('.mp4')) {
+             finalName = finalName.replace(/\.\w+$/, '.mp4');
+          }
+          
+          await saveOutputVideo(b, finalName, mime, onProgress, onStageChange);
+          resolve();
+          return;
+      }
+
       const selectedMime = getSupportedRecorderMimeType();
       if (!selectedMime) {
         // Fallback si pas de support: on télécharge sans watermark

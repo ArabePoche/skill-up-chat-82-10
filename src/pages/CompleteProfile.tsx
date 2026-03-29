@@ -94,7 +94,7 @@ const CompleteProfile = () => {
         setFormData({
           firstName: profile.first_name || '',
           lastName: profile.last_name || '',
-          phone: profile.phone || '',
+          phone: profile.phone ? profile.phone.replace(/\D/g, '') : '',
           phoneCountryCode: profile.phone_country_code || '',
           country: profile.country || '',
           gender: profile.gender || '',
@@ -172,13 +172,16 @@ const CompleteProfile = () => {
       }
 
       // Mettre à jour le profil
+      // Normalisation stricte du numéro de téléphone avant envoi : ne garder que les chiffres
+      const formattedPhone = formData.phone ? formData.phone.replace(/\D/g, '') : null;
+      
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          phone: formData.phone,
+          phone: formattedPhone, // Utiliser la version nettoyée
           phone_country_code: formData.phoneCountryCode,
           country: formData.country,
           gender: formData.gender,

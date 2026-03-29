@@ -8,6 +8,8 @@ import { BulletinGenerationTab } from './bulletins/BulletinGenerationTab';
 import { BulletinSettingsTab } from './bulletins/BulletinSettingsTab';
 import { BulletinTemplatesTab } from './bulletins/BulletinTemplatesTab';
 import { BulletinHistoryTab } from './bulletins/BulletinHistoryTab';
+import { useAuth } from '@/hooks/useAuth';
+import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 
 interface BulletinsSectionProps {
   availableClasses: Array<{
@@ -28,6 +30,13 @@ export const BulletinsSection: React.FC<BulletinsSectionProps> = ({
   schoolYearId 
 }) => {
   const [activeTab, setActiveTab] = useState('generation');
+  const { profile } = useAuth();
+  const { data: schoolRole } = useSchoolUserRole(schoolId);
+  const isPlatformAdmin = profile?.role === 'admin';
+  const isSchoolAdmin = Boolean(schoolRole?.isAdmin || schoolRole?.isOwner);
+  const canManageTemplates = isPlatformAdmin;
+  const canSeeLockedTemplates = isPlatformAdmin || isSchoolAdmin;
+  const canUseProTemplates = isPlatformAdmin;
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -55,6 +64,8 @@ export const BulletinsSection: React.FC<BulletinsSectionProps> = ({
           availableClasses={availableClasses}
           schoolId={schoolId}
           schoolYearId={schoolYearId}
+          canSeeLockedTemplates={canSeeLockedTemplates}
+          canUseProTemplates={canUseProTemplates}
         />
       </TabsContent>
 
@@ -63,7 +74,12 @@ export const BulletinsSection: React.FC<BulletinsSectionProps> = ({
       </TabsContent>
 
       <TabsContent value="templates" className="mt-0">
-        <BulletinTemplatesTab schoolId={schoolId} />
+        <BulletinTemplatesTab
+          schoolId={schoolId}
+          canManageTemplates={canManageTemplates}
+          canSeeLockedTemplates={canSeeLockedTemplates}
+          canUseProTemplates={canUseProTemplates}
+        />
       </TabsContent>
 
       <TabsContent value="history" className="mt-0">
