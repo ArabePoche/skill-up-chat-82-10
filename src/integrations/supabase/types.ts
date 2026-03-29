@@ -426,7 +426,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           label: string
           name: string
         }
@@ -434,7 +433,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           label: string
           name: string
         }
@@ -442,7 +440,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           label?: string
           name?: string
         }
@@ -1140,7 +1137,6 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          metadata: Json | null
           lesson_id: string
           title: string
           type: string | null
@@ -1150,7 +1146,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          metadata?: Json | null
           lesson_id: string
           title: string
           type?: string | null
@@ -1160,7 +1155,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          metadata?: Json | null
           lesson_id?: string
           title?: string
           type?: string | null
@@ -1549,6 +1543,36 @@ export type Database = {
           receiver_id?: string
           sender_id?: string
           status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      gift_commission_settings: {
+        Row: {
+          commission_rate: number
+          created_at: string | null
+          id: string
+          level_badge: string
+          level_name: string
+          level_number: number
+          updated_at: string | null
+        }
+        Insert: {
+          commission_rate?: number
+          created_at?: string | null
+          id?: string
+          level_badge?: string
+          level_name: string
+          level_number: number
+          updated_at?: string | null
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string | null
+          id?: string
+          level_badge?: string
+          level_name?: string
+          level_number?: number
           updated_at?: string | null
         }
         Relationships: []
@@ -2855,7 +2879,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           image_url: string | null
           location: string | null
           marketplace_quantity: number | null
@@ -2873,7 +2896,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           image_url?: string | null
           location?: string | null
           marketplace_quantity?: number | null
@@ -2891,7 +2913,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           image_url?: string | null
           location?: string | null
           marketplace_quantity?: number | null
@@ -3433,7 +3454,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           label: string
           name: string
           updated_at: string | null
@@ -3443,7 +3463,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           label: string
           name: string
           updated_at?: string | null
@@ -3453,7 +3472,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           label?: string
           name?: string
           updated_at?: string | null
@@ -4968,7 +4986,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           name: string
           school_id: string | null
         }
@@ -4976,7 +4993,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           name: string
           school_id?: string | null
         }
@@ -4984,7 +5000,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           name?: string
           school_id?: string | null
         }
@@ -5564,7 +5579,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           is_system: boolean | null
           name: string
           school_id: string | null
@@ -5574,7 +5588,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           is_system?: boolean | null
           name: string
           school_id?: string | null
@@ -5584,7 +5597,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           is_system?: boolean | null
           name?: string
           school_id?: string | null
@@ -6292,7 +6304,6 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
-          metadata: Json | null
           payment_method: string | null
           reference_number: string | null
           school_id: string
@@ -6308,7 +6319,6 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           payment_method?: string | null
           reference_number?: string | null
           school_id: string
@@ -6324,7 +6334,6 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           payment_method?: string | null
           reference_number?: string | null
           school_id?: string
@@ -6598,7 +6607,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           title: string
           updated_at: string | null
           user_id: string
@@ -6608,7 +6616,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -6618,7 +6625,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -6817,7 +6823,6 @@ export type Database = {
           customer_id: string
           description: string | null
           id: string
-          metadata: Json | null
           sale_id: string | null
           shop_id: string
           type: string
@@ -6828,7 +6833,6 @@ export type Database = {
           customer_id: string
           description?: string | null
           id?: string
-          metadata?: Json | null
           sale_id?: string | null
           shop_id: string
           type: string
@@ -6839,7 +6843,6 @@ export type Database = {
           customer_id?: string
           description?: string | null
           id?: string
-          metadata?: Json | null
           sale_id?: string | null
           shop_id?: string
           type?: string
@@ -8075,7 +8078,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           name: string
           school_id: string | null
           updated_at: string | null
@@ -8086,7 +8088,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           name: string
           school_id?: string | null
           updated_at?: string | null
@@ -8097,7 +8098,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           name?: string
           school_id?: string | null
           updated_at?: string | null
@@ -8464,7 +8464,6 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
-          metadata: Json | null
           reference_id: string | null
           teacher_id: string
           transaction_type: string
@@ -8474,7 +8473,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           reference_id?: string | null
           teacher_id: string
           transaction_type: string
@@ -8484,7 +8482,6 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
-          metadata?: Json | null
           reference_id?: string | null
           teacher_id?: string
           transaction_type?: string
@@ -9548,6 +9545,7 @@ export type Database = {
         Args: { p_formation_id: string; p_teacher_id: string }
         Returns: number
       }
+      get_gift_commission_rate: { Args: { p_user_id: string }; Returns: number }
       get_or_create_usage_record: {
         Args: { p_date?: string; p_formation_id: string; p_user_id: string }
         Returns: string
