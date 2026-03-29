@@ -177,15 +177,22 @@ const TikTokVideosView: React.FC<{
     }
   }, [currentVideoIndex, displayedVideos, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  // Quand la vidéo cible est chargée, scroller vers elle et forcer l'index
   useEffect(() => {
     if (!targetVideoId || !displayedVideos || displayedVideos.length === 0) return;
+    if (hasInitializedTarget.current) return; // Ne faire qu'une seule fois
+    
     const index = displayedVideos.findIndex((v: any) => v.id === targetVideoId);
     if (index >= 0) {
+      hasInitializedTarget.current = true;
       setCurrentVideoIndex(index);
-      const ref = videoRefs.current[index];
-      if (ref) {
-        ref.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }
+      // Petit délai pour laisser le DOM se construire avant le scroll
+      requestAnimationFrame(() => {
+        const ref = videoRefs.current[index];
+        if (ref) {
+          ref.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      });
     }
   }, [targetVideoId, displayedVideos]);
 
