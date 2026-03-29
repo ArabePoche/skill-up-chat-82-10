@@ -64,7 +64,9 @@ const TikTokVideosView: React.FC<{
     refetch: refetchTargetVideo,
     error: targetVideoError,
   } = useVideoById(targetVideoId);
+  // Initialiser l'index à 0; sera mis à jour par l'effet targetVideoId
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const hasInitializedTarget = useRef(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [globalMuted, setGlobalMuted] = useState(() => {
     if (typeof window === 'undefined') {

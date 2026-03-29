@@ -121,13 +121,8 @@ export const useStreakSessionTracker = () => {
     if (streak.daily_minutes >= globalConfig.minutes_per_day_required) {
       newStreak += 1;
       
-      // Récompenser avec Habbah
-      const habbahResult = await recordHabbahGain(userId, 'daily_streak');
-      if (habbahResult) {
-        toast.success(`Bravo ! Streak validé : +${habbahResult.amount} Habbah`);
-      } else {
-        toast.success('Streak validé ! Continuez comme ça !');
-      }
+      // Récompenser avec Habbah (silencieusement, pas de toast intrusif à l'ouverture)
+      await recordHabbahGain(userId, 'daily_streak');
 
       console.log(`✅ Streak validé! Minutes: ${streak.daily_minutes}/${globalConfig.minutes_per_day_required}`);
     }
