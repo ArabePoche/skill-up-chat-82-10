@@ -52,19 +52,19 @@ const ProfileCounters: React.FC<ProfileCountersProps> = ({
         {userId && !isStreakLoading && streak && (
           <div className="flex flex-col items-center gap-1 min-w-[50px]">
             <div className="flex items-center gap-1">
-              {earnedLevels.length > 0 && (
-                <div className="flex items-center gap-0.5">
-                  {earnedLevels.map(level => (
-                    <span key={level.id} className="text-sm" title={level.level_name}>
-                      {level.level_badge}
-                    </span>
-                  ))}
-                </div>
-              )}
               <Flame size={18} className="text-orange-500" />
               <span className="text-xl font-bold text-orange-500">{streak.current_streak}</span>
             </div>
             <span className="text-xs text-muted-foreground">Streak</span>
+            {earnedLevels.length > 0 && (
+              <div className="flex items-center gap-0.5">
+                {earnedLevels.map(level => (
+                  <span key={level.id} className="text-sm" title={level.level_name}>
+                    {level.level_badge}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
