@@ -190,5 +190,5 @@ VALUES
   (1, 'Bronze', '🥉', 3, '#10b981'),
   (2, 'Silver', '🥈', 7, '#3b82f6'),
   (3, 'Gold', '🥇', 14, '#f59e0b'),
-  (4, 'Diamond', ' 💎 ', 30, '#8b5cf6'),
+  (4, 'Diamond', ' 💎 ', 30, '#8b5cf6')
 ON CONFLICT (level_number) DO NOTHING;

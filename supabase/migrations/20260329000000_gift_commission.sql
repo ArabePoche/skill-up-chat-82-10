@@ -43,6 +43,12 @@ CREATE POLICY "Seuls les admins peuvent modifier les commissions"
       SELECT 1 FROM profiles
       WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
     )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+    )
   );
 
 -- Trigger updated_at
@@ -176,7 +182,7 @@ BEGIN
       user_id, currency, amount, transaction_type, description, reference_id, reference_type
     ) VALUES (
       p_recipient_id, 'soumboulah_cash', -v_commission, 'commission',
-      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::integer || '%)',
+      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%)',
       p_reference_id, 'transfer'
     );
   END IF;
@@ -270,7 +276,7 @@ BEGIN
       user_id, currency, amount, transaction_type, description, reference_id, reference_type
     ) VALUES (
       p_recipient_id, 'soumboulah_bonus', -v_commission, 'commission',
-      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::integer || '%)',
+      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%)',
       p_reference_id, 'transfer'
     );
   END IF;
@@ -382,7 +388,7 @@ BEGIN
       user_id, currency, amount, transaction_type, description, reference_id, reference_type
     ) VALUES (
       p_recipient_id, 'habbah', -v_commission, 'commission',
-      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::integer || '%)',
+      'Commission plateforme (' || ROUND(v_commission_rate * 100, 0)::text || '%)',
       p_reference_id, 'transfer'
     );
   END IF;
