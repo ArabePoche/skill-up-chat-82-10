@@ -238,7 +238,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
       title="Prendre une photo ou importer depuis la galerie"
     >
       <Camera size={16} />
-      <span>Photo</span>
+      <span className="hidden sm:inline">Photo</span>
     </Button>
   );
 };
