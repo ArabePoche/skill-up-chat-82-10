@@ -44,6 +44,14 @@ export interface AntifraudSettings {
   pending_validation_delay_hours: number;
 }
 
+export interface GiftCommissionSetting {
+  id: string;
+  level_number: number;
+  level_name: string;
+  level_badge: string;
+  commission_rate: number;
+}
+
 export const useCurrencySettings = () => {
   const queryClient = useQueryClient();
 
@@ -92,6 +100,18 @@ export const useCurrencySettings = () => {
         .single();
       if (error) throw error;
       return data as AntifraudSettings;
+    },
+  });
+
+  const commissionQuery = useQuery({
+    queryKey: ['gift-commission-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('gift_commission_settings')
+        .select('*')
+        .order('level_number');
+      if (error) throw error;
+      return (data || []) as GiftCommissionSetting[];
     },
   });
 
@@ -155,16 +175,33 @@ export const useCurrencySettings = () => {
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
+  const updateCommissionRate = useMutation({
+    mutationFn: async ({ id, commission_rate }: { id: string; commission_rate: number }) => {
+      const { error } = await supabase
+        .from('gift_commission_settings')
+        .update({ commission_rate, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gift-commission-settings'] });
+      toast.success('Taux de commission mis à jour');
+    },
+    onError: () => toast.error('Erreur lors de la mise à jour'),
+  });
+
   return {
     conversion: conversionQuery.data,
     earningRules: earningRulesQuery.data || [],
     globalLimits: globalLimitsQuery.data,
     antifraud: antifraudQuery.data,
-    isLoading: conversionQuery.isLoading || earningRulesQuery.isLoading || globalLimitsQuery.isLoading || antifraudQuery.isLoading,
+    commissionSettings: commissionQuery.data || [],
+    isLoading: conversionQuery.isLoading || earningRulesQuery.isLoading || globalLimitsQuery.isLoading || antifraudQuery.isLoading || commissionQuery.isLoading,
     updateConversion: updateConversion.mutate,
     updateEarningRule: updateEarningRule.mutate,
     updateGlobalLimits: updateGlobalLimits.mutate,
     updateAntifraud: updateAntifraud.mutate,
-    isSaving: updateConversion.isPending || updateEarningRule.isPending || updateGlobalLimits.isPending || updateAntifraud.isPending,
+    updateCommissionRate: updateCommissionRate.mutate,
+    isSaving: updateConversion.isPending || updateEarningRule.isPending || updateGlobalLimits.isPending || updateAntifraud.isPending || updateCommissionRate.isPending,
   };
 };

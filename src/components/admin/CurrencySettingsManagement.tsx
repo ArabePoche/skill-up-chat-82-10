@@ -12,12 +12,12 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
-import { RefreshCw, Save, Coins, Shield, TrendingUp, Settings2 } from 'lucide-react';
+import { RefreshCw, Save, Coins, Shield, TrendingUp, Settings2, Percent } from 'lucide-react';
 
 const CurrencySettingsManagement: React.FC = () => {
   const {
-    conversion, earningRules, globalLimits, antifraud,
-    isLoading, updateConversion, updateEarningRule, updateGlobalLimits, updateAntifraud, isSaving,
+    conversion, earningRules, globalLimits, antifraud, commissionSettings,
+    isLoading, updateConversion, updateEarningRule, updateGlobalLimits, updateAntifraud, updateCommissionRate, isSaving,
   } = useCurrencySettings();
 
   const [convForm, setConvForm] = useState({ habbah_per_sb: 100, max_conversions_per_day: 1, max_conversions_per_month: 5, conversion_delay_hours: 0, is_conversion_enabled: true });
@@ -53,7 +53,7 @@ const CurrencySettingsManagement: React.FC = () => {
       </div>
 
       <Tabs defaultValue="conversion" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="conversion" className="flex items-center gap-1.5">
             <RefreshCw className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Conversion</span>
@@ -69,6 +69,10 @@ const CurrencySettingsManagement: React.FC = () => {
           <TabsTrigger value="antifraud" className="flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Anti-fraude</span>
+          </TabsTrigger>
+          <TabsTrigger value="commission" className="flex items-center gap-1.5">
+            <Percent className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Commissions</span>
           </TabsTrigger>
         </TabsList>
 
@@ -237,6 +241,63 @@ const CurrencySettingsManagement: React.FC = () => {
                   <Save className="h-4 w-4 mr-2" /> Enregistrer
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Onglet Commissions sur cadeaux */}
+        <TabsContent value="commission">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Percent className="h-5 w-5" /> Commission sur les cadeaux reçus</CardTitle>
+              <CardDescription>
+                Pourcentage prélevé par la plateforme sur chaque cadeau reçu, selon le niveau de l'utilisateur.
+                S'applique aux trois monnaies : Soumboulah Cash, Soumboulah Bonus et Habbah.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Badge</TableHead>
+                    <TableHead>Niveau</TableHead>
+                    <TableHead>Commission (%)</TableHead>
+                    <TableHead>Montant reçu (%)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {commissionSettings.map(setting => (
+                    <TableRow key={setting.id}>
+                      <TableCell className="text-xl">{setting.level_badge}</TableCell>
+                      <TableCell className="font-medium">{setting.level_name}</TableCell>
+                      <TableCell>
+                        <Input
+                          key={`${setting.id}-${setting.commission_rate}`}
+                          type="number"
+                          className="w-24"
+                          min={0}
+                          max={100}
+                          defaultValue={Math.round(setting.commission_rate * 100)}
+                          onBlur={e => {
+                            const pct = parseFloat(e.target.value);
+                            if (!isNaN(pct)) {
+                              const rate = Math.min(1, Math.max(0, pct / 100));
+                              if (rate !== setting.commission_rate) {
+                                updateCommissionRate({ id: setting.id, commission_rate: rate });
+                              }
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {Math.round((1 - setting.commission_rate) * 100)} %
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
