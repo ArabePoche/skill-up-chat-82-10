@@ -24,6 +24,7 @@ export interface WalletTransaction {
   description: string | null;
   reference_id: string | null;
   reference_type: string | null;
+  metadata?: any;
   created_at: string;
 }
 
@@ -102,6 +103,18 @@ export const useUserWallet = () => {
     enabled: !!user?.id,
   });
 
+  const conversionQuery = useQuery({
+    queryKey: ['currency-conversion-settings-public'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('currency_conversion_settings')
+        .select('sc_to_cfa_rate')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Convertir Habbah → Soumboulah Bonus
   const convertHabbahMutation = useMutation({
     mutationFn: async (habbahAmount: number) => {
@@ -130,6 +143,7 @@ export const useUserWallet = () => {
     isLoading: walletQuery.isLoading,
     transactions: transactionsQuery.data || [],
     transactionsLoading: transactionsQuery.isLoading,
+    scToCfaRate: conversionQuery.data?.sc_to_cfa_rate || 10,
     convertHabbah: convertHabbahMutation.mutate,
     isConverting: convertHabbahMutation.isPending,
   };

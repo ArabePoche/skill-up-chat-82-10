@@ -27,7 +27,7 @@ const currencySymbol: Record<string, string> = {
 
 const WalletScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { wallet, isLoading, transactions, convertHabbah, isConverting } = useUserWallet();
+  const { wallet, isLoading, transactions, convertHabbah, isConverting, scToCfaRate } = useUserWallet();
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [convertAmount, setConvertAmount] = useState('');
 
@@ -74,7 +74,7 @@ const WalletScreen: React.FC = () => {
               {formatNumber(wallet?.soumboulah_cash || 0)} <span className="text-lg">S.</span>
             </p>
             <p className="text-emerald-300 text-xs mt-1">
-              ≈ {formatNumber((wallet?.soumboulah_cash || 0) * 10)} FCFA
+              ≈ {formatNumber((wallet?.soumboulah_cash || 0) * (scToCfaRate || 10))} FCFA
             </p>
             <Button
               size="sm"

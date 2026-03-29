@@ -1,0 +1,11 @@
+{
+	"appId": "com.educatok.islahmedia",
+	"appName": "EducaTok",
+	"webDir": "dist",
+	"plugins": {
+		"App": {}
+	},
+	"android": {
+		"allowMixedContent": false
+	}
+}

@@ -13,6 +13,7 @@ export interface ConversionSettings {
   max_conversions_per_month: number;
   conversion_delay_hours: number;
   is_conversion_enabled: boolean;
+  sc_to_cfa_rate: number;
   updated_at: string;
 }
 
