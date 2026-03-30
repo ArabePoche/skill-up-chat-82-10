@@ -108,7 +108,7 @@ export const useCurrencySettings = () => {
     queryKey: ['gift-commission-settings'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('gift_commission_settings')
+        .from('gift_commission_settings' as any)
         .select('*')
         .order('level_number');
       if (error) throw error;
