@@ -1,6 +1,7 @@
-// Animation de gain de Habbah style jeu vidéo — affiche "+X H" flottant avec effets
-import React, { useEffect, useState } from 'react';
+// Animation de gain de Habbah style jeu vidéo — affiche "+X H" flottant avec la pièce Habbah
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import coinHabbah from '@/assets/coin-habbah.png';
 
 export interface HabbahGain {
   id: string;
@@ -59,14 +60,14 @@ const GainPopup: React.FC<{ gain: HabbahGain; index: number; onComplete: () => v
         }}
         transition={{ duration: 1, repeat: 1 }}
       >
-        {/* Icône étoile animée */}
-        <motion.span
-          className="text-2xl"
+        {/* Pièce Habbah animée */}
+        <motion.img
+          src={coinHabbah}
+          alt="Habbah"
+          className="w-8 h-8 object-contain"
           animate={{ rotate: [0, 20, -20, 0], scale: [1, 1.3, 1] }}
           transition={{ duration: 0.6, ease: 'easeInOut' }}
-        >
-          ⭐
-        </motion.span>
+        />
 
         {/* Montant */}
         <motion.span
