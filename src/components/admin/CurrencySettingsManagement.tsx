@@ -108,7 +108,6 @@ const CurrencySettingsManagement: React.FC = () => {
                   <p className="text-xs text-muted-foreground">Ex: 1 = 1 SC vaut 1 FCFA</p>
                 </div>
               </div>
-              </div>
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
                   <Switch checked={convForm.is_conversion_enabled} onCheckedChange={v => setConvForm(p => ({ ...p, is_conversion_enabled: v }))} />
