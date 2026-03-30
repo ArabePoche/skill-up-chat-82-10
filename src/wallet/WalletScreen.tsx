@@ -11,6 +11,9 @@ import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate, Link } from 'react-router-dom';
+import coinHabbah from '@/assets/coin-habbah.png';
+import coinSB from '@/assets/coin-soumboulah-bonus.png';
+import coinSC from '@/assets/coin-soumboulah-cash.png';
 
 const formatNumber = (n: number) =>
   new Intl.NumberFormat('fr-FR').format(n);
@@ -24,6 +27,11 @@ const currencySymbol: Record<string, string> = {
   soumboulah_cash: 'S.',
   soumboulah_bonus: 'SB',
   habbah: 'H.',
+};
+const currencyCoin: Record<string, string> = {
+  soumboulah_cash: coinSC,
+  soumboulah_bonus: coinSB,
+  habbah: coinHabbah,
 };
 
 const WalletScreen: React.FC = () => {
@@ -51,91 +59,102 @@ const WalletScreen: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-background dark:from-emerald-950/20 dark:to-background">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-700 to-emerald-900 text-white px-4 pt-12 pb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => navigate(-1)} className="p-1">
-            <ArrowLeft size={24} />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold" style={{ fontFamily: "'Georgia', serif" }}>
-              Habbah & Soumboulah
-            </h1>
-            <p className="text-emerald-200 text-sm">Mon Portefeuille (My Wallet)</p>
-          </div>
-        </div>
+      <div className="relative px-4 pt-12 pb-6 overflow-hidden">
+        {/* Fond avec effet tech bleuté */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-950/80 to-slate-900" />
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: 'radial-gradient(circle at 50% 50%, hsl(200 80% 60% / 0.3) 0%, transparent 60%)',
+        }} />
 
-        {/* Balance Cards */}
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          {/* Soumboulah Cash */}
-          <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-4 shadow-lg">
-            <p className="text-emerald-200 text-xs font-semibold uppercase tracking-wide">
-              Solde Soumboulah (Cash)
-            </p>
-            <p className="text-3xl font-bold mt-1">
-              {formatNumber(wallet?.soumboulah_cash || 0)} <span className="text-lg">S.</span>
-            </p>
-            <p className="text-emerald-300 text-xs mt-1">
-              ≈ {formatNumber((wallet?.soumboulah_cash || 0) * scToFcfaRate)} FCFA
-            </p>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="mt-2 bg-white/20 hover:bg-white/30 text-white border-0 text-xs"
-            >
-              Recharger
-            </Button>
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={() => navigate(-1)} className="p-1 text-white/80 hover:text-white">
+              <ArrowLeft size={24} />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-white" style={{ fontFamily: "'Georgia', serif" }}>
+                Mon Portefeuille
+              </h1>
+              <p className="text-blue-300/70 text-sm">Habbah & Soumboulah</p>
+            </div>
           </div>
 
-          {/* Habbah */}
-          <div className="bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl p-4 shadow-lg">
-            <p className="text-amber-100 text-xs font-semibold uppercase tracking-wide">
-              Solde Habbah (Récompenses)
-            </p>
-            <p className="text-3xl font-bold mt-1">
-              {formatNumber(wallet?.habbah || 0)} <span className="text-lg">H.</span>
-            </p>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="mt-2 bg-white/20 hover:bg-white/30 text-white border-0 text-xs"
-              onClick={() => setShowConvertDialog(true)}
-            >
-              Convertir en Bonus S.
-            </Button>
-          </div>
-        </div>
+          {/* Trois pièces avec soldes */}
+          <div className="flex items-end justify-center gap-2 mt-2">
+            {/* Habbah */}
+            <div className="flex flex-col items-center flex-1">
+              <div className="relative">
+                <img src={coinHabbah} alt="Habbah" className="w-20 h-20 object-contain drop-shadow-[0_0_15px_rgba(180,120,40,0.5)]" />
+              </div>
+              <p className="text-2xl font-bold text-white mt-2">
+                {formatNumber(wallet?.habbah || 0)}
+              </p>
+              <p className="text-amber-400/80 text-xs font-semibold uppercase tracking-wider">Habbah</p>
+              <Button
+                size="sm"
+                className="mt-2 bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-500/30 text-[10px] h-7 px-3"
+                onClick={() => setShowConvertDialog(true)}
+              >
+                Convertir en SB
+              </Button>
+            </div>
 
-        {/* Soumboulah Bonus bar */}
-        <div className="bg-white/10 backdrop-blur rounded-xl p-3 mt-3 flex items-center justify-between">
-          <div>
-            <p className="text-emerald-200 text-xs">Soumboulah Bonus</p>
-            <p className="text-lg font-bold">{formatNumber(wallet?.soumboulah_bonus || 0)} SB</p>
+            {/* Soumboulah Bonus */}
+            <div className="flex flex-col items-center flex-1">
+              <div className="relative">
+                <img src={coinSB} alt="Soumboulah Bonus" className="w-24 h-24 object-contain drop-shadow-[0_0_20px_rgba(180,200,220,0.4)]" />
+              </div>
+              <p className="text-2xl font-bold text-white mt-2">
+                {formatNumber(wallet?.soumboulah_bonus || 0)}
+              </p>
+              <p className="text-slate-300/80 text-xs font-semibold uppercase tracking-wider">Bonus</p>
+              <span className="mt-2 text-[10px] text-slate-400 bg-white/5 px-2 py-1 rounded-full">
+                Cours & Abos
+              </span>
+            </div>
+
+            {/* Soumboulah Cash */}
+            <div className="flex flex-col items-center flex-1">
+              <div className="relative">
+                <img src={coinSC} alt="Soumboulah Cash" className="w-20 h-20 object-contain drop-shadow-[0_0_15px_rgba(220,180,40,0.5)]" />
+              </div>
+              <p className="text-2xl font-bold text-white mt-2">
+                {formatNumber(wallet?.soumboulah_cash || 0)}
+              </p>
+              <p className="text-yellow-400/80 text-xs font-semibold uppercase tracking-wider">Cash</p>
+              <p className="text-yellow-500/60 text-[10px] mt-1">
+                ≈ {formatNumber((wallet?.soumboulah_cash || 0) * scToFcfaRate)} FCFA
+              </p>
+              <Button
+                size="sm"
+                className="mt-1 bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-200 border border-yellow-500/30 text-[10px] h-7 px-3"
+              >
+                Recharger
+              </Button>
+            </div>
           </div>
-          <span className="text-emerald-300 text-xs bg-white/10 px-2 py-1 rounded-full">
-            Cours & Abonnements
-          </span>
         </div>
       </div>
 
       {/* Actions rapides */}
       <div className="px-4 py-5">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
           Actions Rapides
         </h2>
         <div className="grid grid-cols-4 gap-3">
           {[
-            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
-            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
-            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
-            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400' },
+            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-500/20 text-blue-400' },
+            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-500/20 text-emerald-400' },
+            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-500/20 text-orange-400' },
+            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-500/20 text-pink-400' },
           ].map((action, i) => (
             <button key={i} className="flex flex-col items-center gap-1.5">
               <div className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center`}>
                 <action.icon size={22} />
               </div>
-              <span className="text-xs text-center font-medium text-foreground whitespace-pre-line leading-tight">
+              <span className="text-xs text-center font-medium text-slate-300 whitespace-pre-line leading-tight">
                 {action.label}
               </span>
             </button>
@@ -145,12 +164,12 @@ const WalletScreen: React.FC = () => {
 
       {/* Dernières transactions */}
       <div className="px-4 pb-24">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
           Dernières Transactions
         </h2>
         {transactions.filter(tx => tx.transaction_type !== 'commission').length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground text-sm">
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardContent className="p-6 text-center text-slate-400 text-sm">
               Aucune transaction pour le moment
             </CardContent>
           </Card>
@@ -174,12 +193,12 @@ const WalletScreen: React.FC = () => {
               }
 
               const isGift = tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
+              const coinIcon = currencyCoin[tx.currency] || coinHabbah;
 
               if (isGift && metadata && (metadata.partner_name || metadata.receiver_name || metadata.sender_name || metadata.gift_name || metadata.gift_reason)) {
                 const partnerName = metadata.partner_name || metadata.receiver_name || metadata.sender_name || 'Utilisateur';
                 const partnerAvatar = metadata.partner_avatar || metadata.receiver_avatar || metadata.sender_avatar;
                 
-                // If there's no explicit gift name, but we have a gift_reason, it might be the video title.
                 const explicitGiftName = metadata.gift_name || metadata.giftName;
                 const rawVideoTitle = metadata.video_title || metadata.post_title;
                 
@@ -190,7 +209,6 @@ const WalletScreen: React.FC = () => {
                    if (rawVideoTitle) {
                        giftName = 'Cadeau vidéo';
                    } else if (metadata.gift_reason && metadata.gift_reason !== 'gift') {
-                       // the reason is actually the video title
                        videoTitle = metadata.gift_reason;
                        giftName = 'Cadeau vidéo';
                    } else {
@@ -198,7 +216,6 @@ const WalletScreen: React.FC = () => {
                    }
                 }
 
-                // Also if giftName is exactly the videoTitle, correct it:
                 if (giftName && videoTitle && giftName === videoTitle) {
                     giftName = 'Cadeau vidéo';
                 }
@@ -206,45 +223,46 @@ const WalletScreen: React.FC = () => {
                 const partnerId = metadata.partner_id || metadata.receiver_id || metadata.sender_id;
                 
                 return (
-                  <Card key={tx.id}>
+                  <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
                     <CardContent className="p-3 flex flex-col gap-2">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="shrink-0">
-                            <Avatar className="w-10 h-10 border-2 border-emerald-100 dark:border-emerald-900">
+                            <Avatar className="w-10 h-10 border-2 border-slate-600">
                               <AvatarImage src={partnerAvatar} alt={partnerName} />
-                              <AvatarFallback className="bg-emerald-100 text-emerald-700">
+                              <AvatarFallback className="bg-slate-700 text-slate-300">
                                 {partnerName.charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                           </Link>
                           <div>
-                            <p className="text-sm font-medium text-foreground">
+                            <p className="text-sm font-medium text-slate-200">
                               {giftName} {tx.transaction_type === 'gift_sent' ? 'envoyé(e)' : 'reçu(e)'}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-1 items-center">
+                            <p className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-1 items-center">
                               {tx.transaction_type === 'gift_sent' ? 'À :' : 'De :'} 
-                              <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="font-semibold text-foreground hover:underline">
+                              <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="font-semibold text-slate-300 hover:underline">
                                 {partnerName}
                               </Link>
                             </p>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className={`text-sm font-bold block ${tx.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)} {currencySymbol[tx.currency] || ''}
+                        <div className="text-right shrink-0 flex items-center gap-1">
+                          <img src={coinIcon} alt="" className="w-5 h-5 object-contain" />
+                          <span className={`text-sm font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}
                           </span>
                         </div>
                       </div>
                       
                       <div className="flex flex-col gap-1 ml-12">
                         {videoTitle && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <span className="font-medium text-foreground/80">Vidéo :</span>
+                          <p className="text-xs text-slate-400 flex items-center gap-1">
+                            <span className="font-medium text-slate-300/80">Vidéo :</span>
                             <span className="truncate">{videoTitle}</span>
                           </p>
                         )}
-                        <p className="text-[10px] text-muted-foreground opacity-80 mt-1">
+                        <p className="text-[10px] text-slate-500 mt-1">
                           {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
                         </p>
                       </div>
@@ -254,25 +272,19 @@ const WalletScreen: React.FC = () => {
               }
 
               return (
-              <Card key={tx.id}>
+              <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
                 <CardContent className="p-3 flex items-center gap-3">
-                  <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${
-                    tx.amount >= 0
-                      ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                      : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                  }`}>
-                    <ArrowDownUp size={18} />
-                  </div>
+                  <img src={coinIcon} alt="" className="w-10 h-10 object-contain shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                    <p className="text-sm font-medium text-slate-200 truncate">
                       {typeof tx.description === 'string' && tx.description.trim().startsWith('{') ? 'Cadeau' : (tx.description || tx.transaction_type)}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-400">
                       {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
                     </p>
                   </div>
-                  <span className={`text-sm font-bold shrink-0 ${tx.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {tx.amount >= 0 ? '+' : ''}{formatNumber(tx.amount)} {currencySymbol[tx.currency] || ''}
+                  <span className={`text-sm font-bold shrink-0 ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {tx.amount >= 0 ? '+' : ''}{formatNumber(tx.amount)}
                   </span>
                 </CardContent>
               </Card>
@@ -286,15 +298,20 @@ const WalletScreen: React.FC = () => {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <RefreshCw size={18} />
+              <img src={coinHabbah} alt="Habbah" className="w-6 h-6 object-contain" />
               Convertir Habbah → Soumboulah Bonus
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 justify-center">
+              <img src={coinHabbah} alt="Habbah" className="w-10 h-10 object-contain" />
+              <RefreshCw size={18} className="text-muted-foreground" />
+              <img src={coinSB} alt="Soumboulah Bonus" className="w-10 h-10 object-contain" />
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
               Taux : <strong>100 Habbah = 1 SB</strong>
             </p>
-            <p className="text-sm">
+            <p className="text-sm text-center">
               Solde actuel : <strong>{formatNumber(wallet?.habbah || 0)} H.</strong>
             </p>
             <Input
@@ -306,7 +323,7 @@ const WalletScreen: React.FC = () => {
               step={100}
             />
             {convertAmount && parseInt(convertAmount) >= 100 && (
-              <p className="text-sm text-emerald-600 font-medium">
+              <p className="text-sm text-emerald-600 font-medium text-center">
                 Vous recevrez : {formatNumber(Math.floor(parseInt(convertAmount) / 100))} SB
               </p>
             )}
