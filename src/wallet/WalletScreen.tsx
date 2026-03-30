@@ -106,7 +106,7 @@ const WalletScreen: React.FC = () => {
               <div className="relative">
                 <img src={coinSB} alt="Soumboulah Bonus" className="w-24 h-24 object-contain drop-shadow-[0_0_20px_rgba(180,200,220,0.4)]" />
               </div>
-              <p className="text-2xl font-bold text-white mt-2">
+              <p className={`text-2xl font-bold mt-2 ${(wallet?.soumboulah_bonus || 0) <= 3 ? 'text-red-500' : 'text-white'}`}>
                 {formatNumber(wallet?.soumboulah_bonus || 0)}
               </p>
               <p className="text-slate-300/80 text-xs font-semibold uppercase tracking-wider">Bonus</p>
@@ -129,7 +129,8 @@ const WalletScreen: React.FC = () => {
               </p>
               <Button
                 size="sm"
-                className="mt-1 bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-200 border border-yellow-500/30 text-[10px] h-7 px-3"
+                className="mt-1 bg-orange-600 hover:bg-orange-500 text-white border-0 text-[10px] h-7 px-3 font-bold"
+                style={{ boxShadow: '0 0 12px 3px rgba(234, 88, 12, 0.7)' }}
               >
                 Recharger
               </Button>
@@ -145,14 +146,24 @@ const WalletScreen: React.FC = () => {
         </h2>
         <div className="grid grid-cols-4 gap-3">
           {[
-            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-500/20 text-blue-400' },
-            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-500/20 text-emerald-400' },
-            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-500/20 text-orange-400' },
-            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-500/20 text-pink-400' },
+            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-500/20 text-blue-400', badge: 'NEW' },
+            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-500/20 text-emerald-400', badge: null },
+            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-500/20 text-orange-400', badge: null },
+            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-500/20 text-pink-400', badge: null },
           ].map((action, i) => (
             <button key={i} className="flex flex-col items-center gap-1.5">
-              <div className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center`}>
-                <action.icon size={22} />
+              <div className="relative">
+                <div className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center`}>
+                  <action.icon size={22} />
+                </div>
+                {action.badge && (
+                  <span
+                    aria-label="Nouveauté disponible"
+                    className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full leading-none"
+                  >
+                    {action.badge}
+                  </span>
+                )}
               </div>
               <span className="text-xs text-center font-medium text-slate-300 whitespace-pre-line leading-tight">
                 {action.label}
