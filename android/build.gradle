@@ -22,22 +22,15 @@ allprojects {
     }
 }
 
-// Use a dedicated workspace-level build directory to avoid stale Windows locks
-// on android/app/build intermediates.
-rootProject.buildDir = '../.gradle-build-v3'
-subprojects {
-    buildDir = "${rootProject.buildDir}/${project.name}"
-}
-
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-// ✅ Forcer Java 17 globalement pour tous les modules
+// Align Java across all Android modules to match Capacitor-generated config.
 allprojects {
     tasks.withType(JavaCompile).configureEach {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 }
 
@@ -50,13 +43,13 @@ subprojects {
                     targetSdkVersion 35
                 }
                 compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
+                    sourceCompatibility JavaVersion.VERSION_21
+                    targetCompatibility JavaVersion.VERSION_21
                 }
-                // Si le projet utilise Kotlin, on force aussi le jvmTarget à 17
+                // Keep Kotlin aligned with the Java toolchain.
                 if (project.plugins.hasPlugin('kotlin-android')) {
                     kotlinOptions {
-                        jvmTarget = "17"
+                        jvmTarget = "21"
                     }
                 }
             }
@@ -64,12 +57,12 @@ subprojects {
     }
 }
 
-// ✅ Configuration du toolchain pour télécharger automatiquement les versions de Java manquantes
+// Allow Gradle to provision the matching JDK when needed.
 allprojects {
     plugins.withId("org.gradle.java-base") {
         project.java {
             toolchain {
-                languageVersion = JavaLanguageVersion.of(17)
+                languageVersion = JavaLanguageVersion.of(21)
             }
         }
     }

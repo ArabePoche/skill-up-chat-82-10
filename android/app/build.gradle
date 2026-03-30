@@ -18,14 +18,14 @@ android {
         }
     }
 
-    // ✅ Ajouter ceci pour forcer Java 17
+    // Keep the app module aligned with Capacitor and plugin Java requirements.
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "21"
     }
 
     buildTypes {
