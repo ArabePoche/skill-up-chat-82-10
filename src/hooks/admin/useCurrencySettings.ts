@@ -112,7 +112,7 @@ export const useCurrencySettings = () => {
         .select('*')
         .order('level_number');
       if (error) throw error;
-      return (data || []) as GiftCommissionSetting[];
+      return (data || []) as unknown as GiftCommissionSetting[];
     },
   });
 
