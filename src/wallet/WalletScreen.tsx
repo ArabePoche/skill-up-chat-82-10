@@ -77,7 +77,7 @@ const WalletScreen: React.FC = () => {
               {formatNumber(wallet?.soumboulah_cash || 0)} <span className="text-lg">S.</span>
             </p>
             <p className="text-emerald-300 text-xs mt-1">
-              ≈ {formatNumber((wallet?.soumboulah_cash || 0) * 10)} FCFA
+              ≈ {formatNumber((wallet?.soumboulah_cash || 0) * scToFcfaRate)} FCFA
             </p>
             <Button
               size="sm"
