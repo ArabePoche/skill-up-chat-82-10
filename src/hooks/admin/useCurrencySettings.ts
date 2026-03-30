@@ -179,7 +179,7 @@ export const useCurrencySettings = () => {
   const updateCommissionRate = useMutation({
     mutationFn: async ({ id, commission_rate }: { id: string; commission_rate: number }) => {
       const { error } = await supabase
-        .from('gift_commission_settings')
+        .from('gift_commission_settings' as any)
         .update({ commission_rate, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
