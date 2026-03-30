@@ -20,12 +20,12 @@ const CurrencySettingsManagement: React.FC = () => {
     isLoading, updateConversion, updateEarningRule, updateGlobalLimits, updateAntifraud, updateCommissionRate, isSaving,
   } = useCurrencySettings();
 
-  const [convForm, setConvForm] = useState({ habbah_per_sb: 100, max_conversions_per_day: 1, max_conversions_per_month: 5, conversion_delay_hours: 0, is_conversion_enabled: true, sc_to_cfa_rate: 10 });
+  const [convForm, setConvForm] = useState({ habbah_per_sb: 100, max_conversions_per_day: 1, max_conversions_per_month: 5, conversion_delay_hours: 0, is_conversion_enabled: true, sc_to_fcfa_rate: 1 });
   const [limitsForm, setLimitsForm] = useState({ max_habbah_per_day: 200, max_habbah_per_month: 3000, min_trust_score: 0, max_sb_percentage_for_digital: 30, is_sb_enabled_for_digital: true });
   const [fraudForm, setFraudForm] = useState({ suspicious_threshold_per_hour: 50, auto_block_enabled: true, pending_validation_enabled: false, pending_validation_delay_hours: 24 });
 
   useEffect(() => {
-    if (conversion) setConvForm({ habbah_per_sb: conversion.habbah_per_sb, max_conversions_per_day: conversion.max_conversions_per_day, max_conversions_per_month: conversion.max_conversions_per_month, conversion_delay_hours: conversion.conversion_delay_hours, is_conversion_enabled: conversion.is_conversion_enabled, sc_to_cfa_rate: conversion.sc_to_cfa_rate });
+    if (conversion) setConvForm({ habbah_per_sb: conversion.habbah_per_sb, max_conversions_per_day: conversion.max_conversions_per_day, max_conversions_per_month: conversion.max_conversions_per_month, conversion_delay_hours: conversion.conversion_delay_hours, is_conversion_enabled: conversion.is_conversion_enabled, sc_to_fcfa_rate: conversion.sc_to_fcfa_rate || 1 });
   }, [conversion]);
 
   useEffect(() => {
@@ -102,10 +102,11 @@ const CurrencySettingsManagement: React.FC = () => {
                   <Input type="number" value={convForm.conversion_delay_hours} onChange={e => setConvForm(p => ({ ...p, conversion_delay_hours: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-muted-foreground">0 = instantané</p>
                 </div>
-              </div>
-              <div className="space-y-2 pt-2">
-                <Label>Taux de conversion (1 SC en CFA)</Label>
-                <Input type="number" value={convForm.sc_to_cfa_rate} onChange={e => setConvForm(p => ({ ...p, sc_to_cfa_rate: parseFloat(e.target.value) || 0 }))} />
+                <div className="space-y-2">
+                  <Label>Taux SC → FCFA (1 SC = ? FCFA)</Label>
+                  <Input type="number" step="0.01" value={convForm.sc_to_fcfa_rate} onChange={e => setConvForm(p => ({ ...p, sc_to_fcfa_rate: parseFloat(e.target.value) || 1 }))} />
+                  <p className="text-xs text-muted-foreground">Ex: 1 = 1 SC vaut 1 FCFA</p>
+                </div>
               </div>
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">

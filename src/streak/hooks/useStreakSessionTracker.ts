@@ -98,9 +98,8 @@ export const useStreakSessionTracker = () => {
 
     if (!streak || !globalConfig) return;
 
-    // Si déjà validé aujourd'hui ET que le seuil n'est pas encore atteint, ne rien faire
-    // Si le seuil est atteint, on continue pour valider et récompenser
-    if (streak.last_activity_date === today && streak.daily_minutes < globalConfig.minutes_per_day_required) {
+    // ✅ Un seul streak par jour : si déjà validé aujourd'hui, ne rien faire
+    if (streak.last_activity_date === today) {
       return;
     }
 

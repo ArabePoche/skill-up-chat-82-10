@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserWallet } from '@/hooks/useUserWallet';
+import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate, Link } from 'react-router-dom';
@@ -27,7 +28,9 @@ const currencySymbol: Record<string, string> = {
 
 const WalletScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { wallet, isLoading, transactions, convertHabbah, isConverting, scToCfaRate } = useUserWallet();
+  const { wallet, isLoading, transactions, convertHabbah, isConverting } = useUserWallet();
+  const { conversion } = useCurrencySettings();
+  const scToFcfaRate = conversion?.sc_to_fcfa_rate || 1;
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [convertAmount, setConvertAmount] = useState('');
 
@@ -74,7 +77,7 @@ const WalletScreen: React.FC = () => {
               {formatNumber(wallet?.soumboulah_cash || 0)} <span className="text-lg">S.</span>
             </p>
             <p className="text-emerald-300 text-xs mt-1">
-              ≈ {formatNumber((wallet?.soumboulah_cash || 0) * (scToCfaRate || 10))} FCFA
+              ≈ {formatNumber((wallet?.soumboulah_cash || 0) * scToFcfaRate)} FCFA
             </p>
             <Button
               size="sm"
