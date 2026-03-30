@@ -102,6 +102,12 @@ const CurrencySettingsManagement: React.FC = () => {
                   <Input type="number" value={convForm.conversion_delay_hours} onChange={e => setConvForm(p => ({ ...p, conversion_delay_hours: parseInt(e.target.value) || 0 }))} />
                   <p className="text-xs text-muted-foreground">0 = instantané</p>
                 </div>
+                <div className="space-y-2">
+                  <Label>Taux SC → FCFA (1 SC = ? FCFA)</Label>
+                  <Input type="number" step="0.01" value={convForm.sc_to_fcfa_rate} onChange={e => setConvForm(p => ({ ...p, sc_to_fcfa_rate: parseFloat(e.target.value) || 1 }))} />
+                  <p className="text-xs text-muted-foreground">Ex: 1 = 1 SC vaut 1 FCFA</p>
+                </div>
+              </div>
               </div>
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
