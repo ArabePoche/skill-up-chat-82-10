@@ -20,7 +20,7 @@ const CurrencySettingsManagement: React.FC = () => {
     isLoading, updateConversion, updateEarningRule, updateGlobalLimits, updateAntifraud, updateCommissionRate, isSaving,
   } = useCurrencySettings();
 
-  const [convForm, setConvForm] = useState({ habbah_per_sb: 100, max_conversions_per_day: 1, max_conversions_per_month: 5, conversion_delay_hours: 0, is_conversion_enabled: true });
+  const [convForm, setConvForm] = useState({ habbah_per_sb: 100, max_conversions_per_day: 1, max_conversions_per_month: 5, conversion_delay_hours: 0, is_conversion_enabled: true, sc_to_fcfa_rate: 1 });
   const [limitsForm, setLimitsForm] = useState({ max_habbah_per_day: 200, max_habbah_per_month: 3000, min_trust_score: 0, max_sb_percentage_for_digital: 30, is_sb_enabled_for_digital: true });
   const [fraudForm, setFraudForm] = useState({ suspicious_threshold_per_hour: 50, auto_block_enabled: true, pending_validation_enabled: false, pending_validation_delay_hours: 24 });
 
