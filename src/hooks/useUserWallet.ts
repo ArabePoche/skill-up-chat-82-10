@@ -24,6 +24,7 @@ export interface WalletTransaction {
   description: string | null;
   reference_id: string | null;
   reference_type: string | null;
+  metadata: Record<string, any> | null;
   created_at: string;
 }
 
