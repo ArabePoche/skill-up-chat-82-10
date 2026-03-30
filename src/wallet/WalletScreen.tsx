@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserWallet } from '@/hooks/useUserWallet';
+import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate, Link } from 'react-router-dom';
