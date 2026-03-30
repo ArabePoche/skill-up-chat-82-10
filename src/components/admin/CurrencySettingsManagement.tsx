@@ -25,7 +25,7 @@ const CurrencySettingsManagement: React.FC = () => {
   const [fraudForm, setFraudForm] = useState({ suspicious_threshold_per_hour: 50, auto_block_enabled: true, pending_validation_enabled: false, pending_validation_delay_hours: 24 });
 
   useEffect(() => {
-    if (conversion) setConvForm({ habbah_per_sb: conversion.habbah_per_sb, max_conversions_per_day: conversion.max_conversions_per_day, max_conversions_per_month: conversion.max_conversions_per_month, conversion_delay_hours: conversion.conversion_delay_hours, is_conversion_enabled: conversion.is_conversion_enabled });
+    if (conversion) setConvForm({ habbah_per_sb: conversion.habbah_per_sb, max_conversions_per_day: conversion.max_conversions_per_day, max_conversions_per_month: conversion.max_conversions_per_month, conversion_delay_hours: conversion.conversion_delay_hours, is_conversion_enabled: conversion.is_conversion_enabled, sc_to_fcfa_rate: conversion.sc_to_fcfa_rate || 1 });
   }, [conversion]);
 
   useEffect(() => {
