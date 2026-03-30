@@ -786,6 +786,7 @@ export type Database = {
           is_conversion_enabled: boolean
           max_conversions_per_day: number
           max_conversions_per_month: number
+          sc_to_fcfa_rate: number
           updated_at: string
           updated_by: string | null
         }
@@ -796,6 +797,7 @@ export type Database = {
           is_conversion_enabled?: boolean
           max_conversions_per_day?: number
           max_conversions_per_month?: number
+          sc_to_fcfa_rate?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -806,6 +808,7 @@ export type Database = {
           is_conversion_enabled?: boolean
           max_conversions_per_day?: number
           max_conversions_per_month?: number
+          sc_to_fcfa_rate?: number
           updated_at?: string
           updated_by?: string | null
         }

@@ -13,6 +13,7 @@ export interface ConversionSettings {
   max_conversions_per_month: number;
   conversion_delay_hours: number;
   is_conversion_enabled: boolean;
+  sc_to_fcfa_rate: number;
   updated_at: string;
 }
 
@@ -107,11 +108,11 @@ export const useCurrencySettings = () => {
     queryKey: ['gift-commission-settings'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('gift_commission_settings')
+        .from('gift_commission_settings' as any)
         .select('*')
         .order('level_number');
       if (error) throw error;
-      return (data || []) as GiftCommissionSetting[];
+      return (data || []) as unknown as GiftCommissionSetting[];
     },
   });
 
@@ -178,7 +179,7 @@ export const useCurrencySettings = () => {
   const updateCommissionRate = useMutation({
     mutationFn: async ({ id, commission_rate }: { id: string; commission_rate: number }) => {
       const { error } = await supabase
-        .from('gift_commission_settings')
+        .from('gift_commission_settings' as any)
         .update({ commission_rate, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;

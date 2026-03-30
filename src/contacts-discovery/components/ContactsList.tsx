@@ -11,6 +11,7 @@ interface MatchingUser {
   last_name: string | null;
   phone: string | null;
   phone_country_code: string | null;
+  avatar_url?: string | null;
 }
 
 interface ContactsListProps {
