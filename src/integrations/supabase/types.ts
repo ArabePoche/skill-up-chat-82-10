@@ -7173,6 +7173,137 @@ export type Database = {
         }
         Relationships: []
       }
+      solidarity_campaigns: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          beneficiary_name: string | null
+          category: string | null
+          collected_amount: number
+          commission_rate: number
+          created_at: string
+          creator_id: string
+          deadline: string | null
+          description: string | null
+          goal_amount: number
+          id: string
+          image_url: string | null
+          rejection_reason: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_name?: string | null
+          category?: string | null
+          collected_amount?: number
+          commission_rate?: number
+          created_at?: string
+          creator_id: string
+          deadline?: string | null
+          description?: string | null
+          goal_amount?: number
+          id?: string
+          image_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_name?: string | null
+          category?: string | null
+          collected_amount?: number
+          commission_rate?: number
+          created_at?: string
+          creator_id?: string
+          deadline?: string | null
+          description?: string | null
+          goal_amount?: number
+          id?: string
+          image_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      solidarity_commission_settings: {
+        Row: {
+          default_commission_rate: number
+          id: string
+          max_active_campaigns_per_user: number
+          max_campaign_goal: number
+          min_campaign_goal: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_commission_rate?: number
+          id?: string
+          max_active_campaigns_per_user?: number
+          max_campaign_goal?: number
+          min_campaign_goal?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_commission_rate?: number
+          id?: string
+          max_active_campaigns_per_user?: number
+          max_campaign_goal?: number
+          min_campaign_goal?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      solidarity_contributions: {
+        Row: {
+          amount: number
+          campaign_id: string
+          commission_amount: number
+          contributor_id: string
+          created_at: string
+          id: string
+          is_anonymous: boolean | null
+          message: string | null
+        }
+        Insert: {
+          amount: number
+          campaign_id: string
+          commission_amount?: number
+          contributor_id: string
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean | null
+          message?: string | null
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          commission_amount?: number
+          contributor_id?: string
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean | null
+          message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidarity_contributions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "solidarity_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_permissions: {
         Row: {
           granted_at: string

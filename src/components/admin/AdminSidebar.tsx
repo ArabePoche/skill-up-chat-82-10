@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell, Megaphone, Coins } from 'lucide-react';
+import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell, Megaphone, Coins, Heart } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -88,6 +88,11 @@ const menuItems = [
     title: 'Monnaie Virtuelle',
     value: 'currency-settings',
     icon: Coins,
+  },
+  {
+    title: 'Aide Solidaire',
+    value: 'solidarity',
+    icon: Heart,
   },
 ];
 

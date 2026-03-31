@@ -20,6 +20,7 @@ import StudentPaymentTracking from '@/components/admin/payments/StudentPaymentTr
 import PushNotificationSender from '@/components/admin/PushNotificationSender';
 import RecruitmentAdsManagement from '@/components/admin/RecruitmentAdsManagement';
 import CurrencySettingsManagement from '@/components/admin/CurrencySettingsManagement';
+import AdminSolidarityManagement from '@/solidarity/components/AdminSolidarityManagement';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -95,6 +96,8 @@ const AdminDashboard = () => {
         return <RecruitmentAdsManagement />;
       case 'currency-settings':
         return <CurrencySettingsManagement />;
+      case 'solidarity':
+        return <AdminSolidarityManagement />;
       default:
         return <DashboardStats />;
     }

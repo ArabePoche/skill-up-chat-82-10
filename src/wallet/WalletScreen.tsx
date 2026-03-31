@@ -146,12 +146,12 @@ const WalletScreen: React.FC = () => {
         </h2>
         <div className="grid grid-cols-4 gap-3">
           {[
-            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-500/20 text-blue-400', badge: 'NEW' },
-            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-500/20 text-emerald-400', badge: null },
-            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-500/20 text-orange-400', badge: null },
-            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-500/20 text-pink-400', badge: null },
+            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-500/20 text-blue-400', badge: 'NEW', href: null },
+            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-500/20 text-emerald-400', badge: null, href: null },
+            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-500/20 text-orange-400', badge: null, href: null },
+            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-500/20 text-pink-400', badge: null, href: '/solidarity' },
           ].map((action, i) => (
-            <button key={i} className="flex flex-col items-center gap-1.5">
+            <button key={i} className="flex flex-col items-center gap-1.5" onClick={() => action.href && navigate(action.href)}>
               <div className="relative">
                 <div className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center`}>
                   <action.icon size={22} />
