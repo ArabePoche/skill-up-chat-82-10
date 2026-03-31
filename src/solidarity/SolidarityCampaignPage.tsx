@@ -238,30 +238,38 @@ const SolidarityCampaignPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 px-4 pt-12 pb-6">
-        <button onClick={() => navigate('/solidarity')} className="p-1 text-white/80 hover:text-white mb-4">
-          <ArrowLeft size={24} />
+      <div className="relative bg-[linear-gradient(160deg,_rgb(15,23,42)_0%,_rgb(30,41,59)_55%,_rgb(51,65,85)_100%)] px-4 pt-12 pb-8 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(244,63,94,0.18),_transparent_60%)]" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rose-500/40 to-transparent" />
+        <button onClick={() => navigate('/solidarity')} className="relative p-1 text-white/60 hover:text-white mb-5 transition-colors">
+          <ArrowLeft size={22} />
         </button>
 
-        <div className="space-y-3">
-          <div className="h-52 rounded-2xl bg-white/10 overflow-hidden border border-white/15">
+        <div className="relative space-y-4">
+          <div className="h-52 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
             {campaign.image_url ? (
               <img src={campaign.image_url} alt={campaign.title} className="w-full h-full object-cover" />
-            ) : null}
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                <Images size={40} className="text-white/20" />
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2 text-white">
-            <h1 className="text-2xl font-bold leading-tight">{campaign.title}</h1>
-            <p className="text-white/80 text-sm whitespace-pre-wrap">{campaign.description}</p>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold leading-tight text-white tracking-tight">{campaign.title}</h1>
+            <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{campaign.description}</p>
             {campaign.creator && (
-              <div className="flex items-center gap-2 text-sm text-white/80">
-                <Avatar className="w-7 h-7 border border-white/30">
+              <div className="flex items-center gap-2 pt-1">
+                <Avatar className="w-7 h-7 border border-white/20 ring-1 ring-rose-500/30">
                   <AvatarImage src={campaign.creator.avatar_url || ''} />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-slate-700 text-white/80 text-xs">
                     {campaign.creator.first_name?.[0]}{campaign.creator.last_name?.[0]}
                   </AvatarFallback>
                 </Avatar>
-                <span>{campaign.creator.first_name} {campaign.creator.last_name}</span>
+                <span className="text-sm text-slate-400">
+                  par <span className="text-white/80 font-medium">{campaign.creator.first_name} {campaign.creator.last_name}</span>
+                </span>
               </div>
             )}
           </div>
@@ -484,6 +492,67 @@ const SolidarityCampaignPage: React.FC = () => {
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
+                <h2 className="font-semibold text-sm flex items-center gap-1.5">
+                  <Images size={15} className="text-rose-500" />
+                  Galerie
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Photos et vidéos de présentation et de suivi.
+                </p>
+              </div>
+            </div>
+
+            {galleryMedia.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {galleryMedia.map((item) => (
+                  <div
+                    key={item.id}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted cursor-pointer group"
+                    onClick={() => setLightboxUrl(item.media_url)}
+                  >
+                    {item.media_type === 'video' ? (
+                      <video
+                        src={item.media_url}
+                        className="w-full h-full object-cover"
+                        muted
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img
+                        src={item.media_url}
+                        alt={item.caption || `Média ${item.position + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    )}
+                    {isOwnCampaign && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteMedia({ mediaId: item.id, campaignId: campaign.id });
+                        }}
+                        className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucun média dans la galerie pour le moment.</p>
+            )}
+
+            {isOwnCampaign && (
+              <CampaignGalleryUploader campaignId={campaign.id} existingCount={galleryMedia.length} />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
                 <h2 className="font-semibold text-sm">Témoignages</h2>
                 <p className="text-xs text-muted-foreground">
                   Les soutiens et retours visibles sur cette cagnotte.
@@ -542,67 +611,6 @@ const SolidarityCampaignPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-semibold text-sm flex items-center gap-1.5">
-                  <Images size={15} className="text-rose-500" />
-                  Galerie
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Photos et vidéos de présentation et de suivi.
-                </p>
-              </div>
-            </div>
-
-            {galleryMedia.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {galleryMedia.map((item) => (
-                  <div
-                    key={item.id}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted cursor-pointer group"
-                    onClick={() => setLightboxUrl(item.media_url)}
-                  >
-                    {item.media_type === 'video' ? (
-                      <video
-                        src={item.media_url}
-                        className="w-full h-full object-cover"
-                        muted
-                        preload="metadata"
-                      />
-                    ) : (
-                      <img
-                        src={item.media_url}
-                        alt={item.caption || `Média ${item.position + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    )}
-                    {isOwnCampaign && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteMedia({ mediaId: item.id, campaignId: campaign.id });
-                        }}
-                        className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Aucun média dans la galerie pour le moment.</p>
-            )}
-
-            {isOwnCampaign && (
-              <CampaignGalleryUploader campaignId={campaign.id} existingCount={galleryMedia.length} />
             )}
           </CardContent>
         </Card>
