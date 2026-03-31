@@ -142,7 +142,7 @@ const WalletScreen: React.FC = () => {
       {/* Actions rapides */}
       <div className="px-4 py-5">
         <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
-          Actions Rapides
+          Services
         </h2>
         <div className="grid grid-cols-4 gap-3">
           {[
@@ -176,7 +176,7 @@ const WalletScreen: React.FC = () => {
       {/* Dernières transactions */}
       <div className="px-4 pb-24">
         <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
-          Dernières Transactions
+          Historiques des Transactions
         </h2>
         {transactions.filter(tx => tx.transaction_type !== 'commission').length === 0 ? (
           <Card className="bg-slate-800/50 border-slate-700">

@@ -4,6 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
+interface CreatorProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+}
+
 export interface SolidarityCampaign {
   id: string;
   creator_id: string;
@@ -46,14 +53,14 @@ export interface SolidarityCommissionSettings {
   updated_at: string;
 }
 
-// Récupérer les campagnes approuvées (liste publique)
+// Récupérer les campagnes visibles selon les politiques RLS en vigueur.
 export const useSolidarityCampaigns = (statusFilter?: string) => {
   return useQuery({
     queryKey: ['solidarity-campaigns', statusFilter],
     queryFn: async () => {
       let query = supabase
         .from('solidarity_campaigns')
-        .select('*, creator:profiles!solidarity_campaigns_creator_id_fkey(first_name, last_name, avatar_url)')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (statusFilter) {
@@ -62,7 +69,42 @@ export const useSolidarityCampaigns = (statusFilter?: string) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as unknown as SolidarityCampaign[];
+
+      const campaigns = (data || []) as unknown as SolidarityCampaign[];
+      if (campaigns.length === 0) {
+        return campaigns;
+      }
+
+      const creatorIds = [...new Set(campaigns.map((campaign) => campaign.creator_id).filter(Boolean))];
+      if (creatorIds.length === 0) {
+        return campaigns;
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url')
+        .in('id', creatorIds);
+
+      if (profilesError) {
+        console.warn('Impossible de charger les profils des créateurs de cagnottes:', profilesError.message);
+        return campaigns;
+      }
+
+      const profileMap = new Map(
+        ((profiles || []) as CreatorProfile[]).map((profile) => [
+          profile.id,
+          {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            avatar_url: profile.avatar_url,
+          },
+        ])
+      );
+
+      return campaigns.map((campaign) => ({
+        ...campaign,
+        creator: profileMap.get(campaign.creator_id),
+      }));
     },
   });
 };

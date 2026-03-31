@@ -7,7 +7,6 @@ import { Toaster } from 'sonner';
 import PermissionManager from '@/components/PermissionManager';
 import useBackButtonHandler from '@/hooks/useBackButtonHandler';
 import { useDeepLinks } from '@/hooks/useDeeplinks';
-import { registerServiceWorker } from '@/offline/utils/registerSW';
 import { syncManager } from '@/offline/utils/syncManager';
 import LanguageOnboarding from '@/components/LanguageOnboarding';
 import HabbahGainAnimation from '@/components/HabbahGainAnimation';
@@ -168,12 +167,6 @@ const App: React.FC = () => {
   const [showLanguageOnboarding, setShowLanguageOnboarding] = useState(
     !localStorage.getItem('languageSelected')
   );
-
-  useEffect(() => {
-    // Enregistrer le Service Worker au démarrage
-    registerServiceWorker();
-  }, []);
-
 
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>

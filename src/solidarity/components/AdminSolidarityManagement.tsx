@@ -30,10 +30,12 @@ const statusBadge = (status: string) => {
 };
 
 const AdminSolidarityManagement: React.FC = () => {
-  const { data: allCampaigns = [], isLoading } = useSolidarityCampaigns();
+  const { data: allCampaigns = [], isLoading, error } = useSolidarityCampaigns();
   const { data: settings } = useSolidaritySettings();
   const { mutate: updateSettings, isPending: savingSettings } = useUpdateSolidaritySettings();
   const { mutate: campaignAction, isPending: actionPending } = useAdminCampaignAction();
+  const loadError = error instanceof Error ? error.message : null;
+  const defaultCommissionRate = settings?.default_commission_rate ?? 5;
 
   // Settings form
   const [commissionRate, setCommissionRate] = useState(5);
@@ -44,6 +46,7 @@ const AdminSolidarityManagement: React.FC = () => {
   // Approve dialog
   const [approveTarget, setApproveTarget] = useState<SolidarityCampaign | null>(null);
   const [approveCommission, setApproveCommission] = useState(5);
+  const [useDefaultCommission, setUseDefaultCommission] = useState(true);
 
   // Reject dialog
   const [rejectTarget, setRejectTarget] = useState<SolidarityCampaign | null>(null);
@@ -73,13 +76,17 @@ const AdminSolidarityManagement: React.FC = () => {
 
   const handleOpenApprove = (c: SolidarityCampaign) => {
     setApproveTarget(c);
-    setApproveCommission(c.commission_rate ?? settings?.default_commission_rate ?? 5);
+    const initialCommission = c.commission_rate ?? defaultCommissionRate;
+    setApproveCommission(initialCommission);
+    setUseDefaultCommission(initialCommission === defaultCommissionRate);
   };
 
   const handleApprove = () => {
     if (!approveTarget) return;
-    campaignAction({ campaignId: approveTarget.id, action: 'approved', commissionRate: approveCommission });
+    const finalCommissionRate = useDefaultCommission ? defaultCommissionRate : approveCommission;
+    campaignAction({ campaignId: approveTarget.id, action: 'approved', commissionRate: finalCommissionRate });
     setApproveTarget(null);
+    setUseDefaultCommission(true);
   };
 
   const handleReject = () => {
@@ -104,7 +111,9 @@ const AdminSolidarityManagement: React.FC = () => {
                 <img src={coinSC} alt="" className="w-4 h-4" />
                 {fmt(c.collected_amount)} / {fmt(c.goal_amount)} SC
               </span>
-              <span>Commission: {c.commission_rate}%</span>
+              <span>
+                {c.status === 'pending' ? 'Commission proposée' : 'Commission finale'}: {c.commission_rate}%
+              </span>
               {statusBadge(c.status)}
             </div>
             {c.creator && (
@@ -161,6 +170,10 @@ const AdminSolidarityManagement: React.FC = () => {
         <TabsContent value="pending" className="mt-4">
           {isLoading ? (
             <p className="text-muted-foreground text-sm text-center py-8">Chargement...</p>
+          ) : loadError ? (
+            <p className="text-sm text-red-600 text-center py-8">
+              Erreur lors du chargement des cagnottes: {loadError}
+            </p>
           ) : pendingCampaigns.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">Aucune cagnotte en attente</p>
           ) : (
@@ -169,7 +182,11 @@ const AdminSolidarityManagement: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="active" className="mt-4">
-          {activeCampaigns.length === 0 ? (
+          {loadError ? (
+            <p className="text-sm text-red-600 text-center py-8">
+              Erreur lors du chargement des cagnottes: {loadError}
+            </p>
+          ) : activeCampaigns.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">Aucune cagnotte active</p>
           ) : (
             activeCampaigns.map(c => renderCampaignRow(c))
@@ -177,7 +194,11 @@ const AdminSolidarityManagement: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="rejected" className="mt-4">
-          {rejectedCampaigns.length === 0 ? (
+          {loadError ? (
+            <p className="text-sm text-red-600 text-center py-8">
+              Erreur lors du chargement des cagnottes: {loadError}
+            </p>
+          ) : rejectedCampaigns.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">Aucune cagnotte rejetée</p>
           ) : (
             rejectedCampaigns.map(c => renderCampaignRow(c))
@@ -235,7 +256,15 @@ const AdminSolidarityManagement: React.FC = () => {
               </p>
             )}
             <div>
-              <Label>Commission appliquée (%)</Label>
+              <Label>Commission finale de cette cagnotte</Label>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useDefaultCommission}
+                  onChange={(e) => setUseDefaultCommission(e.target.checked)}
+                />
+                Utiliser la commission par defaut ({defaultCommissionRate}%)
+              </label>
               <Input
                 type="number"
                 value={approveCommission}
@@ -243,9 +272,10 @@ const AdminSolidarityManagement: React.FC = () => {
                 min={0}
                 max={50}
                 className="mt-1"
+                disabled={useDefaultCommission}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Taux par défaut : {settings?.default_commission_rate ?? 5}%
+                Chaque cagnotte garde son propre pourcentage final. Vous pouvez conserver le taux par defaut ou definir un taux specifique.
               </p>
             </div>
           </div>

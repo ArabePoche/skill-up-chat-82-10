@@ -12,6 +12,33 @@ export const registerServiceWorker = async () => {
     return;
   }
 
+  if (!import.meta.env.PROD) {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((cacheKey) => caches.delete(cacheKey)));
+    }
+
+    try {
+      localStorage.removeItem('pwa_offline_ready');
+      localStorage.removeItem('pwa_offline_ready_date');
+      sessionStorage.clear();
+    } catch {
+      // Ignore storage cleanup failures in development.
+    }
+
+    console.log('🧹 Service Worker et caches désactivés en développement');
+
+    if (hadController) {
+      window.location.reload();
+    }
+
+    return;
+  }
+
   try {
     console.log('🔧 Démarrage enregistrement Service Worker...');
     
@@ -57,7 +84,7 @@ export const registerServiceWorker = async () => {
     
   } catch (error) {
     console.error('❌ Erreur lors du chargement du Service Worker:', error);
-    
+
     // Fallback: essayer d'enregistrer le SW manuellement
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {
