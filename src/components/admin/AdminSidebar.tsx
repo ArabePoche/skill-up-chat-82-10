@@ -89,6 +89,11 @@ const menuItems = [
     value: 'currency-settings',
     icon: Coins,
   },
+  {
+    title: 'Aide Solidaire',
+    value: 'solidarity',
+    icon: Heart,
+  },
 ];
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {

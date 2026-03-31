@@ -96,6 +96,8 @@ const AdminDashboard = () => {
         return <RecruitmentAdsManagement />;
       case 'currency-settings':
         return <CurrencySettingsManagement />;
+      case 'solidarity':
+        return <AdminSolidarityManagement />;
       default:
         return <DashboardStats />;
     }

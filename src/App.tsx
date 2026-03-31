@@ -145,6 +145,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/messages" element={<Layout />} />
         <Route path="/profil" element={<Layout />} />
         <Route path="/wallet" element={<WalletScreen />} />
+        <Route path="/solidarity" element={<SolidarityScreen />} />
         
         {/* Page 404 */}
         <Route path="*" element={<NotFound />} />
