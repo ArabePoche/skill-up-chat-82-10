@@ -501,17 +501,36 @@ export const useCreateCampaign = () => {
       beneficiary_name?: string;
       image_url?: string;
       commission_rate: number;
+      galleryMedia?: Array<{ url: string; type: 'image' | 'video' }>;
     }) => {
       if (!user?.id) throw new Error('Non connecté');
+      const { galleryMedia, ...campaignData } = campaign;
       const { data, error } = await supabase
         .from('solidarity_campaigns')
         .insert({
-          ...campaign,
+          ...campaignData,
           creator_id: user.id,
         })
         .select()
         .single();
       if (error) throw error;
+
+      if (galleryMedia && galleryMedia.length > 0) {
+        const mediaRows = galleryMedia.map((item, index) => ({
+          campaign_id: (data as SolidarityCampaign).id,
+          uploader_id: user.id,
+          media_url: item.url,
+          media_type: item.type,
+          position: index,
+        }));
+        const { error: mediaError } = await supabase
+          .from('solidarity_campaign_media')
+          .insert(mediaRows);
+        if (mediaError) {
+          console.error('Erreur lors de l\'insertion des médias de la galerie:', mediaError);
+          toast.error('La cagnotte a été créée mais certains médias de la galerie n\'ont pas pu être enregistrés.');
+        }
+      }
 
       try {
         await notifyAdminsForCampaign(data as SolidarityCampaign, user.id);
@@ -867,6 +886,101 @@ export const useAdminCampaignAction = () => {
     },
     onError: (err: Error) => {
       toast.error(err.message);
+    },
+  });
+};
+
+// ─── Galerie de médias ────────────────────────────────────────────────────────
+
+export interface SolidarityCampaignMedia {
+  id: string;
+  campaign_id: string;
+  uploader_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  caption: string | null;
+  position: number;
+  created_at: string;
+}
+
+export const useCampaignGallery = (campaignId: string | null) => {
+  return useQuery({
+    queryKey: ['solidarity-campaign-media', campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      const { data, error } = await supabase
+        .from('solidarity_campaign_media')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data || []) as unknown as SolidarityCampaignMedia[];
+    },
+    enabled: !!campaignId,
+  });
+};
+
+export const useAddCampaignMedia = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      campaignId,
+      mediaUrl,
+      mediaType,
+      caption,
+      position,
+    }: {
+      campaignId: string;
+      mediaUrl: string;
+      mediaType: 'image' | 'video';
+      caption?: string;
+      position?: number;
+    }) => {
+      if (!user?.id) throw new Error('Non connecté');
+      const { error } = await supabase
+        .from('solidarity_campaign_media')
+        .insert({
+          campaign_id: campaignId,
+          uploader_id: user.id,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          caption: caption || null,
+          position: position ?? 0,
+        });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['solidarity-campaign-media', vars.campaignId] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Erreur lors de l\'ajout du média');
+    },
+  });
+};
+
+export const useDeleteCampaignMedia = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ mediaId, campaignId }: { mediaId: string; campaignId: string }) => {
+      if (!user?.id) throw new Error('Non connecté');
+      const { error } = await supabase
+        .from('solidarity_campaign_media')
+        .delete()
+        .eq('id', mediaId)
+        .eq('uploader_id', user.id);
+      if (error) throw error;
+      return campaignId;
+    },
+    onSuccess: (campaignId) => {
+      queryClient.invalidateQueries({ queryKey: ['solidarity-campaign-media', campaignId] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Erreur lors de la suppression du média');
     },
   });
 };

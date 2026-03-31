@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, HandCoins, Heart, MessageSquareText, Share2, Target, Users } from 'lucide-react';
+import { ArrowLeft, Clock, HandCoins, Heart, Images, MessageSquareText, Share2, Target, Users, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -23,13 +23,16 @@ import { generateShareLinks } from '@/hooks/useDeeplinks';
 import coinSC from '@/assets/coin-soumboulah-cash.png';
 
 import { buildSolidarityCampaignPath } from './campaignRoutes';
+import CampaignGalleryUploader, { isVideoUrl } from './components/CampaignGalleryUploader';
 import {
   SolidarityContribution,
   useAddCampaignTestimonial,
   useCampaignContributions,
+  useCampaignGallery,
   useCampaignLike,
   useCampaignTestimonials,
   useContribute,
+  useDeleteCampaignMedia,
   useRecordCampaignShare,
   useSolidarityCampaign,
 } from './hooks/useSolidarityCampaigns';
@@ -86,9 +89,11 @@ const SolidarityCampaignPage: React.FC = () => {
   const { data: campaign, isLoading } = useSolidarityCampaign(campaignId);
   const { data: contributions = [] } = useCampaignContributions(campaign?.id || null);
   const { data: testimonials = [] } = useCampaignTestimonials(campaign?.id || null);
+  const { data: galleryMedia = [] } = useCampaignGallery(campaign?.id || null);
   const { mutate: contribute, isPending: contributionPending } = useContribute();
   const { mutate: addTestimonial, isPending: testimonialPending } = useAddCampaignTestimonial();
   const { mutate: recordShare } = useRecordCampaignShare();
+  const { mutate: deleteMedia } = useDeleteCampaignMedia();
   const { isLiked, likesCount, toggleLike, isLoading: likePending } = useCampaignLike(
     campaign?.id,
     campaign?.likes_count || 0
@@ -98,6 +103,7 @@ const SolidarityCampaignPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [testimonial, setTestimonial] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [isContributionsModalOpen, setIsContributionsModalOpen] = useState(false);
 
   const progress = campaign?.goal_amount
@@ -542,6 +548,67 @@ const SolidarityCampaignPage: React.FC = () => {
 
         <Card>
           <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-sm flex items-center gap-1.5">
+                  <Images size={15} className="text-rose-500" />
+                  Galerie
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Photos et vidéos de présentation et de suivi.
+                </p>
+              </div>
+            </div>
+
+            {galleryMedia.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {galleryMedia.map((item) => (
+                  <div
+                    key={item.id}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted cursor-pointer group"
+                    onClick={() => setLightboxUrl(item.media_url)}
+                  >
+                    {item.media_type === 'video' ? (
+                      <video
+                        src={item.media_url}
+                        className="w-full h-full object-cover"
+                        muted
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img
+                        src={item.media_url}
+                        alt={item.caption || `Média ${item.position + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    )}
+                    {isOwnCampaign && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteMedia({ mediaId: item.id, campaignId: campaign.id });
+                        }}
+                        className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Aucun média dans la galerie pour le moment.</p>
+            )}
+
+            {isOwnCampaign && (
+              <CampaignGalleryUploader campaignId={campaign.id} existingCount={galleryMedia.length} />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-4">
             <div>
               <h2 className="font-semibold text-sm">Contributeurs</h2>
               <p className="text-xs text-muted-foreground">
@@ -593,6 +660,28 @@ const SolidarityCampaignPage: React.FC = () => {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
+          <DialogContent className="max-w-3xl border-none bg-black/95 p-2 flex items-center justify-center">
+            <DialogTitle className="sr-only">Aperçu du média</DialogTitle>
+            {lightboxUrl && (
+              isVideoUrl(lightboxUrl) ? (
+                <video
+                  src={lightboxUrl}
+                  controls
+                  autoPlay
+                  className="max-h-[80vh] max-w-full rounded-lg"
+                />
+              ) : (
+                <img
+                  src={lightboxUrl}
+                  alt="Aperçu"
+                  className="max-h-[80vh] max-w-full rounded-lg object-contain"
+                />
+              )
+            )}
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={isContributionsModalOpen} onOpenChange={setIsContributionsModalOpen}>
           <DialogContent className="w-[calc(100vw-1rem)] max-w-3xl overflow-hidden border-none p-0 shadow-[0_32px_100px_-40px_rgba(15,23,42,0.65)] sm:w-full sm:max-h-[88vh]">

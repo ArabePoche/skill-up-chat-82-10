@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateCampaign, useSolidaritySettings } from '../hooks/useSolidarityCampaigns';
 import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
-import { Heart, Info } from 'lucide-react';
+import { Heart, Images, Info } from 'lucide-react';
 import coinSC from '@/assets/coin-soumboulah-cash.png';
 import CampaignImageUploader from './CampaignImageUploader';
+import CampaignGalleryUploader, { GalleryItem } from './CampaignGalleryUploader';
 
 interface Props {
   open: boolean;
@@ -28,6 +29,7 @@ const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const [beneficiary, setBeneficiary] = useState('');
   const [deadline, setDeadline] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
 
   const commissionRate = settings?.default_commission_rate || 5;
   const minGoal = settings?.min_campaign_goal || 1000;
@@ -50,6 +52,7 @@ const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
       deadline: deadline || undefined,
       commission_rate: commissionRate,
       image_url: imageUrl || undefined,
+      galleryMedia: galleryItems.length > 0 ? galleryItems : undefined,
     });
     // Reset
     setTitle('');
@@ -58,6 +61,7 @@ const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
     setBeneficiary('');
     setDeadline('');
     setImageUrl('');
+    setGalleryItems([]);
     onOpenChange(false);
   };
 
@@ -75,6 +79,18 @@ const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
           <div>
             <Label>Photo de la cagnotte</Label>
             <CampaignImageUploader imageUrl={imageUrl} onImageChange={setImageUrl} campaignTitle={title || undefined} />
+          </div>
+
+          <div>
+            <Label className="flex items-center gap-1.5 mb-2">
+              <Images size={14} className="text-muted-foreground" />
+              Galerie (photos / vidéos de présentation)
+            </Label>
+            <CampaignGalleryUploader
+              items={galleryItems}
+              onItemsChange={setGalleryItems}
+              maxItems={8}
+            />
           </div>
 
           <div>
