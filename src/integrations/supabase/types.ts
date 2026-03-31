@@ -7181,6 +7181,7 @@ export type Database = {
           category: string | null
           collected_amount: number
           commission_rate: number
+          contributor_count: number
           created_at: string
           creator_id: string
           deadline: string | null
@@ -7200,6 +7201,7 @@ export type Database = {
           category?: string | null
           collected_amount?: number
           commission_rate?: number
+          contributor_count?: number
           created_at?: string
           creator_id: string
           deadline?: string | null
@@ -7219,6 +7221,7 @@ export type Database = {
           category?: string | null
           collected_amount?: number
           commission_rate?: number
+          contributor_count?: number
           created_at?: string
           creator_id?: string
           deadline?: string | null
@@ -7232,6 +7235,102 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      solidarity_campaign_likes: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidarity_campaign_likes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "solidarity_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidarity_campaign_shares: {
+        Row: {
+          campaign_id: string
+          channel: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          channel?: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidarity_campaign_shares_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "solidarity_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidarity_campaign_testimonials: {
+        Row: {
+          campaign_id: string
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidarity_campaign_testimonials_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "solidarity_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       solidarity_commission_settings: {
         Row: {
@@ -9971,6 +10070,16 @@ export type Database = {
           p_sender_id: string
         }
         Returns: undefined
+      }
+      contribute_to_solidarity_campaign: {
+        Args: {
+          p_amount: number
+          p_campaign_id: string
+          p_commission_rate?: number | null
+          p_is_anonymous?: boolean | null
+          p_message?: string | null
+        }
+        Returns: Json
       }
       transfer_habbah: {
         Args: {

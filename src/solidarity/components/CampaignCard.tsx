@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, Clock, CheckCircle, Users } from 'lucide-react';
+import { Heart, Clock, CheckCircle, MessageSquareText, Share2, Users } from 'lucide-react';
 import { SolidarityCampaign } from '../hooks/useSolidarityCampaigns';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -78,7 +78,9 @@ const CampaignCard: React.FC<Props> = ({ campaign, onClick }) => {
         </div>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{progress}% atteint</span>
+          <span className="flex items-center gap-1">
+            <Users size={12} /> {campaign.contributor_count || 0} contributeur(s)
+          </span>
           {campaign.deadline && (
             <span className="flex items-center gap-1">
               <Clock size={12} />
@@ -86,6 +88,18 @@ const CampaignCard: React.FC<Props> = ({ campaign, onClick }) => {
             </span>
           )}
         </div>
+        <div className="grid grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Heart size={12} className="text-rose-500" /> {campaign.likes_count || 0}
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageSquareText size={12} className="text-sky-500" /> {campaign.testimonials_count || 0}
+          </span>
+          <span className="flex items-center gap-1">
+            <Share2 size={12} className="text-violet-500" /> {campaign.shares_count || 0}
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground">{progress}% atteint</div>
       </CardContent>
     </Card>
   );

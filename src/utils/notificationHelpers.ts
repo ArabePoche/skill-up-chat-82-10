@@ -2,7 +2,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { NotificationSoundService } from '@/services/NotificationSoundService';
 
 // Types pour les notifications
-export type NotificationType = 'daily_reminder' | 'teacher_response' | 'exercise_validation' | 'new_lesson' | 'test' | 'private_chat';
+export type NotificationType =
+  | 'daily_reminder'
+  | 'teacher_response'
+  | 'exercise_validation'
+  | 'new_lesson'
+  | 'test'
+  | 'private_chat'
+  | 'gift_received'
+  | 'solidarity_campaign'
+  | 'solidarity_contribution'
+  | 'solidarity_like'
+  | 'solidarity_testimonial';
 
 export interface SendNotificationParams {
   userIds?: string[];
@@ -11,6 +22,7 @@ export interface SendNotificationParams {
   type: NotificationType;
   clickAction?: string;
   data?: Record<string, any>;
+  playLocalSound?: boolean;
 }
 
 // Fonction helper pour envoyer des notifications
@@ -34,8 +46,10 @@ export const sendPushNotification = async (params: SendNotificationParams) => {
     }
 
     // Jouer le son approprié selon le type de notification
-    const soundType = NotificationSoundService.getSoundTypeFromNotification(params.type);
-    await NotificationSoundService.playNotificationSound(soundType);
+    if (params.playLocalSound !== false) {
+      const soundType = NotificationSoundService.getSoundTypeFromNotification(params.type);
+      await NotificationSoundService.playNotificationSound(soundType);
+    }
 
     console.log('Notification envoyée avec succès:', data);
     return data;

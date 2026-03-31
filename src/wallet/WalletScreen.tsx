@@ -75,7 +75,7 @@ const WalletScreen: React.FC = () => {
             </button>
             <div>
               <h1 className="text-xl font-bold text-white" style={{ fontFamily: "'Georgia', serif" }}>
-                Mon Portefeuille
+                Mon Portefeuillevv
               </h1>
               <p className="text-blue-300/70 text-sm">Habbah & Soumboulah</p>
             </div>
@@ -204,6 +204,7 @@ const WalletScreen: React.FC = () => {
               }
 
               const isGift = tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
+              const isSolidarity = tx.reference_type === 'solidarity_campaign';
               const coinIcon = currencyCoin[tx.currency] || coinHabbah;
 
               if (isGift && metadata && (metadata.partner_name || metadata.receiver_name || metadata.sender_name || metadata.gift_name || metadata.gift_reason)) {
@@ -277,6 +278,30 @@ const WalletScreen: React.FC = () => {
                           {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
                         </p>
                       </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              if (isSolidarity) {
+                const campaignTitle = metadata.campaign_title || 'Cagnotte solidaire';
+
+                return (
+                  <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-pink-500/15 text-pink-400 flex items-center justify-center shrink-0">
+                        <Heart size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-200 truncate">Contribution à une cagnotte</p>
+                        <p className="text-xs text-slate-300 truncate">{campaignTitle}</p>
+                        <p className="text-xs text-slate-400">
+                          {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                        </p>
+                      </div>
+                      <span className={`text-sm font-bold shrink-0 ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {tx.amount >= 0 ? '+' : ''}{formatNumber(tx.amount)}
+                      </span>
                     </CardContent>
                   </Card>
                 );

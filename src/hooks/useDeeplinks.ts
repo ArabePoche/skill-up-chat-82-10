@@ -53,9 +53,14 @@ const DEEP_LINK_ROUTES: DeepLinkRoute[] = [
     pattern: /\/conversations\/([a-zA-Z0-9-]+)/,
     handler: (matches) => `/conversations/${matches[1]}`
   },
+  // Cagnottes: /solidarity/:id ou /solidarity/:id/:slug
+  {
+    pattern: /\/solidarity\/([a-zA-Z0-9-]+)(?:\/[^/?#]+)?/,
+    handler: (matches) => `/solidarity/${matches[1]}`
+  },
   // Pages principales
   {
-    pattern: /^\/(video|post|search|home|shop|messages|profil)$/,
+    pattern: /^\/(video|post|search|home|shop|messages|profil|solidarity)$/,
     handler: (matches) => `/${matches[1]}`
   }
 ];
@@ -166,6 +171,23 @@ export const generateShareableLink = (
   // S'assurer que le path commence par /
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${baseUrl}${normalizedPath}`;
+};
+
+export const generateCustomSchemeLink = (
+  path: string,
+  schemeBase: string = 'educatok://open'
+): string => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${schemeBase}${normalizedPath}`;
+};
+
+export const generateShareLinks = (path: string) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  return {
+    webUrl: generateShareableLink(normalizedPath),
+    appUrl: generateCustomSchemeLink(normalizedPath),
+  };
 };
 
 /**

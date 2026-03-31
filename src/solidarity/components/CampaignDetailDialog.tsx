@@ -9,6 +9,7 @@ import { Heart, Users, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import coinSC from '@/assets/coin-soumboulah-cash.png';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Props {
   campaign: SolidarityCampaign | null;
@@ -19,6 +20,7 @@ interface Props {
 const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 
 const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange }) => {
+  const { user } = useAuth();
   const { data: contributions = [] } = useCampaignContributions(campaign?.id || null);
   const { mutate: contribute, isPending } = useContribute();
   const [amount, setAmount] = useState('');
@@ -30,8 +32,13 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
   const progress = campaign.goal_amount > 0
     ? Math.min(100, Math.round((campaign.collected_amount / campaign.goal_amount) * 100))
     : 0;
+  const contributionCount = campaign.contributor_count ?? contributions.length;
+  const userContributions = user?.id
+    ? contributions.filter((contribution) => contribution.contributor_id === user.id)
+    : [];
 
-  const canContribute = campaign.status === 'approved';
+  const isOwnCampaign = user?.id === campaign.creator_id;
+  const canContribute = campaign.status === 'approved' || (isOwnCampaign && campaign.status === 'pending');
 
   const handleContribute = () => {
     const amt = Number(amount);
@@ -89,7 +96,7 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
-                <Users size={14} /> {contributions.length} contributeur(s)
+                <Users size={14} /> {contributionCount} contributeur(s)
               </span>
               {campaign.deadline && (
                 <span className="flex items-center gap-1">
@@ -127,6 +134,11 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
               <p className="text-xs text-muted-foreground">
                 Commission plateforme : {campaign.commission_rate}%
               </p>
+              {isOwnCampaign && campaign.status === 'pending' && (
+                <p className="text-xs text-amber-600">
+                  Vous pouvez contribuer à votre propre cagnotte avant validation. Elle restera privée tant qu’elle n’est pas approuvée.
+                </p>
+              )}
               <Button
                 onClick={handleContribute}
                 disabled={isPending || !amount || Number(amount) <= 0}
@@ -140,9 +152,10 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
           {/* Liste des contributeurs */}
           {contributions.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold">Contributeurs récents</h4>
+              <h4 className="text-sm font-semibold">Historique des contributions</h4>
               {contributions.slice(0, 10).map(c => (
-                <div key={c.id} className="flex items-center gap-2 text-sm">
+                <div key={c.id} className="rounded-lg border border-border/60 p-2 space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
                   {c.is_anonymous ? (
                     <Avatar className="w-6 h-6">
                       <AvatarFallback className="text-[10px]">?</AvatarFallback>
@@ -161,6 +174,26 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
                   <span className="font-medium text-foreground flex items-center gap-1">
                     <img src={coinSC} alt="" className="w-4 h-4" />
                     {fmt(c.amount)}
+                  </span>
+                </div>
+                  <div className="pl-8 text-xs text-muted-foreground space-y-1">
+                    <p>{format(new Date(c.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}</p>
+                    {c.message && <p className="text-foreground/80">{c.message}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {userContributions.length > 0 && (
+            <div className="space-y-2 rounded-lg bg-muted/40 p-3">
+              <h4 className="text-sm font-semibold">Mes contributions</h4>
+              {userContributions.slice(0, 5).map((contribution) => (
+                <div key={contribution.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{format(new Date(contribution.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}</span>
+                  <span className="flex items-center gap-1 font-medium text-foreground">
+                    <img src={coinSC} alt="" className="w-4 h-4" />
+                    {fmt(contribution.amount)} SC
                   </span>
                 </div>
               ))}

@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { formatNumber } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { sendPushNotification } from '@/utils/notificationHelpers';
 
 interface VideoGiftModalProps {
   isOpen: boolean;
@@ -38,6 +39,46 @@ const PREMIUM_GIFTS = [
 
 const HABBAH_AMOUNTS = [1, 10, 50, 100, 500, 1000];
 const BONUS_AMOUNTS = [1, 5, 10, 20, 50, 100];
+
+const getSenderDisplayName = async (userId: string) => {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('first_name, last_name, username')
+    .eq('id', userId)
+    .single();
+
+  if (profile?.first_name && profile?.last_name) {
+    return `${profile.first_name} ${profile.last_name}`;
+  }
+
+  return profile?.username || 'Un utilisateur';
+};
+
+const notifyVideoGiftRecipient = async ({
+  recipientId,
+  senderId,
+  senderName,
+  videoId,
+  videoTitle,
+  giftLabel,
+}: {
+  recipientId: string;
+  senderId: string;
+  senderName: string;
+  videoId: string;
+  videoTitle?: string;
+  giftLabel: string;
+}) => {
+  await sendPushNotification({
+    userIds: [recipientId],
+    title: 'Cadeau vidéo reçu !',
+    message: `${senderName} vous a envoyé ${giftLabel}${videoTitle ? ` sur "${videoTitle}"` : ''}.`,
+    type: 'gift_received',
+    clickAction: `/video/${videoId}`,
+    data: { videoId, senderId, giftLabel },
+    playLocalSound: false,
+  });
+};
 
 export const VideoGiftModal: React.FC<VideoGiftModalProps> = ({
   isOpen,
@@ -101,6 +142,22 @@ export const VideoGiftModal: React.FC<VideoGiftModalProps> = ({
          throw error; 
       }
 
+      if (user?.id && recipientId !== user.id) {
+        try {
+          const senderName = await getSenderDisplayName(user.id);
+          await notifyVideoGiftRecipient({
+            recipientId,
+            senderId: user.id,
+            senderName,
+            videoId,
+            videoTitle,
+            giftLabel: item.name,
+          });
+        } catch (notificationError) {
+          console.error('Erreur push cadeau vidéo premium:', notificationError);
+        }
+      }
+
       setShowConfetti(true);
       toast.success(`${item.name} envoyé à ${recipientName} !`);
       setTimeout(() => {
@@ -132,6 +189,21 @@ export const VideoGiftModal: React.FC<VideoGiftModalProps> = ({
           videoId
         );
         if (result.success) {
+          if (user?.id && recipientId !== user.id) {
+            try {
+              const senderName = await getSenderDisplayName(user.id);
+              await notifyVideoGiftRecipient({
+                recipientId,
+                senderId: user.id,
+                senderName,
+                videoId,
+                videoTitle,
+                giftLabel: `${amount} Habbah`,
+              });
+            } catch (notificationError) {
+              console.error('Erreur push cadeau vidéo Habbah:', notificationError);
+            }
+          }
           setShowConfetti(true);
           toast.success(`${amount} Habbah envoyés !`);
           setTimeout(() => {
@@ -175,6 +247,22 @@ export const VideoGiftModal: React.FC<VideoGiftModalProps> = ({
            }
            // Throw other errors (like 400 Bad Request)
            throw error;
+        }
+
+        if (user?.id && recipientId !== user.id) {
+          try {
+            const senderName = await getSenderDisplayName(user.id);
+            await notifyVideoGiftRecipient({
+              recipientId,
+              senderId: user.id,
+              senderName,
+              videoId,
+              videoTitle,
+              giftLabel: `${amount} SB`,
+            });
+          } catch (notificationError) {
+            console.error('Erreur push cadeau vidéo bonus:', notificationError);
+          }
         }
 
         setShowConfetti(true);

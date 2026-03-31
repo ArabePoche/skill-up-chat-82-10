@@ -14,7 +14,7 @@ import {
   useAdminCampaignAction,
   SolidarityCampaign,
 } from '../hooks/useSolidarityCampaigns';
-import { Heart, CheckCircle, XCircle, Clock, Settings2, Save, Percent } from 'lucide-react';
+import { Heart, CheckCircle, XCircle, Clock, Settings2, Save, Percent, Wallet, Users, Target, TrendingUp } from 'lucide-react';
 import coinSC from '@/assets/coin-soumboulah-cash.png';
 
 const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
@@ -73,6 +73,12 @@ const AdminSolidarityManagement: React.FC = () => {
   const pendingCampaigns = allCampaigns.filter(c => c.status === 'pending');
   const activeCampaigns = allCampaigns.filter(c => c.status === 'approved' || c.status === 'completed');
   const rejectedCampaigns = allCampaigns.filter(c => c.status === 'rejected');
+  const totalCollected = allCampaigns.reduce((sum, campaign) => sum + Number(campaign.collected_amount || 0), 0);
+  const totalGoal = allCampaigns.reduce((sum, campaign) => sum + Number(campaign.goal_amount || 0), 0);
+  const totalContributions = allCampaigns.reduce((sum, campaign) => sum + Number(campaign.contributor_count || 0), 0);
+  const averageCommission = allCampaigns.length > 0
+    ? allCampaigns.reduce((sum, campaign) => sum + Number(campaign.commission_rate || 0), 0) / allCampaigns.length
+    : 0;
 
   const handleOpenApprove = (c: SolidarityCampaign) => {
     setApproveTarget(c);
@@ -153,6 +159,49 @@ const AdminSolidarityManagement: React.FC = () => {
       <div className="flex items-center gap-2">
         <Heart className="text-rose-500" size={24} />
         <h2 className="text-2xl font-bold">Aide Solidaire</h2>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Cagnottes</span>
+              <Target size={16} className="text-rose-500" />
+            </div>
+            <p className="text-2xl font-bold">{allCampaigns.length}</p>
+            <p className="text-xs text-muted-foreground">{pendingCampaigns.length} en attente</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Collecté</span>
+              <Wallet size={16} className="text-emerald-500" />
+            </div>
+            <p className="text-2xl font-bold">{fmt(totalCollected)} SC</p>
+            <p className="text-xs text-muted-foreground">sur {fmt(totalGoal)} SC visés</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Contributions</span>
+              <Users size={16} className="text-blue-500" />
+            </div>
+            <p className="text-2xl font-bold">{fmt(totalContributions)}</p>
+            <p className="text-xs text-muted-foreground">toutes cagnottes confondues</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Commission moy.</span>
+              <TrendingUp size={16} className="text-amber-500" />
+            </div>
+            <p className="text-2xl font-bold">{averageCommission.toFixed(1)}%</p>
+            <p className="text-xs text-muted-foreground">taux final moyen</p>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="pending">
