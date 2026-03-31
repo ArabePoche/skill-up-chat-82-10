@@ -1,5 +1,5 @@
--- Galerie de médias pour les cagnottes solidaires
--- Permet au créateur d'ajouter des images/vidéos de preuves et d'explications
+-- Galerie de medias pour les cagnottes solidaires
+-- Permet au createur d'ajouter des images/videos de preuves et d'explications
 
 create table if not exists public.solidarity_campaign_media (
   id uuid primary key default gen_random_uuid(),
@@ -18,7 +18,7 @@ create index if not exists solidarity_campaign_media_campaign_id_idx
 -- RLS
 alter table public.solidarity_campaign_media enable row level security;
 
--- Tout le monde peut voir les médias des cagnottes approuvées
+-- Tout le monde peut voir les medias des cagnottes approuvees
 create policy "solidarity_campaign_media_select"
   on public.solidarity_campaign_media for select
   using (
@@ -32,7 +32,7 @@ create policy "solidarity_campaign_media_select"
     )
   );
 
--- Seul le créateur de la cagnotte peut ajouter des médias
+-- Seul le createur de la cagnotte peut ajouter des medias
 create policy "solidarity_campaign_media_insert"
   on public.solidarity_campaign_media for insert
   with check (
@@ -44,7 +44,7 @@ create policy "solidarity_campaign_media_insert"
     )
   );
 
--- Seul le créateur peut supprimer ses médias
+-- Seul le createur peut supprimer ses medias
 create policy "solidarity_campaign_media_delete"
   on public.solidarity_campaign_media for delete
   using (uploader_id = auth.uid());
