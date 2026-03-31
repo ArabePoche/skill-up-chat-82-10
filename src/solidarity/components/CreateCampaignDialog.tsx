@@ -5,52 +5,65 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateCampaign, useSolidaritySettings } from '../hooks/useSolidarityCampaigns';
+import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
 import { Heart, Info } from 'lucide-react';
 import coinSC from '@/assets/coin-soumboulah-cash.png';
+import CampaignImageUploader from './CampaignImageUploader';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n));
+
 const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
   const { mutate: create, isPending } = useCreateCampaign();
   const { data: settings } = useSolidaritySettings();
+  const { conversion } = useCurrencySettings();
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [goalAmount, setGoalAmount] = useState('');
+  const [goalFcfa, setGoalFcfa] = useState('');
   const [beneficiary, setBeneficiary] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
 
   const commissionRate = settings?.default_commission_rate || 5;
   const minGoal = settings?.min_campaign_goal || 1000;
   const maxGoal = settings?.max_campaign_goal || 10000000;
+  const scToFcfaRate = conversion?.sc_to_fcfa_rate || 1;
+
+  // Conversion FCFA → SC
+  const fcfaValue = Number(goalFcfa) || 0;
+  const goalSc = scToFcfaRate > 0 ? Math.ceil(fcfaValue / scToFcfaRate) : 0;
+  const goalValid = goalSc >= minGoal && goalSc <= maxGoal;
 
   const handleSubmit = () => {
-    const goal = Number(goalAmount);
-    if (!title.trim() || !description.trim() || !goal) return;
-    if (goal < minGoal || goal > maxGoal) return;
+    if (!title.trim() || !description.trim() || !fcfaValue || !goalValid) return;
 
     create({
       title: title.trim(),
       description: description.trim(),
-      goal_amount: goal,
+      goal_amount: goalSc,
       beneficiary_name: beneficiary.trim() || undefined,
       deadline: deadline || undefined,
       commission_rate: commissionRate,
+      image_url: imageUrl || undefined,
     });
     // Reset
     setTitle('');
     setDescription('');
-    setGoalAmount('');
+    setGoalFcfa('');
     setBeneficiary('');
     setDeadline('');
+    setImageUrl('');
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Heart className="text-rose-500" size={20} />
@@ -59,6 +72,11 @@ const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
         </DialogHeader>
 
         <div className="space-y-4">
+          <div>
+            <Label>Photo de la cagnotte</Label>
+            <CampaignImageUploader imageUrl={imageUrl} onImageChange={setImageUrl} campaignTitle={title || undefined} />
+          </div>
+
           <div>
             <Label htmlFor="title">Titre de la cagnotte *</Label>
             <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Aide médicale pour..." />
@@ -74,21 +92,30 @@ const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
             />
           </div>
           <div>
-            <Label htmlFor="goal">Objectif (SC) *</Label>
-            <div className="flex items-center gap-2">
-              <img src={coinSC} alt="SC" className="w-6 h-6" />
-              <Input
-                id="goal"
-                type="number"
-                value={goalAmount}
-                onChange={e => setGoalAmount(e.target.value)}
-                placeholder={`Min: ${minGoal} SC`}
-                min={minGoal}
-                max={maxGoal}
-              />
-            </div>
+            <Label htmlFor="goal">Objectif (FCFA) *</Label>
+            <Input
+              id="goal"
+              type="number"
+              value={goalFcfa}
+              onChange={e => setGoalFcfa(e.target.value)}
+              placeholder="Ex: 500 000 FCFA"
+              min={0}
+            />
+            {fcfaValue > 0 && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <img src={coinSC} alt="SC" className="w-4 h-4" />
+                <p className={`text-xs ${goalValid ? 'text-muted-foreground' : 'text-destructive'}`}>
+                  {fmt(goalSc)} SC
+                  {!goalValid && goalSc > 0 && (
+                    <span className="ml-1">
+                      (min {fmt(minGoal)} SC — max {fmt(maxGoal)} SC)
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
-              Entre {minGoal.toLocaleString('fr-FR')} et {maxGoal.toLocaleString('fr-FR')} SC
+              Taux : 1 SC = {fmt(scToFcfaRate)} FCFA
             </p>
           </div>
           <div>
@@ -113,7 +140,7 @@ const CreateCampaignDialog: React.FC<Props> = ({ open, onOpenChange }) => {
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || !title.trim() || !description.trim() || !goalAmount}
+            disabled={isPending || !title.trim() || !description.trim() || !fcfaValue || !goalValid}
             className="bg-rose-500 hover:bg-rose-600 text-white"
           >
             {isPending ? 'Envoi...' : 'Soumettre'}

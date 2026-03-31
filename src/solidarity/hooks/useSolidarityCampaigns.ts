@@ -231,10 +231,11 @@ export const useAdminCampaignAction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ campaignId, action, rejectionReason }: {
+    mutationFn: async ({ campaignId, action, rejectionReason, commissionRate }: {
       campaignId: string;
       action: 'approved' | 'rejected';
       rejectionReason?: string;
+      commissionRate?: number;
     }) => {
       if (!user?.id) throw new Error('Non connecté');
       const updateData: any = {
@@ -245,6 +246,9 @@ export const useAdminCampaignAction = () => {
       };
       if (action === 'rejected' && rejectionReason) {
         updateData.rejection_reason = rejectionReason;
+      }
+      if (action === 'approved' && commissionRate !== undefined) {
+        updateData.commission_rate = commissionRate;
       }
       const { error } = await supabase
         .from('solidarity_campaigns')
