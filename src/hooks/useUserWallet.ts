@@ -108,7 +108,7 @@ export const useUserWallet = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('currency_conversion_settings')
-        .select('sc_to_cfa_rate')
+        .select('sc_to_fcfa_rate')
         .single();
       if (error) throw error;
       return data;
