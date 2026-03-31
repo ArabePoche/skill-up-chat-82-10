@@ -42,6 +42,7 @@ import PublicCv from '@/pages/PublicCv';
 import School from '@/pages/School';
 import CvSearchPage from '@/cv-search/CvSearchPage';
 import WalletScreen from '@/wallet/WalletScreen';
+import SolidarityScreen from '@/solidarity/SolidarityScreen';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
