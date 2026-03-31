@@ -143,7 +143,7 @@ export const useUserWallet = () => {
     isLoading: walletQuery.isLoading,
     transactions: transactionsQuery.data || [],
     transactionsLoading: transactionsQuery.isLoading,
-    scToCfaRate: conversionQuery.data?.sc_to_cfa_rate || 10,
+    scToCfaRate: conversionQuery.data?.sc_to_fcfa_rate || 10,
     convertHabbah: convertHabbahMutation.mutate,
     isConverting: convertHabbahMutation.isPending,
   };
