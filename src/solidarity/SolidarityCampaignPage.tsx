@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, Heart, MessageSquareText, Share2, Users } from 'lucide-react';
+import { ArrowLeft, Clock, HandCoins, Heart, MessageSquareText, Share2, Target, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -8,7 +8,15 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { generateShareLinks } from '@/hooks/useDeeplinks';
@@ -90,11 +98,16 @@ const SolidarityCampaignPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [testimonial, setTestimonial] = useState('');
+  const [isContributionsModalOpen, setIsContributionsModalOpen] = useState(false);
 
   const progress = campaign?.goal_amount
     ? Math.min(100, Math.round((campaign.collected_amount / campaign.goal_amount) * 100))
     : 0;
+  const remainingAmount = campaign
+    ? Math.max(0, campaign.goal_amount - campaign.collected_amount)
+    : 0;
   const contributionCount = campaign?.contributor_count || 0;
+  const numericAmount = Number(amount) || 0;
   const userContributions = user?.id
     ? contributions.filter((contribution) => contribution.contributor_id === user.id)
     : [];
@@ -114,6 +127,18 @@ const SolidarityCampaignPage: React.FC = () => {
   const campaignPath = campaign
     ? buildSolidarityCampaignPath(campaign.id, campaign.title)
     : '/solidarity';
+
+  const suggestedAmounts = useMemo(() => {
+    const candidates = [100, 250, 500, 1000];
+
+    if (!remainingAmount) {
+      return candidates;
+    }
+
+    return [...new Set([...candidates.filter((candidate) => candidate < remainingAmount), remainingAmount])]
+      .filter((candidate) => candidate > 0)
+      .slice(0, 4);
+  }, [remainingAmount]);
 
   const handleContribute = () => {
     if (!campaign) return;
@@ -238,6 +263,150 @@ const SolidarityCampaignPage: React.FC = () => {
       </div>
 
       <div className="px-4 -mt-5 space-y-4">
+        {canContribute && (
+          <Card className="overflow-hidden border-none shadow-[0_24px_80px_-28px_rgba(244,63,94,0.65)]">
+            <CardContent className="p-0">
+              <div className="bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.24),_transparent_32%),linear-gradient(135deg,_rgb(225,29,72),_rgb(236,72,153)_54%,_rgb(249,115,22))] p-5 text-white">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/90">
+                      <HandCoins size={14} /> Soutien prioritaire
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black leading-tight sm:text-2xl">
+                        Contribuer maintenant
+                      </h2>
+                      <p className="mt-1 max-w-xl text-sm text-white/85">
+                        Chaque contribution rapproche cette cagnotte de son objectif.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-left backdrop-blur-sm sm:w-auto sm:min-w-[190px] sm:text-right">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-white/75">Reste à réunir</div>
+                    <div className="mt-1 flex items-center gap-1 text-lg font-black sm:justify-end">
+                      <img src={coinSC} alt="SC" className="h-5 w-5" />
+                      {fmt(remainingAmount)} SC
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-white/70">Collecté</div>
+                    <div className="mt-1 flex items-center gap-1 text-base font-bold">
+                      <img src={coinSC} alt="SC" className="h-4 w-4" />
+                      {fmt(campaign.collected_amount)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-white/70">Objectif</div>
+                    <div className="mt-1 flex items-center gap-1 text-base font-bold">
+                      <Target size={14} /> {progress}%
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                    <div className="text-[11px] uppercase tracking-[0.16em] text-white/70">Soutiens</div>
+                    <div className="mt-1 flex items-center gap-1 text-base font-bold">
+                      <Users size={14} /> {fmt(contributionCount)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-4 rounded-[28px] border border-white/20 bg-white p-4 text-slate-900 shadow-2xl sm:p-5">
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                    <div className="space-y-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Montant en SC
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <img src={coinSC} alt="SC" className="h-6 w-6" />
+                          <Input
+                            type="number"
+                            min={1}
+                            value={amount}
+                            onChange={(event) => setAmount(event.target.value)}
+                            placeholder="Saisissez le montant a donner"
+                            className="h-12 rounded-xl border border-slate-300 bg-white px-4 text-xl font-black text-slate-950 shadow-none placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-rose-300"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold">Choisissez un montant rapide</p>
+                          
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {suggestedAmounts.map((suggestedAmount) => (
+                            <button
+                              key={suggestedAmount}
+                              type="button"
+                              onClick={() => setAmount(String(suggestedAmount))}
+                              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-semibold transition-all ${numericAmount === suggestedAmount ? 'border-rose-500 bg-rose-500 text-white shadow-sm' : 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100'}`}
+                            >
+                              <img src={coinSC} alt="SC" className="h-4 w-4" />
+                              {fmt(suggestedAmount)} SC
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Input
+                        value={message}
+                        onChange={(event) => setMessage(event.target.value)}
+                        placeholder="Ajoutez un mot de soutien (optionnel)"
+                        className="h-12 rounded-2xl border-slate-200"
+                      />
+
+                      <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600 cursor-pointer">
+                        <input type="checkbox" checked={isAnonymous} onChange={(event) => setIsAnonymous(event.target.checked)} />
+                        Rendre ma contribution anonyme
+                      </label>
+                    </div>
+
+                    <div className="rounded-3xl bg-slate-950 p-4 text-white">
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-white/55">Impact immédiat</div>
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <div className="text-sm text-white/70">Votre don</div>
+                          <div className="mt-1 flex items-center gap-1 text-2xl font-black">
+                            <img src={coinSC} alt="SC" className="h-5 w-5" />
+                            {fmt(numericAmount)} SC
+                          </div>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-amber-300 via-rose-400 to-pink-400 transition-all"
+                            style={{ width: `${Math.min(100, progress + (campaign.goal_amount ? (numericAmount / campaign.goal_amount) * 100 : 0))}%` }}
+                          />
+                        </div>
+                        <p className="text-sm text-white/75">
+                          Après votre soutien, la cagnotte peut atteindre jusqu’à <span className="font-semibold text-white">{Math.min(100, Math.round(progress + (campaign.goal_amount ? (numericAmount / campaign.goal_amount) * 100 : 0)))}%</span> de son objectif.
+                        </p>
+                        <Button
+                          onClick={handleContribute}
+                          disabled={contributionPending || !amount || Number(amount) <= 0}
+                          className="h-12 w-full rounded-2xl bg-white text-rose-600 hover:bg-white/90 font-bold"
+                        >
+                          {contributionPending ? 'Envoi...' : `Soutenir avec ${amount ? `${fmt(Number(amount))} SC` : 'un don'}`}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isOwnCampaign && campaign.status === 'pending' && (
+                    <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-700">
+                      Vous pouvez contribuer à votre propre cagnotte avant validation. Elle restera privée tant qu’elle n’est pas approuvée.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="border-none shadow-lg">
           <CardContent className="p-4 space-y-4">
             <div className="space-y-2">
@@ -267,11 +436,15 @@ const SolidarityCampaignPage: React.FC = () => {
                 <div className="text-xs font-medium">{fmt(likesCount)}</div>
                 <div className="text-[10px] uppercase tracking-wide">J’aime</div>
               </button>
-              <div className="rounded-xl bg-muted px-3 py-3 text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setIsContributionsModalOpen(true)}
+                className="rounded-xl bg-muted px-3 py-3 text-muted-foreground transition-colors hover:bg-muted/80"
+              >
                 <Users size={18} className="mx-auto mb-1" />
                 <div className="text-xs font-medium text-foreground">{fmt(contributionCount)}</div>
                 <div className="text-[10px] uppercase tracking-wide">Contrib.</div>
-              </div>
+              </button>
               <div className="rounded-xl bg-muted px-3 py-3 text-muted-foreground">
                 <MessageSquareText size={18} className="mx-auto mb-1" />
                 <div className="text-xs font-medium text-foreground">{fmt(campaign.testimonials_count || 0)}</div>
@@ -300,56 +473,6 @@ const SolidarityCampaignPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-
-        {canContribute && (
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <h2 className="font-semibold text-sm flex items-center gap-2">
-                <Heart size={16} className="text-rose-500" /> Contribuer à cette cagnotte
-              </h2>
-
-              <div className="flex items-center gap-2">
-                <img src={coinSC} alt="SC" className="w-5 h-5" />
-                <Input
-                  type="number"
-                  min={1}
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  placeholder="Montant en SC"
-                />
-              </div>
-
-              <Input
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                placeholder="Message d’encouragement (optionnel)"
-              />
-
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                <input type="checkbox" checked={isAnonymous} onChange={(event) => setIsAnonymous(event.target.checked)} />
-                Contribution anonyme
-              </label>
-
-              <p className="text-xs text-muted-foreground">
-                Commission plateforme : {campaign.commission_rate}%
-              </p>
-
-              {isOwnCampaign && campaign.status === 'pending' && (
-                <p className="text-xs text-amber-600">
-                  Vous pouvez contribuer à votre propre cagnotte avant validation. Elle restera privée tant qu’elle n’est pas approuvée.
-                </p>
-              )}
-
-              <Button
-                onClick={handleContribute}
-                disabled={contributionPending || !amount || Number(amount) <= 0}
-                className="w-full bg-rose-500 hover:bg-rose-600 text-white"
-              >
-                {contributionPending ? 'Envoi...' : `Donner ${amount ? `${fmt(Number(amount))} SC` : ''}`}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         <Card>
           <CardContent className="p-4 space-y-4">
@@ -471,44 +594,168 @@ const SolidarityCampaignPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {canViewContributors && contributions.length > 0 && (
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <h2 className="font-semibold text-sm">Historique des contributions</h2>
-              {contributions.slice(0, 10).map((contribution) => (
-                <div key={contribution.id} className="rounded-xl border border-border/60 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    {contribution.is_anonymous ? (
-                      <Avatar className="w-7 h-7">
-                        <AvatarFallback>?</AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <Avatar className="w-7 h-7">
-                        <AvatarImage src={contribution.contributor?.avatar_url || ''} />
-                        <AvatarFallback>
-                          {contribution.contributor?.first_name?.[0]}{contribution.contributor?.last_name?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <span className="flex-1 text-sm font-medium">
-                      {contribution.is_anonymous
-                        ? 'Anonyme'
-                        : `${contribution.contributor?.first_name} ${contribution.contributor?.last_name}`}
-                    </span>
-                    <span className="font-medium text-sm flex items-center gap-1">
-                      <img src={coinSC} alt="SC" className="w-4 h-4" />
-                      {fmt(contribution.amount)}
-                    </span>
+        <Dialog open={isContributionsModalOpen} onOpenChange={setIsContributionsModalOpen}>
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-3xl overflow-hidden border-none p-0 shadow-[0_32px_100px_-40px_rgba(15,23,42,0.65)] sm:w-full sm:max-h-[88vh]">
+            <DialogHeader className="border-b bg-[linear-gradient(135deg,_rgb(15,23,42),_rgb(30,41,59)_55%,_rgb(225,29,72))] px-5 py-5 text-left text-white sm:px-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80">
+                    <Users size={13} /> Espace contributeurs
                   </div>
-                  <div className="pl-9 text-xs text-muted-foreground space-y-1">
-                    <p>{format(new Date(contribution.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}</p>
-                    {contribution.message && <p className="text-foreground/80">{contribution.message}</p>}
+                  <div>
+                    <DialogTitle className="text-xl font-black leading-tight text-white sm:text-2xl">
+                      Contributeurs et historique
+                    </DialogTitle>
+                    <DialogDescription className="mt-1 max-w-2xl text-sm text-white/75">
+                      {canViewContributors
+                        ? `Consultez les soutiens recus pour ${campaign.title}.`
+                        : 'Contribuez a cette cagnotte pour debloquer la liste detaillee des contributeurs et l historique des contributions.'}
+                    </DialogDescription>
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+
+                <div className="grid grid-cols-3 gap-2 sm:min-w-[280px]">
+                  <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/60">Contrib.</div>
+                    <div className="mt-1 text-lg font-black text-white">{fmt(contributionCount)}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/60">Collecte</div>
+                    <div className="mt-1 flex items-center gap-1 text-lg font-black text-white">
+                      <img src={coinSC} alt="SC" className="h-4 w-4" />
+                      {fmt(campaign.collected_amount)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur-sm">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-white/60">Objectif</div>
+                    <div className="mt-1 text-lg font-black text-white">{progress}%</div>
+                  </div>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <ScrollArea className="h-[72vh] sm:h-auto sm:max-h-[calc(88vh-150px)]">
+              <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-5">
+                {canViewContributors ? (
+                  contributions.length === 0 ? (
+                    <div className="rounded-3xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
+                      Aucune contribution detaillee a afficher pour le moment.
+                    </div>
+                  ) : (
+                    <>
+                      <section className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-bold text-foreground">Principaux contributeurs</h3>
+                            <p className="text-xs text-muted-foreground">Vue consolidee par personne avec total cumule.</p>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {contributorSummaries.map((entry) => (
+                            <div key={entry.contributorId} className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
+                              <div className="flex items-center gap-3">
+                                {entry.isFullyAnonymous ? (
+                                  <Avatar className="h-11 w-11 ring-2 ring-rose-100">
+                                    <AvatarFallback>?</AvatarFallback>
+                                  </Avatar>
+                                ) : (
+                                  <Avatar className="h-11 w-11 ring-2 ring-rose-100">
+                                    <AvatarImage src={entry.contributor?.avatar_url || ''} />
+                                    <AvatarFallback>
+                                      {entry.contributor?.first_name?.[0]}{entry.contributor?.last_name?.[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                )}
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold text-foreground">
+                                    {entry.isFullyAnonymous
+                                      ? 'Contributeur anonyme'
+                                      : `${entry.contributor?.first_name} ${entry.contributor?.last_name}`}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {entry.contributionCount} contribution(s) • Dernier soutien le {format(new Date(entry.latestAt), 'dd MMM yyyy', { locale: fr })}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-2xl bg-rose-50 px-3 py-2 text-right text-rose-700">
+                                  <div className="text-[10px] uppercase tracking-[0.16em]">Total</div>
+                                  <div className="mt-1 flex items-center gap-1 text-sm font-bold">
+                                    <img src={coinSC} alt="SC" className="h-4 w-4" />
+                                    {fmt(entry.amount)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+
+                      <section className="space-y-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-foreground">Historique detaille</h3>
+                          <p className="text-xs text-muted-foreground">Chronologie des dons et messages de soutien.</p>
+                        </div>
+
+                        <div className="space-y-3">
+                          {contributions.map((contribution) => (
+                            <div key={contribution.id} className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
+                              <div className="flex items-start gap-3">
+                                {contribution.is_anonymous ? (
+                                  <Avatar className="h-10 w-10 ring-2 ring-slate-100">
+                                    <AvatarFallback>?</AvatarFallback>
+                                  </Avatar>
+                                ) : (
+                                  <Avatar className="h-10 w-10 ring-2 ring-slate-100">
+                                    <AvatarImage src={contribution.contributor?.avatar_url || ''} />
+                                    <AvatarFallback>
+                                      {contribution.contributor?.first_name?.[0]}{contribution.contributor?.last_name?.[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                )}
+
+                                <div className="min-w-0 flex-1 space-y-2">
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-foreground">
+                                        {contribution.is_anonymous
+                                          ? 'Anonyme'
+                                          : `${contribution.contributor?.first_name} ${contribution.contributor?.last_name}`}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {format(new Date(contribution.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                      </p>
+                                    </div>
+
+                                    <div className="inline-flex w-fit items-center gap-1 rounded-full bg-slate-950 px-3 py-1.5 text-sm font-semibold text-white">
+                                      <img src={coinSC} alt="SC" className="h-4 w-4" />
+                                      {fmt(contribution.amount)} SC
+                                    </div>
+                                  </div>
+
+                                  {contribution.message && (
+                                    <div className="rounded-2xl bg-muted/50 px-3 py-3 text-sm text-foreground/80">
+                                      {contribution.message}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    </>
+                  )
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
+                    Contribuez a cette cagnotte pour debloquer la liste detaillee des contributeurs et l historique complet des soutiens.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

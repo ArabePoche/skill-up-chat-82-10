@@ -23,3 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Android / Gradle build outputs
+.gradle-build/
+.gradle-build-new/
+.gradle-build-v3/
+android/.gradle/
+android/.gradle-build-v4/
+android/build/
+android/app/build/

@@ -1,6 +1,8 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+buildDir = rootProject.file(".gradle-build-v4/${project.name}")
+
 android {
     namespace "com.educatok.islahmedia"
     compileSdk 35
@@ -68,3 +70,4 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
