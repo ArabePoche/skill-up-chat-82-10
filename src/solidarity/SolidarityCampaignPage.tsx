@@ -30,6 +30,7 @@ import {
   useCampaignContributions,
   useCampaignGallery,
   useCampaignLike,
+  useCampaignNotificationSubscription,
   useCampaignTestimonials,
   useContribute,
   useDeleteCampaignMedia,
