@@ -56,7 +56,7 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col overflow-hidden p-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Heart className="text-rose-500" size={18} />
