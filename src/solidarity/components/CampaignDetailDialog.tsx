@@ -64,7 +64,8 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 overflow-y-auto px-6 pb-6">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-6 space-y-4 min-h-0">
           {/* Image */}
           <div className="h-40 rounded-lg bg-gradient-to-br from-rose-400 via-pink-400 to-purple-500 overflow-hidden">
             {campaign.image_url && (
@@ -106,49 +107,6 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
             </div>
           </div>
 
-          {/* Formulaire de contribution */}
-          {canContribute && (
-            <div className="p-3 rounded-lg bg-muted/50 space-y-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <Heart size={14} className="text-rose-500" /> Contribuer
-              </h4>
-              <div className="flex items-center gap-2">
-                <img src={coinSC} alt="SC" className="w-5 h-5" />
-                <Input
-                  type="number"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  placeholder="Montant en SC"
-                  min={1}
-                />
-              </div>
-              <Input
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                placeholder="Message d'encouragement (optionnel)"
-              />
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)} />
-                Contribution anonyme
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Commission plateforme : {campaign.commission_rate}%
-              </p>
-              {isOwnCampaign && campaign.status === 'pending' && (
-                <p className="text-xs text-amber-600">
-                  Vous pouvez contribuer à votre propre cagnotte avant validation. Elle restera privée tant qu’elle n’est pas approuvée.
-                </p>
-              )}
-              <Button
-                onClick={handleContribute}
-                disabled={isPending || !amount || Number(amount) <= 0}
-                className="w-full bg-rose-500 hover:bg-rose-600 text-white"
-              >
-                {isPending ? 'Envoi...' : `Donner ${amount ? fmt(Number(amount)) + ' SC' : ''}`}
-              </Button>
-            </div>
-          )}
-
           {/* Liste des contributeurs */}
           {contributions.length > 0 && (
             <div className="space-y-2">
@@ -156,26 +114,26 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
               {contributions.slice(0, 10).map(c => (
                 <div key={c.id} className="rounded-lg border border-border/60 p-2 space-y-2 text-sm">
                   <div className="flex items-center gap-2">
-                  {c.is_anonymous ? (
-                    <Avatar className="w-6 h-6">
-                      <AvatarFallback className="text-[10px]">?</AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={c.contributor?.avatar_url || ''} />
-                      <AvatarFallback className="text-[10px]">
-                        {c.contributor?.first_name?.[0]}{c.contributor?.last_name?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <span className="flex-1 text-foreground">
-                    {c.is_anonymous ? 'Anonyme' : `${c.contributor?.first_name} ${c.contributor?.last_name}`}
-                  </span>
-                  <span className="font-medium text-foreground flex items-center gap-1">
-                    <img src={coinSC} alt="" className="w-4 h-4" />
-                    {fmt(c.amount)}
-                  </span>
-                </div>
+                    {c.is_anonymous ? (
+                      <Avatar className="w-6 h-6">
+                        <AvatarFallback className="text-[10px]">?</AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={c.contributor?.avatar_url || ''} />
+                        <AvatarFallback className="text-[10px]">
+                          {c.contributor?.first_name?.[0]}{c.contributor?.last_name?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <span className="flex-1 text-foreground">
+                      {c.is_anonymous ? 'Anonyme' : `${c.contributor?.first_name} ${c.contributor?.last_name}`}
+                    </span>
+                    <span className="font-medium text-foreground flex items-center gap-1">
+                      <img src={coinSC} alt="" className="w-4 h-4" />
+                      {fmt(c.amount)}
+                    </span>
+                  </div>
                   <div className="pl-8 text-xs text-muted-foreground space-y-1">
                     <p>{format(new Date(c.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}</p>
                     {c.message && <p className="text-foreground/80">{c.message}</p>}
@@ -186,7 +144,7 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
           )}
 
           {userContributions.length > 0 && (
-            <div className="space-y-2 rounded-lg bg-muted/40 p-3">
+            <div className="space-y-2 rounded-lg bg-muted/40 p-3 mb-2">
               <h4 className="text-sm font-semibold">Mes contributions</h4>
               {userContributions.slice(0, 5).map((contribution) => (
                 <div key={contribution.id} className="flex items-center justify-between text-xs text-muted-foreground">
@@ -200,6 +158,51 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
             </div>
           )}
         </div>
+
+        {/* Section contribution fixée en bas */}
+        {canContribute && (
+          <div className="flex-shrink-0 border-t border-border bg-background px-6 py-4 space-y-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Heart size={14} className="text-rose-500" /> Contribuer
+            </h4>
+            <div className="flex items-center gap-2">
+              <img src={coinSC} alt="SC" className="w-5 h-5" />
+              <Input
+                type="number"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder="Montant en SC"
+                min={1}
+              />
+            </div>
+            <Input
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Message d'encouragement (optionnel)"
+            />
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)} />
+                Anonyme
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Commission : {campaign.commission_rate}%
+              </p>
+            </div>
+            {isOwnCampaign && campaign.status === 'pending' && (
+              <p className="text-xs text-amber-600">
+                Cagnotte en attente de validation.
+              </p>
+            )}
+            <Button
+              onClick={handleContribute}
+              disabled={isPending || !amount || Number(amount) <= 0}
+              className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+            >
+              {isPending ? 'Envoi...' : `Donner ${amount ? fmt(Number(amount)) + ' SC' : ''}`}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
