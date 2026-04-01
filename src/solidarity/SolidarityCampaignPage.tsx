@@ -99,6 +99,7 @@ const SolidarityCampaignPage: React.FC = () => {
     campaign?.id,
     campaign?.likes_count || 0
   );
+  const { isSubscribed, subscribe, unsubscribe, isLoading: notifLoading } = useCampaignNotificationSubscription(campaign?.id);
 
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
