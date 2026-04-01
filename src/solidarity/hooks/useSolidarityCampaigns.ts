@@ -22,6 +22,10 @@ interface CampaignInteractionRow {
   campaign_id: string;
 }
 
+interface CampaignNotificationSubscriptionRow {
+  user_id: string;
+}
+
 export interface SolidarityCampaign {
   id: string;
   creator_id: string;
@@ -315,6 +319,65 @@ const notifyCampaignInteraction = async ({
   });
 };
 
+const notifyCampaignFollowers = async ({
+  campaignId,
+  campaignTitle,
+  senderId,
+  title,
+  message,
+  type,
+  data,
+  excludedUserIds = [],
+}: {
+  campaignId: string;
+  campaignTitle: string;
+  senderId: string | null;
+  title: string;
+  message: string;
+  type: 'solidarity_campaign' | 'solidarity_contribution' | 'solidarity_like' | 'solidarity_testimonial';
+  data?: Record<string, string>;
+  excludedUserIds?: string[];
+}) => {
+  const { data: subscriptions, error } = await (supabase
+    .from('solidarity_campaign_notification_subscriptions' as any)
+    .select('user_id')
+    .eq('campaign_id', campaignId) as any);
+
+  if (error) throw error;
+
+  const blockedIds = new Set(excludedUserIds.filter(Boolean));
+  const recipientIds = [...new Set(((subscriptions || []) as CampaignNotificationSubscriptionRow[])
+    .map((subscription) => subscription.user_id)
+    .filter((userId) => userId && !blockedIds.has(userId)))];
+
+  if (recipientIds.length === 0) return;
+
+  await supabase.from('notifications').insert(
+    recipientIds.map((userId) => ({
+      user_id: userId,
+      sender_id: senderId,
+      title,
+      message,
+      type,
+      is_read: false,
+      is_for_all_admins: false,
+    }))
+  );
+
+  await sendPushNotification({
+    userIds: recipientIds,
+    title,
+    message,
+    type,
+    clickAction: buildSolidarityCampaignPath(campaignId, campaignTitle),
+    data: {
+      campaignId,
+      ...(data || {}),
+    },
+    playLocalSound: false,
+  });
+};
+
 // Récupérer les campagnes visibles selon les politiques RLS en vigueur.
 export const useSolidarityCampaigns = (statusFilter?: string) => {
   const { user } = useAuth();
@@ -417,6 +480,79 @@ export const useCampaignContributions = (campaignId: string | null) => {
     },
     enabled: !!campaignId && !!user?.id,
   });
+};
+
+export const useCampaignNotificationSubscription = (campaignId?: string | null) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: isSubscribed = false } = useQuery({
+    queryKey: ['solidarity-campaign-notification-subscription', campaignId, user?.id],
+    queryFn: async () => {
+      if (!campaignId || !user?.id) return false;
+
+      const { data, error } = await (supabase
+        .from('solidarity_campaign_notification_subscriptions' as any)
+        .select('id')
+        .eq('campaign_id', campaignId)
+        .eq('user_id', user.id)
+        .maybeSingle() as any);
+
+      if (error) throw error;
+      return !!data;
+    },
+    enabled: !!campaignId && !!user?.id,
+  });
+
+  const subscribeMutation = useMutation({
+    mutationFn: async () => {
+      if (!campaignId || !user?.id) throw new Error('Connectez-vous pour suivre cette cagnotte');
+
+      const { error } = await (supabase
+        .from('solidarity_campaign_notification_subscriptions' as any)
+        .insert({
+          campaign_id: campaignId,
+          user_id: user.id,
+        }) as any);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['solidarity-campaign-notification-subscription', campaignId, user?.id] });
+      toast.success('Suivi de la cagnotte activé');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Impossible d\'activer le suivi de cette cagnotte');
+    },
+  });
+
+  const unsubscribeMutation = useMutation({
+    mutationFn: async () => {
+      if (!campaignId || !user?.id) throw new Error('Connectez-vous pour modifier ce suivi');
+
+      const { error } = await (supabase
+        .from('solidarity_campaign_notification_subscriptions' as any)
+        .delete()
+        .eq('campaign_id', campaignId)
+        .eq('user_id', user.id) as any);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['solidarity-campaign-notification-subscription', campaignId, user?.id] });
+      toast.success('Suivi de la cagnotte désactivé');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Impossible de désactiver le suivi de cette cagnotte');
+    },
+  });
+
+  return {
+    isSubscribed,
+    subscribe: subscribeMutation.mutateAsync,
+    unsubscribe: unsubscribeMutation.mutateAsync,
+    isLoading: subscribeMutation.isPending || unsubscribeMutation.isPending,
+  };
 };
 
 export const useCampaignTestimonials = (campaignId: string | null) => {
@@ -601,15 +737,16 @@ export const useContribute = () => {
       );
       if (contributionError) throw contributionError;
 
-      const result = contributionResult as { success?: boolean; message?: string } | null;
+      const result = contributionResult as { success?: boolean; message?: string; new_collected_amount?: number } | null;
       if (!result?.success) {
         throw new Error(result?.message || 'Erreur lors de la contribution');
       }
 
+      const contributorProfile = await fetchProfileDisplay(user.id);
+      const contributorName = buildDisplayName(contributorProfile);
+
       if (campaignDetails.creator_id !== user.id) {
         try {
-          const contributorProfile = await fetchProfileDisplay(user.id);
-          const contributorName = buildDisplayName(contributorProfile);
           await notifyCampaignOwner({
             ownerId: campaignDetails.creator_id,
             senderId: user.id,
@@ -622,6 +759,26 @@ export const useContribute = () => {
         } catch (notificationError) {
           console.error('Erreur notification contribution cagnotte:', notificationError);
         }
+      }
+
+      try {
+        const goalReached = Number(result.new_collected_amount || 0) >= Number(campaignDetails.goal_amount || 0);
+        await notifyCampaignFollowers({
+          campaignId,
+          campaignTitle: campaignDetails.title,
+          senderId: user.id,
+          title: goalReached
+            ? 'Objectif atteint pour cette cagnotte'
+            : 'Nouvelle évolution sur la cagnotte suivie',
+          message: goalReached
+            ? `${contributorName} vient d'atteindre l'objectif de "${campaignDetails.title}" avec une nouvelle contribution.`
+            : `${contributorName} a contribué à la cagnotte "${campaignDetails.title}".`,
+          type: goalReached ? 'solidarity_campaign' : 'solidarity_contribution',
+          data: { actorName: contributorName },
+          excludedUserIds: [user.id, campaignDetails.creator_id],
+        });
+      } catch (notificationError) {
+        console.error('Erreur notification abonnés cagnotte:', notificationError);
       }
 
       return { success: true };
@@ -723,6 +880,21 @@ export const useCampaignLike = (campaignId?: string | null, initialLikesCount = 
         message: `${likerName} a aimé votre cagnotte "${campaignResponse.data.title}".`,
         type: 'solidarity_like',
       });
+
+      try {
+        await notifyCampaignFollowers({
+          campaignId,
+          campaignTitle: campaignResponse.data.title,
+          senderId: user.id,
+          title: 'Nouvelle réaction sur la cagnotte suivie',
+          message: `${likerName} a aimé la cagnotte "${campaignResponse.data.title}".`,
+          type: 'solidarity_like',
+          data: { actorName: likerName },
+          excludedUserIds: [user.id, campaignResponse.data.creator_id],
+        });
+      } catch (notificationError) {
+        console.error('Erreur notification abonnés après like:', notificationError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['solidarity-campaigns'] });
@@ -787,6 +959,21 @@ export const useAddCampaignTestimonial = () => {
         message: `${authorName} a publié un témoignage sur "${campaignResponse.data.title}".`,
         type: 'solidarity_testimonial',
       });
+
+      try {
+        await notifyCampaignFollowers({
+          campaignId,
+          campaignTitle: campaignResponse.data.title,
+          senderId: user.id,
+          title: 'Nouveau témoignage sur la cagnotte suivie',
+          message: `${authorName} a publié un témoignage sur "${campaignResponse.data.title}".`,
+          type: 'solidarity_testimonial',
+          data: { actorName: authorName },
+          excludedUserIds: [user.id, campaignResponse.data.creator_id],
+        });
+      } catch (notificationError) {
+        console.error('Erreur notification abonnés après témoignage:', notificationError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['solidarity-campaigns'] });
@@ -940,6 +1127,17 @@ export const useAddCampaignMedia = () => {
       position?: number;
     }) => {
       if (!user?.id) throw new Error('Non connecté');
+      const [campaignResponse, uploaderProfile] = await Promise.all([
+        supabase
+          .from('solidarity_campaigns')
+          .select('id, title, creator_id')
+          .eq('id', campaignId)
+          .single(),
+        fetchProfileDisplay(user.id),
+      ]);
+
+      if (campaignResponse.error) throw campaignResponse.error;
+
       const { error } = await supabase
         .from('solidarity_campaign_media')
         .insert({
@@ -951,6 +1149,23 @@ export const useAddCampaignMedia = () => {
           position: position ?? 0,
         });
       if (error) throw error;
+
+      const uploaderName = buildDisplayName(uploaderProfile);
+
+      try {
+        await notifyCampaignFollowers({
+          campaignId,
+          campaignTitle: campaignResponse.data.title,
+          senderId: user.id,
+          title: 'Nouveau contenu sur la cagnotte suivie',
+          message: `${uploaderName} a ajouté ${mediaType === 'video' ? 'une vidéo' : 'une image'} à la cagnotte "${campaignResponse.data.title}".`,
+          type: 'solidarity_campaign',
+          data: { actorName: uploaderName, mediaType },
+          excludedUserIds: [user.id, campaignResponse.data.creator_id],
+        });
+      } catch (notificationError) {
+        console.error('Erreur notification abonnés après ajout de média:', notificationError);
+      }
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['solidarity-campaign-media', vars.campaignId] });
