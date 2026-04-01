@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, HandCoins, Heart, Images, MessageSquareText, Share2, Target, Users, X } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Clock, HandCoins, Heart, Images, MessageSquareText, Share2, Target, Users, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ import {
   useCampaignContributions,
   useCampaignGallery,
   useCampaignLike,
+  useCampaignNotificationSubscription,
   useCampaignTestimonials,
   useContribute,
   useDeleteCampaignMedia,
@@ -98,6 +99,7 @@ const SolidarityCampaignPage: React.FC = () => {
     campaign?.id,
     campaign?.likes_count || 0
   );
+  const { isSubscribed, subscribe, unsubscribe, isLoading: notifLoading } = useCampaignNotificationSubscription(campaign?.id);
 
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
@@ -241,9 +243,21 @@ const SolidarityCampaignPage: React.FC = () => {
       <div className="relative bg-[linear-gradient(160deg,_rgb(15,23,42)_0%,_rgb(30,41,59)_55%,_rgb(51,65,85)_100%)] px-4 pt-12 pb-8 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(244,63,94,0.18),_transparent_60%)]" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rose-500/40 to-transparent" />
-        <button onClick={() => navigate('/solidarity')} className="relative p-1 text-white/60 hover:text-white mb-5 transition-colors">
-          <ArrowLeft size={22} />
-        </button>
+        <div className="flex items-center justify-between mb-5">
+          <button onClick={() => navigate('/solidarity')} className="relative p-1 text-white/60 hover:text-white transition-colors">
+            <ArrowLeft size={22} />
+          </button>
+          {user?.id && (
+            <button
+              onClick={() => isSubscribed ? unsubscribe() : subscribe()}
+              disabled={notifLoading}
+              className={`relative p-2 rounded-full transition-colors ${isSubscribed ? 'bg-rose-500/20 text-rose-400' : 'bg-white/10 text-white/60 hover:text-white'}`}
+              title={isSubscribed ? 'Désactiver les notifications' : 'Activer les notifications'}
+            >
+              {isSubscribed ? <BellOff size={20} /> : <Bell size={20} />}
+            </button>
+          )}
+        </div>
 
         <div className="relative space-y-4">
           <div className="h-52 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
@@ -615,59 +629,6 @@ const SolidarityCampaignPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <div>
-              <h2 className="font-semibold text-sm">Contributeurs</h2>
-              <p className="text-xs text-muted-foreground">
-                Le nombre de contributeurs est public, mais la liste détaillée reste réservée aux contributeurs, au créateur et aux admins.
-              </p>
-            </div>
-
-            {canViewContributors ? (
-              contributorSummaries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun contributeur affichable pour le moment.</p>
-              ) : (
-                <div className="space-y-3">
-                  {contributorSummaries.map((entry) => (
-                    <div key={entry.contributorId} className="rounded-xl border border-border/60 p-3 flex items-center gap-3">
-                      {entry.isFullyAnonymous ? (
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback>?</AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={entry.contributor?.avatar_url || ''} />
-                          <AvatarFallback>
-                            {entry.contributor?.first_name?.[0]}{entry.contributor?.last_name?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">
-                          {entry.isFullyAnonymous
-                            ? 'Contributeur anonyme'
-                            : `${entry.contributor?.first_name} ${entry.contributor?.last_name}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {entry.contributionCount} contribution(s) • Dernier soutien le {format(new Date(entry.latestAt), 'dd MMM yyyy', { locale: fr })}
-                        </p>
-                      </div>
-                      <div className="text-sm font-semibold flex items-center gap-1">
-                        <img src={coinSC} alt="SC" className="w-4 h-4" />
-                        {fmt(entry.amount)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : (
-              <div className="rounded-xl bg-muted/50 p-3 text-sm text-muted-foreground">
-                Contribuez à cette cagnotte pour débloquer la liste détaillée des contributeurs.
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
           <DialogContent className="max-w-3xl border-none bg-black/95 p-2 flex items-center justify-center">
