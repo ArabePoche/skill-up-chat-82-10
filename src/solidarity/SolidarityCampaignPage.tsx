@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, HandCoins, Heart, Images, MessageSquareText, Share2, Target, Users, X } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Clock, HandCoins, Heart, Images, MessageSquareText, Share2, Target, Users, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
