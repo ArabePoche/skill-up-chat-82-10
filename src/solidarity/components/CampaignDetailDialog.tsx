@@ -56,15 +56,15 @@ const CampaignDetailDialog: React.FC<Props> = ({ campaign, open, onOpenChange })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col overflow-hidden p-0">
+        <DialogHeader className="px-6 pt-6 pb-3 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Heart className="text-rose-500" size={18} />
             {campaign.title}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto px-6 pb-6">
           {/* Image */}
           <div className="h-40 rounded-lg bg-gradient-to-br from-rose-400 via-pink-400 to-purple-500 overflow-hidden">
             {campaign.image_url && (

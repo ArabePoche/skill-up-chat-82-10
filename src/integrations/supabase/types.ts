@@ -7173,69 +7173,6 @@ export type Database = {
         }
         Relationships: []
       }
-      solidarity_campaigns: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          beneficiary_name: string | null
-          category: string | null
-          collected_amount: number
-          commission_rate: number
-          contributor_count: number
-          created_at: string
-          creator_id: string
-          deadline: string | null
-          description: string | null
-          goal_amount: number
-          id: string
-          image_url: string | null
-          rejection_reason: string | null
-          status: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          beneficiary_name?: string | null
-          category?: string | null
-          collected_amount?: number
-          commission_rate?: number
-          contributor_count?: number
-          created_at?: string
-          creator_id: string
-          deadline?: string | null
-          description?: string | null
-          goal_amount?: number
-          id?: string
-          image_url?: string | null
-          rejection_reason?: string | null
-          status?: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          beneficiary_name?: string | null
-          category?: string | null
-          collected_amount?: number
-          commission_rate?: number
-          contributor_count?: number
-          created_at?: string
-          creator_id?: string
-          deadline?: string | null
-          description?: string | null
-          goal_amount?: number
-          id?: string
-          image_url?: string | null
-          rejection_reason?: string | null
-          status?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       solidarity_campaign_likes: {
         Row: {
           campaign_id: string
@@ -7261,6 +7198,54 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "solidarity_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solidarity_campaign_media: {
+        Row: {
+          campaign_id: string
+          caption: string | null
+          created_at: string
+          id: string
+          media_type: string
+          media_url: string
+          position: number
+          uploader_id: string
+        }
+        Insert: {
+          campaign_id: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_type: string
+          media_url: string
+          position?: number
+          uploader_id: string
+        }
+        Update: {
+          campaign_id?: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          position?: number
+          uploader_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidarity_campaign_media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "solidarity_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solidarity_campaign_media_uploader_id_fkey"
+            columns: ["uploader_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -7331,6 +7316,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      solidarity_campaigns: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          beneficiary_name: string | null
+          category: string | null
+          collected_amount: number
+          commission_rate: number
+          contributor_count: number
+          created_at: string
+          creator_id: string
+          deadline: string | null
+          description: string | null
+          goal_amount: number
+          id: string
+          image_url: string | null
+          rejection_reason: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_name?: string | null
+          category?: string | null
+          collected_amount?: number
+          commission_rate?: number
+          contributor_count?: number
+          created_at?: string
+          creator_id: string
+          deadline?: string | null
+          description?: string | null
+          goal_amount?: number
+          id?: string
+          image_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          beneficiary_name?: string | null
+          category?: string | null
+          collected_amount?: number
+          commission_rate?: number
+          contributor_count?: number
+          created_at?: string
+          creator_id?: string
+          deadline?: string | null
+          description?: string | null
+          goal_amount?: number
+          id?: string
+          image_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       solidarity_commission_settings: {
         Row: {
@@ -9673,6 +9721,10 @@ export type Database = {
         }
         Returns: number
       }
+      can_access_solidarity_campaign: {
+        Args: { p_campaign_id: string; p_user_id?: string }
+        Returns: boolean
+      }
       can_create_evaluation_for_subject: {
         Args: { _class_subject_id: string; _user_id: string }
         Returns: boolean
@@ -9709,6 +9761,10 @@ export type Database = {
         Args: { evaluation_id_param: string }
         Returns: boolean
       }
+      can_view_solidarity_contributors: {
+        Args: { p_campaign_id: string; p_user_id?: string }
+        Returns: boolean
+      }
       check_all_exercise_submissions_approved: {
         Args: { p_exercise_id: string; p_user_id: string }
         Returns: boolean
@@ -9732,6 +9788,16 @@ export type Database = {
       complete_shop_transfer: {
         Args: { transfer_id: string }
         Returns: boolean
+      }
+      contribute_to_solidarity_campaign: {
+        Args: {
+          p_amount: number
+          p_campaign_id: string
+          p_commission_rate?: number
+          p_is_anonymous?: boolean
+          p_message?: string
+        }
+        Returns: Json
       }
       convert_habbah_to_bonus: {
         Args: { p_habbah_amount: number; p_user_id: string }
@@ -10070,16 +10136,6 @@ export type Database = {
           p_sender_id: string
         }
         Returns: undefined
-      }
-      contribute_to_solidarity_campaign: {
-        Args: {
-          p_amount: number
-          p_campaign_id: string
-          p_commission_rate?: number | null
-          p_is_anonymous?: boolean | null
-          p_message?: string | null
-        }
-        Returns: Json
       }
       transfer_habbah: {
         Args: {
