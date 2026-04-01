@@ -7250,6 +7250,42 @@ export type Database = {
           },
         ]
       }
+      solidarity_campaign_notification_subscriptions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solidarity_campaign_notification_subscriptions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "solidarity_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solidarity_campaign_notification_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solidarity_campaign_shares: {
         Row: {
           campaign_id: string
