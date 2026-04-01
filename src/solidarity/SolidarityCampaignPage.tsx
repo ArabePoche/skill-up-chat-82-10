@@ -629,59 +629,6 @@ const SolidarityCampaignPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <div>
-              <h2 className="font-semibold text-sm">Contributeurs</h2>
-              <p className="text-xs text-muted-foreground">
-                Le nombre de contributeurs est public, mais la liste détaillée reste réservée aux contributeurs, au créateur et aux admins.
-              </p>
-            </div>
-
-            {canViewContributors ? (
-              contributorSummaries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun contributeur affichable pour le moment.</p>
-              ) : (
-                <div className="space-y-3">
-                  {contributorSummaries.map((entry) => (
-                    <div key={entry.contributorId} className="rounded-xl border border-border/60 p-3 flex items-center gap-3">
-                      {entry.isFullyAnonymous ? (
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback>?</AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={entry.contributor?.avatar_url || ''} />
-                          <AvatarFallback>
-                            {entry.contributor?.first_name?.[0]}{entry.contributor?.last_name?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">
-                          {entry.isFullyAnonymous
-                            ? 'Contributeur anonyme'
-                            : `${entry.contributor?.first_name} ${entry.contributor?.last_name}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {entry.contributionCount} contribution(s) • Dernier soutien le {format(new Date(entry.latestAt), 'dd MMM yyyy', { locale: fr })}
-                        </p>
-                      </div>
-                      <div className="text-sm font-semibold flex items-center gap-1">
-                        <img src={coinSC} alt="SC" className="w-4 h-4" />
-                        {fmt(entry.amount)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : (
-              <div className="rounded-xl bg-muted/50 p-3 text-sm text-muted-foreground">
-                Contribuez à cette cagnotte pour débloquer la liste détaillée des contributeurs.
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
           <DialogContent className="max-w-3xl border-none bg-black/95 p-2 flex items-center justify-center">
