@@ -94,6 +94,11 @@ const menuItems = [
     value: 'solidarity',
     icon: Heart,
   },
+  {
+    title: 'Marketplace',
+    value: 'marketplace',
+    icon: ShoppingBag,
+  },
 ];
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {

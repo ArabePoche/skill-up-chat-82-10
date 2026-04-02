@@ -149,6 +149,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/solidarity" element={<SolidarityScreen />} />
         <Route path="/solidarity/:campaignId" element={<SolidarityCampaignPage />} />
         <Route path="/solidarity/:campaignId/:slug" element={<SolidarityCampaignPage />} />
+        <Route path="/my-orders" element={<MyOrdersScreen />} />
         
         {/* Page 404 */}
         <Route path="*" element={<NotFound />} />

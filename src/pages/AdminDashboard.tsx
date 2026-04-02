@@ -99,6 +99,8 @@ const AdminDashboard = () => {
         return <CurrencySettingsManagement />;
       case 'solidarity':
         return <AdminSolidarityManagement />;
+      case 'marketplace':
+        return <AdminMarketplaceManagement />;
       default:
         return <DashboardStats />;
     }
