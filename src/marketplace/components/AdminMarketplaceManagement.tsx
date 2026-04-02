@@ -38,13 +38,18 @@ const AdminMarketplaceManagement: React.FC = () => {
     }
   }, [settings]);
 
-  const disputedOrders = orders.filter((o: any) => o.status === 'disputed');
+  const disputedOrders = orders.filter((o: any) => o.status === 'disputed' || o.disputes?.some((d: any) => d.status === 'open' || d.status === 'pending'));
   const resolvedDisputeOrders = orders.filter((o: any) =>
     ['refunded', 'completed'].includes(o.status) && o.disputes?.some((d: any) => d.admin_decision),
   );
+  // Afficher toutes les commissions (y compris payées et complétées)
+  // Dynamiquement calculé en cas d'anciennes commandes sans commission_amount enregistré
   const totalRevenue = orders
-    .filter((o: any) => o.status === 'completed')
-    .reduce((sum: number, o: any) => sum + Number(o.commission_amount || 0), 0);
+    .filter((o: any) => o.status === 'completed' || o.status === 'paid' || o.status === 'delivered')
+    .reduce((sum: number, o: any) => {
+      const commission = o.commission_amount ? Number(o.commission_amount) : (Number(o.sc_amount || 0) * Number(o.quantity || 1) * Number(o.commission_rate || 5)) / 100;
+      return sum + commission;
+    }, 0);
 
   const handleSave = () => {
     updateSettings({ commission_rate: commissionRate, auto_release_days: autoReleaseDays, min_order_amount: minOrderAmount });
@@ -113,7 +118,7 @@ const AdminMarketplaceManagement: React.FC = () => {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-600">{totalRevenue} SC</p>
+            <p className="text-2xl font-bold text-emerald-600">{totalRevenue.toFixed(2)} SC</p>
             <p className="text-sm text-muted-foreground">Commissions gagnées</p>
           </CardContent>
         </Card>

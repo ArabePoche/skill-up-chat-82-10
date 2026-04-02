@@ -377,127 +377,53 @@ export const useResolveDispute = () => {
     }) => {
       if (!user?.id) throw new Error('Non connecté');
 
-      // Récupérer la commande avec le produit (pour les notifications)
+      // Appel de la procédure stockée sécurisée pour résoudre le litige
+      const { data, error } = await supabase.rpc('resolve_marketplace_dispute', {
+        p_dispute_id: input.disputeId,
+        p_order_id: input.orderId,
+        p_resolution: input.resolution,
+        p_admin_notes: input.adminNotes || null,
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Erreur lors de la résolution');
+
+      // Récupérer la commande avec le produit pour les notifications
       const { data: order, error: fetchErr } = await (supabase as any)
         .from('marketplace_orders')
-        .select('*, product:products (id, title, image_url, price)')
+        .select('*, product:products (title)')
         .eq('id', input.orderId)
         .single();
 
-      if (fetchErr) throw fetchErr;
-
-      if (input.resolution === 'refund') {
-        // Rembourser l'acheteur
-        const { data: buyerWallet, error: walletFetchErr } = await supabase
-          .from('user_wallets')
-          .select('soumboulah_cash')
-          .eq('user_id', order.buyer_id)
-          .single();
-
-        if (walletFetchErr) throw walletFetchErr;
-
-        const { error: walletUpdateErr } = await supabase
-          .from('user_wallets')
-          .update({ soumboulah_cash: (buyerWallet?.soumboulah_cash || 0) + order.sc_amount })
-          .eq('user_id', order.buyer_id);
-
-        if (walletUpdateErr) throw walletUpdateErr;
-
-        const { error: txErr } = await supabase.from('wallet_transactions').insert({
-          user_id: order.buyer_id,
-          currency: 'soumboulah_cash',
-          amount: order.sc_amount,
-          transaction_type: 'marketplace_refund',
-          description: 'Remboursement suite à litige marketplace',
-          reference_id: input.orderId,
-          reference_type: 'marketplace_order',
-        });
-
-        if (txErr) throw txErr;
-
-        const { error: orderUpdateErr } = await (supabase as any)
-          .from('marketplace_orders')
-          .update({ status: 'refunded', completed_at: new Date().toISOString() })
-          .eq('id', input.orderId);
-
-        if (orderUpdateErr) throw orderUpdateErr;
-
-        // Notifier l'acheteur du remboursement
-        try {
-          await NotificationTriggers.onDisputeRefunded(
-            order.buyer_id,
-            order.product?.title || 'Produit',
-            order.sc_amount,
-            input.orderId,
-            input.adminNotes,
-          );
-        } catch (_notifErr) {
-          // Ne pas bloquer si la notification échoue
-        }
-      } else {
-        // Libérer au vendeur
-        const { data: sellerWallet, error: walletFetchErr } = await supabase
-          .from('user_wallets')
-          .select('soumboulah_cash')
-          .eq('user_id', order.seller_id)
-          .single();
-
-        if (walletFetchErr) throw walletFetchErr;
-
-        const { error: walletUpdateErr } = await supabase
-          .from('user_wallets')
-          .update({ soumboulah_cash: (sellerWallet?.soumboulah_cash || 0) + order.seller_amount })
-          .eq('user_id', order.seller_id);
-
-        if (walletUpdateErr) throw walletUpdateErr;
-
-        const { error: txErr } = await supabase.from('wallet_transactions').insert({
-          user_id: order.seller_id,
-          currency: 'soumboulah_cash',
-          amount: order.seller_amount,
-          transaction_type: 'marketplace_sale',
-          description: `Vente marketplace libérée après litige (commission ${order.commission_rate}%)`,
-          reference_id: input.orderId,
-          reference_type: 'marketplace_order',
-        });
-
-        if (txErr) throw txErr;
-
-        const { error: orderUpdateErr } = await (supabase as any)
-          .from('marketplace_orders')
-          .update({ status: 'completed', completed_at: new Date().toISOString() })
-          .eq('id', input.orderId);
-
-        if (orderUpdateErr) throw orderUpdateErr;
-
-        // Notifier le vendeur de la libération du paiement
-        try {
-          await NotificationTriggers.onDisputeReleased(
-            order.seller_id,
-            order.product?.title || 'Produit',
-            order.seller_amount,
-            input.orderId,
-            input.adminNotes,
-          );
-        } catch (_notifErr) {
-          // Ne pas bloquer si la notification échoue
+      if (!fetchErr && order) {
+        if (input.resolution === 'refund') {
+          // Notifier l'acheteur du remboursement
+          try {
+            await NotificationTriggers.onDisputeRefunded(
+              order.buyer_id,
+              order.product?.title || 'Produit',
+              order.sc_amount,
+              input.orderId,
+              input.adminNotes,
+            );
+          } catch (_notifErr) {
+            // Ne pas bloquer si la notification échoue
+          }
+        } else {
+          // Notifier le vendeur de la libération du paiement
+          try {
+            await NotificationTriggers.onDisputeReleased(
+              order.seller_id,
+              order.product?.title || 'Produit',
+              order.seller_amount,
+              input.orderId,
+              input.adminNotes,
+            );
+          } catch (_notifErr) {
+            // Ne pas bloquer si la notification échoue
+          }
         }
       }
-
-      // Mettre à jour le litige avec la décision et les notes admin
-      const disputeStatus = input.resolution === 'refund' ? 'resolved_refund' : 'resolved_release';
-      const { error: disputeUpdateErr } = await (supabase as any)
-        .from('marketplace_disputes')
-        .update({
-          status: disputeStatus,
-          admin_decision: input.resolution,
-          admin_notes: input.adminNotes || null,
-          resolved_by: user.id,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq('id', input.disputeId);
-
-      if (disputeUpdateErr) throw disputeUpdateErr;
 
       return { success: true };
     },
