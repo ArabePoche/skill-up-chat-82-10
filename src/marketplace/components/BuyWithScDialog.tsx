@@ -3,7 +3,7 @@
  * Affiche le prix SC, la commission et le mécanisme d'escrow
  */
 import React, { useState } from 'react';
-import { ShieldCheck, Coins, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Coins, AlertTriangle, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
+import { useNavigate } from 'react-router-dom';
 import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate } from '../hooks/useMarketplaceOrders';
 import { useUserWallet } from '@/hooks/useUserWallet';
 
@@ -31,6 +32,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
   const [shippingAddress, setShippingAddress] = useState('');
   const [notes, setNotes] = useState('');
 
+  const navigate = useNavigate();
   const { wallet } = useUserWallet();
   const { data: commissionSettings } = useMarketplaceCommissionSettings();
   const { data: scRate } = useScToFcfaRate();
@@ -66,6 +68,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
         setQuantity(1);
         setShippingAddress('');
         setNotes('');
+        navigate('/my-orders');
       },
     });
   };

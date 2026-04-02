@@ -1,9 +1,10 @@
 /**
  * Écran de suivi des commandes marketplace
- * Permet à l'acheteur de confirmer la réception ou ouvrir un litige
+ * Permet à l'acheteur de confirmer la réception ou ouvrir un litige,
+ * et au vendeur de marquer l'expédition ou consulter l'état de ses ventes.
  */
 import React, { useState } from 'react';
-import { ArrowLeft, Package, CheckCircle, AlertTriangle, Clock, XCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Package, CheckCircle, AlertTriangle, Clock, XCircle, ShieldCheck, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
-import { useMyMarketplaceOrders, useConfirmReception, useOpenDispute } from '../hooks/useMarketplaceOrders';
+import { useMyMarketplaceOrders, useConfirmReception, useOpenDispute, useMarkOrderShipped } from '../hooks/useMarketplaceOrders';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -35,10 +36,14 @@ const MyOrdersScreen: React.FC = () => {
   const { data: sellerOrders = [], isLoading: sellerLoading } = useMyMarketplaceOrders('seller');
   const { mutate: confirmReception, isPending: confirming } = useConfirmReception();
   const { mutate: openDispute, isPending: disputing } = useOpenDispute();
+  const { mutate: markShipped, isPending: shipping } = useMarkOrderShipped();
 
   const [disputeDialog, setDisputeDialog] = useState<{ orderId: string } | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeDescription, setDisputeDescription] = useState('');
+
+  const [shippingDialog, setShippingDialog] = useState<{ orderId: string } | null>(null);
+  const [trackingNumber, setTrackingNumber] = useState('');
 
   const handleDispute = () => {
     if (!disputeDialog || !disputeReason.trim()) return;
@@ -55,6 +60,16 @@ const MyOrdersScreen: React.FC = () => {
     });
   };
 
+  const handleMarkShipped = () => {
+    if (!shippingDialog || !trackingNumber.trim()) return;
+    markShipped({ orderId: shippingDialog.orderId, trackingNumber }, {
+      onSuccess: () => {
+        setShippingDialog(null);
+        setTrackingNumber('');
+      },
+    });
+  };
+
   const orders = tab === 'buyer' ? buyerOrders : sellerOrders;
   const loading = tab === 'buyer' ? buyerLoading : sellerLoading;
 
@@ -63,6 +78,8 @@ const MyOrdersScreen: React.FC = () => {
     const StatusIcon = config.icon;
     const canConfirm = tab === 'buyer' && ['paid', 'shipped', 'delivered'].includes(order.status);
     const canDispute = tab === 'buyer' && ['paid', 'shipped', 'delivered'].includes(order.status);
+    const canMarkShipped = tab === 'seller' && ['paid', 'shipped'].includes(order.status);
+    const sellerHasDispute = tab === 'seller' && order.status === 'disputed';
 
     return (
       <Card key={order.id} className="mb-3">
@@ -90,6 +107,18 @@ const MyOrdersScreen: React.FC = () => {
                 </span>
               </div>
               <p className="text-sm font-bold text-emerald-700 mt-1">{order.sc_amount} SC</p>
+              {tab === 'seller' && ['paid', 'shipped', 'delivered'].includes(order.status) && (
+                <p className="text-xs text-amber-600 mt-1">
+                  <span aria-hidden="true">🔒</span>
+                  <span className="sr-only">Séquestre :</span>
+                  {' '}{order.seller_amount} SC en attente de confirmation
+                </p>
+              )}
+              {order.tracking_number && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Suivi : {order.tracking_number}
+                </p>
+              )}
             </div>
           </div>
 
@@ -114,6 +143,29 @@ const MyOrdersScreen: React.FC = () => {
                   Litige
                 </Button>
               )}
+            </div>
+          )}
+
+          {canMarkShipped && (
+            <div className="mt-3">
+              <Button
+                size="sm"
+                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => setShippingDialog({ orderId: order.id })}
+                disabled={shipping}
+              >
+                <Truck size={14} className="mr-1" />
+                {order.status === 'shipped' ? 'Mettre à jour le suivi' : 'Marquer comme expédié'}
+              </Button>
+            </div>
+          )}
+
+          {sellerHasDispute && (
+            <div className="mt-3 bg-red-50 rounded-lg p-3 text-xs text-red-800">
+              <p className="font-semibold flex items-center gap-1">
+                <AlertTriangle size={12} /> Litige en cours
+              </p>
+              <p className="mt-1">Un administrateur examine ce litige. Vous serez contacté.</p>
             </div>
           )}
         </CardContent>
@@ -151,6 +203,35 @@ const MyOrdersScreen: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Dialog expédition */}
+      <Dialog open={!!shippingDialog} onOpenChange={(open) => !open && setShippingDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marquer comme expédié</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Numéro de suivi *</Label>
+              <Input
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                placeholder="Ex: 1Z999AA10123456784"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShippingDialog(null)}>Annuler</Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700"
+              onClick={handleMarkShipped}
+              disabled={shipping || !trackingNumber.trim()}
+            >
+              {shipping ? 'Envoi...' : 'Confirmer expédition'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog litige */}
       <Dialog open={!!disputeDialog} onOpenChange={(open) => !open && setDisputeDialog(null)}>
