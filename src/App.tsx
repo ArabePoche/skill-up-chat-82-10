@@ -43,6 +43,7 @@ import CvSearchPage from '@/cv-search/CvSearchPage';
 import WalletScreen from '@/wallet/WalletScreen';
 import SolidarityScreen from '@/solidarity/SolidarityScreen';
 import SolidarityCampaignPage from '@/solidarity/SolidarityCampaignPage';
+import MyOrdersScreen from '@/marketplace/components/MyOrdersScreen';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
@@ -148,6 +149,7 @@ const AppWithRouter: React.FC = () => {
         <Route path="/solidarity" element={<SolidarityScreen />} />
         <Route path="/solidarity/:campaignId" element={<SolidarityCampaignPage />} />
         <Route path="/solidarity/:campaignId/:slug" element={<SolidarityCampaignPage />} />
+        <Route path="/my-orders" element={<MyOrdersScreen />} />
         
         {/* Page 404 */}
         <Route path="*" element={<NotFound />} />

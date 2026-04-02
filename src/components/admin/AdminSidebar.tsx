@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell, Megaphone, Coins, Heart } from 'lucide-react';
+import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell, Megaphone, Coins, Heart, ShoppingBag } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -93,6 +93,11 @@ const menuItems = [
     title: 'Aide Solidaire',
     value: 'solidarity',
     icon: Heart,
+  },
+  {
+    title: 'Marketplace',
+    value: 'marketplace',
+    icon: ShoppingBag,
   },
 ];
 

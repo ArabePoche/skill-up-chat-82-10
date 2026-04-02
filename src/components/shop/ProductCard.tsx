@@ -1,12 +1,13 @@
 
 import React, { useState, useCallback } from 'react';
-import { ShoppingCart, Star, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Star, Heart, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import useEmblaCarousel from 'embla-carousel-react';
 import { useProductRestock } from '@/hooks/shop/useProductRestock';
 import { toast } from 'sonner';
+import ScPriceDisplay from '@/marketplace/components/ScPriceDisplay';
 
 interface Product {
   id: string;
@@ -203,14 +204,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
           </div>
         )}
 
-        {/* Prix */}
-        <div className="flex items-center space-x-2 mb-3">
-          <span className={`text-lg font-bold ${isOutOfStock ? 'text-gray-500' : 'text-gray-900'}`}>
-            {Math.round(discountedPrice || 0)}€
-          </span>
+        {/* Prix avec équivalent SC */}
+        <div className="mb-3">
+          <ScPriceDisplay priceFcfa={Math.round(discountedPrice || 0)} size="md" isOutOfStock={isOutOfStock} />
           {product.original_price && product.discount_percentage && !isOutOfStock && (
-            <span className="text-sm text-gray-500 line-through">
-              {product.original_price}€
+            <span className="text-xs text-muted-foreground line-through">
+              {product.original_price} FCFA
             </span>
           )}
         </div>

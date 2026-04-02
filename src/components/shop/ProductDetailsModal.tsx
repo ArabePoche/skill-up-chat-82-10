@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { ShoppingCart, Star, Heart, X, ChevronLeft, ChevronRight, Store, Info, Bell, BellOff } from 'lucide-react';
+import { ShoppingCart, Star, Heart, X, ChevronLeft, ChevronRight, Store, Info, Bell, BellOff, ShieldCheck } from 'lucide-react';
+import ScPriceDisplay from '@/marketplace/components/ScPriceDisplay';
+import BuyWithScDialog from '@/marketplace/components/BuyWithScDialog';
 import { useProductRestock } from '@/hooks/shop/useProductRestock';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -25,11 +27,13 @@ interface Product {
   rating?: number;
   product_type: string;
   stock?: number;
+  seller_id?: string;
   product_media?: Array<{
     media_url: string;
     display_order: number;
   }>;
   profiles?: {
+    id?: string;
     first_name?: string;
     last_name?: string;
     username?: string;
@@ -54,6 +58,7 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   similarProducts = []
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showBuyScDialog, setShowBuyScDialog] = useState(false);
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, skipSnaps: false });
   const { isSubscribed, subscribe, unsubscribe, isSubscribing, isUnsubscribing } = useProductRestock(product?.id, user?.id);
   const [emblaThumbsRef, emblaThumbsApi] = useEmblaCarousel({
@@ -233,21 +238,17 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                   </div>
                 )}
 
-                {/* Prix */}
+                {/* Prix avec équivalent SC */}
                 <div className="space-y-1">
-                  <div className="flex items-baseline space-x-3">
-                    <span className={`text-3xl font-bold ${isOutOfStock ? 'text-gray-500' : 'text-gray-900'}`}>
-                      {Math.round(discountedPrice || 0)}€
+                  <ScPriceDisplay priceFcfa={Math.round(discountedPrice || 0)} size="lg" isOutOfStock={isOutOfStock} />
+                  {product.original_price && product.discount_percentage && !isOutOfStock && (
+                    <span className="text-sm text-muted-foreground line-through">
+                      {product.original_price} FCFA
                     </span>
-                    {product.original_price && product.discount_percentage && !isOutOfStock && (
-                      <span className="text-xl text-gray-500 line-through">
-                        {product.original_price}€
-                      </span>
-                    )}
-                  </div>
+                  )}
                   {product.discount_percentage && !isOutOfStock && (
                     <p className="text-sm text-green-600">
-                      Économisez {Math.round((product.original_price || 0) - discountedPrice)}€
+                      Économisez {Math.round((product.original_price || 0) - discountedPrice)} FCFA
                     </p>
                   )}
                 </div>
@@ -291,14 +292,30 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       )}
                     </Button>
                   ) : (
-                    <Button
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-12 text-base"
-                      disabled={!user}
-                      onClick={() => onAddToCart?.(product.id)}
-                    >
-                      <ShoppingCart size={20} className="mr-2" />
-                      {!user ? 'Connectez-vous pour acheter' : 'Ajouter au panier'}
-                    </Button>
+                    <>
+                      <Button
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base"
+                        disabled={!user}
+                        onClick={() => {
+                          if (!user) {
+                            toast.error('Connectez-vous pour acheter');
+                            return;
+                          }
+                          setShowBuyScDialog(true);
+                        }}
+                      >
+                        <ShieldCheck size={20} className="mr-2" />
+                        {!user ? 'Connectez-vous' : 'Acheter en SC'}
+                      </Button>
+                      <Button
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-12 text-base"
+                        disabled={!user}
+                        onClick={() => onAddToCart?.(product.id)}
+                      >
+                        <ShoppingCart size={20} className="mr-2" />
+                        Panier
+                      </Button>
+                    </>
                   )}
                   <Button
                     variant="outline"
@@ -310,6 +327,13 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Buy with SC dialog */}
+            <BuyWithScDialog
+              product={product ? { ...product, seller_id: product.seller_id || product.profiles?.id } : null}
+              isOpen={showBuyScDialog}
+              onClose={() => setShowBuyScDialog(false)}
+            />
 
             {/* Produits similaires */}
             {similarProducts.length > 0 && (

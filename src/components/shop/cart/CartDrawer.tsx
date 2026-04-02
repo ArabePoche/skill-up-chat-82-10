@@ -207,7 +207,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                               {product?.title || 'Chargement...'}
                             </h4>
                             <p className="text-orange-600 font-bold text-sm mb-2">
-                              {Math.round((product?.price || 0) * item.quantity)}€
+                              {Math.round((product?.price || 0) * item.quantity)} FCFA
                             </p>
                             
                             <div className="flex items-center justify-between">
@@ -251,7 +251,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                 <div className="border-t p-4 space-y-4">
                   <div className="flex items-center justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span className="text-orange-600">{Math.round(calculateTotal())}€</span>
+                    <span className="text-orange-600">{Math.round(calculateTotal())} FCFA</span>
                   </div>
 
                   <Button 

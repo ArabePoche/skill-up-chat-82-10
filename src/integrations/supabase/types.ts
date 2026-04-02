@@ -2358,6 +2358,169 @@ export type Database = {
           },
         ]
       }
+      marketplace_commission_settings: {
+        Row: {
+          auto_release_days: number
+          commission_rate: number
+          id: string
+          min_order_amount: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_release_days?: number
+          commission_rate?: number
+          id?: string
+          min_order_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_release_days?: number
+          commission_rate?: number
+          id?: string
+          min_order_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_disputes: {
+        Row: {
+          admin_decision: string | null
+          admin_notes: string | null
+          created_at: string
+          description: string | null
+          evidence_urls: string[] | null
+          id: string
+          opened_by: string
+          order_id: string
+          reason: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_decision?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          description?: string | null
+          evidence_urls?: string[] | null
+          id?: string
+          opened_by: string
+          order_id: string
+          reason: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_decision?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          description?: string | null
+          evidence_urls?: string[] | null
+          id?: string
+          opened_by?: string
+          order_id?: string
+          reason?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_disputes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_orders: {
+        Row: {
+          auto_release_at: string | null
+          buyer_confirmed_at: string | null
+          buyer_id: string
+          commission_amount: number
+          commission_rate: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          payment_method: string
+          product_id: string
+          quantity: number
+          sc_amount: number
+          seller_amount: number
+          seller_id: string
+          shipping_address: string | null
+          status: string
+          total_amount: number
+          tracking_number: string | null
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          auto_release_at?: string | null
+          buyer_confirmed_at?: string | null
+          buyer_id: string
+          commission_amount?: number
+          commission_rate?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          product_id: string
+          quantity?: number
+          sc_amount: number
+          seller_amount?: number
+          seller_id: string
+          shipping_address?: string | null
+          status?: string
+          total_amount: number
+          tracking_number?: string | null
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          auto_release_at?: string | null
+          buyer_confirmed_at?: string | null
+          buyer_id?: string
+          commission_amount?: number
+          commission_rate?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          product_id?: string
+          quantity?: number
+          sc_amount?: number
+          seller_amount?: number
+          seller_id?: string
+          shipping_address?: string | null
+          status?: string
+          total_amount?: number
+          tracking_number?: string | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string
