@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
-import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate, fcfaToSc } from '../hooks/useMarketplaceOrders';
+import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate } from '../hooks/useMarketplaceOrders';
 import { useUserWallet } from '@/hooks/useUserWallet';
 
 interface BuyWithScDialogProps {
@@ -40,11 +40,14 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
 
   const rate = scRate || 10;
   const commissionRate = commissionSettings?.commission_rate || 5;
-  const unitPriceSc = fcfaToSc(product.price, rate);
+  const unitPriceSc = product.price / rate;
   const totalSc = unitPriceSc * quantity;
-  const commissionSc = Math.round(totalSc * commissionRate / 100);
+  const commissionSc = totalSc * commissionRate / 100;
   const sellerSc = totalSc - commissionSc;
   const hasEnough = (wallet?.soumboulah_cash || 0) >= totalSc;
+
+  const formatSc = (value: number) =>
+    new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
 
   const handleBuy = () => {
     if (!product.seller_id && !product.profiles?.id) return;
@@ -87,7 +90,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
           <div className="bg-emerald-50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span>Prix unitaire</span>
-              <span className="font-bold">{unitPriceSc} SC <span className="text-muted-foreground text-xs">({product.price} FCFA)</span></span>
+              <span className="font-bold">{formatSc(unitPriceSc)} SC <span className="text-muted-foreground text-xs">({product.price} FCFA)</span></span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Quantité</span>
@@ -103,10 +106,10 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
             <hr />
             <div className="flex justify-between font-bold text-lg">
               <span>Total</span>
-              <span className="text-emerald-700">{totalSc} SC</span>
+              <span className="text-emerald-700">{formatSc(totalSc)} SC</span>
             </div>
             <div className="text-xs text-muted-foreground text-right">
-              Commission plateforme : {commissionSc} SC ({commissionRate}%) · Vendeur reçoit : {sellerSc} SC
+              Commission plateforme : {formatSc(commissionSc)} SC ({commissionRate}%) · Vendeur reçoit : {formatSc(sellerSc)} SC
             </div>
           </div>
 
@@ -160,7 +163,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
             disabled={isPending || !hasEnough || !shippingAddress.trim()}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
-            {isPending ? 'Traitement...' : `Payer ${totalSc} SC`}
+            {isPending ? 'Traitement...' : `Payer ${formatSc(totalSc)} SC`}
           </Button>
         </DialogFooter>
       </DialogContent>
