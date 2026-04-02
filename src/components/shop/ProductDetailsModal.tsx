@@ -238,21 +238,17 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                   </div>
                 )}
 
-                {/* Prix */}
+                {/* Prix avec équivalent SC */}
                 <div className="space-y-1">
-                  <div className="flex items-baseline space-x-3">
-                    <span className={`text-3xl font-bold ${isOutOfStock ? 'text-gray-500' : 'text-gray-900'}`}>
-                      {Math.round(discountedPrice || 0)}€
+                  <ScPriceDisplay priceFcfa={Math.round(discountedPrice || 0)} size="lg" isOutOfStock={isOutOfStock} />
+                  {product.original_price && product.discount_percentage && !isOutOfStock && (
+                    <span className="text-sm text-muted-foreground line-through">
+                      {product.original_price} FCFA
                     </span>
-                    {product.original_price && product.discount_percentage && !isOutOfStock && (
-                      <span className="text-xl text-gray-500 line-through">
-                        {product.original_price}€
-                      </span>
-                    )}
-                  </div>
+                  )}
                   {product.discount_percentage && !isOutOfStock && (
                     <p className="text-sm text-green-600">
-                      Économisez {Math.round((product.original_price || 0) - discountedPrice)}€
+                      Économisez {Math.round((product.original_price || 0) - discountedPrice)} FCFA
                     </p>
                   )}
                 </div>
