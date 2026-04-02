@@ -55,6 +55,7 @@ interface PosCartDrawerProps {
         customerName?: string;
         paymentMethod: string;
         notes?: string;
+        receiptId?: string;
     }) => Promise<void>;
     isProcessing: boolean;
     shopName: string;
@@ -85,6 +86,7 @@ const PosCartDrawer: React.FC<PosCartDrawerProps> = ({
         payment: string;
         date: Date;
         type: 'sale' | 'quote';
+        receiptId?: string;
     } | null>(null);
     const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -102,11 +104,14 @@ const PosCartDrawer: React.FC<PosCartDrawerProps> = ({
     ];
 
     const handleCheckout = async () => {
+        const generatedReceiptId = `FAC-${format(new Date(), 'yyMMdd-HHmmss')}`;
+        
         if (checkoutMode === 'sale') {
             await onConfirmSale({
                 customerName: customerName.trim() || undefined,
                 paymentMethod,
                 notes: notes.trim() || undefined,
+                receiptId: generatedReceiptId,
             });
         }
 
@@ -118,6 +123,7 @@ const PosCartDrawer: React.FC<PosCartDrawerProps> = ({
             payment: paymentMethod,
             date: new Date(),
             type: checkoutMode || 'sale',
+            receiptId: generatedReceiptId,
         });
 
         setShowReceipt(true);
@@ -411,6 +417,11 @@ const PosCartDrawer: React.FC<PosCartDrawerProps> = ({
                                     <p className="text-muted-foreground">
                                         {receiptData.type === 'quote' ? '--- DEVIS ---' : '--- TICKET DE CAISSE ---'}
                                     </p>
+                                    {receiptData.receiptId && (
+                                        <p className="text-muted-foreground font-semibold">
+                                            Ticket: {receiptData.receiptId}
+                                        </p>
+                                    )}
                                     <p className="text-muted-foreground">
                                         {format(receiptData.date, 'dd/MM/yyyy HH:mm', { locale: fr })}
                                     </p>

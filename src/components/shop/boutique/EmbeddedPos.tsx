@@ -52,6 +52,7 @@ interface EmbeddedPosProps {
     customerName?: string;
     paymentMethod: string;
     notes?: string;
+    receiptId?: string;
   }) => Promise<void>;
   isProcessing: boolean;
   searchQuery: string;

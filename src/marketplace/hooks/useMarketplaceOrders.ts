@@ -118,11 +118,15 @@ export const useCreateMarketplaceOrder = () => {
           .select('title')
           .eq('id', input.productId)
           .single();
+          
+        const buyerName = user?.user_metadata?.first_name || user?.user_metadata?.full_name || 'Un utilisateur';
+        
         await NotificationTriggers.onNewMarketplaceOrder(
           input.sellerId,
           product?.title || 'Produit',
           input.scAmount * input.quantity,
           order.id,
+          buyerName
         );
       } catch (_notifErr) {
         // Ne pas bloquer l'achat si la notification échoue
@@ -397,10 +401,11 @@ export const useResolveDispute = () => {
 
       if (!fetchErr && order) {
         if (input.resolution === 'refund') {
-          // Notifier l'acheteur du remboursement
+          // Notifier l'acheteur et le vendeur du remboursement
           try {
             await NotificationTriggers.onDisputeRefunded(
               order.buyer_id,
+              order.seller_id,
               order.product?.title || 'Produit',
               order.sc_amount,
               input.orderId,
@@ -410,10 +415,11 @@ export const useResolveDispute = () => {
             // Ne pas bloquer si la notification échoue
           }
         } else {
-          // Notifier le vendeur de la libération du paiement
+          // Notifier le vendeur et l'acheteur de la libération du paiement
           try {
             await NotificationTriggers.onDisputeReleased(
               order.seller_id,
+              order.buyer_id,
               order.product?.title || 'Produit',
               order.seller_amount,
               input.orderId,

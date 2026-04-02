@@ -702,6 +702,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                                         paymentMethod: data.paymentMethod,
                                         notes: data.notes,
                                         agentId: activeAgent?.agentId,
+                                        receiptId: data.receiptId,
                                     });
                                     posCart.clearCart();
                                 }}

@@ -27,6 +27,7 @@ export interface CartSaleInput {
   paymentMethod: string;
   notes?: string;
   agentId?: string; // ID de l'agent qui effectue la vente
+  receiptId?: string; // Identifiant de la facture / du ticket commun
 }
 
 /**
@@ -77,6 +78,7 @@ export const useCreateCartSale = () => {
             payment_method: sale.paymentMethod || 'cash',
             notes: sale.notes || null,
             agent_id: sale.agentId || null,
+            receipt_id: sale.receiptId || null,
           })
           .select()
           .single();

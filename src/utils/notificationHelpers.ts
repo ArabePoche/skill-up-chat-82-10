@@ -180,11 +180,12 @@ export const NotificationTriggers = {
   },
 
   // Quand une nouvelle commande est passée (notifier le vendeur)
-  onNewMarketplaceOrder: async (sellerId: string, productTitle: string, scAmount: number, orderId: string) => {
+  onNewMarketplaceOrder: async (sellerId: string, productTitle: string, scAmount: number, orderId: string, buyerName?: string) => {
+    const name = buyerName || "Quelqu'un";
     await sendPushNotification({
       userIds: [sellerId],
       title: "🛒 Nouvelle commande !",
-      message: `Quelqu'un a acheté "${productTitle}" pour ${scAmount} SC. Le paiement est sécurisé.`,
+      message: `${name} a acheté "${productTitle}" pour ${scAmount} SC. Le paiement est sécurisé.`,
       type: "marketplace_order",
       clickAction: "/my-orders",
       playLocalSound: false,
@@ -206,14 +207,31 @@ export const NotificationTriggers = {
   },
 
   // Quand un litige est résolu en faveur de l'acheteur (remboursement)
-  onDisputeRefunded: async (buyerId: string, productTitle: string, scAmount: number, orderId: string, adminNotes?: string) => {
-    const message = adminNotes
+  onDisputeRefunded: async (buyerId: string, sellerId: string, productTitle: string, scAmount: number, orderId: string, adminNotes?: string) => {
+    const buyerMessage = adminNotes
       ? `Litige résolu : "${productTitle}" — ${scAmount} SC remboursés. Note admin : ${adminNotes}`
       : `Litige résolu : "${productTitle}" — ${scAmount} SC ont été remboursés sur votre portefeuille.`;
+      
+    // Notifier l'acheteur
     await sendPushNotification({
       userIds: [buyerId],
       title: "✅ Remboursement effectué !",
-      message,
+      message: buyerMessage,
+      type: "marketplace_refund",
+      clickAction: "/my-orders",
+      playLocalSound: false,
+      data: { orderId, productTitle },
+    });
+
+    // Notifier le vendeur
+    const sellerMessage = adminNotes
+      ? `Litige résolu en faveur de l'acheteur pour "${productTitle}". Note admin : ${adminNotes}`
+      : `Le litige pour "${productTitle}" a été résolu en faveur de l'acheteur (Remboursé).`;
+
+    await sendPushNotification({
+      userIds: [sellerId],
+      title: "⚠️ Litige clôturé",
+      message: sellerMessage,
       type: "marketplace_refund",
       clickAction: "/my-orders",
       playLocalSound: false,
@@ -222,14 +240,31 @@ export const NotificationTriggers = {
   },
 
   // Quand un litige est résolu en faveur du vendeur (libération du paiement)
-  onDisputeReleased: async (sellerId: string, productTitle: string, sellerAmount: number, orderId: string, adminNotes?: string) => {
-    const message = adminNotes
+  onDisputeReleased: async (sellerId: string, buyerId: string, productTitle: string, sellerAmount: number, orderId: string, adminNotes?: string) => {
+    const sellerMessage = adminNotes
       ? `Litige résolu : "${productTitle}" — ${sellerAmount} SC libérés. Note admin : ${adminNotes}`
       : `Litige résolu : "${productTitle}" — ${sellerAmount} SC ont été crédités sur votre portefeuille.`;
+      
+    // Notifier le vendeur
     await sendPushNotification({
       userIds: [sellerId],
       title: "💰 Paiement libéré après litige !",
-      message,
+      message: sellerMessage,
+      type: "marketplace_sale",
+      clickAction: "/my-orders",
+      playLocalSound: false,
+      data: { orderId, productTitle },
+    });
+
+    // Notifier l'acheteur
+    const buyerMessage = adminNotes
+      ? `Litige clôturé en faveur du vendeur pour "${productTitle}". Note admin : ${adminNotes}`
+      : `Le litige pour "${productTitle}" a été clôturé en faveur du vendeur (Paiement validé).`;
+
+    await sendPushNotification({
+      userIds: [buyerId],
+      title: "⚠️ Litige clôturé",
+      message: buyerMessage,
       type: "marketplace_sale",
       clickAction: "/my-orders",
       playLocalSound: false,
