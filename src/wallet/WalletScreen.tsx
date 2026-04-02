@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserWallet } from '@/hooks/useUserWallet';
 import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
@@ -41,6 +42,8 @@ const WalletScreen: React.FC = () => {
   const scToFcfaRate = conversion?.sc_to_fcfa_rate || 1;
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [convertAmount, setConvertAmount] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
 
   const handleConvert = () => {
     const amount = parseInt(convertAmount);
@@ -49,6 +52,39 @@ const WalletScreen: React.FC = () => {
     setShowConvertDialog(false);
     setConvertAmount('');
   };
+
+  const nonCommissionTx = transactions.filter(tx => tx.transaction_type !== 'commission');
+
+  const uniqueMonths = Array.from(
+    new Set(nonCommissionTx.map(tx => format(new Date(tx.created_at), 'yyyy-MM')))
+  ).sort().reverse();
+
+  // Filtrage
+  let filteredTx = nonCommissionTx;
+  if (filterMonth !== 'all') {
+    filteredTx = filteredTx.filter(tx => format(new Date(tx.created_at), 'yyyy-MM') === filterMonth);
+  }
+  if (filterCategory !== 'all') {
+    filteredTx = filteredTx.filter(tx => {
+      const isGift = tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
+      const isSolidarity = tx.reference_type === 'solidarity_campaign';
+      const isMarketplace = tx.transaction_type.startsWith('marketplace_');
+      
+      if (filterCategory === 'gifts') return isGift;
+      if (filterCategory === 'market') return isMarketplace;
+      if (filterCategory === 'solidarity') return isSolidarity;
+      return !isGift && !isSolidarity && !isMarketplace; // sub, etc.
+    });
+  }
+
+  // Grouper par mois pour l'affichage (ex: "Avril 2026")
+  const groupedTx = filteredTx.reduce((acc, tx) => {
+    const key = format(new Date(tx.created_at), 'MMMM yyyy', { locale: fr });
+    const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+    if (!acc[capitalizedKey]) acc[capitalizedKey] = [];
+    acc[capitalizedKey].push(tx);
+    return acc;
+  }, {} as Record<string, typeof transactions>);
 
   if (isLoading) {
     return (
@@ -175,39 +211,75 @@ const WalletScreen: React.FC = () => {
 
       {/* Dernières transactions */}
       <div className="px-4 pb-24">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
-          Historiques des Transactions
-        </h2>
-        {transactions.filter(tx => tx.transaction_type !== 'commission').length === 0 ? (
-          <Card className="bg-slate-800/50 border-slate-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
+            Historique des Transactions
+          </h2>
+          <div className="flex items-center gap-2">
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-800/50 border-slate-700">
+                <SelectValue placeholder="Catégorie" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes</SelectItem>
+                <SelectItem value="market">Achats / Ventes</SelectItem>
+                <SelectItem value="gifts">Cadeaux</SelectItem>
+                <SelectItem value="solidarity">Solidarité</SelectItem>
+                <SelectItem value="other">Autres</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-800/50 border-slate-700">
+                <SelectValue placeholder="Mois" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les mois</SelectItem>
+                {uniqueMonths.map(month => (
+                  <SelectItem key={month} value={month}>
+                    {format(new Date(month + '-01'), 'MMMM yyyy', { locale: fr })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {Object.keys(groupedTx).length === 0 ? (
+          <Card className="bg-slate-800/50 border-slate-700 mt-4">
             <CardContent className="p-6 text-center text-slate-400 text-sm">
-              Aucune transaction pour le moment
+              Aucune transaction pour ces critères
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {transactions.filter(tx => tx.transaction_type !== 'commission').map((tx) => {
-              let metadata: any = {};
-              try {
-                if (typeof tx.metadata === 'string') {
-                  metadata = JSON.parse(tx.metadata);
-                } else if (tx.metadata && typeof tx.metadata === 'object') {
-                  metadata = tx.metadata;
-                }
-                
-                if (typeof tx.description === 'string' && tx.description.trim().startsWith('{') && tx.description.trim().endsWith('}')) {
-                  const descData = JSON.parse(tx.description);
-                  metadata = { ...metadata, ...descData };
-                }
-              } catch (e) {
-                console.error("Failed to parse metadata", e);
-              }
+          <div className="space-y-6 mt-4">
+            {Object.entries(groupedTx).map(([monthName, monthTx]) => (
+              <div key={monthName}>
+                <h3 className="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider pl-1">{monthName}</h3>
+                <div className="space-y-2">
+                  {monthTx.map((tx) => {
+                    let metadata: any = {};
+                    try {
+                      if (typeof tx.metadata === 'string') {
+                        metadata = JSON.parse(tx.metadata);
+                      } else if (tx.metadata && typeof tx.metadata === 'object') {
+                        metadata = tx.metadata;
+                      }
+                      
+                      if (typeof tx.description === 'string' && tx.description.trim().startsWith('{') && tx.description.trim().endsWith('}')) {
+                        const descData = JSON.parse(tx.description);
+                        metadata = { ...metadata, ...descData };
+                      }
+                    } catch (e) {
+                      console.error("Failed to parse metadata", e);
+                    }
 
-              const isGift = tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
-              const isSolidarity = tx.reference_type === 'solidarity_campaign';
-              const coinIcon = currencyCoin[tx.currency] || coinHabbah;
+                    const isGift = tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
+                    const isSolidarity = tx.reference_type === 'solidarity_campaign';
+                    const isMarketplace = tx.transaction_type.startsWith('marketplace_');
+                    const coinIcon = currencyCoin[tx.currency] || coinHabbah;
 
-              if (isGift && metadata && (metadata.partner_name || metadata.receiver_name || metadata.sender_name || metadata.gift_name || metadata.gift_reason)) {
+                    if (isGift && metadata && (metadata.partner_name || metadata.receiver_name || metadata.sender_name || metadata.gift_name || metadata.gift_reason)) {
                 const partnerName = metadata.partner_name || metadata.receiver_name || metadata.sender_name || 'Utilisateur';
                 const partnerAvatar = metadata.partner_avatar || metadata.receiver_avatar || metadata.sender_avatar;
                 
@@ -307,6 +379,37 @@ const WalletScreen: React.FC = () => {
                 );
               }
 
+              if (isMarketplace) {
+                return (
+                  <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                        <ShoppingBag size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-200 truncate">
+                          {tx.transaction_type === 'marketplace_sale' ? 'Vente conclue' :
+                           tx.transaction_type === 'marketplace_escrow' ? 'Achat marketplace' : 
+                           tx.transaction_type === 'marketplace_refund' ? 'Remboursement' : 'Marketplace'}
+                        </p>
+                        <p className="text-xs text-slate-300 truncate" title={tx.description || ''}>
+                          {tx.description || 'Transaction commerciale'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 flex items-center gap-1">
+                        <img src={coinIcon} alt="" className="w-4 h-4 object-contain" />
+                        <span className={`text-sm font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {tx.amount >= 0 ? '+' : ''}{formatNumber(tx.amount)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
               return (
               <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
                 <CardContent className="p-3 flex items-center gap-3">
@@ -325,6 +428,9 @@ const WalletScreen: React.FC = () => {
                 </CardContent>
               </Card>
             )})}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
