@@ -46,6 +46,7 @@ const TransferBetweenShopsDialog: React.FC<TransferBetweenShopsDialogProps> = ({
   const [toShopId, setToShopId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [notes, setNotes] = useState<string>('');
+  const [livreur, setLivreur] = useState<string>('');
 
   const createTransfer = useCreateInterShopTransfer();
 
@@ -59,6 +60,7 @@ const TransferBetweenShopsDialog: React.FC<TransferBetweenShopsDialogProps> = ({
         productId,
         quantity,
         notes: notes.trim() || undefined,
+        livreur: livreur.trim() || undefined,
       });
       
       handleClose();
@@ -71,6 +73,7 @@ const TransferBetweenShopsDialog: React.FC<TransferBetweenShopsDialogProps> = ({
     setToShopId('');
     setQuantity(1);
     setNotes('');
+    setLivreur('');
     onClose();
   };
 
@@ -134,6 +137,16 @@ const TransferBetweenShopsDialog: React.FC<TransferBetweenShopsDialogProps> = ({
               min={1}
               value={quantity}
               onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            />
+          </div>
+
+          {/* Livreur */}
+          <div className="space-y-2">
+            <Label>Livreur / Intermédiaire (optionnel)</Label>
+            <Input
+              value={livreur}
+              onChange={(e) => setLivreur(e.target.value)}
+              placeholder="Ex: Jean Paul..."
             />
           </div>
 

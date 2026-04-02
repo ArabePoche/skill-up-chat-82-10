@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logShopActivity } from './useShopActivityLogs';
 
 export interface ShopAgent {
     id: string;
@@ -47,6 +48,13 @@ export const useCreateShopAgent = () => {
                 .single();
 
             if (error) throw error;
+            
+            await logShopActivity({
+                shopId: agent.shop_id,
+                actionType: 'AGENT',
+                details: `Création de l'agent ${agent.first_name} ${agent.last_name} (${agent.role})`
+            });
+            
             return data;
         },
         onSuccess: (_, variables) => {
@@ -73,7 +81,12 @@ export const useUpdateShopAgent = () => {
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) throw error;            
+            await logShopActivity({
+                shopId: shop_id,
+                actionType: 'AGENT',
+                details: `Mise à jour des informations de l'agent ${details.first_name || ''} ${details.last_name || ''}`
+            });
             return data;
         },
         onSuccess: (_, variables) => {

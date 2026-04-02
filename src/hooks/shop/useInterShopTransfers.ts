@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { logShopActivity } from './useShopActivityLogs';
 
 export interface InterShopTransfer {
   id: string;
@@ -16,6 +17,7 @@ export interface InterShopTransfer {
   created_at: string;
   completed_at: string | null;
   notes: string | null;
+  delivered_by?: string | null;
   created_by: string;
   from_shop?: {
     name: string;
@@ -89,12 +91,14 @@ export const useCreateInterShopTransfer = () => {
       productId,
       quantity,
       notes,
+      livreur,
     }: {
       fromShopId: string;
       toShopId: string;
       productId: string;
       quantity: number;
       notes?: string;
+      livreur?: string;
     }) => {
       if (!user?.id) throw new Error('Non authentifié');
 
@@ -119,12 +123,20 @@ export const useCreateInterShopTransfer = () => {
           product_id: productId,
           quantity,
           notes,
+          delivered_by: livreur,
           created_by: user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      await logShopActivity({
+        shopId: fromShopId,
+        actionType: 'TRANSFER',
+        details: `Création d'un transfert de ${quantity} unités du produit "${product.name}"${livreur ? ` (Livreur: ${livreur})` : ''}`
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -151,6 +163,16 @@ export const useCompleteInterShopTransfer = () => {
       });
 
       if (error) throw error;
+
+      const { data: t } = await supabase.from('shop_stock_transfers').select('*, to_shop_id').eq('id', transferId).single();
+      if (t) {
+        await logShopActivity({
+          shopId: t.to_shop_id,
+          actionType: 'TRANSFER',
+          details: `Réception de ${t.quantity} unités via le transfert #${transferId.substring(0,8)}`
+        });
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -182,6 +204,13 @@ export const useCancelInterShopTransfer = () => {
         .single();
 
       if (error) throw error;
+      
+      await logShopActivity({
+        shopId: (data as any).from_shop_id,
+        actionType: 'TRANSFER',
+        details: `Transfert sortant #${transferId.substring(0, 8)} annulé.`
+      });
+
       return data;
     },
     onSuccess: () => {

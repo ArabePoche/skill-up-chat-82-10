@@ -155,6 +155,15 @@ const InterShopTransferHistory: React.FC = () => {
                   </div>
                 </div>
 
+                {transfer.delivered_by && (
+                  <div className="mt-2 pt-2 border-t border-border/50 text-xs text-orange-600 flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold text-slate-700">Livreur : </span>
+                      {transfer.delivered_by}
+                    </div>
+                  </div>
+                )}
+
                 {transfer.notes && (
                   <div className="mt-2 pt-2 border-t border-border/50">
                     <p className="text-xs text-muted-foreground">

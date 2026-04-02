@@ -38,6 +38,7 @@ const CreateTransferDialog: React.FC<CreateTransferDialogProps> = ({
   const [productId, setProductId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [notes, setNotes] = useState<string>('');
+  const [livreur, setLivreur] = useState<string>('');
 
   const { data: shops = [] } = useUserShops();
   const { data: availableProducts = [] } = useAvailableProductsForTransfer(fromShopId);
@@ -56,6 +57,7 @@ const CreateTransferDialog: React.FC<CreateTransferDialogProps> = ({
         productId,
         quantity,
         notes: notes.trim() || undefined,
+        livreur: livreur.trim() || undefined,
       });
       
       handleClose();
@@ -70,6 +72,7 @@ const CreateTransferDialog: React.FC<CreateTransferDialogProps> = ({
     setProductId('');
     setQuantity(1);
     setNotes('');
+    setLivreur('');
     onOpenChange(false);
   };
 
@@ -169,6 +172,16 @@ const CreateTransferDialog: React.FC<CreateTransferDialogProps> = ({
                 Stock disponible: {selectedProduct.stock_quantity} unité(s)
               </p>
             )}
+          </div>
+
+          {/* Livreur */}
+          <div className="space-y-2">
+            <Label>Livreur / Intermédiaire (optionnel)</Label>
+            <Input
+              value={livreur}
+              onChange={(e) => setLivreur(e.target.value)}
+              placeholder="Ex: Jean Paul..."
+            />
           </div>
 
           {/* Notes */}

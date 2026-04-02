@@ -8,6 +8,7 @@ import { boutiqueProductStore } from '@/local-storage/stores/BoutiqueStore';
 import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
 import type { PosCartItem } from './usePosCart';
+import { logShopActivity } from './useShopActivityLogs';
 
 export interface SaleInput {
   shop_id: string;
@@ -105,6 +106,15 @@ export const useCreateCartSale = () => {
         results.push(data);
       }
 
+      // Record activity log
+      const totalAmount = sale.items.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+      await logShopActivity({
+        shopId: sale.shopId,
+        agentId: sale.agentId,
+        actionType: 'SALE',
+        details: `Enregistrement d'une vente de ${totalAmount} FCFA (Client: ${sale.customerName || 'Anonyme'}${sale.receiptId ? `, Référence: ${sale.receiptId}` : ''}). Articles : ` + sale.items.map(item => `${item.quantity}x ${item.product.name}`).join(', '),
+      });
+
       return results;
     },
     onSuccess: (data: any, variables) => {
@@ -167,13 +177,13 @@ export const useCancelBoutiqueSale = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (sale: { id: string; shop_id: string; product_id: string; quantity: number }) => {
+    mutationFn: async (sale: { id: string; shop_id: string; product_id: string; quantityToReturn: number; originalQuantity: number; originalTotalAmount: number }) => {
       // 1. Mise à jour locale du stock (optimiste)
       const existing = await boutiqueProductStore.get(sale.product_id);
       if (existing) {
         await boutiqueProductStore.put({
           ...existing,
-          stockQuantity: existing.stockQuantity + sale.quantity,
+          stockQuantity: existing.stockQuantity + sale.quantityToReturn,
           updatedAt: Date.now()
         });
       }
@@ -191,13 +201,24 @@ export const useCancelBoutiqueSale = () => {
       // 3. Mode Online
       console.log('🌐 App status: online. Syncing cancel with Supabase.');
 
-      // Marquer la vente comme annulée
-      const { error: cancelError } = await supabase
-        .from('physical_shop_sales' as any)
-        .update({ status: 'canceled' })
-        .eq('id', sale.id);
-
-      if (cancelError) throw cancelError;
+      if (sale.quantityToReturn === sale.originalQuantity) {
+        // Annulation complète
+        const { error: cancelError } = await supabase
+          .from('physical_shop_sales' as any)
+          .update({ status: 'canceled' })
+          .eq('id', sale.id);
+        if (cancelError) throw cancelError;
+      } else {
+        // Retour partiel (diminution de quantité)
+        const newQuantity = sale.originalQuantity - sale.quantityToReturn;
+        const newTotalAmount = (sale.originalTotalAmount / sale.originalQuantity) * newQuantity;
+        
+        const { error: updateSaleError } = await supabase
+          .from('physical_shop_sales' as any)
+          .update({ quantity: newQuantity, total_amount: newTotalAmount })
+          .eq('id', sale.id);
+        if (updateSaleError) throw updateSaleError;
+      }
 
       // Restaurer le stock sur le serveur
       const { data: product, error: fetchErr } = await supabase
@@ -208,13 +229,21 @@ export const useCancelBoutiqueSale = () => {
 
       if (fetchErr) throw fetchErr;
 
-      const newStock = (product.stock_quantity || 0) + sale.quantity;
+      const newStock = (product.stock_quantity || 0) + sale.quantityToReturn;
       const { error: updateErr } = await supabase
         .from('physical_shop_products')
         .update({ stock_quantity: newStock })
         .eq('id', sale.product_id);
 
       if (updateErr) throw updateErr;
+
+      // Log cancellation
+      const statusText = sale.quantityToReturn === sale.originalQuantity ? 'Annulation complète' : `Retour partiel (${sale.quantityToReturn} sur ${sale.originalQuantity})`;
+      await logShopActivity({
+        shopId: sale.shop_id,
+        actionType: 'CANCEL_SALE',
+        details: `${statusText} pour l'article ${sale.product_id ? sale.product_id.substring(0, 8) : 'inconnu'} avec remboursement de la quantité.`,
+      });
 
       return { id: sale.id };
     },

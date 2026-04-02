@@ -8,6 +8,7 @@ import { boutiqueProductStore, type LocalBoutiqueProduct } from '@/local-storage
 import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
+import { logShopActivity } from './useShopActivityLogs';
 
 // Types
 export interface BoutiqueProduct {
@@ -150,11 +151,17 @@ export const useCreateBoutiqueProduct = () => {
                 imageUrl: data.image_url || undefined,
                 barcode: data.barcode || undefined,
                 updatedAt: Date.now(),
-            });
+              });
 
-            return data as BoutiqueProduct;
-        },
-        onSuccess: (_, variables) => {
+              await logShopActivity({
+                  shopId: product.shop_id,
+                  actionType: 'PRODUCT',
+                  details: `Création du produit "${product.name}" (Qte: ${product.stock_quantity}, Prix: ${product.price})`
+              });
+
+              return data as BoutiqueProduct;
+          },
+          onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['boutique-products', variables.shop_id] });
             toast.success('Produit ajouté !');
         },
@@ -635,3 +642,6 @@ export const useReturnFromMarketplace = () => {
         },
     });
 };
+
+
+

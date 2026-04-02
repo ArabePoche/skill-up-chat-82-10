@@ -28,6 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import JsBarcode from 'jsbarcode';
 import type { BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
 import type { PosCartItem } from '@/hooks/shop/usePosCart';
 import { useShopCustomers, type ShopCustomer } from '@/hooks/shop/useShopCustomers';
@@ -94,17 +95,36 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
   const [showReceipt, setShowReceipt] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [receiptData, setReceiptData] = useState<{
-    items: PosCartItem[];
-    total: number;
-    customer: string;
-    payment: string;
-    amountReceived: number;
-    change: number;
-    date: Date;
-    type: CheckoutType;
-  } | null>(null);
-  const receiptRef = useRef<HTMLDivElement>(null);
+      id?: string;
+      items: PosCartItem[];
+      total: number;
+      customer: string;
+      payment: string;
+      amountReceived: number;
+      change: number;
+      date: Date;
+      type: CheckoutType;
+    } | null>(null);
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const barcodeRef = useRef<SVGSVGElement>(null);
 
+    useEffect(() => {
+      if (receiptData?.id && barcodeRef.current) {
+        try {
+          JsBarcode(barcodeRef.current, receiptData.id, {
+            format: 'CODE128',
+            displayValue: true,
+            text: "Réf: " + receiptData.id,
+            width: 1.5,
+            height: 40,
+            margin: 0,
+            fontSize: 12,
+          });
+        } catch (e) {
+          console.error("Barcode gen erorr", e);
+        }
+      }
+    }, [receiptData?.id]);
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -175,21 +195,25 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
   const quickAmounts = [500, 1000, 2000, 5000, 10000];
 
   const handleFinalize = async () => {
-    const finalPaymentMethod = isSplitMode 
+    const finalPaymentMethod = isSplitMode
       ? JSON.stringify(splitPayments.reduce((acc, curr) => { 
-          acc[curr.method] = curr.amount; 
-          return acc; 
+          acc[curr.method] = curr.amount;
+          return acc;
         }, {} as Record<string, number>))
       : paymentMethod;
+
+    const generatedId = `FAC-${format(new Date(), 'yyMMddHHmmss')}`;
 
     if (checkoutType === 'sale') {
       await onConfirmSale({
         customerName: customerName.trim() || undefined,
         paymentMethod: finalPaymentMethod,
         notes: notes.trim() || undefined,
+        receiptId: generatedId,
       });
     }
     setReceiptData({
+      id: generatedId,
       items: [...cartItems],
       total: totalAmount,
       customer: customerName.trim() || 'Client anonyme',
@@ -680,12 +704,15 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
                 {receiptData.type === 'quote' && (
                   <p className="text-gray-500 text-center italic">Devis valable 30 jours</p>
                 )}
-                <div className="text-center text-gray-400 mt-2">
-                  <p>Merci de votre visite !</p>
+                  <div className="text-center text-gray-400 mt-2 space-y-2">
+                    <p>Merci de votre visite !</p>
+                    <div className="flex justify-center mt-2">
+                      <svg ref={barcodeRef} className="mx-auto block" />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           <DialogFooter className="flex gap-2">
             <Button variant="outline" onClick={() => setShowReceipt(false)} className="flex-1">Fermer</Button>

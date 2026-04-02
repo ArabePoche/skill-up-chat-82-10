@@ -49,8 +49,8 @@ export const useAgentAuth = (shopId?: string, options?: UseAgentAuthOptions) => 
     // Charger l'agent mémorisé au démarrage
     useEffect(() => {
         const loadSavedAgent = async () => {
-            const savedId = localStorage.getItem(getAgentStorageKey(shopId)) || localStorage.getItem(LEGACY_STORAGE_KEY);
-            if (!shopId) { setIsLoading(false); return; } const cached = localStorage.getItem('agent_info_'+shopId); if (cached) { try { setActiveAgent({ ...JSON.parse(cached), isUnlocked: false }); setIsLoading(false); return; } catch(e) {} } if (savedId) {
+            const _TEMP = null;
+            if (savedId && shopId) {
                 try {
                     const { data, error } = await supabase
                         .from('shop_agents' as any)
@@ -69,7 +69,10 @@ export const useAgentAuth = (shopId?: string, options?: UseAgentAuthOptions) => 
                             role: d.role,
                             shopId: d.shop_id,
                             avatarUrl: d.avatar_url || null,
-                            isUnlocked: false }); localStorage.setItem(getAgentStorageKey(shopId), d.id); localStorage.setItem('agent_info_'+shopId, JSON.stringify({agentId:d.id, firstName:d.first_name, lastName:d.last_name, email:d.email, role:d.role, shopId:d.shop_id, avatarUrl:d.avatar_url||null, isUnlocked:false})); }
+                            isUnlocked: false,
+                        });
+                        localStorage.setItem(getAgentStorageKey(shopId), d.id);
+                    }
                 } catch (err) {
                     console.error('Error loading saved agent:', err);
                 }
@@ -328,6 +331,5 @@ export const useAgentAuth = (shopId?: string, options?: UseAgentAuthOptions) => 
         updateProfile,
     };
 };
-
 
 

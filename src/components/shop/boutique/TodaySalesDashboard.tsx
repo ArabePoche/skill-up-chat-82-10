@@ -202,13 +202,13 @@ const TodaySalesDashboard: React.FC<TodaySalesDashboardProps> = ({ shopId, onVie
         </Card>
       )}
 
-      {/* Top produits */}
+      {/* Top 5 produits les vendus */}
       {stats.topProducts.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <ShoppingBag size={16} className="text-muted-foreground" />
-              Top produits
+              Top 5 produits les vendus
             </CardTitle>
           </CardHeader>
           <CardContent>
