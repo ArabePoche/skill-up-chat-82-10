@@ -168,6 +168,26 @@ const MyOrdersScreen: React.FC = () => {
               <p className="mt-1">Un administrateur examine ce litige. Vous serez contacté.</p>
             </div>
           )}
+
+          {/* Résultat d'un litige résolu (acheteur ou vendeur) */}
+          {(() => {
+            const resolvedDispute = order.disputes?.find(
+              (d: any) => d.status === 'resolved_refund' || d.status === 'resolved_release',
+            );
+            if (!resolvedDispute) return null;
+            const isRefund = resolvedDispute.status === 'resolved_refund';
+            return (
+              <div className={`mt-3 rounded-lg p-3 text-xs ${isRefund ? 'bg-gray-50 text-gray-800' : 'bg-green-50 text-green-800'}`}>
+                <p className="font-semibold flex items-center gap-1">
+                  {isRefund ? <XCircle size={12} /> : <CheckCircle size={12} />}
+                  {isRefund ? 'Litige résolu — remboursement' : 'Litige résolu — paiement libéré'}
+                </p>
+                {resolvedDispute.admin_notes && (
+                  <p className="mt-1"><span className="font-medium">Note admin :</span> {resolvedDispute.admin_notes}</p>
+                )}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
     );

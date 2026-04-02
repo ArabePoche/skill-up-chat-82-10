@@ -297,7 +297,8 @@ export const useMyMarketplaceOrders = (role: 'buyer' | 'seller' = 'buyer') => {
           *,
           product:products (id, title, image_url, price),
           buyer:profiles!marketplace_orders_buyer_id_fkey (id, first_name, last_name, avatar_url),
-          seller:profiles!marketplace_orders_seller_id_fkey (id, first_name, last_name, avatar_url)
+          seller:profiles!marketplace_orders_seller_id_fkey (id, first_name, last_name, avatar_url),
+          disputes:marketplace_disputes (id, reason, description, status, admin_decision, admin_notes, resolved_at)
         `)
         .eq(column, user.id)
         .order('created_at', { ascending: false });
@@ -372,10 +373,10 @@ export const useResolveDispute = () => {
     }) => {
       if (!user?.id) throw new Error('Non connecté');
 
-      // Récupérer la commande
+      // Récupérer la commande avec le produit (pour les notifications)
       const { data: order, error: fetchErr } = await (supabase as any)
         .from('marketplace_orders')
-        .select('*')
+        .select('*, product:products (id, title, image_url, price)')
         .eq('id', input.orderId)
         .single();
 
@@ -383,18 +384,22 @@ export const useResolveDispute = () => {
 
       if (input.resolution === 'refund') {
         // Rembourser l'acheteur
-        const { data: buyerWallet } = await supabase
+        const { data: buyerWallet, error: walletFetchErr } = await supabase
           .from('user_wallets')
           .select('soumboulah_cash')
           .eq('user_id', order.buyer_id)
           .single();
 
-        await supabase
+        if (walletFetchErr) throw walletFetchErr;
+
+        const { error: walletUpdateErr } = await supabase
           .from('user_wallets')
           .update({ soumboulah_cash: (buyerWallet?.soumboulah_cash || 0) + order.sc_amount })
           .eq('user_id', order.buyer_id);
 
-        await supabase.from('wallet_transactions').insert({
+        if (walletUpdateErr) throw walletUpdateErr;
+
+        const { error: txErr } = await supabase.from('wallet_transactions').insert({
           user_id: order.buyer_id,
           currency: 'soumboulah_cash',
           amount: order.sc_amount,
@@ -404,24 +409,45 @@ export const useResolveDispute = () => {
           reference_type: 'marketplace_order',
         });
 
-        await (supabase as any)
+        if (txErr) throw txErr;
+
+        const { error: orderUpdateErr } = await (supabase as any)
           .from('marketplace_orders')
           .update({ status: 'refunded', completed_at: new Date().toISOString() })
           .eq('id', input.orderId);
+
+        if (orderUpdateErr) throw orderUpdateErr;
+
+        // Notifier l'acheteur du remboursement
+        try {
+          await NotificationTriggers.onDisputeRefunded(
+            order.buyer_id,
+            order.product?.title || 'Produit',
+            order.sc_amount,
+            input.orderId,
+            input.adminNotes,
+          );
+        } catch (_notifErr) {
+          // Ne pas bloquer si la notification échoue
+        }
       } else {
         // Libérer au vendeur
-        const { data: sellerWallet } = await supabase
+        const { data: sellerWallet, error: walletFetchErr } = await supabase
           .from('user_wallets')
           .select('soumboulah_cash')
           .eq('user_id', order.seller_id)
           .single();
 
-        await supabase
+        if (walletFetchErr) throw walletFetchErr;
+
+        const { error: walletUpdateErr } = await supabase
           .from('user_wallets')
           .update({ soumboulah_cash: (sellerWallet?.soumboulah_cash || 0) + order.seller_amount })
           .eq('user_id', order.seller_id);
 
-        await supabase.from('wallet_transactions').insert({
+        if (walletUpdateErr) throw walletUpdateErr;
+
+        const { error: txErr } = await supabase.from('wallet_transactions').insert({
           user_id: order.seller_id,
           currency: 'soumboulah_cash',
           amount: order.seller_amount,
@@ -431,23 +457,43 @@ export const useResolveDispute = () => {
           reference_type: 'marketplace_order',
         });
 
-        await (supabase as any)
+        if (txErr) throw txErr;
+
+        const { error: orderUpdateErr } = await (supabase as any)
           .from('marketplace_orders')
           .update({ status: 'completed', completed_at: new Date().toISOString() })
           .eq('id', input.orderId);
+
+        if (orderUpdateErr) throw orderUpdateErr;
+
+        // Notifier le vendeur de la libération du paiement
+        try {
+          await NotificationTriggers.onDisputeReleased(
+            order.seller_id,
+            order.product?.title || 'Produit',
+            order.seller_amount,
+            input.orderId,
+            input.adminNotes,
+          );
+        } catch (_notifErr) {
+          // Ne pas bloquer si la notification échoue
+        }
       }
 
-      // Mettre à jour le litige
+      // Mettre à jour le litige avec la décision et les notes admin
       const disputeStatus = input.resolution === 'refund' ? 'resolved_refund' : 'resolved_release';
-      await (supabase as any)
+      const { error: disputeUpdateErr } = await (supabase as any)
         .from('marketplace_disputes')
         .update({
           status: disputeStatus,
+          admin_decision: input.resolution,
           admin_notes: input.adminNotes || null,
           resolved_by: user.id,
           resolved_at: new Date().toISOString(),
         })
         .eq('id', input.disputeId);
+
+      if (disputeUpdateErr) throw disputeUpdateErr;
 
       return { success: true };
     },

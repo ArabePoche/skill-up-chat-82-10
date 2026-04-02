@@ -39,6 +39,9 @@ const AdminMarketplaceManagement: React.FC = () => {
   }, [settings]);
 
   const disputedOrders = orders.filter((o: any) => o.status === 'disputed');
+  const resolvedDisputeOrders = orders.filter((o: any) =>
+    ['refunded', 'completed'].includes(o.status) && o.disputes?.some((d: any) => d.admin_decision),
+  );
   const totalRevenue = orders
     .filter((o: any) => o.status === 'completed')
     .reduce((sum: number, o: any) => sum + Number(o.commission_amount || 0), 0);
@@ -145,6 +148,50 @@ const AdminMarketplaceManagement: React.FC = () => {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Historique des litiges résolus */}
+      {resolvedDisputeOrders.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg text-muted-foreground">
+              <ShieldCheck size={18} /> Litiges résolus ({resolvedDisputeOrders.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {resolvedDisputeOrders.map((order: any) => {
+              const dispute = order.disputes?.find((d: any) => d.admin_decision);
+              const isRefund = dispute?.admin_decision === 'refund';
+              return (
+                <div key={order.id} className="border rounded-lg p-4 space-y-1 opacity-80">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-sm">{order.product?.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Acheteur: {order.buyer?.first_name} {order.buyer?.last_name} · 
+                        Vendeur: {order.seller?.first_name} {order.seller?.last_name}
+                      </p>
+                      <p className="text-sm font-bold text-emerald-700">{order.sc_amount} SC</p>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${isRefund ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700'}`}>
+                      {isRefund ? 'Remboursé' : 'Payé vendeur'}
+                    </span>
+                  </div>
+                  {dispute?.admin_notes && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <span className="font-medium">Note admin :</span> {dispute.admin_notes}
+                    </p>
+                  )}
+                  {dispute?.resolved_at && (
+                    <p className="text-xs text-muted-foreground">
+                      Résolu le {new Date(dispute.resolved_at).toLocaleDateString('fr-FR')}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
