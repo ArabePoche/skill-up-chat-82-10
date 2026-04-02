@@ -58,6 +58,7 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   similarProducts = []
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showBuyScDialog, setShowBuyScDialog] = useState(false);
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, skipSnaps: false });
   const { isSubscribed, subscribe, unsubscribe, isSubscribing, isUnsubscribing } = useProductRestock(product?.id, user?.id);
   const [emblaThumbsRef, emblaThumbsApi] = useEmblaCarousel({
