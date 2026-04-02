@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { ShoppingCart, Star, Heart, X, ChevronLeft, ChevronRight, Store, Info, Bell, BellOff } from 'lucide-react';
+import { ShoppingCart, Star, Heart, X, ChevronLeft, ChevronRight, Store, Info, Bell, BellOff, ShieldCheck } from 'lucide-react';
+import ScPriceDisplay from '@/marketplace/components/ScPriceDisplay';
+import BuyWithScDialog from '@/marketplace/components/BuyWithScDialog';
 import { useProductRestock } from '@/hooks/shop/useProductRestock';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
