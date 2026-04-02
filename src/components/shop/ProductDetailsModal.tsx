@@ -27,11 +27,13 @@ interface Product {
   rating?: number;
   product_type: string;
   stock?: number;
+  seller_id?: string;
   product_media?: Array<{
     media_url: string;
     display_order: number;
   }>;
   profiles?: {
+    id?: string;
     first_name?: string;
     last_name?: string;
     username?: string;
