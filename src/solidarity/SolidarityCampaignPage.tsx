@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bell, BellOff, Clock, HandCoins, Heart, Images, MessageSquareText, Share2, Target, Users, X } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Clock, HandCoins, Heart, MessageSquareText, Share2, Target, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -20,20 +20,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { generateShareLinks } from '@/hooks/useDeeplinks';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import coinSC from '@/assets/coin-soumboulah-cash.png';
 
 import { buildSolidarityCampaignPath } from './campaignRoutes';
-import CampaignGalleryUploader, { isVideoUrl } from './components/CampaignGalleryUploader';
 import {
   SolidarityContribution,
   useAddCampaignTestimonial,
   useCampaignContributions,
-  useCampaignGallery,
   useCampaignLike,
   useCampaignNotificationSubscription,
   useCampaignTestimonials,
   useContribute,
-  useDeleteCampaignMedia,
   useRecordCampaignShare,
   useSolidarityCampaign,
 } from './hooks/useSolidarityCampaigns';
@@ -90,22 +88,30 @@ const SolidarityCampaignPage: React.FC = () => {
   const { data: campaign, isLoading } = useSolidarityCampaign(campaignId);
   const { data: contributions = [] } = useCampaignContributions(campaign?.id || null);
   const { data: testimonials = [] } = useCampaignTestimonials(campaign?.id || null);
-  const { data: galleryMedia = [] } = useCampaignGallery(campaign?.id || null);
   const { mutate: contribute, isPending: contributionPending } = useContribute();
   const { mutate: addTestimonial, isPending: testimonialPending } = useAddCampaignTestimonial();
   const { mutate: recordShare } = useRecordCampaignShare();
-  const { mutate: deleteMedia } = useDeleteCampaignMedia();
+  const {
+    isSupported: isPushSupported,
+    hasPermission: hasPushPermission,
+    isLoading: pushPermissionPending,
+    requestPermission,
+  } = usePushNotifications();
   const { isLiked, likesCount, toggleLike, isLoading: likePending } = useCampaignLike(
     campaign?.id,
     campaign?.likes_count || 0
   );
-  const { isSubscribed, subscribe, unsubscribe, isLoading: notifLoading } = useCampaignNotificationSubscription(campaign?.id);
+  const {
+    isSubscribed: isSubscribedToCampaignUpdates,
+    subscribe: subscribeToCampaignUpdates,
+    unsubscribe: unsubscribeFromCampaignUpdates,
+    isLoading: subscriptionPending,
+  } = useCampaignNotificationSubscription(campaign?.id);
 
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [testimonial, setTestimonial] = useState('');
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [isContributionsModalOpen, setIsContributionsModalOpen] = useState(false);
 
   const progress = campaign?.goal_amount
@@ -126,6 +132,41 @@ const SolidarityCampaignPage: React.FC = () => {
     profile?.role === 'admin' ||
     userContributions.length > 0
   );
+  const canFollowCampaignUpdates = !!campaign && !!user?.id && !isOwnCampaign && userContributions.length > 0;
+  const bellDisabled = subscriptionPending || pushPermissionPending || !canFollowCampaignUpdates;
+  const bellTitle = isSubscribedToCampaignUpdates
+    ? 'Suivi de l evolution active'
+    : 'Suivre l evolution de la cagnotte';
+  const bellActionLabel = isSubscribedToCampaignUpdates
+    ? 'Notifications actives'
+    : bellDisabled
+      ? 'Indisponible'
+      : 'Activer le suivi';
+  const bellDescription = !user?.id
+    ? 'Connectez-vous pour suivre les évolutions de cette cagnotte.'
+    : isOwnCampaign
+      ? 'Le créateur reçoit déjà les évolutions principales de sa cagnotte.'
+      : canFollowCampaignUpdates
+        ? 'Recevez les nouvelles contributions, témoignages, réactions et médias de cette cagnotte.'
+        : 'Contribuez d abord à cette cagnotte pour activer le suivi de ses évolutions.';
+  const statusLabel = campaign.status === 'completed'
+    ? 'Objectif atteint'
+    : campaign.status === 'pending'
+      ? 'En attente'
+      : campaign.status === 'closed'
+        ? 'Cloturee'
+        : campaign.status === 'rejected'
+          ? 'Rejetee'
+          : 'Active';
+  const statusClassName = campaign.status === 'completed'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    : campaign.status === 'pending'
+      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      : campaign.status === 'closed'
+        ? 'border-slate-200 bg-slate-100 text-slate-700'
+        : campaign.status === 'rejected'
+          ? 'border-red-200 bg-red-50 text-red-700'
+          : 'border-rose-200 bg-rose-50 text-rose-700';
 
   const contributorSummaries = useMemo(
     () => buildContributorSummaries(contributions),
@@ -178,6 +219,32 @@ const SolidarityCampaignPage: React.FC = () => {
     );
   };
 
+  const handleToggleCampaignUpdates = async () => {
+    if (!campaign || !user?.id) {
+      toast.error('Connectez-vous pour suivre cette cagnotte');
+      return;
+    }
+
+    if (!canFollowCampaignUpdates) {
+      toast.info('La cloche devient disponible après votre première contribution à cette cagnotte.');
+      return;
+    }
+
+    if (isSubscribedToCampaignUpdates) {
+      await unsubscribeFromCampaignUpdates();
+      return;
+    }
+
+    await subscribeToCampaignUpdates();
+
+    if (!hasPushPermission && isPushSupported) {
+      const granted = await requestPermission();
+      if (!granted) {
+        toast.info('Le suivi est activé dans l’application. Activez aussi les notifications push pour être alerté immédiatement.');
+      }
+    }
+  };
+
   const handleShare = async () => {
     if (!campaign) return;
 
@@ -199,7 +266,7 @@ const SolidarityCampaignPage: React.FC = () => {
         await navigator.clipboard.writeText(fallbackText);
       }
 
-      toast.success('Lien de la cagnotte prêt à être partagé avec fallback app');
+      toast.success('Lien de la cagnotte prêt à être partagé');
       recorded = true;
     } catch (error) {
       if (!navigator.share) {
@@ -240,57 +307,64 @@ const SolidarityCampaignPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="relative bg-[linear-gradient(160deg,_rgb(15,23,42)_0%,_rgb(30,41,59)_55%,_rgb(51,65,85)_100%)] px-4 pt-12 pb-8 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(244,63,94,0.18),_transparent_60%)]" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rose-500/40 to-transparent" />
-        <div className="flex items-center justify-between mb-5">
-          <button onClick={() => navigate('/solidarity')} className="relative p-1 text-white/60 hover:text-white transition-colors">
-            <ArrowLeft size={22} />
-          </button>
-          {user?.id && (
-            <button
-              onClick={() => isSubscribed ? unsubscribe() : subscribe()}
-              disabled={notifLoading}
-              className={`relative p-2 rounded-full transition-colors ${isSubscribed ? 'bg-rose-500/20 text-rose-400' : 'bg-white/10 text-white/60 hover:text-white'}`}
-              title={isSubscribed ? 'Désactiver les notifications' : 'Activer les notifications'}
-            >
-              {isSubscribed ? <BellOff size={20} /> : <Bell size={20} />}
-            </button>
-          )}
-        </div>
+      <div className="px-4 pt-6 space-y-4">
+        <button
+          onClick={() => navigate('/solidarity')}
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+        >
+          <ArrowLeft size={18} /> Retour aux cagnottes
+        </button>
 
-        <div className="relative space-y-4">
-          <div className="h-52 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+        <div className="overflow-hidden rounded-[34px] border border-rose-100/80 bg-[linear-gradient(180deg,_rgba(255,252,252,1),_rgba(255,247,248,0.98)_55%,_rgba(255,248,240,1))] shadow-[0_30px_90px_-50px_rgba(244,63,94,0.4)]">
+          <div className="relative h-[260px] overflow-hidden sm:h-[320px] lg:h-[420px]">
             {campaign.image_url ? (
-              <img src={campaign.image_url} alt={campaign.title} className="w-full h-full object-cover" />
+              <img src={campaign.image_url} alt={campaign.title} className="h-full w-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                <Images size={40} className="text-white/20" />
-              </div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,207,232,0.55),_transparent_42%),linear-gradient(135deg,_rgba(255,241,242,1),_rgba(255,247,237,1))]" />
             )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-slate-950/5 to-transparent" />
           </div>
 
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold leading-tight text-white tracking-tight">{campaign.title}</h1>
-            <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{campaign.description}</p>
-            {campaign.creator && (
-              <div className="flex items-center gap-2 pt-1">
-                <Avatar className="w-7 h-7 border border-white/20 ring-1 ring-rose-500/30">
-                  <AvatarImage src={campaign.creator.avatar_url || ''} />
-                  <AvatarFallback className="bg-slate-700 text-white/80 text-xs">
-                    {campaign.creator.first_name?.[0]}{campaign.creator.last_name?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm text-slate-400">
-                  par <span className="text-white/80 font-medium">{campaign.creator.first_name} {campaign.creator.last_name}</span>
-                </span>
-              </div>
-            )}
+          <div className="space-y-5 p-5 md:p-6 lg:p-7">
+            <div className="space-y-3 text-slate-900">
+              <h1 className="max-w-4xl text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+                {campaign.title}
+              </h1>
+              <p className="max-w-3xl text-sm leading-7 text-slate-600 whitespace-pre-wrap sm:text-[15px]">
+                {campaign.description || 'Cette cagnotte presente un besoin concret et mobilise la communaute autour d un objectif clair.'}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {campaign.creator ? (
+                <div className="inline-flex items-center gap-3 rounded-[22px] border border-rose-100/80 bg-white px-4 py-3 shadow-[0_18px_40px_-32px_rgba(244,63,94,0.25)]">
+                  <Avatar className="h-10 w-10 border border-rose-100">
+                    <AvatarImage src={campaign.creator.avatar_url || ''} />
+                    <AvatarFallback>
+                      {campaign.creator.first_name?.[0]}{campaign.creator.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Portee par</div>
+                    <div className="font-semibold text-slate-900">
+                      {campaign.creator.first_name} {campaign.creator.last_name}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {campaign.deadline ? (
+                <div className="rounded-[22px] border border-amber-100 bg-amber-50/80 px-4 py-3 shadow-[0_18px_40px_-32px_rgba(245,158,11,0.22)]">
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Echeance</div>
+                  <div className="mt-1 flex items-center gap-2 font-semibold text-slate-900">
+                    <Clock size={15} /> {format(new Date(campaign.deadline), 'dd MMM yyyy', { locale: fr })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="px-4 -mt-5 space-y-4">
         {canContribute && (
           <Card className="overflow-hidden border-none shadow-[0_24px_80px_-28px_rgba(244,63,94,0.65)]">
             <CardContent className="p-0">
@@ -489,6 +563,26 @@ const SolidarityCampaignPage: React.FC = () => {
               </button>
             </div>
 
+            <button
+              type="button"
+              onClick={handleToggleCampaignUpdates}
+              disabled={bellDisabled}
+              className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${isSubscribedToCampaignUpdates ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : bellDisabled ? 'border-slate-200 bg-slate-100 text-slate-500' : 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100'}`}
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  {isSubscribedToCampaignUpdates ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                  {bellTitle}
+                </div>
+                <p className="mt-1 text-xs opacity-80">
+                  {bellDescription}
+                </p>
+              </div>
+              <span className="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] bg-black/5">
+                {bellActionLabel}
+              </span>
+            </button>
+
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               {campaign.deadline && (
                 <span className="flex items-center gap-1">
@@ -506,75 +600,11 @@ const SolidarityCampaignPage: React.FC = () => {
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-sm flex items-center gap-1.5">
-                  <Images size={15} className="text-rose-500" />
-                  Galerie
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Photos et vidéos de présentation et de suivi.
-                </p>
-              </div>
-            </div>
-
-            {galleryMedia.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {galleryMedia.map((item) => (
-                  <div
-                    key={item.id}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted cursor-pointer group"
-                    onClick={() => setLightboxUrl(item.media_url)}
-                  >
-                    {item.media_type === 'video' ? (
-                      <video
-                        src={item.media_url}
-                        className="w-full h-full object-cover"
-                        muted
-                        preload="metadata"
-                      />
-                    ) : (
-                      <img
-                        src={item.media_url}
-                        alt={item.caption || `Média ${item.position + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    )}
-                    {isOwnCampaign && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteMedia({ mediaId: item.id, campaignId: campaign.id });
-                        }}
-                        className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Aucun média dans la galerie pour le moment.</p>
-            )}
-
-            {isOwnCampaign && (
-              <CampaignGalleryUploader campaignId={campaign.id} existingCount={galleryMedia.length} />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
                 <h2 className="font-semibold text-sm">Témoignages</h2>
                 <p className="text-xs text-muted-foreground">
                   Les soutiens et retours visibles sur cette cagnotte.
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <Share2 size={14} className="mr-2" /> Partager
-              </Button>
             </div>
 
             <div className="space-y-3">
@@ -629,28 +659,59 @@ const SolidarityCampaignPage: React.FC = () => {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div>
+              <h2 className="font-semibold text-sm">Contributeurs</h2>
+              <p className="text-xs text-muted-foreground">
+                Le nombre de contributeurs est public, mais la liste détaillée reste réservée aux contributeurs, au créateur et aux admins.
+              </p>
+            </div>
 
-        <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
-          <DialogContent className="max-w-3xl border-none bg-black/95 p-2 flex items-center justify-center">
-            <DialogTitle className="sr-only">Aperçu du média</DialogTitle>
-            {lightboxUrl && (
-              isVideoUrl(lightboxUrl) ? (
-                <video
-                  src={lightboxUrl}
-                  controls
-                  autoPlay
-                  className="max-h-[80vh] max-w-full rounded-lg"
-                />
+            {canViewContributors ? (
+              contributorSummaries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun contributeur affichable pour le moment.</p>
               ) : (
-                <img
-                  src={lightboxUrl}
-                  alt="Aperçu"
-                  className="max-h-[80vh] max-w-full rounded-lg object-contain"
-                />
+                <div className="space-y-3">
+                  {contributorSummaries.map((entry) => (
+                    <div key={entry.contributorId} className="rounded-xl border border-border/60 p-3 flex items-center gap-3">
+                      {entry.isFullyAnonymous ? (
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback>?</AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={entry.contributor?.avatar_url || ''} />
+                          <AvatarFallback>
+                            {entry.contributor?.first_name?.[0]}{entry.contributor?.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">
+                          {entry.isFullyAnonymous
+                            ? 'Contributeur anonyme'
+                            : `${entry.contributor?.first_name} ${entry.contributor?.last_name}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {entry.contributionCount} contribution(s) • Dernier soutien le {format(new Date(entry.latestAt), 'dd MMM yyyy', { locale: fr })}
+                        </p>
+                      </div>
+                      <div className="text-sm font-semibold flex items-center gap-1">
+                        <img src={coinSC} alt="SC" className="w-4 h-4" />
+                        {fmt(entry.amount)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )
+            ) : (
+              <div className="rounded-xl bg-muted/50 p-3 text-sm text-muted-foreground">
+                Contribuez à cette cagnotte pour voir la liste de tous les autres contributeurs.
+              </div>
             )}
-          </DialogContent>
-        </Dialog>
+          </CardContent>
+        </Card>
 
         <Dialog open={isContributionsModalOpen} onOpenChange={setIsContributionsModalOpen}>
           <DialogContent className="w-[calc(100vw-1rem)] max-w-3xl overflow-hidden border-none p-0 shadow-[0_32px_100px_-40px_rgba(15,23,42,0.65)] sm:w-full sm:max-h-[88vh]">
@@ -667,7 +728,7 @@ const SolidarityCampaignPage: React.FC = () => {
                     <DialogDescription className="mt-1 max-w-2xl text-sm text-white/75">
                       {canViewContributors
                         ? `Consultez les soutiens recus pour ${campaign.title}.`
-                        : 'Contribuez a cette cagnotte pour debloquer la liste detaillee des contributeurs et l historique des contributions.'}
+                        : 'Contribuez à cette cagnotte pour voir la liste de tous les autres contributeurs et l historique des contributions.'}
                     </DialogDescription>
                   </div>
                 </div>
@@ -807,7 +868,7 @@ const SolidarityCampaignPage: React.FC = () => {
                   )
                 ) : (
                   <div className="rounded-3xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
-                    Contribuez a cette cagnotte pour debloquer la liste detaillee des contributeurs et l historique complet des soutiens.
+                    Contribuez à cette cagnotte pour voir la liste de tous les autres contributeurs et l historique complet des soutiens.
                   </div>
                 )}
               </div>

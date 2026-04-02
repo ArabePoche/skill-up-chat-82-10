@@ -247,6 +247,24 @@ export const saveImageToGallery = async (
   }
 
   try {
+    const platform = Capacitor.getPlatform();
+    
+    // Sauvegarde également dans File Manager (Download/EducaTok/Images)
+    if (platform === 'android') {
+      try {
+        const base64 = await blobToBase64(blob);
+        await Filesystem.writeFile({
+          path: `Download/EducaTok/Images/${fileName}`,
+          data: base64,
+          directory: Directory.ExternalStorage,
+          recursive: true,
+        });
+        console.log('✅ Image copiée dans Download/EducaTok/Images');
+      } catch (fsError) {
+        console.warn('⚠️ Erreur copie dans Download/EducaTok/Images', fsError);
+      }
+    }
+
     const albumId = await ensureAlbumExists();
 
     if (!albumId) {
@@ -311,6 +329,22 @@ export const saveVideoToGallery = async (
   try {
     const platform = Capacitor.getPlatform();
     const albumId = await ensureAlbumExists();
+
+    // Copie de sauvegarde dans File Manager (Download/EducaTok/Videos)
+    if (platform === 'android') {
+      try {
+        const base64 = await blobToBase64(blob);
+        await Filesystem.writeFile({
+          path: `Download/EducaTok/Videos/${fileName}`,
+          data: base64,
+          directory: Directory.ExternalStorage,
+          recursive: true,
+        });
+        console.log('✅ Vidéo copiée dans Download/EducaTok/Videos');
+      } catch (fsError) {
+        console.warn('⚠️ Erreur copie dans Download/EducaTok/Videos', fsError);
+      }
+    }
 
     if (!albumId) {
       return {

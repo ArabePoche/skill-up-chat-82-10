@@ -22,7 +22,7 @@ const ScPriceDisplay: React.FC<ScPriceDisplayProps> = ({
   isOutOfStock = false,
 }) => {
   const { data: rate } = useScToFcfaRate();
-  const effectiveRate = (rate && rate > 0) ? rate : 10;
+  const effectiveRate = (rate && rate > 0) ? rate : 1;
 
   // Valeur SC avec décimales réelles (ex : 0,5 S. au lieu de 1 S.)
   const scRaw = fcfaToSc(priceFcfa, effectiveRate);

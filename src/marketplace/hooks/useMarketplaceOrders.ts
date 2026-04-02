@@ -58,9 +58,13 @@ export const useScToFcfaRate = () => {
       const { data, error } = await supabase
         .from('currency_conversion_settings')
         .select('sc_to_fcfa_rate')
-        .single();
-      if (error) throw error;
-      return data?.sc_to_fcfa_rate || 10;
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erreur récupération taux SC:', error);
+        return 1;
+      }
+      return data?.sc_to_fcfa_rate || 1;
     },
   });
 };

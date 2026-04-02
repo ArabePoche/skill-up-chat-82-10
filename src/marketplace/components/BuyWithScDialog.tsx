@@ -40,7 +40,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
 
   if (!product) return null;
 
-  const rate = scRate || 10;
+  const rate = scRate || 1;
   const commissionRate = commissionSettings?.commission_rate || 5;
   const unitPriceSc = fcfaToSc(product.price, rate);
   const totalSc = unitPriceSc * quantity;

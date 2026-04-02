@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { WifiOff, RefreshCw, AlertTriangle, Check } from 'lucide-react';
+import { WifiOff, RefreshCw, AlertTriangle, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -13,9 +13,10 @@ export const OfflineAuthBanner = () => {
   const { isOfflineMode, supabaseError, retryConnection, user } = useAuth();
   const [isRetrying, setIsRetrying] = useState(false);
   const [retrySuccess, setRetrySuccess] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
 
   // Ne pas afficher si pas en mode offline ou pas d'utilisateur
-  if (!isOfflineMode || !user) {
+  if (!isOfflineMode || !user || isHidden) {
     return null;
   }
 
@@ -54,23 +55,35 @@ export const OfflineAuthBanner = () => {
               Mode hors ligne
             </span>
             <span className="text-xs opacity-80">
-              {supabaseError || 'Données en cache utilisées'}
+              {supabaseError || 'Pas d internet'}
             </span>
           </div>
         </div>
         
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleRetry}
-          disabled={isRetrying}
-          className="bg-white/20 hover:bg-white/30 text-white border-0 gap-2"
-        >
-          <RefreshCw className={cn("w-4 h-4", isRetrying && "animate-spin")} />
-          <span className="hidden sm:inline">
-            {isRetrying ? 'Connexion...' : 'Réessayer'}
-          </span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleRetry}
+            disabled={isRetrying}
+            className="bg-white/20 hover:bg-white/30 text-white border-0 gap-2 h-8"
+          >
+            <RefreshCw className={cn("w-4 h-4", isRetrying && "animate-spin")} />
+            <span className="hidden sm:inline">
+              {isRetrying ? 'Connexion...' : 'Réessayer'}
+            </span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsHidden(true)}
+            className="h-8 w-8 hover:bg-white/20 text-white rounded-full flex-shrink-0"
+            aria-label="Fermer la bannière"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
