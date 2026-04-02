@@ -207,7 +207,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                               {product?.title || 'Chargement...'}
                             </h4>
                             <p className="text-orange-600 font-bold text-sm mb-2">
-                              {Math.round((product?.price || 0) * item.quantity)}€
+                              {Math.round((product?.price || 0) * item.quantity)} FCFA
                             </p>
                             
                             <div className="flex items-center justify-between">
