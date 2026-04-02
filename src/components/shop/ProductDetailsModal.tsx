@@ -292,14 +292,30 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                       )}
                     </Button>
                   ) : (
-                    <Button
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-12 text-base"
-                      disabled={!user}
-                      onClick={() => onAddToCart?.(product.id)}
-                    >
-                      <ShoppingCart size={20} className="mr-2" />
-                      {!user ? 'Connectez-vous pour acheter' : 'Ajouter au panier'}
-                    </Button>
+                    <>
+                      <Button
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base"
+                        disabled={!user}
+                        onClick={() => {
+                          if (!user) {
+                            toast.error('Connectez-vous pour acheter');
+                            return;
+                          }
+                          setShowBuyScDialog(true);
+                        }}
+                      >
+                        <ShieldCheck size={20} className="mr-2" />
+                        {!user ? 'Connectez-vous' : 'Acheter en SC'}
+                      </Button>
+                      <Button
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-12 text-base"
+                        disabled={!user}
+                        onClick={() => onAddToCart?.(product.id)}
+                      >
+                        <ShoppingCart size={20} className="mr-2" />
+                        Panier
+                      </Button>
+                    </>
                   )}
                   <Button
                     variant="outline"
@@ -311,6 +327,13 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Buy with SC dialog */}
+            <BuyWithScDialog
+              product={product ? { ...product, seller_id: product.seller_id || product.profiles?.id } : null}
+              isOpen={showBuyScDialog}
+              onClose={() => setShowBuyScDialog(false)}
+            />
 
             {/* Produits similaires */}
             {similarProducts.length > 0 && (
