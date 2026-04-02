@@ -1,9 +1,10 @@
 
 import React from 'react';
-import { Search, Filter, ShoppingCart, Menu } from 'lucide-react';
+import { Search, ShoppingCart, Menu, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 interface ShopHeaderProps {
   activeTab: string;
@@ -25,6 +26,7 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
   className
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
     <div className={`bg-gradient-to-r from-blue-900 to-blue-700 text-white sticky z-40 shadow-lg ${className || 'top-0'}`}>
@@ -39,22 +41,37 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
             <h1 className="text-[1.125rem] sm:text-[1.25rem] font-bold">EducaShop</h1>
           </div>
 
-          {/* Panier */}
-          <div className="relative">
+          {/* Actions */}
+          <div className="flex items-center gap-1">
+            {/* Mes commandes */}
             <Button
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/20 w-[2rem] h-[2rem] sm:w-[2.5rem] sm:h-[2.5rem]"
-              onClick={onCartClick}
+              onClick={() => navigate('/my-orders')}
+              title={t('shop.myOrders', 'Mes commandes')}
             >
-              <ShoppingCart className="w-[1rem] h-[1rem] sm:hidden" />
-              <ShoppingCart className="w-[1.25rem] h-[1.25rem] hidden sm:block" />
-              {cartItemsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white rounded-full min-w-[1rem] min-h-[1rem] w-auto h-auto sm:min-w-[1.25rem] sm:min-h-[1.25rem] flex items-center justify-center font-bold text-[0.625rem] sm:text-[0.75rem] p-[0.125rem]">
-                  {cartItemsCount > 9 ? '9+' : cartItemsCount}
-                </span>
-              )}
+              <Package className="w-[1rem] h-[1rem] sm:hidden" />
+              <Package className="w-[1.25rem] h-[1.25rem] hidden sm:block" />
             </Button>
+
+            {/* Panier */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 w-[2rem] h-[2rem] sm:w-[2.5rem] sm:h-[2.5rem]"
+                onClick={onCartClick}
+              >
+                <ShoppingCart className="w-[1rem] h-[1rem] sm:hidden" />
+                <ShoppingCart className="w-[1.25rem] h-[1.25rem] hidden sm:block" />
+                {cartItemsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white rounded-full min-w-[1rem] min-h-[1rem] w-auto h-auto sm:min-w-[1.25rem] sm:min-h-[1.25rem] flex items-center justify-center font-bold text-[0.625rem] sm:text-[0.75rem] p-[0.125rem]">
+                    {cartItemsCount > 9 ? '9+' : cartItemsCount}
+                  </span>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -363,7 +363,8 @@
     "beFirstToDiscover": "كن من بين الأوائل لاكتشاف هذه الدورة عند إطلاقها!",
     "soon": "قريباً",
     "freePreRegistration": "تسجيل مسبق مجاني",
-    "noProductsFound": "لم يتم العثور على منتجات"
+    "noProductsFound": "لم يتم العثور على منتجات",
+    "myOrders": "طلباتي"
   },
   "completeProfile": {
     "title": "أكمل ملفك الشخصي",
