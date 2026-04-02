@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
-import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate } from '../hooks/useMarketplaceOrders';
+import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate, fcfaToSc } from '../hooks/useMarketplaceOrders';
 import { useUserWallet } from '@/hooks/useUserWallet';
 
 interface BuyWithScDialogProps {
@@ -42,7 +42,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
 
   const rate = scRate || 10;
   const commissionRate = commissionSettings?.commission_rate || 5;
-  const unitPriceSc = product.price / rate;
+  const unitPriceSc = fcfaToSc(product.price, rate);
   const totalSc = unitPriceSc * quantity;
   const commissionSc = totalSc * commissionRate / 100;
   const sellerSc = totalSc - commissionSc;
