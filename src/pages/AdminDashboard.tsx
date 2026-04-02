@@ -21,6 +21,7 @@ import PushNotificationSender from '@/components/admin/PushNotificationSender';
 import RecruitmentAdsManagement from '@/components/admin/RecruitmentAdsManagement';
 import CurrencySettingsManagement from '@/components/admin/CurrencySettingsManagement';
 import AdminSolidarityManagement from '@/solidarity/components/AdminSolidarityManagement';
+import AdminMarketplaceManagement from '@/marketplace/components/AdminMarketplaceManagement';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
