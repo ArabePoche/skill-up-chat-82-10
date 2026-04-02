@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { NotificationTriggers } from '@/utils/notificationHelpers';
 
 export interface MarketplaceOrder {
   id: string;
@@ -115,16 +116,6 @@ export const useCreateMarketplaceOrder = () => {
       if (debitErr) throw debitErr;
 
       // 3. Enregistrer la transaction de débit
-      await supabase.from('wallet_transactions').insert({
-        user_id: user.id,
-        currency: 'soumboulah_cash',
-        amount: -totalSc,
-        transaction_type: 'marketplace_escrow',
-        description: `Achat marketplace (escrow) - ${input.quantity} article(s)`,
-        reference_type: 'marketplace_order',
-      });
-
-      // 4. Créer la commande
       const autoReleaseAt = new Date();
       autoReleaseAt.setDate(autoReleaseAt.getDate() + autoReleaseDays);
 
@@ -150,6 +141,34 @@ export const useCreateMarketplaceOrder = () => {
         .single();
 
       if (orderErr) throw orderErr;
+
+      await supabase.from('wallet_transactions').insert({
+        user_id: user.id,
+        currency: 'soumboulah_cash',
+        amount: -totalSc,
+        transaction_type: 'marketplace_escrow',
+        description: `Achat marketplace (escrow) - ${input.quantity} article(s)`,
+        reference_id: order.id,
+        reference_type: 'marketplace_order',
+      });
+
+      // Notifier le vendeur
+      try {
+        const { data: product } = await supabase
+          .from('products')
+          .select('title')
+          .eq('id', input.productId)
+          .single();
+        await NotificationTriggers.onNewMarketplaceOrder(
+          input.sellerId,
+          product?.title || 'Produit',
+          totalSc,
+          order.id,
+        );
+      } catch (_notifErr) {
+        // Ne pas bloquer l'achat si la notification échoue
+      }
+
       return order;
     },
     onSuccess: () => {
@@ -225,6 +244,20 @@ export const useConfirmReception = () => {
         .eq('id', orderId);
 
       if (updateErr) throw updateErr;
+
+      // Notifier le vendeur que le paiement a été libéré
+      try {
+        const productTitle = order.product?.title || 'Produit';
+        await NotificationTriggers.onOrderPaymentReleased(
+          order.seller_id,
+          productTitle,
+          order.seller_amount,
+          orderId,
+        );
+      } catch (_notifErr) {
+        // Ne pas bloquer la confirmation si la notification échoue
+      }
+
       return { success: true };
     },
     onSuccess: () => {
@@ -270,6 +303,59 @@ export const useOpenDispute = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['marketplace-orders'] });
       toast.success('Litige ouvert. Un administrateur va examiner votre demande.');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+};
+
+/** Marquer une commande comme expédiée (vendeur) */
+export const useMarkOrderShipped = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { orderId: string; trackingNumber: string }) => {
+      if (!user?.id) throw new Error('Non connecté');
+
+      const { data: order, error: fetchErr } = await (supabase as any)
+        .from('marketplace_orders')
+        .select('*, product:products (title)')
+        .eq('id', input.orderId)
+        .eq('seller_id', user.id)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+      if (!order) throw new Error('Commande introuvable');
+      if (!['paid', 'shipped'].includes(order.status)) {
+        throw new Error('Cette commande ne peut pas être mise à jour');
+      }
+
+      const { error: updateErr } = await (supabase as any)
+        .from('marketplace_orders')
+        .update({ status: 'shipped', tracking_number: input.trackingNumber.trim() })
+        .eq('id', input.orderId);
+
+      if (updateErr) throw updateErr;
+
+      // Notifier l'acheteur
+      try {
+        await NotificationTriggers.onOrderShipped(
+          order.buyer_id,
+          order.product?.title || 'Produit',
+          input.trackingNumber.trim(),
+          input.orderId,
+        );
+      } catch (_notifErr) {
+        // Ne pas bloquer la mise à jour si la notification échoue
+      }
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketplace-orders'] });
+      toast.success('Commande marquée comme expédiée. L\'acheteur a été notifié.');
     },
     onError: (err: Error) => {
       toast.error(err.message);

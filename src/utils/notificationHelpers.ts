@@ -13,7 +13,9 @@ export type NotificationType =
   | 'solidarity_campaign'
   | 'solidarity_contribution'
   | 'solidarity_like'
-  | 'solidarity_testimonial';
+  | 'solidarity_testimonial'
+  | 'marketplace_order'
+  | 'marketplace_sale';
 
 export interface SendNotificationParams {
   userIds?: string[];
@@ -174,7 +176,46 @@ export const NotificationTriggers = {
         data: { postId, likerUserId }
       });
     }
-  }
+  },
+
+  // Quand une nouvelle commande est passée (notifier le vendeur)
+  onNewMarketplaceOrder: async (sellerId: string, productTitle: string, scAmount: number, orderId: string) => {
+    await sendPushNotification({
+      userIds: [sellerId],
+      title: "🛒 Nouvelle commande !",
+      message: `Quelqu'un a acheté "${productTitle}" pour ${scAmount} SC. Le paiement est sécurisé.`,
+      type: "marketplace_order",
+      clickAction: "/my-orders",
+      playLocalSound: false,
+      data: { orderId, productTitle },
+    });
+  },
+
+  // Quand le paiement est libéré au vendeur (confirmation ou libération automatique)
+  onOrderPaymentReleased: async (sellerId: string, productTitle: string, sellerAmount: number, orderId: string) => {
+    await sendPushNotification({
+      userIds: [sellerId],
+      title: "💰 Paiement reçu !",
+      message: `${sellerAmount} SC ont été crédités sur votre portefeuille pour "${productTitle}".`,
+      type: "marketplace_sale",
+      clickAction: "/my-orders",
+      playLocalSound: false,
+      data: { orderId, productTitle },
+    });
+  },
+
+  // Quand le vendeur marque la commande comme expédiée (notifier l'acheteur)
+  onOrderShipped: async (buyerId: string, productTitle: string, trackingNumber: string, orderId: string) => {
+    await sendPushNotification({
+      userIds: [buyerId],
+      title: "📦 Commande expédiée !",
+      message: `"${productTitle}" est en route. Numéro de suivi : ${trackingNumber}`,
+      type: "marketplace_order",
+      clickAction: "/my-orders",
+      playLocalSound: false,
+      data: { orderId, productTitle, trackingNumber },
+    });
+  },
 };
 
 // Fonction pour tester les notifications
