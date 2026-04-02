@@ -388,7 +388,7 @@ export const useResolveDispute = () => {
           .from('user_wallets')
           .select('soumboulah_cash')
           .eq('user_id', order.buyer_id)
-          .single();
+          .maybeSingle();
 
         if (walletFetchErr) throw walletFetchErr;
 
@@ -436,7 +436,7 @@ export const useResolveDispute = () => {
           .from('user_wallets')
           .select('soumboulah_cash')
           .eq('user_id', order.seller_id)
-          .single();
+          .maybeSingle();
 
         if (walletFetchErr) throw walletFetchErr;
 
