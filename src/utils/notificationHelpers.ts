@@ -15,7 +15,8 @@ export type NotificationType =
   | 'solidarity_like'
   | 'solidarity_testimonial'
   | 'marketplace_order'
-  | 'marketplace_sale';
+  | 'marketplace_sale'
+  | 'marketplace_refund';
 
 export interface SendNotificationParams {
   userIds?: string[];
@@ -197,6 +198,38 @@ export const NotificationTriggers = {
       userIds: [sellerId],
       title: "💰 Paiement reçu !",
       message: `${sellerAmount} SC ont été crédités sur votre portefeuille pour "${productTitle}".`,
+      type: "marketplace_sale",
+      clickAction: "/my-orders",
+      playLocalSound: false,
+      data: { orderId, productTitle },
+    });
+  },
+
+  // Quand un litige est résolu en faveur de l'acheteur (remboursement)
+  onDisputeRefunded: async (buyerId: string, productTitle: string, scAmount: number, orderId: string, adminNotes?: string) => {
+    const message = adminNotes
+      ? `Litige résolu : "${productTitle}" — ${scAmount} SC remboursés. Note admin : ${adminNotes}`
+      : `Litige résolu : "${productTitle}" — ${scAmount} SC ont été remboursés sur votre portefeuille.`;
+    await sendPushNotification({
+      userIds: [buyerId],
+      title: "✅ Remboursement effectué !",
+      message,
+      type: "marketplace_refund",
+      clickAction: "/my-orders",
+      playLocalSound: false,
+      data: { orderId, productTitle },
+    });
+  },
+
+  // Quand un litige est résolu en faveur du vendeur (libération du paiement)
+  onDisputeReleased: async (sellerId: string, productTitle: string, sellerAmount: number, orderId: string, adminNotes?: string) => {
+    const message = adminNotes
+      ? `Litige résolu : "${productTitle}" — ${sellerAmount} SC libérés. Note admin : ${adminNotes}`
+      : `Litige résolu : "${productTitle}" — ${sellerAmount} SC ont été crédités sur votre portefeuille.`;
+    await sendPushNotification({
+      userIds: [sellerId],
+      title: "💰 Paiement libéré après litige !",
+      message,
       type: "marketplace_sale",
       clickAction: "/my-orders",
       playLocalSound: false,
