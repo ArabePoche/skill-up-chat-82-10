@@ -68,7 +68,7 @@ export const useScToFcfaRate = () => {
 /** Convertir un prix FCFA en SC */
 export const fcfaToSc = (priceFcfa: number, rate: number): number => {
   if (!rate || rate <= 0) return 0;
-  return Math.ceil(priceFcfa / rate);
+  return priceFcfa / rate;
 };
 
 /** Créer une commande escrow (payer en SC) */
@@ -89,68 +89,23 @@ export const useCreateMarketplaceOrder = () => {
     }) => {
       if (!user?.id) throw new Error('Non connecté');
 
-      const totalAmount = input.unitPrice * input.quantity;
-      const totalSc = input.scAmount * input.quantity;
-      const commissionAmount = Math.round(totalSc * input.commissionRate / 100);
-      const sellerAmount = totalSc - commissionAmount;
-      const autoReleaseDays = 7;
-
-      // 1. Vérifier le solde SC
-      const { data: wallet, error: walletErr } = await supabase
-        .from('user_wallets')
-        .select('soumboulah_cash')
-        .eq('user_id', user.id)
-        .single();
-
-      if (walletErr) throw walletErr;
-      if (!wallet || wallet.soumboulah_cash < totalSc) {
-        throw new Error(`Solde SC insuffisant. Vous avez ${wallet?.soumboulah_cash || 0} SC, il faut ${totalSc} SC.`);
-      }
-
-      // 2. Débiter le portefeuille de l'acheteur
-      const { error: debitErr } = await supabase
-        .from('user_wallets')
-        .update({ soumboulah_cash: wallet.soumboulah_cash - totalSc })
-        .eq('user_id', user.id);
-
-      if (debitErr) throw debitErr;
-
-      // 3. Enregistrer la transaction de débit
-      const autoReleaseAt = new Date();
-      autoReleaseAt.setDate(autoReleaseAt.getDate() + autoReleaseDays);
-
-      const { data: order, error: orderErr } = await (supabase as any)
-        .from('marketplace_orders')
-        .insert({
-          buyer_id: user.id,
-          seller_id: input.sellerId,
-          product_id: input.productId,
-          quantity: input.quantity,
-          unit_price: input.unitPrice,
-          total_amount: totalAmount,
-          sc_amount: totalSc,
-          commission_rate: input.commissionRate,
-          commission_amount: commissionAmount,
-          seller_amount: sellerAmount,
-          status: 'paid',
-          shipping_address: input.shippingAddress || null,
-          notes: input.notes || null,
-          auto_release_at: autoReleaseAt.toISOString(),
-        })
-        .select()
-        .single();
-
-      if (orderErr) throw orderErr;
-
-      await supabase.from('wallet_transactions').insert({
-        user_id: user.id,
-        currency: 'soumboulah_cash',
-        amount: -totalSc,
-        transaction_type: 'marketplace_escrow',
-        description: `Achat marketplace (escrow) - ${input.quantity} article(s)`,
-        reference_id: order.id,
-        reference_type: 'marketplace_order',
+      // Appeler la fonction sécurisée (SECURITY DEFINER) pour débiter le portefeuille
+      // de l'acheteur et créer la commande (contourne les restrictions RLS sur user_wallets)
+      const { data, error } = await supabase.rpc('create_marketplace_order' as any, {
+        p_product_id: input.productId,
+        p_seller_id: input.sellerId,
+        p_quantity: input.quantity,
+        p_unit_price: input.unitPrice,
+        p_sc_amount: input.scAmount,
+        p_commission_rate: input.commissionRate,
+        p_shipping_address: input.shippingAddress || null,
+        p_notes: input.notes || null,
       });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Erreur lors de la commande');
+
+      const order = data.order;
 
       // Notifier le vendeur
       try {
@@ -162,7 +117,7 @@ export const useCreateMarketplaceOrder = () => {
         await NotificationTriggers.onNewMarketplaceOrder(
           input.sellerId,
           product?.title || 'Produit',
-          totalSc,
+          input.scAmount * input.quantity,
           order.id,
         );
       } catch (_notifErr) {
