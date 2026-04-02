@@ -192,68 +192,31 @@ export const useConfirmReception = () => {
     mutationFn: async (orderId: string) => {
       if (!user?.id) throw new Error('Non connecté');
 
-      // Récupérer la commande
-      const { data: order, error: fetchErr } = await (supabase as any)
-        .from('marketplace_orders')
-        .select('*')
-        .eq('id', orderId)
-        .eq('buyer_id', user.id)
-        .single();
-
-      if (fetchErr) throw fetchErr;
-      if (!order) throw new Error('Commande introuvable');
-      if (!['paid', 'shipped', 'delivered'].includes(order.status)) {
-        throw new Error('Cette commande ne peut pas être confirmée');
-      }
-
-      // Créditer le vendeur
-      const { data: sellerWallet, error: swErr } = await supabase
-        .from('user_wallets')
-        .select('soumboulah_cash')
-        .eq('user_id', order.seller_id)
-        .single();
-
-      if (swErr) throw swErr;
-
-      const { error: creditErr } = await supabase
-        .from('user_wallets')
-        .update({ soumboulah_cash: (sellerWallet?.soumboulah_cash || 0) + order.seller_amount })
-        .eq('user_id', order.seller_id);
-
-      if (creditErr) throw creditErr;
-
-      // Transaction vendeur
-      await supabase.from('wallet_transactions').insert({
-        user_id: order.seller_id,
-        currency: 'soumboulah_cash',
-        amount: order.seller_amount,
-        transaction_type: 'marketplace_sale',
-        description: `Vente marketplace confirmée (commission ${order.commission_rate}%)`,
-        reference_id: orderId,
-        reference_type: 'marketplace_order',
+      // Appeler la fonction sécurisée (SECURITY DEFINER) pour créditer
+      // le vendeur en contournant les restrictions RLS sur user_wallets
+      const { data, error } = await supabase.rpc('confirm_marketplace_reception', {
+        p_order_id: orderId,
       });
 
-      // Mettre à jour le statut
-      const { error: updateErr } = await (supabase as any)
-        .from('marketplace_orders')
-        .update({
-          status: 'completed',
-          buyer_confirmed_at: new Date().toISOString(),
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', orderId);
-
-      if (updateErr) throw updateErr;
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.message || 'Erreur lors de la confirmation');
 
       // Notifier le vendeur que le paiement a été libéré
       try {
-        const productTitle = order.product?.title || 'Produit';
-        await NotificationTriggers.onOrderPaymentReleased(
-          order.seller_id,
-          productTitle,
-          order.seller_amount,
-          orderId,
-        );
+        const { data: order } = await (supabase as any)
+          .from('marketplace_orders')
+          .select('seller_id, seller_amount, product:products(title)')
+          .eq('id', orderId)
+          .single();
+        if (order) {
+          const productTitle = order.product?.title || 'Produit';
+          await NotificationTriggers.onOrderPaymentReleased(
+            order.seller_id,
+            productTitle,
+            order.seller_amount,
+            orderId,
+          );
+        }
       } catch (_notifErr) {
         // Ne pas bloquer la confirmation si la notification échoue
       }
