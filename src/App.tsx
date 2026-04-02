@@ -43,6 +43,7 @@ import CvSearchPage from '@/cv-search/CvSearchPage';
 import WalletScreen from '@/wallet/WalletScreen';
 import SolidarityScreen from '@/solidarity/SolidarityScreen';
 import SolidarityCampaignPage from '@/solidarity/SolidarityCampaignPage';
+import MyOrdersScreen from '@/marketplace/components/MyOrdersScreen';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
