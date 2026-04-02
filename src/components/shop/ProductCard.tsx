@@ -1,12 +1,13 @@
 
 import React, { useState, useCallback } from 'react';
-import { ShoppingCart, Star, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Star, Heart, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import useEmblaCarousel from 'embla-carousel-react';
 import { useProductRestock } from '@/hooks/shop/useProductRestock';
 import { toast } from 'sonner';
+import ScPriceDisplay from '@/marketplace/components/ScPriceDisplay';
 
 interface Product {
   id: string;
