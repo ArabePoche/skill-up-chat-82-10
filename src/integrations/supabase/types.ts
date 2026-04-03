@@ -2513,10 +2513,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "marketplace_orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "marketplace_orders_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_orders_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3118,6 +3132,7 @@ export type Database = {
           payment_method: string | null
           product_id: string
           quantity: number
+          receipt_id: string | null
           shop_id: string
           sold_at: string
           status: string | null
@@ -3135,6 +3150,7 @@ export type Database = {
           payment_method?: string | null
           product_id: string
           quantity?: number
+          receipt_id?: string | null
           shop_id: string
           sold_at?: string
           status?: string | null
@@ -3152,6 +3168,7 @@ export type Database = {
           payment_method?: string | null
           product_id?: string
           quantity?: number
+          receipt_id?: string | null
           shop_id?: string
           sold_at?: string
           status?: string | null
@@ -6913,6 +6930,48 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_activity_logs: {
+        Row: {
+          action_type: string
+          agent_id: string | null
+          created_at: string | null
+          details: string | null
+          id: string
+          shop_id: string
+        }
+        Insert: {
+          action_type: string
+          agent_id?: string | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          shop_id: string
+        }
+        Update: {
+          action_type?: string
+          agent_id?: string | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_activity_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "shop_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_activity_logs_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "physical_shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_agents: {
         Row: {
           avatar_url: string | null
@@ -7200,6 +7259,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           created_by: string
+          delivered_by: string | null
           from_shop_id: string
           id: string
           notes: string | null
@@ -7213,6 +7273,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by: string
+          delivered_by?: string | null
           from_shop_id: string
           id?: string
           notes?: string | null
@@ -7226,6 +7287,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           created_by?: string
+          delivered_by?: string | null
           from_shop_id?: string
           id?: string
           notes?: string | null
@@ -9988,6 +10050,10 @@ export type Database = {
         Args: { transfer_id: string }
         Returns: boolean
       }
+      confirm_marketplace_reception: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       contribute_to_solidarity_campaign: {
         Args: {
           p_amount: number
@@ -10000,6 +10066,19 @@ export type Database = {
       }
       convert_habbah_to_bonus: {
         Args: { p_habbah_amount: number; p_user_id: string }
+        Returns: Json
+      }
+      create_marketplace_order: {
+        Args: {
+          p_commission_rate: number
+          p_notes?: string
+          p_product_id: string
+          p_quantity: number
+          p_sc_amount: number
+          p_seller_id: string
+          p_shipping_address?: string
+          p_unit_price: number
+        }
         Returns: Json
       }
       decrement_post_comments: { Args: { post_id: string }; Returns: undefined }
@@ -10288,6 +10367,15 @@ export type Database = {
           p_reviewer_id: string
         }
         Returns: undefined
+      }
+      resolve_marketplace_dispute: {
+        Args: {
+          p_admin_notes?: string
+          p_dispute_id: string
+          p_order_id: string
+          p_resolution: string
+        }
+        Returns: Json
       }
       return_from_marketplace: {
         Args: { boutique_product_id: string; quantity: number }
