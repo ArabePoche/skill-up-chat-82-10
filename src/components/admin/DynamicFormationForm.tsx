@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, Plus, Upload } from 'lucide-react';
 import LessonVideoSelector from './LessonVideoSelector';
-import ExerciseFileUploader from './ExerciseFileUploader';
+import ExerciseFileManager from './ExerciseFileManager';
 import FormationPricingManager from './FormationPricingManager';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { toast } from 'sonner';
@@ -619,13 +619,13 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
                           />
                         </div>
 
-                        {/* File Upload with ExerciseFileUploader */}
+{/* File Upload with ExerciseFileManager */}
                         <div>
                           <Label>Fichiers joints</Label>
-                          <ExerciseFileUploader
-                            onFilesUploaded={(files) => handleExerciseFilesUpdate(levelIndex, lessonIndex, exerciseIndex, files)}
-                            existingFiles={exercise.uploadedFiles || []}
+                          <ExerciseFileManager
+                            onFilesChange={(files) => handleExerciseFilesUpdate(levelIndex, lessonIndex, exerciseIndex, files)}
                             disabled={isLoading}
+                            exerciseId={exercise.id}
                           />
                         </div>
                       </CardContent>
