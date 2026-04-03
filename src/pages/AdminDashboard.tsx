@@ -22,6 +22,7 @@ import RecruitmentAdsManagement from '@/components/admin/RecruitmentAdsManagemen
 import CurrencySettingsManagement from '@/components/admin/CurrencySettingsManagement';
 import AdminSolidarityManagement from '@/solidarity/components/AdminSolidarityManagement';
 import AdminMarketplaceManagement from '@/marketplace/components/AdminMarketplaceManagement';
+import CurrencyDashboard from '@/components/admin/CurrencyDashboard';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
