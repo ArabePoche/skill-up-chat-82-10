@@ -56,7 +56,7 @@ export const useShopActivityLogs = (shopId?: string) => {
     queryFn: async () => {
       if (!shopId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('shop_activity_logs')
         .select(`
           *,
