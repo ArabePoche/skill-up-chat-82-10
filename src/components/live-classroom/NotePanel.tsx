@@ -10,7 +10,9 @@ interface NotePanelProps {
 }
 
 const NotePanel: React.FC<NotePanelProps> = ({ className = '' }) => {
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => {
+    return localStorage.getItem('live_classroom_notes') || '';
+  });
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
@@ -30,11 +32,10 @@ const NotePanel: React.FC<NotePanelProps> = ({ className = '' }) => {
 
     setIsAutoSaving(true);
     try {
-      // Simuler la sauvegarde
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setLastSaved(new Date());
+      // Sauvegarde dans le localStorage
+      localStorage.setItem('live_classroom_notes', notes);
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde automatique:', error);
+      console.error('Erreur auto-save:', error);
     } finally {
       setIsAutoSaving(false);
     }

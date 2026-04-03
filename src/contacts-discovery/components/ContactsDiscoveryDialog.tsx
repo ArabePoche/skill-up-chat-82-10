@@ -1,6 +1,6 @@
-/**
- * Dialog pour découvrir des contacts inscrits sur la plateforme
- * parmi les contacts téléphoniques locaux de l'utilisateur.
+﻿/**
+ * Dialog pour dÃ©couvrir des contacts inscrits sur la plateforme
+ * parmi les contacts tÃ©lÃ©phoniques locaux de l'utilisateur.
  * Ne montre JAMAIS tous les utilisateurs de la plateforme.
  */
 import { useState, useEffect } from 'react';
@@ -40,7 +40,7 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
 
   const isNative = Capacitor.isNativePlatform();
 
-  // Sur natif, synchroniser automatiquement à l'ouverture
+  // Sur natif, synchroniser automatiquement Ã  l'ouverture
   useEffect(() => {
     if (!open || !user?.id) return;
     if (isNative && !hasSynced) {
@@ -67,7 +67,7 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
     // Logique d'invitation (SMS)
     if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       const phoneNumber = contact.phoneNumbers[0];
-      const message = `Salut ${contact.name.split(' ')[0]} ! Rejoins-moi sur SkillUp pour partager des connaissances. Télécharge l'appli ici : https://educatok.netlify.app`;
+      const message = `Salut ${contact.name.split(' ')[0]} ! Rejoins-moi sur SkillUp pour partager des connaissances. TÃ©lÃ©charge l'appli ici : https://educatok.netlify.app`;
       
       // Essayer d'utiliser l'API Web Share si disponible
       if (navigator.share) {
@@ -76,9 +76,9 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
           text: message,
           url: 'https://educatok.netlify.app'
         }).catch(() => {
-          // Fallback vers SMS si share échoue ou annulé
+          // Fallback vers SMS si share Ã©choue ou annulÃ©
            const smsUrl = `sms:${phoneNumber}?body=${encodeURIComponent(message)}`;
-           // Sur iOS, le séparateur body est '&', sur Android '?'
+           // Sur iOS, le sÃ©parateur body est '&', sur Android '?'
            // Une solution universelle est plus complexe, mais sms: est standard
            window.open(smsUrl, '_blank');
         });
@@ -88,7 +88,7 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
     } else {
       toast({
         title: "Impossible d'inviter",
-        description: "Ce contact n'a pas de numéro de téléphone valide",
+        description: "Ce contact n'a pas de numÃ©ro de tÃ©lÃ©phone valide",
         variant: "destructive"
       });
     }
@@ -98,12 +98,12 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
     navigate(`/conversations/${userId}`);
     onOpenChange(false);
     toast({
-      title: "Conversation démarrée",
+      title: "Conversation dÃ©marrÃ©e",
       description: "Vous pouvez maintenant discuter avec ce contact",
     });
   };
 
-  // Reset à la fermeture
+  // Reset Ã  la fermeture
   useEffect(() => {
     if (!open) {
       setSearchQuery('');
@@ -113,15 +113,15 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
 
   const isLoading = isLoadingContacts || isLoadingMatches;
 
-  // Séparer les contacts inscrits et non inscrits
+  // SÃ©parer les contacts inscrits et non inscrits
   const matchingUserIds = new Set(matchingUsers.map(u => {
-     // Normaliser le numéro pour la comparaison
+     // Normaliser le numÃ©ro pour la comparaison
      return u.phone ? u.phone.replace(/[^0-9]/g, '') : '';
   }));
 
-  // Mapper les contacts du téléphone en incluant l'info s'ils sont matchés ou non
+  // Mapper les contacts du tÃ©lÃ©phone en incluant l'info s'ils sont matchÃ©s ou non
   const displayContacts = allPhoneContacts.map(contact => {
-    // Vérifier si un des numéros du contact matche un utilisateur
+    // VÃ©rifier si un des numÃ©ros du contact matche un utilisateur
     const matchingProfile = matchingUsers.find(u => {
       // Comparer les 9 derniers chiffres
       if (!u.phone) return false;
@@ -129,7 +129,7 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
       
       return contact.phoneNumbers.some((num: string) => {
         const cPhone = num.replace(/[^0-9]/g, '');
-        // Si les deux font au moins 7 chiffres (pour être sûr)
+        // Si les deux font au moins 7 chiffres (pour Ãªtre sÃ»r)
         if (cPhone.length >= 7 && uPhone.length >= 7) {
             return uPhone.slice(-9) === cPhone.slice(-9);
         }
@@ -146,7 +146,7 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     const name = c.name ? c.name.toLowerCase() : '';
-    // Aussi chercher dans le nom du profil trouvé
+    // Aussi chercher dans le nom du profil trouvÃ©
     const profileName = c.profile ? `${c.profile.first_name} ${c.profile.last_name}`.toLowerCase() : '';
     return name.includes(query) || profileName.includes(query);
   });
@@ -167,12 +167,12 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
             Mes Contacts
           </DialogTitle>
           <DialogDescription>
-            Invitez vos amis ou discutez avec ceux déjà inscrits
+            Invitez vos amis ou discutez avec ceux dÃ©jÃ  inscrits
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3 flex-1 overflow-hidden">
-          {/* État initial : pas encore synchronisé (web uniquement, natif = auto) */}
+          {/* Ã‰tat initial : pas encore synchronisÃ© (web uniquement, natif = auto) */}
           {!hasSynced && !isLoading && (
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="rounded-full bg-primary/10 p-4">
@@ -181,7 +181,7 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
               <div className="text-center space-y-1">
                 <p className="font-medium text-sm">Synchronisez vos contacts</p>
                 <p className="text-xs text-muted-foreground max-w-[300px]">
-                  Accédez à vos contacts pour retrouver vos amis sur SkillUp
+                  AccÃ©dez Ã  vos contacts pour retrouver vos amis sur SkillUp
                 </p>
               </div>
               <Button onClick={() => handleSync()} className="gap-2">
@@ -201,29 +201,47 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
             </div>
           )}
 
-          {/* Résultats */}
+          {/* RÃ©sultats */}
           {hasSynced && !isLoading && (
             <>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher un ami..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                  autoFocus
-                />
+                    placeholder="Rechercher un ami ou un nom..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-24"
+                    autoFocus
+                  />
+                  {searchQuery.length >= 6 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs" 
+                      onClick={() => {
+                          const newNum = searchQuery.replace(/[^0-9+]/g, '');
+                          if (newNum.length > 5) {
+                            const newContact = { name: "Numéro: " + newNum, phoneNumbers: [newNum] };
+                            setAllPhoneContacts(prev => [...prev, newContact]);
+                            findMatchingUsers([...allPhoneContacts.flatMap(c => c.phoneNumbers), newNum]);
+                            setSearchQuery('');
+                          }
+                      }}
+                    >
+                      Ajouter
+                    </Button>
+                  )}
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-0.5 min-h-0">
                 {displayContacts.length === 0 ? (
                    <div className="flex flex-col items-center gap-3 py-8">
                     <p className="text-sm text-muted-foreground text-center">
-                      Aucun contact trouvé.
+                      Aucun contact trouvé localement.
                     </p>
                     <Button variant="outline" size="sm" onClick={() => handleSync()} className="gap-2">
                       <Smartphone className="h-4 w-4" />
-                      Réessayer
+                      RÃ©essayer
                     </Button>
                   </div>
                 ) : (
@@ -296,3 +314,4 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
     </Dialog>
   );
 };
+

@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 
+import { supabase } from '@/integrations/supabase/client';
+
 interface StudentLiveViewerProps {
   sessionId: string;
   teacherName: string;
@@ -28,13 +30,30 @@ const StudentLiveViewer: React.FC<StudentLiveViewerProps> = ({
   const [viewerCount, setViewerCount] = useState(1);
 
   useEffect(() => {
-    // Simuler le nombre de viewers
-    const interval = setInterval(() => {
-      setViewerCount(prev => prev + Math.floor(Math.random() * 3) - 1);
-    }, 10000);
+    if (!sessionId || !user?.id) return;
 
-    return () => clearInterval(interval);
-  }, []);
+    // Vrai comptage via Supabase Realtime Presence
+    const room = supabase.channel(`live_session_${sessionId}`);
+
+    room.on('presence', { event: 'sync' }, () => {
+      const newState = room.presenceState();
+      // Compter le nombre d'utilisateurs distincts
+      setViewerCount(Object.keys(newState).length);
+    });
+
+    room.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await room.track({
+          user_id: user.id,
+          online_at: new Date().toISOString(),
+        });
+      }
+    });
+
+    return () => {
+      room.unsubscribe();
+    };
+  }, [sessionId, user]);
 
   const toggleHand = () => {
     setIsHandRaised(!isHandRaised);

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LiveClassroomViewerProps {
   formationId: string;
@@ -54,16 +55,49 @@ const LiveClassroomViewer: React.FC<LiveClassroomViewerProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Simuler l'upload et l'envoi au professeur
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success('Fichier envoyé au professeur !');
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        toast.error("Vous devez être connecté pour envoyer un fichier");
+        return;
+      }
+
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `live-submissions/${formationId}/${lessonId}/${userData.user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, selectedFile, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath);
+
+      const channel = supabase.channel(`live_session_${formationId}_${lessonId}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'student_submission',
+        payload: {
+          studentId: userData.user.id,
+          studentName: userData.user.user_metadata?.first_name || 'Élève',
+          fileName: selectedFile.name,
+          fileUrl: publicUrl,
+          fileType: selectedFile.type,
+        },
+      });
+
+      toast.success("Fichier envoyé au professeur !");
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     } catch (error) {
-      toast.error('Erreur lors de l\'envoi du fichier');
+      console.error(error);
+      toast.error("Erreur lors de l'envoi du fichier");
     } finally {
       setIsSubmitting(false);
     }

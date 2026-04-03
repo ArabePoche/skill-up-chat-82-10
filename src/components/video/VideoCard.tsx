@@ -371,13 +371,13 @@ const VideoCard: React.FC<VideoCardProps> = ({
             variant="ghost"
             size="icon"
             onClick={handleLike}
-            className={`w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 ${
+            className={`w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
               isLiked ? 'text-red-500' : ''
             }`}
           >
             <Heart size={24} className={isLiked ? 'fill-current' : ''} />
           </Button>
-          <span className="text-white text-xs mt-1 font-medium">
+          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
             {formatCount(likesCount)}
           </span>
         </div>
@@ -388,11 +388,11 @@ const VideoCard: React.FC<VideoCardProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => setShowComments(true)}
-            className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
+            className="w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
           >
             <MessageCircle size={24} />
           </Button>
-          <span className="text-white text-xs mt-1 font-medium">
+          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
             {formatCount(commentsCount)}
           </span>
         </div>
@@ -403,11 +403,11 @@ const VideoCard: React.FC<VideoCardProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => setShowShare(true)}
-            className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
+            className="w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
           >
             <Share size={24} />
           </Button>
-          <span className="text-white text-xs mt-1 font-medium">
+          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
             {t('video.share')}
           </span>
         </div>
@@ -419,11 +419,11 @@ const VideoCard: React.FC<VideoCardProps> = ({
               variant="ghost"
               size="icon"
               onClick={() => setShowGift(true)}
-              className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
+              className="w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
             >
               <Gift size={24} className="text-pink-500" />
             </Button>
-            <span className="text-white text-xs mt-1 font-medium">
+            <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
               Cadeau
             </span>
           </div>
@@ -435,13 +435,13 @@ const VideoCard: React.FC<VideoCardProps> = ({
             variant="ghost"
             size="icon"
             onClick={handleSave}
-            className={`w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 ${
+            className={`w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
               isSaved ? 'text-yellow-500' : ''
             }`}
           >
             <Bookmark size={24} className={isSaved ? 'fill-current' : ''} />
           </Button>
-          <span className="text-white text-xs mt-1 font-medium">
+          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
             {isSaved ? t('video.saved') : t('video.save')}
           </span>
         </div>
@@ -457,7 +457,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
             >
               <List size={24} />
             </Button>
-            <span className="text-white text-xs mt-1 font-medium">
+            <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
               {t('video.series')}
             </span>
           </div>
@@ -474,7 +474,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
             >
               <ShoppingBag size={24} />
             </Button>
-            <span className="text-white text-xs mt-1 font-medium">
+            <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
               {t('video.formation')}
             </span>
           </div>

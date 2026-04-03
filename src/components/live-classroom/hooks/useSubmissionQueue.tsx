@@ -1,5 +1,5 @@
 // Hook pour la gestion de la file d'attente des soumissions d'élèves
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -74,6 +74,37 @@ export const useSubmissionQueue = (formationId: string, lessonId: string) => {
     setSubmissions(prev => [...prev, newSubmission]);
     toast.info(`Nouvelle soumission de ${submission.studentName}`);
   }, []);
+
+  // Listen to realtime channel for new submissions
+  useEffect(() => {
+    if (!formationId || !lessonId) return;
+
+    const channelName = `live_session_${formationId}_${lessonId}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      .on(
+        'broadcast',
+        { event: 'student_submission' },
+        (payload) => {
+          const newSub = payload.payload;
+          if (newSub && newSub.studentId && newSub.fileName) {
+            addSubmission({
+              studentId: newSub.studentId,
+              studentName: newSub.studentName || 'Élève',
+              fileName: newSub.fileName,
+              fileUrl: newSub.fileUrl,
+              fileType: newSub.fileType,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [formationId, lessonId, addSubmission]);
 
   const pendingSubmissions = submissions.filter(s => s.status === 'pending');
   const acceptedSubmissions = submissions.filter(s => s.status === 'accepted');

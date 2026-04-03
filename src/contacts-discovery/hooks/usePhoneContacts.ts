@@ -75,18 +75,7 @@ export const usePhoneContacts = () => {
                }
             });
             
-            // Si le résultat est vide, on tente sans projection (fetch tout)
-            let rawContacts = result.contacts || [];
-            if (rawContacts.length === 0) {
-              console.log('⚠️ Réessai sans projection...');
-              try {
-                // @ts-ignore
-                const retryResult = await Contacts.getContacts({});
-                rawContacts = retryResult.contacts || [];
-              } catch (e) {
-                console.warn('Erreur fallback contacts:', e);
-              }
-            }
+            // Skip empty fallback on v7 to avoid returning empty contacts without phone numbers
             console.log('📇 Contacts bruts récupérés:', rawContacts.length);
             
             const formattedContacts: PhoneContact[] = rawContacts

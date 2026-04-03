@@ -104,7 +104,6 @@ export const VideoGiftModal: React.FC<VideoGiftModalProps> = ({
 
     setIsSending(true);
     try {
-      // Simulation appel RPC (à remplacer par le vrai endpoint si nécessaire)
       const { error } = await supabase.rpc('transfer_soumboulah_cash', {
         p_recipient_id: recipientId,
         p_amount: item.cost,
@@ -114,32 +113,6 @@ export const VideoGiftModal: React.FC<VideoGiftModalProps> = ({
 
       if (error) {
          console.error('RPC Error details:', error);
-         // Only simulate if the function is genuinely missing (backend not updated yet)
-         if (error.code === 'PGRST202') {
-             console.warn('RPC transfer_soumboulah_cash not found, simulating success');
-             
-             // Optimistic update
-             if (user?.id) {
-                queryClient.setQueryData(['user-wallet', user.id], (old: any) => {
-                    if (!old) return old;
-                    return {
-                        ...old,
-                        soumboulah_cash: (old.soumboulah_cash || 0) - item.cost
-                    };
-                });
-             }
-
-             // Simulation for UI testing
-             setShowConfetti(true);
-             toast.success(`${item.name} envoyé à ${recipientName} ! (Simulation)`);
-             setTimeout(() => {
-                onClose();
-                setShowConfetti(false);
-             }, 2000);
-             return;
-         }
-         // For other errors (like 400), throw them so we see the problem
-         throw error; 
       }
 
       if (user?.id && recipientId !== user.id) {
@@ -223,29 +196,6 @@ export const VideoGiftModal: React.FC<VideoGiftModalProps> = ({
         
         if (error) {
            console.error('RPC Error details (bonus):', error);
-           // Simulate only if function is missing (404/PGRST202)
-           if (error.code === 'PGRST202') {
-              console.warn('RPC transfer_soumboulah_bonus not found, simulating');
-              
-              if (user?.id) {
-                queryClient.setQueryData(['user-wallet', user.id], (old: any) => {
-                    if (!old) return old;
-                    return {
-                        ...old,
-                        soumboulah_bonus: (old.soumboulah_bonus || 0) - amount
-                    };
-                });
-              }
-
-              setShowConfetti(true);
-              toast.success(`${amount} SB envoyés ! (Simulation)`);
-              setTimeout(() => {
-                 onClose();
-                 setShowConfetti(false);
-              }, 2000);
-              return;
-           }
-           // Throw other errors (like 400 Bad Request)
            throw error;
         }
 

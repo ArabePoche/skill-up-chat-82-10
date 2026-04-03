@@ -80,15 +80,13 @@ const [showFullscreen, setShowFullscreen] = useState(false);
             <div className="absolute top-2 right-2 z-10 flex gap-2">
               {isImage && isTeacher && lessonId && formationId && (
                 <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleAnnotate}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                  title="Annoter l'image pour correction"
-                >
-                  <Edit3 size={16} className="mr-1" />
-                  Annoter
-                </Button>
+                    variant="default"
+                    className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md p-0 flex items-center justify-center"
+                    onClick={handleAnnotate}
+                    title="Annoter l'image pour correction"
+                  >
+                    <Edit3 size={14} />
+                  </Button>
               )}
               {isImage && onUpdate && (
                 <SimpleImageEditor
@@ -120,7 +118,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
                 src={fileUrl}
                 alt={fileName}
                 className="max-w-full max-h-[90vh] object-contain mx-auto"
-                autoDownload={true}
+                autoDownload={isOwnMessage}
               />
             )}
             
@@ -159,25 +157,23 @@ const [showFullscreen, setShowFullscreen] = useState(false);
               src={fileUrl}
               alt={fileName}
               className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg ${className}`}
-              autoDownload={true}
+              autoDownload={isOwnMessage}
             />
           </div>
           {/* Bouton d'annotation visible pour les profs */}
           {isTeacher && lessonId && formationId && (
             <div className="absolute top-2 right-2 z-10">
               <Button
-                variant="default"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAnnotate();
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                title="Annoter l'image pour correction"
-              >
-                <Edit3 size={16} className="mr-1" />
-                Annoter
-              </Button>
+                  variant="default"
+                  className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md p-0 flex items-center justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAnnotate();
+                  }}
+                  title="Annoter l'image pour correction"
+                >
+                  <Edit3 size={14} />
+                </Button>
             </div>
           )}
           {/* Bouton plein écran pour tous */}
@@ -203,7 +199,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
         <OfflineAudio
           src={fileUrl}
           fileName={fileName}
-          autoDownload={false}
+          autoDownload={isOwnMessage}
           className="max-w-xs sm:max-w-sm"
         />
       )}
@@ -211,7 +207,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
       {(isVideo && !isYouTubeVideo) && (
         <OfflineVideo
           src={fileUrl}
-          autoDownload={false}
+          autoDownload={isOwnMessage}
           className={`max-w-xs sm:max-w-sm ${className}`}
         />
       )}

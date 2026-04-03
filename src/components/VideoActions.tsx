@@ -79,7 +79,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
   };
 
   const actionButtonClass =
-    'w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 flex items-center justify-center border border-white/20';
+    'w-12 h-12 rounded-full text-white transition-all duration-200 hover:scale-110 flex items-center justify-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]';
 
   return (
     <div className="flex flex-col items-center space-y-4 z-30">
@@ -94,7 +94,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
         >
           <Heart size={20} className={isLiked ? 'fill-current' : ''} />
         </Button>
-        <span className="text-white text-xs mt-1 font-medium">
+        <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
           {formatCount(likesCount)}
         </span>
       </div>
@@ -109,7 +109,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
         >
           <MessageCircle size={20} />
         </Button>
-        <span className="text-white text-xs mt-1 font-medium">
+        <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
           {isCommentsLoading ? '...' : formatCount(commentsCount)}
         </span>
       </div>
@@ -124,7 +124,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
         >
           <Share size={20} />
         </Button>
-        <span className="text-white text-xs mt-1 font-medium">Partager</span>
+        <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">Partager</span>
       </div>
 
       {/* Save */}
@@ -137,7 +137,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
         >
           <Bookmark size={20} className={isSaved ? 'fill-current' : ''} />
         </Button>
-        <span className="text-white text-xs mt-1 font-medium">
+        <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
           {isSaved ? 'Sauvé' : 'Sauver'}
         </span>
       </div>

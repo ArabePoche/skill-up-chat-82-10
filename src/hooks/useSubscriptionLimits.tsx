@@ -15,6 +15,7 @@ interface SubscriptionLimits {
 export const useSubscriptionLimits = (formationId: string): SubscriptionLimits => {
   const [timeRemainingToday, setTimeRemainingToday] = useState<number | null>(null);
   const [dailyTimeLimit, setDailyTimeLimit] = useState<number | null>(null);
+  const [planConfig, setPlanConfig] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -23,7 +24,30 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Récupérer l'utilisation quotidienne
+        // 1. Récupérer le plan de l'utilisateur pour cette formation
+        const { data: enrollments } = await supabase
+          .from('enrollments')
+          .select('plan_type')
+          .eq('user_id', user.id)
+          .eq('formation_id', formationId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const planType = enrollments?.[0]?.plan_type || 'free';
+
+        // 2. Récupérer les configurations du plan depuis formation_pricing_options
+        const { data: pricingOptions } = await supabase
+          .from('formation_pricing_options')
+          .select('*')
+          .eq('formation_id', formationId)
+          .eq('plan_type', planType)
+          .maybeSingle();
+
+        if (pricingOptions) {
+          setPlanConfig(pricingOptions);
+        }
+
+        // 3. Récupérer l'utilisation quotidienne
         const { data: usage } = await supabase
           .rpc('get_user_usage', {
             p_user_id: user.id,
@@ -32,10 +56,10 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
 
         if (usage && usage.length > 0) {
           const userUsage = usage[0];
-          // Simuler une limite quotidienne de 60 minutes pour les utilisateurs gratuits
-          const dailyLimit = 60; // minutes
+          // Utiliser la limite de temps de la configuration
+          const dailyLimit = pricingOptions?.time_limit_minutes_per_day || 1440; // Par défaut illimité ou 24h
           const remainingTime = Math.max(0, dailyLimit - userUsage.time_used_today);
-          
+
           setDailyTimeLimit(dailyLimit);
           setTimeRemainingToday(remainingTime);
         }
@@ -55,22 +79,43 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
   }, [formationId, toast]);
 
   const checkPermission = (action: 'message' | 'call' | 'video_call') => {
-    // Simuler des limites pour les utilisateurs gratuits
+    // Vérifier la limite de temps quotidienne
     const isLimitReached = timeRemainingToday !== null && timeRemainingToday <= 0;
 
     if (isLimitReached) {
       return {
         allowed: false,
-        message: "Vous avez atteint votre limite quotidienne. Passez à un plan premium pour continuer."
+        message: "Vous avez atteint la limite de temps quotidienne de votre abonnement. Passez à un plan supérieur pour continuer."
       };
     }
 
-    if (action === 'call' || action === 'video_call') {
-      // Simuler une restriction d'appels pour les utilisateurs gratuits
-      return {
-        allowed: false,
-        message: "Les appels nécessitent un abonnement premium. Passez à un plan supérieur pour débloquer cette fonctionnalité."
-      };
+    if (planConfig) {
+      if (action === 'call') {
+        if (!planConfig.allow_calls || planConfig.call_type === 'none') {
+          return {
+            allowed: false,
+            message: "Votre abonnement actuel ne vous autorise pas à passer des appels."
+          };
+        }
+      }
+
+      if (action === 'video_call') {
+        if (!planConfig.allow_calls || (planConfig.call_type !== 'video' && planConfig.call_type !== 'both')) {
+          return {
+            allowed: false,
+            message: "Les appels vidéo nécessitent un abonnement supérieur selon la configuration de ce cours."
+          };
+        }
+      }
+
+      if (action === 'message') {
+        if (planConfig.allow_discussion === false) {
+           return {
+             allowed: false,
+             message: "Les discussions ne sont pas incluses dans votre formule d'abonnement."
+           };
+        }
+      }
     }
 
     return { allowed: true };

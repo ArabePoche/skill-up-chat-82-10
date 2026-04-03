@@ -9,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import StoryViewersModal from './StoryViewersModal';
-import GiftSelector from './GiftSelector';
 import { useNavigate } from 'react-router-dom';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { ApplicationModal } from '@/applications/components/ApplicationModal';
@@ -36,7 +35,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [savedProgress, setSavedProgress] = useState(0); // Sauvegarder la progression pendant la pause
   const [replyText, setReplyText] = useState('');
   const [showReplyInput, setShowReplyInput] = useState(false);
-  const [showGiftSelector, setShowGiftSelector] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [mediaDuration, setMediaDuration] = useState<number>(10); // Durée par défaut de 10s pour texte/image
@@ -167,20 +165,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     setShowReplyInput(false);
     setReplyText('');
     setIsPaused(false);
-  };
-
-  const handleOpenGift = () => {
-    setIsPaused(true);
-    setShowGiftSelector(true);
-  };
-
-  const handleCloseGift = () => {
-    setShowGiftSelector(false);
-    setIsPaused(false);
-  };
-
-  const handleGiftSent = (giftName: string, amount: number, currency: string) => {
-    handleCloseGift();
   };
 
   const handleReply = async () => {
