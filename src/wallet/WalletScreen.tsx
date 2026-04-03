@@ -68,7 +68,7 @@ const WalletScreen: React.FC = () => {
   }
   if (filterCategory !== 'all') {
     filteredTx = filteredTx.filter(tx => {
-      const isGift = tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
+        const isGift = tx.transaction_type === 'gift' || tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
       const isSolidarity = tx.reference_type === 'solidarity_campaign';
       const isMarketplace = tx.transaction_type.startsWith('marketplace_');
       
@@ -276,26 +276,23 @@ const WalletScreen: React.FC = () => {
                       console.error("Failed to parse metadata", e);
                     }
 
-                    const isGift = tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
+                    const isGift = tx.transaction_type === 'gift' || tx.transaction_type === 'gift_sent' || tx.transaction_type === 'gift_received';
                     const isSolidarity = tx.reference_type === 'solidarity_campaign';
                     const isMarketplace = tx.transaction_type.startsWith('marketplace_');
                     const coinIcon = currencyCoin[tx.currency] || coinHabbah;
 
-                    if (isGift && metadata && (metadata.partner_name || metadata.receiver_name || metadata.sender_name || metadata.gift_name || metadata.gift_reason)) {
-                const partnerName = metadata.partner_name || metadata.receiver_name || metadata.sender_name || 'Utilisateur';
-                const partnerAvatar = metadata.partner_avatar || metadata.receiver_avatar || metadata.sender_avatar;
+                    if (isGift) {
+                const partnerName = metadata?.partner_name || metadata?.receiver_name || metadata?.sender_name || 'Ami(e) / Utilisateur';
+                const partnerAvatar = metadata?.partner_avatar || metadata?.receiver_avatar || metadata?.sender_avatar;
                 
-                const explicitGiftName = metadata.gift_name || metadata.giftName;
-                const rawVideoTitle = metadata.video_title || metadata.post_title;
+                const explicitGiftName = metadata?.gift_name || metadata?.giftName;
+                const rawVideoTitle = metadata?.video_title || metadata?.post_title;
                 
                 let giftName = explicitGiftName;
                 let videoTitle = rawVideoTitle;
 
                 if (!explicitGiftName) {
                    if (rawVideoTitle) {
-                       giftName = 'Cadeau vidéo';
-                   } else if (metadata.gift_reason && metadata.gift_reason !== 'gift') {
-                       videoTitle = metadata.gift_reason;
                        giftName = 'Cadeau vidéo';
                    } else {
                        giftName = 'Cadeau';
@@ -306,8 +303,12 @@ const WalletScreen: React.FC = () => {
                     giftName = 'Cadeau vidéo';
                 }
 
-                const partnerId = metadata.partner_id || metadata.receiver_id || metadata.sender_id;
+                const partnerId = metadata?.partner_id || metadata?.receiver_id || metadata?.sender_id;
                 
+                // Construct mailto for cancellation if it's an outgoing gift
+                const mailtoSubject = encodeURIComponent(`Réclamation d'annulation - Transaction ${tx.id}`);
+                const mailtoBody = encodeURIComponent(`Bonjour,\n\nJe souhaite annuler la transaction suivante :\nID de transaction : ${tx.id}\nMontant : ${tx.amount} ${tx.currency}\nDate : ${new Date(tx.created_at).toLocaleString('fr-FR')}\nDestinataire estimé : ${partnerName}\n\nRaison de l'annulation : \n\nMerci.`);
+
                 return (
                   <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
                     <CardContent className="p-3 flex flex-col gap-2">
@@ -323,10 +324,10 @@ const WalletScreen: React.FC = () => {
                           </Link>
                           <div>
                             <p className="text-sm font-medium text-slate-200">
-                              {giftName} {tx.transaction_type === 'gift_sent' ? 'envoyé(e)' : 'reçu(e)'}
+                              {giftName} {(tx.transaction_type === 'gift_sent' || tx.amount < 0) ? 'envoyé(e)' : 'reçu(e)'}
                             </p>
                             <p className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-1 items-center">
-                              {tx.transaction_type === 'gift_sent' ? 'À :' : 'De :'} 
+                              {(tx.transaction_type === 'gift_sent' || tx.amount < 0) ? 'À :' : 'De :'} 
                               <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="font-semibold text-slate-300 hover:underline">
                                 {partnerName}
                               </Link>
@@ -348,9 +349,19 @@ const WalletScreen: React.FC = () => {
                             <span className="truncate">{videoTitle}</span>
                           </p>
                         )}
-                        <p className="text-[10px] text-slate-500 mt-1">
-                          {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-[10px] text-slate-500">
+                            {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                          </p>
+                          {tx.amount < 0 && (
+                            <a 
+                              href={`mailto:support@skillup.com?subject=${mailtoSubject}&body=${mailtoBody}`}
+                              className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/20"
+                            >
+                              Réclamer une annulation
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

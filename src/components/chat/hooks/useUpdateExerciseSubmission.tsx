@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { notifyFormationTeachers } from '@/utils/notifyFormationTeachers';
 
 export const useUpdateExerciseSubmission = () => {
   const queryClient = useQueryClient();
@@ -121,6 +122,19 @@ export const useUpdateExerciseSubmission = () => {
         queryKey: ['group-chat-messages', data.formation_id, data.level_id] 
       });
       toast.success('Soumission mise à jour avec succès');
+
+      if (user?.id && data?.formation_id) {
+        const senderName = user.user_metadata?.first_name
+          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+          : user.email || 'Un élève';
+        
+        notifyFormationTeachers({
+          formationId: data.formation_id,
+          senderName,
+          type: 'exercise',
+          senderId: user.id
+        }).catch(err => console.error(err));
+      }
     },
     onError: (error: Error) => {
       console.error('Error updating exercise submission:', error);
