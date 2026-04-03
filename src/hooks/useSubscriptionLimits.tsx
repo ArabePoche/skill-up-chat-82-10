@@ -25,11 +25,12 @@ export const useSubscriptionLimits = (formationId: string): SubscriptionLimits =
         if (!user) return;
 
         // 1. Récupérer le plan de l'utilisateur pour cette formation
-        const { data: enrollments } = await supabase
-          .from('enrollments')
+        const { data: enrollments } = await (supabase as any)
+          .from('enrollment_requests')
           .select('plan_type')
           .eq('user_id', user.id)
           .eq('formation_id', formationId)
+          .eq('status', 'approved')
           .order('created_at', { ascending: false })
           .limit(1);
 

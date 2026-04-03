@@ -162,7 +162,8 @@ export const useConfirmReception = () => {
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.message || 'Erreur lors de la confirmation');
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.message || 'Erreur lors de la confirmation');
 
       // Notifier le vendeur que le paiement a été libéré
       try {
@@ -390,7 +391,8 @@ export const useResolveDispute = () => {
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.message || 'Erreur lors de la résolution');
+      const result2 = data as any;
+      if (!result2?.success) throw new Error(result2?.message || 'Erreur lors de la résolution');
 
       // Récupérer la commande avec le produit pour les notifications
       const { data: order, error: fetchErr } = await (supabase as any)

@@ -25,7 +25,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     cartQuantity = 0,
 }) => {
     const isOutOfStock = product.stock_quantity <= 0;
-    const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= (product.min_stock_alert || 5);
+    const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
 
     return (
         <div className="bg-white rounded-lg border shadow-sm flex flex-col h-full overflow-hidden hover:shadow-md transition-shadow">
@@ -57,7 +57,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                         {product.name}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-mono text-gray-500">{product.sku}</span>
+                        <span className="text-xs font-mono text-gray-500">{product.barcode || ''}</span>
                         {product.category && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 h-4">
                                 {product.category}
