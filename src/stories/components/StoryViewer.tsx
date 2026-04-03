@@ -206,7 +206,29 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   };
 
-  return (
+  // Gift handlers
+  const [showGiftSelector, setShowGiftSelector] = useState(false);
+  const handleOpenGift = () => {
+    setIsPaused(true);
+    setShowGiftSelector(true);
+  };
+  const handleCloseGift = () => {
+    setShowGiftSelector(false);
+    setIsPaused(false);
+  };
+  const handleGiftSent = () => {
+    handleCloseGift();
+    toast.success('Cadeau envoyé !');
+  };
+
+  // Lazy GiftSelector component - render a simple placeholder if not available
+  const GiftSelector: React.FC<any> = ({ recipientId, storyId, onClose, onGiftSent }) => (
+    <div className="bg-background rounded-t-2xl p-6 text-center">
+      <p className="text-muted-foreground">Fonctionnalité de cadeaux bientôt disponible</p>
+      <Button variant="outline" onClick={onClose} className="mt-4">Fermer</Button>
+    </div>
+  );
+
     <div className="fixed inset-0 bg-black z-[100] flex flex-col">
       {/* Progress bars */}
       <div className="absolute top-4 left-4 right-4 flex space-x-1 z-20">
