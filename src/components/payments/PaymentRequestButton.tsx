@@ -52,6 +52,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       return data;
     },
     enabled: !!formationId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const acceptedMethods: string[] = formation?.accepted_payment_methods || [];
@@ -192,8 +193,11 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
 
       toast.success(`${amount} ${label} débités avec succès ! Votre paiement sera validé par un administrateur.`);
       setShowConfirmDialog(false);
-      setScAmount(0);
-      setSbAmount(0);
+      if (currency === 'soumboulah_cash') {
+        setScAmount(0);
+      } else {
+        setSbAmount(0);
+      }
     } catch (error) {
       console.error('Erreur paiement portefeuille:', error);
       toast.error("Erreur lors du paiement");

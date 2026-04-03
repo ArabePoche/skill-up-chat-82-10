@@ -129,7 +129,7 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
         promoVideoUrl: initialData.promoVideoUrl || '',
         thumbnailUrl: initialData.thumbnailUrl || '',
         isActive: initialData.isActive !== undefined ? initialData.isActive : true,
-        acceptedPaymentMethods: (initialData as any).acceptedPaymentMethods || [],
+        acceptedPaymentMethods: initialData.acceptedPaymentMethods || [],
         levels: initialData.levels || prev.levels
       }));
     }
