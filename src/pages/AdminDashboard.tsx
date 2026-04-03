@@ -98,6 +98,8 @@ const AdminDashboard = () => {
         return <RecruitmentAdsManagement />;
       case 'currency-settings':
         return <CurrencySettingsManagement />;
+      case 'currency-dashboard':
+        return <CurrencyDashboard />;
       case 'solidarity':
         return <AdminSolidarityManagement />;
       case 'marketplace':

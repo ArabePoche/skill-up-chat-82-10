@@ -90,6 +90,11 @@ const menuItems = [
     icon: Coins,
   },
   {
+    title: 'Économie (PIB)',
+    value: 'currency-dashboard',
+    icon: BarChart3,
+  },
+  {
     title: 'Aide Solidaire',
     value: 'solidarity',
     icon: Heart,
