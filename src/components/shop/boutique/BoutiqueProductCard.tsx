@@ -57,7 +57,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
                         {product.name}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-mono text-gray-500">{product.sku}</span>
+                        <span className="text-xs font-mono text-gray-500">{product.barcode || ''}</span>
                         {product.category && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 h-4">
                                 {product.category}

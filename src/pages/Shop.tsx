@@ -84,7 +84,6 @@ const Shop = () => {
     inactivityMinutes,
     updateInactivityMinutes,
     login,
-    createAccount,
     unlock,
     lock,
     logout,
