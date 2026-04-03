@@ -16,6 +16,7 @@ const CompleteProfile = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    username: '',
     phone: '',
     phoneCountryCode: '',
     country: '',
@@ -94,6 +95,7 @@ const CompleteProfile = () => {
         setFormData({
           firstName: profile.first_name || '',
           lastName: profile.last_name || '',
+          username: profile.username || '',
           phone: profile.phone ? profile.phone.replace(/\D/g, '') : '',
           phoneCountryCode: profile.phone_country_code || '',
           country: profile.country || '',
@@ -181,6 +183,7 @@ const CompleteProfile = () => {
           id: user.id,
           first_name: formData.firstName,
           last_name: formData.lastName,
+          username: formData.username || null,
           phone: formattedPhone, // Utiliser la version nettoyée
           phone_country_code: formData.phoneCountryCode,
           country: formData.country,
@@ -289,6 +292,24 @@ const CompleteProfile = () => {
                     required
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="username">Nom d'utilisateur</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium select-none">@</span>
+                  <Input
+                    id="username"
+                    value={formData.username}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\s/g, '').toLowerCase();
+                      setFormData(prev => ({ ...prev, username: val }));
+                    }}
+                    className="pl-7"
+                    placeholder="pseudo"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Votre identifiant public affiché sous votre nom (ex : @Imam)</p>
               </div>
 
               <div>
