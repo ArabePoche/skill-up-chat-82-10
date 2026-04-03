@@ -297,7 +297,7 @@ const CompleteProfile = () => {
               <div>
                 <Label htmlFor="username">Nom d'utilisateur</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium select-none">@</span>
+                  <span aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium select-none">@</span>
                   <Input
                     id="username"
                     value={formData.username}

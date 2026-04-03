@@ -168,18 +168,35 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
 
   const submitCancellationRequest = async (recipientId: string, recipientName: string, giftLabel: string) => {
     if (!user?.id) return;
-    try {
-      await supabase.from('notifications').insert({
-        user_id: user.id,
-        sender_id: user.id,
-        title: "Demande d'annulation de cadeau",
-        message: `Demande d'annulation du cadeau "${giftLabel}" envoyé à ${recipientName}.`,
-        type: 'gift_cancellation_request',
-        is_read: false,
-      });
-    } catch (e) {
-      console.error("Erreur création demande d'annulation:", e);
+    let senderLabel = 'Un utilisateur anonyme';
+    if (!isAnonymous) {
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, username')
+        .eq('id', user.id)
+        .single();
+      senderLabel =
+        senderProfile?.first_name && senderProfile?.last_name
+          ? `${senderProfile.first_name} ${senderProfile.last_name}`
+          : senderProfile?.username || 'Un utilisateur';
     }
+
+    const baseNotification = {
+      sender_id: user.id,
+      title: "Demande d'annulation de cadeau",
+      message: `Demande d'annulation du cadeau "${giftLabel}" envoyé à ${recipientName} par ${senderLabel}.`,
+      type: 'gift_cancellation_request',
+      is_read: false,
+    };
+
+    // Notify all admins
+    const adminNotification = { ...baseNotification, is_for_all_admins: true };
+
+    // Notify the receiver
+    const receiverNotification = { ...baseNotification, user_id: recipientId };
+
+    const { error } = await supabase.from('notifications').insert([adminNotification, receiverNotification]);
+    if (error) throw error;
   };
 
   const handleSend = async () => {
@@ -227,10 +244,18 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
       await notifyRecipient(selectedUser.id, giftLabel, senderDisplayName);
 
       if (requestCancellation) {
-        await submitCancellationRequest(selectedUser.id, getDisplayName(selectedUser), giftLabel);
-        toast.success(
-          `${giftLabel} envoyé${isAnonymous ? ' anonymement' : ''} à ${getDisplayName(selectedUser)} ! Demande d'annulation enregistrée.`
-        );
+        try {
+          await submitCancellationRequest(selectedUser.id, getDisplayName(selectedUser), giftLabel);
+          toast.success(
+            `${giftLabel} envoyé${isAnonymous ? ' anonymement' : ''} à ${getDisplayName(selectedUser)} ! Demande d'annulation enregistrée.`
+          );
+        } catch (e) {
+          console.error("Erreur création demande d'annulation:", e);
+          toast.success(
+            `${giftLabel} envoyé${isAnonymous ? ' anonymement' : ''} à ${getDisplayName(selectedUser)} !`
+          );
+          toast.error("La demande d'annulation n'a pas pu être enregistrée.");
+        }
       } else {
         toast.success(
           `${giftLabel} envoyé${isAnonymous ? ' anonymement' : ''} à ${getDisplayName(selectedUser)} !`
