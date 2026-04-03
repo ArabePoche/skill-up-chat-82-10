@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserWallet } from '@/hooks/useUserWallet';
 import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
+import WalletGiftModal from './WalletGiftModal';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate, Link } from 'react-router-dom';
@@ -44,6 +45,7 @@ const WalletScreen: React.FC = () => {
   const [convertAmount, setConvertAmount] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
+  const [showGiftDialog, setShowGiftDialog] = useState(false);
 
   const handleConvert = () => {
     const amount = parseInt(convertAmount);
@@ -181,13 +183,13 @@ const WalletScreen: React.FC = () => {
           Services
         </h2>
         <div className="grid grid-cols-4 gap-3">
-          {[
-            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-500/20 text-blue-400', badge: 'NEW', href: null },
-            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-500/20 text-emerald-400', badge: null, href: null },
-            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-500/20 text-orange-400', badge: null, href: null },
-            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-500/20 text-pink-400', badge: null, href: '/solidarity' },
-          ].map((action, i) => (
-            <button key={i} className="flex flex-col items-center gap-1.5" onClick={() => action.href && navigate(action.href)}>
+          {([
+            { icon: ShoppingBag, label: 'Shopping', color: 'bg-blue-500/20 text-blue-400', badge: 'NEW', onClick: () => { /* TODO: navigate to marketplace */ } },
+            { icon: BookOpen, label: "S'abonner\nCours", color: 'bg-emerald-500/20 text-emerald-400', badge: null, onClick: () => { /* TODO: navigate to course subscriptions */ } },
+            { icon: Gift, label: 'Offrir\nCadeaux', color: 'bg-orange-500/20 text-orange-400', badge: null, onClick: () => setShowGiftDialog(true) },
+            { icon: Heart, label: 'Aides\nSolidaires', color: 'bg-pink-500/20 text-pink-400', badge: null, onClick: () => navigate('/solidarity') },
+          ] as const).map((action, i) => (
+            <button key={i} className="flex flex-col items-center gap-1.5" onClick={action.onClick}>
               <div className="relative">
                 <div className={`w-12 h-12 rounded-full ${action.color} flex items-center justify-center`}>
                   <action.icon size={22} />
@@ -217,10 +219,10 @@ const WalletScreen: React.FC = () => {
           </h2>
           <div className="flex items-center gap-2">
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-800/50 border-slate-700">
+              <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-200">
                 <SelectValue placeholder="Catégorie" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">
                 <SelectItem value="all">Toutes</SelectItem>
                 <SelectItem value="market">Achats / Ventes</SelectItem>
                 <SelectItem value="gifts">Cadeaux</SelectItem>
@@ -230,10 +232,10 @@ const WalletScreen: React.FC = () => {
             </Select>
 
             <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-800/50 border-slate-700">
+              <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-200">
                 <SelectValue placeholder="Mois" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">
                 <SelectItem value="all">Tous les mois</SelectItem>
                 {uniqueMonths.map(month => (
                   <SelectItem key={month} value={month}>
@@ -434,6 +436,9 @@ const WalletScreen: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal cadeau depuis le portefeuille */}
+      <WalletGiftModal isOpen={showGiftDialog} onClose={() => setShowGiftDialog(false)} />
 
       {/* Dialog de conversion Habbah → SB */}
       <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
