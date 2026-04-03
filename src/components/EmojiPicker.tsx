@@ -19,7 +19,7 @@ type CategoryKey =
   | 'symbols';
 
 type CategoryConfig = {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ComponentType<any>;
   label: string;
   accent: string;
   softAccent: string;
