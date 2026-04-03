@@ -22,6 +22,7 @@ interface FormationData {
   promoVideoUrl?: string;
   thumbnailUrl?: string;
   isActive: boolean;
+  acceptedPaymentMethods: string[];
   levels: LevelData[];
 }
 
@@ -94,6 +95,7 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
     promoVideoUrl: '',
     thumbnailUrl: '',
     isActive: true,
+    acceptedPaymentMethods: [],
     levels: [
       {
         title: '',
@@ -127,6 +129,7 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
         promoVideoUrl: initialData.promoVideoUrl || '',
         thumbnailUrl: initialData.thumbnailUrl || '',
         isActive: initialData.isActive !== undefined ? initialData.isActive : true,
+        acceptedPaymentMethods: (initialData as any).acceptedPaymentMethods || [],
         levels: initialData.levels || prev.levels
       }));
     }
@@ -434,6 +437,39 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
               onCheckedChange={(checked) => setFormationData(prev => ({ ...prev, isActive: checked }))}
             />
             <Label>Formation active</Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="font-medium">Méthodes de paiement via portefeuille acceptées</Label>
+            <div className="flex flex-col gap-2">
+              {[
+                { value: 'soumboulah_cash', label: 'Soumboulah Cash (S.)' },
+                { value: 'soumboulah_bonus', label: 'Soumboulah Bonus (SB)' },
+              ].map(({ value, label }) => {
+                const checked = formationData.acceptedPaymentMethods.includes(value);
+                return (
+                  <label key={value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        setFormationData(prev => ({
+                          ...prev,
+                          acceptedPaymentMethods: checked
+                            ? prev.acceptedPaymentMethods.filter(m => m !== value)
+                            : [...prev.acceptedPaymentMethods, value],
+                        }));
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm text-gray-700">{label}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-500">
+              Mobile Money est toujours disponible. Cochez les options portefeuille supplémentaires que vous souhaitez proposer.
+            </p>
           </div>
         </CardContent>
       </Card>

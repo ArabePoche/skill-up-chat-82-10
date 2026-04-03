@@ -75,6 +75,7 @@ const FormationsManagement = () => {
             promo_video_url: formationData.promoVideoUrl,
             thumbnail_url: formationData.thumbnailUrl,
             is_active: formationData.isActive,
+            accepted_payment_methods: formationData.acceptedPaymentMethods || [],
             author_id: user?.id
           })
           .select()
@@ -194,7 +195,8 @@ const FormationsManagement = () => {
             original_price: formationData.originalPrice,
             promo_video_url: formationData.promoVideoUrl,
             thumbnail_url: formationData.thumbnailUrl,
-            is_active: formationData.isActive
+            is_active: formationData.isActive,
+            accepted_payment_methods: formationData.acceptedPaymentMethods || [],
           })
           .eq('id', id);
 
@@ -426,6 +428,7 @@ const FormationsManagement = () => {
         promoVideoUrl: completeFormation.promo_video_url,
         thumbnailUrl: completeFormation.thumbnail_url,
         isActive: completeFormation.is_active,
+        acceptedPaymentMethods: completeFormation.accepted_payment_methods || [],
         levels: completeFormation.levels
           ?.sort((a: any, b: any) => a.order_index - b.order_index) // Sort levels by order_index
           ?.map((level: any) => ({
