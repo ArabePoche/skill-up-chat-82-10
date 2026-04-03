@@ -33,6 +33,7 @@ import { PresenceProvider } from '@/contexts/PresenceContext';
 import CoursIndex from '@/pages/cours/CoursIndex';
 import FormationDetailPage from '@/pages/cours/FormationDetail';
 import TeacherInterface from '@/pages/cours/TeacherInterface';
+import TeacherDashboard from '@/pages/cours/TeacherDashboard';
 import LessonChat from '@/pages/cours/LessonChat';
 import GroupLessonChat from '@/pages/cours/GroupLessonChat';
 import Conversations from '@/pages/Conversations';
@@ -117,6 +118,7 @@ const AppWithRouter: React.FC = () => {
         
         {/* Nouvelles routes cours explicites */}
         <Route path="/cours" element={<CoursIndex />} />
+        <Route path="/cours/dashboard" element={<TeacherDashboard />} />
         <Route path="/cours/formation/:formationId" element={<FormationDetailPage />} />
         <Route path="/cours/teacher/:formationId" element={<TeacherInterface />} />
         <Route path="/cours/lesson/:lessonId" element={<LessonChat />} />

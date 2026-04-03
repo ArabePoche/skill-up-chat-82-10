@@ -13,7 +13,9 @@ import LevelsManagement from './LevelsManagement';
 import DynamicFormationForm from './DynamicFormationForm';
 import FormationPricingManager from './FormationPricingManager';
 
-const FormationsManagement = () => {
+interface FormationsManagementProps { authorId?: string; }
+
+const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
   const [selectedFormation, setSelectedFormation] = useState<{ id: string; title: string } | null>(null);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -25,9 +27,9 @@ const FormationsManagement = () => {
   const { user } = useAuth();
 
   const { data: formations, isLoading } = useQuery({
-    queryKey: ['admin-formations'],
+    queryKey: ['admin-formations', authorId || 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('formations')
         .select(`
           *,
@@ -45,10 +47,17 @@ const FormationsManagement = () => {
               )
             )
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
 
-      if (error) throw error;
+      if (authorId) {
+        query = query.eq('author_id', authorId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      console.log('Admin formations response data:', data);
+      console.log('Admin formations response error:', error);
+
+      if (error) { toast.error('Erreur API: ' + error.message); throw error; }
       return data || [];
     }
   });

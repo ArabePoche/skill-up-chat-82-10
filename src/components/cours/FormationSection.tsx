@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { GraduationCap, UserCheck } from 'lucide-react';
+import { GraduationCap, UserCheck, LayoutDashboard } from 'lucide-react';
 import FormationCard from '@/components/FormationCard';
+import { Button } from '@/components/ui/button';
 
 interface FormationSectionProps {
   title: string;
@@ -11,6 +12,7 @@ interface FormationSectionProps {
   onFormationClick: (formation: any) => void;
   emptyMessage?: string;
   debugInfo?: string;
+  onDashboardClick?: () => void;
 }
 
 const FormationSection: React.FC<FormationSectionProps> = ({
@@ -20,17 +22,33 @@ const FormationSection: React.FC<FormationSectionProps> = ({
   isTeacherSection,
   onFormationClick,
   emptyMessage,
-  debugInfo
+  debugInfo,
+  onDashboardClick
 }) => {
   const IconComponent = icon === 'student' ? GraduationCap : UserCheck;
 
   return (
     <div>
-      <div className="flex items-center space-x-2 mb-4">
-        <IconComponent size={20} className="text-[#25d366]" />
-        <h2 className="text-lg sm:text-xl font-semibold">{title}</h2>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-2">
+          <IconComponent size={20} className="text-[#25d366]" />
+          <h2 className="text-lg sm:text-xl font-semibold">{title}</h2>
+        </div>
+
+        {onDashboardClick && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDashboardClick}
+            className="flex items-center gap-2 text-sm"
+          >
+            <LayoutDashboard size={16} />
+            <span className="hidden sm:inline">Tableau de bord</span>
+            <span className="sm:hidden">Gérer</span>
+          </Button>
+        )}
       </div>
-      
+
       {formations.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {formations.map((formation) => (

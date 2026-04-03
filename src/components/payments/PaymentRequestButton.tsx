@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserWallet } from '@/hooks/useUserWallet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useUserSubscription } from '@/hooks/useUserSubscription';
+import { useFormationPricing } from '@/hooks/useFormationPricing';
 
 interface PaymentRequestButtonProps {
   formationId: string;
@@ -32,12 +34,23 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   disabled = false 
 }) => {
   const { user } = useAuth();
-  const { wallet } = useUserWallet();
+  const { wallet, scToCfaRate } = useUserWallet();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [scAmount, setScAmount] = useState<number>(0);
-  const [sbAmount, setSbAmount] = useState<number>(0);
+  const [scAmount, setScAmount] = useState<number | ''>('');
+  const [sbAmount, setSbAmount] = useState<number | ''>('');
+
+  const { subscription } = useUserSubscription(formationId);
+  const { pricingOptions } = useFormationPricing(formationId);
+
+  const activePlan = pricingOptions?.find(p => p.plan_type === (subscription?.plan_type || 'standard') && p.is_active) || pricingOptions?.[0];
+  const activePlanName = activePlan?.plan_type || 'standard';
+  
+  // 1 SC = scToCfaRate FCFA. Donc FCFA / scToCfaRate = montant en SC
+  const scRate = scToCfaRate || 10;
+  const priceMonthlySC = activePlan ? Math.ceil((activePlan.price_monthly || 0) / scRate) : 0;
+  const priceYearlySC = activePlan ? Math.ceil((activePlan.price_yearly || 0) / scRate) : 0;
 
   // Récupérer les méthodes de paiement acceptées par cette formation
   const { data: formation } = useQuery({
@@ -209,8 +222,15 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   const cashBalance = wallet?.soumboulah_cash || 0;
   const bonusBalance = wallet?.soumboulah_bonus || 0;
 
-  const scQuickAmounts = [500, 1000, 2000, 5000, 10000].filter(a => a <= cashBalance);
-  const sbQuickAmounts = [500, 1000, 2000, 5000, 10000].filter(a => a <= bonusBalance);
+    const baseScQuickAmounts = [priceMonthlySC, priceYearlySC, cashBalance].filter(
+      (a, i, arr) => a && a > 0 && a <= cashBalance && arr.indexOf(a) === i
+    ).sort((a, b) => a - b);
+    const scQuickAmounts = baseScQuickAmounts.length > 0 ? baseScQuickAmounts : [cashBalance].filter(a => a > 0);
+
+    const baseSbQuickAmounts = [priceMonthlySC, priceYearlySC, bonusBalance].filter(
+      (a, i, arr) => a && a > 0 && a <= bonusBalance && arr.indexOf(a) === i
+    ).sort((a, b) => a - b);
+    const sbQuickAmounts = baseSbQuickAmounts.length > 0 ? baseSbQuickAmounts : [bonusBalance].filter(a => a > 0);
 
   // Calcul du nombre d'onglets pour le grid
   const tabCount = 1 + (acceptsSC ? 1 : 0) + (acceptsSB ? 1 : 0);
@@ -300,12 +320,20 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
             {acceptsSC && (
               <TabsContent value="soumboulah_cash" className="mt-4 space-y-4">
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+                  <div className="mb-3 pb-3 border-b border-emerald-200/60">
+                    <p className="text-sm font-semibold text-emerald-900 mb-2">Tarifs d'abonnement ({activePlanName})</p>
+                    <p className="text-xs text-emerald-800">Mensuel: {(activePlan?.price_monthly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceMonthlySC.toLocaleString()} S.</span></p>
+                    <p className="text-xs text-emerald-800">Annuel: {(activePlan?.price_yearly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceYearlySC.toLocaleString()} S.</span></p>
+                  </div>
                   <p className="text-sm text-emerald-700 mb-1">Votre solde Soumboulah Cash</p>
                   <p className="text-2xl font-bold text-emerald-600">{cashBalance} S.</p>
                 </div>
 
                 {cashBalance > 0 ? (
                   <>
+                    <p className="text-xs text-center text-emerald-700">
+                      Si votre solde est insuffisant, vous pouvez envoyer votre solde actuel pour obtenir les jours correspondants.
+                    </p>
                     {scQuickAmounts.length > 0 && (
                       <div className="flex flex-wrap gap-2 justify-center">
                         {scQuickAmounts.map((amt) => (
@@ -376,12 +404,20 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
             {acceptsSB && (
               <TabsContent value="soumboulah_bonus" className="mt-4 space-y-4">
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+                  <div className="mb-3 pb-3 border-b border-purple-200/60">
+                    <p className="text-sm font-semibold text-purple-900 mb-2">Tarifs d'abonnement ({activePlanName})</p>
+                    <p className="text-xs text-purple-800">Mensuel: {(activePlan?.price_monthly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceMonthlySC.toLocaleString()} S.</span></p>
+                    <p className="text-xs text-purple-800">Annuel: {(activePlan?.price_yearly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceYearlySC.toLocaleString()} S.</span></p>
+                  </div>
                   <p className="text-sm text-purple-700 mb-1">Votre solde Soumboulah Bonus</p>
-                  <p className="text-2xl font-bold text-purple-600">{bonusBalance} SB</p>
+                  <p className="text-2xl font-bold text-purple-600">{bonusBalance} S.</p>
                 </div>
 
                 {bonusBalance > 0 ? (
                   <>
+                    <p className="text-xs text-center text-purple-700">
+                      Si votre solde est insuffisant, vous pouvez envoyer votre solde actuel pour obtenir les jours correspondants.
+                    </p>
                     {sbQuickAmounts.length > 0 && (
                       <div className="flex flex-wrap gap-2 justify-center">
                         {sbQuickAmounts.map((amt) => (

@@ -104,7 +104,9 @@ const CoursIndex = () => {
     formation => !enrolledFormationIds.has(formation.id)
   ) || [];
 
-  
+  const createdFormations = allFormations?.filter(
+    formation => formation.author_id === user.id
+  ) || [];
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24">
@@ -135,6 +137,17 @@ const CoursIndex = () => {
             formations={teacherFormations}
             isTeacherSection={true}
             onFormationClick={handleFormationClick}
+          />
+        )}
+
+        {createdFormations && createdFormations.length > 0 && (
+          <FormationSection
+            title="Mes créations"
+            icon="teacher"
+            formations={createdFormations}
+            isTeacherSection={false}
+            onFormationClick={handleFormationClick}
+            onDashboardClick={() => navigate('/cours/dashboard')}
           />
         )}
       </div>

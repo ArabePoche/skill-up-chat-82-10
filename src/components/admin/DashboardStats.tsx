@@ -4,21 +4,40 @@ import { Users, BookOpen, Package, TrendingUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-const DashboardStats = () => {
+interface DashboardStatsProps { authorId?: string; }
+
+interface DashboardStatsProps { authorId?: string; }
+
+const DashboardStats = ({ authorId }: DashboardStatsProps = {}) => {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-stats'],
+    queryKey: ['admin-stats', authorId || 'all'],
     queryFn: async () => {
+      let formationsQuery = supabase.from('formations').select('id', { count: 'exact' });
+      let enrollmentsQuery = supabase.from('enrollment_requests').select('id', { count: 'exact' }).eq('status', 'approved');
+      
+      if (authorId) {
+        formationsQuery = formationsQuery.eq('author_id', authorId);
+        
+        const myFormations = await supabase.from('formations').select('id').eq('author_id', authorId);
+        if (myFormations.data && myFormations.data.length > 0) {
+            const formationIds = myFormations.data.map(f => f.id);
+            enrollmentsQuery = enrollmentsQuery.in('formation_id', formationIds);
+        } else {
+            enrollmentsQuery = enrollmentsQuery.eq('formation_id', '00000000-0000-0000-0000-000000000000');
+        }
+      }
+
       const [usersResult, formationsResult, productsResult, enrollmentsResult] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact' }),
-        supabase.from('formations').select('id', { count: 'exact' }),
-        supabase.from('products').select('id', { count: 'exact' }),
-        supabase.from('enrollment_requests').select('id', { count: 'exact' }).eq('status', 'approved')
+        authorId ? Promise.resolve({ count: null }) : supabase.from('profiles').select('id', { count: 'exact' }),
+        formationsQuery,
+        authorId ? Promise.resolve({ count: null }) : supabase.from('products').select('id', { count: 'exact' }),
+        enrollmentsQuery
       ]);
 
       return {
-        users: usersResult.count || 0,
+        users: authorId ? undefined : usersResult.count || 0,
         formations: formationsResult.count || 0,
-        products: productsResult.count || 0,
+        products: authorId ? undefined : productsResult.count || 0,
         enrollments: enrollmentsResult.count || 0
       };
     }
@@ -29,24 +48,24 @@ const DashboardStats = () => {
   }
 
   const statsCards = [
-    {
+    ...(authorId ? [] : [{
       title: 'Utilisateurs totaux',
       value: stats?.users || 0,
       icon: Users,
       color: 'text-blue-600'
-    },
+    }]),
     {
-      title: 'Formations actives',
+      title: 'Formations',
       value: stats?.formations || 0,
       icon: BookOpen,
       color: 'text-green-600'
     },
-    {
+    ...(authorId ? [] : [{
       title: 'Produits disponibles',
       value: stats?.products || 0,
       icon: Package,
       color: 'text-purple-600'
-    },
+    }]),
     {
       title: 'Inscriptions totales',
       value: stats?.enrollments || 0,
