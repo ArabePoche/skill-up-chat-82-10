@@ -28,16 +28,16 @@ export const logShopActivity = async ({
 }) => {
   if (!shopId) return null;
   try {
-    const { data, error } = await supabase
-      .from('shop_activity_logs')
-      .insert({
-        shop_id: shopId,
-        agent_id: agentId || null,
-        action_type: actionType,
-        details,
-      })
-      .select()
-      .single();
+      const { data, error } = await (supabase as any)
+        .from('shop_activity_logs')
+        .insert({
+          shop_id: shopId,
+          agent_id: agentId || null,
+          action_type: actionType,
+          details,
+        })
+        .select()
+        .single();
 
     if (error) {
       console.error('Erreur insertion log:', error);
@@ -56,7 +56,7 @@ export const useShopActivityLogs = (shopId?: string) => {
     queryFn: async () => {
       if (!shopId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('shop_activity_logs')
         .select(`
           *,
@@ -93,7 +93,7 @@ export const useLogShopActivity = () => {
     }) => {
       if (!shopId) return null;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('shop_activity_logs')
         .insert({
           shop_id: shopId,

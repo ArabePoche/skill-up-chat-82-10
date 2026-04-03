@@ -85,7 +85,7 @@ export const useUpdateShopAgent = () => {
             await logShopActivity({
                 shopId: shop_id,
                 actionType: 'AGENT',
-                details: `Mise à jour des informations de l'agent ${details.first_name || ''} ${details.last_name || ''}`
+                details: `Mise à jour des informations de l'agent ${updates.first_name || ''} ${updates.last_name || ''}`
             });
             return data;
         },
