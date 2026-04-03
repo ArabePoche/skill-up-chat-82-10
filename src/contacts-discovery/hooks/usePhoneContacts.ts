@@ -75,7 +75,7 @@ export const usePhoneContacts = () => {
                }
             });
             
-            // Skip empty fallback on v7 to avoid returning empty contacts without phone numbers
+            const rawContacts = result.contacts || [];
             console.log('📇 Contacts bruts récupérés:', rawContacts.length);
             
             const formattedContacts: PhoneContact[] = rawContacts
