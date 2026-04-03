@@ -25,7 +25,7 @@ const BoutiqueProductCard: React.FC<BoutiqueProductCardProps> = ({
     cartQuantity = 0,
 }) => {
     const isOutOfStock = product.stock_quantity <= 0;
-    const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= (product.min_stock_alert || 5);
+    const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
 
     return (
         <div className="bg-white rounded-lg border shadow-sm flex flex-col h-full overflow-hidden hover:shadow-md transition-shadow">
