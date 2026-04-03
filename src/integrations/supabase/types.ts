@@ -1439,6 +1439,7 @@ export type Database = {
       }
       formations: {
         Row: {
+          accepted_payment_methods: string[] | null
           author_id: string | null
           badge: string | null
           completion_rate: number | null
@@ -1464,6 +1465,7 @@ export type Database = {
           video_promo_id: string | null
         }
         Insert: {
+          accepted_payment_methods?: string[] | null
           author_id?: string | null
           badge?: string | null
           completion_rate?: number | null
@@ -1489,6 +1491,7 @@ export type Database = {
           video_promo_id?: string | null
         }
         Update: {
+          accepted_payment_methods?: string[] | null
           author_id?: string | null
           badge?: string | null
           completion_rate?: number | null

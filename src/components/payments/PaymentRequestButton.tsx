@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Loader2, Check, X, Coins } from 'lucide-react';
+import { CreditCard, Loader2, Check, X, Coins, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserWallet } from '@/hooks/useUserWallet';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 interface PaymentRequestButtonProps {
@@ -22,9 +22,10 @@ interface PaymentRequestButtonProps {
 }
 
 /**
- * Bouton pour demander un paiement manuel OU payer avec Soumboulah Cash
- * - Onglet classique : crée une demande dans student_payment avec is_request=true
- * - Onglet Soumboulah : débite le wallet et crée un paiement auto-validé
+ * Bouton pour payer une formation :
+ * - Onglet Mobile Money : demande classique (admin valide manuellement)
+ * - Onglet S. Cash (SC) : débite le portefeuille soumboulah_cash (si la formation l'accepte)
+ * - Onglet S. Bonus (SB) : débite le portefeuille soumboulah_bonus (si la formation l'accepte)
  */
 const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({ 
   formationId, 
@@ -36,6 +37,27 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [scAmount, setScAmount] = useState<number>(0);
+  const [sbAmount, setSbAmount] = useState<number>(0);
+
+  // Récupérer les méthodes de paiement acceptées par cette formation
+  const { data: formation } = useQuery({
+    queryKey: ['formation-payment-methods', formationId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('formations')
+        .select('accepted_payment_methods')
+        .eq('id', formationId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!formationId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const acceptedMethods: string[] = formation?.accepted_payment_methods || [];
+  const acceptsSC = acceptedMethods.includes('soumboulah_cash');
+  const acceptsSB = acceptedMethods.includes('soumboulah_bonus');
 
   // Demande de paiement classique (Mobile Money, etc.)
   const handlePaymentRequest = async () => {
@@ -86,25 +108,34 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
     }
   };
 
-  // Paiement via Soumboulah Cash
-  const handleSoumboulahPayment = async () => {
-    if (!user || isSubmitting || scAmount <= 0) return;
+  // Paiement via portefeuille (SC ou SB)
+  const handleWalletPayment = async (
+    currency: 'soumboulah_cash' | 'soumboulah_bonus',
+    amount: number,
+    label: string
+  ) => {
+    if (!user || isSubmitting || amount <= 0) return;
 
-    const balance = wallet?.soumboulah_cash || 0;
-    if (scAmount > balance) {
-      toast.error(`Solde insuffisant. Vous avez ${balance} S. Cash`);
+    const balance = currency === 'soumboulah_cash'
+      ? (wallet?.soumboulah_cash || 0)
+      : (wallet?.soumboulah_bonus || 0);
+
+    if (amount > balance) {
+      toast.error(`Solde insuffisant. Vous avez ${balance} ${label}`);
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const newBalance = balance - amount;
+      const walletDebit = currency === 'soumboulah_cash'
+        ? { soumboulah_cash: newBalance, updated_at: new Date().toISOString() }
+        : { soumboulah_bonus: newBalance, updated_at: new Date().toISOString() };
+
       // 1. Débiter le wallet
       const { error: walletError } = await supabase
         .from('user_wallets')
-        .update({ 
-          soumboulah_cash: balance - scAmount,
-          updated_at: new Date().toISOString()
-        })
+        .update(walletDebit)
         .eq('user_id', user.id);
 
       if (walletError) {
@@ -118,10 +149,10 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
         .from('wallet_transactions')
         .insert({
           user_id: user.id,
-          currency: 'soumboulah_cash',
-          amount: -scAmount,
+          currency,
+          amount: -amount,
           transaction_type: 'formation_payment',
-          description: `Paiement formation (${scAmount} S. Cash)`,
+          description: `Paiement formation (${amount} ${label})`,
           reference_id: formationId,
           reference_type: 'formation',
         });
@@ -132,21 +163,24 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
         .insert({
           user_id: user.id,
           formation_id: formationId,
-          amount: scAmount,
-          payment_method: 'soumboulah_cash',
+          amount,
+          payment_method: currency,
           is_request: true,
           status: 'pending',
           requested_at: new Date().toISOString(),
           created_by: user.id,
-          comment: `Paiement via Soumboulah Cash: ${scAmount} S.`,
+          comment: `Paiement via ${label}: ${amount}`,
         });
 
       if (paymentError) {
         console.error('Erreur création paiement:', paymentError);
         // Rembourser le wallet en cas d'erreur
+        const walletRefund = currency === 'soumboulah_cash'
+          ? { soumboulah_cash: balance }
+          : { soumboulah_bonus: balance };
         await supabase
           .from('user_wallets')
-          .update({ soumboulah_cash: balance })
+          .update(walletRefund)
           .eq('user_id', user.id);
         toast.error("Erreur lors de la création du paiement");
         return;
@@ -157,11 +191,15 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['student-payment-progress'] });
 
-      toast.success(`${scAmount} S. Cash débités avec succès ! Votre paiement sera validé par un administrateur.`);
+      toast.success(`${amount} ${label} débités avec succès ! Votre paiement sera validé par un administrateur.`);
       setShowConfirmDialog(false);
-      setScAmount(0);
+      if (currency === 'soumboulah_cash') {
+        setScAmount(0);
+      } else {
+        setSbAmount(0);
+      }
     } catch (error) {
-      console.error('Erreur paiement Soumboulah:', error);
+      console.error('Erreur paiement portefeuille:', error);
       toast.error("Erreur lors du paiement");
     } finally {
       setIsSubmitting(false);
@@ -169,7 +207,14 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   };
 
   const cashBalance = wallet?.soumboulah_cash || 0;
-  const quickAmounts = [500, 1000, 2000, 5000, 10000].filter(a => a <= cashBalance);
+  const bonusBalance = wallet?.soumboulah_bonus || 0;
+
+  const scQuickAmounts = [500, 1000, 2000, 5000, 10000].filter(a => a <= cashBalance);
+  const sbQuickAmounts = [500, 1000, 2000, 5000, 10000].filter(a => a <= bonusBalance);
+
+  // Calcul du nombre d'onglets pour le grid
+  const tabCount = 1 + (acceptsSC ? 1 : 0) + (acceptsSB ? 1 : 0);
+  const tabGridClass = tabCount === 3 ? 'grid-cols-3' : tabCount === 2 ? 'grid-cols-2' : 'grid-cols-1';
 
   return (
     <>
@@ -197,18 +242,25 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
             </AlertDialogTitle>
           </AlertDialogHeader>
 
-          <Tabs defaultValue="classic" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="classic" className="text-xs sm:text-sm">
-                <CreditCard className="h-3 w-3 mr-1" /> Classique
+          <Tabs defaultValue="mobile_money" className="w-full">
+            <TabsList className={`grid w-full ${tabGridClass}`}>
+              <TabsTrigger value="mobile_money" className="text-xs sm:text-sm">
+                <Smartphone className="h-3 w-3 mr-1" /> Mobile Money
               </TabsTrigger>
-              <TabsTrigger value="soumboulah" className="text-xs sm:text-sm">
-                <Coins className="h-3 w-3 mr-1" /> S. Cash ({cashBalance})
-              </TabsTrigger>
+              {acceptsSC && (
+                <TabsTrigger value="soumboulah_cash" className="text-xs sm:text-sm">
+                  <Coins className="h-3 w-3 mr-1" /> S. Cash ({cashBalance})
+                </TabsTrigger>
+              )}
+              {acceptsSB && (
+                <TabsTrigger value="soumboulah_bonus" className="text-xs sm:text-sm">
+                  <Coins className="h-3 w-3 mr-1" /> S. Bonus ({bonusBalance})
+                </TabsTrigger>
+              )}
             </TabsList>
 
-            {/* Onglet paiement classique */}
-            <TabsContent value="classic" className="mt-4 space-y-4">
+            {/* Onglet paiement Mobile Money */}
+            <TabsContent value="mobile_money" className="mt-4 space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="font-medium text-blue-900 mb-2">
                   Méthodes de paiement acceptées :
@@ -244,81 +296,157 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
               </AlertDialogFooter>
             </TabsContent>
 
-            {/* Onglet Soumboulah Cash */}
-            <TabsContent value="soumboulah" className="mt-4 space-y-4">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
-                <p className="text-sm text-emerald-700 mb-1">Votre solde Soumboulah Cash</p>
-                <p className="text-2xl font-bold text-emerald-600">{cashBalance} S.</p>
-              </div>
-
-              {cashBalance > 0 ? (
-                <>
-                  {/* Montants rapides */}
-                  {quickAmounts.length > 0 && (
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {quickAmounts.map((amt) => (
-                        <button
-                          key={amt}
-                          onClick={() => setScAmount(amt)}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                            scAmount === amt 
-                              ? 'bg-emerald-500 text-white border-emerald-500' 
-                              : 'bg-white text-emerald-700 border-emerald-300 hover:border-emerald-500'
-                          }`}
-                        >
-                          {amt} S.
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Montant personnalisé */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={cashBalance}
-                      value={scAmount || ''}
-                      onChange={(e) => setScAmount(Math.min(Number(e.target.value), cashBalance))}
-                      placeholder="Montant personnalisé"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <span className="text-sm text-gray-500 font-medium">S.</span>
-                  </div>
-
-                  <p className="text-xs text-gray-500 text-center">
-                    Le montant sera débité de votre portefeuille et soumis à validation admin.
-                  </p>
-
-                  <AlertDialogFooter className="flex gap-3">
-                    <AlertDialogCancel 
-                      className="bg-red-500 hover:bg-red-600 text-white border-0 px-6"
-                    >
-                      <X className="h-5 w-5" />
-                    </AlertDialogCancel>
-                    <Button
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-6"
-                      disabled={isSubmitting || scAmount <= 0}
-                      onClick={handleSoumboulahPayment}
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Coins className="h-4 w-4 mr-1" />
-                          Payer {scAmount > 0 ? `${scAmount} S.` : ''}
-                        </>
-                      )}
-                    </Button>
-                  </AlertDialogFooter>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500">Vous n'avez pas de Soumboulah Cash.</p>
-                  <p className="text-xs text-gray-400 mt-1">Gagnez des Habbah et convertissez-les en Soumboulah !</p>
+            {/* Onglet Soumboulah Cash (SC) */}
+            {acceptsSC && (
+              <TabsContent value="soumboulah_cash" className="mt-4 space-y-4">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+                  <p className="text-sm text-emerald-700 mb-1">Votre solde Soumboulah Cash</p>
+                  <p className="text-2xl font-bold text-emerald-600">{cashBalance} S.</p>
                 </div>
-              )}
-            </TabsContent>
+
+                {cashBalance > 0 ? (
+                  <>
+                    {scQuickAmounts.length > 0 && (
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {scQuickAmounts.map((amt) => (
+                          <button
+                            key={amt}
+                            onClick={() => setScAmount(amt)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                              scAmount === amt 
+                                ? 'bg-emerald-500 text-white border-emerald-500' 
+                                : 'bg-white text-emerald-700 border-emerald-300 hover:border-emerald-500'
+                            }`}
+                          >
+                            {amt} S.
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={cashBalance}
+                        value={scAmount || ''}
+                        onChange={(e) => setScAmount(Math.min(Number(e.target.value), cashBalance))}
+                        placeholder="Montant personnalisé"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-500 font-medium">S.</span>
+                    </div>
+
+                    <p className="text-xs text-gray-500 text-center">
+                      Le montant sera débité de votre portefeuille et soumis à validation admin.
+                    </p>
+
+                    <AlertDialogFooter className="flex gap-3">
+                      <AlertDialogCancel 
+                        className="bg-red-500 hover:bg-red-600 text-white border-0 px-6"
+                      >
+                        <X className="h-5 w-5" />
+                      </AlertDialogCancel>
+                      <Button
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-6"
+                        disabled={isSubmitting || scAmount <= 0}
+                        onClick={() => handleWalletPayment('soumboulah_cash', scAmount, 'S. Cash')}
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Coins className="h-4 w-4 mr-1" />
+                            Payer {scAmount > 0 ? `${scAmount} S.` : ''}
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogFooter>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">Vous n'avez pas de Soumboulah Cash.</p>
+                    <p className="text-xs text-gray-400 mt-1">Gagnez des Habbah et convertissez-les en Soumboulah !</p>
+                  </div>
+                )}
+              </TabsContent>
+            )}
+
+            {/* Onglet Soumboulah Bonus (SB) */}
+            {acceptsSB && (
+              <TabsContent value="soumboulah_bonus" className="mt-4 space-y-4">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+                  <p className="text-sm text-purple-700 mb-1">Votre solde Soumboulah Bonus</p>
+                  <p className="text-2xl font-bold text-purple-600">{bonusBalance} SB</p>
+                </div>
+
+                {bonusBalance > 0 ? (
+                  <>
+                    {sbQuickAmounts.length > 0 && (
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {sbQuickAmounts.map((amt) => (
+                          <button
+                            key={amt}
+                            onClick={() => setSbAmount(amt)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                              sbAmount === amt 
+                                ? 'bg-purple-500 text-white border-purple-500' 
+                                : 'bg-white text-purple-700 border-purple-300 hover:border-purple-500'
+                            }`}
+                          >
+                            {amt} SB
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={bonusBalance}
+                        value={sbAmount || ''}
+                        onChange={(e) => setSbAmount(Math.min(Number(e.target.value), bonusBalance))}
+                        placeholder="Montant personnalisé"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <span className="text-sm text-gray-500 font-medium">SB</span>
+                    </div>
+
+                    <p className="text-xs text-gray-500 text-center">
+                      Le montant sera débité de votre portefeuille et soumis à validation admin.
+                    </p>
+
+                    <AlertDialogFooter className="flex gap-3">
+                      <AlertDialogCancel 
+                        className="bg-red-500 hover:bg-red-600 text-white border-0 px-6"
+                      >
+                        <X className="h-5 w-5" />
+                      </AlertDialogCancel>
+                      <Button
+                        className="bg-purple-500 hover:bg-purple-600 text-white px-6"
+                        disabled={isSubmitting || sbAmount <= 0}
+                        onClick={() => handleWalletPayment('soumboulah_bonus', sbAmount, 'SB')}
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Coins className="h-4 w-4 mr-1" />
+                            Payer {sbAmount > 0 ? `${sbAmount} SB` : ''}
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogFooter>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">Vous n'avez pas de Soumboulah Bonus.</p>
+                    <p className="text-xs text-gray-400 mt-1">Gagnez des Habbah et convertissez-les en Soumboulah Bonus !</p>
+                  </div>
+                )}
+              </TabsContent>
+            )}
           </Tabs>
         </AlertDialogContent>
       </AlertDialog>

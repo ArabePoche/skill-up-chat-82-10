@@ -326,6 +326,8 @@ export const StudentPaymentManager: React.FC<StudentPaymentManagerProps> = ({
                             {payment.payment_method === 'bank_transfer' && 'Virement'}
                             {payment.payment_method === 'credit_card' && 'Carte'}
                             {payment.payment_method === 'mobile_money' && 'Mobile Money'}
+                            {payment.payment_method === 'soumboulah_cash' && 'S. Cash'}
+                            {payment.payment_method === 'soumboulah_bonus' && 'S. Bonus'}
                             {payment.payment_method === 'other' && 'Autre'}
                           </span>
                            <span className="text-sm text-green-600">

@@ -303,6 +303,8 @@ const PaymentRequestNotificationCard: React.FC<PaymentRequestNotificationCardPro
                       {paymentDetails.payment_method === 'cash' && 'Espèces'}
                       {paymentDetails.payment_method === 'mobile_money' && 'Mobile Money'}
                       {paymentDetails.payment_method === 'bank_transfer' && 'Virement'}
+                      {paymentDetails.payment_method === 'soumboulah_cash' && 'S. Cash'}
+                      {paymentDetails.payment_method === 'soumboulah_bonus' && 'S. Bonus'}
                       {paymentDetails.payment_method === 'other' && 'Autre'}
                     </p>
                   </div>
