@@ -93,7 +93,7 @@ export const useLogShopActivity = () => {
     }) => {
       if (!shopId) return null;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('shop_activity_logs')
         .insert({
           shop_id: shopId,

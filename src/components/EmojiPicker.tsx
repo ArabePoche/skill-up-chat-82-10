@@ -146,7 +146,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
               title={category.label}
               aria-pressed={isActive}
             >
-              <IconComponent size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <IconComponent size={20} strokeWidth={isActive ? 2.5 : 2} className="" />
               {isActive && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#008069] dark:bg-[#00A884]" />
               )}
