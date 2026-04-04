@@ -79,7 +79,7 @@ const VideoActions: React.FC<VideoActionsProps> = ({
   };
 
   const actionButtonClass =
-    'w-12 h-12 rounded-full text-white transition-all duration-200 hover:scale-110 flex items-center justify-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]';
+    'w-14 h-14 rounded-full text-white transition-all duration-200 hover:scale-110 flex items-center justify-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]';
 
   return (
     <div className="flex flex-col items-center space-y-4 z-30">

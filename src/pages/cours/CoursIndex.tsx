@@ -123,9 +123,20 @@ const CoursIndex = () => {
       />
         
       <div className="p-4 space-y-6">
-        {studentFormations.length === 0 ? (
-          <AvailableFormationsCarousel formations={availableFormations} />
-        ) : (
+        {/* Mes créations en premier */}
+        {createdFormations.length > 0 && (
+          <FormationSection
+            title="Mes créations"
+            icon="teacher"
+            formations={createdFormations}
+            isTeacherSection={false}
+            onFormationClick={handleFormationClick}
+            onDashboardClick={() => navigate('/cours/dashboard')}
+          />
+        )}
+
+        {/* Mes cours inscrits */}
+        {studentFormations.length > 0 && (
           <FormationSection
             title={t('formation.myEnrolledCourses')}
             icon="student"
@@ -136,6 +147,7 @@ const CoursIndex = () => {
           />
         )}
 
+        {/* Espace enseignant */}
         {teacherFormations && teacherFormations.length > 0 && (
           <FormationSection
             title={t('formation.teacherSpace')}
@@ -146,15 +158,9 @@ const CoursIndex = () => {
           />
         )}
 
-        {createdFormations && createdFormations.length > 0 && (
-          <FormationSection
-            title="Mes créations"
-            icon="teacher"
-            formations={createdFormations}
-            isTeacherSection={false}
-            onFormationClick={handleFormationClick}
-            onDashboardClick={() => navigate('/cours/dashboard')}
-          />
+        {/* Formations disponibles si aucune inscription */}
+        {studentFormations.length === 0 && createdFormations.length === 0 && (
+          <AvailableFormationsCarousel formations={availableFormations} />
         )}
       </div>
 
