@@ -309,7 +309,7 @@ const WalletScreen: React.FC = () => {
 
                       const handleClaimClick = (e: React.MouseEvent) => {
                         e.preventDefault();
-                        setClaimTx({ id: tx.id, amount: tx.amount, currency: tx.currency });
+                        setClaimTx({ id: tx.reference_id || tx.id, amount: tx.amount, currency: tx.currency });
                       };
 
                       return (
