@@ -57,12 +57,7 @@ BEGIN
       AND user_id          = v_claim.sender_id
       AND currency         = v_claim.currency
       AND (
-        (v_claim.transaction_ref ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-          AND (
-            id::text         = v_claim.transaction_ref
-            OR reference_id  = v_claim.transaction_ref
-          )
-        )
+        id::text        = v_claim.transaction_ref
         OR reference_id = v_claim.transaction_ref
       )
     ORDER BY created_at DESC
