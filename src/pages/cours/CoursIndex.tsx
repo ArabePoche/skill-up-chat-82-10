@@ -144,18 +144,6 @@ const CoursIndex = () => {
           onOpenChange={setShowCreateModal}
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['formations'] })}
         />
-        {/* Mes créations en premier */}
-        {createdFormations.length > 0 && (
-          <FormationSection
-            title="Mes créations"
-            icon="teacher"
-            formations={createdFormations}
-            isTeacherSection={false}
-            onFormationClick={handleFormationClick}
-            onDashboardClick={() => navigate('/cours/dashboard')}
-          />
-        )}
-
         {/* Mes cours inscrits */}
         {studentFormations.length > 0 && (
           <FormationSection
@@ -182,6 +170,18 @@ const CoursIndex = () => {
         {/* Formations disponibles si aucune inscription */}
         {studentFormations.length === 0 && createdFormations.length === 0 && (
           <AvailableFormationsCarousel formations={availableFormations} />
+        )}
+
+        {/* Mes créations en dernière section */}
+        {createdFormations.length > 0 && (
+          <FormationSection
+            title="Mes créations"
+            icon="teacher"
+            formations={createdFormations}
+            isTeacherSection={false}
+            onFormationClick={handleFormationClick}
+            onDashboardClick={() => navigate('/cours/dashboard')}
+          />
         )}
       </div>
 

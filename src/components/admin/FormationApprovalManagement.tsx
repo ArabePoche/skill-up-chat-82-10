@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { CheckCircle, XCircle, MessageSquare, Clock, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Clock, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +23,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   approved: { label: 'Approuvée', variant: 'default' },
   rejected: { label: 'Refusée', variant: 'destructive' },
   revision_requested: { label: 'Rectifications', variant: 'secondary' },
+  draft: { label: 'Brouillon', variant: 'secondary' },
 };
 
 const FormationApprovalManagement = () => {
@@ -72,6 +73,22 @@ const FormationApprovalManagement = () => {
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const { error } = await supabase
+        .from('formations')
+        .update({ is_active: isActive })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['formations-approval'] });
+      queryClient.invalidateQueries({ queryKey: ['formations-list'] });
+      toast.success(variables.isActive ? 'Formation activée' : 'Formation désactivée');
+    },
+    onError: () => toast.error('Erreur lors de la mise à jour'),
+  });
+
   const handleAction = () => {
     if (!actionModal) return;
     const { formation, action } = actionModal;
@@ -115,6 +132,7 @@ const FormationApprovalManagement = () => {
                     <TableHead>Prix</TableHead>
                     <TableHead>Soumise le</TableHead>
                     <TableHead>Statut</TableHead>
+                    <TableHead>Actif</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -145,6 +163,22 @@ const FormationApprovalManagement = () => {
                               {f.rejection_reason}
                             </p>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className={f.is_active ? 'text-green-600' : 'text-gray-400'}
+                            onClick={() => toggleActiveMutation.mutate({ id: f.id, isActive: !f.is_active })}
+                            disabled={toggleActiveMutation.isPending}
+                            title={f.is_active ? 'Désactiver' : 'Activer'}
+                          >
+                            {f.is_active ? (
+                              <ToggleRight className="h-5 w-5" />
+                            ) : (
+                              <ToggleLeft className="h-5 w-5" />
+                            )}
+                          </Button>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
