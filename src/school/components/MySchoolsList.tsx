@@ -21,7 +21,7 @@ const MySchoolsList: React.FC<MySchoolsListProps> = ({ onClose }) => {
 
   const handleSchoolClick = (schoolId: string) => {
     onClose();
-    navigate(`/school?id=${schoolId}`);
+    navigate(`/school-site?id=${schoolId}`);
   };
 
   if (isLoading) {

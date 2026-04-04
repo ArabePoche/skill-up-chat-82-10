@@ -40,6 +40,7 @@ import Conversations from '@/pages/Conversations';
 import UploadVideo from '@/pages/UploadVideo';
 import PublicCv from '@/pages/PublicCv';
 import School from '@/pages/School';
+import SchoolSitePage from '@/pages/SchoolSitePage';
 import CvSearchPage from '@/cv-search/CvSearchPage';
 import WalletScreen from '@/wallet/WalletScreen';
 import SolidarityScreen from '@/solidarity/SolidarityScreen';
@@ -132,6 +133,9 @@ const AppWithRouter: React.FC = () => {
         
         {/* Route pour le système de gestion d'école */}
         <Route path="/school" element={<School />} />
+        
+        {/* Route pour le site public d'une école */}
+        <Route path="/school-site" element={<SchoolSitePage />} />
         
         {/* Partage vidéo et post dédiés + onglets */}
         <Route path="/video/:id" element={<Layout />} />
