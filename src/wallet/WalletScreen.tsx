@@ -1,4 +1,4 @@
-// Écran principal du portefeuille multi-devises Habbah & Soumboulah
+﻿// Ã‰cran principal du portefeuille multi-devises Habbah & Soumboulah
 import React, { useState } from 'react';
 import { ArrowLeft, RefreshCw, ShoppingBag, BookOpen, Gift, Heart, ArrowDownUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserWallet } from '@/hooks/useUserWallet';
 import { useCurrencySettings } from '@/hooks/admin/useCurrencySettings';
 import WalletGiftModal from './WalletGiftModal';
+import { GiftCancellationModal } from './components/GiftCancellationModal';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate, Link } from 'react-router-dom';
@@ -46,6 +47,7 @@ const WalletScreen: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterMonth, setFilterMonth] = useState('all');
   const [showGiftDialog, setShowGiftDialog] = useState(false);
+  const [claimTx, setClaimTx] = useState<{ id: string; amount: number; currency: string } | null>(null);
 
   const handleConvert = () => {
     const amount = parseInt(convertAmount);
@@ -100,7 +102,7 @@ const WalletScreen: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
       {/* Header */}
       <div className="relative px-4 pt-12 pb-6 overflow-hidden">
-        {/* Fond avec effet tech bleuté */}
+        {/* Fond avec effet tech bleutÃ© */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-blue-950/80 to-slate-900" />
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: 'radial-gradient(circle at 50% 50%, hsl(200 80% 60% / 0.3) 0%, transparent 60%)',
@@ -119,7 +121,7 @@ const WalletScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Trois pièces avec soldes */}
+          {/* Trois piÃ¨ces avec soldes */}
           <div className="flex items-end justify-center gap-2 mt-2">
             {/* Habbah */}
             <div className="flex flex-col items-center flex-1">
@@ -163,7 +165,7 @@ const WalletScreen: React.FC = () => {
               </p>
               <p className="text-yellow-400/80 text-xs font-semibold uppercase tracking-wider">Cash</p>
               <p className="text-yellow-500/60 text-[10px] mt-1">
-                ≈ {formatNumber((wallet?.soumboulah_cash || 0) * scToFcfaRate)} FCFA
+                â‰ˆ {formatNumber((wallet?.soumboulah_cash || 0) * scToFcfaRate)} FCFA
               </p>
               <Button
                 size="sm"
@@ -196,7 +198,7 @@ const WalletScreen: React.FC = () => {
                 </div>
                 {action.badge && (
                   <span
-                    aria-label="Nouveauté disponible"
+                    aria-label="NouveautÃ© disponible"
                     className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full leading-none"
                   >
                     {action.badge}
@@ -211,7 +213,7 @@ const WalletScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Dernières transactions */}
+      {/* DerniÃ¨res transactions */}
       <div className="px-4 pb-24">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide">
@@ -220,13 +222,13 @@ const WalletScreen: React.FC = () => {
           <div className="flex items-center gap-2">
             <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger className="w-[140px] h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-200">
-                <SelectValue placeholder="Catégorie" />
+                <SelectValue placeholder="CatÃ©gorie" />
               </SelectTrigger>
               <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">
                 <SelectItem value="all">Toutes</SelectItem>
                 <SelectItem value="market">Achats / Ventes</SelectItem>
                 <SelectItem value="gifts">Cadeaux</SelectItem>
-                <SelectItem value="solidarity">Solidarité</SelectItem>
+                <SelectItem value="solidarity">SolidaritÃ©</SelectItem>
                 <SelectItem value="other">Autres</SelectItem>
               </SelectContent>
             </Select>
@@ -250,7 +252,7 @@ const WalletScreen: React.FC = () => {
         {Object.keys(groupedTx).length === 0 ? (
           <Card className="bg-slate-800/50 border-slate-700 mt-4">
             <CardContent className="p-6 text-center text-slate-400 text-sm">
-              Aucune transaction pour ces critères
+              Aucune transaction pour ces critÃ¨res
             </CardContent>
           </Card>
         ) : (
@@ -282,91 +284,93 @@ const WalletScreen: React.FC = () => {
                     const coinIcon = currencyCoin[tx.currency] || coinHabbah;
 
                     if (isGift) {
-                const partnerName = metadata?.partner_name || metadata?.receiver_name || metadata?.sender_name || 'Ami(e) / Utilisateur';
-                const partnerAvatar = metadata?.partner_avatar || metadata?.receiver_avatar || metadata?.sender_avatar;
-                
-                const explicitGiftName = metadata?.gift_name || metadata?.giftName;
-                const rawVideoTitle = metadata?.video_title || metadata?.post_title;
-                
-                let giftName = explicitGiftName;
-                let videoTitle = rawVideoTitle;
+                      const partnerName = metadata?.partner_name || metadata?.receiver_name || metadata?.sender_name || 'Ami(e) / Utilisateur';
+                      const partnerAvatar = metadata?.partner_avatar || metadata?.receiver_avatar || metadata?.sender_avatar;
 
-                if (!explicitGiftName) {
-                   if (rawVideoTitle) {
-                       giftName = 'Cadeau vidéo';
-                   } else {
-                       giftName = 'Cadeau';
-                   }
-                }
+                      const explicitGiftName = metadata?.gift_name || metadata?.giftName;
+                      const rawVideoTitle = metadata?.video_title || metadata?.post_title;
 
-                if (giftName && videoTitle && giftName === videoTitle) {
-                    giftName = 'Cadeau vidéo';
-                }
+                      let giftName = explicitGiftName;
+                      let videoTitle = rawVideoTitle;
 
-                const partnerId = metadata?.partner_id || metadata?.receiver_id || metadata?.sender_id;
-                
-                // Construct mailto for cancellation if it's an outgoing gift
-                const mailtoSubject = encodeURIComponent(`Réclamation d'annulation - Transaction ${tx.id}`);
-                const mailtoBody = encodeURIComponent(`Bonjour,\n\nJe souhaite annuler la transaction suivante :\nID de transaction : ${tx.id}\nMontant : ${tx.amount} ${tx.currency}\nDate : ${new Date(tx.created_at).toLocaleString('fr-FR')}\nDestinataire estimé : ${partnerName}\n\nRaison de l'annulation : \n\nMerci.`);
+                      if (!explicitGiftName) {
+                        if (rawVideoTitle) {
+                          giftName = 'Cadeau vidéo';
+                        } else {
+                          giftName = 'Cadeau';
+                        }
+                      }
 
-                return (
-                  <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
-                    <CardContent className="p-3 flex flex-col gap-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="shrink-0">
-                            <Avatar className="w-10 h-10 border-2 border-slate-600">
-                              <AvatarImage src={partnerAvatar} alt={partnerName} />
-                              <AvatarFallback className="bg-slate-700 text-slate-300">
-                                {partnerName.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          </Link>
-                          <div>
-                            <p className="text-sm font-medium text-slate-200">
-                              {giftName} {(tx.transaction_type === 'gift_sent' || tx.amount < 0) ? 'envoyé(e)' : 'reçu(e)'}
-                            </p>
-                            <p className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-1 items-center">
-                              {(tx.transaction_type === 'gift_sent' || tx.amount < 0) ? 'À :' : 'De :'} 
-                              <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="font-semibold text-slate-300 hover:underline">
-                                {partnerName}
-                              </Link>
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0 flex items-center gap-1">
-                          <img src={coinIcon} alt="" className="w-5 h-5 object-contain" />
-                          <span className={`text-sm font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col gap-1 ml-12">
-                        {videoTitle && (
-                          <p className="text-xs text-slate-400 flex items-center gap-1">
-                            <span className="font-medium text-slate-300/80">Vidéo :</span>
-                            <span className="truncate">{videoTitle}</span>
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-[10px] text-slate-500">
-                            {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                          </p>
-                          {tx.amount < 0 && (
-                            <a 
-                              href={`mailto:support@skillup.com?subject=${mailtoSubject}&body=${mailtoBody}`}
-                              className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/20"
-                            >
-                              Réclamer une annulation
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              }
+                      if (giftName && videoTitle && giftName === videoTitle) {
+                        giftName = 'Cadeau vidéo';
+                      }
+
+                      const partnerId = metadata?.partner_id || metadata?.receiver_id || metadata?.sender_id;
+
+                      const handleClaimClick = (e: React.MouseEvent) => {
+                        e.preventDefault();
+                        setClaimTx({ id: tx.id, amount: tx.amount, currency: tx.currency });
+                      };
+
+                      return (
+                        <Card key={tx.id} className="bg-slate-800/50 border-slate-700">
+                          <CardContent className="p-3 flex flex-col gap-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="shrink-0">
+                                  <Avatar className="w-10 h-10 border-2 border-slate-600">
+                                    <AvatarImage src={partnerAvatar} alt={partnerName} />
+                                    <AvatarFallback className="bg-slate-700 text-slate-300">
+                                      {partnerName.charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </Link>
+                                <div>
+                                  <p className="text-sm font-medium text-slate-200">
+                                    {giftName} {(tx.transaction_type === 'gift_sent' || tx.amount < 0) ? 'envoyé(e)' : 'reçu(e)'}
+                                  </p>
+                                  <p className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-1 items-center">
+                                    {(tx.transaction_type === 'gift_sent' || tx.amount < 0) ? 'À :' : 'De :'}
+                                    <Link to={partnerId ? `/profile/${partnerId}` : '#'} className="font-semibold text-slate-300 hover:underline">
+                                      {partnerName}
+                                    </Link>
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0 flex items-center gap-1">
+                                <img src={coinIcon} alt="" className="w-5 h-5 object-contain" />
+                                <span className={`text-sm font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1 ml-12">
+                              {videoTitle && (
+                                <p className="text-xs text-slate-400 flex items-center gap-1">
+                                  <span className="font-medium text-slate-300/80">Vidéo :</span>
+                                  <span className="truncate">{videoTitle}</span>
+                                </p>
+                              )}
+                              <div className="flex items-center justify-between mt-1">
+                                <p className="text-[10px] text-slate-500">
+                                  {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                </p>
+                                {tx.amount < 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={handleClaimClick}
+                                    className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/20"
+                                  >
+                                    Réclamer une annulation
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    }
 
               if (isSolidarity) {
                 const campaignTitle = metadata.campaign_title || 'Cagnotte solidaire';
@@ -378,7 +382,7 @@ const WalletScreen: React.FC = () => {
                         <Heart size={18} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-200 truncate">Contribution à une cagnotte</p>
+                        <p className="text-sm font-medium text-slate-200 truncate">Contribution Ã  une cagnotte</p>
                         <p className="text-xs text-slate-300 truncate">{campaignTitle}</p>
                         <p className="text-xs text-slate-400">
                           {format(new Date(tx.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}
@@ -451,13 +455,23 @@ const WalletScreen: React.FC = () => {
       {/* Modal cadeau depuis le portefeuille */}
       <WalletGiftModal isOpen={showGiftDialog} onClose={() => setShowGiftDialog(false)} />
 
-      {/* Dialog de conversion Habbah → SB */}
+      {claimTx && (
+        <GiftCancellationModal
+          isOpen={!!claimTx}
+          onClose={() => setClaimTx(null)}
+          transactionRef={claimTx.id}
+          amount={claimTx.amount}
+          currency={claimTx.currency}
+        />
+      )}
+
+      {/* Dialog de conversion Habbah â†’ SB */}
       <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <img src={coinHabbah} alt="Habbah" className="w-6 h-6 object-contain" />
-              Convertir Habbah → Soumboulah Bonus
+              Convertir Habbah â†’ Soumboulah Bonus
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -502,3 +516,8 @@ const WalletScreen: React.FC = () => {
 };
 
 export default WalletScreen;
+
+
+
+
+

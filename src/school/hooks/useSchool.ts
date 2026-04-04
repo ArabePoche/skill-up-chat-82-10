@@ -25,6 +25,16 @@ export interface School {
   logo_url?: string | null;
   primary_color?: string | null;
   secondary_color?: string | null;
+  /** Site public : cycles & programmes (texte libre) */
+  site_cycles_programs?: string | null;
+  /** Site public : URLs d'images galerie */
+  site_gallery_urls?: string[] | null;
+  site_facebook_url?: string | null;
+  site_instagram_url?: string | null;
+  site_twitter_url?: string | null;
+  site_linkedin_url?: string | null;
+  site_youtube_url?: string | null; site_template_id?: string | null;
+  site_template_id?: string | null;
 }
 
 export interface SchoolYear {
@@ -241,6 +251,13 @@ export const useUpdateSchool = () => {
       logo_url?: string;
       primary_color?: string;
       secondary_color?: string;
+      site_cycles_programs?: string | null;
+      site_gallery_urls?: string[] | null;
+      site_facebook_url?: string | null;
+      site_instagram_url?: string | null;
+      site_twitter_url?: string | null;
+      site_linkedin_url?: string | null;
+      site_youtube_url?: string | null; site_template_id?: string | null;
     }) => {
       const { id, ...updates } = data;
       const { data: school, error } = await supabase
@@ -256,6 +273,7 @@ export const useUpdateSchool = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['user-school'] });
       queryClient.invalidateQueries({ queryKey: ['user-schools'] });
+      queryClient.invalidateQueries({ queryKey: ['school-site', data.id] });
       toast.success('École mise à jour avec succès');
     },
     onError: (error) => {

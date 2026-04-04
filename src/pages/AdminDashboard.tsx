@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
@@ -21,9 +21,13 @@ import StudentPaymentTracking from '@/components/admin/payments/StudentPaymentTr
 import PushNotificationSender from '@/components/admin/PushNotificationSender';
 import RecruitmentAdsManagement from '@/components/admin/RecruitmentAdsManagement';
 import CurrencySettingsManagement from '@/components/admin/CurrencySettingsManagement';
+import GiftDisputesManagement from '@/components/admin/wallet/GiftDisputesManagement';
 import AdminSolidarityManagement from '@/solidarity/components/AdminSolidarityManagement';
 import AdminMarketplaceManagement from '@/marketplace/components/AdminMarketplaceManagement';
 import CurrencyDashboard from '@/components/admin/CurrencyDashboard';
+import SchoolSubscriptionsManagement from '@/components/admin/subscriptions/SchoolSubscriptionsManagement';
+import SchoolsManagement from '@/components/admin/schools/SchoolsManagement';
+import SchoolRevenueDashboard from '@/components/admin/schools/SchoolRevenueDashboard';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -35,7 +39,7 @@ const AdminDashboard = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-edu-primary mx-auto mb-4"></div>
           <div className="text-lg font-semibold mb-2">Chargement...</div>
-          <p className="text-gray-600">Vérification des permissions</p>
+          <p className="text-gray-600">VÃ©rification des permissions</p>
         </div>
       </div>
     );
@@ -52,16 +56,16 @@ const AdminDashboard = () => {
           <CardHeader>
             <CardTitle className="text-red-600 flex items-center">
               <Shield className="mr-2" size={24} />
-              Accès refusé
+              AccÃ¨s refusÃ©
             </CardTitle>
             <CardDescription>
-              Vous n'avez pas les permissions nécessaires pour accéder à cette page.
-              Seuls les administrateurs peuvent accéder au tableau de bord.
+              Vous n'avez pas les permissions nÃ©cessaires pour accÃ©der Ã  cette page.
+              Seuls les administrateurs peuvent accÃ©der au tableau de bord.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-gray-500">
-              Rôle actuel: {profile?.role || 'Non défini'}
+              RÃ´le actuel: {profile?.role || 'Non dÃ©fini'}
             </p>
           </CardContent>
         </Card>
@@ -99,12 +103,20 @@ const AdminDashboard = () => {
         return <RecruitmentAdsManagement />;
       case 'currency-settings':
         return <CurrencySettingsManagement />;
+        case 'gift-disputes':
+          return <GiftDisputesManagement />;
       case 'currency-dashboard':
         return <CurrencyDashboard />;
       case 'solidarity':
         return <AdminSolidarityManagement />;
       case 'marketplace':
         return <AdminMarketplaceManagement />;
+      case 'school-subscriptions':
+        return <SchoolSubscriptionsManagement />;
+      case 'schools-management':
+        return <SchoolsManagement />;
+      case 'school-revenue':
+        return <SchoolRevenueDashboard />;
       default:
         return <DashboardStats />;
     }

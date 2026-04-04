@@ -1,5 +1,5 @@
-import React from 'react';
-import { BarChart3, Users, BookOpen, Package, Video, UserCheck, Shield, GraduationCap, UsersRound, UserPlus, CheckCircle, CreditCard, Bell, Megaphone, Coins, Heart, ShoppingBag } from 'lucide-react';
+﻿import React from 'react';
+import { ShieldCheck, Heart, ShoppingBag, Building2, TrendingUp, ShieldAlert, FileSearch, ShieldBan, Shield, ScrollText, BadgeAlert, Megaphone, Video, Bell, Coins, Users, GraduationCap, Package, BarChart3, UserCheck, CheckCircle, CreditCard, BookOpen, UsersRound, UserPlus } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -18,92 +18,58 @@ interface AdminSidebarProps {
   onTabChange: (tab: string) => void;
 }
 
-const menuItems = [
+const menuGroups = [
   {
-    title: 'Statistiques',
-    value: 'stats',
-    icon: BarChart3,
+    label: 'Tableau de Bord',
+    items: [
+      { title: 'Statistiques', value: 'stats', icon: BarChart3 },
+      { title: 'Ã‰conomie (PIB)', value: 'currency-dashboard', icon: BarChart3 },
+    ]
   },
   {
-    title: 'Utilisateurs en ligne',
-    value: 'online-users',
-    icon: UserCheck,
+    label: 'Utilisateurs',
+    items: [
+      { title: 'Utilisateurs', value: 'users', icon: Users },
+      { title: 'Utilisateurs en ligne', value: 'online-users', icon: UserCheck },
+      { title: 'Demandes Certification', value: 'verification-requests', icon: CheckCircle },
+    ]
   },
   {
-    title: 'Suivi des paiements',
-    value: 'payment-tracking',
-    icon: CreditCard,
+    label: 'Ã‰coles',
+    items: [
+      { title: 'Toutes les Ã‰coles', value: 'schools-management', icon: Building2 },
+      { title: 'Abonnements & Plans', value: 'school-subscriptions', icon: CreditCard },
+      { title: 'Revenus & Paiements', value: 'school-revenue', icon: TrendingUp },
+    ]
   },
   {
-    title: 'Formations & Commissions',
-    value: 'create-formation',
-    icon: BookOpen,
+    label: 'Formations & PÃ©dagogie',
+    items: [
+      { title: 'Formations & Commissions', value: 'create-formation', icon: BookOpen },
+      { title: 'Promotions', value: 'promotions', icon: UsersRound },
+      { title: 'Suivi des paiements', value: 'payment-tracking', icon: CreditCard },
+      { title: 'Professeurs', value: 'teachers', icon: GraduationCap },
+      { title: 'Candidatures Encadreurs', value: 'teacher-applications', icon: UserPlus },
+    ]
   },
   {
-    title: 'Professeurs',
-    value: 'teachers',
-    icon: GraduationCap,
+    label: 'Boutique & Finance',
+    items: [
+      { title: 'Marketplace', value: 'marketplace', icon: ShoppingBag },
+      { title: 'Produits', value: 'products', icon: Package },
+      { title: 'Monnaie Virtuelle', value: 'currency-settings', icon: Coins },
+        { title: 'Réclamations Cadeaux', value: 'gift-disputes', icon: ShieldCheck },
+    ]
   },
   {
-    title: 'Candidatures Encadreurs',
-    value: 'teacher-applications',
-    icon: UserPlus,
-  },
-  {
-    title: 'Demandes Certification',
-    value: 'verification-requests',
-    icon: CheckCircle,
-  },
-  {
-    title: 'Promotions',
-    value: 'promotions',
-    icon: UsersRound,
-  },
-  {
-    title: 'Produits',
-    value: 'products',
-    icon: Package,
-  },
-  {
-    title: 'Vidéos',
-    value: 'videos',
-    icon: Video,
-  },
-  {
-    title: 'Utilisateurs',
-    value: 'users',
-    icon: Users,
-  },
-  {
-    title: 'Notifications Push',
-    value: 'push-notifications',
-    icon: Bell,
-  },
-  {
-    title: 'Annonces Recrutement',
-    value: 'recruitment-ads',
-    icon: Megaphone,
-  },
-  {
-    title: 'Monnaie Virtuelle',
-    value: 'currency-settings',
-    icon: Coins,
-  },
-  {
-    title: 'Économie (PIB)',
-    value: 'currency-dashboard',
-    icon: BarChart3,
-  },
-  {
-    title: 'Aide Solidaire',
-    value: 'solidarity',
-    icon: Heart,
-  },
-  {
-    title: 'Marketplace',
-    value: 'marketplace',
-    icon: ShoppingBag,
-  },
+    label: 'CommunautÃ© & Communication',
+    items: [
+      { title: 'VidÃ©os', value: 'videos', icon: Video },
+      { title: 'Notifications Push', value: 'push-notifications', icon: Bell },
+      { title: 'Annonces Recrutement', value: 'recruitment-ads', icon: Megaphone },
+      { title: 'Aide Solidaire', value: 'solidarity', icon: Heart },
+    ]
+  }
 ];
 
 export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
@@ -130,25 +96,27 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
       </SidebarHeader>
       
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.value}>
-                  <SidebarMenuButton
-                    onClick={() => handleTabChange(item.value)}
-                    isActive={activeTab === item.value}
-                    tooltip={isCollapsed ? item.title : undefined}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {!isCollapsed && <span>{item.title}</span>}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menuGroups.map((group, index) => (
+          <SidebarGroup key={index}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.value}>
+                    <SidebarMenuButton
+                      onClick={() => handleTabChange(item.value)}
+                      isActive={activeTab === item.value}
+                      tooltip={isCollapsed ? item.title : undefined}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

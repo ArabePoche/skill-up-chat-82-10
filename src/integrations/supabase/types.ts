@@ -6784,6 +6784,15 @@ export type Database = {
           primary_color: string | null
           school_type: Database["public"]["Enums"]["school_type"]
           secondary_color: string | null
+          site_cycles_programs: string | null
+          site_facebook_url: string | null
+          site_gallery_urls: string[] | null
+          site_instagram_url: string | null
+          site_linkedin_url: string | null
+          site_twitter_url: string | null
+          site_youtube_url: string | null
+          subscription_expires_at: string | null
+          subscription_plan_id: string | null
           teaching_language: string | null
           updated_at: string
           website: string | null
@@ -6804,6 +6813,15 @@ export type Database = {
           primary_color?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
           secondary_color?: string | null
+          site_cycles_programs?: string | null
+          site_facebook_url?: string | null
+          site_gallery_urls?: string[] | null
+          site_instagram_url?: string | null
+          site_linkedin_url?: string | null
+          site_twitter_url?: string | null
+          site_youtube_url?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan_id?: string | null
           teaching_language?: string | null
           updated_at?: string
           website?: string | null
@@ -6824,6 +6842,15 @@ export type Database = {
           primary_color?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
           secondary_color?: string | null
+          site_cycles_programs?: string | null
+          site_facebook_url?: string | null
+          site_gallery_urls?: string[] | null
+          site_instagram_url?: string | null
+          site_linkedin_url?: string | null
+          site_twitter_url?: string | null
+          site_youtube_url?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan_id?: string | null
           teaching_language?: string | null
           updated_at?: string
           website?: string | null
@@ -6836,7 +6863,113 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "schools_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "school_subscription_plans"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      school_plan_features: {
+        Row: {
+          enabled: boolean
+          feature_key: string
+          plan_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          feature_key: string
+          plan_id: string
+        }
+        Update: {
+          enabled?: boolean
+          feature_key?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_plan_features_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "school_subscription_features"
+            referencedColumns: ["feature_key"]
+          },
+          {
+            foreignKeyName: "school_plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "school_subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_subscription_features: {
+        Row: {
+          category: string
+          description: string | null
+          feature_key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          category?: string
+          description?: string | null
+          feature_key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          feature_key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      school_subscription_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price_monthly: number
+          price_yearly: number | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price_monthly?: number
+          price_yearly?: number | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_monthly?: number
+          price_yearly?: number | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       series: {
         Row: {

@@ -13,7 +13,8 @@ import { GeneralSettings } from './components/GeneralSettings';
 import { SchoolYearsSettings } from './components/SchoolYearsSettings';
 import { CustomizationSettings } from './components/CustomizationSettings';
 import { RolesSettings } from './components/RolesSettings';
-import { Settings, Calendar, Palette, Shield } from 'lucide-react';
+import { SchoolSubscriptionPortal } from './components/SchoolSubscriptionPortal';
+import { Settings, Calendar, Palette, Shield, Crown } from 'lucide-react';
 
 export const SettingsApp: React.FC = () => {
   const { t } = useTranslation();
@@ -59,7 +60,7 @@ export const SettingsApp: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
+        <TabsList className="grid w-full max-w-2xl grid-cols-5">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             <span className="hidden sm:inline">{t('schoolOS.settings.general')}</span>
@@ -75,6 +76,10 @@ export const SettingsApp: React.FC = () => {
           <TabsTrigger value="customization" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             <span className="hidden sm:inline">{t('schoolOS.settings.theme')}</span>
+          </TabsTrigger>
+          <TabsTrigger value="subscription" className="flex items-center gap-2">
+            <Crown className="h-4 w-4" />
+            <span className="hidden sm:inline">Abonnement</span>
           </TabsTrigger>
         </TabsList>
 
@@ -92,6 +97,10 @@ export const SettingsApp: React.FC = () => {
 
         <TabsContent value="customization" className="space-y-4">
           <CustomizationSettings school={school} />
+        </TabsContent>
+
+        <TabsContent value="subscription" className="space-y-4">
+          <SchoolSubscriptionPortal schoolId={school.id} />
         </TabsContent>
       </Tabs>
     </div>
