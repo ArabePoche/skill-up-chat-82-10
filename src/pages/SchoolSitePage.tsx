@@ -70,9 +70,9 @@ const SchoolSitePage: React.FC = () => {
           .eq('school_id', schoolId),
       ]);
       return {
-        students: studentsResult.count ?? 0,
-        teachers: teachersResult.count ?? 0,
-        classes: classesResult.count ?? 0,
+        students: studentsResult.error ? 0 : (studentsResult.count ?? 0),
+        teachers: teachersResult.error ? 0 : (teachersResult.count ?? 0),
+        classes: classesResult.error ? 0 : (classesResult.count ?? 0),
       };
     },
     enabled: !!schoolId,
@@ -238,7 +238,7 @@ const SchoolSitePage: React.FC = () => {
               <BarChart2 size={18} className="text-primary" />
               {t('school.statistics', { defaultValue: 'Statistiques' })}
             </h2>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               {stats.students > 0 && (
                 <div>
                   <div className="text-2xl font-bold text-primary">{stats.students}</div>
