@@ -98,14 +98,20 @@ const CoursIndex = () => {
     };
   }).filter(Boolean) || [];
 
-  // Filtrer les formations disponibles (non inscrites)
-  const enrolledFormationIds = new Set(studentFormations.map(f => f.id));
-  const availableFormations = allFormations?.filter(
-    formation => !enrolledFormationIds.has(formation.id)
-  ) || [];
-
+  // Filtrer les formations créées par l'utilisateur (inclut actives et inactives)
   const createdFormations = allFormations?.filter(
     formation => formation.author_id === user.id
+  ) || [];
+
+  const createdFormationIds = new Set(createdFormations.map(f => f.id));
+  const teacherFormationIds = new Set((teacherFormations || []).map((f: any) => f.id));
+
+  // Filtrer les formations disponibles (non inscrites, non créées, non enseignées)
+  const enrolledFormationIds = new Set(studentFormations.map(f => f.id));
+  const availableFormations = allFormations?.filter(
+    formation => !enrolledFormationIds.has(formation.id) && 
+                 !createdFormationIds.has(formation.id) &&
+                 !teacherFormationIds.has(formation.id)
   ) || [];
 
   return (
@@ -117,9 +123,20 @@ const CoursIndex = () => {
       />
         
       <div className="p-4 space-y-6">
-        {studentFormations.length === 0 ? (
-          <AvailableFormationsCarousel formations={availableFormations} />
-        ) : (
+        {/* Mes créations en premier */}
+        {createdFormations.length > 0 && (
+          <FormationSection
+            title="Mes créations"
+            icon="teacher"
+            formations={createdFormations}
+            isTeacherSection={false}
+            onFormationClick={handleFormationClick}
+            onDashboardClick={() => navigate('/cours/dashboard')}
+          />
+        )}
+
+        {/* Mes cours inscrits */}
+        {studentFormations.length > 0 && (
           <FormationSection
             title={t('formation.myEnrolledCourses')}
             icon="student"
@@ -130,6 +147,7 @@ const CoursIndex = () => {
           />
         )}
 
+        {/* Espace enseignant */}
         {teacherFormations && teacherFormations.length > 0 && (
           <FormationSection
             title={t('formation.teacherSpace')}
@@ -140,15 +158,9 @@ const CoursIndex = () => {
           />
         )}
 
-        {createdFormations && createdFormations.length > 0 && (
-          <FormationSection
-            title="Mes créations"
-            icon="teacher"
-            formations={createdFormations}
-            isTeacherSection={false}
-            onFormationClick={handleFormationClick}
-            onDashboardClick={() => navigate('/cours/dashboard')}
-          />
+        {/* Formations disponibles si aucune inscription */}
+        {studentFormations.length === 0 && createdFormations.length === 0 && (
+          <AvailableFormationsCarousel formations={availableFormations} />
         )}
       </div>
 

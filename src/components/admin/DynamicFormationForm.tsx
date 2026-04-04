@@ -43,6 +43,7 @@ interface LessonData {
 }
 
 interface ExerciseData {
+  id?: string;
   title: string;
   description: string;
   type: string;
