@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import SchoolJoinRequestModal from '@/school/components/SchoolJoinRequestModal';
 import { School } from '@/school/hooks/useSchool';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserSchools } from '@/school/hooks/useUserSchools';
 
 /**
  * Page publique d'une école
@@ -17,9 +19,15 @@ import { School } from '@/school/hooks/useSchool';
 const SchoolSitePage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const schoolId = searchParams.get('id');
   const [showJoinModal, setShowJoinModal] = useState(false);
+
+  const { data: userSchools } = useUserSchools(user?.id);
+  const isPersonnel = !!userSchools?.find(
+    s => s.id === schoolId && s.role !== 'parent'
+  );
 
   const { data: school, isLoading } = useQuery({
     queryKey: ['school-site', schoolId],
@@ -170,15 +178,17 @@ const SchoolSitePage: React.FC = () => {
           >
             {t('school.joinSchool', { defaultValue: "Rejoindre l'école" })}
           </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            size="lg"
-            onClick={() => navigate(`/school?id=${school.id}`)}
-          >
-            <SchoolIcon className="h-4 w-4 mr-2" />
-            {t('school.accessSchoolOS', { defaultValue: 'Accéder à School-OS' })}
-          </Button>
+          {isPersonnel && (
+            <Button
+              variant="outline"
+              className="w-full"
+              size="lg"
+              onClick={() => navigate(`/school?id=${school.id}`)}
+            >
+              <SchoolIcon className="h-4 w-4 mr-2" />
+              {t('school.accessSchoolOS', { defaultValue: 'Accéder à School-OS' })}
+            </Button>
+          )}
         </div>
       </div>
 

@@ -122,7 +122,7 @@ const MySchoolsCarousel: React.FC = () => {
             {schools.map((school) => (
               <button
                 key={school.id}
-                onClick={() => navigate(`/school?id=${school.id}`)}
+                onClick={() => navigate(`/school-site?id=${school.id}`)}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-muted/50 transition-colors min-w-[80px] group"
               >
                 <div className={`w-12 h-12 rounded-full ${getRandomColor(school.id)} flex items-center justify-center text-white font-medium text-sm shadow-sm group-hover:scale-105 transition-transform`}>
