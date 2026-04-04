@@ -129,6 +129,21 @@ const CoursIndex = () => {
       />
         
       <div className="p-4 space-y-6">
+        {/* Bouton créer une formation - visible pour tous */}
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90"
+          size="lg"
+        >
+          <Plus className="h-5 w-5" />
+          Créer une formation
+        </Button>
+
+        <CreateFormationModal
+          open={showCreateModal}
+          onOpenChange={setShowCreateModal}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['formations'] })}
+        />
         {/* Mes créations en premier */}
         {createdFormations.length > 0 && (
           <FormationSection

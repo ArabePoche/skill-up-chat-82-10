@@ -78,7 +78,7 @@ const AdminDashboard = () => {
       case 'payment-tracking':
         return <StudentPaymentTracking />;
       case 'create-formation':
-        return <FormationsManagement />;
+        return <FormationApprovalManagement />;
       case 'teachers':
         return <TeachersManagement />;
       case 'teacher-applications':
