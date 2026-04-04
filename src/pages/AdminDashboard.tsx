@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import FormationsManagement from '@/components/admin/FormationsManagement';
+import FormationApprovalManagement from '@/components/admin/FormationApprovalManagement';
 import ProductsManagement from '@/components/admin/ProductsManagement';
 import UsersManagement from '@/components/admin/UsersManagement';
 import DashboardStats from '@/components/admin/DashboardStats';
