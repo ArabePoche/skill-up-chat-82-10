@@ -63,7 +63,7 @@ const ParentJoinForm: React.FC<ParentJoinFormProps> = ({ onSubmit, isPending }) 
     reader.onloadend = () => setPhotoPreview(reader.result as string);
     reader.readAsDataURL(file);
 
-    // Upload vers le stockage
+    // Upload vers le stockage (bucket partagé avec les fichiers de discussion)
     try {
       const result = await uploadFile(file, 'lesson_discussion_files');
       if (result?.fileUrl) {
@@ -101,6 +101,7 @@ const ParentJoinForm: React.FC<ParentJoinFormProps> = ({ onSubmit, isPending }) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!photoUrl || !relationship) return;
     onSubmit({
       parentName,
       phone,
@@ -146,10 +147,7 @@ const ParentJoinForm: React.FC<ParentJoinFormProps> = ({ onSubmit, isPending }) 
           accept="image/*"
           className="hidden"
           onChange={handlePhotoChange}
-          required={!photoUrl}
         />
-        {/* Champ caché pour valider la présence de la photo */}
-        <input type="hidden" value={photoUrl} required />
       </div>
 
       {/* Nom complet */}
@@ -174,7 +172,7 @@ const ParentJoinForm: React.FC<ParentJoinFormProps> = ({ onSubmit, isPending }) 
           <User className="w-4 h-4" />
           {t('school.relationship', { defaultValue: 'Lien avec les enfants' })} *
         </Label>
-        <Select value={relationship} onValueChange={setRelationship} required>
+        <Select value={relationship} onValueChange={setRelationship}>
           <SelectTrigger className="mt-1">
             <SelectValue placeholder={t('school.relationshipPlaceholder', { defaultValue: 'Sélectionner...' })} />
           </SelectTrigger>
@@ -188,6 +186,8 @@ const ParentJoinForm: React.FC<ParentJoinFormProps> = ({ onSubmit, isPending }) 
             <SelectItem value="autre">{t('school.other', { defaultValue: 'Autre' })}</SelectItem>
           </SelectContent>
         </Select>
+        {/* Champ caché pour la validation HTML5 du lien de parenté */}
+        <input type="hidden" name="relationship" value={relationship} required />
       </div>
 
       {/* Téléphone */}
@@ -367,7 +367,7 @@ const ParentJoinForm: React.FC<ParentJoinFormProps> = ({ onSubmit, isPending }) 
         ))}
       </div>
 
-      <Button type="submit" className="w-full" disabled={isPending || isUploading || !photoUrl}>
+      <Button type="submit" className="w-full" disabled={isPending || isUploading || !photoUrl || !relationship}>
         {isPending
           ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('common.sending', { defaultValue: 'Envoi...' })}</>
           : t('school.sendJoinRequest', { defaultValue: "Envoyer la demande d'adhésion" })}
