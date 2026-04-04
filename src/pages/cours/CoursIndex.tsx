@@ -98,14 +98,20 @@ const CoursIndex = () => {
     };
   }).filter(Boolean) || [];
 
-  // Filtrer les formations disponibles (non inscrites)
-  const enrolledFormationIds = new Set(studentFormations.map(f => f.id));
-  const availableFormations = allFormations?.filter(
-    formation => !enrolledFormationIds.has(formation.id)
-  ) || [];
-
+  // Filtrer les formations créées par l'utilisateur (inclut actives et inactives)
   const createdFormations = allFormations?.filter(
     formation => formation.author_id === user.id
+  ) || [];
+
+  const createdFormationIds = new Set(createdFormations.map(f => f.id));
+  const teacherFormationIds = new Set((teacherFormations || []).map((f: any) => f.id));
+
+  // Filtrer les formations disponibles (non inscrites, non créées, non enseignées)
+  const enrolledFormationIds = new Set(studentFormations.map(f => f.id));
+  const availableFormations = allFormations?.filter(
+    formation => !enrolledFormationIds.has(formation.id) && 
+                 !createdFormationIds.has(formation.id) &&
+                 !teacherFormationIds.has(formation.id)
   ) || [];
 
   return (
