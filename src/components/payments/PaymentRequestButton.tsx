@@ -38,8 +38,8 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [scAmount, setScAmount] = useState<number | ''>('');
-  const [sbAmount, setSbAmount] = useState<number | ''>('');
+  const [scAmount, setScAmount] = useState<number>(0);
+  const [sbAmount, setSbAmount] = useState<number>(0);
 
   const { subscription } = useUserSubscription(formationId);
   const { pricingOptions } = useFormationPricing(formationId);
