@@ -6,14 +6,16 @@ import React, { useState } from 'react';
 import { 
   X, MapPin, Phone, Mail, Globe, Calendar, Building2, 
   Users, GraduationCap, BookOpen, Image as ImageIcon,
-  ExternalLink, Award, Languages, UserPlus
+  ExternalLink, Award, Languages, UserPlus, School as SchoolIcon
 } from 'lucide-react';
 import SchoolJoinRequestModal from '@/school/components/SchoolJoinRequestModal';
 import { ParentCodeConfirmation } from '@/school-os/families/components/ParentCodeConfirmation';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserSchools } from '@/school/hooks/useUserSchools';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 interface School {
   id: string;
@@ -40,7 +42,14 @@ interface SchoolWebPageProps {
 
 const SchoolWebPage: React.FC<SchoolWebPageProps> = ({ school, onClose }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { data: userSchools } = useUserSchools(user?.id);
   const [showJoinModal, setShowJoinModal] = useState(false);
+
+  const PERSONNEL_ROLES = ['owner', 'admin', 'teacher', 'secretary', 'staff', 'supervisor'];
+  const isPersonnel = !!userSchools?.find(
+    s => s.id === school.id && PERSONNEL_ROLES.includes(s.role)
+  );
 
 
   const getSchoolTypeLabel = (type: string) => {
@@ -129,14 +138,26 @@ const SchoolWebPage: React.FC<SchoolWebPageProps> = ({ school, onClose }) => {
 
           {/* Bouton Rejoindre */}
           {user && (
-            <Button
-              onClick={() => setShowJoinModal(true)}
-              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-0"
-              variant="outline"
-            >
-              <UserPlus size={18} />
-              Rejoindre cette école
-            </Button>
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Button
+                onClick={() => setShowJoinModal(true)}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-0"
+                variant="outline"
+              >
+                <UserPlus size={18} />
+                Rejoindre cette école
+              </Button>
+              {isPersonnel && (
+                <Button
+                  onClick={() => navigate(`/school?id=${school.id}`)}
+                  className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-0"
+                  variant="outline"
+                >
+                  <SchoolIcon size={18} />
+                  Accéder à School-OS
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>
