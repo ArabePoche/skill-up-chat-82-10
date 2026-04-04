@@ -180,7 +180,7 @@ const CreatorFormationModal: React.FC<CreatorFormationModalProps> = ({
     } finally {
       setLoadingDraft(false);
     }
-  }, [authorId]); // formatFormationData is stable (no dependencies)
+  }, [authorId]);
 
   // Load draft when modal opens
   useEffect(() => {
