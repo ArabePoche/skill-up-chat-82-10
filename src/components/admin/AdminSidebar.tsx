@@ -35,7 +35,7 @@ const menuItems = [
     icon: CreditCard,
   },
   {
-    title: 'Créer Formation',
+    title: 'Formations & Commissions',
     value: 'create-formation',
     icon: BookOpen,
   },
