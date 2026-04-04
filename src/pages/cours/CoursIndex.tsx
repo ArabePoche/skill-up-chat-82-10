@@ -9,12 +9,16 @@ import CoursHeader from '@/components/cours/CoursHeader';
 import FormationSection from '@/components/cours/FormationSection';
 import LoadingSpinner from '@/components/cours/LoadingSpinner';
 import AvailableFormationsCarousel from '@/components/cours/AvailableFormationsCarousel';
+import CreateFormationModal from '@/components/cours/CreateFormationModal';
 import { useFormations, useUserEnrollments } from '@/hooks/useFormations';
 import { useTeacherFormations } from '@/hooks/useTeacherFormations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CoursIndex = () => {
   const { user, loading } = useAuth();
