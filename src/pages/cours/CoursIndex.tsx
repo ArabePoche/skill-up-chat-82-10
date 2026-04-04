@@ -9,17 +9,23 @@ import CoursHeader from '@/components/cours/CoursHeader';
 import FormationSection from '@/components/cours/FormationSection';
 import LoadingSpinner from '@/components/cours/LoadingSpinner';
 import AvailableFormationsCarousel from '@/components/cours/AvailableFormationsCarousel';
+import CreateFormationModal from '@/components/cours/CreateFormationModal';
 import { useFormations, useUserEnrollments } from '@/hooks/useFormations';
 import { useTeacherFormations } from '@/hooks/useTeacherFormations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CoursIndex = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [showCreateModal, setShowCreateModal] = useState(false);
   
   const { data: allFormations, isLoading: formationsLoading } = useFormations();
   const { data: userEnrollments, isLoading: enrollmentsLoading, error: enrollmentsError } = useUserEnrollments(user?.id);
@@ -123,6 +129,21 @@ const CoursIndex = () => {
       />
         
       <div className="p-4 space-y-6">
+        {/* Bouton créer une formation - visible pour tous */}
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90"
+          size="lg"
+        >
+          <Plus className="h-5 w-5" />
+          Créer une formation
+        </Button>
+
+        <CreateFormationModal
+          open={showCreateModal}
+          onOpenChange={setShowCreateModal}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['formations'] })}
+        />
         {/* Mes créations en premier */}
         {createdFormations.length > 0 && (
           <FormationSection

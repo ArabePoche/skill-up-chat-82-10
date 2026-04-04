@@ -1312,6 +1312,39 @@ export type Database = {
         }
         Relationships: []
       }
+      formation_commission_settings: {
+        Row: {
+          commission_description: string | null
+          commission_label: string
+          commission_rate: number
+          commission_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          commission_description?: string | null
+          commission_label: string
+          commission_rate?: number
+          commission_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          commission_description?: string | null
+          commission_label?: string
+          commission_rate?: number
+          commission_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       formation_pricing_options: {
         Row: {
           allow_calls: boolean | null
@@ -1440,6 +1473,7 @@ export type Database = {
       formations: {
         Row: {
           accepted_payment_methods: string[] | null
+          approval_status: string
           author_id: string | null
           badge: string | null
           completion_rate: number | null
@@ -1457,7 +1491,12 @@ export type Database = {
           price: number | null
           promo_video_url: string | null
           rating: number | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           students_count: number | null
+          submitted_at: string | null
+          terms_accepted: boolean
           thumbnail_url: string | null
           title: string | null
           total_lessons: number | null
@@ -1466,6 +1505,7 @@ export type Database = {
         }
         Insert: {
           accepted_payment_methods?: string[] | null
+          approval_status?: string
           author_id?: string | null
           badge?: string | null
           completion_rate?: number | null
@@ -1483,7 +1523,12 @@ export type Database = {
           price?: number | null
           promo_video_url?: string | null
           rating?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           students_count?: number | null
+          submitted_at?: string | null
+          terms_accepted?: boolean
           thumbnail_url?: string | null
           title?: string | null
           total_lessons?: number | null
@@ -1492,6 +1537,7 @@ export type Database = {
         }
         Update: {
           accepted_payment_methods?: string[] | null
+          approval_status?: string
           author_id?: string | null
           badge?: string | null
           completion_rate?: number | null
@@ -1509,7 +1555,12 @@ export type Database = {
           price?: number | null
           promo_video_url?: string | null
           rating?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           students_count?: number | null
+          submitted_at?: string | null
+          terms_accepted?: boolean
           thumbnail_url?: string | null
           title?: string | null
           total_lessons?: number | null
