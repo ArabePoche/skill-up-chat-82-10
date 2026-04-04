@@ -9,7 +9,7 @@ import CoursHeader from '@/components/cours/CoursHeader';
 import FormationSection from '@/components/cours/FormationSection';
 import LoadingSpinner from '@/components/cours/LoadingSpinner';
 import AvailableFormationsCarousel from '@/components/cours/AvailableFormationsCarousel';
-import CreateFormationModal from '@/components/cours/CreateFormationModal';
+import CreatorFormationModal from '@/components/cours/CreatorFormationModal';
 import { useFormations, useUserEnrollments } from '@/hooks/useFormations';
 import { useTeacherFormations } from '@/hooks/useTeacherFormations';
 import { useAuth } from '@/hooks/useAuth';
@@ -127,9 +127,10 @@ const CoursIndex = () => {
       />
         
       <div className="p-4 space-y-6">
-        <CreateFormationModal
+        <CreatorFormationModal
           open={showCreateModal}
           onOpenChange={setShowCreateModal}
+          authorId={user.id}
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['formations'] })}
         />
         {/* Mes cours inscrits */}
