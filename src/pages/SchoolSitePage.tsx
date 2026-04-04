@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Building2, MapPin, Phone, Mail, Globe, Calendar, ArrowLeft,
   School as SchoolIcon, ExternalLink, Languages, UserPlus,
+  Users, GraduationCap, BookOpen, BarChart2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,33 @@ const SchoolSitePage: React.FC = () => {
         .single();
       if (error) return null;
       return data as School;
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['school-stats', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return null;
+      const [studentsResult, teachersResult, classesResult] = await Promise.all([
+        supabase
+          .from('students_school')
+          .select('id', { count: 'exact', head: true })
+          .eq('school_id', schoolId),
+        supabase
+          .from('school_teachers')
+          .select('id', { count: 'exact', head: true })
+          .eq('school_id', schoolId),
+        supabase
+          .from('classes')
+          .select('id', { count: 'exact', head: true })
+          .eq('school_id', schoolId),
+      ]);
+      return {
+        students: studentsResult.error ? 0 : (studentsResult.count ?? 0),
+        teachers: teachersResult.error ? 0 : (teachersResult.count ?? 0),
+        classes: classesResult.error ? 0 : (classesResult.count ?? 0),
+      };
     },
     enabled: !!schoolId,
   });
@@ -202,6 +230,45 @@ const SchoolSitePage: React.FC = () => {
             </div>
           )}
         </section>
+
+        {/* Section Statistiques */}
+        {stats && (stats.students > 0 || stats.teachers > 0 || stats.classes > 0) && (
+          <section className="bg-card rounded-xl p-5 shadow-sm border border-border">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <BarChart2 size={18} className="text-primary" />
+              {t('school.statistics', { defaultValue: 'Statistiques' })}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+              {stats.students > 0 && (
+                <div>
+                  <div className="text-2xl font-bold text-primary">{stats.students}</div>
+                  <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
+                    <Users size={12} />
+                    {t('school.students', { defaultValue: 'Élèves' })}
+                  </div>
+                </div>
+              )}
+              {stats.teachers > 0 && (
+                <div>
+                  <div className="text-2xl font-bold text-primary">{stats.teachers}</div>
+                  <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
+                    <GraduationCap size={12} />
+                    {t('school.teachers', { defaultValue: 'Enseignants' })}
+                  </div>
+                </div>
+              )}
+              {stats.classes > 0 && (
+                <div>
+                  <div className="text-2xl font-bold text-primary">{stats.classes}</div>
+                  <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
+                    <BookOpen size={12} />
+                    {t('school.classes', { defaultValue: 'Classes' })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Section Localisation */}
         {(school.address || school.city || school.country) && (
