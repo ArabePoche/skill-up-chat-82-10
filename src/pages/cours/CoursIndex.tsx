@@ -16,8 +16,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 const CoursIndex = () => {
@@ -129,16 +127,6 @@ const CoursIndex = () => {
       />
         
       <div className="p-4 space-y-6">
-        {/* Bouton créer une formation - visible pour tous */}
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90"
-          size="lg"
-        >
-          <Plus className="h-5 w-5" />
-          Créer une formation
-        </Button>
-
         <CreateFormationModal
           open={showCreateModal}
           onOpenChange={setShowCreateModal}
@@ -173,16 +161,16 @@ const CoursIndex = () => {
         )}
 
         {/* Mes créations en dernière section */}
-        {createdFormations.length > 0 && (
-          <FormationSection
-            title="Mes créations"
-            icon="teacher"
-            formations={createdFormations}
-            isTeacherSection={false}
-            onFormationClick={handleFormationClick}
-            onDashboardClick={() => navigate('/cours/dashboard')}
-          />
-        )}
+        <FormationSection
+          title="Mes créations"
+          icon="teacher"
+          formations={createdFormations}
+          isTeacherSection={false}
+          onFormationClick={handleFormationClick}
+          onDashboardClick={createdFormations.length > 0 ? () => navigate('/cours/dashboard') : undefined}
+          onCreateClick={() => setShowCreateModal(true)}
+          emptyMessage="Vous n'avez pas encore créée de formation."
+        />
       </div>
 
       {/* Navbar fixe en bas */}
