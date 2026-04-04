@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, BookOpen, Loader2 } from 'lucide-react';
+import { AlertTriangle, BookOpen, Loader2, Save, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
@@ -31,6 +31,7 @@ const CreateFormationModal: React.FC<CreateFormationModalProps> = ({ open, onOpe
   const [readConditions, setReadConditions] = useState(false);
   const [acceptConditions, setAcceptConditions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
 
   // Charger les taux de commission dynamiques
   const { data: commissionSettings } = useQuery({
@@ -46,44 +47,64 @@ const CreateFormationModal: React.FC<CreateFormationModalProps> = ({ open, onOpe
     }
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!readConditions || !acceptConditions) {
-      toast.error('Vous devez lire et accepter les conditions');
-      return;
-    }
-
+  const createFormation = async (isDraft: boolean) => {
     if (!title.trim()) {
       toast.error('Le titre est requis');
-      return;
+      return false;
     }
 
+    const formationId = crypto.randomUUID();
+    const insertData: any = {
+      id: formationId,
+      title: title.trim(),
+      description: description.trim(),
+      price: price ? parseFloat(price) : 0,
+      author_id: user?.id,
+      is_active: false,
+    };
+
+    if (isDraft) {
+      insertData.approval_status = 'draft';
+    } else {
+      if (!readConditions || !acceptConditions) {
+        toast.error('Vous devez lire et accepter les conditions');
+        return false;
+      }
+      insertData.approval_status = 'pending';
+      insertData.terms_accepted = true;
+      insertData.submitted_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase.from('formations').insert(insertData);
+    if (error) throw error;
+    return true;
+  };
+
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      const success = await createFormation(true);
+      if (!success) return;
+      toast.success('Formation enregistrée en brouillon. Vous pouvez y revenir ultérieurement.');
+      resetForm();
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error: any) {
+      console.error('Error saving draft:', error);
+      toast.error('Erreur lors de l\'enregistrement : ' + (error.message || ''));
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setSubmitting(true);
     try {
-      const formationId = crypto.randomUUID();
-      const { error } = await supabase
-        .from('formations')
-        .insert({
-          id: formationId,
-          title: title.trim(),
-          description: description.trim(),
-          price: price ? parseFloat(price) : 0,
-          author_id: user?.id,
-          is_active: false,
-          approval_status: 'pending',
-          terms_accepted: true,
-          submitted_at: new Date().toISOString(),
-        } as any);
-
-      if (error) throw error;
-
+      const success = await createFormation(false);
+      if (!success) return;
       toast.success('Formation soumise pour approbation ! Un administrateur la validera bientôt.');
-      setTitle('');
-      setDescription('');
-      setPrice('');
-      setReadConditions(false);
-      setAcceptConditions(false);
+      resetForm();
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
@@ -92,6 +113,14 @@ const CreateFormationModal: React.FC<CreateFormationModalProps> = ({ open, onOpe
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setPrice('');
+    setReadConditions(false);
+    setAcceptConditions(false);
   };
 
   const catalogueRate = commissionSettings?.find((c: any) => c.commission_type === 'catalogue')?.commission_rate || 35;
@@ -107,7 +136,7 @@ const CreateFormationModal: React.FC<CreateFormationModalProps> = ({ open, onOpe
             Créer une formation
           </DialogTitle>
           <DialogDescription>
-            Votre formation sera soumise à validation avant publication.
+            Votre formation sera soumise à validation avant publication. Vous pouvez aussi l'enregistrer en brouillon pour y revenir ultérieurement.
           </DialogDescription>
         </DialogHeader>
 
@@ -209,19 +238,32 @@ const CreateFormationModal: React.FC<CreateFormationModalProps> = ({ open, onOpe
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col gap-2 pt-2">
               <Button
                 type="submit"
-                className="flex-1"
-                disabled={submitting || !readConditions || !acceptConditions || !title.trim()}
+                className="w-full"
+                disabled={submitting || savingDraft || !readConditions || !acceptConditions || !title.trim()}
               >
                 {submitting ? (
                   <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Soumission...</>
                 ) : (
-                  'Soumettre pour validation'
+                  <><Send className="h-4 w-4 mr-2" />Soumettre pour validation</>
                 )}
               </Button>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={submitting || savingDraft || !title.trim()}
+                onClick={handleSaveDraft}
+              >
+                {savingDraft ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Enregistrement...</>
+                ) : (
+                  <><Save className="h-4 w-4 mr-2" />Enregistrer en brouillon</>
+                )}
+              </Button>
+              <Button type="button" variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
                 Annuler
               </Button>
             </div>
