@@ -220,24 +220,26 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
 
     try {
       if (currency === 'soumboulah_cash') {
-        const { error } = await supabase.rpc('transfer_soumboulah_cash', {
+        const { data, error } = await supabase.rpc('transfer_soumboulah_cash', {
           p_recipient_id: selectedUser.id,
           p_amount: parsedAmount,
           p_reason: reason,
           p_reference_id: null,
         });
         if (error) throw error;
+        if (data && !data.success) throw new Error(data.message);
       } else if (currency === 'habbah') {
         const result = await transferHabbah(selectedUser.id, parsedAmount, reason);
         if (!result.success) throw new Error(result.message);
       } else {
-        const { error } = await supabase.rpc('transfer_soumboulah_bonus', {
+        const { data, error } = await supabase.rpc('transfer_soumboulah_bonus', {
           p_recipient_id: selectedUser.id,
           p_amount: parsedAmount,
           p_reason: reason,
           p_reference_id: null,
         });
         if (error) throw error;
+        if (data && !data.success) throw new Error(data.message);
       }
 
       const senderDisplayName = isAnonymous ? 'Un utilisateur anonyme' : undefined;
