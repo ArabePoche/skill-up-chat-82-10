@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Layers } from 'lucide-react';
+import { Edit, Trash2, Plus, Layers, Sparkles, BookOpen, GraduationCap } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import LevelsManagement from './LevelsManagement';
 import DynamicFormationForm from './DynamicFormationForm';
 import FormationPricingManager from './FormationPricingManager';
+import CreatorFormationModal from '@/components/cours/CreatorFormationModal';
 
 interface FormationsManagementProps { authorId?: string; }
 
@@ -23,6 +24,7 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
   const [isPricingDialogOpen, setIsPricingDialogOpen] = useState(false);
   const [pricingFormationId, setPricingFormationId] = useState<string | null>(null);
   const [pricingFormationLessons, setPricingFormationLessons] = useState<any[]>([]);
+  const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -555,26 +557,71 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Gestion des formations</CardTitle>
-        <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#25d366] hover:bg-[#25d366]/90">
-              <Plus size={16} className="mr-2" />
-              Nouvelle formation complète
+    <div className="space-y-6">
+      {/* Attractive creation banner — only visible in creator view */}
+      {authorId && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#25d366] to-[#128c7e] p-6 shadow-lg">
+          {/* Decorative circles */}
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -bottom-6 right-20 h-24 w-24 rounded-full bg-white/10" />
+
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Mes Créations</h2>
+                <p className="text-green-100 text-sm mt-0.5">
+                  Créez, gérez et publiez vos formations en quelques clics
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setIsCreatorModalOpen(true)}
+              className="shrink-0 bg-white text-[#128c7e] hover:bg-green-50 font-semibold shadow-md px-5 py-2.5 h-auto"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Créer une formation
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Créer une formation complète</DialogTitle>
-            </DialogHeader>
-            <DynamicFormationForm
-              onSubmit={(data) => createCompleteFormationMutation.mutate(data)}
-              isLoading={createCompleteFormationMutation.isPending}
-            />
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
+      )}
+
+      {/* Creator Formation Modal */}
+      {authorId && (
+        <CreatorFormationModal
+          open={isCreatorModalOpen}
+          onOpenChange={setIsCreatorModalOpen}
+          authorId={authorId}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['admin-formations', authorId] })}
+        />
+      )}
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>{authorId ? 'Mes formations' : 'Gestion des formations'}</CardTitle>
+          {/* Admin-only: create button without draft/terms flow */}
+          {!authorId && (
+            <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#25d366] hover:bg-[#25d366]/90">
+                  <Plus size={16} className="mr-2" />
+                  Nouvelle formation complète
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Créer une formation complète</DialogTitle>
+                </DialogHeader>
+                <DynamicFormationForm
+                  onSubmit={(data) => createCompleteFormationMutation.mutate(data)}
+                  isLoading={createCompleteFormationMutation.isPending}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </CardHeader>
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -612,86 +659,87 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
             )}
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Titre</TableHead>
-              <TableHead>Auteur</TableHead>
-              <TableHead>Enseignants</TableHead>
-              <TableHead>Badge</TableHead>
-              <TableHead>Prix</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {formations?.map((formation) => (
-              <TableRow key={formation.id}>
-                <TableCell className="font-medium">{formation.title}</TableCell>
-                <TableCell>
-                  {formation.profiles ? 
-                    `${formation.profiles.first_name || ''} ${formation.profiles.last_name || ''}`.trim() || 
-                    formation.profiles.username || 'Auteur inconnu' : 'Auteur inconnu'}
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {getTeacherNames(formation.teacher_formations)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {formation.badge || 'N/A'}
-                  </Badge>
-                </TableCell>
-                <TableCell>{formation.price ? `${formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}</TableCell>
-                <TableCell>
-                  <Badge variant={formation.is_active ? 'default' : 'destructive'}>
-                    {formation.is_active ? 'Actif' : 'Inactif'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedFormation({ id: formation.id, title: formation.title })}
-                    >
-                      <Layers size={14} className="mr-1" />
-                      Niveaux
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleConfigurePricing(formation.id)}
-                      className="text-purple-600"
-                    >
-                      💳
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleEdit(formation)}
-                    >
-                      <Edit size={14} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(formation.id)}
-                      className="text-red-600"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
-                  </div>
-                </TableCell>
+
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Titre</TableHead>
+                <TableHead>Auteur</TableHead>
+                <TableHead>Enseignants</TableHead>
+                <TableHead>Badge</TableHead>
+                <TableHead>Prix</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {formations?.map((formation) => (
+                <TableRow key={formation.id}>
+                  <TableCell className="font-medium">{formation.title}</TableCell>
+                  <TableCell>
+                    {formation.profiles ? 
+                      `${formation.profiles.first_name || ''} ${formation.profiles.last_name || ''}`.trim() || 
+                      formation.profiles.username || 'Auteur inconnu' : 'Auteur inconnu'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {getTeacherNames(formation.teacher_formations)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {formation.badge || 'N/A'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formation.price ? `${formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}</TableCell>
+                  <TableCell>
+                    <Badge variant={formation.is_active ? 'default' : 'destructive'}>
+                      {formation.is_active ? 'Actif' : 'Inactif'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedFormation({ id: formation.id, title: formation.title })}
+                      >
+                        <Layers size={14} className="mr-1" />
+                        Niveaux
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleConfigurePricing(formation.id)}
+                        className="text-purple-600"
+                      >
+                        💳
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEdit(formation)}
+                      >
+                        <Edit size={14} />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(formation.id)}
+                        className="text-red-600"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

@@ -58,6 +58,8 @@ interface DynamicFormationFormProps {
   isEditing?: boolean;
   formationId?: string;
   onConfigurePricing?: (formationId: string) => void;
+  formDataRef?: React.MutableRefObject<FormationData | null>;
+  customSubmitSection?: React.ReactNode;
 }
 
 const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
@@ -66,7 +68,9 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
   initialData,
   isEditing = false,
   formationId,
-  onConfigurePricing
+  onConfigurePricing,
+  formDataRef,
+  customSubmitSection
 }) => {
   const { uploadFile, isUploading } = useFileUpload();
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
@@ -135,6 +139,13 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
       }));
     }
   }, [initialData, isEditing]);
+
+  // Keep formDataRef in sync with current form state
+  useEffect(() => {
+    if (formDataRef) {
+      formDataRef.current = formationData;
+    }
+  }, [formationData, formDataRef]);
 
   const addLevel = () => {
     setFormationData(prev => ({
@@ -668,26 +679,28 @@ const DynamicFormationForm: React.FC<DynamicFormationFormProps> = ({
         Ajouter un niveau
       </Button>
 
-      <div className="flex flex-col gap-3">
-        <Button 
-          type="submit" 
-          disabled={isLoading || isUploading} 
-          className="w-full bg-[#25d366] hover:bg-[#25d366]/90"
-        >
-          {isUploading ? 'Upload en cours...' : isLoading ? 'Traitement...' : (isEditing ? 'Mettre à jour la formation' : 'Créer la formation complète')}
-        </Button>
-
-        {(formationId || isEditing) && onConfigurePricing && (
+      {customSubmitSection ?? (
+        <div className="flex flex-col gap-3">
           <Button 
-            type="button"
-            variant="outline"
-            onClick={() => onConfigurePricing(formationId!)}
-            className="w-full"
+            type="submit" 
+            disabled={isLoading || isUploading} 
+            className="w-full bg-[#25d366] hover:bg-[#25d366]/90"
           >
-            💳 Configurer les tarifs d'abonnement
+            {isUploading ? 'Upload en cours...' : isLoading ? 'Traitement...' : (isEditing ? 'Mettre à jour la formation' : 'Créer la formation complète')}
           </Button>
-        )}
-      </div>
+
+          {(formationId || isEditing) && onConfigurePricing && (
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={() => onConfigurePricing(formationId!)}
+              className="w-full"
+            >
+              💳 Configurer les tarifs d'abonnement
+            </Button>
+          )}
+        </div>
+      )}
     </form>
   );
 };
