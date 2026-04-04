@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { GraduationCap, UserCheck, LayoutDashboard } from 'lucide-react';
+import { GraduationCap, UserCheck, LayoutDashboard, Plus } from 'lucide-react';
 import FormationCard from '@/components/FormationCard';
 import { Button } from '@/components/ui/button';
 
@@ -13,6 +13,7 @@ interface FormationSectionProps {
   emptyMessage?: string;
   debugInfo?: string;
   onDashboardClick?: () => void;
+  onCreateClick?: () => void;
 }
 
 const FormationSection: React.FC<FormationSectionProps> = ({
@@ -23,7 +24,8 @@ const FormationSection: React.FC<FormationSectionProps> = ({
   onFormationClick,
   emptyMessage,
   debugInfo,
-  onDashboardClick
+  onDashboardClick,
+  onCreateClick
 }) => {
   const IconComponent = icon === 'student' ? GraduationCap : UserCheck;
 
@@ -35,18 +37,32 @@ const FormationSection: React.FC<FormationSectionProps> = ({
           <h2 className="text-lg sm:text-xl font-semibold">{title}</h2>
         </div>
 
-        {onDashboardClick && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDashboardClick}
-            className="flex items-center gap-2 text-sm"
-          >
-            <LayoutDashboard size={16} />
-            <span className="hidden sm:inline">Tableau de bord</span>
-            <span className="sm:hidden">Gérer</span>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {onCreateClick && (
+            <Button
+              size="sm"
+              onClick={onCreateClick}
+              className="flex items-center gap-2 text-sm bg-primary hover:bg-primary/90"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Créer une formation</span>
+              <span className="sm:hidden">Créer</span>
+            </Button>
+          )}
+
+          {onDashboardClick && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDashboardClick}
+              className="flex items-center gap-2 text-sm"
+            >
+              <LayoutDashboard size={16} />
+              <span className="hidden sm:inline">Tableau de bord</span>
+              <span className="sm:hidden">Gérer</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {formations.length > 0 ? (

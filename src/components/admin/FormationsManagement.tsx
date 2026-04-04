@@ -180,6 +180,8 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-formations'] });
+      queryClient.invalidateQueries({ queryKey: ['shop-formations'] });
+      queryClient.invalidateQueries({ queryKey: ['formations'] });
       toast.success('Formation créée avec succès avec tous ses éléments et médias');
       setIsFormDialogOpen(false);
     },
@@ -374,6 +376,8 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-formations'] });
+      queryClient.invalidateQueries({ queryKey: ['shop-formations'] });
+      queryClient.invalidateQueries({ queryKey: ['formations'] });
       toast.success('Formation mise à jour avec succès');
       setIsEditDialogOpen(false);
       setEditingFormation(null);
@@ -394,6 +398,8 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-formations'] });
+      queryClient.invalidateQueries({ queryKey: ['shop-formations'] });
+      queryClient.invalidateQueries({ queryKey: ['formations'] });
       toast.success('Formation supprimée avec succès');
     },
     onError: (error) => {
