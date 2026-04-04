@@ -43,7 +43,7 @@ const CreatorEarningsView = ({ authorId }: Props) => {
     }
   });
 
-  const currencyStr = walletData?.currency || 'FCFA';
+  const currencyStr = 'FCFA';
 
   if (isLoading) {
     return <div className="text-center py-8 text-gray-500">Chargement des gains...</div>;
