@@ -46,8 +46,9 @@ const SchoolWebPage: React.FC<SchoolWebPageProps> = ({ school, onClose }) => {
   const { data: userSchools } = useUserSchools(user?.id);
   const [showJoinModal, setShowJoinModal] = useState(false);
 
+  const PERSONNEL_ROLES = ['owner', 'admin', 'teacher', 'secretary', 'staff', 'supervisor'];
   const isPersonnel = !!userSchools?.find(
-    s => s.id === school.id && s.role !== 'parent'
+    s => s.id === school.id && PERSONNEL_ROLES.includes(s.role)
   );
 
 

@@ -25,8 +25,9 @@ const SchoolSitePage: React.FC = () => {
   const [showJoinModal, setShowJoinModal] = useState(false);
 
   const { data: userSchools } = useUserSchools(user?.id);
+  const PERSONNEL_ROLES = ['owner', 'admin', 'teacher', 'secretary', 'staff', 'supervisor'];
   const isPersonnel = !!userSchools?.find(
-    s => s.id === schoolId && s.role !== 'parent'
+    s => s.id === schoolId && PERSONNEL_ROLES.includes(s.role)
   );
 
   const { data: school, isLoading } = useQuery({
