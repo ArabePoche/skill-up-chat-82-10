@@ -8,7 +8,7 @@ export const useAdminGiftDisputes = () => {
     queryKey: ['admin_gift_disputes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('gift_cancellation_claims')
+        .from('gift_cancellation_claims' as any)
         .select(`
           *,
           sender:profiles!gift_cancellation_claims_sender_id_fkey(id, first_name, last_name, avatar_url),
@@ -31,28 +31,28 @@ export const useCreateGiftDispute = () => {
 
   return useMutation({
     mutationFn: async (input: { transactionRef: string; reason: string }) => {
-      const { data, error } = await supabase.rpc('create_gift_cancellation_claim', {
+      const { data, error } = await supabase.rpc('create_gift_cancellation_claim' as any, {
         p_transaction_ref: input.transactionRef,
         p_reason: input.reason
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.message || 'Erreur lors de la création de la réclamation');
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.message || 'Erreur lors de la création de la réclamation');
 
-      // Fetch claim details needed for notification
       let claimDetails: { recipient_id: string; amount: number; currency: string } | null = null;
-      if (data.claim_id) {
+      if (result.claim_id) {
         const { data: claim } = await supabase
-          .from('gift_cancellation_claims')
+          .from('gift_cancellation_claims' as any)
           .select('recipient_id, amount, currency')
-          .eq('id', data.claim_id)
+          .eq('id', result.claim_id)
           .single();
-        claimDetails = claim;
+        claimDetails = claim as any;
       }
 
-      return { ...data, claimDetails };
+      return { ...result, claimDetails };
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       toast.success('Réclamation envoyée et fonds bloqués');
       if (data.claimDetails) {
         NotificationTriggers.onGiftClaimCreated(
@@ -84,18 +84,19 @@ export const useResolveGiftDispute = () => {
       amount: number;
       currency: string;
     }) => {
-      const { data, error } = await supabase.rpc('resolve_gift_cancellation_claim', {
+      const { data, error } = await supabase.rpc('resolve_gift_cancellation_claim' as any, {
         p_claim_id: input.claimId,
         p_action: input.action,
         p_admin_notes: input.adminNotes
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.message || 'Erreur lors de la résolution');
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.message || 'Erreur lors de la résolution');
       
-      return { ...data, input };
+      return { ...result, input };
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       toast.success('Réclamation traitée avec succès');
       const { senderId, recipientId, action, amount, currency, adminNotes } = data.input;
       NotificationTriggers.onGiftClaimDecision(

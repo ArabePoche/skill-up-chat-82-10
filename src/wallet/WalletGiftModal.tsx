@@ -227,7 +227,8 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
           p_reference_id: null,
         });
         if (error) throw error;
-        if (data && !data.success) throw new Error(data.message);
+        const result = data as any;
+        if (result && !result.success) throw new Error(result.message);
       } else if (currency === 'habbah') {
         const result = await transferHabbah(selectedUser.id, parsedAmount, reason);
         if (!result.success) throw new Error(result.message);
@@ -239,7 +240,8 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
           p_reference_id: null,
         });
         if (error) throw error;
-        if (data && !data.success) throw new Error(data.message);
+        const result2 = data as any;
+        if (result2 && !result2.success) throw new Error(result2.message);
       }
 
       const senderDisplayName = isAnonymous ? 'Un utilisateur anonyme' : undefined;

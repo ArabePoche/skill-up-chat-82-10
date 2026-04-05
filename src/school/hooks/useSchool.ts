@@ -33,7 +33,7 @@ export interface School {
   site_instagram_url?: string | null;
   site_twitter_url?: string | null;
   site_linkedin_url?: string | null;
-  site_youtube_url?: string | null; site_template_id?: string | null;
+  site_youtube_url?: string | null;
   site_template_id?: string | null;
 }
 
