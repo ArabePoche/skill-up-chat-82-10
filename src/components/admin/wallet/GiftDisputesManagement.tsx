@@ -33,7 +33,15 @@ const GiftDisputesManagement: React.FC = () => {
   const handleResolve = (action: 'approve' | 'reject') => {
     if (!resolveDialog) return;
     resolveDispute(
-      { claimId: resolveDialog.id, action, adminNotes },
+      {
+        claimId: resolveDialog.id,
+        action,
+        adminNotes,
+        senderId: resolveDialog.sender_id,
+        recipientId: resolveDialog.recipient_id,
+        amount: resolveDialog.amount,
+        currency: resolveDialog.currency,
+      },
       {
         onSuccess: () => {
           setResolveDialog(null);
