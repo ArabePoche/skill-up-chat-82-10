@@ -24,7 +24,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { comments, commentsCount, isLoading, isSubmitting, addComment } = useVideoComments(videoId);
+  const { comments, commentsCount, isLoading, isSubmitting, addComment, deleteComment } = useVideoComments(videoId);
   const [newComment, setNewComment] = useState('');
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -97,6 +97,7 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
                     key={comment.id}
                     comment={comment}
                     onReply={handleReply}
+                    onDelete={deleteComment}
                   />
                 ))}
               </div>

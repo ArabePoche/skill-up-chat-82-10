@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, Reply, User } from 'lucide-react';
+import { Heart, Reply, User, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCommentLikes } from '@/hooks/useCommentLikes';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,16 +15,18 @@ import VerifiedBadge from '@/components/VerifiedBadge';
 interface VideoCommentItemProps {
   comment: any;
   onReply: (parentCommentId: string, content: string) => Promise<boolean>;
+  onDelete?: (commentId: string) => Promise<boolean>;
   level?: number;
 }
 
-const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, level = 0 }) => {
+const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, onDelete, level = 0 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isLiked, likesCount, toggleLike } = useCommentLikes(comment.id, comment.likes_count);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const displayName = comment.profiles?.first_name 
     ? `${comment.profiles.first_name} ${comment.profiles.last_name || ''}`.trim()
@@ -41,6 +43,13 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
       setShowReplyForm(false);
     }
     setIsReplying(false);
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    await onDelete(comment.id);
+    setIsDeleting(false);
   };
 
   const timeAgo = formatDistanceToNow(new Date(comment.created_at), {
@@ -96,6 +105,17 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, l
               >
                 <Reply size={14} />
                 <span>Répondre</span>
+              </button>
+            )}
+
+            {user && user.id === comment.user_id && onDelete && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex items-center space-x-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={14} />
+                <span>{isDeleting ? '...' : 'Supprimer'}</span>
               </button>
             )}
           </div>
