@@ -10,6 +10,8 @@ import VideoShareModal from './VideoShareModal';
 import VideoDownloadModal from './VideoDownloadModal';
 import { VideoGiftModal } from './VideoGiftModal';
 import SeriesEpisodesModal from './SeriesEpisodesModal';
+import FloatingCommentBar from './FloatingCommentBar';
+import { useVideoComments } from '@/hooks/useVideoComments';
 import { useGlobalSound } from '@/components/TikTokVideosView';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
@@ -95,6 +97,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const { isLiked, likesCount, toggleLike } = useVideoLikes(video.id, video.likes_count, {
     enabled: shouldLoadEngagementData,
   });
+  const { addComment, isSubmitting: isCommentSubmitting } = useVideoComments(video.id);
   const { friendshipStatus, sendRequest, cancelRequest, removeFriend, isLoading: isFollowLoading } = useFollow(video.author_id, {
     enabled: shouldLoadEngagementData,
   });
@@ -520,6 +523,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Barre de commentaires flottante (visible uniquement sur le feed TikTok) */}
+      {isActive && (
+        <FloatingCommentBar
+          onSubmit={async (text) => {
+            if (!user) { return false; }
+            return await addComment(text);
+          }}
+          isSubmitting={isCommentSubmitting}
+        />
+      )}
 
       {/* Modaux */}
       <VideoCommentsModal
