@@ -1,5 +1,6 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import FloatingCommentBar from '@/components/video/FloatingCommentBar';
 import { Play, Pause, Maximize2, Volume2, VolumeX, ThumbsUp, Share2, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLessonVideoLikes } from '@/hooks/useLessonVideoLikes';
