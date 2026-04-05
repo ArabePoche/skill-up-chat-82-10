@@ -127,7 +127,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
         .maybeSingle();
       return data;
     },
-    enabled: !!video.author_id && video.author_id !== user?.id && isActive,
+    enabled: !!video.author_id && video.author_id !== user?.id,
     refetchInterval: 30000,
   });
 

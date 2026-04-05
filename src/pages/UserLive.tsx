@@ -12,17 +12,21 @@ import {
   PhoneOff,
   Radio,
   Send,
+  Share2,
   Users,
   Video,
   VideoOff,
   X,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAgoraCall } from '@/call-system/hooks/useAgoraCall';
 import { useAuth } from '@/hooks/useAuth';
+import { useFollow } from '@/friends/hooks/useFollow';
 import { supabase } from '@/integrations/supabase/client';
+import VideoShareModal from '@/components/video/VideoShareModal';
 import WalletGiftModal from '@/wallet/WalletGiftModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -106,7 +110,10 @@ const UserLive: React.FC = () => {
   } = useAgoraCall();
 
   const isHost = !!user?.id && !!stream?.host_id && user.id === stream.host_id && requestedHostMode;
-  const hostName = useMemo(() => getDisplayName(stream?.host), [stream?.host]);
+  const hostName = useMemo(() => stream?.host ? (stream.host.first_name ? `${stream.host.first_name} ${stream.host.last_name || ''}` : stream.host.username || 'Utilisateur') : 'Utilisateur', [stream?.host]);
+
+  const { friendshipStatus, sendRequest, isLoading: isFollowLoading } = useFollow(stream?.host_id);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -208,22 +215,28 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
+        console.log('Presence sync state:', presenceState);
         
         let uniqueUsersCount = Object.keys(presenceState).length;
         setViewerCount(uniqueUsersCount);
 
         const currentViewers: any[] = [];
-        for (const key in presenceState) {
-          if (presenceState[key] && presenceState[key].length > 0) {
-            // Keep unique viewers
-            const stateObj = presenceState[key][0];
-            // If track might be delayed, ensure we don't throw, but try to identify by 'presence_ref' or 'user_id' or 'key'
-            if (!currentViewers.some(v => v.presence_ref === stateObj.presence_ref || (stateObj.user_id && v.user_id === stateObj.user_id))) {
-              // merge the key inside, just in case
-              currentViewers.push({ ...stateObj, internal_key: key });
-            }
+        
+        // Nouvelle approche super robuste : on aplatit puis filtre
+        const allStreams = Object.values(presenceState).flat();
+        
+        // Dédupliquer ! On ne garde qu'une seule instance par `user_id` 
+        // ou par `presence_ref` si inconnu
+        const uniqueSet = new Map();
+        allStreams.forEach((viewerState: any) => {
+          const identifierKey = viewerState.user_id || viewerState.presence_ref || Math.random().toString();
+          if (!uniqueSet.has(identifierKey)) {
+            uniqueSet.set(identifierKey, viewerState);
+            currentViewers.push(viewerState);
           }
-        }
+        });
+
+        console.log('Parsed viewers list:', currentViewers);
         setViewersList(currentViewers);
       })
       .on('broadcast', { event: 'live_action' }, (payload) => {
@@ -231,22 +244,25 @@ const UserLive: React.FC = () => {
         setMessages(prev => [...prev.slice(-49), newMsg]);
       })
       .subscribe(async (status) => {
+        console.log('Realtime channel status:', status);
         if (status === 'SUBSCRIBED') {
-          await roomChannel.track({
+          const trackStatus = await roomChannel.track({
             user_id: user.id,
             user_name: getDisplayName(profile) || 'Utilisateur',
             avatar_url: profile?.avatar_url || null,
             role: isHost ? 'host' : 'viewer',
             online_at: new Date().toISOString(),
           });
+          console.log('Track status:', trackStatus);
         }
       });
 
     return () => {
+      console.log('Removing channel:', roomChannel.topic);
       supabase.removeChannel(roomChannel);
       presenceChannelRef.current = null;
     };
-  }, [isHost, stream?.id, user?.id]);
+  }, [isHost, stream?.id, user?.id, profile?.first_name, profile?.last_name, profile?.username, profile?.avatar_url]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -402,88 +418,112 @@ const UserLive: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white">
-      <div className="flex items-center justify-between border-b border-white/10 bg-black/75 px-4 py-3 backdrop-blur z-10">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Badge className="border-0 bg-red-600 text-white hover:bg-red-600">
-                <Radio className="mr-1 h-3.5 w-3.5" />
-                EN DIRECT
-              </Badge>
-              <Badge variant="secondary" className="border border-white/10 bg-white/5 text-white">
-                {stream.visibility === 'public' ? <Globe className="mr-1 h-3.5 w-3.5" /> : <Lock className="mr-1 h-3.5 w-3.5" />}
-                {stream.visibility === 'public' ? 'Public' : 'Amis'}
-              </Badge>
-            </div>
-            <h1 className="truncate text-lg font-semibold">{stream.title}</h1>
-            <p className="truncate text-sm text-zinc-400">{hostName}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button 
-            className="flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-sm text-zinc-200 hover:bg-white/10 transition-colors"
-            onClick={() => setShowViewersModal(true)}
-          >
-            <Users className="h-4 w-4" />
-            {viewerCount}
-          </button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-white hover:bg-white/10 hover:text-red-500"
-            onClick={isHost ? handleStopLive : () => navigate('/profil')}
-            disabled={isStopping}
-          >
-            {isStopping ? <Loader2 className="h-5 w-5 animate-spin" /> : <X className="h-6 w-6" />}
-          </Button>
-        </div>
+    <div className="relative flex h-[100dvh] w-full flex-col bg-black overflow-hidden text-white">
+      {/* Container de la vidéo plein écran */}
+      <div className="absolute inset-0 z-0">
+        {isHost ? (
+          <div ref={localVideoContainerRef} className="absolute inset-0 bg-black [&>div]:!object-cover" />
+        ) : (
+          <div ref={remoteVideoContainerRef} className="absolute inset-0 bg-black [&>div]:!object-cover [&>div>video]:!object-cover" />
+        )}
       </div>
 
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-black">
-        {isHost ? (
-          <div ref={localVideoContainerRef} className="absolute inset-0 bg-black" />
-        ) : (
-          <div ref={remoteVideoContainerRef} className="absolute inset-0 bg-black" />
-        )}
+      {/* Overlay de chargement */}
+      {((!isHost && state.remoteUsers.length === 0) || (isHost && !state.isJoined)) && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/60">
+          <div className="text-center text-zinc-200">
+            <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin" />
+            <p>{isHost ? 'Initialisation du live...' : 'En attente du flux du créateur...'}</p>
+          </div>
+        </div>
+      )}
 
-        {((!isHost && state.remoteUsers.length === 0) || (isHost && !state.isJoined)) && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45">
-            <div className="text-center text-zinc-200">
-              <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin" />
-              <p>{isHost ? 'Initialisation du live...' : 'En attente du flux du créateur...'}</p>
+      {/* Header superposé */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-start justify-between bg-gradient-to-b from-black/70 to-transparent p-4 pt-12 pb-16">
+        <div className="flex flex-col gap-2 max-w-[65%]">
+          {/* Hôte profil */}
+          <div className="flex items-center gap-2 rounded-full bg-black/40 backdrop-blur-md p-1 pr-3 border border-white/10 w-max cursor-pointer" onClick={() => stream.host_id && navigate(`/profile/${stream.host_id}`)}>
+            <Avatar className="h-9 w-9 border-2 border-white/20">
+              <AvatarImage src={stream.host?.avatar_url || ''} />
+              <AvatarFallback className="bg-zinc-800 text-xs">
+                {(stream.host?.first_name || stream.host?.username || 'U').substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-[80px]">
+              <span className="text-sm font-semibold truncate leading-tight">{hostName}</span>
+              <span className="text-[10px] text-zinc-300 leading-tight">Créateur</span>
             </div>
+            {!isHost && friendshipStatus === 'none' && (
+              <Button 
+                onClick={(e) => { e.stopPropagation(); sendRequest(); }} 
+                disabled={isFollowLoading}
+                className="ml-1 h-7 rounded-full bg-red-600 px-3 text-xs font-semibold hover:bg-red-700 h-auto py-1"
+              >
+                Suivre
+              </Button>
+            )}
           </div>
-        )}
 
-        {stream.description && (
-          <div className="absolute top-20 left-4 right-4 rounded-2xl bg-black/45 p-4 text-sm text-zinc-100 backdrop-blur">
-            {stream.description}
+          {/* Badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge className="border-0 bg-red-600/90 backdrop-blur-md text-white hover:bg-red-600 px-1.5 py-0 text-[10px]">
+              <Radio className="mr-1 h-3 w-3 animate-pulse" />
+              EN DIRECT
+            </Badge>
+            <Badge variant="secondary" className="border-0 bg-black/40 backdrop-blur-md text-white px-1.5 py-0 text-[10px]">
+              {stream.visibility === 'public' ? <Globe className="mr-1 h-3 w-3" /> : <Lock className="mr-1 h-3 w-3" />}
+              {stream.visibility === 'public' ? 'Public' : 'Amis'}
+            </Badge>
+            <button 
+              className="flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white transition-colors"
+              onClick={() => setShowViewersModal(true)}
+            >
+              <Users className="h-3 w-3 text-pink-400" />
+              {viewerCount}
+            </button>
           </div>
-        )}
+          
+          <h1 className="text-sm font-semibold text-white drop-shadow-md truncate">{stream.title}</h1>
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 hover:text-red-500 h-10 w-10 shrink-0"
+          onClick={isHost ? handleStopLive : () => navigate('/profil')}
+          disabled={isStopping}
+        >
+          {isStopping ? <Loader2 className="h-5 w-5 animate-spin" /> : <X className="h-5 w-5" />}
+        </Button>
+      </div>
+
+      {stream.description && (
+        <div className="absolute top-36 left-4 right-4 z-20 rounded-2xl bg-black/45 p-3 text-xs text-zinc-100 backdrop-blur">
+          {stream.description}
+        </div>
+      )}
 
         {/* Live Chat Overlay */}
-        <div className="absolute bottom-4 left-4 right-4 flex max-h-64 flex-col justify-end gap-2 overflow-y-auto pointer-events-auto z-10 [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_100%)]">
-          {messages.map((msg) => (
+        <div className="absolute bottom-20 left-4 right-4 flex max-h-64 flex-col justify-end gap-2 overflow-y-auto pointer-events-none z-10 [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_100%)]">
+          {messages.slice(-3).map((msg) => (
             <div
               key={msg.id}
-              className={`flex items-center gap-2 w-max max-w-[85%] rounded-2xl px-3 py-1.5 text-sm backdrop-blur ${
+              className={`flex items-start gap-2 w-max max-w-[85%] rounded-2xl px-2 py-1 text-sm ${
                 msg.type === 'gift'
-                  ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white animate-bounce'
-                  : 'bg-black/50 text-zinc-100'
+                  ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white animate-bounce backdrop-blur'
+                  : 'bg-transparent text-white drop-shadow-md'
               }`}
             >
-              <Avatar className="h-6 w-6 border border-zinc-700/50">
+              <Avatar className="h-7 w-7 border border-white/20 mt-0.5 shadow-sm">
                 <AvatarImage src={msg.userAvatar || ''} />
                 <AvatarFallback className="bg-zinc-800 text-[10px]">
                   {msg.userName?.substring(0, 2).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <span className="font-semibold mr-2 opacity-90">{msg.userName}</span>
-                <span className="break-words flex items-center gap-1 flex-wrap">
+              <div className="flex flex-col">
+                <span className="font-semibold text-zinc-300 opacity-90 text-[13px]">{msg.userName}</span>
+                <span className="break-words flex items-center gap-1 flex-wrap font-medium">
                   {msg.content}
                   {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500/20 text-emerald-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSC} alt="SC" className="w-3 h-3 object-contain" /> SC</span>}
                   {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500/20 text-amber-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconH} alt="H" className="w-3 h-3 object-contain" /> H</span>}
@@ -496,37 +536,51 @@ const UserLive: React.FC = () => {
         </div>
       </div>
 
-      <div className="border-t border-white/10 bg-black/80 px-4 py-4 backdrop-blur z-10">
+      <div className="absolute bottom-0 left-0 right-0 border-t border-white/10 bg-gradient-to-t from-black/80 to-transparent pt-8 pb-4 px-4 z-20 pointer-events-auto">
         <div className="flex items-center gap-3">
           {/* Real message input */}
-          <div className="flex h-12 flex-1 items-center rounded-full bg-white/10 px-4 text-white">
+          <div className="flex h-11 flex-1 items-center rounded-full bg-black/40 border border-white/20 px-4 text-white backdrop-blur-md">
             <input 
               type="text" 
-              placeholder={isHost ? "Message aux spectateurs..." : "Ajouter un commentaire..."}
+              placeholder={isHost ? "Ajouter un commentaire..." : "Ajouter un commentaire..."}
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-zinc-400"
+              className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-zinc-300"
             />
-            <button 
-              className="ml-2 flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              onClick={handleSendMessage}
-              disabled={!messageInput.trim()}
-            >
-              <Send className="h-4 w-4" />
-            </button>
           </div>
 
           {!isHost && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              onClick={handleSendGiftClick}
-            >
-              <Gift size={22} className="text-pink-500" />
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 shrink-0 rounded-full bg-black/40 border border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-md"
+                onClick={async () => {
+                  try {
+                    await navigator.share({
+                      title: `Rejoignez mon live: ${stream.title}`,
+                      text: `Je suis en direct ! Venez me rejoindre sur SkillUp.`,
+                      url: window.location.href,
+                    });
+                  } catch (err) {
+                    console.error("Erreur de partage:", err);
+                  }
+                }}
+              >
+                <Share2 className="h-5 w-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 shrink-0 rounded-full bg-amber-500/30 border border-amber-500/50 text-amber-400 hover:bg-amber-500/40 hover:text-amber-300 backdrop-blur-md"
+                onClick={handleSendGiftClick}
+              >
+                <Gift className="h-5 w-5 fill-amber-500/20" />
+              </Button>
+            </>
           )}
 
           {isHost && (
@@ -534,23 +588,23 @@ const UserLive: React.FC = () => {
               <Button
                 type="button"
                 onClick={toggleMute}
-                variant={state.isMuted ? 'destructive' : 'outline'}
+                variant={state.isMuted ? 'destructive' : 'ghost'}
                 size="icon"
-                className="h-12 w-12 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-11 w-11 shrink-0 rounded-full bg-black/40 border border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-md"
               >
-                {state.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+                {state.isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
               </Button>
               <Button
                 type="button"
                 onClick={toggleVideo}
-                variant={!state.isVideoEnabled ? 'destructive' : 'outline'}
+                variant={!state.isVideoEnabled ? 'destructive' : 'ghost'}
                 size="icon"
-                className="h-12 w-12 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-11 w-11 shrink-0 rounded-full bg-black/40 border border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-md"
               >
-                {state.isVideoEnabled ? <Video size={22} /> : <VideoOff size={22} />}
+                {state.isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
               </Button>
             </>
-          )}
+          )} 
         </div>
       </div>
 
@@ -565,34 +619,40 @@ const UserLive: React.FC = () => {
 
       {/* Viewers modal */}
       <Dialog open={showViewersModal} onOpenChange={setShowViewersModal}>
-        <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-white z-[9999]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Spectateurs ({viewerCount})
             </DialogTitle>
-            <DialogDescription className="sr-only">
-              Liste des spectateurs connectés à ce live
+            <DialogDescription className="text-zinc-400 text-sm">
+              Liste des spectateurs connectés à ce live.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
             {viewersList.length === 0 ? (
-              <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment</p>
+              <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment (En attente de synchronisation...)</p>
             ) : (
-              viewersList.map((viewer, idx) => (
-                <div key={viewer.internal_key || viewer.presence_ref || idx} className="flex items-center gap-3">
+              viewersList.map((viewer, idx) => {
+                const name = viewer.user_name || viewer.userName || viewer.name || 'Utilisateur';
+                const avatar = viewer.avatar_url || viewer.avatarUrl || viewer.avatar || '';
+                const role = viewer.role || 'viewer';
+                
+                return (
+                <div key={viewer.user_id || viewer.presence_ref || idx} className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 border border-zinc-800">
-                    <AvatarImage src={viewer.avatar_url || ''} alt={viewer.user_name || 'Utilisateur'} />
+                    <AvatarImage src={avatar} alt={name} />
                     <AvatarFallback className="bg-zinc-800 text-sm">
-                      {(viewer.user_name ? viewer.user_name.substring(0, 2) : 'U').toUpperCase()}
+                      {name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm">{viewer.user_name || 'Utilisateur Anonyme'}</span>
-                    <span className="text-xs text-zinc-500 capitalize">{viewer.role === 'host' ? 'Créateur' : 'Spectateur'}</span>
+                    <span className="font-medium text-sm">{name}</span>
+                    <span className="text-xs text-zinc-500 capitalize">{role === 'host' ? 'Créateur' : 'Spectateur'}</span>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </DialogContent>
