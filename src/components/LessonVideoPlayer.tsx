@@ -469,6 +469,17 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
             </Button>
           </div>
         </div>
+
+        {/* Barre de commentaires flottante */}
+        {lessonId && (
+          <FloatingCommentBar
+            onSubmit={async (text) => {
+              if (!user) { toast.error('Connectez-vous pour commenter'); return false; }
+              return await addComment(text);
+            }}
+            isSubmitting={isSubmitting}
+          />
+        )}
       </div>
 
       {/* Informations sur la vidéo */}
