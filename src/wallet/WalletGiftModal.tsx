@@ -94,6 +94,7 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose, init
     }
   }, [user?.id]);
 
+  // Prevent resetting form while open unless explicitly needed
   useEffect(() => {
     if (isOpen) {
       if (initialSelectedUser) {
@@ -114,7 +115,8 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose, init
         loadFriendIds();
       }
     }
-  }, [isOpen, initialSelectedUser, user?.id, loadFriendIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleSearch = useCallback(
     async (query: string) => {

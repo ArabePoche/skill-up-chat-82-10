@@ -24,7 +24,7 @@ import { useAgoraCall } from '@/call-system/hooks/useAgoraCall';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import WalletGiftModal from '@/wallet/WalletGiftModal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type LiveVisibility = 'public' | 'friends_followers';
@@ -205,12 +205,16 @@ const UserLive: React.FC = () => {
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
         
-        // Ensure we handle duplicate tabs naturally by checking unique keys 
         let uniqueUsersCount = Object.keys(presenceState).length;
         setViewerCount(uniqueUsersCount);
 
-        const currentViewers = Object.values(presenceState).map((sessions: any) => sessions[0]);
-        setViewersList(currentViewers.filter(v => v));
+        const currentViewers: any[] = [];
+        for (const key in presenceState) {
+          if (presenceState[key] && presenceState[key].length > 0) {
+            currentViewers.push(presenceState[key][0]);
+          }
+        }
+        setViewersList(currentViewers);
       })
       .on('broadcast', { event: 'live_action' }, (payload) => {
         const newMsg = payload.payload as LiveMessage;
@@ -530,13 +534,7 @@ const UserLive: React.FC = () => {
         <WalletGiftModal
           isOpen={showGiftModal}
           onClose={() => setShowGiftModal(false)}
-          initialSelectedUser={{
-            id: stream.host.id,
-            first_name: stream.host.first_name,
-            last_name: stream.host.last_name,
-            username: stream.host.username,
-            avatar_url: stream.host.avatar_url
-          }}
+          initialSelectedUser={stream.host as any}
           onGiftSent={handleGiftSuccess}
         />
       )}
@@ -549,6 +547,9 @@ const UserLive: React.FC = () => {
               <Users className="h-5 w-5" />
               Spectateurs ({viewerCount})
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Liste des spectateurs connectés à ce live
+            </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
             {viewersList.length === 0 ? (
