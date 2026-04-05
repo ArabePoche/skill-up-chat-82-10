@@ -115,7 +115,7 @@ const VideoCommentItem: React.FC<VideoCommentItemProps> = ({ comment, onReply, o
                 className="flex items-center space-x-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
               >
                 <Trash2 size={14} />
-                <span>{isDeleting ? '...' : 'Supprimer'}</span>
+                <span>{isDeleting ? 'Suppression...' : 'Supprimer'}</span>
               </button>
             )}
           </div>
