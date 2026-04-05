@@ -47,7 +47,7 @@ interface LiveStreamRecord {
   host: HostProfile | null;
 }
 
-const getDisplayName = (profile?: HostProfile | null) => {
+const getDisplayName = (profile?: HostProfile | { first_name?: string | null; last_name?: string | null; username?: string | null } | null) => {
   if (!profile) {
     return 'Utilisateur';
   }
@@ -59,17 +59,31 @@ const getDisplayName = (profile?: HostProfile | null) => {
   return profile.username || 'Utilisateur';
 };
 
+interface LiveMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string | null;
+  type: 'comment' | 'gift';
+  content: string;
+  createdAt: string;
+}
+
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const requestedHostMode = searchParams.get('host') === '1';
 
   const [stream, setStream] = useState<LiveStreamRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [viewerCount, setViewerCount] = useState(0);
   const [isStopping, setIsStopping] = useState(false);
+  const [messages, setMessages] = useState<LiveMessage[]>([]);
+  const [messageInput, setMessageInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const {
@@ -172,29 +186,95 @@ const UserLive: React.FC = () => {
       return;
     }
 
-    const presenceChannel = supabase.channel(`live-presence-${stream.id}`);
-    presenceChannelRef.current = presenceChannel;
-
-    presenceChannel.on('presence', { event: 'sync' }, () => {
-      const presenceState = presenceChannel.presenceState();
-      setViewerCount(Object.keys(presenceState).length);
-    });
-
-    presenceChannel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await presenceChannel.track({
-          user_id: user.id,
-          role: isHost ? 'host' : 'viewer',
-          online_at: new Date().toISOString(),
-        });
+    const roomChannel = supabase.channel(`live-room-${stream.id}`, {
+      config: {
+        presence: {
+          key: user.id,
+        }
       }
     });
 
+    presenceChannelRef.current = roomChannel;
+
+    roomChannel
+      .on('presence', { event: 'sync' }, () => {
+        const presenceState = roomChannel.presenceState();
+        // Calculate the number of unique viewers using keys, and safely handle multiple tabs
+        let uniqueUsersCount = Object.keys(presenceState).length;
+        setViewerCount(uniqueUsersCount);
+      })
+      .on('broadcast', { event: 'live_action' }, (payload) => {
+        const newMsg = payload.payload as LiveMessage;
+        setMessages(prev => [...prev.slice(-49), newMsg]);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await roomChannel.track({
+            user_id: user.id,
+            role: isHost ? 'host' : 'viewer',
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
     return () => {
-      presenceChannel.unsubscribe();
+      supabase.removeChannel(roomChannel);
       presenceChannelRef.current = null;
     };
-  }, [isHost, stream, user?.id]);
+  }, [isHost, stream?.id, user?.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendMessage = () => {
+    if (!messageInput.trim() || !user || !profile || !presenceChannelRef.current) return;
+
+    const newMessage: LiveMessage = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      userName: getDisplayName(profile) || 'Utilisateur',
+      userAvatar: profile.avatar_url,
+      type: 'comment',
+      content: messageInput.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'live_action',
+      payload: newMessage,
+    });
+
+    setMessages(prev => [...prev.slice(-49), newMessage]);
+    setMessageInput('');
+  };
+
+  const handleSendGift = () => {
+    if (!user || !profile || !presenceChannelRef.current) return;
+
+    const gifts = ['🎁', '💎', '🎉', '💖', '🚀'];
+    const randomGift = gifts[Math.floor(Math.random() * gifts.length)];
+
+    const newMessage: LiveMessage = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      userName: getDisplayName(profile) || 'Utilisateur',
+      userAvatar: profile.avatar_url,
+      type: 'gift',
+      content: `a envoyé un cadeau ${randomGift}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'live_action',
+      payload: newMessage,
+    });
+
+    setMessages(prev => [...prev.slice(-49), newMessage]);
+    toast.success(`Cadeau ${randomGift} envoyé !`);
+  };
 
   useEffect(() => {
     if (!stream || stream.status !== 'active') {
@@ -345,24 +425,46 @@ const UserLive: React.FC = () => {
         )}
 
         {stream.description && (
-          <div className="absolute bottom-28 left-4 right-4 rounded-2xl bg-black/45 p-4 text-sm text-zinc-100 backdrop-blur">
+          <div className="absolute top-20 left-4 right-4 rounded-2xl bg-black/45 p-4 text-sm text-zinc-100 backdrop-blur">
             {stream.description}
           </div>
         )}
+
+        {/* Live Chat Overlay */}
+        <div className="absolute bottom-4 left-4 right-4 flex max-h-64 flex-col justify-end gap-2 overflow-y-auto pointer-events-auto z-10 [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_100%)]">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`w-max max-w-[85%] rounded-2xl px-3 py-1.5 text-sm backdrop-blur ${
+                msg.type === 'gift'
+                  ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white animate-bounce'
+                  : 'bg-black/50 text-zinc-100'
+              }`}
+            >
+              <span className="font-semibold mr-2 opacity-90">{msg.userName}</span>
+              <span className="break-words">{msg.content}</span>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       <div className="border-t border-white/10 bg-black/80 px-4 py-4 backdrop-blur z-10">
         <div className="flex items-center gap-3">
-          {/* Fake message input */}
+          {/* Real message input */}
           <div className="flex h-12 flex-1 items-center rounded-full bg-white/10 px-4 text-white">
             <input 
               type="text" 
               placeholder={isHost ? "Message aux spectateurs..." : "Ajouter un commentaire..."}
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-zinc-400"
             />
             <button 
-              className="ml-2 flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white hover:bg-indigo-700 transition-colors"
-              onClick={() => toast.success('Fonctionnalité Messages bientôt disponible !')}
+              className="ml-2 flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              onClick={handleSendMessage}
+              disabled={!messageInput.trim()}
             >
               <Send className="h-4 w-4" />
             </button>
@@ -374,7 +476,7 @@ const UserLive: React.FC = () => {
               variant="outline"
               size="icon"
               className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              onClick={() => toast.success('Fonctionnalité Cadeaux bientôt disponible !')}
+              onClick={handleSendGift}
             >
               <Gift size={22} className="text-pink-500" />
             </Button>
