@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
+import { reverseHabbahGain } from '@/services/habbahService';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 
 export const usePostLikes = (postId: string, initialLikesCount: number = 0) => {
   const { user } = useAuth();
@@ -65,6 +67,11 @@ export const usePostLikes = (postId: string, initialLikesCount: number = 0) => {
           .eq('user_id', user.id);
 
         if (error) throw error;
+
+        const reversal = await reverseHabbahGain(user.id, 'post_like', postId, 'post_unlike');
+        if (reversal) {
+          notifyHabbahGain(-reversal.amount, reversal.label);
+        }
       } else {
         // Like
         const { error } = await supabase

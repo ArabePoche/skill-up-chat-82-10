@@ -78,6 +78,10 @@ const TikTokVideosView: React.FC<{
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
   const visibleRatiosRef = useRef<Map<number, number>>(new Map());
 
+  useEffect(() => {
+    hasInitializedTarget.current = false;
+  }, [targetVideoId]);
+
   // Fusionner la vidéo cible avec le flux si elle n'est pas déjà présente
   const displayedVideos = useMemo(() => {
     if (!targetVideoId || !targetVideo) return videos;
@@ -109,6 +113,12 @@ const TikTokVideosView: React.FC<{
       return;
     }
 
+    if (targetVideoId) {
+      if (isLoadingTargetVideo || !hasInitializedTarget.current) {
+        return;
+      }
+    }
+
     const currentVideo = displayedVideos[currentVideoIndex];
     if (!currentVideo) {
       return;
@@ -120,7 +130,7 @@ const TikTokVideosView: React.FC<{
     if (location.pathname !== expectedPath) {
       navigate(expectedPath, { replace: true });
     }
-  }, [currentVideoIndex, displayedVideos, location.pathname, navigate]);
+  }, [currentVideoIndex, displayedVideos, isLoadingTargetVideo, location.pathname, navigate, targetVideoId]);
 
   // Intersection Observer pour la lecture automatique
   // Ne dépend que de displayedVideos.length pour éviter les re-créations inutiles

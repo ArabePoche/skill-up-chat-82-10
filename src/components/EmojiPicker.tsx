@@ -11,6 +11,7 @@ interface EmojiPickerProps {
 type CategoryKey =
   | 'smileys'
   | 'emotions'
+  | 'islam'
   | 'nature'
   | 'food'
   | 'transport'
@@ -40,6 +41,13 @@ const emojiCategories: Record<CategoryKey, CategoryConfig> = {
     accent: 'text-rose-500',
     softAccent: 'bg-rose-50 border-rose-200 text-rose-700',
     emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '💯', '💢', '💥', '💫', '💦', '💨', '🕳️', '💣', '💬', '👁️‍🗨️', '🗨️', '🗯️', '💭'],
+  },
+  islam: {
+    icon: Star,
+    label: 'Islam',
+    accent: 'text-emerald-600',
+    softAccent: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    emojis: ['🤲', '🕌', '☪️', '📿', '🕋', '🌙', '⭐', '🛐', '🤍', '💚', '🕊️', '☝️', '📖', '✨', '﷽', 'ﷺ', 'آمين', 'الحمد لله', 'إن شاء الله', 'ما شاء الله', 'سبحان الله'],
   },
   nature: {
     icon: Sun,
@@ -90,6 +98,8 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
   const pickerRef = useRef<HTMLDivElement>(null);
   const categoryEntries = Object.entries(emojiCategories) as Array<[CategoryKey, CategoryConfig]>;
   const activeCategoryConfig = emojiCategories[activeCategory];
+
+  const isTextEntry = (value: string) => value.length > 3 || /[\u0600-\u06FF]/.test(value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -161,14 +171,17 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
           {activeCategoryConfig.label}
         </h4>
         
-        <div className="grid grid-cols-8 gap-0">
+        <div className="grid grid-cols-8 gap-1">
           {activeCategoryConfig.emojis.map((emoji, index) => (
              <button
               key={`${activeCategory}-${emoji}-${index}`}
               type="button"
               onClick={() => handleEmojiSelect(emoji)}
-              className="flex h-10 w-9 sm:w-10 items-center justify-center text-[22px] transition hover:bg-[#F5F6F6] dark:hover:bg-[#202C33] rounded-md focus:outline-none focus:bg-[#EBEBEB] dark:focus:bg-[#2A3942]"
+              className={isTextEntry(emoji)
+                ? `col-span-4 flex min-h-10 items-center justify-center px-2 py-2 text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100 transition rounded-md border ${activeCategoryConfig.softAccent} hover:brightness-95 dark:bg-[#202C33] dark:border-[#2A3942] dark:text-white`
+                : 'flex h-10 w-9 sm:w-10 items-center justify-center text-[22px] text-gray-900 dark:text-white transition hover:bg-[#F5F6F6] dark:hover:bg-[#202C33] rounded-md focus:outline-none focus:bg-[#EBEBEB] dark:focus:bg-[#2A3942]'}
               title={emoji.trim()}
+              dir={/[\u0600-\u06FF]/.test(emoji) ? 'rtl' : undefined}
             >
               {emoji.trim()}
             </button>

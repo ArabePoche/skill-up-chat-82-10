@@ -7,6 +7,7 @@ export type NotificationType =
   | 'teacher_response'
   | 'exercise_validation'
   | 'new_lesson'
+  | 'new_video'
   | 'test'
   | 'private_chat'
   | 'gift_received'
@@ -158,6 +159,22 @@ export const NotificationTriggers = {
         data: { videoId, commenterUserId }
       });
     }
+  },
+
+  // Quand un utilisateur publie une nouvelle video
+  onVideoPublished: async (recipientIds: string[], videoId: string, authorName: string, videoTitle?: string | null) => {
+    if (recipientIds.length === 0) {
+      return;
+    }
+
+    await sendPushNotification({
+      userIds: recipientIds,
+      title: 'Nouvelle video publiee',
+      message: `${authorName} a publie une nouvelle video${videoTitle ? ` : "${videoTitle}"` : ''}`,
+      type: 'new_video',
+      clickAction: `/video/${videoId}`,
+      data: { videoId, authorName, videoTitle }
+    });
   },
 
   // Quand quelqu'un like un post

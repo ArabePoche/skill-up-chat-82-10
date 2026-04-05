@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Layers, Sparkles, BookOpen, GraduationCap } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Edit, Trash2, Plus, Layers } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -12,9 +13,16 @@ import { useAuth } from '@/hooks/useAuth';
 import LevelsManagement from './LevelsManagement';
 import DynamicFormationForm from './DynamicFormationForm';
 import FormationPricingManager from './FormationPricingManager';
-import CreatorFormationModal from '@/components/cours/CreatorFormationModal';
 
 interface FormationsManagementProps { authorId?: string; }
+
+const statusBadgeConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  approved: { label: 'Active', variant: 'default' },
+  pending: { label: 'En attente', variant: 'outline' },
+  rejected: { label: 'Rejetée', variant: 'destructive' },
+  revision_requested: { label: 'À corriger', variant: 'secondary' },
+  draft: { label: 'Brouillon', variant: 'secondary' },
+};
 
 const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
   const [selectedFormation, setSelectedFormation] = useState<{ id: string; title: string } | null>(null);
@@ -24,7 +32,6 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
   const [isPricingDialogOpen, setIsPricingDialogOpen] = useState(false);
   const [pricingFormationId, setPricingFormationId] = useState<string | null>(null);
   const [pricingFormationLessons, setPricingFormationLessons] = useState<any[]>([]);
-  const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -180,8 +187,6 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-formations'] });
-      queryClient.invalidateQueries({ queryKey: ['shop-formations'] });
-      queryClient.invalidateQueries({ queryKey: ['formations'] });
       toast.success('Formation créée avec succès avec tous ses éléments et médias');
       setIsFormDialogOpen(false);
     },
@@ -376,8 +381,6 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-formations'] });
-      queryClient.invalidateQueries({ queryKey: ['shop-formations'] });
-      queryClient.invalidateQueries({ queryKey: ['formations'] });
       toast.success('Formation mise à jour avec succès');
       setIsEditDialogOpen(false);
       setEditingFormation(null);
@@ -398,8 +401,6 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-formations'] });
-      queryClient.invalidateQueries({ queryKey: ['shop-formations'] });
-      queryClient.invalidateQueries({ queryKey: ['formations'] });
       toast.success('Formation supprimée avec succès');
     },
     onError: (error) => {
@@ -532,20 +533,6 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     }
   };
 
-  if (selectedFormation) {
-    return (
-      <LevelsManagement
-        formationId={selectedFormation.id}
-        formationTitle={selectedFormation.title}
-        onBack={() => setSelectedFormation(null)}
-      />
-    );
-  }
-
-  if (isLoading) {
-    return <div className="text-center py-8">Chargement des formations...</div>;
-  }
-
   const getTeacherNames = (teacherFormations: any[]) => {
     if (!teacherFormations || teacherFormations.length === 0) {
       return 'Aucun enseignant assigné';
@@ -562,72 +549,138 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
       .join(', ');
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Attractive creation banner — only visible in creator view */}
-      {authorId && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#25d366] to-[#128c7e] p-6 shadow-lg">
-          {/* Decorative circles */}
-          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
-          <div className="pointer-events-none absolute -bottom-6 right-20 h-24 w-24 rounded-full bg-white/10" />
+  const formationSections = useMemo(() => {
+    const list = formations || [];
 
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-                <GraduationCap className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Mes Créations</h2>
-                <p className="text-green-100 text-sm mt-0.5">
-                  Créez, gérez et publiez vos formations en quelques clics
-                </p>
-              </div>
+    return {
+      active: list.filter((formation: any) => formation.approval_status === 'approved'),
+      pending: list.filter((formation: any) => formation.approval_status === 'pending'),
+      rejected: list.filter((formation: any) => ['rejected', 'revision_requested'].includes(formation.approval_status)),
+      draft: list.filter((formation: any) => formation.approval_status === 'draft' || !formation.approval_status),
+    };
+  }, [formations]);
+
+  const renderFormationRows = (items: any[]) => {
+    if (items.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+            Aucune création dans cette catégorie.
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return items.map((formation) => {
+      const statusConfig = statusBadgeConfig[formation.approval_status] || statusBadgeConfig.draft;
+
+      return (
+        <TableRow key={formation.id}>
+          <TableCell className="font-medium">{formation.title}</TableCell>
+          <TableCell>
+            {formation.profiles ? 
+              `${formation.profiles.first_name || ''} ${formation.profiles.last_name || ''}`.trim() || 
+              formation.profiles.username || 'Auteur inconnu' : 'Auteur inconnu'}
+          </TableCell>
+          <TableCell>
+            <div className="text-sm">
+              {getTeacherNames(formation.teacher_formations)}
             </div>
-            <Button
-              onClick={() => setIsCreatorModalOpen(true)}
-              className="shrink-0 bg-white text-[#128c7e] hover:bg-green-50 font-semibold shadow-md px-5 py-2.5 h-auto"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Créer une formation
+          </TableCell>
+          <TableCell>
+            <Badge variant="outline">
+              {formation.badge || 'N/A'}
+            </Badge>
+          </TableCell>
+          <TableCell>{formation.price ? `${formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}</TableCell>
+          <TableCell>
+            <div className="flex flex-col gap-1">
+              <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+              {formation.approval_status === 'approved' && !formation.is_active && (
+                <span className="text-xs text-muted-foreground">Désactivée</span>
+              )}
+              {formation.rejection_reason && (
+                <span className="max-w-[220px] truncate text-xs text-red-500" title={formation.rejection_reason}>
+                  {formation.rejection_reason}
+                </span>
+              )}
+            </div>
+          </TableCell>
+          <TableCell>
+            <div className="flex space-x-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedFormation({ id: formation.id, title: formation.title })}
+              >
+                <Layers size={14} className="mr-1" />
+                Niveaux
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleConfigurePricing(formation.id)}
+                className="text-purple-600"
+              >
+                💳
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleEdit(formation)}
+              >
+                <Edit size={14} />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDelete(formation.id)}
+                className="text-red-600"
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    });
+  };
+
+  if (selectedFormation) {
+    return (
+      <LevelsManagement
+        formationId={selectedFormation.id}
+        formationTitle={selectedFormation.title}
+        onBack={() => setSelectedFormation(null)}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <div className="text-center py-8">Chargement des formations...</div>;
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Gestion des formations</CardTitle>
+        <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#25d366] hover:bg-[#25d366]/90">
+              <Plus size={16} className="mr-2" />
+              Nouvelle formation complète
             </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Creator Formation Modal */}
-      {authorId && (
-        <CreatorFormationModal
-          open={isCreatorModalOpen}
-          onOpenChange={setIsCreatorModalOpen}
-          authorId={authorId}
-          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['admin-formations', authorId] })}
-        />
-      )}
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{authorId ? 'Mes formations' : 'Gestion des formations'}</CardTitle>
-          {/* Admin-only: create button without draft/terms flow */}
-          {!authorId && (
-            <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-[#25d366] hover:bg-[#25d366]/90">
-                  <Plus size={16} className="mr-2" />
-                  Nouvelle formation complète
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Créer une formation complète</DialogTitle>
-                </DialogHeader>
-                <DynamicFormationForm
-                  onSubmit={(data) => createCompleteFormationMutation.mutate(data)}
-                  isLoading={createCompleteFormationMutation.isPending}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
-        </CardHeader>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Créer une formation complète</DialogTitle>
+            </DialogHeader>
+            <DynamicFormationForm
+              onSubmit={(data) => createCompleteFormationMutation.mutate(data)}
+              isLoading={createCompleteFormationMutation.isPending}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -665,87 +718,39 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
             )}
           </DialogContent>
         </Dialog>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="active" className="space-y-4">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-2 md:grid-cols-4">
+            <TabsTrigger value="active">Actives ({formationSections.active.length})</TabsTrigger>
+            <TabsTrigger value="pending">En attente ({formationSections.pending.length})</TabsTrigger>
+            <TabsTrigger value="rejected">Rejetées ({formationSections.rejected.length})</TabsTrigger>
+            <TabsTrigger value="draft">Brouillons ({formationSections.draft.length})</TabsTrigger>
+          </TabsList>
 
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Titre</TableHead>
-                <TableHead>Auteur</TableHead>
-                <TableHead>Enseignants</TableHead>
-                <TableHead>Badge</TableHead>
-                <TableHead>Prix</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {formations?.map((formation) => (
-                <TableRow key={formation.id}>
-                  <TableCell className="font-medium">{formation.title}</TableCell>
-                  <TableCell>
-                    {formation.profiles ? 
-                      `${formation.profiles.first_name || ''} ${formation.profiles.last_name || ''}`.trim() || 
-                      formation.profiles.username || 'Auteur inconnu' : 'Auteur inconnu'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {getTeacherNames(formation.teacher_formations)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {formation.badge || 'N/A'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formation.price ? `${formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}</TableCell>
-                  <TableCell>
-                    <Badge variant={formation.is_active ? 'default' : 'destructive'}>
-                      {formation.is_active ? 'Actif' : 'Inactif'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedFormation({ id: formation.id, title: formation.title })}
-                      >
-                        <Layers size={14} className="mr-1" />
-                        Niveaux
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleConfigurePricing(formation.id)}
-                        className="text-purple-600"
-                      >
-                        💳
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleEdit(formation)}
-                      >
-                        <Edit size={14} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(formation.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+          {Object.entries(formationSections).map(([sectionKey, sectionFormations]) => (
+            <TabsContent key={sectionKey} value={sectionKey} className="mt-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Titre</TableHead>
+                    <TableHead>Auteur</TableHead>
+                    <TableHead>Enseignants</TableHead>
+                    <TableHead>Badge</TableHead>
+                    <TableHead>Prix</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {renderFormationRows(sectionFormations)}
+                </TableBody>
+              </Table>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 };
 

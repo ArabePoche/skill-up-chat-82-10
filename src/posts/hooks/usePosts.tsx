@@ -241,6 +241,7 @@ return postsWithProfilesAndMedia;
 
 import { recordHabbahGain } from '@/services/habbahService';
 import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
+import { reverseHabbahGain } from '@/services/habbahService';
 
 export const useCreatePost = () => {
   const queryClient = useQueryClient();
@@ -618,6 +619,13 @@ export const useDeletePost = () => {
       if (error) {
         console.error('Error deleting post:', error);
         throw error;
+      }
+
+      if (currentUserId) {
+        const reversal = await reverseHabbahGain(currentUserId, 'post_create', postId, 'post_deleted');
+        if (reversal) {
+          notifyHabbahGain(-reversal.amount, reversal.label);
+        }
       }
     },
     onSuccess: () => {

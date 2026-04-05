@@ -10474,6 +10474,14 @@ export type Database = {
         Args: { p_action_type: string; p_reference_id?: string }
         Returns: Json
       }
+      reverse_habbah_gain: {
+        Args: {
+          p_action_type: string
+          p_reason?: string
+          p_reference_id?: string
+        }
+        Returns: Json
+      }
       find_contacts_by_phone: {
         Args: { phone_numbers: string[] }
         Returns: {

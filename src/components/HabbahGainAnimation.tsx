@@ -2,11 +2,13 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import coinHabbah from '@/assets/coin-habbah.png';
+import type { HabbahGainAnchor } from '@/hooks/useHabbahGainNotifier';
 
 export interface HabbahGain {
   id: string;
   amount: number;
   label: string; // ex: "Like", "Commentaire", "Partage"
+  anchor?: HabbahGainAnchor;
 }
 
 interface HabbahGainAnimationProps {
@@ -16,7 +18,7 @@ interface HabbahGainAnimationProps {
 
 const HabbahGainAnimation: React.FC<HabbahGainAnimationProps> = ({ gains, onComplete }) => {
   return (
-    <div className="fixed inset-0 pointer-events-none z-[999999] flex flex-col items-center justify-start pt-24">
+    <div className="fixed inset-0 pointer-events-none z-[999999]">
       <AnimatePresence>
         {gains.map((gain, index) => (
           <GainPopup key={gain.id} gain={gain} index={index} onComplete={() => onComplete(gain.id)} />
@@ -31,31 +33,52 @@ const GainPopup: React.FC<{ gain: HabbahGain; index: number; onComplete: () => v
   index,
   onComplete,
 }) => {
+  const isLoss = gain.amount < 0;
+  const absoluteAmount = Math.abs(gain.amount);
+
   useEffect(() => {
     const timer = setTimeout(onComplete, 2000);
     return () => clearTimeout(timer);
   }, [onComplete]);
 
+  const anchoredStyle = gain.anchor
+    ? {
+        left: gain.anchor.x,
+        top: gain.anchor.y,
+      }
+    : undefined;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 40, scale: 0.5 }}
-      animate={{ opacity: 1, y: -(index * 50), scale: 1 }}
+      animate={{ opacity: 1, y: gain.anchor ? -24 : -(index * 50), scale: 1 }}
       exit={{ opacity: 0, y: -80, scale: 0.8 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="flex items-center gap-2 mb-2"
+      className={gain.anchor ? 'absolute flex items-center gap-2' : 'absolute left-1/2 top-24 flex -translate-x-1/2 items-center gap-2'}
+      style={anchoredStyle}
     >
       {/* Glow background */}
       <motion.div
         className="relative flex items-center gap-2 px-5 py-2.5 rounded-full shadow-2xl"
         style={{
-          background: 'linear-gradient(135deg, hsl(45 100% 51%), hsl(36 100% 50%))',
-          boxShadow: '0 0 30px hsla(45, 100%, 51%, 0.5), 0 0 60px hsla(45, 100%, 51%, 0.2)',
+          background: isLoss
+            ? 'linear-gradient(135deg, hsl(0 78% 52%), hsl(12 88% 46%))'
+            : 'linear-gradient(135deg, hsl(45 100% 51%), hsl(36 100% 50%))',
+          boxShadow: isLoss
+            ? '0 0 30px hsla(0, 78%, 52%, 0.45), 0 0 60px hsla(0, 78%, 52%, 0.2)'
+            : '0 0 30px hsla(45, 100%, 51%, 0.5), 0 0 60px hsla(45, 100%, 51%, 0.2)',
         }}
         animate={{
           boxShadow: [
-            '0 0 20px hsla(45, 100%, 51%, 0.4), 0 0 40px hsla(45, 100%, 51%, 0.15)',
-            '0 0 35px hsla(45, 100%, 51%, 0.6), 0 0 70px hsla(45, 100%, 51%, 0.3)',
-            '0 0 20px hsla(45, 100%, 51%, 0.4), 0 0 40px hsla(45, 100%, 51%, 0.15)',
+            isLoss
+              ? '0 0 20px hsla(0, 78%, 52%, 0.35), 0 0 40px hsla(0, 78%, 52%, 0.12)'
+              : '0 0 20px hsla(45, 100%, 51%, 0.4), 0 0 40px hsla(45, 100%, 51%, 0.15)',
+            isLoss
+              ? '0 0 35px hsla(0, 78%, 52%, 0.55), 0 0 70px hsla(0, 78%, 52%, 0.22)'
+              : '0 0 35px hsla(45, 100%, 51%, 0.6), 0 0 70px hsla(45, 100%, 51%, 0.3)',
+            isLoss
+              ? '0 0 20px hsla(0, 78%, 52%, 0.35), 0 0 40px hsla(0, 78%, 52%, 0.12)'
+              : '0 0 20px hsla(45, 100%, 51%, 0.4), 0 0 40px hsla(45, 100%, 51%, 0.15)',
           ],
         }}
         transition={{ duration: 1, repeat: 1 }}
@@ -75,7 +98,7 @@ const GainPopup: React.FC<{ gain: HabbahGain; index: number; onComplete: () => v
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          +{gain.amount} H
+          {isLoss ? '-' : '+'}{absoluteAmount} H
         </motion.span>
 
         {/* Particules */}
@@ -83,7 +106,7 @@ const GainPopup: React.FC<{ gain: HabbahGain; index: number; onComplete: () => v
           <motion.div
             key={i}
             className="absolute w-1.5 h-1.5 rounded-full"
-            style={{ background: 'hsl(45 100% 70%)' }}
+            style={{ background: isLoss ? 'hsl(0 90% 75%)' : 'hsl(45 100% 70%)' }}
             initial={{ x: 0, y: 0, opacity: 1 }}
             animate={{
               x: (Math.random() - 0.5) * 80,

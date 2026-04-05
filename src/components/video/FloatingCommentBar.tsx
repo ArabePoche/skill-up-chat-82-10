@@ -8,26 +8,30 @@ import { Send, Smile } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import EmojiPicker from '@/components/EmojiPicker';
 
 interface FloatingCommentBarProps {
   onSubmit: (text: string) => Promise<boolean>;
   onEmojiReact?: (emoji: string) => void;
   isSubmitting?: boolean;
   placeholder?: string;
+  className?: string;
 }
 
-const POPULAR_EMOJIS = ['❤️', '😂', '🔥', '👍', '🥳', '🙏', '🎁'];
+const POPULAR_EMOJIS = ['❤️', '😂', '🔥', '👍', '🥳', '🎁'];
 
 const FloatingCommentBar: React.FC<FloatingCommentBarProps> = ({
   onSubmit,
   onEmojiReact,
   isSubmitting = false,
-  placeholder = '😊 اكتب تعليقًا أو سؤالاً هنا...',
+  placeholder = 'Exprimez-vous...😊',
+  className = '',
 }) => {
   const { user } = useAuth();
   const [text, setText] = useState('');
   const [isVisible, setIsVisible] = useState(true);
   const [isFocused, setIsFocused] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const x = useMotionValue(0);
   const opacity = useTransform(x, [-150, 0, 150], [0, 1, 0]);
@@ -73,11 +77,17 @@ const FloatingCommentBar: React.FC<FloatingCommentBarProps> = ({
     });
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setText((current) => `${current}${emoji}`);
+    setShowEmojiPicker(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          className="absolute bottom-16 left-2 right-2 z-40"
+          className={className}
           initial={{ y: 60, opacity: 0, scale: 0.9 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
@@ -116,7 +126,18 @@ const FloatingCommentBar: React.FC<FloatingCommentBarProps> = ({
             onDragEnd={handleDragEnd}
             style={{ x, opacity, scale }}
             className="relative"
+            dragListener={!showEmojiPicker}
           >
+            {showEmojiPicker && (
+              <div className="absolute bottom-full left-0 mb-2 z-50" onClick={(e) => e.stopPropagation()}>
+                <EmojiPicker
+                  onEmojiSelect={handleEmojiSelect}
+                  isOpen={showEmojiPicker}
+                  onToggle={() => setShowEmojiPicker(false)}
+                />
+              </div>
+            )}
+
             <form
               onSubmit={handleSubmit}
               className={`
@@ -129,7 +150,17 @@ const FloatingCommentBar: React.FC<FloatingCommentBarProps> = ({
               `}
               onClick={(e) => e.stopPropagation()}
             >
-              <Smile size={18} className="text-white/60 flex-shrink-0" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowEmojiPicker((current) => !current);
+                }}
+                className="text-white/60 flex-shrink-0 p-1 rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Ouvrir le sélecteur d'emojis"
+              >
+                <Smile size={18} />
+              </button>
               <input
                 ref={inputRef}
                 type="text"

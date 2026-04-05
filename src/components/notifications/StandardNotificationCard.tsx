@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 interface StandardNotificationCardProps {
   notification: {
@@ -13,6 +14,9 @@ interface StandardNotificationCardProps {
     type: string;
     is_read: boolean;
     created_at: string;
+    product_id?: string | null;
+    post_id?: string | null;
+    video_id?: string | null;
   };
 }
 
@@ -20,8 +24,10 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
   notification
 }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const isRestock = notification.type === 'product_restock';
+  const isContentNotification = !!notification.video_id || !!notification.post_id;
 
   // Marquer automatiquement comme lue à l'affichage
   useEffect(() => {
@@ -76,20 +82,26 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
     locale: fr
   });
 
-  const productId = (notification as any).product_id;
-
   const handleNotificationClick = () => {
-    if (isRestock && productId) {
-      // Si on est sur une notification de réapprovisionnement, on pourrait rediriger vers le produit
-      // Pour l'instant on laisse Standard, mais on pourrait ajouter un bouton
-      window.location.href = `/shop?product=${productId}`;
+    if (notification.video_id) {
+      navigate(`/video/${notification.video_id}`);
+      return;
+    }
+
+    if (notification.post_id) {
+      navigate(`/post/${notification.post_id}`);
+      return;
+    }
+
+    if (isRestock && notification.product_id) {
+      window.location.href = `/shop?product=${notification.product_id}`;
     }
   };
 
   return (
     <div
       onClick={handleNotificationClick}
-      className={`bg-white rounded-lg p-4 border ${!notification.is_read ? 'border-l-4 border-l-blue-500' : ''} ${isRestock ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+      className={`bg-white rounded-lg p-4 border ${!notification.is_read ? 'border-l-4 border-l-blue-500' : ''} ${isRestock || isContentNotification ? 'cursor-pointer hover:bg-gray-50' : ''}`}
     >
       <div className="flex items-start space-x-3">
         <div className={`w-10 h-10 ${getIconBgColor(notification.type)} rounded-full flex items-center justify-center`}>

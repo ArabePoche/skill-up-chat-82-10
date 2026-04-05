@@ -51,12 +51,12 @@ const VideoLike: React.FC<VideoLikeProps> = ({
           onClick={handleLike}
           disabled={isLoading}
           className={`w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-all duration-200 flex items-center justify-center border border-white/20 ${
-            isLiked ? 'text-red-500 bg-red-500/30' : ''
+            isLiked ? '!text-red-500 bg-red-500/30 border-red-400/40' : ''
           }`}
         >
           <Heart 
             size={20} 
-            className={`${isLiked ? 'fill-current' : ''}`} 
+            className={isLiked ? 'fill-red-500 stroke-red-500 text-red-500' : 'text-white'} 
           />
         </Button>
         <span className="text-white text-xs mt-1 font-medium">

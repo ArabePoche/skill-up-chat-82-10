@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
+import { recordHabbahGain, reverseHabbahGain } from '@/services/habbahService';
 
 export const usePostComments = (postId: string) => {
   const { user } = useAuth();
@@ -101,6 +103,11 @@ export const usePostComments = (postId: string) => {
         console.error('Erreur mise à jour compteur commentaires:', rpcError);
       }
 
+      if (user?.id) {
+        const reward = await recordHabbahGain(user.id, 'post_comment', data.id);
+        if (reward) notifyHabbahGain(reward.amount, reward.label);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -131,12 +138,31 @@ export const usePostComments = (postId: string) => {
   // Supprimer un commentaire
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
+      if (!user?.id) throw new Error('Utilisateur non connecté');
+
+      const { data: deletedComments, error: lookupError } = await supabase
+        .from('post_comments')
+        .select('id, user_id')
+        .or(`id.eq.${commentId},parent_comment_id.eq.${commentId}`);
+
+      if (lookupError) throw lookupError;
+
       const { error } = await supabase
         .from('post_comments')
         .delete()
-        .eq('id', commentId);
+        .eq('id', commentId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
+
+      for (const comment of deletedComments || []) {
+        if (comment.user_id === user.id) {
+          const reversal = await reverseHabbahGain(user.id, 'post_comment', comment.id, 'post_comment_deleted');
+          if (reversal) {
+            notifyHabbahGain(-reversal.amount, reversal.label);
+          }
+        }
+      }
 
       // Décrémenter le compteur
       const { error: rpcError } = await supabase.rpc('decrement_post_comments', {

@@ -9,9 +9,6 @@ import { usePostComments } from '@/posts/hooks/usePostComments';
 import EmojiPicker from '@/components/EmojiPicker';
 import PostCommentItem from '@/posts/components/PostCommentItem';
 
-import { recordHabbahGain } from '@/services/habbahService';
-import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
-
 interface PostCommentsProps {
   postId: string;
   commentsCount: number;
@@ -61,16 +58,6 @@ const PostComments: React.FC<PostCommentsProps> = ({
     if (success) {
       setNewComment('');
       setShowEmojiPicker(false);
-      
-      // Gain Habbah comment
-      if (user?.id) {
-        try {
-          const reward = await recordHabbahGain(user.id, 'post_comment', postId);
-          if (reward) notifyHabbahGain(reward.amount, reward.label);
-        } catch (error) {
-          console.error("Error logging habbah comment:", error);
-        }
-      }
     }
   };
 

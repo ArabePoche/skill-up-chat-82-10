@@ -27,6 +27,7 @@ import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 import NativeVideoPlayer from './players/NativeVideoPlayer';
 import YouTubePlayer from './players/YouTubePlayer';
 import VimeoPlayer from './players/VimeoPlayer';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface Video {
   id: string;
@@ -78,6 +79,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMediaError, setHasMediaError] = useState(false);
+  const [showLikeBurst, setShowLikeBurst] = useState(false);
 //   const [mediaRetryKey, setMediaRetryKey] = useState(0);
 
   // Long press pour ouvrir le modal de téléchargement
@@ -89,7 +91,10 @@ const VideoCard: React.FC<VideoCardProps> = ({
     setShowComments(false);
   }, []);
 
-  const { isLongPress, ...longPressEvents } = useLongPress({ onLongPress: handleLongPress });
+  const { isLongPress, ...longPressEvents } = useLongPress({
+    duration: 900,
+    onLongPress: handleLongPress,
+  });
 
   const shouldLoadEngagementData = isActive || showComments || showShare || showSeries || showGift;
   const vimeoPlayerId = useMemo(() => `vimeo-player-${video.id}`, [video.id]);
@@ -133,7 +138,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
   // Détection du type de vidéo
   const isYouTube = video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be');
   const isVimeo = video.video_url.includes('vimeo.com');
-  const isMp4 = video.video_url.endsWith('.mp4') || video.video_url.includes('.mp4');
+  const isNativeVideo = !isYouTube && !isVimeo;
 
   // Sync isPlaying with isActive
   useEffect(() => {
@@ -185,18 +190,28 @@ const VideoCard: React.FC<VideoCardProps> = ({
     action();
   };
 
-  const handleLike = () => {
+  const handleLike = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const triggerRect = event.currentTarget.getBoundingClientRect();
+
     handleAuthRequiredAction(async () => {
       const wasLiked = isLiked;
       toggleLike();
       if (!wasLiked) {
+        setShowLikeBurst(true);
+        window.setTimeout(() => setShowLikeBurst(false), 3000);
+
         if (onLikeWithConfetti) {
           onLikeWithConfetti();
         }
         if (user?.id) {
           try {
             const reward = await recordHabbahGain(user.id, 'like', video.id);
-            if (reward) notifyHabbahGain(reward.amount, reward.label);
+            if (reward) {
+              notifyHabbahGain(reward.amount, reward.label, {
+                x: triggerRect.left - 96,
+                y: triggerRect.top - 8,
+              });
+            }
           } catch (error) {
             console.error('Error logging habbah video like:', error);
           }
@@ -297,8 +312,8 @@ const VideoCard: React.FC<VideoCardProps> = ({
             </>
         )}
 
-        {/* Vidéos MP4 */}
-        {isMp4 && (
+        {/* Vidéos natives stockées ou servies directement par URL */}
+        {isNativeVideo && (
           <NativeVideoPlayer
             src={video.video_url}
             poster={video.thumbnail_url}
@@ -369,16 +384,54 @@ const VideoCard: React.FC<VideoCardProps> = ({
         </div>
 
         {/* Bouton Like */}
-        <div className="flex flex-col items-center">
+        <div className="relative flex flex-col items-center">
+          <AnimatePresence>
+            {showLikeBurst && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0.9, scale: 0.45 }}
+                  animate={{ opacity: 0, scale: 3.1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 2.8, ease: 'easeOut' }}
+                  className="absolute top-0 left-1/2 h-12 w-12 -translate-x-1/2 rounded-full bg-red-500/90 blur-[1px]"
+                />
+                <motion.div
+                  initial={{ opacity: 0.95, scale: 0.8 }}
+                  animate={{ opacity: 0, scale: 2.5 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 2.2, ease: 'easeOut' }}
+                  className="absolute top-0 left-1/2 h-12 w-12 -translate-x-1/2 rounded-full border-2 border-red-300/90"
+                />
+                {[
+                  { x: 0, y: -34 },
+                  { x: 26, y: -18 },
+                  { x: 30, y: 12 },
+                  { x: 0, y: 30 },
+                  { x: -28, y: 14 },
+                  { x: -24, y: -20 },
+                ].map((particle, index) => (
+                  <motion.span
+                    key={index}
+                    initial={{ opacity: 0.95, x: 0, y: 0, scale: 0.9 }}
+                    animate={{ opacity: 0, x: particle.x, y: particle.y, scale: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1.2, ease: 'easeOut', delay: index * 0.05 }}
+                    className="absolute left-1/2 top-6 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-red-300"
+                  />
+                ))}
+              </>
+            )}
+          </AnimatePresence>
+
           <Button
             variant="ghost"
             size="icon"
             onClick={handleLike}
-            className={`w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
-              isLiked ? 'text-red-500' : ''
+            className={`relative z-10 w-12 h-12 rounded-full border-0 bg-transparent text-white shadow-none transition-all hover:scale-110 hover:bg-white/10 active:bg-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
+              isLiked ? '!text-red-500' : ''
             }`}
           >
-            <Heart size={24} className={isLiked ? 'fill-current' : ''} />
+            <Heart size={24} className={isLiked ? 'fill-red-500 stroke-red-500 text-red-500' : 'text-white'} />
           </Button>
           <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
             {formatCount(likesCount)}
@@ -485,7 +538,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
       </div>
 
       {/* Informations vidéo en bas à gauche */}
-      <div className="absolute left-4 bottom-20 right-20 z-10">
+      <div className="absolute left-4 right-24 z-10 bottom-20">
         <div className="text-white">
           <div className="flex items-center space-x-2 mb-2">
             <span 
@@ -513,6 +566,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
               <span>{formatCount(video.views_count)} {t('video.views')}</span>
             </div>
           )}
+
+          {isActive && (
+            <FloatingCommentBar
+              onSubmit={async (text) => {
+                if (!user) { return false; }
+                return await addComment(text);
+              }}
+              isSubmitting={isCommentSubmitting}
+              className="mt-3 max-w-full"
+            />
+          )}
           
           {video.price && (
             <div className="mt-2">
@@ -523,17 +587,6 @@ const VideoCard: React.FC<VideoCardProps> = ({
           )}
         </div>
       </div>
-
-      {/* Barre de commentaires flottante (visible uniquement sur le feed TikTok) */}
-      {isActive && (
-        <FloatingCommentBar
-          onSubmit={async (text) => {
-            if (!user) { return false; }
-            return await addComment(text);
-          }}
-          isSubmitting={isCommentSubmitting}
-        />
-      )}
 
       {/* Modaux */}
       <VideoCommentsModal

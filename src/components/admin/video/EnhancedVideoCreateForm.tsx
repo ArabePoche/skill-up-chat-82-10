@@ -12,11 +12,20 @@ import { useFileUpload } from '@/hooks/useFileUpload';
 import { useFormations } from '@/hooks/useFormations';
 import { Upload, Link as LinkIcon, Camera } from 'lucide-react';
 import VideoRecorderComponent from './VideoRecorderComponent';
+import { NotificationTriggers } from '@/utils/notificationHelpers';
 
 interface EnhancedVideoCreateFormProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
+
+const getDisplayName = (profile?: { first_name?: string | null; last_name?: string | null; username?: string | null } | null) => {
+  if (profile?.first_name && profile?.last_name) {
+    return `${profile.first_name} ${profile.last_name}`;
+  }
+
+  return profile?.username || 'Un utilisateur';
+};
 
 const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuccess, onCancel }) => {
   const { user, profile } = useAuth();
@@ -74,6 +83,69 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
         return;
       }
       setSelectedThumbnailFile(file);
+    }
+  };
+
+  const notifyAudienceAboutVideo = async (videoId: string, videoTitle?: string | null) => {
+    if (!user?.id) {
+      return;
+    }
+
+    const [{ data: followRows, error: followsError }, { data: friendRows, error: friendsError }] = await Promise.all([
+      supabase
+        .from('user_follows')
+        .select('follower_id')
+        .eq('following_id', user.id),
+      supabase
+        .from('friend_requests')
+        .select('sender_id, receiver_id')
+        .eq('status', 'accepted')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+    ]);
+
+    if (followsError) {
+      throw followsError;
+    }
+
+    if (friendsError) {
+      throw friendsError;
+    }
+
+    const recipientIds = Array.from(new Set([
+      ...(followRows || []).map((row) => row.follower_id),
+      ...(friendRows || []).map((row) => row.sender_id === user.id ? row.receiver_id : row.sender_id),
+    ].filter((recipientId): recipientId is string => !!recipientId && recipientId !== user.id)));
+
+    if (recipientIds.length === 0) {
+      return;
+    }
+
+    const authorName = getDisplayName(profile);
+    const message = `${authorName} a publie une nouvelle video${videoTitle ? ` : "${videoTitle}"` : ''}`;
+
+    const { error: notificationsError } = await supabase
+      .from('notifications')
+      .insert(
+        recipientIds.map((recipientId) => ({
+          user_id: recipientId,
+          sender_id: user.id,
+          title: 'Nouvelle video publiee',
+          message,
+          type: 'new_video',
+          video_id: videoId,
+          is_read: false,
+          is_for_all_admins: false,
+        }))
+      );
+
+    if (notificationsError) {
+      throw notificationsError;
+    }
+
+    try {
+      await NotificationTriggers.onVideoPublished(recipientIds, videoId, authorName, videoTitle);
+    } catch (pushError) {
+      console.error('Erreur push nouvelle video:', pushError);
     }
   };
 
@@ -168,6 +240,12 @@ const EnhancedVideoCreateForm: React.FC<EnhancedVideoCreateFormProps> = ({ onSuc
       if (!created) {
         toast.error("Création non appliquée (pas d'autorisation ou données invalides)");
         return;
+      }
+
+      try {
+        await notifyAudienceAboutVideo(created.id, created.title);
+      } catch (notificationError) {
+        console.error('Erreur notifications nouvelle video:', notificationError);
       }
 
       toast.success('Vidéo créée avec succès');

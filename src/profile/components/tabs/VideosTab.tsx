@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Video, List, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Video, List, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserVideos } from '@/profile/hooks/useUserVideos';
 import { useUserSeries } from '@/profile/hooks/useUserSeries';
@@ -13,10 +13,79 @@ import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
+import VideoCreationFlowDialog from '@/components/admin/video/VideoCreationFlowDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface VideosTabProps {
   userId?: string;
 }
+
+const extractStorageObjectFromPublicUrl = (publicUrl?: string | null) => {
+  if (!publicUrl) {
+    return null;
+  }
+
+  try {
+    const pathname = decodeURIComponent(new URL(publicUrl).pathname);
+    const marker = '/storage/v1/object/public/';
+    const markerIndex = pathname.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return null;
+    }
+
+    const objectPath = pathname.slice(markerIndex + marker.length);
+    const [bucket, ...segments] = objectPath.split('/');
+
+    if (!bucket || segments.length === 0) {
+      return null;
+    }
+
+    return {
+      bucket,
+      path: segments.join('/'),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const removeVideoMediaFromStorage = async (urls: Array<string | null | undefined>) => {
+  const filesByBucket = new Map<string, Set<string>>();
+
+  urls.forEach((url) => {
+    const file = extractStorageObjectFromPublicUrl(url);
+    if (!file) {
+      return;
+    }
+
+    if (!filesByBucket.has(file.bucket)) {
+      filesByBucket.set(file.bucket, new Set());
+    }
+
+    filesByBucket.get(file.bucket)?.add(file.path);
+  });
+
+  await Promise.all(
+    Array.from(filesByBucket.entries()).map(async ([bucket, paths]) => {
+      const { error } = await supabase.storage.from(bucket).remove(Array.from(paths));
+
+      if (error) {
+        throw error;
+      }
+    })
+  );
+};
 
 const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   const navigate = useNavigate();
@@ -29,6 +98,9 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [manageSeriesId, setManageSeriesId] = useState<string | null>(null);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showVideoCreationDialog, setShowVideoCreationDialog] = useState(false);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+  const [isDeletingVideo, setIsDeletingVideo] = useState(false);
   
   const { data: seriesEpisodes, refetch: refetchEpisodes } = useSeriesVideos(manageSeriesId || undefined);
   
@@ -126,6 +198,63 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
     refetchSeries();
   };
 
+  const handleVideoCreationSuccess = () => {
+    refetchVideos();
+  };
+
+  const handleDeleteVideo = async () => {
+    if (!deletingVideoId || !user?.id) {
+      return;
+    }
+
+    try {
+      setIsDeletingVideo(true);
+
+      const videoToDelete = videos?.find((video) => video.id === deletingVideoId);
+
+      const { data, error } = await (supabase as any).rpc('delete_own_video', {
+        p_video_id: deletingVideoId,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.message || 'Suppression refusee');
+      }
+
+      try {
+        await removeVideoMediaFromStorage([
+          data.video_url,
+          data.thumbnail_url,
+          videoToDelete?.video_url,
+          videoToDelete?.thumbnail_url,
+        ]);
+      } catch (storageError) {
+        console.error('Erreur suppression storage video:', storageError);
+      }
+
+      toast.success('Vidéo supprimée');
+      setDeletingVideoId(null);
+      refetchVideos();
+      refetchSeries();
+      refetchEpisodes();
+    } catch (error: any) {
+      console.error('Erreur suppression vidéo:', error);
+
+      if (error?.code === 'PGRST202') {
+        toast.error('La fonction SQL delete_own_video est absente. Il faut d abord appliquer le script Supabase de suppression.');
+      } else if (error?.code === '42501') {
+        toast.error('La base refuse actuellement cette suppression. La policy ou la fonction SQL cote Supabase doit etre corrigee.');
+      } else {
+        toast.error('Erreur lors de la suppression de la vidéo');
+      }
+    } finally {
+      setIsDeletingVideo(false);
+    }
+  };
+
   return (
     <>
       <div className="pb-4">
@@ -139,8 +268,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
                   setShowVerificationDialog(true);
                   return;
                 }
-                // Si vérifié, naviguer vers l'upload
-                navigate('/upload-video');
+                setShowVideoCreationDialog(true);
               }}
               className="w-full bg-edu-primary hover:bg-edu-primary/90 text-white"
             >
@@ -216,6 +344,20 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
                     <List size={16} />
                   </button>
                 )}
+
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingVideoId(video.id);
+                    }}
+                    className="absolute top-2 left-2 p-1.5 bg-destructive/90 text-white backdrop-blur-sm rounded-md hover:bg-destructive transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    title="Supprimer la vidéo"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -262,6 +404,33 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
         onOpenChange={setShowVerificationDialog}
         featureName="La création de vidéos"
       />
+
+      <VideoCreationFlowDialog
+        open={showVideoCreationDialog}
+        onOpenChange={setShowVideoCreationDialog}
+        onSuccess={handleVideoCreationSuccess}
+      />
+
+      <AlertDialog open={!!deletingVideoId} onOpenChange={(open) => !open && setDeletingVideoId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la vidéo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette vidéo, ses liens de série et ses interactions associées seront supprimés définitivement. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingVideo}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteVideo}
+              disabled={isDeletingVideo}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeletingVideo ? 'Suppression...' : 'Supprimer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

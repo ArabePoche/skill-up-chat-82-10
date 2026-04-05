@@ -27,9 +27,13 @@ export const useVideoSeries = (videoId: string | undefined, options?: UseVideoSe
           )
         `)
         .eq('video_id', videoId)
-        .single();
+        .limit(1);
 
-      if (seriesError || !seriesVideoData) return null;
+      if (seriesError) throw seriesError;
+
+      const seriesVideo = seriesVideoData?.[0];
+
+      if (!seriesVideo) return null;
 
       // Récupérer tous les épisodes de la série
       const { data: episodes, error: episodesError } = await supabase
@@ -44,13 +48,13 @@ export const useVideoSeries = (videoId: string | undefined, options?: UseVideoSe
             video_url
           )
         `)
-        .eq('series_id', seriesVideoData.series_id)
+        .eq('series_id', seriesVideo.series_id)
         .order('order_index', { ascending: true });
 
       if (episodesError) throw episodesError;
 
       return {
-        series: seriesVideoData.series,
+        series: seriesVideo.series,
         episodes: episodes || [],
       };
     },

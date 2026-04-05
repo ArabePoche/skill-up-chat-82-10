@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { reverseHabbahGain } from '@/services/habbahService';
+import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 
 export const useLessonVideoLikes = (lessonId: string, initialLikesCount: number = 0) => {
   const { user } = useAuth();
@@ -50,6 +52,11 @@ export const useLessonVideoLikes = (lessonId: string, initialLikesCount: number 
           .eq('lesson_id', lessonId)
           .eq('user_id', user.id);
         if (error) throw error;
+
+        const reversal = await reverseHabbahGain(user.id, 'like', lessonId, 'lesson_video_unlike');
+        if (reversal) {
+          notifyHabbahGain(-reversal.amount, reversal.label);
+        }
       } else {
         const { error } = await supabase
           .from('lesson_video_likes')

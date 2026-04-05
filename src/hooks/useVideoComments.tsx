@@ -4,7 +4,7 @@ import { useAuth } from './useAuth';
 import { useEffect } from 'react';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
-import { recordHabbahGain } from '@/services/habbahService';
+import { recordHabbahGain, reverseHabbahGain } from '@/services/habbahService';
 
 // Fonction pour mettre à jour le champ comments_count dans la table `videos` (compte tous les commentaires + réponses)
 const updateCommentsCount = async (videoId: string) => {
@@ -167,17 +167,17 @@ export const useVideoComments = (videoId: string) => {
       // Met à jour le champ comments_count (pour tous les commentaires, y compris les réponses)
       await updateCommentsCount(videoId);
 
+      if (user?.id) {
+        const reward = await recordHabbahGain(user.id, 'comment', data.id);
+        if (reward) notifyHabbahGain(reward.amount, reward.label);
+      }
+
       return data;
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
       queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
-      // 🎮 Enregistrer le gain Habbah en base + animation
-      if (user?.id) {
-        const reward = await recordHabbahGain(user.id, 'comment', videoId);
-        if (reward) notifyHabbahGain(reward.amount, reward.label);
-      }
     },
     onError: (error) => {
       console.error('Erreur ajout commentaire :', error);
@@ -200,6 +200,13 @@ export const useVideoComments = (videoId: string) => {
     mutationFn: async (commentId: string) => {
       if (!user?.id) throw new Error('Utilisateur non connecté');
 
+      const { data: deletedComments, error: lookupError } = await supabase
+        .from('video_comments')
+        .select('id, user_id')
+        .or(`id.eq.${commentId},parent_comment_id.eq.${commentId}`);
+
+      if (lookupError) throw lookupError;
+
       const { error } = await supabase
         .from('video_comments')
         .delete()
@@ -207,6 +214,15 @@ export const useVideoComments = (videoId: string) => {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      for (const comment of deletedComments || []) {
+        if (comment.user_id === user.id) {
+          const reversal = await reverseHabbahGain(user.id, 'comment', comment.id, 'video_comment_deleted');
+          if (reversal) {
+            notifyHabbahGain(-reversal.amount, reversal.label);
+          }
+        }
+      }
 
       await updateCommentsCount(videoId);
     },
