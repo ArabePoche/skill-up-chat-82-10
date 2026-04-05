@@ -11,6 +11,7 @@ import {
   MicOff,
   PhoneOff,
   Radio,
+  Send,
   Users,
   Video,
   VideoOff,
@@ -359,6 +360,12 @@ const UserLive: React.FC = () => {
               placeholder={isHost ? "Message aux spectateurs..." : "Ajouter un commentaire..."}
               className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-zinc-400"
             />
+            <button 
+              className="ml-2 flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white hover:bg-indigo-700 transition-colors"
+              onClick={() => toast.success('Fonctionnalité Messages bientôt disponible !')}
+            >
+              <Send className="h-4 w-4" />
+            </button>
           </div>
 
           {!isHost && (

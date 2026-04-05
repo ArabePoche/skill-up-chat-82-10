@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle, FileText } from 'lucide-react';
+import { Menu, Edit, ArrowLeft, UserPlus, UserCheck, MessageCircle, FileText, Radio } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import {
@@ -106,6 +106,23 @@ const Profil = () => {
       return data;
     },
     enabled: !isOwnProfile && !!viewedUserId,
+  });
+
+  // Récupérer le live en cours de l'utilisateur consulté
+  const { data: activeLiveStream } = useQuery({
+    queryKey: ['active-live-stream', viewedUserId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_live_streams')
+        .select('id, visibility')
+        .eq('host_id', viewedUserId!)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!viewedUserId,
+    refetchInterval: 10000, // Vérifier toutes les 10 secondes si un live a démarré
   });
 
   // Hooks pour le système d'amitié
@@ -226,30 +243,46 @@ const Profil = () => {
                 {(profile as any)?.is_verified && <VerifiedBadge size={18} />}
               </h1>
               <p className="text-sm text-muted-foreground">@{profile?.username || t('profile.user')}</p>
-              {/* Bouton CV Builder sous le @username */}
-              {isOwnProfile && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-2 gap-1.5"
-                  onClick={() => setShowCvBuilder(true)}
-                >
-                  <FileText className="w-4 h-4" />
-                  Créer mon CV
-                </Button>
-              )}
-              {/* Bouton Voir le CV pour les autres profils */}
-              {!isOwnProfile && viewedUserCv && (
-                <Button
-                  size="sm"
-                  variant="actionBlue"
-                  className="mt-2 gap-1.5 rounded-full px-5"
-                  onClick={() => navigate(`/cv/${viewedUserCv.id}`)}
-                >
-                  <FileText className="w-4 h-4" />
-                  Voir le CV
-                </Button>
-              )}
+              
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                {/* Bouton CV Builder sous le @username */}
+                {isOwnProfile && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 rounded-full px-4 border-white/20"
+                    onClick={() => setShowCvBuilder(true)}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Créer mon CV
+                  </Button>
+                )}
+                {/* Bouton Voir le CV pour les autres profils */}
+                {!isOwnProfile && viewedUserCv && (
+                  <Button
+                    size="sm"
+                    variant="actionBlue"
+                    className="gap-1.5 rounded-full px-5"
+                    onClick={() => navigate(`/cv/${viewedUserCv.id}`)}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Voir le CV
+                  </Button>
+                )}
+
+                {/* Bouton Live en direct */}
+                {activeLiveStream && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5 rounded-full px-5 bg-red-600 hover:bg-red-700 animate-pulse"
+                    onClick={() => navigate(`/live/${activeLiveStream.id}${isOwnProfile ? '?host=1' : ''}`)}
+                  >
+                    <Radio className="w-4 h-4" />
+                    {isOwnProfile ? 'Mon Live en cours' : 'Rejoindre le Live'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
