@@ -26,6 +26,9 @@ import { supabase } from '@/integrations/supabase/client';
 import WalletGiftModal from '@/wallet/WalletGiftModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import iconSC from '@/assets/coin-soumboulah-cash.png';
+import iconSB from '@/assets/coin-soumboulah-bonus.png';
+import iconH from '@/assets/coin-habbah.png';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -69,6 +72,7 @@ interface LiveMessage {
   userAvatar?: string | null;
   type: 'comment' | 'gift';
   content: string;
+  currency?: string;
   createdAt: string;
 }
 
@@ -211,7 +215,13 @@ const UserLive: React.FC = () => {
         const currentViewers: any[] = [];
         for (const key in presenceState) {
           if (presenceState[key] && presenceState[key].length > 0) {
-            currentViewers.push(presenceState[key][0]);
+            // Keep unique viewers
+            const stateObj = presenceState[key][0];
+            // If track might be delayed, ensure we don't throw, but try to identify by 'presence_ref' or 'user_id' or 'key'
+            if (!currentViewers.some(v => v.presence_ref === stateObj.presence_ref || (stateObj.user_id && v.user_id === stateObj.user_id))) {
+              // merge the key inside, just in case
+              currentViewers.push({ ...stateObj, internal_key: key });
+            }
           }
         }
         setViewersList(currentViewers);
@@ -284,6 +294,7 @@ const UserLive: React.FC = () => {
       userAvatar: isAnonymous ? null : profile.avatar_url,
       type: 'gift',
       content: `a envoyé ${giftLabel}`,
+      currency,
       createdAt: new Date().toISOString(),
     };
 
@@ -458,14 +469,27 @@ const UserLive: React.FC = () => {
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`w-max max-w-[85%] rounded-2xl px-3 py-1.5 text-sm backdrop-blur ${
+              className={`flex items-center gap-2 w-max max-w-[85%] rounded-2xl px-3 py-1.5 text-sm backdrop-blur ${
                 msg.type === 'gift'
                   ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white animate-bounce'
                   : 'bg-black/50 text-zinc-100'
               }`}
             >
-              <span className="font-semibold mr-2 opacity-90">{msg.userName}</span>
-              <span className="break-words">{msg.content}</span>
+              <Avatar className="h-6 w-6 border border-zinc-700/50">
+                <AvatarImage src={msg.userAvatar || ''} />
+                <AvatarFallback className="bg-zinc-800 text-[10px]">
+                  {msg.userName?.substring(0, 2).toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <span className="font-semibold mr-2 opacity-90">{msg.userName}</span>
+                <span className="break-words flex items-center gap-1 flex-wrap">
+                  {msg.content}
+                  {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500/20 text-emerald-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSC} alt="SC" className="w-3 h-3 object-contain" /> SC</span>}
+                  {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500/20 text-amber-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconH} alt="H" className="w-3 h-3 object-contain" /> H</span>}
+                  {msg.currency === 'soumboulah_bonus' && <span className="inline-flex items-center bg-blue-500/20 text-blue-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSB} alt="SB" className="w-3 h-3 object-contain" /> SB</span>}
+                </span>
+              </div>
             </div>
           ))}
           <div ref={messagesEndRef} />
@@ -556,15 +580,15 @@ const UserLive: React.FC = () => {
               <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment</p>
             ) : (
               viewersList.map((viewer, idx) => (
-                <div key={viewer.user_id || idx} className="flex items-center gap-3">
+                <div key={viewer.internal_key || viewer.presence_ref || idx} className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 border border-zinc-800">
-                    <AvatarImage src={viewer.avatar_url || ''} alt={viewer.user_name} />
+                    <AvatarImage src={viewer.avatar_url || ''} alt={viewer.user_name || 'Utilisateur'} />
                     <AvatarFallback className="bg-zinc-800 text-sm">
-                      {viewer.user_name?.substring(0, 2).toUpperCase() || 'U'}
+                      {(viewer.user_name ? viewer.user_name.substring(0, 2) : 'U').toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm">{viewer.user_name}</span>
+                    <span className="font-medium text-sm">{viewer.user_name || 'Utilisateur Anonyme'}</span>
                     <span className="text-xs text-zinc-500 capitalize">{viewer.role === 'host' ? 'Créateur' : 'Spectateur'}</span>
                   </div>
                 </div>

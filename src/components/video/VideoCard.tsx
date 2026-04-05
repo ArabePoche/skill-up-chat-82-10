@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useVideoLikes } from '@/hooks/useVideoLikes';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -112,6 +113,23 @@ const VideoCard: React.FC<VideoCardProps> = ({
   
   // Tracker les vues
   useVideoViews(video.id, isActive);
+
+  // Poll for active live
+  const { data: activeLiveStream } = useQuery({
+    queryKey: ['active-live-stream', video.author_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_live_streams')
+        .select('id')
+        .eq('host_id', video.author_id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!video.author_id && video.author_id !== user?.id && isActive,
+    refetchInterval: 30000,
+  });
 
   // Récupération dynamique du compteur de commentaires
   const { data: commentsCount = video.comments_count } = useQuery({
@@ -246,7 +264,9 @@ const VideoCard: React.FC<VideoCardProps> = ({
   };
 
   const handleProfileClick = () => {
-    if (video.author_id) {
+    if (activeLiveStream) {
+      navigate(`/live/${activeLiveStream.id}`);
+    } else if (video.author_id) {
       navigate(`/profile/${video.author_id}`);
     }
   };
@@ -360,23 +380,35 @@ const VideoCard: React.FC<VideoCardProps> = ({
 
       {/* Actions côté droit */}
       <div className="absolute right-3 bottom-20 flex flex-col items-center space-y-4 z-10">
-        {/* Avatar du créateur avec bouton d'abonnement */}
-        <div className="relative">
-          <Avatar 
-            className="w-12 h-12 border-2 border-white cursor-pointer"
+        {/* Avatar du créateur avec bouton d'abonnement / live */}
+        <div className="relative flex flex-col items-center">
+          <div 
+            className={`relative rounded-full cursor-pointer hover:opacity-90 transition-opacity ${activeLiveStream ? 'p-0.5 bg-gradient-to-tr from-pink-500 via-red-500 to-orange-500 animate-pulse' : ''}`}
             onClick={handleProfileClick}
           >
-            <AvatarImage src={video.profiles?.avatar_url} />
-            <AvatarFallback className="bg-gray-600 text-white text-sm">
-              {video.profiles?.first_name?.charAt(0) || 'U'}
-            </AvatarFallback>
-          </Avatar>
-          {friendshipStatus === 'none' && (
+            <Avatar 
+              className={`w-12 h-12 border-[1.5px] border-white ${activeLiveStream ? 'border-2 border-black/80' : ''}`}
+            >
+              <AvatarImage src={video.profiles?.avatar_url} />
+              <AvatarFallback className="bg-gray-600 text-white text-sm">
+                {video.profiles?.first_name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          
+          {activeLiveStream ? (
+            <Badge 
+              className="absolute -bottom-2 z-10 border border-black/50 bg-red-600 text-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider cursor-pointer hover:bg-red-700 pointer-events-auto"
+              onClick={handleProfileClick}
+            >
+              LIVE
+            </Badge>
+          ) : friendshipStatus === 'none' && video.author_id !== user?.id && (
             <Button
               onClick={handleFollow}
               disabled={isFollowLoading}
               size="sm"
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600"
+              className="absolute -bottom-2 z-10 w-5 h-5 p-0 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600 border border-white"
             >
               <Plus size={12} />
             </Button>
