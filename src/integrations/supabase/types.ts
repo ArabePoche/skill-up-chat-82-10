@@ -1604,6 +1604,73 @@ export type Database = {
         }
         Relationships: []
       }
+      gift_cancellation_claims: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          created_at: string | null
+          currency: string
+          id: string
+          reason: string
+          recipient_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          sender_id: string
+          status: string
+          transaction_ref: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount: number
+          created_at?: string | null
+          currency: string
+          id?: string
+          reason: string
+          recipient_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_id: string
+          status?: string
+          transaction_ref: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          reason?: string
+          recipient_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_id?: string
+          status?: string
+          transaction_ref?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_cancellation_claims_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_cancellation_claims_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_cancellation_claims_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gift_commission_settings: {
         Row: {
           commission_rate: number
@@ -5643,6 +5710,39 @@ export type Database = {
         }
         Relationships: []
       }
+      school_plan_features: {
+        Row: {
+          enabled: boolean
+          feature_key: string
+          plan_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          feature_key: string
+          plan_id: string
+        }
+        Update: {
+          enabled?: boolean
+          feature_key?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_plan_features_feature_key_fkey"
+            columns: ["feature_key"]
+            isOneToOne: false
+            referencedRelation: "school_subscription_features"
+            referencedColumns: ["feature_key"]
+          },
+          {
+            foreignKeyName: "school_plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "school_subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_report_card_history: {
         Row: {
           absences_count: number | null
@@ -5848,6 +5948,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      school_site_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          theme_config: Json | null
+          thumbnail_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          theme_config?: Json | null
+          thumbnail_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          theme_config?: Json | null
+          thumbnail_url?: string | null
+        }
+        Relationships: []
       }
       school_staff: {
         Row: {
@@ -6085,6 +6215,144 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      school_subscription_features: {
+        Row: {
+          category: string
+          description: string | null
+          feature_key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          category?: string
+          description?: string | null
+          feature_key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          feature_key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      school_subscription_payments: {
+        Row: {
+          activated_at: string | null
+          admin_note: string | null
+          amount_sc: number | null
+          amount_xof: number
+          billing_cycle: string
+          created_at: string
+          duration_months: number
+          expires_at: string | null
+          id: string
+          payer_user_id: string
+          payment_method: string
+          plan_id: string
+          school_id: string
+          status: string
+          updated_at: string
+          validated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          admin_note?: string | null
+          amount_sc?: number | null
+          amount_xof: number
+          billing_cycle?: string
+          created_at?: string
+          duration_months?: number
+          expires_at?: string | null
+          id?: string
+          payer_user_id: string
+          payment_method: string
+          plan_id: string
+          school_id: string
+          status?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          admin_note?: string | null
+          amount_sc?: number | null
+          amount_xof?: number
+          billing_cycle?: string
+          created_at?: string
+          duration_months?: number
+          expires_at?: string | null
+          id?: string
+          payer_user_id?: string
+          payment_method?: string
+          plan_id?: string
+          school_id?: string
+          status?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_subscription_payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "school_subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_subscription_payments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_subscription_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price_monthly: number
+          price_yearly: number | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price_monthly?: number
+          price_yearly?: number | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_monthly?: number
+          price_yearly?: number | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       school_teacher_absences: {
         Row: {
@@ -6789,6 +7057,7 @@ export type Database = {
           site_gallery_urls: string[] | null
           site_instagram_url: string | null
           site_linkedin_url: string | null
+          site_template_id: string | null
           site_twitter_url: string | null
           site_youtube_url: string | null
           subscription_expires_at: string | null
@@ -6818,6 +7087,7 @@ export type Database = {
           site_gallery_urls?: string[] | null
           site_instagram_url?: string | null
           site_linkedin_url?: string | null
+          site_template_id?: string | null
           site_twitter_url?: string | null
           site_youtube_url?: string | null
           subscription_expires_at?: string | null
@@ -6847,6 +7117,7 @@ export type Database = {
           site_gallery_urls?: string[] | null
           site_instagram_url?: string | null
           site_linkedin_url?: string | null
+          site_template_id?: string | null
           site_twitter_url?: string | null
           site_youtube_url?: string | null
           subscription_expires_at?: string | null
@@ -6864,6 +7135,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schools_site_template_id_fkey"
+            columns: ["site_template_id"]
+            isOneToOne: false
+            referencedRelation: "school_site_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schools_subscription_plan_id_fkey"
             columns: ["subscription_plan_id"]
             isOneToOne: false
@@ -6871,105 +7149,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      school_plan_features: {
-        Row: {
-          enabled: boolean
-          feature_key: string
-          plan_id: string
-        }
-        Insert: {
-          enabled?: boolean
-          feature_key: string
-          plan_id: string
-        }
-        Update: {
-          enabled?: boolean
-          feature_key?: string
-          plan_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "school_plan_features_feature_key_fkey"
-            columns: ["feature_key"]
-            isOneToOne: false
-            referencedRelation: "school_subscription_features"
-            referencedColumns: ["feature_key"]
-          },
-          {
-            foreignKeyName: "school_plan_features_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "school_subscription_plans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      school_subscription_features: {
-        Row: {
-          category: string
-          description: string | null
-          feature_key: string
-          label: string
-          sort_order: number
-        }
-        Insert: {
-          category?: string
-          description?: string | null
-          feature_key: string
-          label: string
-          sort_order?: number
-        }
-        Update: {
-          category?: string
-          description?: string | null
-          feature_key?: string
-          label?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
-      school_subscription_plans: {
-        Row: {
-          created_at: string
-          currency: string
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          price_monthly: number
-          price_yearly: number | null
-          slug: string
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          price_monthly?: number
-          price_yearly?: number | null
-          slug: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          price_monthly?: number
-          price_yearly?: number | null
-          slug?: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       series: {
         Row: {
@@ -9653,6 +9832,8 @@ export type Database = {
       }
       user_wallets: {
         Row: {
+          blocked_bonus: number | null
+          blocked_cash: number | null
           created_at: string | null
           habbah: number
           id: string
@@ -9662,6 +9843,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          blocked_bonus?: number | null
+          blocked_cash?: number | null
           created_at?: string | null
           habbah?: number
           id?: string
@@ -9671,6 +9854,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          blocked_bonus?: number | null
+          blocked_cash?: number | null
           created_at?: string | null
           habbah?: number
           id?: string
@@ -10255,6 +10440,10 @@ export type Database = {
         Args: { p_habbah_amount: number; p_user_id: string }
         Returns: Json
       }
+      create_gift_cancellation_claim: {
+        Args: { p_reason: string; p_transaction_ref: string }
+        Returns: Json
+      }
       create_marketplace_order: {
         Args: {
           p_commission_rate: number
@@ -10526,6 +10715,19 @@ export type Database = {
         Args: { p_author_id: string; p_post_id: string }
         Returns: undefined
       }
+      pay_school_subscription_with_sc: {
+        Args: {
+          p_amount_sc: number
+          p_amount_xof: number
+          p_billing_cycle: string
+          p_duration_months: number
+          p_new_expires_at: string
+          p_payer_user_id: string
+          p_plan_id: string
+          p_school_id: string
+        }
+        Returns: Json
+      }
       process_expired_evaluations: { Args: never; Returns: undefined }
       process_teacher_payment: {
         Args: {
@@ -10554,6 +10756,10 @@ export type Database = {
           p_reviewer_id: string
         }
         Returns: undefined
+      }
+      resolve_gift_cancellation_claim: {
+        Args: { p_action: string; p_admin_notes?: string; p_claim_id: string }
+        Returns: Json
       }
       resolve_marketplace_dispute: {
         Args: {
