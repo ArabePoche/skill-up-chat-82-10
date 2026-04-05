@@ -10,6 +10,8 @@ export type NotificationType =
   | 'test'
   | 'private_chat'
   | 'gift_received'
+  | 'gift_claim'
+  | 'gift_claim_decision'
   | 'solidarity_campaign'
   | 'solidarity_contribution'
   | 'solidarity_like'
@@ -283,6 +285,72 @@ export const NotificationTriggers = {
       playLocalSound: false,
       data: { orderId, productTitle, trackingNumber },
     });
+  },
+
+  // Quand une réclamation d'annulation de cadeau est créée (notifier le destinataire)
+  onGiftClaimCreated: async (recipientId: string, amount: number, currency: string) => {
+    const currencyLabel = currency === 'soumboulah_cash' ? 'SC' : 'SB';
+    await sendPushNotification({
+      userIds: [recipientId],
+      title: "⚠️ Fonds bloqués",
+      message: `${amount.toLocaleString('fr-FR')} ${currencyLabel} de votre portefeuille ont été temporairement bloqués suite à une réclamation d'annulation de cadeau. Un administrateur va examiner le dossier.`,
+      type: "gift_claim",
+      clickAction: "/wallet",
+      playLocalSound: false,
+    });
+  },
+
+  // Quand une réclamation d'annulation de cadeau est décidée (notifier l'expéditeur et le destinataire)
+  onGiftClaimDecision: async (
+    senderId: string,
+    recipientId: string,
+    action: 'approve' | 'reject',
+    amount: number,
+    currency: string,
+    adminNotes?: string
+  ) => {
+    const currencyLabel = currency === 'soumboulah_cash' ? 'SC' : 'SB';
+    const notesSuffix = adminNotes ? ` Note : ${adminNotes}` : '';
+
+    if (action === 'approve') {
+      // Expéditeur : remboursé
+      await sendPushNotification({
+        userIds: [senderId],
+        title: "✅ Réclamation approuvée",
+        message: `Votre réclamation a été approuvée. Vous avez été remboursé(e) de ${amount.toLocaleString('fr-FR')} ${currencyLabel}.${notesSuffix}`,
+        type: "gift_claim_decision",
+        clickAction: "/wallet",
+        playLocalSound: false,
+      });
+      // Destinataire : fonds prélevés
+      await sendPushNotification({
+        userIds: [recipientId],
+        title: "⚠️ Réclamation acceptée",
+        message: `La réclamation concernant votre cadeau de ${amount.toLocaleString('fr-FR')} ${currencyLabel} a été acceptée. Les fonds bloqués ont été restitués à l'expéditeur.${notesSuffix}`,
+        type: "gift_claim_decision",
+        clickAction: "/wallet",
+        playLocalSound: false,
+      });
+    } else {
+      // Expéditeur : réclamation rejetée
+      await sendPushNotification({
+        userIds: [senderId],
+        title: "❌ Réclamation rejetée",
+        message: `Votre réclamation pour ${amount.toLocaleString('fr-FR')} ${currencyLabel} a été rejetée. Les fonds ont été restitués au destinataire.${notesSuffix}`,
+        type: "gift_claim_decision",
+        clickAction: "/wallet",
+        playLocalSound: false,
+      });
+      // Destinataire : fonds débloqués
+      await sendPushNotification({
+        userIds: [recipientId],
+        title: "✅ Fonds débloqués",
+        message: `La réclamation concernant votre cadeau de ${amount.toLocaleString('fr-FR')} ${currencyLabel} a été rejetée. Vos fonds vous ont été restitués.${notesSuffix}`,
+        type: "gift_claim_decision",
+        clickAction: "/wallet",
+        playLocalSound: false,
+      });
+    }
   },
 };
 

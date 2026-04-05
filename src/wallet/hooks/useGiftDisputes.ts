@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { NotificationTriggers } from '@/utils/notificationHelpers';
 
 export const useAdminGiftDisputes = () => {
   return useQuery({
@@ -39,10 +39,28 @@ export const useCreateGiftDispute = () => {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.message || 'Erreur lors de la création de la réclamation');
 
-      return data;
+      // Fetch claim details needed for notification
+      let claimDetails: { recipient_id: string; amount: number; currency: string } | null = null;
+      if (data.claim_id) {
+        const { data: claim } = await supabase
+          .from('gift_cancellation_claims')
+          .select('recipient_id, amount, currency')
+          .eq('id', data.claim_id)
+          .single();
+        claimDetails = claim;
+      }
+
+      return { ...data, claimDetails };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success('Réclamation envoyée et fonds bloqués');
+      if (data.claimDetails) {
+        NotificationTriggers.onGiftClaimCreated(
+          data.claimDetails.recipient_id,
+          data.claimDetails.amount,
+          data.claimDetails.currency
+        ).catch(console.error);
+      }
       queryClient.invalidateQueries({ queryKey: ['wallet_history'] });
       queryClient.invalidateQueries({ queryKey: ['wallet_balance'] });
       queryClient.invalidateQueries({ queryKey: ['admin_gift_disputes'] });
@@ -57,7 +75,15 @@ export const useResolveGiftDispute = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { claimId: string; action: 'approve' | 'reject'; adminNotes: string }) => {
+    mutationFn: async (input: {
+      claimId: string;
+      action: 'approve' | 'reject';
+      adminNotes: string;
+      senderId: string;
+      recipientId: string;
+      amount: number;
+      currency: string;
+    }) => {
       const { data, error } = await supabase.rpc('resolve_gift_cancellation_claim', {
         p_claim_id: input.claimId,
         p_action: input.action,
@@ -67,10 +93,14 @@ export const useResolveGiftDispute = () => {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.message || 'Erreur lors de la résolution');
       
-      return data;
+      return { ...data, input };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success('Réclamation traitée avec succès');
+      const { senderId, recipientId, action, amount, currency, adminNotes } = data.input;
+      NotificationTriggers.onGiftClaimDecision(
+        senderId, recipientId, action, amount, currency, adminNotes
+      ).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ['admin_gift_disputes'] });
       queryClient.invalidateQueries({ queryKey: ['wallet_history'] });
       queryClient.invalidateQueries({ queryKey: ['wallet_balance'] });
