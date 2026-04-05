@@ -195,13 +195,47 @@ export const useVideoComments = (videoId: string) => {
     }
   };
 
- 
+  // 🗑️ Mutation pour supprimer un commentaire
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      if (!user?.id) throw new Error('Utilisateur non connecté');
+
+      const { error } = await supabase
+        .from('video_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await updateCommentsCount(videoId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
+      queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
+      queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
+    },
+    onError: (error) => {
+      console.error('Erreur suppression commentaire :', error);
+    },
+  });
+
+  const deleteComment = async (commentId: string): Promise<boolean> => {
+    try {
+      await deleteCommentMutation.mutateAsync(commentId);
+      return true;
+    } catch (error) {
+      console.error('Échec suppression commentaire :', error);
+      return false;
+    }
+  };
 
   return {
     comments,
     commentsCount,
     isLoading: isCommentsLoading || isCountLoading,
     addComment,
+    deleteComment,
     isSubmitting: addCommentMutation.isPending,
   };
 };
