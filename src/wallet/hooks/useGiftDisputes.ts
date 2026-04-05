@@ -99,8 +99,10 @@ export const useResolveGiftDispute = () => {
     onSuccess: (data: any) => {
       toast.success('Réclamation traitée avec succès');
       const { senderId, recipientId, action, amount, currency, adminNotes } = data.input;
+      // Utiliser full_amount retourné par la RPC (montant brut envoyé) au lieu de amount (montant net reçu)
+      const refundAmount = data.full_amount || amount;
       NotificationTriggers.onGiftClaimDecision(
-        senderId, recipientId, action, amount, currency, adminNotes
+        senderId, recipientId, action, refundAmount, currency, adminNotes
       ).catch(console.error);
       queryClient.invalidateQueries({ queryKey: ['admin_gift_disputes'] });
       queryClient.invalidateQueries({ queryKey: ['wallet_history'] });
