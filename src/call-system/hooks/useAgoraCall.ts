@@ -25,13 +25,22 @@ export interface AgoraCallState {
   duration: number;
 }
 
+export interface AgoraJoinOptions {
+  uid?: number;
+  role?: 'host' | 'viewer';
+  enableAudio?: boolean;
+  enableVideo?: boolean;
+}
+
 export const useAgoraCall = () => {
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
-  const localVideoContainerRef = useRef<HTMLDivElement | null>(null);
-  const remoteVideoContainerRef = useRef<HTMLDivElement | null>(null);
+  const latestRemoteVideoTrackRef = useRef<IRemoteVideoTrack | null>(null);
+  const localVideoElementRef = useRef<HTMLDivElement | null>(null);
+  const remoteVideoElementRef = useRef<HTMLDivElement | null>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const joinRequestIdRef = useRef(0);
 
   const [state, setState] = useState<AgoraCallState>({
     isJoined: false,
@@ -52,23 +61,71 @@ export const useAgoraCall = () => {
   /**
    * Récupérer un token Agora via l'edge function
    */
-  const fetchToken = useCallback(async (channelName: string, uid: number) => {
+  const fetchToken = useCallback(async (channelName: string, uid: number, role: 'host' | 'viewer') => {
     const { data, error } = await supabase.functions.invoke('agora-token', {
-      body: { channelName, uid, role: 'publisher' },
+      body: { channelName, uid, role: role === 'viewer' ? 'subscriber' : 'publisher' },
     });
 
     if (error) {
       console.error('❌ Error fetching Agora token:', error);
-      throw new Error('Impossible de récupérer le token Agora');
+      throw new Error(error.message || 'Impossible de récupérer le token Agora');
+    }
+
+    if (!data?.token) {
+      throw new Error('Token Agora vide. Configurez AGORA_APP_CERTIFICATE dans les secrets Supabase.');
     }
 
     return data as { token: string; appId: string; uid: number; channelName: string };
   }, []);
 
+  const playLocalTrack = useCallback(() => {
+    console.log('🎥 playLocalTrack attempt', {
+      hasTrack: !!localVideoTrackRef.current,
+      hasElement: !!localVideoElementRef.current,
+    });
+    if (!localVideoTrackRef.current || !localVideoElementRef.current) {
+      return;
+    }
+
+    localVideoElementRef.current.innerHTML = '';
+    localVideoTrackRef.current.play(localVideoElementRef.current, { fit: 'cover' });
+    console.log('🎥 local track played on element');
+  }, []);
+
+  const playRemoteTrack = useCallback(() => {
+    console.log('🎥 playRemoteTrack attempt', {
+      hasTrack: !!latestRemoteVideoTrackRef.current,
+      hasElement: !!remoteVideoElementRef.current,
+    });
+    if (!latestRemoteVideoTrackRef.current || !remoteVideoElementRef.current) {
+      return;
+    }
+
+    remoteVideoElementRef.current.innerHTML = '';
+    latestRemoteVideoTrackRef.current.play(remoteVideoElementRef.current, { fit: 'cover' });
+    console.log('🎥 remote track played on element');
+  }, []);
+
+  const localVideoContainerRef = useCallback((element: HTMLDivElement | null) => {
+    localVideoElementRef.current = element;
+    if (element) {
+      playLocalTrack();
+    }
+  }, [playLocalTrack]);
+
+  const remoteVideoContainerRef = useCallback((element: HTMLDivElement | null) => {
+    remoteVideoElementRef.current = element;
+    if (element) {
+      playRemoteTrack();
+    }
+  }, [playRemoteTrack]);
+
   /**
    * Rejoindre un canal Agora
    */
-  const joinCall = useCallback(async (channelName: string, callType: 'audio' | 'video', uid?: number) => {
+  const joinCall = useCallback(async (channelName: string, callType: 'audio' | 'video', options?: number | AgoraJoinOptions) => {
+    const joinRequestId = ++joinRequestIdRef.current;
+
     if (clientRef.current) {
       console.warn('Already in a call');
       return;
@@ -77,15 +134,43 @@ export const useAgoraCall = () => {
     setState(prev => ({ ...prev, isConnecting: true }));
 
     try {
-      const agoraUid = uid || Math.floor(Math.random() * 100000);
+      const resolvedOptions = typeof options === 'number' ? { uid: options } : (options || {});
+      const role = resolvedOptions.role || 'host';
+      const enableAudio = resolvedOptions.enableAudio ?? role === 'host';
+      const enableVideo = resolvedOptions.enableVideo ?? (callType === 'video' && role === 'host');
+      const agoraUid = resolvedOptions.uid || Math.floor(Math.random() * 100000);
       
       // 1. Récupérer le token
-      const tokenData = await fetchToken(channelName, agoraUid);
+      const tokenData = await fetchToken(channelName, agoraUid, role);
       console.log('✅ Agora token received for channel:', channelName);
 
       // 2. Créer le client Agora
-      const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+      const client = AgoraRTC.createClient({ mode: 'live', codec: 'vp8' });
       clientRef.current = client;
+
+      client.on('connection-state-change', (currentState, previousState, reason) => {
+        console.log('🌐 Agora connection state:', previousState, '->', currentState, reason || '');
+      });
+
+      client.on('media-reconnect-start', (uid) => {
+        console.warn('🔄 Agora media reconnect start:', uid);
+      });
+
+      client.on('media-reconnect-end', (uid) => {
+        console.log('✅ Agora media reconnect end:', uid);
+      });
+
+      client.on('is-using-cloud-proxy', (isUsingProxy) => {
+        console.log('🛡️ Agora cloud proxy:', isUsingProxy ? 'enabled' : 'disabled');
+      });
+
+      client.on('join-fallback-to-proxy', (proxyServer) => {
+        console.warn('↪️ Agora fallback proxy:', proxyServer);
+      });
+
+      client.on('exception', (event) => {
+        console.warn('⚠️ Agora exception:', event);
+      });
 
       // 3. Gérer les utilisateurs distants
       client.on('user-published', async (user, mediaType) => {
@@ -94,9 +179,8 @@ export const useAgoraCall = () => {
 
         if (mediaType === 'video') {
           const remoteVideoTrack = user.videoTrack as IRemoteVideoTrack;
-          if (remoteVideoContainerRef.current) {
-            remoteVideoTrack.play(remoteVideoContainerRef.current);
-          }
+          latestRemoteVideoTrackRef.current = remoteVideoTrack;
+          playRemoteTrack();
         }
         if (mediaType === 'audio') {
           const remoteAudioTrack = user.audioTrack as IRemoteAudioTrack;
@@ -123,23 +207,36 @@ export const useAgoraCall = () => {
 
       // 4. Rejoindre le canal
       await client.join(tokenData.appId, channelName, tokenData.token, agoraUid);
+
+      if (joinRequestId !== joinRequestIdRef.current) {
+        await client.leave();
+        return;
+      }
+
+      await client.setClientRole(role === 'host' ? 'host' : 'audience');
       console.log('✅ Joined Agora channel:', channelName);
 
       // 5. Créer et publier les pistes locales
-      const localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-      localAudioTrackRef.current = localAudioTrack;
+      if (role === 'host') {
+        const tracksToPublish = [] as Array<IMicrophoneAudioTrack | ICameraVideoTrack>;
 
-      if (callType === 'video') {
-        const localVideoTrack = await AgoraRTC.createCameraVideoTrack();
-        localVideoTrackRef.current = localVideoTrack;
-
-        if (localVideoContainerRef.current) {
-          localVideoTrack.play(localVideoContainerRef.current);
+        if (enableAudio) {
+          const localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+          localAudioTrackRef.current = localAudioTrack;
+          tracksToPublish.push(localAudioTrack);
         }
 
-        await client.publish([localAudioTrack, localVideoTrack]);
-      } else {
-        await client.publish([localAudioTrack]);
+        if (enableVideo) {
+          const localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+          localVideoTrackRef.current = localVideoTrack;
+          playLocalTrack();
+
+          tracksToPublish.push(localVideoTrack);
+        }
+
+        if (tracksToPublish.length > 0) {
+          await client.publish(tracksToPublish);
+        }
       }
 
       console.log('✅ Published local tracks');
@@ -153,14 +250,17 @@ export const useAgoraCall = () => {
         ...prev,
         isJoined: true,
         isConnecting: false,
-        isVideoEnabled: callType === 'video',
+        isVideoEnabled: !!enableVideo,
       }));
 
       toast.success('Connecté à l\'appel');
     } catch (error) {
       console.error('❌ Error joining Agora call:', error);
+      if (typeof error === 'object' && error && 'code' in error) {
+        console.error('❌ Agora error code:', (error as { code?: string }).code);
+      }
       setState(prev => ({ ...prev, isConnecting: false }));
-      toast.error('Erreur lors de la connexion à l\'appel');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à l\'appel');
       // Nettoyer en cas d'erreur
       await leaveCall();
     }
@@ -170,6 +270,8 @@ export const useAgoraCall = () => {
    * Quitter l'appel et nettoyer toutes les ressources
    */
   const leaveCall = useCallback(async () => {
+    joinRequestIdRef.current++; // Invalidate pending joins
+
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
@@ -186,6 +288,8 @@ export const useAgoraCall = () => {
       localVideoTrackRef.current.close();
       localVideoTrackRef.current = null;
     }
+
+    latestRemoteVideoTrackRef.current = null;
 
     if (clientRef.current) {
       await clientRef.current.leave();

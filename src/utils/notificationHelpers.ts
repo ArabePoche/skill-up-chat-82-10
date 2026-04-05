@@ -8,6 +8,7 @@ export type NotificationType =
   | 'exercise_validation'
   | 'new_lesson'
   | 'new_video'
+  | 'live_started'
   | 'test'
   | 'private_chat'
   | 'gift_received'
@@ -174,6 +175,21 @@ export const NotificationTriggers = {
       type: 'new_video',
       clickAction: `/video/${videoId}`,
       data: { videoId, authorName, videoTitle }
+    });
+  },
+
+  onLiveStarted: async (recipientIds: string[], liveStreamId: string, authorName: string, liveTitle?: string | null) => {
+    if (recipientIds.length === 0) {
+      return;
+    }
+
+    await sendPushNotification({
+      userIds: recipientIds,
+      title: 'Live en direct',
+      message: `${authorName} a lance un live${liveTitle ? ` : "${liveTitle}"` : ''}`,
+      type: 'live_started',
+      clickAction: `/live/${liveStreamId}`,
+      data: { liveStreamId, authorName, liveTitle }
     });
   },
 

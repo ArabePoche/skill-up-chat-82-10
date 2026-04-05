@@ -4,21 +4,25 @@ import {
   Camera,
   Check,
   FileText,
+  Globe,
   ImagePlus,
   Link as LinkIcon,
   Loader2,
   Music,
   Pause,
   Play,
+  Radio,
   RefreshCw,
   Square,
   Sticker,
   Timer,
   Type,
   Upload,
+  Users,
   Wand2,
   Zap,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -36,6 +40,7 @@ import { captureThumbnailFromVideoElement, captureVideoThumbnail, composeVideoFo
 type CreationMethod = 'record' | 'upload' | 'url';
 type FlowStep = 'choice' | 'record' | 'finalize' | 'details';
 type FinalizeOverlay = 'sticker' | 'text' | 'sound' | null;
+type LiveVisibility = 'public' | 'friends_followers';
 
 interface VideoCreationFlowDialogProps {
   open: boolean;
@@ -61,6 +66,7 @@ const getDisplayName = (profile?: { first_name?: string | null; last_name?: stri
 };
 
 const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open, onOpenChange, onSuccess }) => {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { uploadFile, isUploading } = useFileUpload();
   const { data: allFormations = [] } = useFormations();
@@ -99,6 +105,13 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
   const [isRecordingPaused, setIsRecordingPaused] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingLabel, setProcessingLabel] = useState('');
+  const [isLiveSetupOpen, setIsLiveSetupOpen] = useState(false);
+  const [isLaunchingLive, setIsLaunchingLive] = useState(false);
+  const [liveData, setLiveData] = useState({
+    title: '',
+    description: '',
+    visibility: 'public' as LiveVisibility,
+  });
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -171,6 +184,9 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
     setIsRecordingPaused(false);
     setIsProcessing(false);
     setProcessingLabel('');
+    setIsLiveSetupOpen(false);
+    setIsLaunchingLive(false);
+    setLiveData({ title: '', description: '', visibility: 'public' });
   };
 
   const stopRecordingDevices = () => {
@@ -436,6 +452,109 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
       await NotificationTriggers.onVideoPublished(recipientIds, videoId, authorName, videoTitle);
     } catch (pushError) {
       console.error('Erreur push nouvelle video:', pushError);
+    }
+  };
+
+  const notifyAudienceAboutLive = async (liveStreamId: string, liveTitle: string, visibility: LiveVisibility) => {
+    if (!user?.id) {
+      return;
+    }
+
+    const [{ data: followRows, error: followsError }, { data: friendRows, error: friendsError }] = await Promise.all([
+      supabase.from('user_follows').select('follower_id').eq('following_id', user.id),
+      supabase
+        .from('friend_requests')
+        .select('sender_id, receiver_id')
+        .eq('status', 'accepted')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+    ]);
+
+    if (followsError) {
+      throw followsError;
+    }
+
+    if (friendsError) {
+      throw friendsError;
+    }
+
+    const recipientIds = Array.from(new Set([
+      ...(followRows || []).map((row) => row.follower_id),
+      ...(friendRows || []).map((row) => (row.sender_id === user.id ? row.receiver_id : row.sender_id)),
+    ].filter((recipientId): recipientId is string => !!recipientId && recipientId !== user.id)));
+
+    if (recipientIds.length === 0) {
+      return;
+    }
+
+    const authorName = getDisplayName(profile);
+    const visibilitySuffix = visibility === 'public' ? ' est en direct.' : ' a demarre un live reserve a ses amis et suiveurs.';
+    const message = `${authorName}${liveTitle ? ` a lance le live "${liveTitle}".` : visibilitySuffix}`;
+
+    const { error: notificationsError } = await supabase.from('notifications').insert(
+      recipientIds.map((recipientId) => ({
+        user_id: recipientId,
+        sender_id: user.id,
+        title: 'Live en direct',
+        message,
+        type: 'live_started',
+        live_stream_id: liveStreamId,
+        is_read: false,
+        is_for_all_admins: false,
+      }))
+    );
+
+    if (notificationsError) {
+      throw notificationsError;
+    }
+
+    try {
+      await NotificationTriggers.onLiveStarted(recipientIds, liveStreamId, authorName, liveTitle);
+    } catch (pushError) {
+      console.error('Erreur push live:', pushError);
+    }
+  };
+
+  const launchLive = async () => {
+    if (!user?.id) {
+      toast.error('Vous devez etre connecte pour lancer un live.');
+      return;
+    }
+
+    const liveTitle = liveData.title.trim();
+    if (!liveTitle) {
+      toast.error('Ajoutez un titre a votre live.');
+      return;
+    }
+
+    setIsLaunchingLive(true);
+
+    try {
+      const agoraChannel = `live_${user.id.replace(/-/g, '')}_${Date.now()}`;
+      const { data: createdLive, error } = await supabase
+        .from('user_live_streams')
+        .insert({
+          host_id: user.id,
+          title: liveTitle,
+          description: liveData.description.trim() || null,
+          visibility: liveData.visibility,
+          status: 'active',
+          agora_channel: agoraChannel,
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      await notifyAudienceAboutLive(createdLive.id, liveTitle, liveData.visibility);
+      toast.success('Live demarre.');
+      navigate(`/live/${createdLive.id}?host=1`);
+    } catch (error) {
+      console.error('Erreur demarrage live:', error);
+      toast.error('Impossible de demarrer le live.');
+    } finally {
+      setIsLaunchingLive(false);
     }
   };
 
@@ -732,13 +851,21 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                   { key: 'record', icon: Camera, title: 'Filmer', text: 'Capture plein ecran puis finalisation.' },
                   { key: 'upload', icon: Upload, title: 'Upload', text: 'Importer une video deja presente sur votre appareil.' },
                   { key: 'url', icon: LinkIcon, title: 'URL', text: 'Publier a partir d\'un lien vers une video.' },
+                  { key: 'live', icon: Radio, title: 'Live', text: 'Demarrer un vrai direct public ou reserve a vos amis et suiveurs.' },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.key}
                       type="button"
-                      onClick={() => handleMethodSelection(item.key as CreationMethod)}
+                      onClick={() => {
+                        if (item.key === 'live') {
+                          setIsLiveSetupOpen(true);
+                          return;
+                        }
+
+                        handleMethodSelection(item.key as CreationMethod);
+                      }}
                       className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-orange-400/40 hover:bg-white/10"
                     >
                       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-200">
@@ -749,6 +876,84 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                     </button>
                   );
                 })}
+
+                <Dialog open={isLiveSetupOpen} onOpenChange={setIsLiveSetupOpen}>
+                  <DialogContent className="max-w-lg border-0 bg-zinc-950 text-white sm:rounded-3xl">
+                    <div className="rounded-3xl bg-[radial-gradient(circle_at_top,_rgba(255,90,90,0.18),_transparent_42%),linear-gradient(160deg,#0b0b12_0%,#19111a_48%,#120f12_100%)] p-1">
+                      <div className="rounded-[22px] border border-white/10 bg-black/50 p-6">
+                        <DialogHeader className="space-y-2 text-left">
+                          <DialogTitle className="text-2xl font-semibold">Configurer le live</DialogTitle>
+                          <DialogDescription className="text-zinc-300">
+                            Choisissez le titre, la description et qui pourra rejoindre votre direct.
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="mt-6 space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="live-title">Titre du live</Label>
+                            <Input
+                              id="live-title"
+                              value={liveData.title}
+                              onChange={(event) => setLiveData((current) => ({ ...current, title: event.target.value }))}
+                              placeholder="Exemple : Session questions-réponses"
+                              className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="live-description">Description</Label>
+                            <Textarea
+                              id="live-description"
+                              value={liveData.description}
+                              onChange={(event) => setLiveData((current) => ({ ...current, description: event.target.value }))}
+                              placeholder="Décrivez rapidement le sujet du live."
+                              className="min-h-24 border-white/10 bg-white/5 text-white placeholder:text-zinc-500"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Visibilite</Label>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <button
+                                type="button"
+                                onClick={() => setLiveData((current) => ({ ...current, visibility: 'public' }))}
+                                className={`rounded-2xl border p-4 text-left transition ${liveData.visibility === 'public' ? 'border-red-400/60 bg-red-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                              >
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                                  <Globe size={20} />
+                                </div>
+                                <div className="text-sm font-semibold">Tout le monde</div>
+                                <p className="mt-1 text-xs leading-5 text-zinc-300">Toute personne ayant le lien peut rejoindre le live.</p>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setLiveData((current) => ({ ...current, visibility: 'friends_followers' }))}
+                                className={`rounded-2xl border p-4 text-left transition ${liveData.visibility === 'friends_followers' ? 'border-red-400/60 bg-red-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                              >
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                                  <Users size={20} />
+                                </div>
+                                <div className="text-sm font-semibold">Amis et suiveurs</div>
+                                <p className="mt-1 text-xs leading-5 text-zinc-300">Seuls vos amis acceptes et vos followers peuvent regarder.</p>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-end gap-3">
+                          <Button type="button" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" onClick={() => setIsLiveSetupOpen(false)}>
+                            Annuler
+                          </Button>
+                          <Button type="button" onClick={() => void launchLive()} disabled={isLaunchingLive} className="bg-red-600 text-white hover:bg-red-700">
+                            {isLaunchingLive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}
+                            Lancer le live
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </DialogContent>

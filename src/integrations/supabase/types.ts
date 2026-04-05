@@ -2734,6 +2734,7 @@ export type Database = {
           id: string
           is_for_all_admins: boolean
           is_read: boolean
+          live_stream_id: string | null
           message: string
           payment_id: string | null
           post_id: string | null
@@ -2759,6 +2760,7 @@ export type Database = {
           id?: string
           is_for_all_admins?: boolean
           is_read?: boolean
+          live_stream_id?: string | null
           message: string
           payment_id?: string | null
           post_id?: string | null
@@ -2784,6 +2786,7 @@ export type Database = {
           id?: string
           is_for_all_admins?: boolean
           is_read?: boolean
+          live_stream_id?: string | null
           message?: string
           payment_id?: string | null
           post_id?: string | null
@@ -2820,6 +2823,13 @@ export type Database = {
             columns: ["formation_id"]
             isOneToOne: false
             referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_live_stream_id_fkey"
+            columns: ["live_stream_id"]
+            isOneToOne: false
+            referencedRelation: "user_live_streams"
             referencedColumns: ["id"]
           },
           {
@@ -9515,6 +9525,56 @@ export type Database = {
           sender_id?: string
         }
         Relationships: []
+      }
+      user_live_streams: {
+        Row: {
+          agora_channel: string
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          host_id: string
+          id: string
+          started_at: string
+          status: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          agora_channel: string
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          host_id: string
+          id?: string
+          started_at?: string
+          status?: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          agora_channel?: string
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          host_id?: string
+          id?: string
+          started_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_live_streams_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_follows: {
         Row: {

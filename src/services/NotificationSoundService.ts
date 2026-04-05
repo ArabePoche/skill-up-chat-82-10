@@ -109,6 +109,9 @@ class NotificationSoundServiceClass {
    * Obtient le type de son selon le type de notification
    */
   getSoundTypeFromNotification(notificationType: string): NotificationSoundType {
+    if (notificationType.includes('live')) {
+      return 'call';
+    }
     if (notificationType.includes('call') || notificationType.includes('incoming_call')) {
       return 'call';
     }
