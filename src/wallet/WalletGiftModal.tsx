@@ -24,6 +24,8 @@ import { sendPushNotification } from '@/utils/notificationHelpers';
 interface WalletGiftModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialSelectedUser?: UserProfile;
+  onGiftSent?: (amount: number, currency: CurrencyType, giftLabel: string, isAnonymous: boolean) => void;
 }
 
 interface UserProfile {
@@ -42,17 +44,17 @@ const CURRENCY_OPTIONS: { value: CurrencyType; label: string; unit: string; colo
   { value: 'soumboulah_bonus', label: 'Soumboulah Bonus', unit: 'SB', color: 'text-blue-400' },
 ];
 
-const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) => {
+const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose, initialSelectedUser, onGiftSent }) => {
   const { wallet, isLoading: isWalletLoading } = useUserWallet();
   const { user } = useAuth();
 
-  const [step, setStep] = useState<'search' | 'send'>('search');
+  const [step, setStep] = useState<'search' | 'send'>(initialSelectedUser ? 'send' : 'search');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [friendIds, setFriendIds] = useState<string[]>([]);
   const [isLoadingFriends, setIsLoadingFriends] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(initialSelectedUser || null);
   const [isSending, setIsSending] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -93,10 +95,26 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
   }, [user?.id]);
 
   useEffect(() => {
-    if (isOpen && user?.id) {
-      loadFriendIds();
+    if (isOpen) {
+      if (initialSelectedUser) {
+        setSelectedUser(initialSelectedUser);
+        setStep('send');
+      } else {
+        setSelectedUser(null);
+        setStep('search');
+        setSearchQuery('');
+        setSearchResults([]);
+      }
+      setAmount('');
+      setMotif('');
+      setIsAnonymous(false);
+      setRequestCancellation(false);
+      setShowConfetti(false);
+      if (user?.id) {
+        loadFriendIds();
+      }
     }
-  }, [isOpen, user?.id, loadFriendIds]);
+  }, [isOpen, initialSelectedUser, user?.id, loadFriendIds]);
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -265,6 +283,10 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
           `${giftLabel} envoyé${isAnonymous ? ' anonymement' : ''} à ${getDisplayName(selectedUser)} !`
         );
       }
+      
+      if (onGiftSent) {
+        onGiftSent(parsedAmount, currency, giftLabel, isAnonymous);
+      }
 
       setShowConfetti(true);
       setTimeout(() => {
@@ -280,10 +302,12 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
   };
 
   const handleClose = () => {
-    setStep('search');
-    setSearchQuery('');
-    setSearchResults([]);
-    setSelectedUser(null);
+    setStep(initialSelectedUser ? 'send' : 'search');
+    if (!initialSelectedUser) {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSelectedUser(null);
+    }
     setCurrency('soumboulah_cash');
     setAmount('');
     setMotif('');
@@ -305,7 +329,7 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose }) =>
           <div className="p-6 pb-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
-                {step === 'send' && (
+                {step === 'send' && !initialSelectedUser && (
                   <button
                     onClick={() => setStep('search')}
                     className="p-1 text-zinc-400 hover:text-white mr-1"

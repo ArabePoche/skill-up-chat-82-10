@@ -23,6 +23,9 @@ import { Button } from '@/components/ui/button';
 import { useAgoraCall } from '@/call-system/hooks/useAgoraCall';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import WalletGiftModal from '@/wallet/WalletGiftModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -79,6 +82,8 @@ const UserLive: React.FC = () => {
   const [stream, setStream] = useState<LiveStreamRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [viewerCount, setViewerCount] = useState(0);
+  const [viewersList, setViewersList] = useState<any[]>([]);
+  const [showViewersModal, setShowViewersModal] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [messageInput, setMessageInput] = useState('');
@@ -199,9 +204,13 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
-        // Calculate the number of unique viewers using keys, and safely handle multiple tabs
+        
+        // Ensure we handle duplicate tabs naturally by checking unique keys 
         let uniqueUsersCount = Object.keys(presenceState).length;
         setViewerCount(uniqueUsersCount);
+
+        const currentViewers = Object.values(presenceState).map((sessions: any) => sessions[0]);
+        setViewersList(currentViewers.filter(v => v));
       })
       .on('broadcast', { event: 'live_action' }, (payload) => {
         const newMsg = payload.payload as LiveMessage;
@@ -211,6 +220,8 @@ const UserLive: React.FC = () => {
         if (status === 'SUBSCRIBED') {
           await roomChannel.track({
             user_id: user.id,
+            user_name: getDisplayName(profile) || 'Utilisateur',
+            avatar_url: profile?.avatar_url || null,
             role: isHost ? 'host' : 'viewer',
             online_at: new Date().toISOString(),
           });
@@ -250,19 +261,25 @@ const UserLive: React.FC = () => {
     setMessageInput('');
   };
 
-  const handleSendGift = () => {
+  const [showGiftModal, setShowGiftModal] = useState(false);
+
+  const handleSendGiftClick = () => {
+    if (!user || isHost) return;
+    setShowGiftModal(true);
+  };
+
+  const handleGiftSuccess = (amount: number, currency: string, giftLabel: string, isAnonymous: boolean) => {
     if (!user || !profile || !presenceChannelRef.current) return;
 
-    const gifts = ['🎁', '💎', '🎉', '💖', '🚀'];
-    const randomGift = gifts[Math.floor(Math.random() * gifts.length)];
+    const senderName = isAnonymous ? 'Un utilisateur anonyme' : (getDisplayName(profile) || 'Utilisateur');
 
     const newMessage: LiveMessage = {
       id: crypto.randomUUID(),
       userId: user.id,
-      userName: getDisplayName(profile) || 'Utilisateur',
-      userAvatar: profile.avatar_url,
+      userName: senderName,
+      userAvatar: isAnonymous ? null : profile.avatar_url,
       type: 'gift',
-      content: `a envoyé un cadeau ${randomGift}`,
+      content: `a envoyé ${giftLabel}`,
       createdAt: new Date().toISOString(),
     };
 
@@ -273,7 +290,6 @@ const UserLive: React.FC = () => {
     });
 
     setMessages(prev => [...prev.slice(-49), newMessage]);
-    toast.success(`Cadeau ${randomGift} envoyé !`);
   };
 
   useEffect(() => {
@@ -391,10 +407,13 @@ const UserLive: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-sm text-zinc-200">
+          <button 
+            className="flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-sm text-zinc-200 hover:bg-white/10 transition-colors"
+            onClick={() => setShowViewersModal(true)}
+          >
             <Users className="h-4 w-4" />
             {viewerCount}
-          </div>
+          </button>
           <Button
             type="button"
             variant="ghost"
@@ -476,7 +495,7 @@ const UserLive: React.FC = () => {
               variant="outline"
               size="icon"
               className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              onClick={handleSendGift}
+              onClick={handleSendGiftClick}
             >
               <Gift size={22} className="text-pink-500" />
             </Button>
@@ -506,6 +525,53 @@ const UserLive: React.FC = () => {
           )}
         </div>
       </div>
+
+      {showGiftModal && stream?.host && (
+        <WalletGiftModal
+          isOpen={showGiftModal}
+          onClose={() => setShowGiftModal(false)}
+          initialSelectedUser={{
+            id: stream.host.id,
+            first_name: stream.host.first_name,
+            last_name: stream.host.last_name,
+            username: stream.host.username,
+            avatar_url: stream.host.avatar_url
+          }}
+          onGiftSent={handleGiftSuccess}
+        />
+      )}
+
+      {/* Viewers modal */}
+      <Dialog open={showViewersModal} onOpenChange={setShowViewersModal}>
+        <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Spectateurs ({viewerCount})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
+            {viewersList.length === 0 ? (
+              <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment</p>
+            ) : (
+              viewersList.map((viewer, idx) => (
+                <div key={viewer.user_id || idx} className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 border border-zinc-800">
+                    <AvatarImage src={viewer.avatar_url || ''} alt={viewer.user_name} />
+                    <AvatarFallback className="bg-zinc-800 text-sm">
+                      {viewer.user_name?.substring(0, 2).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm">{viewer.user_name}</span>
+                    <span className="text-xs text-zinc-500 capitalize">{viewer.role === 'host' ? 'Créateur' : 'Spectateur'}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
