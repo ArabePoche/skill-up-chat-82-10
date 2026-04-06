@@ -10,6 +10,7 @@ import {
   Lock,
   Mic,
   MicOff,
+  MessageCircle,
   PhoneOff,
   Radio,
   RefreshCw,
@@ -229,8 +230,11 @@ const UserLive: React.FC = () => {
   const [isAcceptedParticipant, setIsAcceptedParticipant] = useState(false);
   const [activeGiftOverlay, setActiveGiftOverlay] = useState<GiftOverlayState | null>(null);
   const [expandedParticipantControlsId, setExpandedParticipantControlsId] = useState<string | null>(null);
+  const [isDescriptionVisible, setIsDescriptionVisible] = useState(true);
+  const [areCommentsCollapsed, setAreCommentsCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
+  const commentsTouchStartXRef = useRef<number | null>(null);
   
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -860,6 +864,24 @@ const UserLive: React.FC = () => {
     }
   };
 
+  const handleCommentsTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    commentsTouchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleCommentsTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = commentsTouchStartXRef.current;
+    const endX = event.changedTouches[0]?.clientX ?? null;
+    commentsTouchStartXRef.current = null;
+
+    if (startX === null || endX === null) {
+      return;
+    }
+
+    if (startX - endX > 60) {
+      setAreCommentsCollapsed(true);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -1132,12 +1154,24 @@ const UserLive: React.FC = () => {
           </div>
 
           {/* Title & Description */}
-          <div className="flex flex-col items-end text-right mt-1 bg-black/20 backdrop-blur-sm rounded-xl p-2 w-full">
-            <h1 className="text-sm font-bold text-white shadow-sm leading-tight line-clamp-2">{stream.title}</h1>
-            {stream.description && (
-              <p className="text-xs text-zinc-200 mt-1 line-clamp-2 shadow-sm font-medium">{stream.description}</p>
-            )}
-          </div>
+          {isDescriptionVisible && (
+            <div className="relative flex flex-col items-end text-right mt-1 bg-black/20 backdrop-blur-sm rounded-xl p-2 w-full pr-8">
+              {stream.description && (
+                <button
+                  type="button"
+                  onClick={() => setIsDescriptionVisible(false)}
+                  className="absolute right-2 top-2 rounded-full bg-black/35 p-1 text-white/80 transition-colors hover:bg-black/55 hover:text-white"
+                  title="Masquer la description"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <h1 className="text-sm font-bold text-white shadow-sm leading-tight line-clamp-2">{stream.title}</h1>
+              {stream.description && (
+                <p className="text-xs text-zinc-200 mt-1 line-clamp-2 shadow-sm font-medium">{stream.description}</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1154,16 +1188,32 @@ const UserLive: React.FC = () => {
 
         {/* Live Chat Overlay - scrollable, ~3 messages visible, scroll up for older ones */}
         {/* right offset increases when participants panel is visible */}
-        <div className={`absolute bottom-20 left-4 z-10 pointer-events-auto ${
-          acceptedParticipants.length > 0 || isAcceptedParticipant ? 'right-24' : 'right-16'
-        }`}>
+        {!areCommentsCollapsed ? (
           <div
-            ref={commentsScrollRef}
-            className="max-h-[160px] overflow-y-auto space-y-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y"
+            className={`absolute bottom-20 left-4 z-10 pointer-events-auto ${
+              acceptedParticipants.length > 0 || isAcceptedParticipant ? 'right-24' : 'right-16'
+            }`}
+            onTouchStart={handleCommentsTouchStart}
+            onTouchEnd={handleCommentsTouchEnd}
           >
-            {messages.map((msg) => renderMessage(msg))}
+            <div
+              ref={commentsScrollRef}
+              className="max-h-[160px] overflow-y-auto space-y-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y"
+            >
+              {messages.map((msg) => renderMessage(msg))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAreCommentsCollapsed(false)}
+            className="absolute bottom-24 left-4 z-10 pointer-events-auto flex h-11 min-w-11 items-center justify-center rounded-full bg-black/45 px-3 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/60"
+            title="Rouvrir les commentaires"
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="ml-2 text-xs font-semibold">Commentaires</span>
+          </button>
+        )}
       </div>
 
       {/* Hand raise requests panel – shown to the host on the left side to avoid conflict with participants panel */}
