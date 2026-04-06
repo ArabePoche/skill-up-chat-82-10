@@ -258,12 +258,14 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
     // Scale down if image is larger than the canvas
     const maxW = fc.getWidth() * 0.6;
     const maxH = fc.getHeight() * 0.6;
-    const scale = Math.min(1, maxW / (img.width ?? maxW), maxH / (img.height ?? maxH));
+    const imgW = img.width && img.width > 0 ? img.width : maxW;
+    const imgH = img.height && img.height > 0 ? img.height : maxH;
+    const scale = Math.min(1, maxW / imgW, maxH / imgH);
     img.scale(scale);
 
     img.set({
-      left: (fc.getWidth() - (img.width ?? 0) * scale) / 2,
-      top: (fc.getHeight() - (img.height ?? 0) * scale) / 2,
+      left: (fc.getWidth() - imgW * scale) / 2,
+      top: (fc.getHeight() - imgH * scale) / 2,
       selectable: true,
       hasControls: true,
       hasBorders: true,
