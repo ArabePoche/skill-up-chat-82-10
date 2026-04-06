@@ -30,7 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import iconSC from '@/assets/coin-soumboulah-cash.png';
 import iconSB from '@/assets/coin-soumboulah-bonus.png';
 import iconH from '@/assets/coin-habbah.png';
-import VideoUserProfile from '@/components/video/VideoUserProfile';
+import { useFollow } from '@/friends/hooks/useFollow';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
