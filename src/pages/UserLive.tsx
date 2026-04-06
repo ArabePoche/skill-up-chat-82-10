@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Copy,
+  Share2,
   Gift,
   Globe,
   Loader2,
@@ -29,6 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import iconSC from '@/assets/coin-soumboulah-cash.png';
 import iconSB from '@/assets/coin-soumboulah-bonus.png';
 import iconH from '@/assets/coin-habbah.png';
+import VideoUserProfile from '@/components/video/VideoUserProfile';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -70,7 +72,7 @@ interface LiveMessage {
   userId: string;
   userName: string;
   userAvatar?: string | null;
-  type: 'comment' | 'gift';
+  type: 'comment' | 'gift' | 'join';
   content: string;
   currency?: string;
   createdAt: string;
@@ -231,6 +233,22 @@ const UserLive: React.FC = () => {
 
         console.log('Parsed viewers list:', currentViewers);
         setViewersList(currentViewers);
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        newPresences.forEach((presence: any) => {
+          if (presence.user_name) {
+            const joinMsg: LiveMessage = {
+              id: crypto.randomUUID(),
+              userId: presence.user_id || 'system',
+              userName: presence.user_name,
+              userAvatar: presence.avatar_url,
+              type: 'join',
+              content: 'a rejoint le live',
+              createdAt: new Date().toISOString(),
+            };
+            setMessages(prev => [...prev.slice(-49), joinMsg]);
+          }
+        });
       })
       .on('broadcast', { event: 'live_action' }, (payload) => {
         const newMsg = payload.payload as LiveMessage;
@@ -411,53 +429,85 @@ const UserLive: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white">
-      <div className="flex items-center justify-between border-b border-white/10 bg-black/75 px-4 py-3 backdrop-blur z-10">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Badge className="border-0 bg-red-600 text-white hover:bg-red-600">
-                <Radio className="mr-1 h-3.5 w-3.5" />
-                EN DIRECT
+    <div className="relative flex h-[100dvh] min-h-screen w-full flex-col bg-black text-white overflow-hidden">
+      {/* Background Video Layer */}
+      <div className="absolute inset-0 z-0">
+        {isHost ? (
+          <div ref={localVideoContainerRef} className="h-full w-full object-cover" />
+        ) : (
+          <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
+        )}
+      </div>
+
+<div className="absolute top-0 left-0 w-full flex items-start justify-between bg-gradient-to-b from-black/60 via-black/20 to-transparent px-4 py-3 pb-12 z-30 pt-4">
+        {/* TOP LEFT: Avatar, Host Name, Badges, Follow Button */}
+        <div className="flex items-center gap-2 bg-black/30 rounded-full pr-2 p-1 backdrop-blur-sm self-start">
+          <Avatar
+            className="h-9 w-9 border border-white/20 cursor-pointer"
+            onClick={() => navigate(`/profile/${stream.host?.id}`)}
+          >
+            <AvatarImage src={stream.host?.avatar_url || ''} />
+            <AvatarFallback className="bg-zinc-800 text-xs">
+              {hostName.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col min-w-0 mr-1 gap-0.5">
+            <span className="truncate text-sm font-semibold leading-none text-white">{hostName}</span>
+            <div className="flex items-center gap-1">
+              <Badge className="border-0 bg-red-600 text-white hover:bg-red-600 text-[9px] py-0 px-1 leading-tight h-3">
+                <Radio className="mr-0.5 h-2 w-2" />
+                DIRECT
               </Badge>
-              <Badge variant="secondary" className="border border-white/10 bg-white/5 text-white">
-                {stream.visibility === 'public' ? <Globe className="mr-1 h-3.5 w-3.5" /> : <Lock className="mr-1 h-3.5 w-3.5" />}
+              <Badge variant="secondary" className="border-0 bg-white/10 text-white text-[9px] py-0 px-1 leading-tight h-3">
+                {stream.visibility === 'public' ? <Globe className="mr-0.5 h-2 w-2" /> : <Lock className="mr-0.5 h-2 w-2" />}
                 {stream.visibility === 'public' ? 'Public' : 'Amis'}
               </Badge>
             </div>
-            <h1 className="truncate text-lg font-semibold">{stream.title}</h1>
-            <p className="truncate text-sm text-zinc-400">{hostName}</p>
           </div>
+          {!isHost && stream.host_id && user && stream.host_id !== user.id && (
+            <div className="ml-1 scale-[0.85] origin-right">
+              <VideoUserProfile
+                profile={stream.host as any}
+                showFollowButton={true}
+              />
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button 
-            className="flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-sm text-zinc-200 hover:bg-white/10 transition-colors"
-            onClick={() => setShowViewersModal(true)}
-          >
-            <Users className="h-4 w-4" />
-            {viewerCount}
-          </button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-white hover:bg-white/10 hover:text-red-500"
-            onClick={isHost ? handleStopLive : () => navigate('/profil')}
-            disabled={isStopping}
-          >
-            {isStopping ? <Loader2 className="h-5 w-5 animate-spin" /> : <X className="h-6 w-6" />}
-          </Button>
+        {/* TOP RIGHT: Title, Description, Viewers, Close */}
+        <div className="flex flex-col items-end gap-2 max-w-[55%]">
+          {/* Top Row: Viewers & Close */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              className="flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold text-zinc-200 backdrop-blur-sm hover:bg-white/10 transition-colors"
+              onClick={() => setShowViewersModal(true)}
+            >
+              <Users className="h-3.5 w-3.5" />
+              {viewerCount}
+            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 hover:text-red-500"
+              onClick={isHost ? handleStopLive : () => navigate('/profil')}
+              disabled={isStopping}
+            >
+              {isStopping ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          {/* Title & Description */}
+          <div className="flex flex-col items-end text-right mt-1 bg-black/20 backdrop-blur-sm rounded-xl p-2 w-full">
+            <h1 className="text-sm font-bold text-white shadow-sm leading-tight line-clamp-2">{stream.title}</h1>
+            {stream.description && (
+              <p className="text-xs text-zinc-200 mt-1 line-clamp-2 shadow-sm font-medium">{stream.description}</p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-black">
-        {isHost ? (
-          <div ref={localVideoContainerRef} className="absolute inset-0 bg-black" />
-        ) : (
-          <div ref={remoteVideoContainerRef} className="absolute inset-0 bg-black" />
-        )}
-
+      <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-end">
         {((!isHost && state.remoteUsers.length === 0) || (isHost && !state.isJoined)) && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45">
             <div className="text-center text-zinc-200">
@@ -467,37 +517,43 @@ const UserLive: React.FC = () => {
           </div>
         )}
 
-        {stream.description && (
-          <div className="absolute top-20 left-4 right-4 rounded-2xl bg-black/45 p-4 text-sm text-zinc-100 backdrop-blur">
-            {stream.description}
-          </div>
-        )}
-
         {/* Live Chat Overlay */}
-        <div className="absolute bottom-4 left-4 right-4 flex max-h-64 flex-col justify-end gap-2 overflow-y-auto pointer-events-auto z-10 [mask-image:linear-gradient(to_bottom,transparent,black_15%,black_100%)]">
+        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end gap-2 max-h-[140px] overflow-y-auto pointer-events-auto z-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex items-center gap-2 w-max max-w-[85%] rounded-2xl px-3 py-1.5 text-sm backdrop-blur ${
+              className={`flex items-start gap-2 w-max max-w-[100%] rounded-xl px-1 py-1 text-sm ${
                 msg.type === 'gift'
-                  ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white animate-bounce'
-                  : 'bg-black/50 text-zinc-100'
+                  ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white animate-bounce shadow-lg px-3'
+                  : msg.type === 'join'
+                  ? 'bg-transparent text-white/80 drop-shadow-md'
+                  : 'bg-transparent text-white drop-shadow-md'
               }`}
             >
-              <Avatar className="h-6 w-6 border border-zinc-700/50">
-                <AvatarImage src={msg.userAvatar || ''} />
-                <AvatarFallback className="bg-zinc-800 text-[10px]">
-                  {msg.userName?.substring(0, 2).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <span className="font-semibold mr-2 opacity-90">{msg.userName}</span>
-                <span className="break-words flex items-center gap-1 flex-wrap">
-                  {msg.content}
-                  {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500/20 text-emerald-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSC} alt="SC" className="w-3 h-3 object-contain" /> SC</span>}
-                  {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500/20 text-amber-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconH} alt="H" className="w-3 h-3 object-contain" /> H</span>}
-                  {msg.currency === 'soumboulah_bonus' && <span className="inline-flex items-center bg-blue-500/20 text-blue-100 text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSB} alt="SB" className="w-3 h-3 object-contain" /> SB</span>}
-                </span>
+              {msg.type !== 'join' && (
+                <Avatar className="h-7 w-7 border-[1.5px] border-white/20 shrink-0 mt-0.5">
+                  <AvatarImage src={msg.userAvatar || ''} />
+                  <AvatarFallback className="bg-zinc-800 text-[10px]">
+                    {msg.userName?.substring(0, 2).toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div className="flex flex-col leading-tight">
+                {msg.type === 'join' ? (
+                  <span className="break-words flex items-center gap-1 flex-wrap text-xs text-white/90">
+                    <span className="font-bold text-white">{msg.userName}</span> {msg.content}
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-bold text-white/[0.85] text-xs">{msg.userName}</span>
+                    <span className="break-words flex items-center gap-1 flex-wrap font-medium">
+                      {msg.content}
+                      {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSC} alt="SC" className="w-3 h-3 object-contain" /> SC</span>}
+                      {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconH} alt="H" className="w-3 h-3 object-contain" /> H</span>}
+                      {msg.currency === 'soumboulah_bonus' && <span className="inline-flex items-center bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSB} alt="SB" className="w-3 h-3 object-contain" /> SB</span>}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -505,10 +561,11 @@ const UserLive: React.FC = () => {
         </div>
       </div>
 
-      <div className="border-t border-white/10 bg-black/80 px-4 py-4 backdrop-blur z-10">
+      {/* Bottom Bar: Input and Buttons - Floating on top of relative container */}
+      <div className="absolute bottom-0 left-0 right-0 px-4 py-4 z-20 bg-gradient-to-t from-black/60 to-transparent">
         <div className="flex items-center gap-3">
           {/* Real message input */}
-          <div className="flex h-12 flex-1 items-center rounded-full bg-white/10 px-4 text-white">
+          <div className="flex h-[42px] flex-1 items-center rounded-full bg-black/20 border border-white/10 px-4 text-white backdrop-blur-md">
             <input 
               type="text" 
               placeholder={isHost ? "Message aux spectateurs..." : "Ajouter un commentaire..."}
@@ -527,15 +584,37 @@ const UserLive: React.FC = () => {
           </div>
 
           {!isHost && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              onClick={handleSendGiftClick}
-            >
-              <Gift size={22} className="text-pink-500" />
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                onClick={handleSendGiftClick}
+              >
+                <Gift size={22} className="text-pink-500" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                onClick={() => {
+                  try {
+                    if (navigator.share) {
+                      navigator.share({
+                        title: 'Rejoignez mon live!',
+                        url: window.location.href,
+                      });
+                    }
+                  } catch (e) {
+                     console.error(e)
+                  }
+                }}
+              >
+                <Share2 size={22} />
+              </Button>
+            </>
           )}
 
           {isHost && (
