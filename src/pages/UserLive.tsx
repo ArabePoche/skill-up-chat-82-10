@@ -75,6 +75,7 @@ interface LiveMessage {
   type: 'comment' | 'gift' | 'join' | 'raise_hand';
   content: string;
   currency?: string;
+  amount?: number;
   createdAt: string;
 }
 
@@ -101,6 +102,18 @@ interface GiftOverlayState {
   currency?: string;
   content: string;
 }
+
+interface LiveGiftTotals {
+  soumboulah_cash: number;
+  soumboulah_bonus: number;
+  habbah: number;
+}
+
+const EMPTY_LIVE_GIFT_TOTALS: LiveGiftTotals = {
+  soumboulah_cash: 0,
+  soumboulah_bonus: 0,
+  habbah: 0,
+};
 
 /** Bouton Suivre inline sans avatar, pour l'en-tête du live */
 const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
@@ -230,7 +243,6 @@ const UserLive: React.FC = () => {
 
   const [stream, setStream] = useState<LiveStreamRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewerCount, setViewerCount] = useState(0);
   const [viewersList, setViewersList] = useState<any[]>([]);
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
@@ -244,6 +256,7 @@ const UserLive: React.FC = () => {
   const [expandedParticipantControlsId, setExpandedParticipantControlsId] = useState<string | null>(null);
   const [isDescriptionVisible, setIsDescriptionVisible] = useState(true);
   const [areCommentsCollapsed, setAreCommentsCollapsed] = useState(false);
+  const [liveGiftTotals, setLiveGiftTotals] = useState<LiveGiftTotals>(EMPTY_LIVE_GIFT_TOTALS);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
@@ -323,6 +336,13 @@ const UserLive: React.FC = () => {
     const hostPresence = connectedPeople.find(p => p.role === 'host' && (p.user_id || p.userId) === stableHostId);
     return hostPresence?.agora_uid ? String(hostPresence.agora_uid) : null;
   }, [stableHostId, connectedPeople]);
+
+  const audienceCount = useMemo(() => {
+    return viewersList.filter((presence) => {
+      const presenceUserId = presence.user_id || presence.userId;
+      return presenceUserId && presenceUserId !== stableHostId;
+    }).length;
+  }, [stableHostId, viewersList]);
 
   const upsertAcceptedParticipant = useCallback((participant: AcceptedParticipant) => {
     setAcceptedParticipants(prev => {
@@ -485,7 +505,6 @@ const UserLive: React.FC = () => {
         }
       });
 
-      setViewerCount(currentViewers.length);
       setViewersList(currentViewers);
       
       // SYNC: Nettoyer les participants qui ne sont plus connectés ou n'ont plus le rôle participant
@@ -504,7 +523,7 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, updatePresenceState)
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        (newPresences as any[]).forEach((presence: any) => {
+        extractPresenceEntries(newPresences).forEach((presence: any) => {
           const userId = presence?.user_id || presence?.userId || key;
           if (presence.user_name && userId !== stableUserId) {
             const joinMsg: LiveMessage = {
@@ -527,7 +546,10 @@ const UserLive: React.FC = () => {
       })
       .on('broadcast', { event: 'live_action' }, (payload) => {
         const newMsg = payload.payload as LiveMessage;
-        setMessages(prev => [...prev.slice(-49), newMsg]);
+        setMessages(prev => {
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev.slice(-49), newMsg];
+        });
         if (newMsg.type === 'gift') {
           setActiveGiftOverlay({
             id: newMsg.id,
@@ -538,7 +560,7 @@ const UserLive: React.FC = () => {
         }
       })
       .on('broadcast', { event: 'raise_hand' }, (payload) => {
-        const { userId, userName, userAvatar } = payload.payload;
+        const { id, userId, userName, userAvatar } = payload.payload;
         if (isHostRole) {
           toast.info(`🖐️ ${userName} demande à intervenir`, { duration: 5000 });
         }
@@ -549,7 +571,7 @@ const UserLive: React.FC = () => {
 
         // Show raise hand message in chat
         const raiseMsg: LiveMessage = {
-          id: crypto.randomUUID(),
+          id: id || crypto.randomUUID(),
           userId,
           userName,
           userAvatar,
@@ -557,7 +579,10 @@ const UserLive: React.FC = () => {
           content: '🖐️ demande à intervenir',
           createdAt: new Date().toISOString(),
         };
-        setMessages(prev => [...prev.slice(-49), raiseMsg]);
+        setMessages(prev => {
+          if (prev.some(m => m.id === raiseMsg.id)) return prev;
+          return [...prev.slice(-49), raiseMsg];
+        });
       })
       .on('broadcast', { event: 'hand_accepted' }, (payload) => {
         const { userId, userName, userAvatar } = payload.payload;
@@ -680,6 +705,108 @@ const UserLive: React.FC = () => {
     upsertAcceptedParticipant,
   ]);
 
+  useEffect(() => {
+    if (!stableStreamId || !stableHostId) {
+      setLiveGiftTotals(EMPTY_LIVE_GIFT_TOTALS);
+      return;
+    }
+
+    let isMounted = true;
+
+    const mergeLiveGiftTransaction = (transaction: { currency?: string | null; amount?: number | null; transaction_type?: string | null }) => {
+      if (!transaction.currency || !Object.prototype.hasOwnProperty.call(EMPTY_LIVE_GIFT_TOTALS, transaction.currency)) {
+        return;
+      }
+
+      const rawAmount = Number(transaction.amount || 0);
+      const delta = transaction.transaction_type === 'gift_received'
+        ? rawAmount
+        : transaction.transaction_type === 'commission'
+        ? Math.abs(rawAmount)
+        : 0;
+
+      if (delta === 0) {
+        return;
+      }
+
+      setLiveGiftTotals((current) => ({
+        ...current,
+        [transaction.currency as keyof LiveGiftTotals]: current[transaction.currency as keyof LiveGiftTotals] + delta,
+      }));
+    };
+
+    const loadLiveGiftTotals = async () => {
+      const { data, error } = await supabase
+        .from('wallet_transactions')
+        .select('currency, amount, transaction_type, reference_id')
+        .eq('user_id', stableHostId)
+        .eq('reference_id', stableStreamId)
+        .in('transaction_type', ['gift_received', 'commission']);
+
+      if (error) {
+        console.error('Erreur chargement cumul cadeaux live:', error);
+        return;
+      }
+
+      const nextTotals = (data || []).reduce<LiveGiftTotals>((totals, transaction: any) => {
+        const currency = transaction.currency as keyof LiveGiftTotals;
+        if (!Object.prototype.hasOwnProperty.call(totals, currency)) {
+          return totals;
+        }
+
+        if (transaction.transaction_type === 'gift_received') {
+          totals[currency] += Number(transaction.amount || 0);
+        }
+
+        if (transaction.transaction_type === 'commission') {
+          totals[currency] += Math.abs(Number(transaction.amount || 0));
+        }
+
+        return totals;
+      }, {
+        ...EMPTY_LIVE_GIFT_TOTALS,
+      });
+
+      if (isMounted) {
+        setLiveGiftTotals(nextTotals);
+      }
+    };
+
+    void loadLiveGiftTotals();
+
+    const transactionChannel = supabase
+      .channel(`live-gift-transactions-${stableStreamId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'wallet_transactions',
+          filter: `user_id=eq.${stableHostId}`,
+        },
+        (payload) => {
+          const transaction = payload.new as {
+            currency?: string | null;
+            amount?: number | null;
+            transaction_type?: string | null;
+            reference_id?: string | null;
+          };
+
+          if (transaction.reference_id !== stableStreamId) {
+            return;
+          }
+
+          mergeLiveGiftTransaction(transaction);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(transactionChannel);
+    };
+  }, [stableHostId, stableStreamId]);
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (commentsScrollRef.current) {
@@ -771,17 +898,19 @@ const UserLive: React.FC = () => {
       payload: newMessage,
     });
 
-    setMessages(prev => [...prev.slice(-49), newMessage]);
     setMessageInput('');
   };
 
   const handleRaiseHand = () => {
     if (!presenceChannelRef.current || hasRaisedHand) return;
 
+    const raiseId = crypto.randomUUID();
+
     presenceChannelRef.current.send({
       type: 'broadcast',
       event: 'raise_hand',
       payload: {
+        id: raiseId,
         userId: stableUserId,
         userName: stableDisplayName,
         userAvatar: stableAvatarUrl,
@@ -869,6 +998,7 @@ const UserLive: React.FC = () => {
       type: 'gift',
       content: `a envoyé ${giftLabel}`,
       currency,
+      amount,
       createdAt: new Date().toISOString(),
     };
 
@@ -876,14 +1006,6 @@ const UserLive: React.FC = () => {
       type: 'broadcast',
       event: 'live_action',
       payload: newMessage,
-    });
-
-    setMessages(prev => [...prev.slice(-49), newMessage]);
-    setActiveGiftOverlay({
-      id: newMessage.id,
-      userName: senderName,
-      currency,
-      content: newMessage.content,
     });
   };
 
@@ -1222,7 +1344,7 @@ const UserLive: React.FC = () => {
               onClick={() => setShowViewersModal(true)}
             >
               <Users className="h-3.5 w-3.5" />
-              {connectedPeople.length}
+              {audienceCount}
             </button>
             <Button
               type="button"
@@ -1253,6 +1375,26 @@ const UserLive: React.FC = () => {
               {stream.description && (
                 <p className="text-xs text-zinc-200 mt-1 line-clamp-2 shadow-sm font-medium">{stream.description}</p>
               )}
+            </div>
+          )}
+
+          {isHost && (
+            <div className="flex flex-wrap justify-end gap-2 w-full">
+              <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                <img src={iconH} alt="H" className="h-4 w-4 object-contain" />
+                {liveGiftTotals.habbah.toLocaleString('fr-FR')}
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                <img src={iconSC} alt="S" className="h-4 w-4 object-contain" />
+                {liveGiftTotals.soumboulah_cash.toLocaleString('fr-FR')}
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                <img src={iconSB} alt="SB" className="h-4 w-4 object-contain" />
+                {liveGiftTotals.soumboulah_bonus.toLocaleString('fr-FR')}
+              </div>
+              <div className="rounded-full bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200 backdrop-blur-sm">
+                Commission selon niveau
+              </div>
             </div>
           )}
         </div>
@@ -1451,6 +1593,10 @@ const UserLive: React.FC = () => {
           isOpen={showGiftModal}
           onClose={() => setShowGiftModal(false)}
           initialSelectedUser={stream.host as any}
+          liveGiftContext={{
+            liveStreamId: stream.id,
+            liveTitle: stream.title,
+          }}
           onGiftSent={handleGiftSuccess}
         />
       )}
@@ -1461,10 +1607,10 @@ const UserLive: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Spectateurs ({connectedPeople.length})
+              Participants connectés ({audienceCount})
             </DialogTitle>
             <DialogDescription className="text-zinc-400 text-sm">
-              Liste des personnes qui suivent ce live.
+              Liste des personnes actuellement présentes dans ce live.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">

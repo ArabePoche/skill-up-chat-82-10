@@ -5,6 +5,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationSoundService } from '@/services/NotificationSoundService';
 
 export interface CallNotification {
   id: string;
@@ -20,31 +21,19 @@ export interface CallNotification {
 export const useCallNotifications = () => {
   const { user } = useAuth();
   const [incomingCall, setIncomingCall] = useState<CallNotification | null>(null);
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
-
-  // Initialiser l'audio de sonnerie
-  useEffect(() => {
-    ringtoneRef.current = new Audio('/sounds/ringtone-call.mp3');
-    ringtoneRef.current.loop = true;
-    return () => {
-      if (ringtoneRef.current) {
-        ringtoneRef.current.pause();
-        ringtoneRef.current = null;
-      }
-    };
-  }, []);
 
   // Jouer / arrêter la sonnerie selon l'état
   useEffect(() => {
-    if (incomingCall && ringtoneRef.current) {
-      ringtoneRef.current.currentTime = 0;
-      ringtoneRef.current.play().catch(() => {
-        console.log('Cannot autoplay ringtone (user gesture required)');
-      });
-    } else if (!incomingCall && ringtoneRef.current) {
-      ringtoneRef.current.pause();
-      ringtoneRef.current.currentTime = 0;
+    if (incomingCall) {
+      NotificationSoundService.startRingtone();
+    } else {
+      NotificationSoundService.stopRingtone();
     }
+    
+    // Nettoyage au démontage pour être sûr d'arrêter le son
+    return () => {
+      NotificationSoundService.stopRingtone();
+    };
   }, [incomingCall]);
 
   useEffect(() => {

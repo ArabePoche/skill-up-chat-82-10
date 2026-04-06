@@ -2,11 +2,12 @@
  * Hook pour gérer les appels (initiation, écoute de la réponse, état d'appel Agora)
  * Utilisé côté étudiant ET côté professeur pour initier un appel
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { NotificationSoundService } from '@/services/NotificationSoundService';
 
 export interface AcceptedCall {
   id: string;
@@ -35,6 +36,19 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
   const [currentCall, setCurrentCall] = useState<any>(null);
   const [acceptedCall, setAcceptedCall] = useState<AcceptedCall | null>(null);
   const channelRef = useRef<any>(null);
+
+  // Gérer le son d'attente pour l'appelant
+  useEffect(() => {
+    if (isCallActive && currentCall?.status === 'pending') {
+      NotificationSoundService.startCallingTone();
+    } else {
+      NotificationSoundService.stopCallingTone();
+    }
+
+    return () => {
+      NotificationSoundService.stopCallingTone();
+    };
+  }, [isCallActive, currentCall?.status]);
 
   const initiateCall = useCallback(async (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => {
     if (!user) {
@@ -92,6 +106,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
 
             if (updatedCall.status === 'accepted') {
               toast.success('Un professeur a accepté votre appel !');
+              setCurrentCall(updatedCall);
               // Ouvrir l'UI Agora côté étudiant
               setAcceptedCall({
                 id: callSession.id,
@@ -102,7 +117,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
             } else if (updatedCall.status === 'rejected' || updatedCall.status === 'ended') {
               toast.info('Appel terminé');
               setIsCallActive(false);
-              setCurrentCall(null);
+              setCurrentCall(updatedCall);
               // Nettoyer le channel
               supabase.removeChannel(callChannel);
             }

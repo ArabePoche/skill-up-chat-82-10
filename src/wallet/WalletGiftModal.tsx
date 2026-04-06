@@ -25,6 +25,10 @@ interface WalletGiftModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialSelectedUser?: UserProfile;
+  liveGiftContext?: {
+    liveStreamId: string;
+    liveTitle: string;
+  };
   onGiftSent?: (amount: number, currency: CurrencyType, giftLabel: string, isAnonymous: boolean) => void;
 }
 
@@ -44,7 +48,13 @@ const CURRENCY_OPTIONS: { value: CurrencyType; label: string; unit: string; colo
   { value: 'soumboulah_bonus', label: 'Soumboulah Bonus', unit: 'SB', color: 'text-blue-400' },
 ];
 
-const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose, initialSelectedUser, onGiftSent }) => {
+const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
+  isOpen,
+  onClose,
+  initialSelectedUser,
+  liveGiftContext,
+  onGiftSent,
+}) => {
   const { wallet, isLoading: isWalletLoading } = useUserWallet();
   const { user } = useAuth();
 
@@ -234,9 +244,10 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose, init
     }
 
     setIsSending(true);
-    const reason = motif.trim() || 'Cadeau depuis le portefeuille';
+    const reason = motif.trim() || (liveGiftContext ? `Cadeau live : ${liveGiftContext.liveTitle}` : 'Cadeau depuis le portefeuille');
     const currOption = CURRENCY_OPTIONS.find((c) => c.value === currency)!;
     const giftLabel = `${parsedAmount} ${currOption.unit}`;
+    const referenceId = liveGiftContext?.liveStreamId ?? null;
 
     try {
       if (currency === 'soumboulah_cash') {
@@ -244,20 +255,20 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose, init
           p_recipient_id: selectedUser.id,
           p_amount: parsedAmount,
           p_reason: reason,
-          p_reference_id: null,
+          p_reference_id: referenceId,
         });
         if (error) throw error;
         const result = data as any;
         if (result && !result.success) throw new Error(result.message);
       } else if (currency === 'habbah') {
-        const result = await transferHabbah(selectedUser.id, parsedAmount, reason);
+        const result = await transferHabbah(selectedUser.id, parsedAmount, reason, referenceId ?? undefined);
         if (!result.success) throw new Error(result.message);
       } else {
         const { data, error } = await supabase.rpc('transfer_soumboulah_bonus', {
           p_recipient_id: selectedUser.id,
           p_amount: parsedAmount,
           p_reason: reason,
-          p_reference_id: null,
+          p_reference_id: referenceId,
         });
         if (error) throw error;
         const result2 = data as any;
@@ -265,7 +276,9 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({ isOpen, onClose, init
       }
 
       const senderDisplayName = isAnonymous ? 'Un utilisateur anonyme' : undefined;
-      await notifyRecipient(selectedUser.id, giftLabel, senderDisplayName);
+      if (!liveGiftContext) {
+        await notifyRecipient(selectedUser.id, giftLabel, senderDisplayName);
+      }
 
       if (requestCancellation) {
         try {

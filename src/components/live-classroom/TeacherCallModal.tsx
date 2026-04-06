@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Phone, PhoneOff, Video, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { NotificationSoundService } from '@/services/NotificationSoundService';
 import {
   Dialog,
   DialogContent,
@@ -30,49 +31,30 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
   lessonTitle
 }) => {
   const [isRinging, setIsRinging] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setIsRinging(true);
-      if (!audioRef.current) {
-        audioRef.current = new Audio('/sounds/ringtone-call.mp3');
-        audioRef.current.loop = true;
-        audioRef.current.volume = 0.8;
-      }
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(err => {
-        console.log('Autoplay sonnerie bloqué:', err);
-      });
+      NotificationSoundService.startRingtone();
     } else {
       setIsRinging(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
+      NotificationSoundService.stopRingtone();
     }
 
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      NotificationSoundService.stopRingtone();
     };
   }, [isOpen]);
 
   const handleAccept = () => {
     setIsRinging(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
+    NotificationSoundService.stopRingtone();
     onAccept();
   };
 
   const handleReject = () => {
     setIsRinging(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
+    NotificationSoundService.stopRingtone();
     onReject();
   };
 

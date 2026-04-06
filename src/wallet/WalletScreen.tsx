@@ -289,6 +289,12 @@ const WalletScreen: React.FC = () => {
 
                       const explicitGiftName = metadata?.gift_name || metadata?.giftName;
                       const rawVideoTitle = metadata?.video_title || metadata?.post_title;
+                      const rawGiftReason = typeof metadata?.gift_reason === 'string' ? metadata.gift_reason : null;
+                      const inferredLiveTitle = rawGiftReason?.toLowerCase().startsWith('cadeau live :')
+                        ? rawGiftReason.split(':').slice(1).join(':').trim()
+                        : null;
+                      const liveTitle = metadata?.live_title || inferredLiveTitle;
+                      const isLiveGift = tx.reference_type === 'live_stream' || !!metadata?.live_stream_id || !!liveTitle;
 
                       let giftName = explicitGiftName;
                       let videoTitle = rawVideoTitle;
@@ -346,6 +352,12 @@ const WalletScreen: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col gap-1 ml-12">
+                              {isLiveGift && (
+                                <p className="text-xs text-slate-400 flex items-center gap-1">
+                                  <span className="font-medium text-slate-300/80">Live :</span>
+                                  <span className="truncate">{liveTitle || 'Live en direct'}</span>
+                                </p>
+                              )}
                               {videoTitle && (
                                 <p className="text-xs text-slate-400 flex items-center gap-1">
                                   <span className="font-medium text-slate-300/80">Vidéo :</span>

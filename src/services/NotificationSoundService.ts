@@ -105,9 +105,60 @@ class NotificationSoundServiceClass {
     }
   }
 
+  private ringtoneAudio: HTMLAudioElement | null = null;
+
   /**
-   * Obtient le type de son selon le type de notification
+   * Démarre une sonnerie en boucle (ex: appel entrant)
    */
+  startRingtone() {
+    this.playLoopingSound(soundMap.call, 0.6);
+  }
+
+  /**
+   * Arrête la sonnerie en cours
+   */
+  stopRingtone() {
+    this.stopLoopingSound();
+  }
+
+  /**
+   * Démarre le son d'attente (ex: en train d'appeler)
+   */
+  startCallingTone() {
+    this.playLoopingSound(soundMap.call, 0.3); // Volume plus faible pour l'attente
+  }
+
+  /**
+   * Arrête le son d'attente
+   */
+  stopCallingTone() {
+    this.stopLoopingSound();
+  }
+
+  private playLoopingSound(src: string, volume: number) {
+    if (this.isNativeMobile) return;
+    
+    try {
+      if (!this.ringtoneAudio) {
+        this.ringtoneAudio = new Audio(src);
+        this.ringtoneAudio.loop = true;
+      }
+      
+      this.ringtoneAudio.src = src;
+      this.ringtoneAudio.volume = volume;
+      this.ringtoneAudio.currentTime = 0;
+      this.ringtoneAudio.play().catch(e => console.warn('Looping sound autoplay blocked:', e));
+    } catch (e) {
+      console.error('Error starting looping sound:', e);
+    }
+  }
+
+  private stopLoopingSound() {
+    if (this.ringtoneAudio) {
+      this.ringtoneAudio.pause();
+      this.ringtoneAudio.currentTime = 0;
+    }
+  }
   getSoundTypeFromNotification(notificationType: string): NotificationSoundType {
     if (notificationType.includes('live')) {
       return 'call';

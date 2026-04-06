@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { PhoneOff, Loader2, CheckCircle2, XCircle, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NotificationSoundService } from '@/services/NotificationSoundService';
 import {
   Dialog,
   DialogContent,
@@ -32,15 +33,25 @@ const StudentCallModal: React.FC<StudentCallModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setCallDuration(0);
+      NotificationSoundService.stopCallingTone();
       return;
+    }
+
+    if (callStatus === 'pending') {
+      NotificationSoundService.startCallingTone();
+    } else {
+      NotificationSoundService.stopCallingTone();
     }
 
     const interval = setInterval(() => {
       setCallDuration(prev => prev + 1);
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [isOpen]);
+    return () => {
+      clearInterval(interval);
+      NotificationSoundService.stopCallingTone();
+    };
+  }, [isOpen, callStatus]);
 
   // Auto-fermer après un délai quand accepté ou rejeté
   useEffect(() => {
