@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Copy,
-  Share2,
-  Gift,
+  Crown,
   Globe,
+  Hand,
   Loader2,
   Lock,
   Mic,
@@ -13,6 +13,8 @@ import {
   PhoneOff,
   Radio,
   Send,
+  Share2,
+  Gift,
   Users,
   Video,
   VideoOff,
@@ -31,6 +33,7 @@ import iconSC from '@/assets/coin-soumboulah-cash.png';
 import iconSB from '@/assets/coin-soumboulah-bonus.png';
 import iconH from '@/assets/coin-habbah.png';
 import { useFollow } from '@/friends/hooks/useFollow';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -56,14 +59,8 @@ interface LiveStreamRecord {
 }
 
 const getDisplayName = (profile?: HostProfile | { first_name?: string | null; last_name?: string | null; username?: string | null } | null) => {
-  if (!profile) {
-    return 'Utilisateur';
-  }
-
-  if (profile.first_name && profile.last_name) {
-    return `${profile.first_name} ${profile.last_name}`;
-  }
-
+  if (!profile) return 'Utilisateur';
+  if (profile.first_name && profile.last_name) return `${profile.first_name} ${profile.last_name}`;
   return profile.username || 'Utilisateur';
 };
 
@@ -72,7 +69,7 @@ interface LiveMessage {
   userId: string;
   userName: string;
   userAvatar?: string | null;
-  type: 'comment' | 'gift' | 'join';
+  type: 'comment' | 'gift' | 'join' | 'raise_hand';
   content: string;
   currency?: string;
   createdAt: string;
@@ -126,7 +123,11 @@ const UserLive: React.FC = () => {
   const [isStopping, setIsStopping] = useState(false);
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [messageInput, setMessageInput] = useState('');
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [handRaiseRequests, setHandRaiseRequests] = useState<Set<string>>(new Set());
+  const [hasRaisedHand, setHasRaisedHand] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const commentsScrollRef = useRef<HTMLDivElement>(null);
   
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -143,6 +144,14 @@ const UserLive: React.FC = () => {
   const isHost = !!user?.id && !!stream?.host_id && user.id === stream.host_id && requestedHostMode;
   const hostName = useMemo(() => getDisplayName(stream?.host), [stream?.host]);
 
+  // Stabilize values for presence tracking
+  const stableDisplayName = useMemo(() => getDisplayName(profile), [profile?.first_name, profile?.last_name, profile?.username]);
+  const stableAvatarUrl = profile?.avatar_url || null;
+  const stableUserId = user?.id;
+  const stableStreamId = stream?.id;
+  const stableHostId = stream?.host_id;
+
+  // Load stream data
   useEffect(() => {
     if (!id) {
       setIsLoading(false);
@@ -225,19 +234,17 @@ const UserLive: React.FC = () => {
     };
   }, [id]);
 
-  // Stabilize profile data to prevent constant re-subscription
-  const stableDisplayName = useMemo(() => getDisplayName(profile), [profile?.first_name, profile?.last_name, profile?.username]);
-  const stableAvatarUrl = profile?.avatar_url || null;
-
+  // Presence tracking - stabilized to prevent re-subscriptions
   useEffect(() => {
-    if (!stream || !user?.id) {
-      return;
-    }
+    if (!stableStreamId || !stableUserId) return;
 
-    const roomChannel = supabase.channel(`live-room-${stream.id}`, {
+    const channelName = `live-room-${stableStreamId}`;
+    const isHostRole = stableUserId === stableHostId && requestedHostMode;
+    
+    const roomChannel = supabase.channel(channelName, {
       config: {
         presence: {
-          key: user.id,
+          key: stableUserId,
         }
       }
     });
@@ -247,13 +254,12 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
-        
         const uniqueUserIds = new Set<string>();
         const currentViewers: any[] = [];
         
         Object.values(presenceState).flat().forEach((viewerState: any) => {
-          const uid = viewerState.user_id || viewerState.presence_ref || Math.random().toString();
-          if (!uniqueUserIds.has(uid)) {
+          const uid = viewerState.user_id;
+          if (uid && !uniqueUserIds.has(uid)) {
             uniqueUserIds.add(uid);
             currentViewers.push(viewerState);
           }
@@ -264,7 +270,7 @@ const UserLive: React.FC = () => {
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         newPresences.forEach((presence: any) => {
-          if (presence.user_name) {
+          if (presence.user_name && presence.user_id !== stableUserId) {
             const joinMsg: LiveMessage = {
               id: crypto.randomUUID(),
               userId: presence.user_id || 'system',
@@ -282,26 +288,68 @@ const UserLive: React.FC = () => {
         const newMsg = payload.payload as LiveMessage;
         setMessages(prev => [...prev.slice(-49), newMsg]);
       })
+      .on('broadcast', { event: 'raise_hand' }, (payload) => {
+        const { userId, userName, userAvatar } = payload.payload;
+        if (isHostRole) {
+          toast.info(`🖐️ ${userName} demande à intervenir`, {
+            duration: 10000,
+            action: {
+              label: 'Accepter',
+              onClick: () => {
+                roomChannel.send({
+                  type: 'broadcast',
+                  event: 'hand_accepted',
+                  payload: { userId, userName },
+                });
+                toast.success(`${userName} peut maintenant intervenir`);
+              },
+            },
+          });
+        }
+        setHandRaiseRequests(prev => new Set(prev).add(userId));
+        
+        // Show raise hand message in chat
+        const raiseMsg: LiveMessage = {
+          id: crypto.randomUUID(),
+          userId,
+          userName,
+          userAvatar,
+          type: 'raise_hand',
+          content: '🖐️ demande à intervenir',
+          createdAt: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev.slice(-49), raiseMsg]);
+      })
+      .on('broadcast', { event: 'hand_accepted' }, (payload) => {
+        const { userId, userName } = payload.payload;
+        if (userId === stableUserId) {
+          toast.success('Le créateur a accepté votre demande ! Vous pouvez maintenant parler.');
+          setHasRaisedHand(false);
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await roomChannel.track({
-            user_id: user.id,
-            user_name: stableDisplayName || 'Utilisateur',
+            user_id: stableUserId,
+            user_name: stableDisplayName,
             avatar_url: stableAvatarUrl,
-            role: isHost ? 'host' : 'viewer',
+            role: isHostRole ? 'host' : 'viewer',
             online_at: new Date().toISOString(),
           });
         }
       });
 
     return () => {
-      supabase.removeChannel(roomChannel);
       presenceChannelRef.current = null;
+      supabase.removeChannel(roomChannel);
     };
-  }, [stream?.id, user?.id, isHost]);
+  }, [stableStreamId, stableUserId]);
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (commentsScrollRef.current) {
+      commentsScrollRef.current.scrollTop = commentsScrollRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSendMessage = () => {
@@ -325,6 +373,23 @@ const UserLive: React.FC = () => {
 
     setMessages(prev => [...prev.slice(-49), newMessage]);
     setMessageInput('');
+  };
+
+  const handleRaiseHand = () => {
+    if (!user || !profile || !presenceChannelRef.current || hasRaisedHand) return;
+
+    presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'raise_hand',
+      payload: {
+        userId: user.id,
+        userName: getDisplayName(profile),
+        userAvatar: profile.avatar_url,
+      },
+    });
+
+    setHasRaisedHand(true);
+    toast.info('Demande envoyée au créateur');
   };
 
   const [showGiftModal, setShowGiftModal] = useState(false);
@@ -360,9 +425,7 @@ const UserLive: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!stream || stream.status !== 'active') {
-      return;
-    }
+    if (!stream || stream.status !== 'active') return;
 
     void joinCall(stream.agora_channel, 'video', {
       role: isHost ? 'host' : 'viewer',
@@ -382,9 +445,7 @@ const UserLive: React.FC = () => {
   }, [leaveCall, state.isJoined, stream?.status]);
 
   const handleStopLive = async () => {
-    if (!stream || !isHost) {
-      return;
-    }
+    if (!stream || !isHost) return;
 
     setIsStopping(true);
 
@@ -398,9 +459,7 @@ const UserLive: React.FC = () => {
         .eq('id', stream.id)
         .eq('host_id', user?.id || '');
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       await leaveCall();
       toast.success('Live terminé.');
@@ -414,9 +473,7 @@ const UserLive: React.FC = () => {
   };
 
   const handleCopyLink = async () => {
-    if (!stream) {
-      return;
-    }
+    if (!stream) return;
 
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/live/${stream.id}`);
@@ -426,6 +483,10 @@ const UserLive: React.FC = () => {
       toast.error('Impossible de copier le lien.');
     }
   };
+
+  // Get the last 3 visible messages and the rest for scrolling
+  const visibleMessages = messages.slice(-3);
+  const hiddenMessagesCount = Math.max(0, messages.length - 3);
 
   if (isLoading) {
     return (
@@ -453,6 +514,70 @@ const UserLive: React.FC = () => {
     );
   }
 
+  /** Render a single comment message */
+  const renderMessage = (msg: LiveMessage) => {
+    const isCreator = msg.userId === stream.host_id;
+
+    return (
+      <motion.div
+        key={msg.id}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className={`flex items-start gap-2 w-max max-w-[100%] rounded-xl px-1.5 py-1 text-sm ${
+          msg.type === 'gift'
+            ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white shadow-lg px-3'
+            : msg.type === 'raise_hand'
+            ? 'bg-amber-500/20 text-amber-200 backdrop-blur-sm rounded-lg px-3'
+            : msg.type === 'join'
+            ? 'bg-transparent text-white/80 drop-shadow-md'
+            : 'bg-transparent text-white drop-shadow-md'
+        }`}
+      >
+        {msg.type !== 'join' && (
+          <div className="relative shrink-0">
+            <Avatar className="h-7 w-7 border-[1.5px] border-white/20 mt-0.5">
+              <AvatarImage src={msg.userAvatar || ''} />
+              <AvatarFallback className="bg-zinc-800 text-[10px]">
+                {msg.userName?.substring(0, 2).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            {isCreator && (
+              <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-[2px]">
+                <Crown className="h-2.5 w-2.5 text-white" />
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex flex-col leading-tight">
+          {msg.type === 'join' ? (
+            <span className="break-words flex items-center gap-1 flex-wrap text-xs text-white/90">
+              <span className="font-bold text-white">{msg.userName}</span> {msg.content}
+            </span>
+          ) : (
+            <>
+              <span className="font-bold text-white/[0.85] text-xs flex items-center gap-1">
+                {msg.userName}
+                {isCreator && (
+                  <span className="inline-flex items-center gap-0.5 bg-amber-500/80 text-white text-[8px] font-bold px-1 py-[1px] rounded-full">
+                    <Crown className="h-2 w-2" />
+                    Créateur
+                  </span>
+                )}
+              </span>
+              <span className="break-words flex items-center gap-1 flex-wrap font-medium">
+                {msg.content}
+                {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSC} alt="SC" className="w-3 h-3 object-contain" /> SC</span>}
+                {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconH} alt="H" className="w-3 h-3 object-contain" /> H</span>}
+                {msg.currency === 'soumboulah_bonus' && <span className="inline-flex items-center bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSB} alt="SB" className="w-3 h-3 object-contain" /> SB</span>}
+              </span>
+            </>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="relative flex h-[100dvh] min-h-screen w-full flex-col bg-black text-white overflow-hidden">
       {/* Background Video Layer */}
@@ -464,7 +589,8 @@ const UserLive: React.FC = () => {
         )}
       </div>
 
-<div className="absolute top-0 left-0 w-full flex items-start justify-between bg-gradient-to-b from-black/60 via-black/20 to-transparent px-4 py-3 pb-12 z-30 pt-4">
+      {/* Top overlay */}
+      <div className="absolute top-0 left-0 w-full flex items-start justify-between bg-gradient-to-b from-black/60 via-black/20 to-transparent px-4 py-3 pb-12 z-30 pt-4">
         {/* TOP LEFT: Avatar, Host Name, Badges, Follow Button */}
         <div className="flex items-center gap-2 bg-black/30 rounded-full pr-2 p-1 backdrop-blur-sm self-start">
           <Avatar
@@ -527,6 +653,7 @@ const UserLive: React.FC = () => {
         </div>
       </div>
 
+      {/* Main overlay content */}
       <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-end">
         {((!isHost && state.remoteUsers.length === 0) || (isHost && !state.isJoined)) && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45">
@@ -537,53 +664,48 @@ const UserLive: React.FC = () => {
           </div>
         )}
 
-        {/* Live Chat Overlay */}
-        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end gap-2 max-h-[45vh] overflow-y-auto pointer-events-auto z-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex items-start gap-2 w-max max-w-[100%] rounded-xl px-1 py-1 text-sm ${
-                msg.type === 'gift'
-                  ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white animate-bounce shadow-lg px-3'
-                  : msg.type === 'join'
-                  ? 'bg-transparent text-white/80 drop-shadow-md'
-                  : 'bg-transparent text-white drop-shadow-md'
-              }`}
+        {/* Live Chat Overlay - Show only last 3 messages + expandable scroll */}
+        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end z-10 pointer-events-auto">
+          {/* Expandable comments area */}
+          <AnimatePresence>
+            {showAllComments && messages.length > 3 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mb-1"
+              >
+                <div
+                  ref={commentsScrollRef}
+                  className="max-h-[35vh] overflow-y-auto space-y-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y"
+                >
+                  {messages.slice(0, -3).map((msg) => renderMessage(msg))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* "Show more" button */}
+          {hiddenMessagesCount > 0 && (
+            <button
+              onClick={() => setShowAllComments(!showAllComments)}
+              className="self-start mb-1.5 text-[11px] font-semibold text-white/70 bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 hover:bg-black/50 transition-colors"
             >
-              {msg.type !== 'join' && (
-                <Avatar className="h-7 w-7 border-[1.5px] border-white/20 shrink-0 mt-0.5">
-                  <AvatarImage src={msg.userAvatar || ''} />
-                  <AvatarFallback className="bg-zinc-800 text-[10px]">
-                    {msg.userName?.substring(0, 2).toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <div className="flex flex-col leading-tight">
-                {msg.type === 'join' ? (
-                  <span className="break-words flex items-center gap-1 flex-wrap text-xs text-white/90">
-                    <span className="font-bold text-white">{msg.userName}</span> {msg.content}
-                  </span>
-                ) : (
-                  <>
-                    <span className="font-bold text-white/[0.85] text-xs">{msg.userName}</span>
-                    <span className="break-words flex items-center gap-1 flex-wrap font-medium">
-                      {msg.content}
-                      {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSC} alt="SC" className="w-3 h-3 object-contain" /> SC</span>}
-                      {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconH} alt="H" className="w-3 h-3 object-contain" /> H</span>}
-                      {msg.currency === 'soumboulah_bonus' && <span className="inline-flex items-center bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSB} alt="SB" className="w-3 h-3 object-contain" /> SB</span>}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+              {showAllComments ? 'Réduire' : `Voir ${hiddenMessagesCount} commentaire${hiddenMessagesCount > 1 ? 's' : ''} en plus`}
+            </button>
+          )}
+
+          {/* Last 3 visible messages */}
+          <div className="space-y-1.5">
+            {visibleMessages.map((msg) => renderMessage(msg))}
+          </div>
         </div>
       </div>
 
-      {/* Bottom Bar: Input and Buttons - Floating on top of relative container */}
+      {/* Bottom Bar: Input and Buttons */}
       <div className="absolute bottom-0 left-0 right-0 px-4 py-4 z-20 bg-gradient-to-t from-black/60 to-transparent">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Real message input */}
           <div className="flex h-[42px] flex-1 items-center rounded-full bg-black/20 border border-white/10 px-4 text-white backdrop-blur-md">
             <input 
@@ -605,20 +727,35 @@ const UserLive: React.FC = () => {
 
           {!isHost && (
             <>
+              {/* Raise Hand Button */}
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className={`h-11 w-11 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white transition-all ${
+                  hasRaisedHand ? 'bg-amber-500/30 border-amber-400/50 animate-pulse' : ''
+                }`}
+                onClick={handleRaiseHand}
+                disabled={hasRaisedHand}
+                title="Demander à intervenir"
+              >
+                <Hand size={20} className={hasRaisedHand ? 'text-amber-400' : ''} />
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
                 onClick={handleSendGiftClick}
               >
-                <Gift size={22} className="text-pink-500" />
+                <Gift size={20} className="text-pink-500" />
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="h-12 w-12 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-11 w-11 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
                 onClick={() => {
                   try {
                     if (navigator.share) {
@@ -632,7 +769,7 @@ const UserLive: React.FC = () => {
                   }
                 }}
               >
-                <Share2 size={22} />
+                <Share2 size={20} />
               </Button>
             </>
           )}
@@ -644,18 +781,18 @@ const UserLive: React.FC = () => {
                 onClick={toggleMute}
                 variant={state.isMuted ? 'destructive' : 'outline'}
                 size="icon"
-                className="h-12 w-12 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
               >
-                {state.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+                {state.isMuted ? <MicOff size={20} /> : <Mic size={20} />}
               </Button>
               <Button
                 type="button"
                 onClick={toggleVideo}
                 variant={!state.isVideoEnabled ? 'destructive' : 'outline'}
                 size="icon"
-                className="h-12 w-12 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
               >
-                {state.isVideoEnabled ? <Video size={22} /> : <VideoOff size={22} />}
+                {state.isVideoEnabled ? <Video size={20} /> : <VideoOff size={20} />}
               </Button>
             </>
           )}
@@ -685,7 +822,7 @@ const UserLive: React.FC = () => {
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
             {viewersList.length === 0 ? (
-              <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment (En attente de synchronisation...)</p>
+              <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment</p>
             ) : (
               viewersList.map((viewer, idx) => {
                 const name = viewer.user_name || viewer.userName || viewer.name || 'Utilisateur';
@@ -701,7 +838,14 @@ const UserLive: React.FC = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm">{name}</span>
+                    <span className="font-medium text-sm flex items-center gap-1.5">
+                      {name}
+                      {role === 'host' && (
+                        <span className="inline-flex items-center gap-0.5 bg-amber-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
+                          <Crown className="h-2.5 w-2.5" /> Créateur
+                        </span>
+                      )}
+                    </span>
                     <span className="text-xs text-zinc-500 capitalize">{role === 'host' ? 'Créateur' : 'Spectateur'}</span>
                   </div>
                 </div>
