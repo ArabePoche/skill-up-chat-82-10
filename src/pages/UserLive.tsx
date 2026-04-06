@@ -192,6 +192,10 @@ const UserLive: React.FC = () => {
     };
   }, [id]);
 
+  // Stabilize profile data to prevent constant re-subscription
+  const stableDisplayName = useMemo(() => getDisplayName(profile), [profile?.first_name, profile?.last_name, profile?.username]);
+  const stableAvatarUrl = profile?.avatar_url || null;
+
   useEffect(() => {
     if (!stream || !user?.id) {
       return;
@@ -210,28 +214,19 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
-        console.log('Presence sync state:', presenceState);
         
-        let uniqueUsersCount = Object.keys(presenceState).length;
-        setViewerCount(uniqueUsersCount);
-
+        const uniqueUserIds = new Set<string>();
         const currentViewers: any[] = [];
         
-        // Nouvelle approche super robuste : on aplatit puis filtre
-        const allStreams = Object.values(presenceState).flat();
-        
-        // Dédupliquer ! On ne garde qu'une seule instance par `user_id` 
-        // ou par `presence_ref` si inconnu
-        const uniqueSet = new Map();
-        allStreams.forEach((viewerState: any) => {
-          const identifierKey = viewerState.user_id || viewerState.presence_ref || Math.random().toString();
-          if (!uniqueSet.has(identifierKey)) {
-            uniqueSet.set(identifierKey, viewerState);
+        Object.values(presenceState).flat().forEach((viewerState: any) => {
+          const uid = viewerState.user_id || viewerState.presence_ref || Math.random().toString();
+          if (!uniqueUserIds.has(uid)) {
+            uniqueUserIds.add(uid);
             currentViewers.push(viewerState);
           }
         });
 
-        console.log('Parsed viewers list:', currentViewers);
+        setViewerCount(uniqueUserIds.size);
         setViewersList(currentViewers);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
@@ -255,25 +250,22 @@ const UserLive: React.FC = () => {
         setMessages(prev => [...prev.slice(-49), newMsg]);
       })
       .subscribe(async (status) => {
-        console.log('Realtime channel status:', status);
         if (status === 'SUBSCRIBED') {
-          const trackStatus = await roomChannel.track({
+          await roomChannel.track({
             user_id: user.id,
-            user_name: getDisplayName(profile) || 'Utilisateur',
-            avatar_url: profile?.avatar_url || null,
+            user_name: stableDisplayName || 'Utilisateur',
+            avatar_url: stableAvatarUrl,
             role: isHost ? 'host' : 'viewer',
             online_at: new Date().toISOString(),
           });
-          console.log('Track status:', trackStatus);
         }
       });
 
     return () => {
-      console.log('Removing channel:', roomChannel.topic);
       supabase.removeChannel(roomChannel);
       presenceChannelRef.current = null;
     };
-  }, [isHost, stream?.id, user?.id, profile?.first_name, profile?.last_name, profile?.username, profile?.avatar_url]);
+  }, [stream?.id, user?.id, isHost]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
