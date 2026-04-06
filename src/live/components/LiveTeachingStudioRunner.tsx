@@ -14,12 +14,15 @@ interface WhiteboardProps {
 
 const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, remoteWhiteboardAction }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<WhiteboardTool>('pen');
   const [color, setColor] = useState('#38bdf8');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [currentStroke, setCurrentStroke] = useState<any>(null);
   const [textInput, setTextInput] = useState<{x: number, y: number, value: string} | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
 
   const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -83,8 +86,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
   };
 
   const endDrawing = () => {
-    if (isDrawing && currentStroke && onWhiteboardAction) {
-      onWhiteboardAction({ type: 'stroke', payload: currentStroke });
+    if (isDrawing && currentStroke) {
+      setHistory(prev => [...prev, { type: 'stroke', payload: currentStroke }]);
+      if (onWhiteboardAction) {
+        onWhiteboardAction({ type: 'stroke', payload: currentStroke });
+      }
     }
     setIsDrawing(false);
     setCurrentStroke(null);
@@ -96,6 +102,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHistory([]);
     if (isHost && onWhiteboardAction) {
       onWhiteboardAction({ type: 'clear' });
     }
@@ -142,6 +149,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
            fontSize: 36
          };
          drawText(ctx, textData);
+         setHistory(prev => [...prev, { type: 'text', payload: textData }]);
          if (isHost && onWhiteboardAction) {
            onWhiteboardAction({ type: 'text', payload: textData });
          }
@@ -155,6 +163,14 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     }
   };
 
+  const redrawHistory = (ctx: CanvasRenderingContext2D, items: any[]) => {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    items.forEach(action => {
+      if (action.type === 'stroke') drawStroke(ctx, action.payload);
+      else if (action.type === 'text') drawText(ctx, action.payload);
+    });
+  };
+
   useEffect(() => {
     if (!remoteWhiteboardAction || isHost) return;
     const canvas = canvasRef.current;
@@ -163,32 +179,70 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     if (!ctx) return;
 
     if (remoteWhiteboardAction.type === 'clear') {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+       setHistory([]);
+       ctx.clearRect(0, 0, canvas.width, canvas.height);
     } else if (remoteWhiteboardAction.type === 'stroke') {
-      drawStroke(ctx, remoteWhiteboardAction.payload);
+       setHistory(prev => [...prev, remoteWhiteboardAction]);
+       drawStroke(ctx, remoteWhiteboardAction.payload);
     } else if (remoteWhiteboardAction.type === 'text') {
-      drawText(ctx, remoteWhiteboardAction.payload);
+       setHistory(prev => [...prev, remoteWhiteboardAction]);
+       drawText(ctx, remoteWhiteboardAction.payload);
+    } else if (remoteWhiteboardAction.type === 'sync_full') {
+       const newHistory = remoteWhiteboardAction.history || [];
+       setHistory(newHistory);
+       redrawHistory(ctx, newHistory);
     }
   }, [remoteWhiteboardAction, isHost]);
   
   // Setup sizing
+  const historyRef = useRef<any[]>([]);
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Set internal resolution much higher for sharpness
+    // Set a fixed logical resolution for all clients so strokes align perfectly
     const resizeCanvas = () => {
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth * 2;
-        canvas.height = parent.clientHeight * 2;
-      }
+      canvas.width = 1920;
+      canvas.height = 1080;
+      
+      const ctx = canvas.getContext('2d');
+      if (ctx) redrawHistory(ctx, historyRef.current);
     };
     
     resizeCanvas();
+    
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      // Wait a tick for the browser layout to complete in fullscreen before redraw
+      setTimeout(resizeCanvas, 100);
+    };
+    
     window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
   }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current?.requestFullscreen();
+        if (window.screen && window.screen.orientation) {
+           await window.screen.orientation.lock('landscape').catch(() => {});
+        }
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className="flex h-full w-full flex-col bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
@@ -251,53 +305,72 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
         </div>
       )}
       
-      <div className="relative flex-1 bg-zinc-900 cursor-crosshair overflow-hidden touch-none">
-        {/* Subtle grid background */}
-        <div 
-          className="absolute inset-0 pointer-events-none opacity-20"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.4) 1px, transparent 0)',
-            backgroundSize: '24px 24px'
-          }}
-        />
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={endDrawing}
-          onMouseOut={endDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={endDrawing}
-          onTouchCancel={endDrawing}
-          style={{ width: '100%', height: '100%' }}
-        />
+      <div ref={containerRef} className="relative flex flex-1 items-center justify-center bg-zinc-950 cursor-crosshair overflow-hidden touch-none h-full w-full">
+        {/* Aspect Ratio Container for Perfect Coordinate Mapping */}
+        <div className="relative w-full max-w-full max-h-full aspect-video shadow-2xl bg-zinc-900 overflow-hidden ring-1 ring-white/10">
+          <div 
+            className="absolute inset-0 pointer-events-none opacity-20"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.4) 1px, transparent 0)',
+              backgroundSize: '24px 24px'
+            }}
+          />
+          <canvas
+            ref={canvasRef}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={endDrawing}
+            onMouseOut={endDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={endDrawing}
+            onTouchCancel={endDrawing}
+            className="w-full h-full block"
+          />
         
-        {textInput && (
-           <input
-             autoFocus
-             type="text"
-             value={textInput.value}
-             onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
-             onKeyDown={handleTextSubmit}
-             onBlur={() => { setTextInput(null); setTool('pen'); }}
-             className="absolute bg-transparent border-b border-dashed border-indigo-500 text-xl p-0 m-0 z-50 focus:outline-none focus:ring-0"
-             style={{ 
-               left: `${textInput.x}px`, 
-               top: `${textInput.y}px`, 
-               color, 
-               fontFamily: 'sans-serif'
-             }}
-             placeholder="Taper texte (Entrée)"
-           />
-        )}
+          {textInput && (
+             <input
+               autoFocus
+               type="text"
+               value={textInput.value}
+               onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
+               onKeyDown={handleTextSubmit}
+               onBlur={() => { 
+                 if (textInput.value.trim()) {
+                   handleTextSubmit({ key: 'Enter' } as any);
+                 } else {
+                   setTextInput(null); 
+                   setTool('pen'); 
+                 }
+               }}
+               className="absolute bg-transparent border-b border-dashed border-indigo-500 text-xl md:text-2xl lg:text-3xl p-0 m-0 z-50 focus:outline-none focus:ring-0"
+               style={{ 
+                 left: `${textInput.x}px`, 
+                 top: `${textInput.y}px`, 
+                 color, 
+                 fontFamily: 'sans-serif'
+               }}
+               placeholder="Taper... (Entrée)"
+             />
+          )}
 
-        {!isHost && (
-          <div className="absolute top-4 left-4 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-sky-400 backdrop-blur-md shadow-xl flex items-center">
-            <NotebookPen className="h-3.5 w-3.5 mr-2" />
-            Vue en direct de l'enseignant
-          </div>
-        )}
+          {!isHost && (
+            <div className="absolute top-4 left-4 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-sky-400 backdrop-blur-md shadow-xl flex items-center z-50">
+              <NotebookPen className="h-3.5 w-3.5 mr-2" />
+              Vue en direct de l'enseignant
+            </div>
+          )}
+        </div>
+        
+        {/* Fullscreen Toggle */}
+        <Button
+           variant="ghost"
+           size="icon"
+           onClick={toggleFullscreen}
+           className="absolute bottom-4 right-4 h-10 w-10 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md z-50"
+        >
+          <Maximize className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );

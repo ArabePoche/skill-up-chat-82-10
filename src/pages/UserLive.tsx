@@ -281,6 +281,7 @@ const UserLive: React.FC = () => {
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
   const publicLiveScreenRef = useRef<LiveScreen | null>(null);
+  const whiteboardHistoryRef = useRef<any[]>([]);
   const endedLiveHandledRef = useRef<string | null>(null);
   
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -773,12 +774,18 @@ const UserLive: React.FC = () => {
           event: 'live_screen_state',
           payload: {
             screen: publicLiveScreenRef.current,
+            whiteboard_history: whiteboardHistoryRef.current,
           },
         });
       })
       .on('broadcast', { event: 'live_screen_state' }, (payload) => {
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
         setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
+        
+        const whiteboardHistory = (payload.payload as any)?.whiteboard_history;
+        if (whiteboardHistory && Array.isArray(whiteboardHistory)) {
+          setRemoteWhiteboardAction({ type: 'sync_full', history: whiteboardHistory });
+        }
       })
       .on('broadcast', { event: 'whiteboard_update' }, (payload) => {
         setRemoteWhiteboardAction((payload.payload as any)?.action);
@@ -997,6 +1004,15 @@ const UserLive: React.FC = () => {
   const handleWhiteboardAction = useCallback((action: any) => {
     if (!isHost || !presenceChannelRef.current) return;
     
+    if (action.type === 'clear') {
+      whiteboardHistoryRef.current = [];
+    } else if (action.type === 'stroke' || action.type === 'text') {
+      whiteboardHistoryRef.current = [...whiteboardHistoryRef.current, action.payload];
+      // Note: action.payload is what is needed. Wait, in remoteWhiteboardAction, it expects { type: 'stroke', payload: ... }.
+      // So we should store the whole action.
+      whiteboardHistoryRef.current = [...whiteboardHistoryRef.current, action];
+    }
+
     void presenceChannelRef.current.send({
       type: 'broadcast',
       event: 'whiteboard_update',
