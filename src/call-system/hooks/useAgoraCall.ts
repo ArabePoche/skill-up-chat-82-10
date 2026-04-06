@@ -23,6 +23,7 @@ export interface AgoraCallState {
   isVideoEnabled: boolean;
   remoteUsers: string[];
   duration: number;
+  localUid: number | null;
 }
 
 export interface AgoraJoinOptions {
@@ -37,6 +38,8 @@ export const useAgoraCall = () => {
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
   const latestRemoteVideoTrackRef = useRef<IRemoteVideoTrack | null>(null);
+  const remoteVideoTracksRef = useRef<Map<string, IRemoteVideoTrack>>(new Map());
+  const firstRemoteUidRef = useRef<string | null>(null);
   const localVideoElementRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoElementRef = useRef<HTMLDivElement | null>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -49,6 +52,7 @@ export const useAgoraCall = () => {
     isVideoEnabled: true,
     remoteUsers: [],
     duration: 0,
+    localUid: null,
   });
 
   // Nettoyage au démontage
@@ -179,8 +183,14 @@ export const useAgoraCall = () => {
 
         if (mediaType === 'video') {
           const remoteVideoTrack = user.videoTrack as IRemoteVideoTrack;
-          latestRemoteVideoTrackRef.current = remoteVideoTrack;
-          playRemoteTrack();
+          const uid = String(user.uid);
+          remoteVideoTracksRef.current.set(uid, remoteVideoTrack);
+          // Only the first remote publisher goes into the background container
+          if (!firstRemoteUidRef.current) {
+            firstRemoteUidRef.current = uid;
+            latestRemoteVideoTrackRef.current = remoteVideoTrack;
+            playRemoteTrack();
+          }
         }
         if (mediaType === 'audio') {
           const remoteAudioTrack = user.audioTrack as IRemoteAudioTrack;
@@ -195,18 +205,41 @@ export const useAgoraCall = () => {
 
       client.on('user-unpublished', (user, mediaType) => {
         console.log('🔇 Remote user unpublished:', user.uid, mediaType);
+        if (mediaType === 'video') {
+          const uid = String(user.uid);
+          remoteVideoTracksRef.current.delete(uid);
+          if (firstRemoteUidRef.current === uid) {
+            // Main stream stopped – promote the next available track
+            const nextEntry = remoteVideoTracksRef.current.keys().next();
+            if (!nextEntry.done && nextEntry.value !== undefined) {
+              const nextUid = nextEntry.value;
+              firstRemoteUidRef.current = nextUid;
+              latestRemoteVideoTrackRef.current = remoteVideoTracksRef.current.get(nextUid) ?? null;
+              playRemoteTrack();
+            } else {
+              firstRemoteUidRef.current = null;
+              latestRemoteVideoTrackRef.current = null;
+            }
+          }
+        }
       });
 
       client.on('user-left', (user) => {
         console.log('👋 Remote user left:', user.uid);
+        const uid = String(user.uid);
+        remoteVideoTracksRef.current.delete(uid);
+        if (firstRemoteUidRef.current === uid) {
+          firstRemoteUidRef.current = null;
+          latestRemoteVideoTrackRef.current = null;
+        }
         setState(prev => ({
           ...prev,
-          remoteUsers: prev.remoteUsers.filter(id => id !== String(user.uid)),
+          remoteUsers: prev.remoteUsers.filter(id => id !== uid),
         }));
       });
 
       // 4. Rejoindre le canal
-      await client.join(tokenData.appId, channelName, tokenData.token, agoraUid);
+      const assignedUid = await client.join(tokenData.appId, channelName, tokenData.token, agoraUid);
 
       if (joinRequestId !== joinRequestIdRef.current) {
         await client.leave();
@@ -251,6 +284,7 @@ export const useAgoraCall = () => {
         isJoined: true,
         isConnecting: false,
         isVideoEnabled: !!enableVideo,
+        localUid: typeof assignedUid === 'number' ? assignedUid : agoraUid,
       }));
 
       toast.success('Connecté à l\'appel');
@@ -290,6 +324,8 @@ export const useAgoraCall = () => {
     }
 
     latestRemoteVideoTrackRef.current = null;
+    remoteVideoTracksRef.current.clear();
+    firstRemoteUidRef.current = null;
 
     if (clientRef.current) {
       await clientRef.current.leave();
@@ -303,6 +339,7 @@ export const useAgoraCall = () => {
       isVideoEnabled: true,
       remoteUsers: [],
       duration: 0,
+      localUid: null,
     });
   }, []);
 
@@ -328,6 +365,61 @@ export const useAgoraCall = () => {
     }
   }, [state.isVideoEnabled]);
 
+  /**
+   * Récupérer la piste vidéo d'un utilisateur distant par son UID Agora
+   */
+  const getRemoteVideoTrack = useCallback((uid: string): IRemoteVideoTrack | undefined => {
+    return remoteVideoTracksRef.current.get(uid);
+  }, []);
+
+  /**
+   * Passer du rôle audience au rôle hôte (intervenant accepté)
+   * Active le micro et la caméra, puis publie les pistes dans le canal
+   */
+  const upgradeToHost = useCallback(async (options: { enableAudio?: boolean; enableVideo?: boolean } = {}) => {
+    const client = clientRef.current;
+    if (!client) {
+      toast.error('Non connecté au canal Agora');
+      return;
+    }
+
+    const { enableAudio = true, enableVideo = true } = options;
+
+    try {
+      await client.setClientRole('host');
+
+      const tracksToPublish: Array<IMicrophoneAudioTrack | ICameraVideoTrack> = [];
+
+      if (enableAudio && !localAudioTrackRef.current) {
+        const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        localAudioTrackRef.current = audioTrack;
+        tracksToPublish.push(audioTrack);
+      }
+
+      if (enableVideo && !localVideoTrackRef.current) {
+        const videoTrack = await AgoraRTC.createCameraVideoTrack();
+        localVideoTrackRef.current = videoTrack;
+        playLocalTrack();
+        tracksToPublish.push(videoTrack);
+      }
+
+      if (tracksToPublish.length > 0) {
+        await client.publish(tracksToPublish);
+      }
+
+      setState(prev => ({
+        ...prev,
+        isMuted: !enableAudio,
+        isVideoEnabled: enableVideo,
+      }));
+
+      toast.success('Vous intervenez maintenant dans le live !');
+    } catch (error) {
+      console.error('❌ Error upgrading to host:', error);
+      toast.error('Impossible d\'activer votre micro/caméra');
+    }
+  }, [playLocalTrack]);
+
   return {
     state,
     joinCall,
@@ -336,5 +428,7 @@ export const useAgoraCall = () => {
     toggleVideo,
     localVideoContainerRef,
     remoteVideoContainerRef,
+    getRemoteVideoTrack,
+    upgradeToHost,
   };
 };
