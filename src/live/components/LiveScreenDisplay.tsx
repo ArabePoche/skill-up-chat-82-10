@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Coins, Eye, ShoppingBag, Sparkles, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { LiveScreen } from '@/live/types';
 import { getLiveFormationImage, getLiveFormationPlanLabel, getLiveProductImage } from '@/live/types';
@@ -29,8 +30,17 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   onEnroll,
 }) => {
   const isPrivate = variant === 'private';
+  const isPublicFormation = !isPrivate && screen.type === 'formation_enrollment';
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setIsPlanDialogOpen(false);
+  }, [screen]);
+
   const wrapperClassName = isPrivate
     ? 'w-full max-w-sm border-white/10 bg-black/65 text-white shadow-2xl'
+    : isPublicFormation
+    ? 'w-full max-w-[19rem] border-white/15 bg-black/62 text-white shadow-[0_16px_50px_rgba(0,0,0,0.28)]'
     : 'w-full max-w-md border-white/15 bg-black/70 text-white shadow-[0_20px_80px_rgba(0,0,0,0.35)]';
 
   if (screen.type === 'shop_product') {
@@ -90,16 +100,55 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   }
 
   const image = getLiveFormationImage(screen.formation);
-  const pricingOptions = (screen.formation.pricing_options || [])
-    .filter((option) => option.is_active !== false)
-    .sort((left, right) => {
-      const order = { free: 0, standard: 1, premium: 2, groupe: 3 } as const;
-      return (order[left.plan_type as keyof typeof order] ?? 99) - (order[right.plan_type as keyof typeof order] ?? 99);
-    });
+  const pricingOptions = useMemo(() => {
+    return (screen.formation.pricing_options || [])
+      .filter((option) => option.is_active !== false)
+      .sort((left, right) => {
+        const order = { free: 0, standard: 1, premium: 2, groupe: 3 } as const;
+        return (order[left.plan_type as keyof typeof order] ?? 99) - (order[right.plan_type as keyof typeof order] ?? 99);
+      });
+  }, [screen.formation.pricing_options]);
+
+  const renderPricingOption = (option: typeof pricingOptions[number]) => {
+    const monthlyPrice = option.price_monthly || 0;
+    const yearlyPrice = option.price_yearly || 0;
+    const isFreePlan = option.plan_type === 'free' || (monthlyPrice <= 0 && yearlyPrice <= 0);
+
+    return (
+      <div key={option.id || option.plan_type} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-white">{getLiveFormationPlanLabel(option.plan_type)}</p>
+            <p className="text-xs text-white/65">
+              {isFreePlan
+                ? 'Accès gratuit'
+                : yearlyPrice > 0
+                ? `${monthlyPrice.toLocaleString('fr-FR')} FCFA / mois · ${yearlyPrice.toLocaleString('fr-FR')} FCFA / an`
+                : `${monthlyPrice.toLocaleString('fr-FR')} FCFA / mois`}
+            </p>
+          </div>
+          {!isPrivate && !isHost && canEnroll && (
+            <Button
+              size="sm"
+              onClick={() => onEnroll?.(option.plan_type as 'free' | 'standard' | 'premium' | 'groupe')}
+              disabled={isEnrollmentPending}
+              className="bg-orange-500 text-white hover:bg-orange-600"
+            >
+              {isEnrollmentPending ? 'Inscription...' : 'Choisir'}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <Card className={cn('overflow-hidden backdrop-blur-xl', wrapperClassName)}>
-      <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-amber-500/25 via-orange-500/15 to-rose-500/30 sm:h-40">
+    <>
+      <Card className={cn('overflow-hidden backdrop-blur-xl', wrapperClassName)}>
+        <div className={cn(
+          'relative w-full overflow-hidden bg-gradient-to-br from-amber-500/25 via-orange-500/15 to-rose-500/30',
+          isPublicFormation ? 'h-24 sm:h-28' : 'h-32 sm:h-40'
+        )}>
         {image ? (
           <img src={image} alt={screen.formation.title} className="h-full w-full object-cover" />
         ) : (
@@ -118,83 +167,74 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
             {screen.formation.students_count || 0} inscrits
           </Badge>
         </div>
-      </div>
-      <CardContent className="space-y-3 p-4">
-        <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-200/90">
-            Formation mise en avant
-          </p>
-          <h3 className="line-clamp-2 text-lg font-bold text-white">{screen.formation.title}</h3>
-          {screen.formation.author_name && (
-            <p className="text-xs text-white/70">Par {screen.formation.author_name}</p>
-          )}
         </div>
-        {screen.formation.description && (
-          <p className="line-clamp-3 text-sm text-white/80">{screen.formation.description}</p>
-        )}
-        {pricingOptions.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">Plans disponibles</p>
-            <div className="grid gap-2">
-              {pricingOptions.map((option) => {
-                const monthlyPrice = option.price_monthly || 0;
-                const yearlyPrice = option.price_yearly || 0;
-                const isFreePlan = option.plan_type === 'free' || (monthlyPrice <= 0 && yearlyPrice <= 0);
-
-                return (
-                  <div key={option.id || option.plan_type} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{getLiveFormationPlanLabel(option.plan_type)}</p>
-                        <p className="text-xs text-white/65">
-                          {isFreePlan
-                            ? 'Accès gratuit'
-                            : yearlyPrice > 0
-                            ? `${monthlyPrice.toLocaleString('fr-FR')} FCFA / mois · ${yearlyPrice.toLocaleString('fr-FR')} FCFA / an`
-                            : `${monthlyPrice.toLocaleString('fr-FR')} FCFA / mois`}
-                        </p>
-                      </div>
-                      {!isPrivate && !isHost && canEnroll && (
-                        <Button
-                          size="sm"
-                          onClick={() => onEnroll?.(option.plan_type as 'free' | 'standard' | 'premium' | 'groupe')}
-                          disabled={isEnrollmentPending}
-                          className="bg-orange-500 text-white hover:bg-orange-600"
-                        >
-                          {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">Tarif</p>
-            <p className="text-xl font-black text-orange-300">
-              {screen.formation.price > 0 ? `${screen.formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
+        <CardContent className={cn('space-y-3', isPublicFormation ? 'p-3' : 'p-4')}>
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-200/90">
+              Formation mise en avant
             </p>
+            <h3 className={cn('font-bold text-white', isPublicFormation ? 'line-clamp-2 text-base' : 'line-clamp-2 text-lg')}>
+              {screen.formation.title}
+            </h3>
+            {screen.formation.author_name && (
+              <p className="text-xs text-white/70">Par {screen.formation.author_name}</p>
+            )}
           </div>
-          {!isPrivate && (
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={onOpenFormation}>
-                <Eye className="mr-2 h-4 w-4" />
-                Voir
-              </Button>
-              {!isHost && canEnroll && pricingOptions.length === 0 && (
-                <Button onClick={() => onEnroll?.('free')} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
+          {screen.formation.description && (
+            <p className={cn('text-white/80', isPublicFormation ? 'line-clamp-2 text-xs' : 'line-clamp-3 text-sm')}>
+              {screen.formation.description}
+            </p>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">Tarif</p>
+              <p className={cn('font-black text-orange-300', isPublicFormation ? 'text-lg' : 'text-xl')}>
+                {screen.formation.price > 0 ? `${screen.formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
+              </p>
+            </div>
+            {!isPrivate && (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={onOpenFormation}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Voir
                 </Button>
+                {!isHost && canEnroll && pricingOptions.length > 0 && (
+                  <Button onClick={() => setIsPlanDialogOpen(true)} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
+                  </Button>
+                )}
+                {!isHost && canEnroll && pricingOptions.length === 0 && (
+                  <Button onClick={() => onEnroll?.('free')} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
+        <DialogContent className="max-w-md border-white/10 bg-zinc-950 text-white">
+          <DialogHeader>
+            <DialogTitle>Choisir un plan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-white">{screen.formation.title}</p>
+              {screen.formation.author_name && (
+                <p className="text-xs text-white/65">Par {screen.formation.author_name}</p>
               )}
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="grid gap-2">
+              {pricingOptions.map(renderPricingOption)}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

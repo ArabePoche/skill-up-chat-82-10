@@ -18,6 +18,19 @@ const getDisplayName = (profile?: {
   return profile.username || null;
 };
 
+const normalizeNumericValue = (value: unknown) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = Number(value.replace(',', '.').trim());
+    return Number.isFinite(normalized) ? normalized : 0;
+  }
+
+  return 0;
+};
+
 export const useLiveCreatorAssets = (creatorId?: string | null) => {
   return useQuery({
     queryKey: ['live-creator-assets', creatorId],
@@ -90,6 +103,7 @@ export const useLiveCreatorAssets = (creatorId?: string | null) => {
 
       const products: LiveMarketplaceProduct[] = (productsResponse.data || []).map((product: any) => ({
         ...product,
+        price: normalizeNumericValue(product.price),
         seller_name: getDisplayName(product.profiles),
       }));
 

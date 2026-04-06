@@ -27,6 +27,19 @@ interface BuyWithScDialogProps {
   onClose: () => void;
 }
 
+const normalizeNumericValue = (value: unknown) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = Number(value.replace(',', '.').trim());
+    return Number.isFinite(normalized) ? normalized : 0;
+  }
+
+  return 0;
+};
+
 const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onClose }) => {
   const [quantity, setQuantity] = useState(1);
   const [shippingAddress, setShippingAddress] = useState('');
@@ -40,13 +53,15 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
 
   if (!product) return null;
 
-  const rate = scRate || 1;
+  const normalizedPrice = normalizeNumericValue(product.price);
+  const rate = normalizeNumericValue(scRate) || 1;
   const commissionRate = commissionSettings?.commission_rate || 5;
-  const unitPriceSc = fcfaToSc(product.price, rate);
+  const unitPriceSc = fcfaToSc(normalizedPrice, rate);
   const totalSc = unitPriceSc * quantity;
   const commissionSc = totalSc * commissionRate / 100;
   const sellerSc = totalSc - commissionSc;
   const hasEnough = (wallet?.soumboulah_cash || 0) >= totalSc;
+  const hasValidPrice = normalizedPrice > 0;
 
   const formatSc = (value: number) =>
     new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
@@ -57,7 +72,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
       productId: product.id,
       sellerId: product.seller_id || product.profiles?.id,
       quantity,
-      unitPrice: product.price,
+      unitPrice: normalizedPrice,
       scAmount: unitPriceSc,
       commissionRate,
       shippingAddress: shippingAddress.trim() || undefined,
@@ -93,7 +108,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
           <div className="bg-emerald-50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span>Prix unitaire</span>
-              <span className="font-bold">{formatSc(unitPriceSc)} SC <span className="text-muted-foreground text-xs">({product.price} FCFA)</span></span>
+              <span className="font-bold">{formatSc(unitPriceSc)} SC <span className="text-muted-foreground text-xs">({normalizedPrice} FCFA)</span></span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Quantité</span>
@@ -114,6 +129,11 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
             <div className="text-xs text-muted-foreground text-right">
               Commission plateforme : {formatSc(commissionSc)} SC ({commissionRate}%) · Vendeur reçoit : {formatSc(sellerSc)} SC
             </div>
+            {!hasValidPrice && (
+              <div className="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900">
+                Le prix du produit est invalide et ne peut pas encore être converti en SC.
+              </div>
+            )}
           </div>
 
           {/* Solde */}
@@ -163,7 +183,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
           <Button variant="outline" onClick={onClose} disabled={isPending}>Annuler</Button>
           <Button
             onClick={handleBuy}
-            disabled={isPending || !hasEnough || !shippingAddress.trim()}
+            disabled={isPending || !hasEnough || !shippingAddress.trim() || !hasValidPrice}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             {isPending ? 'Traitement...' : `Payer ${formatSc(totalSc)} SC`}
