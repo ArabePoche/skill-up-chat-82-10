@@ -34,6 +34,7 @@ import iconSB from '@/assets/coin-soumboulah-bonus.png';
 import iconH from '@/assets/coin-habbah.png';
 import { useFollow } from '@/friends/hooks/useFollow';
 import { motion } from 'framer-motion';
+import type { IRemoteVideoTrack } from 'agora-rtc-sdk-ng';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -114,6 +115,57 @@ const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
   );
 };
 
+/** Tuile vidéo pour un intervenant distant */
+const RemoteVideoTile: React.FC<{
+  uid: string;
+  getRemoteVideoTrack: (uid: string) => IRemoteVideoTrack | undefined;
+  label?: string;
+  avatarUrl?: string;
+  remoteUsers: string[];
+}> = ({ uid, getRemoteVideoTrack, label, avatarUrl, remoteUsers }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const tryPlay = () => {
+      const track = getRemoteVideoTrack(uid);
+      const el = containerRef.current;
+      if (el && track) {
+        el.innerHTML = '';
+        track.play(el, { fit: 'cover' });
+      }
+    };
+    tryPlay();
+    // Retry once after a short delay in case the track wasn't ready yet
+    const timer = setTimeout(tryPlay, 600);
+    return () => clearTimeout(timer);
+  }, [uid, getRemoteVideoTrack, remoteUsers]);
+
+  return (
+    <div className="relative w-full overflow-hidden rounded-xl bg-zinc-900 aspect-[9/16]">
+      <div ref={containerRef} className="w-full h-full" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+      {/* Avatar fallback when no video */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {!getRemoteVideoTrack(uid) && (
+          <Avatar className="h-12 w-12 border-2 border-white/20">
+            <AvatarImage src={avatarUrl || ''} />
+            <AvatarFallback className="bg-zinc-700 text-sm">
+              {label ? label.substring(0, 2).toUpperCase() : '?'}
+            </AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+      {label && (
+        <div className="absolute bottom-1.5 left-1.5 right-1.5">
+          <span className="text-white text-[9px] font-semibold bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-full truncate block text-center">
+            {label}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -131,6 +183,8 @@ const UserLive: React.FC = () => {
   const [messageInput, setMessageInput] = useState('');
   const [handRaiseRequests, setHandRaiseRequests] = useState<HandRaiseRequest[]>([]);
   const [hasRaisedHand, setHasRaisedHand] = useState(false);
+  const [acceptedParticipants, setAcceptedParticipants] = useState<HandRaiseRequest[]>([]);
+  const [isAcceptedParticipant, setIsAcceptedParticipant] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   
@@ -144,6 +198,8 @@ const UserLive: React.FC = () => {
     toggleVideo,
     localVideoContainerRef,
     remoteVideoContainerRef,
+    getRemoteVideoTrack,
+    upgradeToHost,
   } = useAgoraCall();
 
   const isHost = !!user?.id && !!stream?.host_id && user.id === stream.host_id && requestedHostMode;
@@ -312,12 +368,17 @@ const UserLive: React.FC = () => {
         setMessages(prev => [...prev.slice(-49), raiseMsg]);
       })
       .on('broadcast', { event: 'hand_accepted' }, (payload) => {
-        const { userId, userName } = payload.payload;
+        const { userId, userName, userAvatar } = payload.payload;
         if (userId === stableUserId) {
           toast.success('Le créateur a accepté votre demande ! Vous pouvez maintenant parler.');
           setHasRaisedHand(false);
+          setIsAcceptedParticipant(true);
+          void upgradeToHost({ enableAudio: true, enableVideo: true });
         }
         setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
+        setAcceptedParticipants(prev =>
+          prev.some(p => p.userId === userId) ? prev : [...prev, { userId, userName, userAvatar }]
+        );
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -384,12 +445,12 @@ const UserLive: React.FC = () => {
     toast.info('Demande envoyée au créateur');
   };
 
-  const handleAcceptHand = (userId: string, userName: string) => {
+  const handleAcceptHand = (userId: string, userName: string, userAvatar?: string | null) => {
     if (!presenceChannelRef.current) return;
     presenceChannelRef.current.send({
       type: 'broadcast',
       event: 'hand_accepted',
-      payload: { userId, userName },
+      payload: { userId, userName, userAvatar },
     });
     toast.success(`${userName} peut maintenant intervenir`);
     setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
@@ -593,6 +654,64 @@ const UserLive: React.FC = () => {
         )}
       </div>
 
+      {/* Right panel: accepted participants displayed vertically */}
+      {(() => {
+        // UIDs to show in the panel
+        const panelRemoteUids = isHost ? state.remoteUsers : state.remoteUsers.slice(1);
+        const showPanel = panelRemoteUids.length > 0 || isAcceptedParticipant;
+        if (!showPanel) return null;
+
+        return (
+          <div className="absolute right-2 top-16 bottom-24 z-20 flex flex-col gap-2 w-[76px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-events-auto">
+            {/* Own local video preview for accepted participant */}
+            {isAcceptedParticipant && (
+              <div className="relative w-full overflow-hidden rounded-xl bg-zinc-900 aspect-[9/16] shrink-0">
+                <div ref={localVideoContainerRef} className="w-full h-full" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                <div className="absolute bottom-1.5 left-1.5 right-1.5">
+                  <span className="text-white text-[9px] font-semibold bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-full truncate block text-center">
+                    {getDisplayName(profile)}
+                  </span>
+                </div>
+                {/* Mic/camera status for own tile */}
+                <div className="absolute top-1 right-1 flex flex-col gap-0.5">
+                  {state.isMuted && (
+                    <div className="bg-red-500/80 rounded-full p-0.5">
+                      <MicOff className="h-2.5 w-2.5 text-white" />
+                    </div>
+                  )}
+                  {!state.isVideoEnabled && (
+                    <div className="bg-red-500/80 rounded-full p-0.5">
+                      <VideoOff className="h-2.5 w-2.5 text-white" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Remote participant tiles */}
+            {panelRemoteUids.map((uid, index) => {
+              // Map Agora UID position to accepted participant info
+              // For host view: panelRemoteUids[i] ↔ acceptedParticipants[i]
+              // For viewer/accepted view: panelRemoteUids starts after the host (already sliced)
+              //   acceptedParticipants[0] is the first accepted; if current user is accepted, skip them
+              const participantOffset = isAcceptedParticipant ? 1 : 0;
+              const participant = acceptedParticipants[index + participantOffset] ?? acceptedParticipants[index];
+              return (
+                <RemoteVideoTile
+                  key={uid}
+                  uid={uid}
+                  getRemoteVideoTrack={getRemoteVideoTrack}
+                  label={participant?.userName}
+                  avatarUrl={participant?.userAvatar ?? undefined}
+                  remoteUsers={state.remoteUsers}
+                />
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* Top overlay */}
       <div className="absolute top-0 left-0 w-full flex items-start justify-between bg-gradient-to-b from-black/60 via-black/20 to-transparent px-4 py-3 pb-12 z-30 pt-4">
         {/* TOP LEFT: Avatar, Host Name, Badges, Follow Button */}
@@ -669,7 +788,10 @@ const UserLive: React.FC = () => {
         )}
 
         {/* Live Chat Overlay - scrollable, ~3 messages visible, scroll up for older ones */}
-        <div className="absolute bottom-20 left-4 right-16 z-10 pointer-events-auto">
+        {/* right offset increases when participants panel is visible */}
+        <div className={`absolute bottom-20 left-4 z-10 pointer-events-auto ${
+          acceptedParticipants.length > 0 || isAcceptedParticipant ? 'right-24' : 'right-16'
+        }`}>
           <div
             ref={commentsScrollRef}
             className="max-h-[160px] overflow-y-auto space-y-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y"
@@ -679,9 +801,9 @@ const UserLive: React.FC = () => {
         </div>
       </div>
 
-      {/* Hand raise requests panel - TikTok style, right side */}
+      {/* Hand raise requests panel – shown to the host on the left side to avoid conflict with participants panel */}
       {handRaiseRequests.length > 0 && (
-        <div className="absolute right-2 bottom-24 flex flex-col gap-2 z-20 pointer-events-auto max-h-[60vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="absolute left-2 bottom-24 flex flex-col gap-2 z-20 pointer-events-auto max-h-[60vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {handRaiseRequests.map((req) => (
             <div key={req.userId} className="flex flex-col items-center gap-1 bg-black/60 backdrop-blur-sm rounded-xl p-2 w-14">
               <Avatar className="h-9 w-9 border-2 border-amber-400/70">
@@ -696,7 +818,7 @@ const UserLive: React.FC = () => {
               {isHost ? (
                 <div className="flex gap-1 mt-0.5">
                   <button
-                    onClick={() => handleAcceptHand(req.userId, req.userName)}
+                    onClick={() => handleAcceptHand(req.userId, req.userName, req.userAvatar)}
                     className="rounded-full bg-green-500/80 px-1.5 py-0.5 hover:bg-green-500 transition-colors text-[10px] text-white font-bold"
                     title="Accepter"
                   >
@@ -742,20 +864,22 @@ const UserLive: React.FC = () => {
 
           {!isHost && (
             <>
-              {/* Raise Hand Button */}
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className={`h-11 w-11 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white transition-all ${
-                  hasRaisedHand ? 'bg-amber-500/30 border-amber-400/50 animate-pulse' : ''
-                }`}
-                onClick={handleRaiseHand}
-                disabled={hasRaisedHand}
-                title="Demander à intervenir"
-              >
-                <Hand size={20} className={hasRaisedHand ? 'text-amber-400' : ''} />
-              </Button>
+              {/* Raise Hand Button - hidden once accepted as participant */}
+              {!isAcceptedParticipant && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className={`h-11 w-11 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white transition-all ${
+                    hasRaisedHand ? 'bg-amber-500/30 border-amber-400/50 animate-pulse' : ''
+                  }`}
+                  onClick={handleRaiseHand}
+                  disabled={hasRaisedHand}
+                  title="Demander à intervenir"
+                >
+                  <Hand size={20} className={hasRaisedHand ? 'text-amber-400' : ''} />
+                </Button>
+              )}
 
               <Button
                 type="button"
@@ -789,7 +913,7 @@ const UserLive: React.FC = () => {
             </>
           )}
 
-          {isHost && (
+          {(isHost || isAcceptedParticipant) && (
             <>
               <Button
                 type="button"
