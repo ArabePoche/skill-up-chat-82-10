@@ -30,7 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import iconSC from '@/assets/coin-soumboulah-cash.png';
 import iconSB from '@/assets/coin-soumboulah-bonus.png';
 import iconH from '@/assets/coin-habbah.png';
-import VideoUserProfile from '@/components/video/VideoUserProfile';
+import { useFollow } from '@/friends/hooks/useFollow';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -77,6 +77,39 @@ interface LiveMessage {
   currency?: string;
   createdAt: string;
 }
+
+/** Bouton Suivre inline sans avatar, pour l'en-tête du live */
+const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
+  const { friendshipStatus, sendRequest, cancelRequest, acceptRequest, removeFriend, isLoading } = useFollow(hostId);
+
+  const label = friendshipStatus === 'friends' ? 'Abonné'
+    : friendshipStatus === 'pending_sent' ? 'Envoyé'
+    : 'Suivre';
+
+  const colors = friendshipStatus === 'friends'
+    ? 'bg-green-500/80 text-white'
+    : friendshipStatus === 'pending_sent'
+    ? 'bg-white/20 text-white'
+    : 'bg-red-500 text-white';
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (friendshipStatus === 'friends') removeFriend();
+    else if (friendshipStatus === 'pending_sent') cancelRequest();
+    else if (friendshipStatus === 'pending_received') acceptRequest();
+    else sendRequest();
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isLoading}
+      className={`ml-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold backdrop-blur-sm transition-colors ${colors} disabled:opacity-50`}
+    >
+      {label}
+    </button>
+  );
+};
 
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -192,6 +225,10 @@ const UserLive: React.FC = () => {
     };
   }, [id]);
 
+  // Stabilize profile data to prevent constant re-subscription
+  const stableDisplayName = useMemo(() => getDisplayName(profile), [profile?.first_name, profile?.last_name, profile?.username]);
+  const stableAvatarUrl = profile?.avatar_url || null;
+
   useEffect(() => {
     if (!stream || !user?.id) {
       return;
@@ -210,28 +247,19 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
-        console.log('Presence sync state:', presenceState);
         
-        let uniqueUsersCount = Object.keys(presenceState).length;
-        setViewerCount(uniqueUsersCount);
-
+        const uniqueUserIds = new Set<string>();
         const currentViewers: any[] = [];
         
-        // Nouvelle approche super robuste : on aplatit puis filtre
-        const allStreams = Object.values(presenceState).flat();
-        
-        // Dédupliquer ! On ne garde qu'une seule instance par `user_id` 
-        // ou par `presence_ref` si inconnu
-        const uniqueSet = new Map();
-        allStreams.forEach((viewerState: any) => {
-          const identifierKey = viewerState.user_id || viewerState.presence_ref || Math.random().toString();
-          if (!uniqueSet.has(identifierKey)) {
-            uniqueSet.set(identifierKey, viewerState);
+        Object.values(presenceState).flat().forEach((viewerState: any) => {
+          const uid = viewerState.user_id || viewerState.presence_ref || Math.random().toString();
+          if (!uniqueUserIds.has(uid)) {
+            uniqueUserIds.add(uid);
             currentViewers.push(viewerState);
           }
         });
 
-        console.log('Parsed viewers list:', currentViewers);
+        setViewerCount(uniqueUserIds.size);
         setViewersList(currentViewers);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
@@ -255,25 +283,22 @@ const UserLive: React.FC = () => {
         setMessages(prev => [...prev.slice(-49), newMsg]);
       })
       .subscribe(async (status) => {
-        console.log('Realtime channel status:', status);
         if (status === 'SUBSCRIBED') {
-          const trackStatus = await roomChannel.track({
+          await roomChannel.track({
             user_id: user.id,
-            user_name: getDisplayName(profile) || 'Utilisateur',
-            avatar_url: profile?.avatar_url || null,
+            user_name: stableDisplayName || 'Utilisateur',
+            avatar_url: stableAvatarUrl,
             role: isHost ? 'host' : 'viewer',
             online_at: new Date().toISOString(),
           });
-          console.log('Track status:', trackStatus);
         }
       });
 
     return () => {
-      console.log('Removing channel:', roomChannel.topic);
       supabase.removeChannel(roomChannel);
       presenceChannelRef.current = null;
     };
-  }, [isHost, stream?.id, user?.id, profile?.first_name, profile?.last_name, profile?.username, profile?.avatar_url]);
+  }, [stream?.id, user?.id, isHost]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -465,12 +490,7 @@ const UserLive: React.FC = () => {
             </div>
           </div>
           {!isHost && stream.host_id && user && stream.host_id !== user.id && (
-            <div className="ml-1 scale-[0.85] origin-right">
-              <VideoUserProfile
-                profile={stream.host as any}
-                showFollowButton={true}
-              />
-            </div>
+            <FollowButtonInline hostId={stream.host_id} />
           )}
         </div>
 
@@ -518,7 +538,7 @@ const UserLive: React.FC = () => {
         )}
 
         {/* Live Chat Overlay */}
-        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end gap-2 max-h-[140px] overflow-y-auto pointer-events-auto z-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end gap-2 max-h-[45vh] overflow-y-auto pointer-events-auto z-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y">
           {messages.map((msg) => (
             <div
               key={msg.id}

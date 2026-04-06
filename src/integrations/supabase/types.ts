@@ -9526,56 +9526,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_live_streams: {
-        Row: {
-          agora_channel: string
-          created_at: string
-          description: string | null
-          ended_at: string | null
-          host_id: string
-          id: string
-          started_at: string
-          status: string
-          title: string
-          updated_at: string
-          visibility: string
-        }
-        Insert: {
-          agora_channel: string
-          created_at?: string
-          description?: string | null
-          ended_at?: string | null
-          host_id: string
-          id?: string
-          started_at?: string
-          status?: string
-          title: string
-          updated_at?: string
-          visibility?: string
-        }
-        Update: {
-          agora_channel?: string
-          created_at?: string
-          description?: string | null
-          ended_at?: string | null
-          host_id?: string
-          id?: string
-          started_at?: string
-          status?: string
-          title?: string
-          updated_at?: string
-          visibility?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_live_streams_host_id_fkey"
-            columns: ["host_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_follows: {
         Row: {
           created_at: string | null
@@ -9646,6 +9596,56 @@ export type Database = {
           {
             foreignKeyName: "user_lesson_progress_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_live_streams: {
+        Row: {
+          agora_channel: string
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          host_id: string
+          id: string
+          started_at: string
+          status: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          agora_channel: string
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          host_id: string
+          id?: string
+          started_at?: string
+          status?: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          agora_channel?: string
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          host_id?: string
+          id?: string
+          started_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_live_streams_host_id_fkey"
+            columns: ["host_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -10522,6 +10522,7 @@ export type Database = {
         Args: { product_id: string; quantity: number }
         Returns: undefined
       }
+      delete_own_video: { Args: { p_video_id: string }; Returns: Json }
       delete_student_cascade: {
         Args: { p_student_id: string }
         Returns: undefined
@@ -10532,14 +10533,6 @@ export type Database = {
       }
       earn_habbah: {
         Args: { p_action_type: string; p_reference_id?: string }
-        Returns: Json
-      }
-      reverse_habbah_gain: {
-        Args: {
-          p_action_type: string
-          p_reason?: string
-          p_reference_id?: string
-        }
         Returns: Json
       }
       find_contacts_by_phone: {
@@ -10841,6 +10834,14 @@ export type Database = {
       return_from_marketplace: {
         Args: { boutique_product_id: string; quantity: number }
         Returns: undefined
+      }
+      reverse_habbah_gain: {
+        Args: {
+          p_action_type: string
+          p_reason?: string
+          p_reference_id?: string
+        }
+        Returns: Json
       }
       search_public_cvs: {
         Args: {
