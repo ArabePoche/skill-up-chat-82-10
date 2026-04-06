@@ -193,7 +193,7 @@ const CurrencyDashboard: React.FC = () => {
     );
   }
 
-  const scToFcfa = convSettings?.sc_to_fcfa_rate || 10;
+  const scToFcfa = convSettings?.sc_to_fcfa_rate ?? 0;
   const gdp = (moneySupply?.totalSC || 0) * scToFcfa; // PIB en FCFA
   const velocity = moneySupply?.totalSC ? (txVolume?.volumeByCurrency.sc || 0) / moneySupply.totalSC : 0;
 

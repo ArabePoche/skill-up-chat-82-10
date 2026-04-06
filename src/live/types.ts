@@ -24,7 +24,42 @@ export type LiveFormation = Pick<
   pricing_options?: LiveFormationPricingOption[];
 };
 
-export type LiveScreenKind = 'shop_product' | 'formation_enrollment';
+export type LiveTeachingLesson = Pick<
+  Tables<'lessons'>,
+  'id' | 'title' | 'description' | 'duration' | 'language' | 'order_index' | 'video_url'
+> & {
+  formation_id: string;
+  formation_title: string;
+  formation_image_url?: string | null;
+  level_id?: string | null;
+  level_title?: string | null;
+};
+
+export type LiveTeachingStudioElementType = 'whiteboard' | 'notes' | 'document';
+
+export interface LiveTeachingStudioElement {
+  id: string;
+  type: LiveTeachingStudioElementType;
+  title: string;
+  content?: string | null;
+  document_name?: string | null;
+  document_url?: string | null;
+}
+
+export interface LiveTeachingStudioScene {
+  id: string;
+  name: string;
+  elements: LiveTeachingStudioElement[];
+}
+
+export interface LiveTeachingStudio {
+  lesson: LiveTeachingLesson;
+  summary?: string | null;
+  scenes: LiveTeachingStudioScene[];
+  activeSceneId: string;
+}
+
+export type LiveScreenKind = 'shop_product' | 'formation_enrollment' | 'teaching_lesson' | 'teaching_studio';
 
 export interface LiveScreenBase {
   activatedAt: string;
@@ -40,7 +75,17 @@ export interface LiveFormationEnrollmentScreen extends LiveScreenBase {
   formation: LiveFormation;
 }
 
-export type LiveScreen = LiveShopProductScreen | LiveFormationEnrollmentScreen;
+export interface LiveTeachingLessonScreen extends LiveScreenBase {
+  type: 'teaching_lesson';
+  lesson: LiveTeachingLesson;
+}
+
+export interface LiveTeachingStudioScreen extends LiveScreenBase {
+  type: 'teaching_studio';
+  studio: LiveTeachingStudio;
+}
+
+export type LiveScreen = LiveShopProductScreen | LiveFormationEnrollmentScreen | LiveTeachingLessonScreen | LiveTeachingStudioScreen;
 
 export const getLiveProductImage = (product: Pick<LiveMarketplaceProduct, 'image_url' | 'product_media'>) => {
   return product.image_url || product.product_media?.[0]?.media_url || null;
@@ -48,6 +93,14 @@ export const getLiveProductImage = (product: Pick<LiveMarketplaceProduct, 'image
 
 export const getLiveFormationImage = (formation: Pick<LiveFormation, 'image_url' | 'thumbnail_url'>) => {
   return formation.image_url || formation.thumbnail_url || null;
+};
+
+export const getLiveTeachingLessonImage = (lesson: Pick<LiveTeachingLesson, 'formation_image_url'>) => {
+  return lesson.formation_image_url || null;
+};
+
+export const getLiveTeachingStudioActiveScene = (studio: LiveTeachingStudio) => {
+  return studio.scenes.find((scene) => scene.id === studio.activeSceneId) || studio.scenes[0] || null;
 };
 
 export const getLiveFormationPlanLabel = (planType: string) => {
@@ -71,5 +124,5 @@ export const isLiveScreen = (value: unknown): value is LiveScreen => {
   }
 
   const candidate = value as Record<string, unknown>;
-  return candidate.type === 'shop_product' || candidate.type === 'formation_enrollment';
+  return candidate.type === 'shop_product' || candidate.type === 'formation_enrollment' || candidate.type === 'teaching_lesson' || candidate.type === 'teaching_studio';
 };

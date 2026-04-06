@@ -3,7 +3,7 @@
  * Utilisé dans les ProductCard et ProductDetailsModal
  */
 import React from 'react';
-import { useScToFcfaRate, fcfaToSc, DEFAULT_SC_TO_FCFA_RATE } from '../hooks/useMarketplaceOrders';
+import { useScToFcfaRate, fcfaToSc } from '../hooks/useMarketplaceOrders';
 import coinSC from '@/assets/coin-soumboulah-cash.png';
 
 interface ScPriceDisplayProps {
@@ -22,7 +22,7 @@ const ScPriceDisplay: React.FC<ScPriceDisplayProps> = ({
   isOutOfStock = false,
 }) => {
   const { data: rate } = useScToFcfaRate();
-  const effectiveRate = (rate && rate > 0) ? rate : DEFAULT_SC_TO_FCFA_RATE;
+  const effectiveRate = rate && rate > 0 ? rate : 0;
 
   // Valeur SC avec décimales réelles (ex : 0,5 S. au lieu de 1 S.)
   const scRaw = fcfaToSc(priceFcfa, effectiveRate);
@@ -46,7 +46,7 @@ const ScPriceDisplay: React.FC<ScPriceDisplayProps> = ({
       )}
       <span className={`${sizeClasses[size].sub} font-semibold text-emerald-600 flex items-center gap-0.5`}>
         <img src={coinSC} alt="S." className={`${sizeClasses[size].coin} object-contain`} />
-        ≈ {scFormatted} S.
+        {`≈ ${effectiveRate > 0 ? scFormatted : '0'} S.`}
       </span>
     </div>
   );

@@ -966,6 +966,10 @@ const UserLive: React.FC = () => {
     navigate(`/cours/formation/${formationId}`);
   }, [navigate]);
 
+  const handleOpenLessonFromScreen = useCallback((lessonId: string) => {
+    navigate(`/cours/lesson/${lessonId}`);
+  }, [navigate]);
+
   const handleOpenBuyProductFromScreen = useCallback(() => {
     if (!user?.id) {
       navigate('/auth');
@@ -1389,6 +1393,7 @@ const UserLive: React.FC = () => {
             isEnrollmentPending={publicLiveScreen.type === 'formation_enrollment' ? isFormationPending(publicLiveScreen.formation.id) : false}
             onBuyProduct={publicLiveScreen.type === 'shop_product' ? handleOpenBuyProductFromScreen : undefined}
             onOpenFormation={publicLiveScreen.type === 'formation_enrollment' ? () => handleOpenFormationFromScreen(publicLiveScreen.formation.id) : undefined}
+            onOpenLesson={publicLiveScreen.type === 'teaching_lesson' ? () => handleOpenLessonFromScreen(publicLiveScreen.lesson.id) : publicLiveScreen.type === 'teaching_studio' ? () => handleOpenLessonFromScreen(publicLiveScreen.studio.lesson.id) : undefined}
             onEnroll={publicLiveScreen.type === 'formation_enrollment' ? (planType) => handleEnrollFromScreen(publicLiveScreen, planType) : undefined}
           />
         </div>
@@ -1827,6 +1832,7 @@ const UserLive: React.FC = () => {
           onOpenChange={setIsScreenManagerOpen}
           products={creatorLiveAssets?.products || []}
           formations={creatorLiveAssets?.formations || []}
+          lessons={creatorLiveAssets?.lessons || []}
           publicScreen={publicLiveScreen}
           privateScreen={privateLiveScreen}
           onSelectPublicScreen={handleSelectPublicLiveScreen}

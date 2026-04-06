@@ -1,19 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, Eye, Layers3, PackageSearch, ShoppingBag, Sparkles, X } from 'lucide-react';
+import { BookOpen, Eye, GraduationCap, Layers3, PackageSearch, ShoppingBag, Sparkles, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
-import type { LiveFormation, LiveMarketplaceProduct, LiveScreen, LiveScreenKind } from '@/live/types';
-import { getLiveFormationImage, getLiveProductImage } from '@/live/types';
+import LiveTeachingStudioEditor from '@/live/components/LiveTeachingStudioEditor';
+import type { LiveFormation, LiveMarketplaceProduct, LiveScreen, LiveScreenKind, LiveTeachingLesson, LiveTeachingStudio } from '@/live/types';
+import { getLiveFormationImage, getLiveProductImage, getLiveTeachingLessonImage } from '@/live/types';
 
 interface LiveScreenManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   products: LiveMarketplaceProduct[];
   formations: LiveFormation[];
+  lessons: LiveTeachingLesson[];
   publicScreen: LiveScreen | null;
   privateScreen: LiveScreen | null;
   onSelectPublicScreen: (screen: LiveScreen | null) => void;
@@ -32,11 +34,24 @@ const buildScreenFromFormation = (formation: LiveFormation): LiveScreen => ({
   activatedAt: new Date().toISOString(),
 });
 
+const buildScreenFromLesson = (lesson: LiveTeachingLesson): LiveScreen => ({
+  type: 'teaching_lesson',
+  lesson,
+  activatedAt: new Date().toISOString(),
+});
+
+const buildScreenFromStudio = (studio: LiveTeachingStudio): LiveScreen => ({
+  type: 'teaching_studio',
+  studio,
+  activatedAt: new Date().toISOString(),
+});
+
 const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
   open,
   onOpenChange,
   products,
   formations,
+  lessons,
   publicScreen,
   privateScreen,
   onSelectPublicScreen,
@@ -51,9 +66,10 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
     public: '',
     private: '',
   });
+  const [studioEditorOpen, setStudioEditorOpen] = useState(false);
+  const [studioLesson, setStudioLesson] = useState<LiveTeachingLesson | null>(null);
 
   const currentScreen = activeTab === 'public' ? publicScreen : privateScreen;
-  const currentKind = kindByTab[activeTab];
   const searchValue = searchByTab[activeTab].trim().toLowerCase();
 
   const filteredProducts = useMemo(() => {
@@ -75,6 +91,18 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
       return `${formation.title} ${formation.description || ''}`.toLowerCase().includes(searchValue);
     });
   }, [formations, searchValue]);
+
+  const filteredLessons = useMemo(() => {
+    return lessons.filter((lesson) => {
+      if (!searchValue) {
+        return true;
+      }
+
+      return `${lesson.title} ${lesson.description || ''} ${lesson.formation_title} ${lesson.level_title || ''}`
+        .toLowerCase()
+        .includes(searchValue);
+    });
+  }, [lessons, searchValue]);
 
   const applyScreen = (screen: LiveScreen | null) => {
     if (activeTab === 'public') {
@@ -129,6 +157,15 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                     </Button>
                     <Button
                       type="button"
+                      variant={kindByTab[tab] === 'teaching_studio' ? 'default' : 'outline'}
+                      className={kindByTab[tab] === 'teaching_studio' ? 'bg-sky-500 hover:bg-sky-600' : 'border-zinc-700 bg-transparent text-white hover:bg-zinc-900'}
+                      onClick={() => setKindByTab((current) => ({ ...current, [tab]: 'teaching_studio' }))}
+                    >
+                      <GraduationCap className="mr-2 h-4 w-4" />
+                      Écran enseignement
+                    </Button>
+                    <Button
+                      type="button"
                       variant="outline"
                       className="border-zinc-700 bg-transparent text-white hover:bg-zinc-900"
                       onClick={() => applyScreen(null)}
@@ -143,7 +180,7 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                     <Input
                       value={searchByTab[tab]}
                       onChange={(event) => setSearchByTab((current) => ({ ...current, [tab]: event.target.value }))}
-                      placeholder={kindByTab[tab] === 'shop_product' ? 'Rechercher un produit du marketplace...' : 'Rechercher une formation...'}
+                      placeholder={kindByTab[tab] === 'shop_product' ? 'Rechercher un produit du marketplace...' : kindByTab[tab] === 'formation_enrollment' ? 'Rechercher une formation...' : 'Rechercher une leçon ou une formation...'}
                       className="border-zinc-800 bg-zinc-900 pl-10 text-white placeholder:text-zinc-500"
                     />
                   </div>
@@ -160,6 +197,13 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                       <Card className="border-dashed border-zinc-800 bg-zinc-950">
                         <CardContent className="py-10 text-center text-sm text-zinc-400">
                           Aucune formation active disponible pour ce filtre.
+                        </CardContent>
+                      </Card>
+                    )}
+                    {kindByTab[tab] === 'teaching_studio' && filteredLessons.length === 0 && (
+                      <Card className="border-dashed border-zinc-800 bg-zinc-950">
+                        <CardContent className="py-10 text-center text-sm text-zinc-400">
+                          Aucune leçon disponible pour ce filtre.
                         </CardContent>
                       </Card>
                     )}
@@ -217,6 +261,34 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                         </Card>
                       );
                     })}
+
+                    {kindByTab[tab] === 'teaching_studio' && filteredLessons.map((lesson) => {
+                      const image = getLiveTeachingLessonImage(lesson);
+                      return (
+                        <Card key={lesson.id} className="border-zinc-800 bg-zinc-900/80">
+                          <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
+                            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-800">
+                              {image ? (
+                                <img src={image} alt={lesson.title} className="h-full w-full object-cover" />
+                              ) : (
+                                <GraduationCap className="h-8 w-8 text-zinc-500" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-base font-semibold text-white">{lesson.title}</p>
+                              <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{lesson.description || `Leçon de ${lesson.formation_title}.`}</p>
+                              <p className="mt-2 text-xs font-medium text-sky-300">{lesson.formation_title}{lesson.level_title ? ` · ${lesson.level_title}` : ''}</p>
+                            </div>
+                            <Button onClick={() => {
+                              setStudioLesson(lesson);
+                              setStudioEditorOpen(true);
+                            }} className="w-full bg-sky-500 text-white hover:bg-sky-600 sm:w-auto">
+                              Configurer
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -253,7 +325,7 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                       <Sparkles className="mb-3 h-8 w-8 text-amber-400/80" />
                       <p className="text-base font-medium text-white/90">Aucun écran {tab === 'public' ? 'public' : 'privé'} actif</p>
                       <p className="mt-2 text-sm">
-                        Sélectionnez un produit marketplace ou une formation pour l’afficher pendant le live.
+                        Sélectionnez un produit marketplace, une formation ou un studio d’enseignement pour l’afficher pendant le live.
                       </p>
                     </div>
                   )}
@@ -262,6 +334,14 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
             </TabsContent>
           ))}
         </Tabs>
+
+        <LiveTeachingStudioEditor
+          open={studioEditorOpen}
+          onOpenChange={setStudioEditorOpen}
+          lesson={studioLesson}
+          initialStudio={currentScreen?.type === 'teaching_studio' && studioLesson && currentScreen.studio.lesson.id === studioLesson.id ? currentScreen.studio : null}
+          onSave={(studio) => applyScreen(buildScreenFromStudio(studio))}
+        />
       </DialogContent>
     </Dialog>
   );

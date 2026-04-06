@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
-import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate, fcfaToSc, DEFAULT_SC_TO_FCFA_RATE } from '../hooks/useMarketplaceOrders';
+import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate, fcfaToSc } from '../hooks/useMarketplaceOrders';
 import { useUserWallet } from '@/hooks/useUserWallet';
 
 interface BuyWithScDialogProps {
@@ -48,13 +48,14 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
   const navigate = useNavigate();
   const { wallet } = useUserWallet();
   const { data: commissionSettings } = useMarketplaceCommissionSettings();
-  const { data: scRate } = useScToFcfaRate();
+  const { data: scRate, isLoading: isScRateLoading, isError: isScRateError } = useScToFcfaRate();
   const { mutate: createOrder, isPending } = useCreateMarketplaceOrder();
 
   if (!product) return null;
 
   const normalizedPrice = normalizeNumericValue(product.price);
-  const rate = normalizeNumericValue(scRate) || DEFAULT_SC_TO_FCFA_RATE;
+  const adminRate = normalizeNumericValue(scRate);
+  const rate = adminRate > 0 ? adminRate : 0;
   const commissionRate = commissionSettings?.commission_rate || 5;
   const unitPriceSc = fcfaToSc(normalizedPrice, rate);
   const totalSc = unitPriceSc * quantity;
@@ -62,6 +63,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
   const sellerSc = totalSc - commissionSc;
   const hasEnough = (wallet?.soumboulah_cash || 0) >= totalSc;
   const hasValidPrice = normalizedPrice > 0;
+  const hasRate = rate > 0;
 
   const formatSc = (value: number) =>
     new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
@@ -118,7 +120,9 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
                 </span>
               </div>
               <div className="rounded-md bg-white/70 px-3 py-2 text-xs text-emerald-900">
-                Taux appliqué: 1 SC = {formatFcfa(rate)} FCFA
+                {hasRate
+                  ? `Taux appliqué: 1 SC = ${formatFcfa(rate)} FCFA`
+                  : `Taux appliqué: 1 SC = 0 FCFA${isScRateLoading ? ' (chargement...)' : isScRateError ? ' (indisponible)' : ''}`}
               </div>
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span>Quantité</span>
@@ -142,6 +146,11 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
               {!hasValidPrice && (
                 <div className="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900">
                   Le prix du produit est invalide et ne peut pas encore être converti en SC.
+                </div>
+              )}
+              {!isScRateLoading && !hasRate && (
+                <div className="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900">
+                  Le taux SC configuré par les administrateurs n'est pas encore disponible. Le prix SC reste à 0 pour éviter un faux montant.
                 </div>
               )}
             </div>
@@ -194,7 +203,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
           <Button variant="outline" onClick={onClose} disabled={isPending}>Annuler</Button>
           <Button
             onClick={handleBuy}
-            disabled={isPending || !hasEnough || !shippingAddress.trim() || !hasValidPrice}
+            disabled={isPending || !hasEnough || !shippingAddress.trim() || !hasValidPrice || !hasRate}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             {isPending ? 'Traitement...' : `Payer ${formatSc(totalSc)} SC`}

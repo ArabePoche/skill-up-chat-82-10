@@ -41,7 +41,7 @@ const WalletScreen: React.FC = () => {
   const navigate = useNavigate();
   const { wallet, isLoading, transactions, convertHabbah, isConverting } = useUserWallet();
   const { conversion } = useCurrencySettings();
-  const scToFcfaRate = conversion?.sc_to_fcfa_rate || 1;
+  const scToFcfaRate = conversion?.sc_to_fcfa_rate ?? 0;
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [convertAmount, setConvertAmount] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');

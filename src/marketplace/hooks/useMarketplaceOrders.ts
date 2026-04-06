@@ -8,8 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 
-export const DEFAULT_SC_TO_FCFA_RATE = 10;
-
 export interface MarketplaceOrder {
   id: string;
   buyer_id: string;
@@ -60,14 +58,16 @@ export const useScToFcfaRate = () => {
       const { data, error } = await supabase
         .from('currency_conversion_settings')
         .select('sc_to_fcfa_rate')
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Erreur récupération taux SC:', error);
-        return DEFAULT_SC_TO_FCFA_RATE;
+        throw error;
       }
-      return data?.sc_to_fcfa_rate || DEFAULT_SC_TO_FCFA_RATE;
+
+      return data?.sc_to_fcfa_rate ?? null;
     },
+    staleTime: 1000 * 60,
   });
 };
 

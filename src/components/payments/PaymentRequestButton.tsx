@@ -48,9 +48,10 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   const activePlanName = activePlan?.plan_type || 'standard';
   
   // 1 SC = scToCfaRate FCFA. Donc FCFA / scToCfaRate = montant en SC
-  const scRate = scToCfaRate || 10;
-  const priceMonthlySC = activePlan ? Math.ceil((activePlan.price_monthly || 0) / scRate) : 0;
-  const priceYearlySC = activePlan ? Math.ceil((activePlan.price_yearly || 0) / scRate) : 0;
+  const hasScRate = scToCfaRate > 0;
+  const scRate = hasScRate ? scToCfaRate : 0;
+  const priceMonthlySC = activePlan && hasScRate ? Math.ceil((activePlan.price_monthly || 0) / scRate) : 0;
+  const priceYearlySC = activePlan && hasScRate ? Math.ceil((activePlan.price_yearly || 0) / scRate) : 0;
 
   // Récupérer les méthodes de paiement acceptées par cette formation
   const { data: formation } = useQuery({
@@ -324,6 +325,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                     <p className="text-sm font-semibold text-emerald-900 mb-2">Tarifs d'abonnement ({activePlanName})</p>
                     <p className="text-xs text-emerald-800">Mensuel: {(activePlan?.price_monthly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceMonthlySC.toLocaleString()} S.</span></p>
                     <p className="text-xs text-emerald-800">Annuel: {(activePlan?.price_yearly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceYearlySC.toLocaleString()} S.</span></p>
+                    {!hasScRate && <p className="mt-2 text-xs text-amber-700">Taux admin non chargé : conversion affichée à 0.</p>}
                   </div>
                   <p className="text-sm text-emerald-700 mb-1">Votre solde Soumboulah Cash</p>
                   <p className="text-2xl font-bold text-emerald-600">{cashBalance} S.</p>
@@ -377,7 +379,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                       </AlertDialogCancel>
                       <Button
                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-6"
-                        disabled={isSubmitting || scAmount <= 0}
+                        disabled={isSubmitting || scAmount <= 0 || !hasScRate}
                         onClick={() => handleWalletPayment('soumboulah_cash', scAmount, 'S. Cash')}
                       >
                         {isSubmitting ? (
@@ -408,6 +410,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                     <p className="text-sm font-semibold text-purple-900 mb-2">Tarifs d'abonnement ({activePlanName})</p>
                     <p className="text-xs text-purple-800">Mensuel: {(activePlan?.price_monthly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceMonthlySC.toLocaleString()} S.</span></p>
                     <p className="text-xs text-purple-800">Annuel: {(activePlan?.price_yearly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceYearlySC.toLocaleString()} S.</span></p>
+                    {!hasScRate && <p className="mt-2 text-xs text-amber-700">Taux admin non chargé : conversion affichée à 0.</p>}
                   </div>
                   <p className="text-sm text-purple-700 mb-1">Votre solde Soumboulah Bonus</p>
                   <p className="text-2xl font-bold text-purple-600">{bonusBalance} S.</p>

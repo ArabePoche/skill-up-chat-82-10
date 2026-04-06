@@ -55,7 +55,7 @@ export const SchoolSubscriptionPortal: React.FC<Props> = ({ schoolId }) => {
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [currentExpiry, setCurrentExpiry] = useState<string | null>(null);
   const [scBalance, setScBalance] = useState<number>(0);
-  const [scToFcfa, setScToFcfa] = useState<number>(1);
+  const [scToFcfa, setScToFcfa] = useState<number>(0);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,7 +91,7 @@ export const SchoolSubscriptionPortal: React.FC<Props> = ({ schoolId }) => {
         setCurrentExpiry(schoolRes.data.subscription_expires_at);
       }
       if (walletRes.data) setScBalance(walletRes.data.soumboulah_cash || 0);
-      if (convRes.data) setScToFcfa(convRes.data.sc_to_fcfa_rate || 1);
+      setScToFcfa(convRes.data?.sc_to_fcfa_rate ?? 0);
       if (paymentsRes.data) setPayments(paymentsRes.data as unknown as Payment[]);
     } catch (err) {
       console.error(err);
@@ -136,6 +136,10 @@ export const SchoolSubscriptionPortal: React.FC<Props> = ({ schoolId }) => {
   const handlePayWithSC = async () => {
     if (!selectedPlanId || !user?.id) return;
     const scCost = getScCost();
+    if (scCost <= 0) {
+      toast({ title: 'Taux indisponible', description: 'Le taux SC admin n\'est pas encore chargé.', variant: 'destructive' });
+      return;
+    }
     if (scCost > scBalance) {
       toast({ title: 'SC insuffisant', description: `Il vous faut ${scCost} SC. Votre solde : ${scBalance} SC.`, variant: 'destructive' });
       return;
@@ -228,6 +232,7 @@ export const SchoolSubscriptionPortal: React.FC<Props> = ({ schoolId }) => {
     }));
 
   const hasPendingManual = payments.some(p => p.status === 'pending' && p.payment_method === 'manual');
+  const hasScRate = scToFcfa > 0;
 
   return (
     <div className="space-y-6">
@@ -278,7 +283,7 @@ export const SchoolSubscriptionPortal: React.FC<Props> = ({ schoolId }) => {
         {plans.map(plan => {
           const planFeat = getPlanFeatures(plan.id);
           const isCurrent = plan.id === currentPlanId;
-          const scCostMonthly = Math.ceil(plan.price_monthly / scToFcfa);
+          const scCostMonthly = hasScRate ? Math.ceil(plan.price_monthly / scToFcfa) : 0;
           return (
             <Card key={plan.id} className={`relative flex flex-col ${isCurrent ? 'border-primary ring-1 ring-primary' : ''}`}>
               {isCurrent && (
@@ -432,6 +437,11 @@ export const SchoolSubscriptionPortal: React.FC<Props> = ({ schoolId }) => {
                   <span className="font-bold">{getScCost().toLocaleString()} SC</span>
                 </div>
               )}
+              {paymentMode === 'sc' && !hasScRate && (
+                <p className="text-xs text-amber-700 pt-1">
+                  Taux admin non chargé : coût SC affiché à 0 temporairement.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground pt-1">
                 Actif jusqu'au : <span className="font-medium text-foreground">{format(computeExpiry(), 'dd MMMM yyyy', { locale: fr })}</span>
               </p>
@@ -470,7 +480,7 @@ export const SchoolSubscriptionPortal: React.FC<Props> = ({ schoolId }) => {
             {paymentMode === 'sc' ? (
               <Button
                 onClick={handlePayWithSC}
-                disabled={paying || !selectedPlanId || getScCost() > scBalance}
+                disabled={paying || !selectedPlanId || getScCost() <= 0 || getScCost() > scBalance}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {paying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
