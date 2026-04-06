@@ -534,7 +534,6 @@ const UserLive: React.FC = () => {
           ))}
           <div ref={messagesEndRef} />
         </div>
-      </div>
 
       <div className="absolute bottom-0 left-0 right-0 border-t border-white/10 bg-gradient-to-t from-black/80 to-transparent pt-8 pb-4 px-4 z-20 pointer-events-auto">
         <div className="flex items-center gap-3">
