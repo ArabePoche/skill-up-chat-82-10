@@ -45,6 +45,7 @@ import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
 import type { LiveScreen } from '@/live/types';
 import { isLiveScreen } from '@/live/types';
 import { useEnrollmentWithProtection } from '@/hooks/useEnrollments';
+import BuyWithScDialog from '@/marketplace/components/BuyWithScDialog';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -272,6 +273,7 @@ const UserLive: React.FC = () => {
   const [publicLiveScreen, setPublicLiveScreen] = useState<LiveScreen | null>(null);
   const [privateLiveScreen, setPrivateLiveScreen] = useState<LiveScreen | null>(null);
   const [isScreenManagerOpen, setIsScreenManagerOpen] = useState(false);
+  const [isBuyProductDialogOpen, setIsBuyProductDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
@@ -747,6 +749,23 @@ const UserLive: React.FC = () => {
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
         setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
       })
+      .on('broadcast', { event: 'request_live_screen_state' }, () => {
+        if (!isHostRole) {
+          return;
+        }
+
+        void roomChannel.send({
+          type: 'broadcast',
+          event: 'live_screen_state',
+          payload: {
+            screen: publicLiveScreenRef.current,
+          },
+        });
+      })
+      .on('broadcast', { event: 'live_screen_state' }, (payload) => {
+        const nextScreen = (payload.payload as { screen?: unknown })?.screen;
+        setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await roomChannel.track({
@@ -757,6 +776,16 @@ const UserLive: React.FC = () => {
             public_live_screen: isHostRole ? publicLiveScreenRef.current : null,
             online_at: new Date().toISOString(),
           });
+
+          if (!isHostRole) {
+            await roomChannel.send({
+              type: 'broadcast',
+              event: 'request_live_screen_state',
+              payload: {
+                requesterUserId: stableUserId,
+              },
+            });
+          }
         }
       });
 
@@ -936,11 +965,23 @@ const UserLive: React.FC = () => {
     navigate(`/cours/formation/${formationId}`);
   }, [navigate]);
 
-  const handleOpenShopFromScreen = useCallback(() => {
-    navigate('/shop');
-  }, [navigate]);
+  const handleOpenBuyProductFromScreen = useCallback(() => {
+    if (!user?.id) {
+      navigate('/auth');
+      return;
+    }
 
-  const handleEnrollFromScreen = useCallback(async (screen: LiveScreen) => {
+    if (publicLiveScreen?.type !== 'shop_product') {
+      return;
+    }
+
+    setIsBuyProductDialogOpen(true);
+  }, [navigate, publicLiveScreen, user?.id]);
+
+  const handleEnrollFromScreen = useCallback(async (
+    screen: LiveScreen,
+    planType: 'free' | 'standard' | 'premium' | 'groupe' = 'free'
+  ) => {
     if (screen.type !== 'formation_enrollment') {
       return;
     }
@@ -950,7 +991,7 @@ const UserLive: React.FC = () => {
       return;
     }
 
-    await enroll(screen.formation.id, user.id, 'free');
+    await enroll(screen.formation.id, user.id, planType);
   }, [enroll, navigate, user?.id]);
 
   useEffect(() => {
@@ -1317,9 +1358,9 @@ const UserLive: React.FC = () => {
             isHost={isHost}
             canEnroll={publicLiveScreen.type === 'formation_enrollment' && !isHost}
             isEnrollmentPending={publicLiveScreen.type === 'formation_enrollment' ? isFormationPending(publicLiveScreen.formation.id) : false}
-            onOpenShop={handleOpenShopFromScreen}
+            onBuyProduct={publicLiveScreen.type === 'shop_product' ? handleOpenBuyProductFromScreen : undefined}
             onOpenFormation={publicLiveScreen.type === 'formation_enrollment' ? () => handleOpenFormationFromScreen(publicLiveScreen.formation.id) : undefined}
-            onEnroll={publicLiveScreen.type === 'formation_enrollment' ? () => handleEnrollFromScreen(publicLiveScreen) : undefined}
+            onEnroll={publicLiveScreen.type === 'formation_enrollment' ? (planType) => handleEnrollFromScreen(publicLiveScreen, planType) : undefined}
           />
         </div>
       )}
@@ -1737,6 +1778,17 @@ const UserLive: React.FC = () => {
             liveTitle: stream.title,
           }}
           onGiftSent={handleGiftSuccess}
+        />
+      )}
+
+      {publicLiveScreen?.type === 'shop_product' && (
+        <BuyWithScDialog
+          product={{
+            ...publicLiveScreen.product,
+            seller_id: publicLiveScreen.product.seller_id || undefined,
+          }}
+          isOpen={isBuyProductDialogOpen}
+          onClose={() => setIsBuyProductDialogOpen(false)}
         />
       )}
 

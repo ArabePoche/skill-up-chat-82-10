@@ -1,11 +1,11 @@
 import React from 'react';
-import { BookOpen, ExternalLink, Eye, ShoppingBag, Sparkles, Users } from 'lucide-react';
+import { BookOpen, Coins, Eye, ShoppingBag, Sparkles, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { LiveScreen } from '@/live/types';
-import { getLiveFormationImage, getLiveProductImage } from '@/live/types';
+import { getLiveFormationImage, getLiveFormationPlanLabel, getLiveProductImage } from '@/live/types';
 
 interface LiveScreenDisplayProps {
   screen: LiveScreen;
@@ -13,9 +13,9 @@ interface LiveScreenDisplayProps {
   isHost?: boolean;
   canEnroll?: boolean;
   isEnrollmentPending?: boolean;
-  onOpenShop?: () => void;
+  onBuyProduct?: () => void;
   onOpenFormation?: () => void;
-  onEnroll?: () => void;
+  onEnroll?: (planType: 'free' | 'standard' | 'premium' | 'groupe') => void;
 }
 
 const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
@@ -24,7 +24,7 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   isHost = false,
   canEnroll = false,
   isEnrollmentPending = false,
-  onOpenShop,
+  onBuyProduct,
   onOpenFormation,
   onEnroll,
 }) => {
@@ -78,9 +78,9 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
               <p className="text-xl font-black text-emerald-300">{screen.product.price.toLocaleString('fr-FR')} FCFA</p>
             </div>
             {!isPrivate && (
-              <Button onClick={onOpenShop} className="bg-emerald-500 text-white hover:bg-emerald-600">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Voir boutique
+              <Button onClick={onBuyProduct} className="bg-emerald-500 text-white hover:bg-emerald-600">
+                <Coins className="mr-2 h-4 w-4" />
+                Acheter
               </Button>
             )}
           </div>
@@ -90,6 +90,12 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   }
 
   const image = getLiveFormationImage(screen.formation);
+  const pricingOptions = (screen.formation.pricing_options || [])
+    .filter((option) => option.is_active !== false)
+    .sort((left, right) => {
+      const order = { free: 0, standard: 1, premium: 2, groupe: 3 } as const;
+      return (order[left.plan_type as keyof typeof order] ?? 99) - (order[right.plan_type as keyof typeof order] ?? 99);
+    });
 
   return (
     <Card className={cn('overflow-hidden backdrop-blur-xl', wrapperClassName)}>
@@ -126,6 +132,45 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
         {screen.formation.description && (
           <p className="line-clamp-3 text-sm text-white/80">{screen.formation.description}</p>
         )}
+        {pricingOptions.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">Plans disponibles</p>
+            <div className="grid gap-2">
+              {pricingOptions.map((option) => {
+                const monthlyPrice = option.price_monthly || 0;
+                const yearlyPrice = option.price_yearly || 0;
+                const isFreePlan = option.plan_type === 'free' || (monthlyPrice <= 0 && yearlyPrice <= 0);
+
+                return (
+                  <div key={option.id || option.plan_type} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{getLiveFormationPlanLabel(option.plan_type)}</p>
+                        <p className="text-xs text-white/65">
+                          {isFreePlan
+                            ? 'Accès gratuit'
+                            : yearlyPrice > 0
+                            ? `${monthlyPrice.toLocaleString('fr-FR')} FCFA / mois · ${yearlyPrice.toLocaleString('fr-FR')} FCFA / an`
+                            : `${monthlyPrice.toLocaleString('fr-FR')} FCFA / mois`}
+                        </p>
+                      </div>
+                      {!isPrivate && !isHost && canEnroll && (
+                        <Button
+                          size="sm"
+                          onClick={() => onEnroll?.(option.plan_type as 'free' | 'standard' | 'premium' | 'groupe')}
+                          disabled={isEnrollmentPending}
+                          className="bg-orange-500 text-white hover:bg-orange-600"
+                        >
+                          {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">Tarif</p>
@@ -139,8 +184,8 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
                 <Eye className="mr-2 h-4 w-4" />
                 Voir
               </Button>
-              {!isHost && canEnroll && (
-                <Button onClick={onEnroll} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
+              {!isHost && canEnroll && pricingOptions.length === 0 && (
+                <Button onClick={() => onEnroll?.('free')} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
                   <BookOpen className="mr-2 h-4 w-4" />
                   {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
                 </Button>

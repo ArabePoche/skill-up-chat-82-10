@@ -11,11 +11,17 @@ export type LiveMarketplaceProduct = Pick<
   seller_name?: string | null;
 };
 
+export type LiveFormationPricingOption = Pick<
+  Tables<'formation_pricing_options'>,
+  'id' | 'plan_type' | 'price_monthly' | 'price_yearly' | 'is_active'
+>;
+
 export type LiveFormation = Pick<
   Tables<'formations'>,
   'id' | 'title' | 'description' | 'price' | 'image_url' | 'thumbnail_url' | 'author_id' | 'accepted_payment_methods' | 'students_count' | 'is_active'
 > & {
   author_name?: string | null;
+  pricing_options?: LiveFormationPricingOption[];
 };
 
 export type LiveScreenKind = 'shop_product' | 'formation_enrollment';
@@ -42,6 +48,21 @@ export const getLiveProductImage = (product: Pick<LiveMarketplaceProduct, 'image
 
 export const getLiveFormationImage = (formation: Pick<LiveFormation, 'image_url' | 'thumbnail_url'>) => {
   return formation.image_url || formation.thumbnail_url || null;
+};
+
+export const getLiveFormationPlanLabel = (planType: string) => {
+  switch (planType) {
+    case 'free':
+      return 'Gratuit';
+    case 'standard':
+      return 'Standard';
+    case 'premium':
+      return 'Premium';
+    case 'groupe':
+      return 'Groupe';
+    default:
+      return planType;
+  }
 };
 
 export const isLiveScreen = (value: unknown): value is LiveScreen => {

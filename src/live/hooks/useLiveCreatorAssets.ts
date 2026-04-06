@@ -66,6 +66,13 @@ export const useLiveCreatorAssets = (creatorId?: string | null) => {
               first_name,
               last_name,
               username
+            ),
+            formation_pricing_options (
+              id,
+              plan_type,
+              price_monthly,
+              price_yearly,
+              is_active
             )
           `)
           .eq('author_id', creatorId as string)
@@ -89,6 +96,7 @@ export const useLiveCreatorAssets = (creatorId?: string | null) => {
       const formations: LiveFormation[] = (formationsResponse.data || []).map((formation: any) => ({
         ...formation,
         author_name: getDisplayName(formation.profiles),
+        pricing_options: (formation.formation_pricing_options || []).filter((option: any) => option.is_active !== false),
       }));
 
       return {
