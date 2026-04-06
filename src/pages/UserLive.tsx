@@ -457,12 +457,7 @@ const UserLive: React.FC = () => {
             </div>
           </div>
           {!isHost && stream.host_id && user && stream.host_id !== user.id && (
-            <div className="ml-1 scale-[0.85] origin-right">
-              <VideoUserProfile
-                profile={stream.host as any}
-                showFollowButton={true}
-              />
-            </div>
+            <FollowButtonInline hostId={stream.host_id} />
           )}
         </div>
 
@@ -510,7 +505,7 @@ const UserLive: React.FC = () => {
         )}
 
         {/* Live Chat Overlay */}
-        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end gap-2 max-h-[140px] overflow-y-auto pointer-events-auto z-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end gap-2 max-h-[45vh] overflow-y-auto pointer-events-auto z-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y">
           {messages.map((msg) => (
             <div
               key={msg.id}
