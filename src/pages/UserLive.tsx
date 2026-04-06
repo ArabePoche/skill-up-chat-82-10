@@ -82,6 +82,17 @@ interface HandRaiseRequest {
   userAvatar?: string | null;
 }
 
+interface AcceptedParticipant extends HandRaiseRequest {
+  agoraUid?: string;
+  isMicEnabled: boolean;
+  isCameraEnabled: boolean;
+}
+
+interface ParticipantControlPayload {
+  targetUserId: string;
+  action: 'mic_on' | 'mic_off' | 'camera_on' | 'camera_off' | 'stop';
+}
+
 /** Bouton Suivre inline sans avatar, pour l'en-tête du live */
 const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
   const { friendshipStatus, sendRequest, cancelRequest, acceptRequest, removeFriend, isLoading } = useFollow(hostId);
@@ -124,7 +135,10 @@ const RemoteVideoTile: React.FC<{
   label?: string;
   avatarUrl?: string;
   remoteUsers: string[];
-}> = ({ uid, getRemoteVideoTrack, label, avatarUrl, remoteUsers }) => {
+  showMicOff?: boolean;
+  showCameraOff?: boolean;
+  children?: React.ReactNode;
+}> = ({ uid, getRemoteVideoTrack, label, avatarUrl, remoteUsers, showMicOff, showCameraOff, children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -164,6 +178,19 @@ const RemoteVideoTile: React.FC<{
           </span>
         </div>
       )}
+      <div className="absolute top-1 right-1 flex flex-col gap-0.5 pointer-events-none">
+        {showMicOff && (
+          <div className="bg-red-500/85 rounded-full p-0.5">
+            <MicOff className="h-2.5 w-2.5 text-white" />
+          </div>
+        )}
+        {showCameraOff && (
+          <div className="bg-red-500/85 rounded-full p-0.5">
+            <VideoOff className="h-2.5 w-2.5 text-white" />
+          </div>
+        )}
+      </div>
+      {children}
     </div>
   );
 };
@@ -185,7 +212,7 @@ const UserLive: React.FC = () => {
   const [messageInput, setMessageInput] = useState('');
   const [handRaiseRequests, setHandRaiseRequests] = useState<HandRaiseRequest[]>([]);
   const [hasRaisedHand, setHasRaisedHand] = useState(false);
-  const [acceptedParticipants, setAcceptedParticipants] = useState<HandRaiseRequest[]>([]);
+  const [acceptedParticipants, setAcceptedParticipants] = useState<AcceptedParticipant[]>([]);
   const [isAcceptedParticipant, setIsAcceptedParticipant] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
@@ -198,6 +225,9 @@ const UserLive: React.FC = () => {
     leaveCall,
     toggleMute,
     toggleVideo,
+    setMicrophoneEnabled,
+    setCameraEnabled,
+    downgradeToAudience,
     localVideoContainerRef,
     remoteVideoContainerRef,
     getRemoteVideoTrack,
@@ -213,6 +243,22 @@ const UserLive: React.FC = () => {
   const stableUserId = user?.id;
   const stableStreamId = stream?.id;
   const stableHostId = stream?.host_id;
+
+  const upsertAcceptedParticipant = useCallback((participant: AcceptedParticipant) => {
+    setAcceptedParticipants(prev => {
+      const index = prev.findIndex(item => item.userId === participant.userId);
+      if (index === -1) {
+        return [...prev, participant];
+      }
+
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        ...participant,
+      };
+      return next;
+    });
+  }, []);
 
   // Load stream data
   useEffect(() => {
@@ -378,9 +424,87 @@ const UserLive: React.FC = () => {
           void upgradeToHost({ enableAudio: true, enableVideo: true });
         }
         setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
-        setAcceptedParticipants(prev =>
-          prev.some(p => p.userId === userId) ? prev : [...prev, { userId, userName, userAvatar }]
-        );
+        upsertAcceptedParticipant({
+          userId,
+          userName,
+          userAvatar,
+          isMicEnabled: true,
+          isCameraEnabled: true,
+        });
+      })
+      .on('broadcast', { event: 'participant_ready' }, (payload) => {
+        const { userId, userName, userAvatar, agoraUid } = payload.payload as HandRaiseRequest & { agoraUid?: string | number };
+        upsertAcceptedParticipant({
+          userId,
+          userName,
+          userAvatar,
+          agoraUid: agoraUid ? String(agoraUid) : undefined,
+          isMicEnabled: true,
+          isCameraEnabled: true,
+        });
+      })
+      .on('broadcast', { event: 'participant_control' }, (payload) => {
+        const { targetUserId, action } = payload.payload as ParticipantControlPayload;
+
+        if (targetUserId === stableUserId) {
+          if (action === 'mic_on') {
+            void setMicrophoneEnabled(true, { notify: true });
+          }
+          if (action === 'mic_off') {
+            void setMicrophoneEnabled(false, { notify: true });
+          }
+          if (action === 'camera_on') {
+            void setCameraEnabled(true, { notify: true });
+          }
+          if (action === 'camera_off') {
+            void setCameraEnabled(false, { notify: true });
+          }
+          if (action === 'stop') {
+            void downgradeToAudience({ notify: true });
+            setIsAcceptedParticipant(false);
+            void roomChannel.send({
+              type: 'broadcast',
+              event: 'participant_stopped',
+              payload: { userId: stableUserId },
+            });
+          }
+        }
+
+        if (isHostRole) {
+          setAcceptedParticipants(prev => prev.map(participant => {
+            if (participant.userId !== targetUserId) {
+              return participant;
+            }
+
+            if (action === 'stop') {
+              return {
+                ...participant,
+                isMicEnabled: false,
+                isCameraEnabled: false,
+              };
+            }
+
+            if (action === 'mic_on' || action === 'mic_off') {
+              return {
+                ...participant,
+                isMicEnabled: action === 'mic_on',
+              };
+            }
+
+            if (action === 'camera_on' || action === 'camera_off') {
+              return {
+                ...participant,
+                isCameraEnabled: action === 'camera_on',
+              };
+            }
+
+            return participant;
+          }));
+        }
+      })
+      .on('broadcast', { event: 'participant_stopped' }, (payload) => {
+        const { userId } = payload.payload as { userId: string };
+        setAcceptedParticipants(prev => prev.filter(participant => participant.userId !== userId));
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -398,7 +522,19 @@ const UserLive: React.FC = () => {
       presenceChannelRef.current = null;
       supabase.removeChannel(roomChannel);
     };
-  }, [stableStreamId, stableUserId]);
+  }, [
+    downgradeToAudience,
+    requestedHostMode,
+    setCameraEnabled,
+    setMicrophoneEnabled,
+    stableAvatarUrl,
+    stableDisplayName,
+    stableHostId,
+    stableStreamId,
+    stableUserId,
+    upgradeToHost,
+    upsertAcceptedParticipant,
+  ]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -406,6 +542,23 @@ const UserLive: React.FC = () => {
       commentsScrollRef.current.scrollTop = commentsScrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (!isAcceptedParticipant || !presenceChannelRef.current || !stableUserId || !state.localUid) {
+      return;
+    }
+
+    presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'participant_ready',
+      payload: {
+        userId: stableUserId,
+        userName: stableDisplayName,
+        userAvatar: stableAvatarUrl,
+        agoraUid: state.localUid,
+      },
+    });
+  }, [isAcceptedParticipant, stableAvatarUrl, stableDisplayName, stableUserId, state.localUid]);
 
   const handleSendMessage = () => {
     if (!messageInput.trim() || !user || !profile || !presenceChannelRef.current) return;
@@ -456,6 +609,48 @@ const UserLive: React.FC = () => {
     });
     toast.success(`${userName} peut maintenant intervenir`);
     setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
+  };
+
+  const handleParticipantControl = (participant: AcceptedParticipant, action: ParticipantControlPayload['action']) => {
+    if (!presenceChannelRef.current) {
+      return;
+    }
+
+    presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'participant_control',
+      payload: {
+        targetUserId: participant.userId,
+        action,
+      } satisfies ParticipantControlPayload,
+    });
+
+    const actionLabels: Record<ParticipantControlPayload['action'], string> = {
+      mic_on: 'Micro activé',
+      mic_off: 'Micro coupé',
+      camera_on: 'Caméra activée',
+      camera_off: 'Caméra désactivée',
+      stop: 'Intervention arrêtée',
+    };
+
+    toast.success(`${actionLabels[action]} pour ${participant.userName}`);
+
+    if (action === 'stop') {
+      setAcceptedParticipants(prev => prev.filter(item => item.userId !== participant.userId));
+      return;
+    }
+
+    setAcceptedParticipants(prev => prev.map(item => {
+      if (item.userId !== participant.userId) {
+        return item;
+      }
+
+      return {
+        ...item,
+        isMicEnabled: action === 'mic_on' ? true : action === 'mic_off' ? false : item.isMicEnabled,
+        isCameraEnabled: action === 'camera_on' ? true : action === 'camera_off' ? false : item.isCameraEnabled,
+      };
+    }));
   };
 
   const dismissHandRaise = (userId: string) => {
@@ -658,9 +853,9 @@ const UserLive: React.FC = () => {
 
       {/* Right panel: accepted participants displayed vertically */}
       {(() => {
-        // UIDs to show in the panel
-        const panelRemoteUids = isHost ? state.remoteUsers : state.remoteUsers.slice(1);
-        const showPanel = panelRemoteUids.length > 0 || isAcceptedParticipant;
+        const participantLookup = acceptedParticipants.filter(participant => participant.userId !== stableUserId);
+        const panelParticipants = participantLookup.filter(participant => participant.agoraUid);
+        const showPanel = panelParticipants.length > 0 || isAcceptedParticipant;
         if (!showPanel) return null;
 
         return (
@@ -692,20 +887,52 @@ const UserLive: React.FC = () => {
             )}
 
             {/* Remote participant tiles */}
-            {panelRemoteUids.map((uid, index) => {
-              // Remote participants are all accepted participants excluding the current user
-              // (the current user, if accepted, is already shown in the local video tile above)
-              const remoteParticipants = acceptedParticipants.filter(p => p.userId !== stableUserId);
-              const participant = remoteParticipants[index];
+            {panelParticipants.map((participant, index) => {
+              const uid = participant.agoraUid;
+              if (!uid) {
+                return null;
+              }
+
               return (
                 <RemoteVideoTile
-                  key={uid}
+                  key={`${uid}-${participant?.userId ?? index}`}
                   uid={uid}
                   getRemoteVideoTrack={getRemoteVideoTrack}
                   label={participant?.userName}
                   avatarUrl={participant?.userAvatar ?? undefined}
                   remoteUsers={state.remoteUsers}
-                />
+                  showMicOff={participant ? !participant.isMicEnabled : false}
+                  showCameraOff={participant ? !participant.isCameraEnabled : false}
+                >
+                  {isHost && participant && (
+                    <div className="absolute inset-x-1 top-1 flex flex-col gap-1 pointer-events-auto">
+                      <button
+                        type="button"
+                        className={`flex h-5 items-center justify-center rounded-full backdrop-blur-sm text-white ${participant.isMicEnabled ? 'bg-black/55 hover:bg-red-500/80' : 'bg-red-500/80 hover:bg-red-500'}`}
+                        onClick={() => handleParticipantControl(participant, participant.isMicEnabled ? 'mic_off' : 'mic_on')}
+                        title={participant.isMicEnabled ? 'Couper le micro' : 'Activer le micro'}
+                      >
+                        {participant.isMicEnabled ? <Mic className="h-2.5 w-2.5" /> : <MicOff className="h-2.5 w-2.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        className={`flex h-5 items-center justify-center rounded-full backdrop-blur-sm text-white ${participant.isCameraEnabled ? 'bg-black/55 hover:bg-red-500/80' : 'bg-red-500/80 hover:bg-red-500'}`}
+                        onClick={() => handleParticipantControl(participant, participant.isCameraEnabled ? 'camera_off' : 'camera_on')}
+                        title={participant.isCameraEnabled ? 'Couper la caméra' : 'Activer la caméra'}
+                      >
+                        {participant.isCameraEnabled ? <Video className="h-2.5 w-2.5" /> : <VideoOff className="h-2.5 w-2.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        className="flex h-5 items-center justify-center rounded-full bg-red-600/85 text-white backdrop-blur-sm hover:bg-red-600"
+                        onClick={() => handleParticipantControl(participant, 'stop')}
+                        title="Arrêter l'intervention"
+                      >
+                        <PhoneOff className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  )}
+                </RemoteVideoTile>
               );
             })}
           </div>

@@ -33,6 +33,10 @@ export interface AgoraJoinOptions {
   enableVideo?: boolean;
 }
 
+interface SetLocalMediaOptions {
+  notify?: boolean;
+}
+
 export const useAgoraCall = () => {
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
@@ -365,6 +369,34 @@ export const useAgoraCall = () => {
     }
   }, [state.isVideoEnabled]);
 
+  const setMicrophoneEnabled = useCallback(async (enabled: boolean, options: SetLocalMediaOptions = {}) => {
+    if (!localAudioTrackRef.current) {
+      setState(prev => ({ ...prev, isMuted: !enabled }));
+      return;
+    }
+
+    await localAudioTrackRef.current.setEnabled(enabled);
+    setState(prev => ({ ...prev, isMuted: !enabled }));
+
+    if (options.notify) {
+      toast.info(enabled ? 'Votre micro a été activé par le créateur.' : 'Votre micro a été coupé par le créateur.');
+    }
+  }, []);
+
+  const setCameraEnabled = useCallback(async (enabled: boolean, options: SetLocalMediaOptions = {}) => {
+    if (!localVideoTrackRef.current) {
+      setState(prev => ({ ...prev, isVideoEnabled: enabled }));
+      return;
+    }
+
+    await localVideoTrackRef.current.setEnabled(enabled);
+    setState(prev => ({ ...prev, isVideoEnabled: enabled }));
+
+    if (options.notify) {
+      toast.info(enabled ? 'Votre caméra a été activée par le créateur.' : 'Votre caméra a été désactivée par le créateur.');
+    }
+  }, []);
+
   /**
    * Récupérer la piste vidéo d'un utilisateur distant par son UID Agora
    */
@@ -420,12 +452,57 @@ export const useAgoraCall = () => {
     }
   }, [playLocalTrack]);
 
+  const downgradeToAudience = useCallback(async (options: { notify?: boolean } = {}) => {
+    const client = clientRef.current;
+    if (!client) {
+      return;
+    }
+
+    try {
+      const tracksToUnpublish = [localAudioTrackRef.current, localVideoTrackRef.current].filter(Boolean) as Array<IMicrophoneAudioTrack | ICameraVideoTrack>;
+
+      if (tracksToUnpublish.length > 0) {
+        await client.unpublish(tracksToUnpublish);
+      }
+
+      if (localAudioTrackRef.current) {
+        localAudioTrackRef.current.stop();
+        localAudioTrackRef.current.close();
+        localAudioTrackRef.current = null;
+      }
+
+      if (localVideoTrackRef.current) {
+        localVideoTrackRef.current.stop();
+        localVideoTrackRef.current.close();
+        localVideoTrackRef.current = null;
+      }
+
+      await client.setClientRole('audience');
+
+      setState(prev => ({
+        ...prev,
+        isMuted: true,
+        isVideoEnabled: false,
+      }));
+
+      if (options.notify) {
+        toast.info('Le créateur a arrêté votre intervention.');
+      }
+    } catch (error) {
+      console.error('❌ Error downgrading to audience:', error);
+      toast.error('Impossible d’arrêter votre intervention pour le moment');
+    }
+  }, []);
+
   return {
     state,
     joinCall,
     leaveCall,
     toggleMute,
     toggleVideo,
+    setMicrophoneEnabled,
+    setCameraEnabled,
+    downgradeToAudience,
     localVideoContainerRef,
     remoteVideoContainerRef,
     getRemoteVideoTrack,
