@@ -276,6 +276,7 @@ const UserLive: React.FC = () => {
   const [privateLiveScreen, setPrivateLiveScreen] = useState<LiveScreen | null>(null);
   const [isScreenManagerOpen, setIsScreenManagerOpen] = useState(false);
   const [isBuyProductDialogOpen, setIsBuyProductDialogOpen] = useState(false);
+  const [remoteWhiteboardAction, setRemoteWhiteboardAction] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
@@ -779,6 +780,9 @@ const UserLive: React.FC = () => {
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
         setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
       })
+      .on('broadcast', { event: 'whiteboard_update' }, (payload) => {
+        setRemoteWhiteboardAction((payload.payload as any)?.action);
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await roomChannel.track({
@@ -989,6 +993,16 @@ const UserLive: React.FC = () => {
     
     handleSelectPublicLiveScreen(nextScreen);
   }, [isHost, publicLiveScreen, handleSelectPublicLiveScreen]);
+
+  const handleWhiteboardAction = useCallback((action: any) => {
+    if (!isHost || !presenceChannelRef.current) return;
+    
+    void presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'whiteboard_update',
+      payload: { action }
+    });
+  }, [isHost]);
 
   const handleSelectPrivateLiveScreen = useCallback((screen: LiveScreen | null) => {
     setPrivateLiveScreen(screen);
@@ -1389,6 +1403,8 @@ const UserLive: React.FC = () => {
                 studio={publicLiveScreen.studio}
                 isHost={isHost}
                 onSceneChange={handleStudioSceneChange}
+                onWhiteboardAction={handleWhiteboardAction}
+                remoteWhiteboardAction={remoteWhiteboardAction}
               />
             </div>
           <div className="flex-[1] md:flex-[1.5] flex flex-col relative bg-black border-l border-white/5 h-[40vh] md:h-full">

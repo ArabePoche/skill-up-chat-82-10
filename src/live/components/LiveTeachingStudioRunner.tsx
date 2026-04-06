@@ -1,77 +1,93 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { BookOpen, FileText, NotebookPen, Eraser, Download, Play, Pause, Maximize, RotateCcw } from 'lucide-react';
+import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LiveTeachingStudio } from '@/live/types';
 
+export type WhiteboardTool = 'pen' | 'eraser' | 'type';
+
 interface WhiteboardProps {
   isHost: boolean;
+  onWhiteboardAction?: (action: any) => void;
+  remoteWhiteboardAction?: any;
 }
 
-const Whiteboard: React.FC<WhiteboardProps> = ({ isHost }) => {
+const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, remoteWhiteboardAction }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
+  const [tool, setTool] = useState<WhiteboardTool>('pen');
   const [color, setColor] = useState('#38bdf8');
   const [strokeWidth, setStrokeWidth] = useState(4);
+  const [currentStroke, setCurrentStroke] = useState<any>(null);
+  const [textInput, setTextInput] = useState<{x: number, y: number, value: string} | null>(null);
+
+  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0, clientX: 0, clientY: 0, rect: { left: 0, top: 0 } as DOMRect };
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    }
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    return { x, y, clientX, clientY, rect };
+  };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isHost) return;
+    const { x, y, clientX, clientY, rect } = getCoordinates(e);
+
+    if (tool === 'type') {
+      setTextInput({ x: clientX - rect.left, y: clientY - rect.top, value: '' });
+      return;
+    }
+
     setIsDrawing(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Get correct coordinates considering CSS scaling
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
-    
     ctx.beginPath();
     ctx.moveTo(x, y);
+
+    setCurrentStroke({ tool, color, strokeWidth, points: [{ x, y }] });
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !isHost) return;
+    if (!isDrawing || !isHost || tool === 'type') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Smooth drawing settings
     ctx.lineWidth = tool === 'eraser' ? strokeWidth * 6 : strokeWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
     
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    const { x, y } = getCoordinates(e);
 
     ctx.strokeStyle = color;
     ctx.lineTo(x, y);
     ctx.stroke();
+
+    if (currentStroke) {
+      setCurrentStroke((prev: any) => ({ ...prev, points: [...prev.points, { x, y }] }));
+    }
   };
 
   const endDrawing = () => {
+    if (isDrawing && currentStroke && onWhiteboardAction) {
+      onWhiteboardAction({ type: 'stroke', payload: currentStroke });
+    }
     setIsDrawing(false);
+    setCurrentStroke(null);
   };
 
   const clearCanvas = () => {
@@ -80,7 +96,80 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (isHost && onWhiteboardAction) {
+      onWhiteboardAction({ type: 'clear' });
+    }
   };
+
+  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: any) => {
+    if (!stroke || !stroke.points || stroke.points.length === 0) return;
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    ctx.lineWidth = stroke.tool === 'eraser' ? stroke.strokeWidth * 6 : stroke.strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = stroke.color;
+
+    for (let i = 1; i < stroke.points.length; i++) {
+       ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+    ctx.stroke();
+  };
+
+  const drawText = (ctx: CanvasRenderingContext2D, textData: any) => {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.font = `bold ${textData.fontSize}px sans-serif`;
+    ctx.fillStyle = textData.color;
+    ctx.fillText(textData.text, textData.x, textData.y);
+  };
+
+  const handleTextSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && textInput) {
+       const canvas = canvasRef.current;
+       if (!canvas) return;
+       const rect = canvas.getBoundingClientRect();
+       const canvasX = textInput.x * (canvas.width / rect.width);
+       const canvasY = textInput.y * (canvas.height / rect.height);
+       
+       const ctx = canvas.getContext('2d');
+       if (ctx && textInput.value) {
+         const textData = {
+           text: textInput.value,
+           x: canvasX,
+           y: canvasY + 28, // adjust baseline below the top of text
+           color,
+           fontSize: 36
+         };
+         drawText(ctx, textData);
+         if (isHost && onWhiteboardAction) {
+           onWhiteboardAction({ type: 'text', payload: textData });
+         }
+       }
+       setTextInput(null);
+       setTool('pen');
+    }
+    if (e.key === 'Escape') {
+      setTextInput(null);
+      setTool('pen');
+    }
+  };
+
+  useEffect(() => {
+    if (!remoteWhiteboardAction || isHost) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (remoteWhiteboardAction.type === 'clear') {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } else if (remoteWhiteboardAction.type === 'stroke') {
+      drawStroke(ctx, remoteWhiteboardAction.payload);
+    } else if (remoteWhiteboardAction.type === 'text') {
+      drawText(ctx, remoteWhiteboardAction.payload);
+    }
+  }, [remoteWhiteboardAction, isHost]);
   
   // Setup sizing
   useEffect(() => {
@@ -118,6 +207,15 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost }) => {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setTool('type')}
+              className={cn("h-8 w-8 rounded-lg", tool === 'type' && "bg-indigo-500/20 text-indigo-400")}
+              title="Texte"
+            >
+              <Type className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setTool('eraser')}
               className={cn("h-8 w-8 rounded-lg text-rose-400", tool === 'eraser' && "bg-rose-500/20")}
               title="Gomme"
@@ -131,10 +229,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost }) => {
             {['#ffffff', '#f87171', '#34d399', '#38bdf8', '#fbbf24', '#f472b6'].map((c) => (
               <button
                 key={c}
-                onClick={() => { setColor(c); setTool('pen'); }}
+                onClick={() => { setColor(c); if(tool === 'eraser') setTool('pen'); }}
                 className={cn(
                   "h-6 w-6 rounded-full border-2 transition-transform", 
-                  color === c && tool === 'pen' ? "border-white scale-110" : "border-transparent"
+                  color === c && tool !== 'eraser' ? "border-white scale-110" : "border-transparent"
                 )}
                 style={{ backgroundColor: c }}
               />
@@ -175,6 +273,25 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost }) => {
           style={{ width: '100%', height: '100%' }}
         />
         
+        {textInput && (
+           <input
+             autoFocus
+             type="text"
+             value={textInput.value}
+             onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
+             onKeyDown={handleTextSubmit}
+             onBlur={() => { setTextInput(null); setTool('pen'); }}
+             className="absolute bg-transparent border-b border-dashed border-indigo-500 text-xl p-0 m-0 z-50 focus:outline-none focus:ring-0"
+             style={{ 
+               left: `${textInput.x}px`, 
+               top: `${textInput.y}px`, 
+               color, 
+               fontFamily: 'sans-serif'
+             }}
+             placeholder="Taper texte (Entrée)"
+           />
+        )}
+
         {!isHost && (
           <div className="absolute top-4 left-4 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-sky-400 backdrop-blur-md shadow-xl flex items-center">
             <NotebookPen className="h-3.5 w-3.5 mr-2" />
@@ -190,9 +307,11 @@ export interface LiveTeachingStudioRunnerProps {
   studio: LiveTeachingStudio;
   isHost: boolean;
   onSceneChange?: (sceneId: string) => void;
+  onWhiteboardAction?: (action: any) => void;
+  remoteWhiteboardAction?: any;
 }
 
-export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange }) => {
+export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onWhiteboardAction, remoteWhiteboardAction }) => {
   const activeScene = studio.scenes.find((s) => s.is_active) || studio.scenes[0];
 
   if (!activeScene || activeScene.elements.length === 0) {
@@ -235,7 +354,11 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
         if (element.type === 'whiteboard') {
           return (
              <div key={element.id} className="flex-1 min-w-0 h-full max-h-full">
-               <Whiteboard isHost={isHost} />
+               <Whiteboard 
+                 isHost={isHost} 
+                 onWhiteboardAction={onWhiteboardAction} 
+                 remoteWhiteboardAction={remoteWhiteboardAction} 
+               />
              </div>
           );
         }
