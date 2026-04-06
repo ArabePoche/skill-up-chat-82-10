@@ -270,6 +270,35 @@ const UserLive: React.FC = () => {
     return agoraUid ? String(agoraUid) : null;
   }, [stableHostId, viewersList]);
 
+  const connectedPeople = useMemo(() => {
+    const merged = new Map<string, any>();
+
+    viewersList.forEach((viewer, index) => {
+      const key = viewer.user_id || viewer.userId || viewer.presence_ref || `viewer-${index}`;
+      merged.set(key, viewer);
+    });
+
+    acceptedParticipants.forEach((participant, index) => {
+      const key = participant.userId || `participant-${index}`;
+      if (!merged.has(key)) {
+        merged.set(key, {
+          user_id: participant.userId,
+          user_name: participant.userName,
+          avatar_url: participant.userAvatar,
+          role: 'participant',
+        });
+        return;
+      }
+
+      merged.set(key, {
+        ...merged.get(key),
+        role: merged.get(key)?.role === 'host' ? 'host' : 'participant',
+      });
+    });
+
+    return Array.from(merged.values());
+  }, [acceptedParticipants, viewersList]);
+
   const upsertAcceptedParticipant = useCallback((participant: AcceptedParticipant) => {
     setAcceptedParticipants(prev => {
       const index = prev.findIndex(item => item.userId === participant.userId);
@@ -394,13 +423,27 @@ const UserLive: React.FC = () => {
         const uniqueUsers = new Map<string, any>();
 
         Object.values(presenceState).forEach((presences) => {
-          (presences as any[]).forEach((presence) => {
-            if (!presence) {
+          const normalizedPresences = Array.isArray(presences)
+            ? presences
+            : Object.values((presences as Record<string, any>) || {});
+
+          normalizedPresences.forEach((presence: any) => {
+            if (!presence || typeof presence !== 'object') {
               return;
             }
 
             const key = presence.user_id || presence.presence_ref || crypto.randomUUID();
-            uniqueUsers.set(key, presence);
+
+            if (!uniqueUsers.has(key)) {
+              uniqueUsers.set(key, presence);
+              return;
+            }
+
+            const previous = uniqueUsers.get(key);
+            uniqueUsers.set(key, {
+              ...previous,
+              ...presence,
+            });
           });
         });
 
@@ -1139,7 +1182,7 @@ const UserLive: React.FC = () => {
               onClick={() => setShowViewersModal(true)}
             >
               <Users className="h-3.5 w-3.5" />
-              {viewerCount}
+              {connectedPeople.length}
             </button>
             <Button
               type="button"
@@ -1378,22 +1421,17 @@ const UserLive: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Spectateurs ({viewerCount})
+              Spectateurs ({connectedPeople.length})
             </DialogTitle>
             <DialogDescription className="text-zinc-400 text-sm">
               Liste des personnes connectées et des intervenants de ce live.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
-            {viewersList.length === 0 && acceptedParticipants.length === 0 ? (
+            {connectedPeople.length === 0 ? (
               <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment</p>
             ) : (
-              [...viewersList, ...acceptedParticipants.filter(participant => !viewersList.some(viewer => (viewer.user_id || viewer.userId) === participant.userId)).map(participant => ({
-                user_id: participant.userId,
-                user_name: participant.userName,
-                avatar_url: participant.userAvatar,
-                role: 'participant',
-              }))].map((viewer, idx) => {
+              connectedPeople.map((viewer, idx) => {
                 const name = viewer.user_name || viewer.userName || viewer.name || 'Utilisateur';
                 const avatar = viewer.avatar_url || viewer.avatarUrl || viewer.avatar || '';
                 const role = viewer.role || 'viewer';
