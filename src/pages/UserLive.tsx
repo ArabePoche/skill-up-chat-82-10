@@ -33,7 +33,7 @@ import iconSC from '@/assets/coin-soumboulah-cash.png';
 import iconSB from '@/assets/coin-soumboulah-bonus.png';
 import iconH from '@/assets/coin-habbah.png';
 import { useFollow } from '@/friends/hooks/useFollow';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -73,6 +73,12 @@ interface LiveMessage {
   content: string;
   currency?: string;
   createdAt: string;
+}
+
+interface HandRaiseRequest {
+  userId: string;
+  userName: string;
+  userAvatar?: string | null;
 }
 
 /** Bouton Suivre inline sans avatar, pour l'en-tête du live */
@@ -123,8 +129,7 @@ const UserLive: React.FC = () => {
   const [isStopping, setIsStopping] = useState(false);
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [messageInput, setMessageInput] = useState('');
-  const [showAllComments, setShowAllComments] = useState(false);
-  const [handRaiseRequests, setHandRaiseRequests] = useState<Set<string>>(new Set());
+  const [handRaiseRequests, setHandRaiseRequests] = useState<HandRaiseRequest[]>([]);
   const [hasRaisedHand, setHasRaisedHand] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
@@ -254,18 +259,14 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
-        const uniqueUserIds = new Set<string>();
         const currentViewers: any[] = [];
-        
-        Object.values(presenceState).flat().forEach((viewerState: any) => {
-          const uid = viewerState.user_id;
-          if (uid && !uniqueUserIds.has(uid)) {
-            uniqueUserIds.add(uid);
-            currentViewers.push(viewerState);
-          }
+
+        Object.values(presenceState).forEach((presences) => {
+          const presence = (presences as any[])[0];
+          if (presence) currentViewers.push(presence);
         });
 
-        setViewerCount(uniqueUserIds.size);
+        setViewerCount(currentViewers.length);
         setViewersList(currentViewers);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
@@ -291,23 +292,13 @@ const UserLive: React.FC = () => {
       .on('broadcast', { event: 'raise_hand' }, (payload) => {
         const { userId, userName, userAvatar } = payload.payload;
         if (isHostRole) {
-          toast.info(`🖐️ ${userName} demande à intervenir`, {
-            duration: 10000,
-            action: {
-              label: 'Accepter',
-              onClick: () => {
-                roomChannel.send({
-                  type: 'broadcast',
-                  event: 'hand_accepted',
-                  payload: { userId, userName },
-                });
-                toast.success(`${userName} peut maintenant intervenir`);
-              },
-            },
-          });
+          toast.info(`🖐️ ${userName} demande à intervenir`, { duration: 5000 });
         }
-        setHandRaiseRequests(prev => new Set(prev).add(userId));
-        
+        setHandRaiseRequests(prev => {
+          if (prev.some(r => r.userId === userId)) return prev;
+          return [...prev, { userId, userName, userAvatar }];
+        });
+
         // Show raise hand message in chat
         const raiseMsg: LiveMessage = {
           id: crypto.randomUUID(),
@@ -326,6 +317,7 @@ const UserLive: React.FC = () => {
           toast.success('Le créateur a accepté votre demande ! Vous pouvez maintenant parler.');
           setHasRaisedHand(false);
         }
+        setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -390,6 +382,21 @@ const UserLive: React.FC = () => {
 
     setHasRaisedHand(true);
     toast.info('Demande envoyée au créateur');
+  };
+
+  const handleAcceptHand = (userId: string, userName: string) => {
+    if (!presenceChannelRef.current) return;
+    presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'hand_accepted',
+      payload: { userId, userName },
+    });
+    toast.success(`${userName} peut maintenant intervenir`);
+    setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
+  };
+
+  const dismissHandRaise = (userId: string) => {
+    setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
   };
 
   const [showGiftModal, setShowGiftModal] = useState(false);
@@ -484,9 +491,6 @@ const UserLive: React.FC = () => {
     }
   };
 
-  // Get the last 3 visible messages and the rest for scrolling
-  const visibleMessages = messages.slice(-3);
-  const hiddenMessagesCount = Math.max(0, messages.length - 3);
 
   if (isLoading) {
     return (
@@ -664,44 +668,55 @@ const UserLive: React.FC = () => {
           </div>
         )}
 
-        {/* Live Chat Overlay - Show only last 3 messages + expandable scroll */}
-        <div className="absolute bottom-20 left-4 right-16 flex flex-col justify-end z-10 pointer-events-auto">
-          {/* Expandable comments area */}
-          <AnimatePresence>
-            {showAllComments && messages.length > 3 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mb-1"
-              >
-                <div
-                  ref={commentsScrollRef}
-                  className="max-h-[35vh] overflow-y-auto space-y-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y"
-                >
-                  {messages.slice(0, -3).map((msg) => renderMessage(msg))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* "Show more" button */}
-          {hiddenMessagesCount > 0 && (
-            <button
-              onClick={() => setShowAllComments(!showAllComments)}
-              className="self-start mb-1.5 text-[11px] font-semibold text-white/70 bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 hover:bg-black/50 transition-colors"
-            >
-              {showAllComments ? 'Réduire' : `Voir ${hiddenMessagesCount} commentaire${hiddenMessagesCount > 1 ? 's' : ''} en plus`}
-            </button>
-          )}
-
-          {/* Last 3 visible messages */}
-          <div className="space-y-1.5">
-            {visibleMessages.map((msg) => renderMessage(msg))}
+        {/* Live Chat Overlay - scrollable, ~3 messages visible, scroll up for older ones */}
+        <div className="absolute bottom-20 left-4 right-16 z-10 pointer-events-auto">
+          <div
+            ref={commentsScrollRef}
+            className="max-h-[160px] overflow-y-auto space-y-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y"
+          >
+            {messages.map((msg) => renderMessage(msg))}
           </div>
         </div>
       </div>
+
+      {/* Hand raise requests panel - TikTok style, right side */}
+      {handRaiseRequests.length > 0 && (
+        <div className="absolute right-2 bottom-24 flex flex-col gap-2 z-20 pointer-events-auto max-h-[60vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {handRaiseRequests.map((req) => (
+            <div key={req.userId} className="flex flex-col items-center gap-1 bg-black/60 backdrop-blur-sm rounded-xl p-2 w-14">
+              <Avatar className="h-9 w-9 border-2 border-amber-400/70">
+                <AvatarImage src={req.userAvatar || ''} />
+                <AvatarFallback className="bg-zinc-800 text-[10px]">
+                  {req.userName?.substring(0, 2).toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[8px] text-white/90 text-center truncate w-full leading-tight">
+                {req.userName}
+              </span>
+              {isHost ? (
+                <div className="flex gap-1 mt-0.5">
+                  <button
+                    onClick={() => handleAcceptHand(req.userId, req.userName)}
+                    className="rounded-full bg-green-500/80 px-1.5 py-0.5 hover:bg-green-500 transition-colors text-[10px] text-white font-bold"
+                    title="Accepter"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={() => dismissHandRaise(req.userId)}
+                    className="rounded-full bg-red-500/80 px-1.5 py-0.5 hover:bg-red-500 transition-colors text-[10px] text-white font-bold"
+                    title="Refuser"
+                  >
+                    ✗
+                  </button>
+                </div>
+              ) : (
+                <Hand className="h-3 w-3 text-amber-400 animate-pulse mt-0.5" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Bottom Bar: Input and Buttons */}
       <div className="absolute bottom-0 left-0 right-0 px-4 py-4 z-20 bg-gradient-to-t from-black/60 to-transparent">
