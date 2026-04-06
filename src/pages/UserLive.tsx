@@ -102,6 +102,32 @@ interface GiftOverlayState {
   content: string;
 }
 
+const extractPresenceEntries = (value: unknown): Record<string, any>[] => {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => extractPresenceEntries(item));
+  }
+
+  if (typeof value !== 'object') {
+    return [];
+  }
+
+  const record = value as Record<string, any>;
+
+  if (Array.isArray(record.metas)) {
+    return record.metas.flatMap((item) => extractPresenceEntries(item));
+  }
+
+  if ('presence_ref' in record || 'user_id' in record || 'user_name' in record || 'role' in record) {
+    return [record];
+  }
+
+  return Object.values(record).flatMap((item) => extractPresenceEntries(item));
+};
+
 /** Bouton Suivre inline sans avatar, pour l'en-tête du live */
 const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
   const { friendshipStatus, sendRequest, cancelRequest, acceptRequest, removeFriend, isLoading } = useFollow(hostId);
@@ -255,15 +281,21 @@ const UserLive: React.FC = () => {
     upgradeToHost,
   } = useAgoraCall();
 
+  const [visitorId] = useState(() => crypto.randomUUID());
+  const stableUserId = user?.id || visitorId;
+  const stableStreamId = stream?.id;
+  const stableHostId = stream?.host_id;
+
   const isHost = !!user?.id && !!stream?.host_id && user.id === stream.host_id && requestedHostMode;
   const hostName = useMemo(() => getDisplayName(stream?.host), [stream?.host]);
 
   // Stabilize values for presence tracking
-  const stableDisplayName = useMemo(() => getDisplayName(profile), [profile?.first_name, profile?.last_name, profile?.username]);
+  const stableDisplayName = useMemo(() => {
+    if (profile) return getDisplayName(profile);
+    return `Spectateur ${stableUserId.substring(0, 4)}`;
+  }, [profile, stableUserId]);
+
   const stableAvatarUrl = profile?.avatar_url || null;
-  const stableUserId = user?.id;
-  const stableStreamId = stream?.id;
-  const stableHostId = stream?.host_id;
   const hostAgoraUid = useMemo(() => {
     const hostPresence = viewersList.find(viewer => viewer.role === 'host' && (viewer.user_id || viewer.userId) === stableHostId);
     const agoraUid = hostPresence?.agora_uid;
@@ -285,14 +317,14 @@ const UserLive: React.FC = () => {
           user_id: participant.userId,
           user_name: participant.userName,
           avatar_url: participant.userAvatar,
-          role: 'participant',
+          role: 'viewer',
         });
         return;
       }
 
       merged.set(key, {
         ...merged.get(key),
-        role: merged.get(key)?.role === 'host' ? 'host' : 'participant',
+        role: merged.get(key)?.role === 'host' ? 'host' : 'viewer',
       });
     });
 
@@ -400,10 +432,10 @@ const UserLive: React.FC = () => {
 
   // Presence tracking - stabilized to prevent re-subscriptions
   useEffect(() => {
-    if (!stableStreamId || !stableUserId) return;
+    if (!stableStreamId) return;
 
     const channelName = `live-room-${stableStreamId}`;
-    const isHostRole = stableUserId === stableHostId && requestedHostMode;
+    const isHostRole = user?.id && stableUserId === stableHostId && requestedHostMode;
     
     const roomChannel = supabase.channel(channelName, {
       config: {
@@ -422,27 +454,28 @@ const UserLive: React.FC = () => {
         const reconstructedParticipants: AcceptedParticipant[] = [];
         const uniqueUsers = new Map<string, any>();
 
-        Object.values(presenceState).forEach((presences) => {
-          const normalizedPresences = Array.isArray(presences)
-            ? presences
-            : Object.values((presences as Record<string, any>) || {});
-
-          normalizedPresences.forEach((presence: any) => {
+        Object.entries(presenceState).forEach(([presenceKey, presences]) => {
+          extractPresenceEntries(presences).forEach((presence: any) => {
             if (!presence || typeof presence !== 'object') {
               return;
             }
 
-            const key = presence.user_id || presence.presence_ref || crypto.randomUUID();
+            const normalizedPresence = {
+              ...presence,
+              user_id: presence.user_id || presence.userId || presenceKey,
+            };
+
+            const key = normalizedPresence.user_id || normalizedPresence.presence_ref || presenceKey || crypto.randomUUID();
 
             if (!uniqueUsers.has(key)) {
-              uniqueUsers.set(key, presence);
+              uniqueUsers.set(key, normalizedPresence);
               return;
             }
 
             const previous = uniqueUsers.get(key);
             uniqueUsers.set(key, {
               ...previous,
-              ...presence,
+              ...normalizedPresence,
             });
           });
         });
@@ -470,13 +503,18 @@ const UserLive: React.FC = () => {
         });
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        newPresences.forEach((presence: any) => {
-          if (presence.user_name && presence.user_id !== stableUserId) {
+        extractPresenceEntries(newPresences).forEach((presence: any) => {
+          const normalizedPresence = {
+            ...presence,
+            user_id: presence?.user_id || presence?.userId || key,
+          };
+
+          if (normalizedPresence.user_name && normalizedPresence.user_id !== stableUserId) {
             const joinMsg: LiveMessage = {
               id: crypto.randomUUID(),
-              userId: presence.user_id || 'system',
-              userName: presence.user_name,
-              userAvatar: presence.avatar_url,
+              userId: normalizedPresence.user_id || 'system',
+              userName: normalizedPresence.user_name,
+              userAvatar: normalizedPresence.avatar_url,
               type: 'join',
               content: 'a rejoint le live',
               createdAt: new Date().toISOString(),
@@ -648,7 +686,7 @@ const UserLive: React.FC = () => {
   }, [messages]);
 
   useEffect(() => {
-    if (!isAcceptedParticipant || !presenceChannelRef.current || !stableUserId || !state.localUid) {
+    if (!isAcceptedParticipant || !presenceChannelRef.current || !state.localUid) {
       return;
     }
 
@@ -665,7 +703,7 @@ const UserLive: React.FC = () => {
   }, [isAcceptedParticipant, stableAvatarUrl, stableDisplayName, stableUserId, state.localUid]);
 
   useEffect(() => {
-    if (!presenceChannelRef.current || !stableUserId) {
+    if (!presenceChannelRef.current) {
       return;
     }
 
@@ -1424,7 +1462,7 @@ const UserLive: React.FC = () => {
               Spectateurs ({connectedPeople.length})
             </DialogTitle>
             <DialogDescription className="text-zinc-400 text-sm">
-              Liste des personnes connectées et des intervenants de ce live.
+              Liste des personnes qui suivent ce live.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
@@ -1452,13 +1490,8 @@ const UserLive: React.FC = () => {
                           <Crown className="h-2.5 w-2.5" /> Créateur
                         </span>
                       )}
-                      {role === 'participant' && (
-                        <span className="inline-flex items-center gap-0.5 bg-fuchsia-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
-                          <Mic className="h-2.5 w-2.5" /> Intervenant
-                        </span>
-                      )}
                     </span>
-                    <span className="text-xs text-zinc-500 capitalize">{role === 'host' ? 'Créateur' : role === 'participant' ? 'Intervenant' : 'Spectateur'}</span>
+                    <span className="text-xs text-zinc-500 capitalize">{role === 'host' ? 'Créateur' : 'Spectateur'}</span>
                   </div>
                 </div>
                 );
