@@ -43,7 +43,8 @@ export const useAgoraCall = () => {
   const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
   const latestRemoteVideoTrackRef = useRef<IRemoteVideoTrack | null>(null);
   const remoteVideoTracksRef = useRef<Map<string, IRemoteVideoTrack>>(new Map());
-  const firstRemoteUidRef = useRef<string | null>(null);
+  const primaryRemoteUidRef = useRef<string | null>(null);
+  const currentCameraDeviceIdRef = useRef<string | null>(null);
   const localVideoElementRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoElementRef = useRef<HTMLDivElement | null>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -113,6 +114,24 @@ export const useAgoraCall = () => {
     latestRemoteVideoTrackRef.current.play(remoteVideoElementRef.current, { fit: 'cover' });
     console.log('🎥 remote track played on element');
   }, []);
+
+  const updatePrimaryRemoteTrack = useCallback(() => {
+    const preferredUid = primaryRemoteUidRef.current;
+    const fallbackEntry = remoteVideoTracksRef.current.entries().next();
+    const resolvedUid = preferredUid && remoteVideoTracksRef.current.has(preferredUid)
+      ? preferredUid
+      : (!fallbackEntry.done ? fallbackEntry.value[0] : null);
+
+    latestRemoteVideoTrackRef.current = resolvedUid
+      ? (remoteVideoTracksRef.current.get(resolvedUid) ?? null)
+      : null;
+
+    if (latestRemoteVideoTrackRef.current) {
+      playRemoteTrack();
+    } else if (remoteVideoElementRef.current) {
+      remoteVideoElementRef.current.innerHTML = '';
+    }
+  }, [playRemoteTrack]);
 
   const localVideoContainerRef = useCallback((element: HTMLDivElement | null) => {
     localVideoElementRef.current = element;
@@ -189,12 +208,7 @@ export const useAgoraCall = () => {
           const remoteVideoTrack = user.videoTrack as IRemoteVideoTrack;
           const uid = String(user.uid);
           remoteVideoTracksRef.current.set(uid, remoteVideoTrack);
-          // Only the first remote publisher goes into the background container
-          if (!firstRemoteUidRef.current) {
-            firstRemoteUidRef.current = uid;
-            latestRemoteVideoTrackRef.current = remoteVideoTrack;
-            playRemoteTrack();
-          }
+          updatePrimaryRemoteTrack();
         }
         if (mediaType === 'audio') {
           const remoteAudioTrack = user.audioTrack as IRemoteAudioTrack;
@@ -212,19 +226,7 @@ export const useAgoraCall = () => {
         if (mediaType === 'video') {
           const uid = String(user.uid);
           remoteVideoTracksRef.current.delete(uid);
-          if (firstRemoteUidRef.current === uid) {
-            // Main stream stopped – promote the next available track
-            const nextEntry = remoteVideoTracksRef.current.keys().next();
-            if (!nextEntry.done && nextEntry.value !== undefined) {
-              const nextUid = nextEntry.value;
-              firstRemoteUidRef.current = nextUid;
-              latestRemoteVideoTrackRef.current = remoteVideoTracksRef.current.get(nextUid) ?? null;
-              playRemoteTrack();
-            } else {
-              firstRemoteUidRef.current = null;
-              latestRemoteVideoTrackRef.current = null;
-            }
-          }
+          updatePrimaryRemoteTrack();
         }
       });
 
@@ -232,10 +234,7 @@ export const useAgoraCall = () => {
         console.log('👋 Remote user left:', user.uid);
         const uid = String(user.uid);
         remoteVideoTracksRef.current.delete(uid);
-        if (firstRemoteUidRef.current === uid) {
-          firstRemoteUidRef.current = null;
-          latestRemoteVideoTrackRef.current = null;
-        }
+        updatePrimaryRemoteTrack();
         setState(prev => ({
           ...prev,
           remoteUsers: prev.remoteUsers.filter(id => id !== uid),
@@ -266,6 +265,7 @@ export const useAgoraCall = () => {
         if (enableVideo) {
           const localVideoTrack = await AgoraRTC.createCameraVideoTrack();
           localVideoTrackRef.current = localVideoTrack;
+          currentCameraDeviceIdRef.current = localVideoTrack.getMediaStreamTrack().getSettings().deviceId ?? null;
           playLocalTrack();
 
           tracksToPublish.push(localVideoTrack);
@@ -302,7 +302,7 @@ export const useAgoraCall = () => {
       // Nettoyer en cas d'erreur
       await leaveCall();
     }
-  }, [fetchToken]);
+  }, [fetchToken, playRemoteTrack, updatePrimaryRemoteTrack]);
 
   /**
    * Quitter l'appel et nettoyer toutes les ressources
@@ -329,7 +329,8 @@ export const useAgoraCall = () => {
 
     latestRemoteVideoTrackRef.current = null;
     remoteVideoTracksRef.current.clear();
-    firstRemoteUidRef.current = null;
+    primaryRemoteUidRef.current = null;
+    currentCameraDeviceIdRef.current = null;
 
     if (clientRef.current) {
       await clientRef.current.leave();
@@ -397,12 +398,52 @@ export const useAgoraCall = () => {
     }
   }, []);
 
+  const switchCamera = useCallback(async () => {
+    if (!localVideoTrackRef.current) {
+      toast.error('Caméra non disponible');
+      return;
+    }
+
+    try {
+      const cameras = await AgoraRTC.getCameras();
+      if (cameras.length < 2) {
+        toast.info('Aucune caméra arrière détectée');
+        return;
+      }
+
+      const currentDeviceId = currentCameraDeviceIdRef.current ?? localVideoTrackRef.current.getMediaStreamTrack().getSettings().deviceId ?? null;
+      const currentIndex = cameras.findIndex(camera => camera.deviceId === currentDeviceId);
+      const preferredRearIndex = cameras.findIndex(camera => /back|rear|environment|traseira|arriere|arrière/i.test(camera.label));
+
+      let nextCamera = cameras[(currentIndex + 1 + cameras.length) % cameras.length];
+      if ((currentIndex === -1 || currentIndex === 0) && preferredRearIndex !== -1 && cameras[preferredRearIndex].deviceId !== currentDeviceId) {
+        nextCamera = cameras[preferredRearIndex];
+      }
+
+      await localVideoTrackRef.current.setDevice(nextCamera.deviceId);
+      currentCameraDeviceIdRef.current = nextCamera.deviceId;
+      playLocalTrack();
+
+      toast.success(/back|rear|environment|traseira|arriere|arrière/i.test(nextCamera.label)
+        ? 'Caméra arrière activée'
+        : 'Caméra avant activée');
+    } catch (error) {
+      console.error('❌ Error switching camera:', error);
+      toast.error('Impossible de changer de caméra');
+    }
+  }, [playLocalTrack]);
+
   /**
    * Récupérer la piste vidéo d'un utilisateur distant par son UID Agora
    */
   const getRemoteVideoTrack = useCallback((uid: string): IRemoteVideoTrack | undefined => {
     return remoteVideoTracksRef.current.get(uid);
   }, []);
+
+  const setPrimaryRemoteUid = useCallback((uid: string | null) => {
+    primaryRemoteUidRef.current = uid;
+    updatePrimaryRemoteTrack();
+  }, [updatePrimaryRemoteTrack]);
 
   /**
    * Passer du rôle audience au rôle hôte (intervenant accepté)
@@ -431,6 +472,7 @@ export const useAgoraCall = () => {
       if (enableVideo && !localVideoTrackRef.current) {
         const videoTrack = await AgoraRTC.createCameraVideoTrack();
         localVideoTrackRef.current = videoTrack;
+        currentCameraDeviceIdRef.current = videoTrack.getMediaStreamTrack().getSettings().deviceId ?? null;
         playLocalTrack();
         tracksToPublish.push(videoTrack);
       }
@@ -475,6 +517,7 @@ export const useAgoraCall = () => {
         localVideoTrackRef.current.stop();
         localVideoTrackRef.current.close();
         localVideoTrackRef.current = null;
+        currentCameraDeviceIdRef.current = null;
       }
 
       await client.setClientRole('audience');
@@ -500,8 +543,10 @@ export const useAgoraCall = () => {
     leaveCall,
     toggleMute,
     toggleVideo,
+    switchCamera,
     setMicrophoneEnabled,
     setCameraEnabled,
+    setPrimaryRemoteUid,
     downgradeToAudience,
     localVideoContainerRef,
     remoteVideoContainerRef,

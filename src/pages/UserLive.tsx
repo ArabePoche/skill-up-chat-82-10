@@ -12,6 +12,7 @@ import {
   MicOff,
   PhoneOff,
   Radio,
+  RefreshCw,
   Send,
   Share2,
   Gift,
@@ -239,8 +240,10 @@ const UserLive: React.FC = () => {
     leaveCall,
     toggleMute,
     toggleVideo,
+    switchCamera,
     setMicrophoneEnabled,
     setCameraEnabled,
+    setPrimaryRemoteUid,
     downgradeToAudience,
     localVideoContainerRef,
     remoteVideoContainerRef,
@@ -257,6 +260,11 @@ const UserLive: React.FC = () => {
   const stableUserId = user?.id;
   const stableStreamId = stream?.id;
   const stableHostId = stream?.host_id;
+  const hostAgoraUid = useMemo(() => {
+    const hostPresence = viewersList.find(viewer => viewer.role === 'host' && (viewer.user_id || viewer.userId) === stableHostId);
+    const agoraUid = hostPresence?.agora_uid;
+    return agoraUid ? String(agoraUid) : null;
+  }, [stableHostId, viewersList]);
 
   const upsertAcceptedParticipant = useCallback((participant: AcceptedParticipant) => {
     setAcceptedParticipants(prev => {
@@ -621,9 +629,9 @@ const UserLive: React.FC = () => {
       user_name: stableDisplayName,
       avatar_url: stableAvatarUrl,
       role,
-      agora_uid: isAcceptedParticipant ? state.localUid : null,
-      mic_enabled: isAcceptedParticipant ? !state.isMuted : null,
-      camera_enabled: isAcceptedParticipant ? state.isVideoEnabled : null,
+      agora_uid: (isHost || isAcceptedParticipant) ? state.localUid : null,
+      mic_enabled: (isHost || isAcceptedParticipant) ? !state.isMuted : null,
+      camera_enabled: (isHost || isAcceptedParticipant) ? state.isVideoEnabled : null,
       online_at: new Date().toISOString(),
     });
   }, [
@@ -636,6 +644,14 @@ const UserLive: React.FC = () => {
     state.isVideoEnabled,
     state.localUid,
   ]);
+
+  useEffect(() => {
+    if (isHost) {
+      return;
+    }
+
+    setPrimaryRemoteUid(hostAgoraUid);
+  }, [hostAgoraUid, isHost, setPrimaryRemoteUid]);
 
   useEffect(() => {
     if (!activeGiftOverlay) {
@@ -1281,6 +1297,16 @@ const UserLive: React.FC = () => {
                 className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
               >
                 {state.isVideoEnabled ? <Video size={20} /> : <VideoOff size={20} />}
+              </Button>
+              <Button
+                type="button"
+                onClick={switchCamera}
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                title="Basculer entre caméra avant et arrière"
+              >
+                <RefreshCw size={18} />
               </Button>
             </>
           )}
