@@ -278,6 +278,7 @@ const UserLive: React.FC = () => {
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
   const publicLiveScreenRef = useRef<LiveScreen | null>(null);
+  const endedLiveHandledRef = useRef<string | null>(null);
   
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -1163,6 +1164,34 @@ const UserLive: React.FC = () => {
       void leaveCall();
     }
   }, [leaveCall, state.isJoined, stream?.status]);
+
+  useEffect(() => {
+    if (!stream?.id || stream.status !== 'ended') {
+      if (stream?.status === 'active') {
+        endedLiveHandledRef.current = null;
+      }
+      return;
+    }
+
+    if (endedLiveHandledRef.current === stream.id) {
+      return;
+    }
+
+    endedLiveHandledRef.current = stream.id;
+
+    setHasRaisedHand(false);
+    setIsAcceptedParticipant(false);
+    setHandRaiseRequests([]);
+    setAcceptedParticipants([]);
+    setPublicLiveScreen(null);
+    setPrivateLiveScreen(null);
+    void leaveCall();
+
+    if (!isHost) {
+      toast.info('Le créateur a mis fin au live.');
+      navigate('/video', { replace: true });
+    }
+  }, [isHost, leaveCall, navigate, stream?.id, stream?.status]);
 
   const handleStopLive = async () => {
     if (!stream || !isHost) return;

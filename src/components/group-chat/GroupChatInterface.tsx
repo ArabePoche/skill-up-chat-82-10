@@ -179,7 +179,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const { validateExercise } = useProgressionLogic(formation.id, level.id.toString());
 
   // Fonctionnalités d'appel réutilisées
-  const { initiateCall, acceptedCall, closeAgoraUI, openAgoraUI } = useCallFunctionality(formation.id);
+  const { initiateCall, acceptedCall, endCall, openAgoraUI } = useCallFunctionality(formation.id);
   const { incomingCall, dismissCall, acceptCall: acceptNotificationCall, rejectCall } = useCallNotifications();
 
   // Nouveau système de limites centralisé
@@ -609,7 +609,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           channelName={acceptedCall.channelName}
           callType={acceptedCall.callType}
           remoteUserName={acceptedCall.callerName || (userRole?.role === 'teacher' ? 'Élève' : 'Professeur')}
-          onEndCall={closeAgoraUI}
+          onEndCall={endCall}
         />
       )}
     </div>

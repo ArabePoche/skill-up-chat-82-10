@@ -185,34 +185,26 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
               {screen.formation.description}
             </p>
           )}
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">Tarif</p>
-              <p className={cn('font-black text-orange-300', isPublicFormation ? 'text-lg' : 'text-xl')}>
-                {screen.formation.price > 0 ? `${screen.formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
-              </p>
-            </div>
-            {!isPrivate && (
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={onOpenFormation}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Voir
+          {!isPrivate && (
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={onOpenFormation}>
+                <Eye className="mr-2 h-4 w-4" />
+                Voir
+              </Button>
+              {!isHost && canEnroll && pricingOptions.length > 0 && (
+                <Button onClick={() => setIsPlanDialogOpen(true)} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
                 </Button>
-                {!isHost && canEnroll && pricingOptions.length > 0 && (
-                  <Button onClick={() => setIsPlanDialogOpen(true)} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
-                  </Button>
-                )}
-                {!isHost && canEnroll && pricingOptions.length === 0 && (
-                  <Button onClick={() => onEnroll?.('free')} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+              {!isHost && canEnroll && pricingOptions.length === 0 && (
+                <Button onClick={() => onEnroll?.('free')} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  {isEnrollmentPending ? 'Inscription...' : 'S’inscrire'}
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

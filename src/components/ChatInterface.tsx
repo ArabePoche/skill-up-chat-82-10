@@ -84,7 +84,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 // realtime hooks handled in MessageList to avoid duplicate subscriptions
 
   // Fonctionnalités d'appel
-  const { initiateCall, acceptedCall, closeAgoraUI, openAgoraUI } = useCallFunctionality(formation.id);
+  const { initiateCall, acceptedCall, endCall, openAgoraUI } = useCallFunctionality(formation.id);
   const { incomingCall, dismissCall, acceptCall: acceptNotificationCall, rejectCall } = useCallNotifications();
 
   // Nouveau système de limites centralisé
@@ -411,7 +411,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           channelName={acceptedCall.channelName}
           callType={acceptedCall.callType}
           remoteUserName={acceptedCall.callerName || (userRole?.role === 'teacher' ? 'Élève' : 'Professeur')}
-          onEndCall={closeAgoraUI}
+          onEndCall={endCall}
         />
       )}
 

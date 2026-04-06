@@ -37,6 +37,68 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
   const [acceptedCall, setAcceptedCall] = useState<AcceptedCall | null>(null);
   const channelRef = useRef<any>(null);
 
+  const cleanupRealtimeChannel = useCallback(() => {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+  }, []);
+
+  const clearCallState = useCallback(() => {
+    setAcceptedCall(null);
+    setCurrentCall(null);
+    setIsCallActive(false);
+  }, []);
+
+  const subscribeToCallSession = useCallback((
+    callId: string,
+    options?: {
+      onAccepted?: () => void;
+      showEndedToast?: boolean;
+    }
+  ) => {
+    cleanupRealtimeChannel();
+
+    const callChannel = supabase
+      .channel(`call-${callId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'call_sessions',
+          filter: `id=eq.${callId}`
+        },
+        (payload: any) => {
+          const updatedCall = payload.new;
+
+          if (updatedCall.status === 'accepted') {
+            setCurrentCall(updatedCall);
+            options?.onAccepted?.();
+            return;
+          }
+
+          if (updatedCall.status === 'rejected') {
+            toast.info('Appel rejeté');
+            clearCallState();
+            cleanupRealtimeChannel();
+            return;
+          }
+
+          if (updatedCall.status === 'ended') {
+            if (options?.showEndedToast !== false) {
+              toast.info('Appel terminé');
+            }
+            clearCallState();
+            cleanupRealtimeChannel();
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = callChannel;
+  }, [clearCallState, cleanupRealtimeChannel]);
+
   // Gérer le son d'attente pour l'appelant
   useEffect(() => {
     if (isCallActive && currentCall?.status === 'pending') {
@@ -90,46 +152,21 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
       toast.success(`Appel ${callType === 'voice' ? 'audio' : 'vidéo'} lancé`);
       toast.info('En attente qu\'un professeur réponde...');
 
-      // Écouter la réponse du professeur
-      const callChannel = supabase
-        .channel(`call-${callSession.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'call_sessions',
-            filter: `id=eq.${callSession.id}`
-          },
-          (payload: any) => {
-            const updatedCall = payload.new;
-
-            if (updatedCall.status === 'accepted') {
-              toast.success('Un professeur a accepté votre appel !');
-              setCurrentCall(updatedCall);
-              // Ouvrir l'UI Agora côté étudiant
-              setAcceptedCall({
-                id: callSession.id,
-                callType: callType === 'voice' ? 'audio' : 'video',
-                channelName: `call_${callSession.id}`,
-              });
-              setIsCallActive(false);
-            } else if (updatedCall.status === 'rejected' || updatedCall.status === 'ended') {
-              toast.info('Appel terminé');
-              setIsCallActive(false);
-              setCurrentCall(updatedCall);
-              // Nettoyer le channel
-              supabase.removeChannel(callChannel);
-            }
-          }
-        )
-        .subscribe();
-
-      channelRef.current = callChannel;
+      subscribeToCallSession(callSession.id, {
+        onAccepted: () => {
+          toast.success('Un professeur a accepté votre appel !');
+          setAcceptedCall({
+            id: callSession.id,
+            callType: callType === 'voice' ? 'audio' : 'video',
+            channelName: `call_${callSession.id}`,
+          });
+          setIsCallActive(false);
+        }
+      });
 
       // Timeout après 2 minutes
       setTimeout(() => {
-        supabase.removeChannel(callChannel);
+        cleanupRealtimeChannel();
         setIsCallActive((active) => {
           if (active) {
             toast.info('Aucun professeur n\'est disponible pour le moment');
@@ -146,7 +183,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
       toast.error('Erreur lors de l\'appel');
       return false;
     }
-  }, [user, canMakeCall, formationId]);
+  }, [user, canMakeCall, formationId, subscribeToCallSession, cleanupRealtimeChannel]);
 
   const endCall = useCallback(async () => {
     if (!currentCall || !user) return;
@@ -160,29 +197,36 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
         })
         .eq('id', currentCall.id);
 
-      setIsCallActive(false);
-      setCurrentCall(null);
+      clearCallState();
       toast.info('Appel terminé');
     } catch (error) {
       console.error('Erreur lors de la fin de l\'appel:', error);
     }
 
-    // Nettoyer le channel realtime
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-  }, [currentCall, user]);
+    cleanupRealtimeChannel();
+  }, [clearCallState, cleanupRealtimeChannel, currentCall, user]);
 
   const closeAgoraUI = useCallback(() => {
-    setAcceptedCall(null);
-    setCurrentCall(null);
-    setIsCallActive(false);
-  }, []);
+    clearCallState();
+  }, [clearCallState]);
 
   const openAgoraUI = useCallback((call: AcceptedCall) => {
+    setCurrentCall((previous: any) => ({
+      ...previous,
+      id: call.id,
+      status: 'accepted',
+    }));
     setAcceptedCall(call);
-  }, []);
+    subscribeToCallSession(call.id, {
+      showEndedToast: true,
+    });
+  }, [subscribeToCallSession]);
+
+  useEffect(() => {
+    return () => {
+      cleanupRealtimeChannel();
+    };
+  }, [cleanupRealtimeChannel]);
 
   return {
     initiateCall,
