@@ -102,32 +102,6 @@ interface GiftOverlayState {
   content: string;
 }
 
-const extractPresenceEntries = (value: unknown): Record<string, any>[] => {
-  if (!value) {
-    return [];
-  }
-
-  if (Array.isArray(value)) {
-    return value.flatMap((item) => extractPresenceEntries(item));
-  }
-
-  if (typeof value !== 'object') {
-    return [];
-  }
-
-  const record = value as Record<string, any>;
-
-  if (Array.isArray(record.metas)) {
-    return record.metas.flatMap((item) => extractPresenceEntries(item));
-  }
-
-  if ('presence_ref' in record || 'user_id' in record || 'user_name' in record || 'role' in record) {
-    return [record];
-  }
-
-  return Object.values(record).flatMap((item) => extractPresenceEntries(item));
-};
-
 /** Bouton Suivre inline sans avatar, pour l'en-tête du live */
 const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
   const { friendshipStatus, sendRequest, cancelRequest, acceptRequest, removeFriend, isLoading } = useFollow(hostId);
@@ -235,6 +209,18 @@ const RemoteVideoTile: React.FC<{
   );
 };
 
+const extractPresenceEntries = (value: unknown): Record<string, any>[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.flatMap(item => extractPresenceEntries(item));
+  if (typeof value !== 'object') return [];
+  
+  const record = value as Record<string, any>;
+  if (Array.isArray(record.metas)) return record.metas.flatMap(item => extractPresenceEntries(item));
+  
+  if ('user_id' in record || 'userId' in record || 'role' in record) return [record];
+  return Object.values(record).flatMap(item => extractPresenceEntries(item));
+};
+
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -281,7 +267,13 @@ const UserLive: React.FC = () => {
     upgradeToHost,
   } = useAgoraCall();
 
-  const [visitorId] = useState(() => crypto.randomUUID());
+  const [visitorId] = useState(() => {
+    const saved = sessionStorage.getItem('live_visitor_id');
+    if (saved) return saved;
+    const newId = crypto.randomUUID();
+    sessionStorage.setItem('live_visitor_id', newId);
+    return newId;
+  });
   const stableUserId = user?.id || visitorId;
   const stableStreamId = stream?.id;
   const stableHostId = stream?.host_id;
@@ -298,35 +290,34 @@ const UserLive: React.FC = () => {
   const stableAvatarUrl = profile?.avatar_url || null;
 
   const connectedPeople = useMemo(() => {
-    const merged = new Map<string, any>();
+      const merged = new Map<string, any>();
 
-    viewersList.forEach((viewer) => {
-      const id = viewer.user_id || viewer.userId || viewer.presence_ref;
-      if (!id) return;
-      
-      // Prioriser les infos plus complètes si on a des doublons
-      if (!merged.has(id) || (viewer.user_name && !merged.get(id).user_name)) {
-        merged.set(id, viewer);
-      }
-    });
-
-    acceptedParticipants.forEach((participant) => {
-      const id = participant.userId;
-      if (!id) return;
-
-      const existing = merged.get(id);
-      merged.set(id, {
-        ...(existing || {}),
-        user_id: id,
-        user_name: participant.userName,
-        avatar_url: participant.userAvatar,
-        role: existing?.role === 'host' ? 'host' : 'participant',
-        agora_uid: participant.agoraUid
+      // Étape 1: Ajouter TOUTE la présence Supabase
+      viewersList.forEach((v) => {
+        const id = v.user_id || v.userId || v.presence_ref;
+        if (!id) return;
+        merged.set(id, v);
       });
-    });
 
-    return Array.from(merged.values());
-  }, [acceptedParticipants, viewersList]);
+      // Étape 2: Enrichir avec les données des intervenants acceptés
+      acceptedParticipants.forEach((p) => {
+        const id = p.userId;
+        if (!id) return;
+
+        const existing = merged.get(id);
+        merged.set(id, {
+          ...(existing || {}),
+          user_id: id,
+          user_name: p.userName,
+          avatar_url: p.userAvatar,
+          // Un participant accepté DOIT avoir un rôle participant (sauf si c'est le host)
+          role: (existing?.role === 'host' || id === stableHostId) ? 'host' : 'participant',
+          agora_uid: p.agoraUid
+        });
+      });
+
+      return Array.from(merged.values());
+    }, [acceptedParticipants, viewersList, stableHostId]);
 
   const hostAgoraUid = useMemo(() => {
     const hostPresence = connectedPeople.find(p => p.role === 'host' && (p.user_id || p.userId) === stableHostId);
@@ -452,67 +443,75 @@ const UserLive: React.FC = () => {
 
     presenceChannelRef.current = roomChannel;
 
-    roomChannel
-      .on('presence', { event: 'sync' }, () => {
-        const presenceState = roomChannel.presenceState();
-        const currentViewers: any[] = [];
-        const reconstructedParticipants: AcceptedParticipant[] = [];
-        const uniqueUsers = new Map<string, any>();
+    const updatePresenceState = () => {
+      const presenceState = roomChannel.presenceState();
+      const uniqueUsers = new Map<string, any>();
 
-        Object.entries(presenceState).forEach(([presenceKey, presences]) => {
-          extractPresenceEntries(presences).forEach((presence: any) => {
-            if (!presence || typeof presence !== 'object') return;
+      Object.entries(presenceState).forEach(([presenceKey, presences]) => {
+        extractPresenceEntries(presences).forEach((presence: any) => {
+          if (!presence || typeof presence !== 'object') return;
 
-            const userId = presence.user_id || presence.userId || presenceKey;
-            if (!userId) return;
+          const userId = presence.user_id || presence.userId || presenceKey;
+          if (!userId) return;
 
-            // On garde les infos les plus récentes pour un même userId
-            const existing = uniqueUsers.get(userId);
-            if (!existing || (presence.online_at && (!existing.online_at || presence.online_at > existing.online_at))) {
-              uniqueUsers.set(userId, {
-                ...presence,
-                user_id: userId,
-                presence_ref: presenceKey // Utile pour Supabase
-              });
-            }
-          });
-        });
-
-        uniqueUsers.forEach((presence) => {
-          currentViewers.push(presence);
-
-          if (presence.role === 'participant') {
-            reconstructedParticipants.push({
-              userId: presence.user_id,
-              userName: presence.user_name || 'Utilisateur',
-              userAvatar: presence.avatar_url || null,
-              agoraUid: presence.agora_uid ? String(presence.agora_uid) : undefined,
-              isMicEnabled: presence.mic_enabled !== false,
-              isCameraEnabled: presence.camera_enabled !== false,
+          // On garde les infos les plus récentes ou les rôles les plus importants
+          const existing = uniqueUsers.get(userId);
+          const isMoreRecent = presence.online_at && (!existing?.online_at || presence.online_at > existing.online_at);
+          const hasBetterRole = (presence.role === 'participant' || presence.role === 'host') && existing?.role === 'viewer';
+          
+          if (!existing || isMoreRecent || hasBetterRole) {
+            uniqueUsers.set(userId, {
+              ...presence,
+              user_id: userId,
+              presence_ref: presenceKey
             });
           }
         });
+      });
 
-        setViewerCount(currentViewers.length);
-        setViewersList(currentViewers);
-        setAcceptedParticipants(prev => {
-          const preservedHostOnly = prev.filter(participant => !reconstructedParticipants.some(item => item.userId === participant.userId));
-          return [...preservedHostOnly.filter(item => item.userId === stableUserId && isAcceptedParticipant), ...reconstructedParticipants.filter(item => item.userId !== stableUserId)];
+      const currentViewers = Array.from(uniqueUsers.values());
+      const reconstructedParticipants: AcceptedParticipant[] = [];
+
+      currentViewers.forEach((presence) => {
+        if (presence.role === 'participant') {
+          reconstructedParticipants.push({
+            userId: presence.user_id,
+            userName: presence.user_name || 'Utilisateur',
+            userAvatar: presence.avatar_url || null,
+            agoraUid: presence.agora_uid ? String(presence.agora_uid) : undefined,
+            isMicEnabled: presence.mic_enabled !== false,
+            isCameraEnabled: presence.camera_enabled !== false,
+          });
+        }
+      });
+
+      setViewerCount(currentViewers.length);
+      setViewersList(currentViewers);
+      
+      // SYNC: Nettoyer les participants qui ne sont plus connectés ou n'ont plus le rôle participant
+      setAcceptedParticipants(prev => {
+        // 1. On ne garde que ceux qui sont encore présents physiquement ET qui ont le rôle participant
+        // (Sauf si c'est nous-même et qu'on vient d'accepter, on attend la sync)
+        const next = reconstructedParticipants.map(rp => {
+          const existing = prev.find(p => p.userId === rp.userId);
+          return existing ? { ...existing, ...rp } : rp;
         });
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        extractPresenceEntries(newPresences).forEach((presence: any) => {
-          const normalizedPresence = {
-            ...presence,
-            user_id: presence?.user_id || presence?.userId || key,
-          };
 
-          if (normalizedPresence.user_name && normalizedPresence.user_id !== stableUserId) {
+        return next;
+      });
+    };
+
+    roomChannel
+      .on('presence', { event: 'sync' }, updatePresenceState)
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        (newPresences as any[]).forEach((presence: any) => {
+          const userId = presence?.user_id || presence?.userId || key;
+          if (presence.user_name && userId !== stableUserId) {
             const joinMsg: LiveMessage = {
               id: crypto.randomUUID(),
-              userId: normalizedPresence.user_id || 'system',
-              userName: normalizedPresence.user_name,
-              userAvatar: normalizedPresence.avatar_url,
+              userId: userId || 'system',
+              userName: presence.user_name,
+              userAvatar: presence.avatar_url,
               type: 'join',
               content: 'a rejoint le live',
               createdAt: new Date().toISOString(),
@@ -520,6 +519,11 @@ const UserLive: React.FC = () => {
             setMessages(prev => [...prev.slice(-49), joinMsg]);
           }
         });
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        // Optionnel: On pourrait ajouter un message de départ ou nettoyer ici, 
+        // mais le 'sync' s'en occupe déjà de manière globale.
+        updatePresenceState();
       })
       .on('broadcast', { event: 'live_action' }, (payload) => {
         const newMsg = payload.payload as LiveMessage;
@@ -1483,19 +1487,19 @@ const UserLive: React.FC = () => {
           <div className="flex flex-col">
             <span className="font-medium text-sm flex items-center gap-1.5">
               {name}
-              {role === 'host' && (
+              {(role === 'host' || viewer.user_id === stream.host_id) && (
                 <span className="inline-flex items-center gap-0.5 bg-amber-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
                   <Crown className="h-2.5 w-2.5" /> Créateur
                 </span>
               )}
-              {role === 'participant' && (
+              {role === 'participant' && viewer.user_id !== stream.host_id && (
                 <span className="inline-flex items-center gap-0.5 bg-blue-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
                   Intervenant
                 </span>
               )}
             </span>
             <span className="text-xs text-zinc-500 capitalize">
-              {role === 'host' ? 'Créateur' : role === 'participant' ? 'Intervenant' : 'Spectateur'}
+              {(role === 'host' || viewer.user_id === stream.host_id) ? 'Créateur' : role === 'participant' ? 'Intervenant' : 'Spectateur'}
             </span>
           </div>
                 </div>
