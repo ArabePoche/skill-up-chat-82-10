@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 
+export const DEFAULT_SC_TO_FCFA_RATE = 10;
+
 export interface MarketplaceOrder {
   id: string;
   buyer_id: string;
@@ -62,9 +64,9 @@ export const useScToFcfaRate = () => {
 
       if (error) {
         console.error('Erreur récupération taux SC:', error);
-        return 1;
+        return DEFAULT_SC_TO_FCFA_RATE;
       }
-      return data?.sc_to_fcfa_rate || 1;
+      return data?.sc_to_fcfa_rate || DEFAULT_SC_TO_FCFA_RATE;
     },
   });
 };

@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
-import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate, fcfaToSc } from '../hooks/useMarketplaceOrders';
+import { useCreateMarketplaceOrder, useMarketplaceCommissionSettings, useScToFcfaRate, fcfaToSc, DEFAULT_SC_TO_FCFA_RATE } from '../hooks/useMarketplaceOrders';
 import { useUserWallet } from '@/hooks/useUserWallet';
 
 interface BuyWithScDialogProps {
@@ -54,7 +54,7 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
   if (!product) return null;
 
   const normalizedPrice = normalizeNumericValue(product.price);
-  const rate = normalizeNumericValue(scRate) || 1;
+  const rate = normalizeNumericValue(scRate) || DEFAULT_SC_TO_FCFA_RATE;
   const commissionRate = commissionSettings?.commission_rate || 5;
   const unitPriceSc = fcfaToSc(normalizedPrice, rate);
   const totalSc = unitPriceSc * quantity;
@@ -65,6 +65,9 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
 
   const formatSc = (value: number) =>
     new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
+
+  const formatFcfa = (value: number) =>
+    new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
   const handleBuy = () => {
     if (!product.seller_id && !product.profiles?.id) return;
@@ -90,8 +93,8 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-md max-h-[85vh] overflow-hidden p-0 gap-0">
+        <DialogHeader className="sticky top-0 z-10 border-b bg-background px-4 py-4 sm:px-6">
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="text-emerald-600" size={20} />
             Achat sécurisé en SC
@@ -101,85 +104,93 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="text-sm font-medium line-clamp-2">{product.title}</div>
+        <div className="overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="space-y-4">
+            <div className="text-sm font-medium line-clamp-2">{product.title}</div>
 
-          {/* Prix */}
-          <div className="bg-emerald-50 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Prix unitaire</span>
-              <span className="font-bold">{formatSc(unitPriceSc)} SC <span className="text-muted-foreground text-xs">({normalizedPrice} FCFA)</span></span>
+            {/* Prix */}
+            <div className="bg-emerald-50 rounded-lg p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3 text-sm">
+                <span>Prix unitaire</span>
+                <span className="text-right font-bold">
+                  {formatSc(unitPriceSc)} SC
+                  <span className="block text-muted-foreground text-xs font-medium">{formatFcfa(normalizedPrice)} FCFA</span>
+                </span>
+              </div>
+              <div className="rounded-md bg-white/70 px-3 py-2 text-xs text-emerald-900">
+                Taux appliqué: 1 SC = {formatFcfa(rate)} FCFA
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span>Quantité</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                  className="w-20 h-8 text-center"
+                />
+              </div>
+              <hr />
+              <div className="flex justify-between font-bold text-lg">
+                <span>Total</span>
+                <span className="text-emerald-700">{formatSc(totalSc)} SC</span>
+              </div>
+              <div className="text-xs text-muted-foreground text-right">
+                Commission plateforme : {formatSc(commissionSc)} SC ({commissionRate}%) · Vendeur reçoit : {formatSc(sellerSc)} SC
+              </div>
+              {!hasValidPrice && (
+                <div className="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900">
+                  Le prix du produit est invalide et ne peut pas encore être converti en SC.
+                </div>
+              )}
             </div>
-            <div className="flex justify-between text-sm">
-              <span>Quantité</span>
+
+            {/* Solde */}
+            <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${hasEnough ? 'bg-blue-50 text-blue-800' : 'bg-red-50 text-red-800'}`}>
+              <Coins size={16} />
+              <span>Votre solde : <strong>{wallet?.soumboulah_cash || 0} SC</strong></span>
+              {!hasEnough && (
+                <span className="flex items-center gap-1 ml-auto text-red-600">
+                  <AlertTriangle size={14} /> Insuffisant
+                </span>
+              )}
+            </div>
+
+            {/* Escrow info */}
+            <div className="bg-amber-50 rounded-lg p-3 text-xs text-amber-800 space-y-1">
+              <p className="font-semibold flex items-center gap-1">
+                <ShieldCheck size={14} /> Paiement sécurisé (Escrow)
+              </p>
+              <p>• Le montant est retenu jusqu'à votre confirmation de réception</p>
+              <p>• En cas de litige, un administrateur tranchera</p>
+              <p>• Si pas de réclamation, le paiement est libéré automatiquement</p>
+            </div>
+
+            {/* Adresse */}
+            <div>
+              <Label>Adresse de livraison</Label>
               <Input
-                type="number"
-                min={1}
-                max={10}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                className="w-20 h-8 text-center"
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                placeholder="Votre adresse complète"
               />
             </div>
-            <hr />
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total</span>
-              <span className="text-emerald-700">{formatSc(totalSc)} SC</span>
+
+            {/* Notes */}
+            <div>
+              <Label>Notes (optionnel)</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Instructions pour le vendeur..."
+                rows={2}
+              />
             </div>
-            <div className="text-xs text-muted-foreground text-right">
-              Commission plateforme : {formatSc(commissionSc)} SC ({commissionRate}%) · Vendeur reçoit : {formatSc(sellerSc)} SC
-            </div>
-            {!hasValidPrice && (
-              <div className="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900">
-                Le prix du produit est invalide et ne peut pas encore être converti en SC.
-              </div>
-            )}
-          </div>
-
-          {/* Solde */}
-          <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${hasEnough ? 'bg-blue-50 text-blue-800' : 'bg-red-50 text-red-800'}`}>
-            <Coins size={16} />
-            <span>Votre solde : <strong>{wallet?.soumboulah_cash || 0} SC</strong></span>
-            {!hasEnough && (
-              <span className="flex items-center gap-1 ml-auto text-red-600">
-                <AlertTriangle size={14} /> Insuffisant
-              </span>
-            )}
-          </div>
-
-          {/* Escrow info */}
-          <div className="bg-amber-50 rounded-lg p-3 text-xs text-amber-800 space-y-1">
-            <p className="font-semibold flex items-center gap-1">
-              <ShieldCheck size={14} /> Paiement sécurisé (Escrow)
-            </p>
-            <p>• Le montant est retenu jusqu'à votre confirmation de réception</p>
-            <p>• En cas de litige, un administrateur tranchera</p>
-            <p>• Si pas de réclamation, le paiement est libéré automatiquement</p>
-          </div>
-
-          {/* Adresse */}
-          <div>
-            <Label>Adresse de livraison</Label>
-            <Input
-              value={shippingAddress}
-              onChange={(e) => setShippingAddress(e.target.value)}
-              placeholder="Votre adresse complète"
-            />
-          </div>
-
-          {/* Notes */}
-          <div>
-            <Label>Notes (optionnel)</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Instructions pour le vendeur..."
-              rows={2}
-            />
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 z-10 border-t bg-background px-4 py-4 sm:px-6">
           <Button variant="outline" onClick={onClose} disabled={isPending}>Annuler</Button>
           <Button
             onClick={handleBuy}
