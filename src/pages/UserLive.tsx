@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  BookOpen,
   Copy,
   Crown,
   Globe,
   Hand,
+  Layers3,
   Loader2,
   Lock,
   Mic,
@@ -37,6 +39,12 @@ import iconH from '@/assets/coin-habbah.png';
 import { useFollow } from '@/friends/hooks/useFollow';
 import { motion } from 'framer-motion';
 import type { IRemoteVideoTrack } from 'agora-rtc-sdk-ng';
+import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
+import LiveScreenManager from '@/live/components/LiveScreenManager';
+import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
+import type { LiveScreen } from '@/live/types';
+import { isLiveScreen } from '@/live/types';
+import { useEnrollmentWithProtection } from '@/hooks/useEnrollments';
 
 type LiveVisibility = 'public' | 'friends_followers';
 
@@ -113,6 +121,10 @@ const EMPTY_LIVE_GIFT_TOTALS: LiveGiftTotals = {
   soumboulah_cash: 0,
   soumboulah_bonus: 0,
   habbah: 0,
+};
+
+const isTrackedLiveGiftCurrency = (currency?: string | null): currency is keyof LiveGiftTotals => {
+  return currency === 'soumboulah_cash' || currency === 'soumboulah_bonus' || currency === 'habbah';
 };
 
 /** Bouton Suivre inline sans avatar, pour l'en-tête du live */
@@ -257,9 +269,13 @@ const UserLive: React.FC = () => {
   const [isDescriptionVisible, setIsDescriptionVisible] = useState(true);
   const [areCommentsCollapsed, setAreCommentsCollapsed] = useState(false);
   const [liveGiftTotals, setLiveGiftTotals] = useState<LiveGiftTotals>(EMPTY_LIVE_GIFT_TOTALS);
+  const [publicLiveScreen, setPublicLiveScreen] = useState<LiveScreen | null>(null);
+  const [privateLiveScreen, setPrivateLiveScreen] = useState<LiveScreen | null>(null);
+  const [isScreenManagerOpen, setIsScreenManagerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
+  const publicLiveScreenRef = useRef<LiveScreen | null>(null);
   
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -293,6 +309,8 @@ const UserLive: React.FC = () => {
 
   const isHost = !!user?.id && !!stream?.host_id && user.id === stream.host_id && requestedHostMode;
   const hostName = useMemo(() => getDisplayName(stream?.host), [stream?.host]);
+  const { data: creatorLiveAssets } = useLiveCreatorAssets(isHost ? stableUserId : null);
+  const { enroll, isFormationPending } = useEnrollmentWithProtection();
 
   // Stabilize values for presence tracking
   const stableDisplayName = useMemo(() => {
@@ -301,6 +319,40 @@ const UserLive: React.FC = () => {
   }, [profile, stableUserId]);
 
   const stableAvatarUrl = profile?.avatar_url || null;
+
+  useEffect(() => {
+    publicLiveScreenRef.current = publicLiveScreen;
+  }, [publicLiveScreen]);
+
+  const syncLivePresence = useCallback((screenOverride?: LiveScreen | null) => {
+    if (!presenceChannelRef.current) {
+      return;
+    }
+
+    const role = isHost ? 'host' : isAcceptedParticipant ? 'participant' : 'viewer';
+    const screen = screenOverride === undefined ? publicLiveScreenRef.current : screenOverride;
+
+    void presenceChannelRef.current.track({
+      user_id: stableUserId,
+      user_name: stableDisplayName,
+      avatar_url: stableAvatarUrl,
+      role,
+      public_live_screen: isHost ? screen : null,
+      agora_uid: (isHost || isAcceptedParticipant) ? state.localUid : null,
+      mic_enabled: (isHost || isAcceptedParticipant) ? !state.isMuted : null,
+      camera_enabled: (isHost || isAcceptedParticipant) ? state.isVideoEnabled : null,
+      online_at: new Date().toISOString(),
+    });
+  }, [
+    isAcceptedParticipant,
+    isHost,
+    stableAvatarUrl,
+    stableDisplayName,
+    stableUserId,
+    state.isMuted,
+    state.isVideoEnabled,
+    state.localUid,
+  ]);
 
   const connectedPeople = useMemo(() => {
       const merged = new Map<string, any>();
@@ -492,6 +544,15 @@ const UserLive: React.FC = () => {
       const currentViewers = Array.from(uniqueUsers.values());
       const reconstructedParticipants: AcceptedParticipant[] = [];
 
+      if (!isHostRole) {
+        const hostPresence = currentViewers.find((presence) => {
+          const presenceUserId = presence.user_id || presence.userId;
+          return presence.role === 'host' && presenceUserId === stableHostId;
+        });
+
+        setPublicLiveScreen(isLiveScreen(hostPresence?.public_live_screen) ? hostPresence.public_live_screen : null);
+      }
+
       currentViewers.forEach((presence) => {
         if (presence.role === 'participant') {
           reconstructedParticipants.push({
@@ -551,6 +612,13 @@ const UserLive: React.FC = () => {
           return [...prev.slice(-49), newMsg];
         });
         if (newMsg.type === 'gift') {
+          if (isHost && isTrackedLiveGiftCurrency(newMsg.currency) && typeof newMsg.amount === 'number' && newMsg.amount > 0) {
+            setLiveGiftTotals((current) => ({
+              ...current,
+              [newMsg.currency]: current[newMsg.currency] + newMsg.amount,
+            }));
+          }
+
           setActiveGiftOverlay({
             id: newMsg.id,
             userName: newMsg.userName,
@@ -675,6 +743,10 @@ const UserLive: React.FC = () => {
         const { userId } = payload.payload as { userId: string };
         setAcceptedParticipants(prev => prev.filter(participant => participant.userId !== userId));
       })
+      .on('broadcast', { event: 'live_screen_update' }, (payload) => {
+        const nextScreen = (payload.payload as { screen?: unknown })?.screen;
+        setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await roomChannel.track({
@@ -682,6 +754,7 @@ const UserLive: React.FC = () => {
             user_name: stableDisplayName,
             avatar_url: stableAvatarUrl,
             role: isHostRole ? 'host' : 'viewer',
+            public_live_screen: isHostRole ? publicLiveScreenRef.current : null,
             online_at: new Date().toISOString(),
           });
         }
@@ -714,13 +787,13 @@ const UserLive: React.FC = () => {
     let isMounted = true;
 
     const mergeLiveGiftTransaction = (transaction: { currency?: string | null; amount?: number | null; transaction_type?: string | null }) => {
-      if (!transaction.currency || !Object.prototype.hasOwnProperty.call(EMPTY_LIVE_GIFT_TOTALS, transaction.currency)) {
+      if (!isTrackedLiveGiftCurrency(transaction.currency)) {
         return;
       }
 
       const rawAmount = Number(transaction.amount || 0);
-      const delta = transaction.transaction_type === 'gift_received'
-        ? rawAmount
+      const delta = transaction.transaction_type === 'gift_received' || transaction.transaction_type === 'gift'
+        ? Math.abs(rawAmount)
         : transaction.transaction_type === 'commission'
         ? Math.abs(rawAmount)
         : 0;
@@ -738,10 +811,10 @@ const UserLive: React.FC = () => {
     const loadLiveGiftTotals = async () => {
       const { data, error } = await supabase
         .from('wallet_transactions')
-        .select('currency, amount, transaction_type, reference_id')
+        .select('currency, amount, transaction_type, reference_id, reference_type')
         .eq('user_id', stableHostId)
         .eq('reference_id', stableStreamId)
-        .in('transaction_type', ['gift_received', 'commission']);
+        .in('transaction_type', ['gift', 'gift_received', 'commission']);
 
       if (error) {
         console.error('Erreur chargement cumul cadeaux live:', error);
@@ -750,12 +823,12 @@ const UserLive: React.FC = () => {
 
       const nextTotals = (data || []).reduce<LiveGiftTotals>((totals, transaction: any) => {
         const currency = transaction.currency as keyof LiveGiftTotals;
-        if (!Object.prototype.hasOwnProperty.call(totals, currency)) {
+        if (!isTrackedLiveGiftCurrency(currency)) {
           return totals;
         }
 
-        if (transaction.transaction_type === 'gift_received') {
-          totals[currency] += Number(transaction.amount || 0);
+        if (transaction.transaction_type === 'gift_received' || transaction.transaction_type === 'gift') {
+          totals[currency] += Math.abs(Number(transaction.amount || 0));
         }
 
         if (transaction.transaction_type === 'commission') {
@@ -790,6 +863,7 @@ const UserLive: React.FC = () => {
             amount?: number | null;
             transaction_type?: string | null;
             reference_id?: string | null;
+            reference_type?: string | null;
           };
 
           if (transaction.reference_id !== stableStreamId) {
@@ -832,32 +906,52 @@ const UserLive: React.FC = () => {
   }, [isAcceptedParticipant, stableAvatarUrl, stableDisplayName, stableUserId, state.localUid]);
 
   useEffect(() => {
+    syncLivePresence(publicLiveScreen);
+  }, [publicLiveScreen, syncLivePresence]);
+
+  const handleSelectPublicLiveScreen = useCallback((screen: LiveScreen | null) => {
+    publicLiveScreenRef.current = screen;
+    setPublicLiveScreen(screen);
+
+    syncLivePresence(screen);
+
     if (!presenceChannelRef.current) {
       return;
     }
 
-    const role = isHost ? 'host' : isAcceptedParticipant ? 'participant' : 'viewer';
-
-    void presenceChannelRef.current.track({
-      user_id: stableUserId,
-      user_name: stableDisplayName,
-      avatar_url: stableAvatarUrl,
-      role,
-      agora_uid: (isHost || isAcceptedParticipant) ? state.localUid : null,
-      mic_enabled: (isHost || isAcceptedParticipant) ? !state.isMuted : null,
-      camera_enabled: (isHost || isAcceptedParticipant) ? state.isVideoEnabled : null,
-      online_at: new Date().toISOString(),
+    void presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'live_screen_update',
+      payload: {
+        screen,
+      },
     });
-  }, [
-    isAcceptedParticipant,
-    isHost,
-    stableAvatarUrl,
-    stableDisplayName,
-    stableUserId,
-    state.isMuted,
-    state.isVideoEnabled,
-    state.localUid,
-  ]);
+  }, [syncLivePresence]);
+
+  const handleSelectPrivateLiveScreen = useCallback((screen: LiveScreen | null) => {
+    setPrivateLiveScreen(screen);
+  }, []);
+
+  const handleOpenFormationFromScreen = useCallback((formationId: string) => {
+    navigate(`/cours/formation/${formationId}`);
+  }, [navigate]);
+
+  const handleOpenShopFromScreen = useCallback(() => {
+    navigate('/shop');
+  }, [navigate]);
+
+  const handleEnrollFromScreen = useCallback(async (screen: LiveScreen) => {
+    if (screen.type !== 'formation_enrollment') {
+      return;
+    }
+
+    if (!user?.id) {
+      navigate('/auth');
+      return;
+    }
+
+    await enroll(screen.formation.id, user.id, 'free');
+  }, [enroll, navigate, user?.id]);
 
   useEffect(() => {
     if (isHost) {
@@ -1215,6 +1309,27 @@ const UserLive: React.FC = () => {
         </motion.div>
       )}
 
+      {publicLiveScreen && (
+        <div className="pointer-events-auto absolute inset-x-4 bottom-24 z-30 flex justify-center sm:bottom-28">
+          <LiveScreenDisplay
+            screen={publicLiveScreen}
+            variant="public"
+            isHost={isHost}
+            canEnroll={publicLiveScreen.type === 'formation_enrollment' && !isHost}
+            isEnrollmentPending={publicLiveScreen.type === 'formation_enrollment' ? isFormationPending(publicLiveScreen.formation.id) : false}
+            onOpenShop={handleOpenShopFromScreen}
+            onOpenFormation={publicLiveScreen.type === 'formation_enrollment' ? () => handleOpenFormationFromScreen(publicLiveScreen.formation.id) : undefined}
+            onEnroll={publicLiveScreen.type === 'formation_enrollment' ? () => handleEnrollFromScreen(publicLiveScreen) : undefined}
+          />
+        </div>
+      )}
+
+      {isHost && privateLiveScreen && (
+        <div className="pointer-events-auto absolute left-4 top-24 z-30 hidden max-w-sm md:block">
+          <LiveScreenDisplay screen={privateLiveScreen} variant="private" isHost />
+        </div>
+      )}
+
       {/* Right panel: accepted participants displayed vertically */}
       {(() => {
         const participantLookup = acceptedParticipants.filter(participant => participant.userId !== stableUserId);
@@ -1385,17 +1500,29 @@ const UserLive: React.FC = () => {
                 {liveGiftTotals.habbah.toLocaleString('fr-FR')}
               </div>
               <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-                <img src={iconSC} alt="S" className="h-4 w-4 object-contain" />
-                {liveGiftTotals.soumboulah_cash.toLocaleString('fr-FR')}
-              </div>
-              <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                 <img src={iconSB} alt="SB" className="h-4 w-4 object-contain" />
                 {liveGiftTotals.soumboulah_bonus.toLocaleString('fr-FR')}
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                <img src={iconSC} alt="S" className="h-4 w-4 object-contain" />
+                {liveGiftTotals.soumboulah_cash.toLocaleString('fr-FR')}
               </div>
               <div className="rounded-full bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200 backdrop-blur-sm">
                 Commission selon niveau
               </div>
             </div>
+          )}
+
+          {isHost && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 rounded-full border-white/15 bg-black/35 px-3 text-xs font-semibold text-white hover:bg-white/10 hover:text-white"
+              onClick={() => setIsScreenManagerOpen(true)}
+            >
+              <Layers3 className="mr-2 h-4 w-4" />
+              Écrans
+            </Button>
           )}
         </div>
       </div>
@@ -1555,6 +1682,18 @@ const UserLive: React.FC = () => {
 
           {(isHost || isAcceptedParticipant) && (
             <>
+              {isHost && (
+                <Button
+                  type="button"
+                  onClick={() => setIsScreenManagerOpen(true)}
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  title="Piloter les écrans du live"
+                >
+                  <BookOpen size={18} />
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={toggleMute}
@@ -1598,6 +1737,19 @@ const UserLive: React.FC = () => {
             liveTitle: stream.title,
           }}
           onGiftSent={handleGiftSuccess}
+        />
+      )}
+
+      {isHost && (
+        <LiveScreenManager
+          open={isScreenManagerOpen}
+          onOpenChange={setIsScreenManagerOpen}
+          products={creatorLiveAssets?.products || []}
+          formations={creatorLiveAssets?.formations || []}
+          publicScreen={publicLiveScreen}
+          privateScreen={privateLiveScreen}
+          onSelectPublicScreen={handleSelectPublicLiveScreen}
+          onSelectPrivateScreen={handleSelectPrivateLiveScreen}
         />
       )}
 
