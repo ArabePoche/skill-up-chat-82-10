@@ -93,6 +93,13 @@ interface ParticipantControlPayload {
   action: 'mic_on' | 'mic_off' | 'camera_on' | 'camera_off' | 'stop';
 }
 
+interface GiftOverlayState {
+  id: string;
+  userName: string;
+  currency?: string;
+  content: string;
+}
+
 /** Bouton Suivre inline sans avatar, pour l'en-tête du live */
 const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
   const { friendshipStatus, sendRequest, cancelRequest, acceptRequest, removeFriend, isLoading } = useFollow(hostId);
@@ -138,7 +145,8 @@ const RemoteVideoTile: React.FC<{
   showMicOff?: boolean;
   showCameraOff?: boolean;
   children?: React.ReactNode;
-}> = ({ uid, getRemoteVideoTrack, label, avatarUrl, remoteUsers, showMicOff, showCameraOff, children }) => {
+  onRevealControls?: () => void;
+}> = ({ uid, getRemoteVideoTrack, label, avatarUrl, remoteUsers, showMicOff, showCameraOff, children, onRevealControls }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -157,7 +165,11 @@ const RemoteVideoTile: React.FC<{
   }, [uid, getRemoteVideoTrack, remoteUsers]);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-xl bg-zinc-900 aspect-[9/16]">
+    <div
+      className="group relative w-full overflow-hidden rounded-xl bg-zinc-900 aspect-[9/16]"
+      onClick={onRevealControls}
+      onTouchStart={onRevealControls}
+    >
       <div ref={containerRef} className="w-full h-full" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
       {/* Avatar fallback when no video */}
@@ -214,6 +226,8 @@ const UserLive: React.FC = () => {
   const [hasRaisedHand, setHasRaisedHand] = useState(false);
   const [acceptedParticipants, setAcceptedParticipants] = useState<AcceptedParticipant[]>([]);
   const [isAcceptedParticipant, setIsAcceptedParticipant] = useState(false);
+  const [activeGiftOverlay, setActiveGiftOverlay] = useState<GiftOverlayState | null>(null);
+  const [expandedParticipantControlsId, setExpandedParticipantControlsId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   
@@ -364,14 +378,41 @@ const UserLive: React.FC = () => {
       .on('presence', { event: 'sync' }, () => {
         const presenceState = roomChannel.presenceState();
         const currentViewers: any[] = [];
+        const reconstructedParticipants: AcceptedParticipant[] = [];
+        const uniqueUsers = new Map<string, any>();
 
         Object.values(presenceState).forEach((presences) => {
-          const presence = (presences as any[])[0];
-          if (presence) currentViewers.push(presence);
+          (presences as any[]).forEach((presence) => {
+            if (!presence) {
+              return;
+            }
+
+            const key = presence.user_id || presence.presence_ref || crypto.randomUUID();
+            uniqueUsers.set(key, presence);
+          });
+        });
+
+        uniqueUsers.forEach((presence) => {
+          currentViewers.push(presence);
+
+          if (presence.role === 'participant') {
+            reconstructedParticipants.push({
+              userId: presence.user_id,
+              userName: presence.user_name || 'Utilisateur',
+              userAvatar: presence.avatar_url || null,
+              agoraUid: presence.agora_uid ? String(presence.agora_uid) : undefined,
+              isMicEnabled: presence.mic_enabled !== false,
+              isCameraEnabled: presence.camera_enabled !== false,
+            });
+          }
         });
 
         setViewerCount(currentViewers.length);
         setViewersList(currentViewers);
+        setAcceptedParticipants(prev => {
+          const preservedHostOnly = prev.filter(participant => !reconstructedParticipants.some(item => item.userId === participant.userId));
+          return [...preservedHostOnly.filter(item => item.userId === stableUserId && isAcceptedParticipant), ...reconstructedParticipants.filter(item => item.userId !== stableUserId)];
+        });
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         newPresences.forEach((presence: any) => {
@@ -392,6 +433,14 @@ const UserLive: React.FC = () => {
       .on('broadcast', { event: 'live_action' }, (payload) => {
         const newMsg = payload.payload as LiveMessage;
         setMessages(prev => [...prev.slice(-49), newMsg]);
+        if (newMsg.type === 'gift') {
+          setActiveGiftOverlay({
+            id: newMsg.id,
+            userName: newMsg.userName,
+            currency: newMsg.currency,
+            content: newMsg.content,
+          });
+        }
       })
       .on('broadcast', { event: 'raise_hand' }, (payload) => {
         const { userId, userName, userAvatar } = payload.payload;
@@ -560,6 +609,46 @@ const UserLive: React.FC = () => {
     });
   }, [isAcceptedParticipant, stableAvatarUrl, stableDisplayName, stableUserId, state.localUid]);
 
+  useEffect(() => {
+    if (!presenceChannelRef.current || !stableUserId) {
+      return;
+    }
+
+    const role = isHost ? 'host' : isAcceptedParticipant ? 'participant' : 'viewer';
+
+    void presenceChannelRef.current.track({
+      user_id: stableUserId,
+      user_name: stableDisplayName,
+      avatar_url: stableAvatarUrl,
+      role,
+      agora_uid: isAcceptedParticipant ? state.localUid : null,
+      mic_enabled: isAcceptedParticipant ? !state.isMuted : null,
+      camera_enabled: isAcceptedParticipant ? state.isVideoEnabled : null,
+      online_at: new Date().toISOString(),
+    });
+  }, [
+    isAcceptedParticipant,
+    isHost,
+    stableAvatarUrl,
+    stableDisplayName,
+    stableUserId,
+    state.isMuted,
+    state.isVideoEnabled,
+    state.localUid,
+  ]);
+
+  useEffect(() => {
+    if (!activeGiftOverlay) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setActiveGiftOverlay(current => current?.id === activeGiftOverlay.id ? null : current);
+    }, 3200);
+
+    return () => window.clearTimeout(timer);
+  }, [activeGiftOverlay]);
+
   const handleSendMessage = () => {
     if (!messageInput.trim() || !user || !profile || !presenceChannelRef.current) return;
 
@@ -687,6 +776,12 @@ const UserLive: React.FC = () => {
     });
 
     setMessages(prev => [...prev.slice(-49), newMessage]);
+    setActiveGiftOverlay({
+      id: newMessage.id,
+      userName: senderName,
+      currency,
+      content: newMessage.content,
+    });
   };
 
   useEffect(() => {
@@ -788,7 +883,7 @@ const UserLive: React.FC = () => {
         transition={{ duration: 0.3, ease: 'easeOut' }}
         className={`flex items-start gap-2 w-max max-w-[100%] rounded-xl px-1.5 py-1 text-sm ${
           msg.type === 'gift'
-            ? 'bg-gradient-to-r from-pink-500/80 to-purple-500/80 text-white shadow-lg px-3'
+            ? 'bg-gradient-to-r from-pink-500/85 via-fuchsia-500/80 to-amber-500/80 text-white shadow-xl px-3 py-2 backdrop-blur-md'
             : msg.type === 'raise_hand'
             ? 'bg-amber-500/20 text-amber-200 backdrop-blur-sm rounded-lg px-3'
             : msg.type === 'join'
@@ -827,11 +922,11 @@ const UserLive: React.FC = () => {
                   </span>
                 )}
               </span>
-              <span className="break-words flex items-center gap-1 flex-wrap font-medium">
+              <span className="break-words flex items-center gap-1.5 flex-wrap font-medium">
                 {msg.content}
-                {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSC} alt="SC" className="w-3 h-3 object-contain" /> SC</span>}
-                {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconH} alt="H" className="w-3 h-3 object-contain" /> H</span>}
-                {msg.currency === 'soumboulah_bonus' && <span className="inline-flex items-center bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded gap-1"><img src={iconSB} alt="SB" className="w-3 h-3 object-contain" /> SB</span>}
+                {msg.currency === 'soumboulah_cash' && <span className="inline-flex items-center bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full gap-1.5"><img src={iconSC} alt="SC" className="w-5 h-5 object-contain" /> SC</span>}
+                {msg.currency === 'habbah' && <span className="inline-flex items-center bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full gap-1.5"><img src={iconH} alt="H" className="w-5 h-5 object-contain" /> H</span>}
+                {msg.currency === 'soumboulah_bonus' && <span className="inline-flex items-center bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full gap-1.5"><img src={iconSB} alt="SB" className="w-5 h-5 object-contain" /> SB</span>}
               </span>
             </>
           )}
@@ -850,6 +945,32 @@ const UserLive: React.FC = () => {
           <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
         )}
       </div>
+
+      {activeGiftOverlay && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.88 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.05 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-gradient-to-br from-fuchsia-600/25 via-transparent to-amber-500/25"
+        >
+          <div className="flex flex-col items-center gap-4 rounded-[2rem] border border-white/20 bg-black/45 px-8 py-10 backdrop-blur-xl shadow-[0_0_80px_rgba(255,255,255,0.12)]">
+            <motion.img
+              initial={{ y: 20, scale: 0.7, rotate: -8 }}
+              animate={{ y: 0, scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+              src={activeGiftOverlay.currency === 'soumboulah_cash' ? iconSC : activeGiftOverlay.currency === 'soumboulah_bonus' ? iconSB : iconH}
+              alt={activeGiftOverlay.currency || 'cadeau'}
+              className="h-28 w-28 object-contain drop-shadow-[0_12px_30px_rgba(255,215,0,0.5)]"
+            />
+            <div className="text-center">
+              <p className="text-lg font-black uppercase tracking-[0.25em] text-amber-300">Cadeau reçu</p>
+              <p className="mt-2 text-2xl font-bold text-white">{activeGiftOverlay.userName}</p>
+              <p className="mt-1 text-base font-semibold text-white/90">{activeGiftOverlay.content}</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Right panel: accepted participants displayed vertically */}
       {(() => {
@@ -903,9 +1024,10 @@ const UserLive: React.FC = () => {
                   remoteUsers={state.remoteUsers}
                   showMicOff={participant ? !participant.isMicEnabled : false}
                   showCameraOff={participant ? !participant.isCameraEnabled : false}
+                  onRevealControls={() => setExpandedParticipantControlsId(current => current === participant.userId ? null : participant.userId)}
                 >
                   {isHost && participant && (
-                    <div className="absolute inset-x-1 top-1 flex flex-col gap-1 pointer-events-auto">
+                    <div className={`absolute inset-x-1 top-1 flex flex-col gap-1 pointer-events-auto transition-all duration-200 ${expandedParticipantControlsId === participant.userId ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0'}`}>
                       <button
                         type="button"
                         className={`flex h-5 items-center justify-center rounded-full backdrop-blur-sm text-white ${participant.isMicEnabled ? 'bg-black/55 hover:bg-red-500/80' : 'bg-red-500/80 hover:bg-red-500'}`}
@@ -1183,14 +1305,19 @@ const UserLive: React.FC = () => {
               Spectateurs ({viewerCount})
             </DialogTitle>
             <DialogDescription className="text-zinc-400 text-sm">
-              Liste des spectateurs connectés à ce live.
+              Liste des personnes connectées et des intervenants de ce live.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
-            {viewersList.length === 0 ? (
+            {viewersList.length === 0 && acceptedParticipants.length === 0 ? (
               <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment</p>
             ) : (
-              viewersList.map((viewer, idx) => {
+              [...viewersList, ...acceptedParticipants.filter(participant => !viewersList.some(viewer => (viewer.user_id || viewer.userId) === participant.userId)).map(participant => ({
+                user_id: participant.userId,
+                user_name: participant.userName,
+                avatar_url: participant.userAvatar,
+                role: 'participant',
+              }))].map((viewer, idx) => {
                 const name = viewer.user_name || viewer.userName || viewer.name || 'Utilisateur';
                 const avatar = viewer.avatar_url || viewer.avatarUrl || viewer.avatar || '';
                 const role = viewer.role || 'viewer';
@@ -1211,8 +1338,13 @@ const UserLive: React.FC = () => {
                           <Crown className="h-2.5 w-2.5" /> Créateur
                         </span>
                       )}
+                      {role === 'participant' && (
+                        <span className="inline-flex items-center gap-0.5 bg-fuchsia-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
+                          <Mic className="h-2.5 w-2.5" /> Intervenant
+                        </span>
+                      )}
                     </span>
-                    <span className="text-xs text-zinc-500 capitalize">{role === 'host' ? 'Créateur' : 'Spectateur'}</span>
+                    <span className="text-xs text-zinc-500 capitalize">{role === 'host' ? 'Créateur' : role === 'participant' ? 'Intervenant' : 'Spectateur'}</span>
                   </div>
                 </div>
                 );
