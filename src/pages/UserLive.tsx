@@ -296,40 +296,42 @@ const UserLive: React.FC = () => {
   }, [profile, stableUserId]);
 
   const stableAvatarUrl = profile?.avatar_url || null;
-  const hostAgoraUid = useMemo(() => {
-    const hostPresence = viewersList.find(viewer => viewer.role === 'host' && (viewer.user_id || viewer.userId) === stableHostId);
-    const agoraUid = hostPresence?.agora_uid;
-    return agoraUid ? String(agoraUid) : null;
-  }, [stableHostId, viewersList]);
 
   const connectedPeople = useMemo(() => {
     const merged = new Map<string, any>();
 
-    viewersList.forEach((viewer, index) => {
-      const key = viewer.user_id || viewer.userId || viewer.presence_ref || `viewer-${index}`;
-      merged.set(key, viewer);
+    viewersList.forEach((viewer) => {
+      const id = viewer.user_id || viewer.userId || viewer.presence_ref;
+      if (!id) return;
+      
+      // Prioriser les infos plus complètes si on a des doublons
+      if (!merged.has(id) || (viewer.user_name && !merged.get(id).user_name)) {
+        merged.set(id, viewer);
+      }
     });
 
-    acceptedParticipants.forEach((participant, index) => {
-      const key = participant.userId || `participant-${index}`;
-      if (!merged.has(key)) {
-        merged.set(key, {
-          user_id: participant.userId,
-          user_name: participant.userName,
-          avatar_url: participant.userAvatar,
-          role: 'viewer',
-        });
-        return;
-      }
+    acceptedParticipants.forEach((participant) => {
+      const id = participant.userId;
+      if (!id) return;
 
-      merged.set(key, {
-        ...merged.get(key),
-        role: merged.get(key)?.role === 'host' ? 'host' : 'viewer',
+      const existing = merged.get(id);
+      merged.set(id, {
+        ...(existing || {}),
+        user_id: id,
+        user_name: participant.userName,
+        avatar_url: participant.userAvatar,
+        role: existing?.role === 'host' ? 'host' : 'participant',
+        agora_uid: participant.agoraUid
       });
     });
 
     return Array.from(merged.values());
   }, [acceptedParticipants, viewersList]);
+
+  const hostAgoraUid = useMemo(() => {
+    const hostPresence = connectedPeople.find(p => p.role === 'host' && (p.user_id || p.userId) === stableHostId);
+    return hostPresence?.agora_uid ? String(hostPresence.agora_uid) : null;
+  }, [stableHostId, connectedPeople]);
 
   const upsertAcceptedParticipant = useCallback((participant: AcceptedParticipant) => {
     setAcceptedParticipants(prev => {
@@ -441,6 +443,9 @@ const UserLive: React.FC = () => {
       config: {
         presence: {
           key: stableUserId,
+        },
+        broadcast: {
+          self: true, // Permet de recevoir ses propres événements pour confirmation
         }
       }
     });
@@ -456,27 +461,20 @@ const UserLive: React.FC = () => {
 
         Object.entries(presenceState).forEach(([presenceKey, presences]) => {
           extractPresenceEntries(presences).forEach((presence: any) => {
-            if (!presence || typeof presence !== 'object') {
-              return;
+            if (!presence || typeof presence !== 'object') return;
+
+            const userId = presence.user_id || presence.userId || presenceKey;
+            if (!userId) return;
+
+            // On garde les infos les plus récentes pour un même userId
+            const existing = uniqueUsers.get(userId);
+            if (!existing || (presence.online_at && (!existing.online_at || presence.online_at > existing.online_at))) {
+              uniqueUsers.set(userId, {
+                ...presence,
+                user_id: userId,
+                presence_ref: presenceKey // Utile pour Supabase
+              });
             }
-
-            const normalizedPresence = {
-              ...presence,
-              user_id: presence.user_id || presence.userId || presenceKey,
-            };
-
-            const key = normalizedPresence.user_id || normalizedPresence.presence_ref || presenceKey || crypto.randomUUID();
-
-            if (!uniqueUsers.has(key)) {
-              uniqueUsers.set(key, normalizedPresence);
-              return;
-            }
-
-            const previous = uniqueUsers.get(key);
-            uniqueUsers.set(key, {
-              ...previous,
-              ...normalizedPresence,
-            });
           });
         });
 
@@ -751,13 +749,13 @@ const UserLive: React.FC = () => {
   }, [activeGiftOverlay]);
 
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !user || !profile || !presenceChannelRef.current) return;
+    if (!messageInput.trim() || !presenceChannelRef.current) return;
 
     const newMessage: LiveMessage = {
       id: crypto.randomUUID(),
-      userId: user.id,
-      userName: getDisplayName(profile) || 'Utilisateur',
-      userAvatar: profile.avatar_url,
+      userId: stableUserId,
+      userName: stableDisplayName,
+      userAvatar: stableAvatarUrl,
       type: 'comment',
       content: messageInput.trim(),
       createdAt: new Date().toISOString(),
@@ -774,15 +772,15 @@ const UserLive: React.FC = () => {
   };
 
   const handleRaiseHand = () => {
-    if (!user || !profile || !presenceChannelRef.current || hasRaisedHand) return;
+    if (!presenceChannelRef.current || hasRaisedHand) return;
 
     presenceChannelRef.current.send({
       type: 'broadcast',
       event: 'raise_hand',
       payload: {
-        userId: user.id,
-        userName: getDisplayName(profile),
-        userAvatar: profile.avatar_url,
+        userId: stableUserId,
+        userName: stableDisplayName,
+        userAvatar: stableAvatarUrl,
       },
     });
 
@@ -850,20 +848,20 @@ const UserLive: React.FC = () => {
   const [showGiftModal, setShowGiftModal] = useState(false);
 
   const handleSendGiftClick = () => {
-    if (!user || isHost) return;
+    if (isHost) return;
     setShowGiftModal(true);
   };
 
   const handleGiftSuccess = (amount: number, currency: string, giftLabel: string, isAnonymous: boolean) => {
-    if (!user || !profile || !presenceChannelRef.current) return;
+    if (!presenceChannelRef.current) return;
 
-    const senderName = isAnonymous ? 'Un utilisateur anonyme' : (getDisplayName(profile) || 'Utilisateur');
+    const senderName = isAnonymous ? 'Un utilisateur anonyme' : stableDisplayName;
 
     const newMessage: LiveMessage = {
       id: crypto.randomUUID(),
-      userId: user.id,
+      userId: stableUserId,
       userName: senderName,
-      userAvatar: isAnonymous ? null : profile.avatar_url,
+      userAvatar: isAnonymous ? null : stableAvatarUrl,
       type: 'gift',
       content: `a envoyé ${giftLabel}`,
       currency,
@@ -1482,17 +1480,24 @@ const UserLive: React.FC = () => {
                       {name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-sm flex items-center gap-1.5">
-                      {name}
-                      {role === 'host' && (
-                        <span className="inline-flex items-center gap-0.5 bg-amber-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
-                          <Crown className="h-2.5 w-2.5" /> Créateur
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-xs text-zinc-500 capitalize">{role === 'host' ? 'Créateur' : 'Spectateur'}</span>
-                  </div>
+          <div className="flex flex-col">
+            <span className="font-medium text-sm flex items-center gap-1.5">
+              {name}
+              {role === 'host' && (
+                <span className="inline-flex items-center gap-0.5 bg-amber-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
+                  <Crown className="h-2.5 w-2.5" /> Créateur
+                </span>
+              )}
+              {role === 'participant' && (
+                <span className="inline-flex items-center gap-0.5 bg-blue-500/80 text-white text-[9px] font-bold px-1.5 py-[1px] rounded-full">
+                  Intervenant
+                </span>
+              )}
+            </span>
+            <span className="text-xs text-zinc-500 capitalize">
+              {role === 'host' ? 'Créateur' : role === 'participant' ? 'Intervenant' : 'Spectateur'}
+            </span>
+          </div>
                 </div>
                 );
               })
