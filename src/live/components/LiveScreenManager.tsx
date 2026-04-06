@@ -7,15 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
 import LiveTeachingStudioEditor from '@/live/components/LiveTeachingStudioEditor';
-import type { LiveFormation, LiveMarketplaceProduct, LiveScreen, LiveScreenKind, LiveTeachingLesson, LiveTeachingStudio } from '@/live/types';
-import { getLiveFormationImage, getLiveProductImage, getLiveTeachingLessonImage } from '@/live/types';
+import type { LiveFormation, LiveMarketplaceProduct, LiveScreen, LiveScreenKind, LiveTeachingStudio } from '@/live/types';
+import { getLiveFormationImage, getLiveProductImage, getLiveTeachingStudioImage } from '@/live/types';
 
 interface LiveScreenManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   products: LiveMarketplaceProduct[];
   formations: LiveFormation[];
-  lessons: LiveTeachingLesson[];
   publicScreen: LiveScreen | null;
   privateScreen: LiveScreen | null;
   onSelectPublicScreen: (screen: LiveScreen | null) => void;
@@ -34,13 +33,7 @@ const buildScreenFromFormation = (formation: LiveFormation): LiveScreen => ({
   activatedAt: new Date().toISOString(),
 });
 
-const buildScreenFromLesson = (lesson: LiveTeachingLesson): LiveScreen => ({
-  type: 'teaching_lesson',
-  lesson,
-  activatedAt: new Date().toISOString(),
-});
-
-const buildScreenFromStudio = (studio: LiveTeachingStudio): LiveScreen => ({
+export const buildScreenFromStudio = (studio: LiveTeachingStudio): LiveScreen => ({
   type: 'teaching_studio',
   studio,
   activatedAt: new Date().toISOString(),
@@ -51,7 +44,6 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
   onOpenChange,
   products,
   formations,
-  lessons,
   publicScreen,
   privateScreen,
   onSelectPublicScreen,
@@ -67,7 +59,6 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
     private: '',
   });
   const [studioEditorOpen, setStudioEditorOpen] = useState(false);
-  const [studioLesson, setStudioLesson] = useState<LiveTeachingLesson | null>(null);
 
   const currentScreen = activeTab === 'public' ? publicScreen : privateScreen;
   const searchValue = searchByTab[activeTab].trim().toLowerCase();
@@ -92,17 +83,24 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
     });
   }, [formations, searchValue]);
 
-  const filteredLessons = useMemo(() => {
-    return lessons.filter((lesson) => {
-      if (!searchValue) {
-        return true;
-      }
+  const filteredTeachingStudios = useMemo(() => {
+    const activeStudio = currentScreen?.type === 'teaching_studio' ? currentScreen.studio : null;
+    const fallbackTitle = activeStudio?.title || 'Studio de cours';
+    const fallbackSubtitle = activeStudio?.subtitle || 'Écran enseignant libre et accessible à tous.';
+    const fallbackSummary = activeStudio?.summary || '';
 
-      return `${lesson.title} ${lesson.description || ''} ${lesson.formation_title} ${lesson.level_title || ''}`
-        .toLowerCase()
-        .includes(searchValue);
-    });
-  }, [lessons, searchValue]);
+    if (searchValue && !`${fallbackTitle} ${fallbackSubtitle} ${fallbackSummary}`.toLowerCase().includes(searchValue)) {
+      return [];
+    }
+
+    return [{
+      id: 'default-studio',
+      title: fallbackTitle,
+      subtitle: fallbackSubtitle,
+      summary: fallbackSummary,
+      coverImageUrl: activeStudio?.cover_image_url || null,
+    }];
+  }, [currentScreen, searchValue]);
 
   const applyScreen = (screen: LiveScreen | null) => {
     if (activeTab === 'public') {
@@ -180,7 +178,7 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                     <Input
                       value={searchByTab[tab]}
                       onChange={(event) => setSearchByTab((current) => ({ ...current, [tab]: event.target.value }))}
-                      placeholder={kindByTab[tab] === 'shop_product' ? 'Rechercher un produit du marketplace...' : kindByTab[tab] === 'formation_enrollment' ? 'Rechercher une formation...' : 'Rechercher une leçon ou une formation...'}
+                      placeholder={kindByTab[tab] === 'shop_product' ? 'Rechercher un produit du marketplace...' : kindByTab[tab] === 'formation_enrollment' ? 'Rechercher une formation...' : 'Rechercher un studio enseignant...'}
                       className="border-zinc-800 bg-zinc-900 pl-10 text-white placeholder:text-zinc-500"
                     />
                   </div>
@@ -200,10 +198,10 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                         </CardContent>
                       </Card>
                     )}
-                    {kindByTab[tab] === 'teaching_studio' && filteredLessons.length === 0 && (
+                    {kindByTab[tab] === 'teaching_studio' && filteredTeachingStudios.length === 0 && (
                       <Card className="border-dashed border-zinc-800 bg-zinc-950">
                         <CardContent className="py-10 text-center text-sm text-zinc-400">
-                          Aucune leçon disponible pour ce filtre.
+                          Aucun studio enseignant disponible pour ce filtre.
                         </CardContent>
                       </Card>
                     )}
@@ -262,25 +260,24 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                       );
                     })}
 
-                    {kindByTab[tab] === 'teaching_studio' && filteredLessons.map((lesson) => {
-                      const image = getLiveTeachingLessonImage(lesson);
+                    {kindByTab[tab] === 'teaching_studio' && filteredTeachingStudios.map((studioCard) => {
+                      const image = studioCard.coverImageUrl;
                       return (
-                        <Card key={lesson.id} className="border-zinc-800 bg-zinc-900/80">
+                        <Card key={studioCard.id} className="border-zinc-800 bg-zinc-900/80">
                           <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
                             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-800">
                               {image ? (
-                                <img src={image} alt={lesson.title} className="h-full w-full object-cover" />
+                                <img src={image} alt={studioCard.title} className="h-full w-full object-cover" />
                               ) : (
                                 <GraduationCap className="h-8 w-8 text-zinc-500" />
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-base font-semibold text-white">{lesson.title}</p>
-                              <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{lesson.description || `Leçon de ${lesson.formation_title}.`}</p>
-                              <p className="mt-2 text-xs font-medium text-sky-300">{lesson.formation_title}{lesson.level_title ? ` · ${lesson.level_title}` : ''}</p>
+                              <p className="truncate text-base font-semibold text-white">{studioCard.title}</p>
+                              <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{studioCard.subtitle}</p>
+                              <p className="mt-2 text-xs font-medium text-sky-300">{studioCard.summary || 'Tableau, notes et documents en direct.'}</p>
                             </div>
                             <Button onClick={() => {
-                              setStudioLesson(lesson);
                               setStudioEditorOpen(true);
                             }} className="w-full bg-sky-500 text-white hover:bg-sky-600 sm:w-auto">
                               Configurer
@@ -325,7 +322,7 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
                       <Sparkles className="mb-3 h-8 w-8 text-amber-400/80" />
                       <p className="text-base font-medium text-white/90">Aucun écran {tab === 'public' ? 'public' : 'privé'} actif</p>
                       <p className="mt-2 text-sm">
-                        Sélectionnez un produit marketplace, une formation ou un studio d’enseignement pour l’afficher pendant le live.
+                        Sélectionnez un produit marketplace, une formation ou un studio d’enseignement libre pour l’afficher pendant le live.
                       </p>
                     </div>
                   )}
@@ -338,8 +335,7 @@ const LiveScreenManager: React.FC<LiveScreenManagerProps> = ({
         <LiveTeachingStudioEditor
           open={studioEditorOpen}
           onOpenChange={setStudioEditorOpen}
-          lesson={studioLesson}
-          initialStudio={currentScreen?.type === 'teaching_studio' && studioLesson && currentScreen.studio.lesson.id === studioLesson.id ? currentScreen.studio : null}
+          initialStudio={currentScreen?.type === 'teaching_studio' ? currentScreen.studio : null}
           onSave={(studio) => applyScreen(buildScreenFromStudio(studio))}
         />
       </DialogContent>

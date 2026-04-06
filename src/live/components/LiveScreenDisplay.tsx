@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { LiveScreen } from '@/live/types';
-import { getLiveFormationImage, getLiveFormationPlanLabel, getLiveProductImage, getLiveTeachingLessonImage, getLiveTeachingStudioActiveScene } from '@/live/types';
+import { getLiveFormationImage, getLiveFormationPlanLabel, getLiveProductImage, getLiveTeachingLessonImage, getLiveTeachingStudioActiveScene, getLiveTeachingStudioImage } from '@/live/types';
 
 interface LiveScreenDisplayProps {
   screen: LiveScreen;
@@ -18,6 +18,7 @@ interface LiveScreenDisplayProps {
   onOpenFormation?: () => void;
   onOpenLesson?: () => void;
   onEnroll?: (planType: 'free' | 'standard' | 'premium' | 'groupe') => void;
+  className?: string;
 }
 
 const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
@@ -30,6 +31,7 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   onOpenFormation,
   onOpenLesson,
   onEnroll,
+  className,
 }) => {
   const isPrivate = variant === 'private';
   const isPublicFormation = !isPrivate && screen.type === 'formation_enrollment';
@@ -40,13 +42,13 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
     setIsPlanDialogOpen(false);
   }, [screen]);
 
-  const wrapperClassName = isPrivate
+  const wrapperClassName = className || (isPrivate
     ? 'w-full max-w-sm border-white/10 bg-black/65 text-white shadow-2xl'
     : isPublicFormation
     ? 'w-full max-w-[19rem] border-white/15 bg-black/62 text-white shadow-[0_16px_50px_rgba(0,0,0,0.28)]'
     : isPublicTeachingStudio
     ? 'w-full max-w-xl border-white/15 bg-black/72 text-white shadow-[0_22px_80px_rgba(0,0,0,0.38)]'
-    : 'w-full max-w-md border-white/15 bg-black/70 text-white shadow-[0_20px_80px_rgba(0,0,0,0.35)]';
+    : 'w-full max-w-md border-white/15 bg-black/70 text-white shadow-[0_20px_80px_rgba(0,0,0,0.35)]');
 
   if (screen.type === 'shop_product') {
     const image = getLiveProductImage(screen.product);
@@ -93,9 +95,17 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
               <p className="text-xl font-black text-emerald-300">{screen.product.price.toLocaleString('fr-FR')} FCFA</p>
             </div>
             {!isPrivate && (
-              <Button onClick={onBuyProduct} className="bg-emerald-500 text-white hover:bg-emerald-600">
-                <Coins className="mr-2 h-4 w-4" />
-                Acheter
+              <Button
+                onClick={onBuyProduct}
+                className="group relative overflow-hidden rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-5 text-white shadow-[0_14px_35px_rgba(249,115,22,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(249,115,22,0.6)]"
+              >
+                <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_45%)] opacity-80" />
+                <span className="relative flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em]">
+                  <span className="rounded-full bg-white/18 p-1.5 backdrop-blur-sm">
+                    <Coins className="h-4 w-4" />
+                  </span>
+                  Acheter
+                </span>
               </Button>
             )}
           </div>
@@ -105,15 +115,17 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   }
 
   if (screen.type === 'teaching_studio') {
-    const image = getLiveTeachingLessonImage(screen.studio.lesson);
+    const image = getLiveTeachingStudioImage(screen.studio);
     const activeScene = getLiveTeachingStudioActiveScene(screen.studio);
     const documentElement = activeScene?.elements.find((element) => element.type === 'document' && element.document_url);
+    const studioTitle = screen.studio.title || 'Studio de cours';
+    const studioSubtitle = screen.studio.subtitle || 'Écran enseignant libre et accessible à tous.';
 
     return (
       <Card className={cn('overflow-hidden backdrop-blur-xl', wrapperClassName)}>
         <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-sky-500/30 via-cyan-500/15 to-emerald-500/30 sm:h-40">
           {image ? (
-            <img src={image} alt={screen.studio.lesson.title} className="h-full w-full object-cover" />
+            <img src={image} alt={studioTitle} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <GraduationCap className="h-10 w-10 text-white/60" />
@@ -133,10 +145,10 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
         <CardContent className="space-y-4 p-4">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-200/90">
-              Cours structuré en direct
+              Enseignement structuré en direct
             </p>
-            <h3 className="line-clamp-2 text-lg font-bold text-white">{screen.studio.lesson.title}</h3>
-            <p className="text-xs text-white/70">{screen.studio.lesson.formation_title}{activeScene?.name ? ` · ${activeScene.name}` : ''}</p>
+            <h3 className="line-clamp-2 text-lg font-bold text-white">{studioTitle}</h3>
+            <p className="text-xs text-white/70">{studioSubtitle}{activeScene?.name ? ` · ${activeScene.name}` : ''}</p>
           </div>
 
           {screen.studio.summary && (
@@ -180,10 +192,6 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
                   </a>
                 </Button>
               )}
-              <Button onClick={onOpenLesson} className="bg-sky-500 text-white hover:bg-sky-600">
-                <BookOpen className="mr-2 h-4 w-4" />
-                Suivre le cours
-              </Button>
             </div>
           )}
         </CardContent>

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { LiveFormation, LiveMarketplaceProduct, LiveTeachingLesson } from '@/live/types';
+import type { LiveFormation, LiveMarketplaceProduct } from '@/live/types';
 
 const getDisplayName = (profile?: {
   first_name?: string | null;
@@ -36,7 +36,7 @@ export const useLiveCreatorAssets = (creatorId?: string | null) => {
     queryKey: ['live-creator-assets', creatorId],
     enabled: !!creatorId,
     queryFn: async () => {
-      const [productsResponse, formationsResponse, lessonsResponse] = await Promise.all([
+      const [productsResponse, formationsResponse] = await Promise.all([
         supabase
           .from('products')
           .select(`
@@ -91,31 +91,6 @@ export const useLiveCreatorAssets = (creatorId?: string | null) => {
           .eq('author_id', creatorId as string)
           .eq('is_active', true)
           .order('title'),
-        supabase
-          .from('lessons')
-          .select(`
-            id,
-            title,
-            description,
-            duration,
-            language,
-            order_index,
-            video_url,
-            level_id,
-            levels!inner (
-              id,
-              title,
-              formations!inner (
-                id,
-                title,
-                image_url,
-                thumbnail_url,
-                author_id
-              )
-            )
-          `)
-          .eq('levels.formations.author_id', creatorId as string)
-          .order('title'),
       ]);
 
       if (productsResponse.error) {
@@ -124,10 +99,6 @@ export const useLiveCreatorAssets = (creatorId?: string | null) => {
 
       if (formationsResponse.error) {
         throw formationsResponse.error;
-      }
-
-      if (lessonsResponse.error) {
-        throw lessonsResponse.error;
       }
 
       const products: LiveMarketplaceProduct[] = (productsResponse.data || []).map((product: any) => ({
@@ -142,33 +113,9 @@ export const useLiveCreatorAssets = (creatorId?: string | null) => {
         pricing_options: (formation.formation_pricing_options || []).filter((option: any) => option.is_active !== false),
       }));
 
-      const lessons: LiveTeachingLesson[] = (lessonsResponse.data || []).flatMap((lesson: any) => {
-        const formation = lesson.levels?.formations;
-
-        if (!formation?.id || !formation?.title) {
-          return [];
-        }
-
-        return [{
-          id: lesson.id,
-          title: lesson.title,
-          description: lesson.description,
-          duration: lesson.duration,
-          language: lesson.language,
-          order_index: lesson.order_index,
-          video_url: lesson.video_url,
-          formation_id: formation.id,
-          formation_title: formation.title,
-          formation_image_url: formation.image_url || formation.thumbnail_url || null,
-          level_id: lesson.levels?.id || null,
-          level_title: lesson.levels?.title || null,
-        }];
-      });
-
       return {
         products,
         formations,
-        lessons,
       };
     },
   });

@@ -53,7 +53,9 @@ export interface LiveTeachingStudioScene {
 }
 
 export interface LiveTeachingStudio {
-  lesson: LiveTeachingLesson;
+  title: string;
+  subtitle?: string | null;
+  cover_image_url?: string | null;
   summary?: string | null;
   scenes: LiveTeachingStudioScene[];
   activeSceneId: string;
@@ -97,6 +99,10 @@ export const getLiveFormationImage = (formation: Pick<LiveFormation, 'image_url'
 
 export const getLiveTeachingLessonImage = (lesson: Pick<LiveTeachingLesson, 'formation_image_url'>) => {
   return lesson.formation_image_url || null;
+};
+
+export const getLiveTeachingStudioImage = (studio: Pick<LiveTeachingStudio, 'cover_image_url'>) => {
+  return studio.cover_image_url || null;
 };
 
 export const getLiveTeachingStudioActiveScene = (studio: LiveTeachingStudio) => {

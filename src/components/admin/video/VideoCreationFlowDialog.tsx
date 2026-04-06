@@ -11,6 +11,7 @@ import {
   Music,
   Pause,
   Play,
+  Presentation,
   Radio,
   RefreshCw,
   Square,
@@ -36,6 +37,8 @@ import { useFormations } from '@/hooks/useFormations';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 import { captureThumbnailFromVideoElement, captureVideoThumbnail, composeVideoForPublish, type StickerPosition } from '@/utils/videoComposer';
+import type { LiveTeachingStudio } from '@/live/types';
+import LiveTeachingStudioEditor from '@/live/components/LiveTeachingStudioEditor';
 
 type CreationMethod = 'record' | 'upload' | 'url';
 type FlowStep = 'choice' | 'record' | 'finalize' | 'details';
@@ -107,6 +110,8 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
   const [processingLabel, setProcessingLabel] = useState('');
   const [isLiveSetupOpen, setIsLiveSetupOpen] = useState(false);
   const [isLaunchingLive, setIsLaunchingLive] = useState(false);
+  const [preparedStudio, setPreparedStudio] = useState<LiveTeachingStudio | null>(null);
+  const [isStudioEditorOpen, setIsStudioEditorOpen] = useState(false);
   const [liveData, setLiveData] = useState({
     title: '',
     description: '',
@@ -187,6 +192,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
     setIsLiveSetupOpen(false);
     setIsLaunchingLive(false);
     setLiveData({ title: '', description: '', visibility: 'public' });
+    setPreparedStudio(null);
   };
 
   const stopRecordingDevices = () => {
@@ -549,7 +555,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
 
       await notifyAudienceAboutLive(createdLive.id, liveTitle, liveData.visibility);
       toast.success('Live demarre.');
-      navigate(`/live/${createdLive.id}?host=1`);
+      navigate(`/live/${createdLive.id}?host=1`, { state: { preparedStudio } });
     } catch (error) {
       console.error('Erreur demarrage live:', error);
       toast.error('Impossible de demarrer le live.');
@@ -889,6 +895,31 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                         </DialogHeader>
 
                         <div className="mt-6 space-y-4">
+                          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
+                                  <Presentation size={20} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-white">Studio d'Enseignement Libre</p>
+                                  <p className="text-xs text-zinc-400">
+                                    {preparedStudio ? "Configuration prête (Modifiable en direct)" : "Optionnel : préparez vos tableaux et documents"}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setIsStudioEditorOpen(true)}
+                                className="border-sky-500/50 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300"
+                              >
+                                {preparedStudio ? "Modifier" : "Configurer"}
+                              </Button>
+                            </div>
+                          </div>
+
                           <div className="space-y-2">
                             <Label htmlFor="live-title">Titre du live</Label>
                             <Input
@@ -1384,6 +1415,13 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
           </div>
         </div>
       )}
+
+      <LiveTeachingStudioEditor 
+        open={isStudioEditorOpen}
+        onOpenChange={setIsStudioEditorOpen}
+        initialStudio={preparedStudio}
+        onSave={setPreparedStudio}
+      />
     </>
   );
 };

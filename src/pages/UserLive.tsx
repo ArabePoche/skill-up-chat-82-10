@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   BookOpen,
@@ -40,7 +40,8 @@ import { useFollow } from '@/friends/hooks/useFollow';
 import { motion } from 'framer-motion';
 import type { IRemoteVideoTrack } from 'agora-rtc-sdk-ng';
 import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
-import LiveScreenManager from '@/live/components/LiveScreenManager';
+import { LiveTeachingStudioRunner } from '@/live/components/LiveTeachingStudioRunner';
+import LiveScreenManager, { buildScreenFromStudio } from '@/live/components/LiveScreenManager';
 import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
 import type { LiveScreen } from '@/live/types';
 import { isLiveScreen } from '@/live/types';
@@ -250,6 +251,7 @@ const extractPresenceEntries = (value: unknown): Record<string, any>[] => {
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const requestedHostMode = searchParams.get('host') === '1';
@@ -311,6 +313,16 @@ const UserLive: React.FC = () => {
   const stableHostId = stream?.host_id;
 
   const isHost = !!user?.id && !!stream?.host_id && user.id === stream.host_id && requestedHostMode;
+
+  useEffect(() => {
+    const preparedStudio = location.state?.preparedStudio;
+    if (preparedStudio && isHost && !publicLiveScreen) {
+      const screen = buildScreenFromStudio(preparedStudio);
+      setPublicLiveScreen(screen);
+      publicLiveScreenRef.current = screen;
+    }
+  }, [isHost, location.state?.preparedStudio, publicLiveScreen]);
+
   const hostName = useMemo(() => getDisplayName(stream?.host), [stream?.host]);
   const { data: creatorLiveAssets } = useLiveCreatorAssets(isHost ? stableUserId : null);
   const { enroll, isFormationPending } = useEnrollmentWithProtection();
@@ -958,6 +970,26 @@ const UserLive: React.FC = () => {
     });
   }, [syncLivePresence]);
 
+  const handleStudioSceneChange = useCallback((sceneId: string) => {
+    if (!isHost || !publicLiveScreen || publicLiveScreen.type !== 'teaching_studio') return;
+    
+    // Toggle active state
+    const nextStudio = {
+      ...publicLiveScreen.studio,
+      scenes: publicLiveScreen.studio.scenes.map(s => ({
+        ...s,
+        is_active: s.id === sceneId
+      }))
+    };
+    
+    const nextScreen = {
+      ...publicLiveScreen,
+      studio: nextStudio
+    };
+    
+    handleSelectPublicLiveScreen(nextScreen);
+  }, [isHost, publicLiveScreen, handleSelectPublicLiveScreen]);
+
   const handleSelectPrivateLiveScreen = useCallback((screen: LiveScreen | null) => {
     setPrivateLiveScreen(screen);
   }, []);
@@ -1347,15 +1379,58 @@ const UserLive: React.FC = () => {
   };
 
   return (
-    <div className="relative flex h-[100dvh] min-h-screen w-full flex-col bg-black text-white overflow-hidden">
-      {/* Background Video Layer */}
-      <div className="absolute inset-0 z-0">
-        {isHost ? (
-          <div ref={localVideoContainerRef} className="h-full w-full object-cover" />
-        ) : (
-          <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
-        )}
-      </div>
+    <div className={`relative flex h-[100dvh] min-h-screen w-full bg-black text-white overflow-hidden ${publicLiveScreen?.type === 'teaching_studio' ? 'flex-col md:flex-row' : 'flex-col'}`}>
+      {/* Background Video Layer or Split Screen */}
+      {publicLiveScreen?.type === 'teaching_studio' ? (
+        <>
+          {/* Bloc de Gauche : Contenu Studio */}
+            <div className="flex-[2] md:flex-[3] relative bg-zinc-950 border-b md:border-b-0 md:border-r border-white/10 flex flex-col items-center justify-center p-0">
+              <LiveTeachingStudioRunner
+                studio={publicLiveScreen.studio}
+                isHost={isHost}
+                onSceneChange={handleStudioSceneChange}
+              />
+            </div>
+          <div className="flex-[1] md:flex-[1.5] flex flex-col relative bg-black border-l border-white/5 h-[40vh] md:h-full">
+            <div className="relative aspect-video md:aspect-[3/4] w-full bg-zinc-900 border-b border-white/10 shrink-0">
+              {isHost ? (
+                <div ref={localVideoContainerRef} className="h-full w-full object-cover" />
+              ) : (
+                <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
+              )}
+              {/* Optional subtle gradient to make controls visible */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+              
+              <div className="absolute top-3 left-3 z-20 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-2">
+                <Avatar className="h-5 w-5 border border-white/20">
+                  <AvatarImage src={stream.host?.avatar_url || ''} />
+                  <AvatarFallback className="bg-zinc-800 text-[9px]">{hostName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-xs font-bold text-white uppercase tracking-tight shadow-sm drop-shadow-md">{hostName}</span>
+                <Badge className="border-0 bg-red-600/90 text-white text-[8px] py-0 px-1 leading-tight h-3 h-3.5 flex items-center"><Radio className="mr-0.5 h-1.5 w-1.5" /> STUDIO</Badge>
+              </div>
+            </div>
+
+            {/* Zone réservée pour le Chat ancré sous la vidéo */}
+            <div className="flex-1 relative bg-zinc-950 overflow-hidden flex flex-col pb-16 z-20">
+              <div className="w-full py-2 px-4 bg-zinc-900/50 border-b border-white/5 sticky top-0 z-10 backdrop-blur-sm">
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Chat du studio</p>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {messages.map((msg) => renderMessage(msg))}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="absolute inset-0 z-0">
+          {isHost ? (
+            <div ref={localVideoContainerRef} className="h-full w-full object-cover" />
+          ) : (
+            <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
+          )}
+        </div>
+      )}
 
       {activeGiftOverlay && (
         <motion.div
@@ -1383,7 +1458,7 @@ const UserLive: React.FC = () => {
         </motion.div>
       )}
 
-      {publicLiveScreen && (
+      {publicLiveScreen && publicLiveScreen.type !== 'teaching_studio' && (
         <div className="pointer-events-auto absolute inset-x-4 bottom-24 z-30 flex justify-center sm:bottom-28">
           <LiveScreenDisplay
             screen={publicLiveScreen}
@@ -1393,7 +1468,7 @@ const UserLive: React.FC = () => {
             isEnrollmentPending={publicLiveScreen.type === 'formation_enrollment' ? isFormationPending(publicLiveScreen.formation.id) : false}
             onBuyProduct={publicLiveScreen.type === 'shop_product' ? handleOpenBuyProductFromScreen : undefined}
             onOpenFormation={publicLiveScreen.type === 'formation_enrollment' ? () => handleOpenFormationFromScreen(publicLiveScreen.formation.id) : undefined}
-            onOpenLesson={publicLiveScreen.type === 'teaching_lesson' ? () => handleOpenLessonFromScreen(publicLiveScreen.lesson.id) : publicLiveScreen.type === 'teaching_studio' ? () => handleOpenLessonFromScreen(publicLiveScreen.studio.lesson.id) : undefined}
+            onOpenLesson={publicLiveScreen.type === 'teaching_lesson' ? () => handleOpenLessonFromScreen(publicLiveScreen.lesson.id) : undefined}
             onEnroll={publicLiveScreen.type === 'formation_enrollment' ? (planType) => handleEnrollFromScreen(publicLiveScreen, planType) : undefined}
           />
         </div>
@@ -1495,38 +1570,29 @@ const UserLive: React.FC = () => {
       })()}
 
       {/* Top overlay */}
-      <div className="absolute top-0 left-0 w-full flex items-start justify-between bg-gradient-to-b from-black/60 via-black/20 to-transparent px-4 py-3 pb-12 z-30 pt-4">
+      <div className={`absolute top-0 left-0 w-full flex items-start justify-between bg-gradient-to-b from-black/60 via-black/20 to-transparent px-4 py-3 pb-12 z-40 pt-4 pointer-events-none`}>
         {/* TOP LEFT: Avatar, Host Name, Badges, Follow Button */}
-        <div className="flex items-center gap-2 bg-black/30 rounded-full pr-2 p-1 backdrop-blur-sm self-start">
-          <Avatar
-            className="h-9 w-9 border border-white/20 cursor-pointer"
-            onClick={() => navigate(`/profile/${stream.host?.id}`)}
-          >
-            <AvatarImage src={stream.host?.avatar_url || ''} />
-            <AvatarFallback className="bg-zinc-800 text-xs">
-              {hostName.substring(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col min-w-0 mr-1 gap-0.5">
-            <span className="truncate text-sm font-semibold leading-none text-white">{hostName}</span>
-            <div className="flex items-center gap-1">
-              <Badge className="border-0 bg-red-600 text-white hover:bg-red-600 text-[9px] py-0 px-1 leading-tight h-3">
-                <Radio className="mr-0.5 h-2 w-2" />
-                DIRECT
-              </Badge>
-              <Badge variant="secondary" className="border-0 bg-white/10 text-white text-[9px] py-0 px-1 leading-tight h-3">
-                {stream.visibility === 'public' ? <Globe className="mr-0.5 h-2 w-2" /> : <Lock className="mr-0.5 h-2 w-2" />}
-                {stream.visibility === 'public' ? 'Public' : 'Amis'}
-              </Badge>
+        {publicLiveScreen?.type !== 'teaching_studio' ? (
+          <div className="flex items-center gap-2 bg-black/30 rounded-full pr-2 p-1 backdrop-blur-sm self-start pointer-events-auto">
+            <Avatar className="h-9 w-9 border border-white/20 cursor-pointer" onClick={() => navigate(`/profile/${stream.host?.id}`)}>
+              <AvatarImage src={stream.host?.avatar_url || ''} />
+              <AvatarFallback className="bg-zinc-800 text-xs">{hostName.substring(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-0 mr-1 gap-0.5">
+              <span className="truncate text-sm font-semibold leading-none text-white">{hostName}</span>
+              <div className="flex items-center gap-1">
+                <Badge className="border-0 bg-red-600 text-white hover:bg-red-600 text-[9px] py-0 px-1 leading-tight h-3"><Radio className="mr-0.5 h-2 w-2" />DIRECT</Badge>
+                <Badge variant="secondary" className="border-0 bg-white/10 text-white text-[9px] py-0 px-1 leading-tight h-3">{stream.visibility === 'public' ? <Globe className="mr-0.5 h-2 w-2" /> : <Lock className="mr-0.5 h-2 w-2" />}{stream.visibility === 'public' ? 'Public' : 'Amis'}</Badge>
+              </div>
             </div>
+            {!isHost && stream.host_id && user && stream.host_id !== user.id && (
+              <FollowButtonInline hostId={stream.host_id} />
+            )}
           </div>
-          {!isHost && stream.host_id && user && stream.host_id !== user.id && (
-            <FollowButtonInline hostId={stream.host_id} />
-          )}
-        </div>
+        ) : <div />}
 
         {/* TOP RIGHT: Title, Description, Viewers, Close */}
-        <div className="flex flex-col items-end gap-2 max-w-[55%]">
+        <div className="flex flex-col items-end gap-2 max-w-[55%] pointer-events-auto">
           {/* Top Row: Viewers & Close */}
           <div className="flex items-center gap-2 shrink-0">
             <button
@@ -1615,9 +1681,10 @@ const UserLive: React.FC = () => {
 
         {/* Live Chat Overlay - scrollable, ~3 messages visible, scroll up for older ones */}
         {/* right offset increases when participants panel is visible */}
-        {!areCommentsCollapsed ? (
-          <div
-            className={`absolute bottom-20 left-4 z-10 pointer-events-auto ${
+        {publicLiveScreen?.type !== 'teaching_studio' && (
+          !areCommentsCollapsed ? (
+            <div
+              className={`absolute bottom-20 left-4 z-10 pointer-events-auto ${
               acceptedParticipants.length > 0 || isAcceptedParticipant ? 'right-24' : 'right-16'
             }`}
             onTouchStart={handleCommentsTouchStart}
@@ -1640,10 +1707,10 @@ const UserLive: React.FC = () => {
             <MessageCircle className="h-4 w-4" />
             <span className="ml-2 text-xs font-semibold">Commentaires</span>
           </button>
-        )}
+        ))}
       </div>
 
-      {/* Hand raise requests panel – shown to the host on the left side to avoid conflict with participants panel */}
+      {/* Hand raise requests panel */}
       {handRaiseRequests.length > 0 && (
         <div className="absolute left-2 bottom-24 flex flex-col gap-2 z-20 pointer-events-auto max-h-[60vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {handRaiseRequests.map((req) => (
@@ -1832,7 +1899,6 @@ const UserLive: React.FC = () => {
           onOpenChange={setIsScreenManagerOpen}
           products={creatorLiveAssets?.products || []}
           formations={creatorLiveAssets?.formations || []}
-          lessons={creatorLiveAssets?.lessons || []}
           publicScreen={publicLiveScreen}
           privateScreen={privateLiveScreen}
           onSelectPublicScreen={handleSelectPublicLiveScreen}
