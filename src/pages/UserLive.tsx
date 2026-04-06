@@ -116,6 +116,8 @@ const FollowButtonInline: React.FC<{ hostId: string }> = ({ hostId }) => {
 };
 
 /** Tuile vidéo pour un intervenant distant */
+const VIDEO_TRACK_RETRY_DELAY_MS = 600;
+
 const RemoteVideoTile: React.FC<{
   uid: string;
   getRemoteVideoTrack: (uid: string) => IRemoteVideoTrack | undefined;
@@ -136,7 +138,7 @@ const RemoteVideoTile: React.FC<{
     };
     tryPlay();
     // Retry once after a short delay in case the track wasn't ready yet
-    const timer = setTimeout(tryPlay, 600);
+    const timer = setTimeout(tryPlay, VIDEO_TRACK_RETRY_DELAY_MS);
     return () => clearTimeout(timer);
   }, [uid, getRemoteVideoTrack, remoteUsers]);
 
@@ -691,12 +693,10 @@ const UserLive: React.FC = () => {
 
             {/* Remote participant tiles */}
             {panelRemoteUids.map((uid, index) => {
-              // Map Agora UID position to accepted participant info
-              // For host view: panelRemoteUids[i] ↔ acceptedParticipants[i]
-              // For viewer/accepted view: panelRemoteUids starts after the host (already sliced)
-              //   acceptedParticipants[0] is the first accepted; if current user is accepted, skip them
-              const participantOffset = isAcceptedParticipant ? 1 : 0;
-              const participant = acceptedParticipants[index + participantOffset] ?? acceptedParticipants[index];
+              // Remote participants are all accepted participants excluding the current user
+              // (the current user, if accepted, is already shown in the local video tile above)
+              const remoteParticipants = acceptedParticipants.filter(p => p.userId !== stableUserId);
+              const participant = remoteParticipants[index];
               return (
                 <RemoteVideoTile
                   key={uid}

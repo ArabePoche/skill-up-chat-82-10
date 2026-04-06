@@ -210,8 +210,9 @@ export const useAgoraCall = () => {
           remoteVideoTracksRef.current.delete(uid);
           if (firstRemoteUidRef.current === uid) {
             // Main stream stopped – promote the next available track
-            const nextUid = remoteVideoTracksRef.current.keys().next().value as string | undefined;
-            if (nextUid !== undefined) {
+            const nextEntry = remoteVideoTracksRef.current.keys().next();
+            if (!nextEntry.done && nextEntry.value !== undefined) {
+              const nextUid = nextEntry.value;
               firstRemoteUidRef.current = nextUid;
               latestRemoteVideoTrackRef.current = remoteVideoTracksRef.current.get(nextUid) ?? null;
               playRemoteTrack();
