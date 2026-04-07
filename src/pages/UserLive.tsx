@@ -1423,32 +1423,31 @@ const UserLive: React.FC = () => {
                 remoteWhiteboardAction={remoteWhiteboardAction}
               />
             </div>
-          <div className="flex-[1] md:flex-[1.5] flex flex-col relative bg-black border-l border-white/5 h-[40vh] md:h-full">
-            <div className="relative aspect-video md:aspect-[3/4] w-full bg-zinc-900 border-b border-white/10 shrink-0">
+          {/* Bloc de Droite : Caméra + commentaires superposés */}
+          <div className="flex-[1] md:flex-[1.5] relative bg-black border-l border-white/5 h-[40vh] md:h-full">
+            {/* Vidéo plein bloc */}
+            <div className="absolute inset-0">
               {isHost ? (
                 <div ref={localVideoContainerRef} className="h-full w-full object-cover" />
               ) : (
                 <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
               )}
-              {/* Optional subtle gradient to make controls visible */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+            </div>
               
-              <div className="absolute top-3 left-3 z-20 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-2">
-                <Avatar className="h-5 w-5 border border-white/20">
-                  <AvatarImage src={stream.host?.avatar_url || ''} />
-                  <AvatarFallback className="bg-zinc-800 text-[9px]">{hostName.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <span className="text-xs font-bold text-white uppercase tracking-tight shadow-sm drop-shadow-md">{hostName}</span>
-                <Badge className="border-0 bg-red-600/90 text-white text-[8px] py-0 px-1 leading-tight h-3 h-3.5 flex items-center"><Radio className="mr-0.5 h-1.5 w-1.5" /> STUDIO</Badge>
-              </div>
+            {/* Badge créateur en haut */}
+            <div className="absolute top-3 left-3 z-20 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-2">
+              <Avatar className="h-5 w-5 border border-white/20">
+                <AvatarImage src={stream.host?.avatar_url || ''} />
+                <AvatarFallback className="bg-zinc-800 text-[9px]">{hostName.substring(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="text-xs font-bold text-white uppercase tracking-tight shadow-sm drop-shadow-md">{hostName}</span>
+              <Badge className="border-0 bg-red-600/90 text-white text-[8px] py-0 px-1 leading-tight h-3 h-3.5 flex items-center"><Radio className="mr-0.5 h-1.5 w-1.5" /> STUDIO</Badge>
             </div>
 
-            {/* Zone réservée pour le Chat ancré sous la vidéo */}
-            <div className="flex-1 relative bg-zinc-950 overflow-hidden flex flex-col pb-16 z-20">
-              <div className="w-full py-2 px-4 bg-zinc-900/50 border-b border-white/5 sticky top-0 z-10 backdrop-blur-sm">
-                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Chat du studio</p>
-              </div>
-              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* Commentaires superposés sur la vidéo */}
+            <div className="absolute bottom-16 left-2 right-2 z-20 pointer-events-auto">
+              <div className="max-h-[140px] overflow-y-auto space-y-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-contain touch-pan-y">
                 {messages.map((msg) => renderMessage(msg))}
               </div>
             </div>

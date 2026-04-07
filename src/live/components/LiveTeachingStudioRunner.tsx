@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw } from 'lucide-react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LiveTeachingStudio } from '@/live/types';
@@ -15,6 +15,7 @@ interface WhiteboardProps {
 const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, remoteWhiteboardAction }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<WhiteboardTool>('pen');
@@ -163,11 +164,55 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     }
   };
 
+  const drawImage = (ctx: CanvasRenderingContext2D, imgData: { dataUrl: string; x: number; y: number; width: number; height: number }) => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, imgData.x, imgData.y, imgData.width, imgData.height);
+    };
+    img.src = imgData.dataUrl;
+  };
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !isHost) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const img = new Image();
+      img.onload = () => {
+        // Scale image to fit within canvas while maintaining aspect ratio
+        const maxW = canvas.width * 0.6;
+        const maxH = canvas.height * 0.6;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW) { h = h * (maxW / w); w = maxW; }
+        if (h > maxH) { w = w * (maxH / h); h = maxH; }
+        const x = (canvas.width - w) / 2;
+        const y = (canvas.height - h) / 2;
+        const imgData = { dataUrl, x, y, width: w, height: h };
+        ctx.drawImage(img, x, y, w, h);
+        setHistory(prev => [...prev, { type: 'image', payload: imgData }]);
+        if (onWhiteboardAction) {
+          onWhiteboardAction({ type: 'image', payload: imgData });
+        }
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  }, [isHost, onWhiteboardAction]);
+
   const redrawHistory = (ctx: CanvasRenderingContext2D, items: any[]) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     items.forEach(action => {
       if (action.type === 'stroke') drawStroke(ctx, action.payload);
       else if (action.type === 'text') drawText(ctx, action.payload);
+      else if (action.type === 'image') drawImage(ctx, action.payload);
     });
   };
 
@@ -187,6 +232,9 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     } else if (remoteWhiteboardAction.type === 'text') {
        setHistory(prev => [...prev, remoteWhiteboardAction]);
        drawText(ctx, remoteWhiteboardAction.payload);
+    } else if (remoteWhiteboardAction.type === 'image') {
+       setHistory(prev => [...prev, remoteWhiteboardAction]);
+       drawImage(ctx, remoteWhiteboardAction.payload);
     } else if (remoteWhiteboardAction.type === 'sync_full') {
        const newHistory = remoteWhiteboardAction.history || [];
        setHistory(newHistory);
@@ -276,6 +324,22 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
             >
               <Eraser className="h-4 w-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => imageInputRef.current?.click()}
+              className={cn("h-8 w-8 rounded-lg text-emerald-400 hover:bg-emerald-500/20")}
+              title="Ajouter une image"
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
             
             <div className="h-4 w-[1px] bg-white/10 mx-2" />
             
@@ -385,7 +449,7 @@ export interface LiveTeachingStudioRunnerProps {
 }
 
 export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onWhiteboardAction, remoteWhiteboardAction }) => {
-  const activeScene = studio.scenes.find((s) => s.is_active) || studio.scenes[0];
+  const activeScene = studio.scenes.find((s) => s.id === studio.activeSceneId) || studio.scenes[0];
 
   if (!activeScene || activeScene.elements.length === 0) {
     return (
