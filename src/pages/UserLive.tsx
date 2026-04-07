@@ -1832,7 +1832,7 @@ const UserLive: React.FC = () => {
       )}
 
       {/* Bottom Bar: Input and Buttons */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 py-4 z-20 bg-gradient-to-t from-black/60 to-transparent">
+      <div className={`absolute bottom-0 z-20 bg-gradient-to-t from-black/60 to-transparent px-4 py-4 ${publicLiveScreen?.type === 'teaching_studio' ? 'left-0 right-0 md:left-auto md:right-0 md:w-[min(36vw,34rem)]' : 'left-0 right-0'}`}>
         <div className="flex items-center gap-2">
           {/* Real message input */}
           <div className="flex h-[42px] flex-1 items-center rounded-full bg-black/20 border border-white/10 px-4 text-white backdrop-blur-md">

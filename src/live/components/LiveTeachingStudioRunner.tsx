@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X } from 'lucide-react';
+import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X, Minus, PanelBottomOpen, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LiveTeachingStudio } from '@/live/types';
@@ -881,8 +881,220 @@ export interface LiveTeachingStudioRunnerProps {
   remoteWhiteboardAction?: any;
 }
 
+interface StudioWindowLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+  minimized: boolean;
+}
+
+interface WindowInteractionState {
+  elementId: string;
+  mode: 'move' | 'resize';
+  startX: number;
+  startY: number;
+  startLayout: StudioWindowLayout;
+}
+
 export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onWhiteboardAction, remoteWhiteboardAction }) => {
   const activeScene = studio.scenes.find((s) => s.id === studio.activeSceneId) || studio.scenes[0];
+  const desktopRef = useRef<HTMLDivElement>(null);
+  const nextZIndexRef = useRef(4);
+  const [windowLayouts, setWindowLayouts] = useState<Record<string, StudioWindowLayout>>({});
+  const [interaction, setInteraction] = useState<WindowInteractionState | null>(null);
+
+  const createDefaultLayout = (element: LiveTeachingStudio['scenes'][number]['elements'][number], index: number): StudioWindowLayout => {
+    if (element.type === 'whiteboard') {
+      return { x: 2, y: 4, width: 66, height: 78, zIndex: 2, minimized: false };
+    }
+
+    if (element.type === 'notes') {
+      return { x: 70, y: 8 + index * 3, width: 28, height: 38, zIndex: 3 + index, minimized: false };
+    }
+
+    return { x: 64, y: 48, width: 34, height: 34, zIndex: 3 + index, minimized: false };
+  };
+
+  useEffect(() => {
+    if (!activeScene) {
+      return;
+    }
+
+    nextZIndexRef.current = Math.max(activeScene.elements.length + 4, 6);
+    setWindowLayouts((current) => {
+      const nextLayouts: Record<string, StudioWindowLayout> = {};
+
+      activeScene.elements.forEach((element, index) => {
+        nextLayouts[element.id] = current[element.id] || createDefaultLayout(element, index);
+      });
+
+      return nextLayouts;
+    });
+  }, [activeScene?.id]);
+
+  useEffect(() => {
+    if (!interaction) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const desktop = desktopRef.current;
+      if (!desktop) {
+        return;
+      }
+
+      const bounds = desktop.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) {
+        return;
+      }
+
+      const deltaX = ((event.clientX - interaction.startX) / bounds.width) * 100;
+      const deltaY = ((event.clientY - interaction.startY) / bounds.height) * 100;
+
+      setWindowLayouts((current) => {
+        const target = current[interaction.elementId];
+        if (!target) {
+          return current;
+        }
+
+        const nextLayout = { ...target };
+
+        if (interaction.mode === 'move') {
+          nextLayout.x = Math.max(0, Math.min(100 - nextLayout.width, interaction.startLayout.x + deltaX));
+          nextLayout.y = Math.max(0, Math.min(90 - nextLayout.height, interaction.startLayout.y + deltaY));
+        } else {
+          nextLayout.width = Math.max(20, Math.min(100 - interaction.startLayout.x, interaction.startLayout.width + deltaX));
+          nextLayout.height = Math.max(18, Math.min(90 - interaction.startLayout.y, interaction.startLayout.height + deltaY));
+        }
+
+        return {
+          ...current,
+          [interaction.elementId]: nextLayout,
+        };
+      });
+    };
+
+    const handlePointerUp = () => {
+      setInteraction(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [interaction]);
+
+  const focusWindow = (elementId: string) => {
+    setWindowLayouts((current) => {
+      const target = current[elementId];
+      if (!target) {
+        return current;
+      }
+
+      const nextZIndex = nextZIndexRef.current + 1;
+      nextZIndexRef.current = nextZIndex;
+
+      return {
+        ...current,
+        [elementId]: {
+          ...target,
+          zIndex: nextZIndex,
+          minimized: false,
+        },
+      };
+    });
+  };
+
+  const minimizeWindow = (elementId: string) => {
+    setWindowLayouts((current) => {
+      const target = current[elementId];
+      if (!target) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [elementId]: {
+          ...target,
+          minimized: true,
+        },
+      };
+    });
+  };
+
+  const startWindowInteraction = (
+    event: React.PointerEvent<HTMLDivElement>,
+    elementId: string,
+    mode: 'move' | 'resize'
+  ) => {
+    if (!isHost) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const layout = windowLayouts[elementId];
+    if (!layout) {
+      return;
+    }
+
+    focusWindow(elementId);
+    setInteraction({
+      elementId,
+      mode,
+      startX: event.clientX,
+      startY: event.clientY,
+      startLayout: layout,
+    });
+  };
+
+  const getElementIcon = (type: LiveTeachingStudio['scenes'][number]['elements'][number]['type']) => {
+    if (type === 'whiteboard') return NotebookPen;
+    if (type === 'notes') return BookOpen;
+    return FileText;
+  };
+
+  const renderSceneElement = (element: LiveTeachingStudio['scenes'][number]['elements'][number]) => {
+    if (element.type === 'whiteboard') {
+      return (
+        <Whiteboard
+          isHost={isHost}
+          onWhiteboardAction={onWhiteboardAction}
+          remoteWhiteboardAction={remoteWhiteboardAction}
+        />
+      );
+    }
+
+    if (element.type === 'document' && element.document_url) {
+      return (
+        <div className="h-full w-full overflow-hidden rounded-b-2xl bg-white">
+          <iframe src={element.document_url} title={element.document_name || 'Document'} className="h-full w-full border-0" />
+        </div>
+      );
+    }
+
+    if (element.type === 'notes') {
+      return (
+        <div className="flex h-full w-full flex-col gap-4 overflow-y-auto rounded-b-2xl bg-zinc-900 p-6 text-zinc-300">
+          <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+            <BookOpen className="h-6 w-6 text-amber-400" />
+            <h3 className="text-lg font-bold text-white">Notes du cours</h3>
+          </div>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed">
+            {element.content || 'Aucune note ajoutée.'}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   if (!activeScene || activeScene.elements.length === 0) {
     return (
@@ -901,62 +1113,134 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     );
   }
 
-  // Handle multi layout
   return (
-    <div className="flex h-full w-full flex-col">
-      {isHost && studio.scenes.length > 1 && (
-        <div className="flex gap-2 p-2 bg-zinc-950/80 backdrop-blur-md border-b border-white/10 overflow-x-auto w-full z-10 shrink-0">
-          {studio.scenes.map(scene => (
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-[1.5rem] bg-zinc-950">
+      <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-zinc-950/95 px-4 py-3 backdrop-blur-md">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">Studio live</p>
+          <h2 className="truncate text-lg font-bold text-white">{studio.title || 'Teaching Studio'}</h2>
+        </div>
+        <div className="flex flex-1 items-center justify-end gap-2 overflow-x-auto">
+          {studio.scenes.map((scene, index) => (
             <Button
               key={scene.id}
-              variant={scene.id === activeScene.id ? "default" : "secondary"}
+              variant="ghost"
               size="sm"
               onClick={() => onSceneChange?.(scene.id)}
-              className={`whitespace-nowrap px-4 rounded-full ${scene.id === activeScene.id ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:text-white'}`}
+              className={cn(
+                'h-10 rounded-xl border px-4 text-sm font-semibold whitespace-nowrap',
+                scene.id === activeScene.id
+                  ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                  : 'border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white'
+              )}
             >
+              <span className="mr-2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">S{index + 1}</span>
               {scene.name}
             </Button>
           ))}
         </div>
-      )}
-      <div className="flex-1 flex w-full items-stretch justify-center gap-4 p-4 transition-all">
-      {activeScene.elements.map((element) => {
-        if (element.type === 'whiteboard') {
-          return (
-             <div key={element.id} className="flex-1 min-w-0 h-full max-h-full">
-               <Whiteboard 
-                 isHost={isHost} 
-                 onWhiteboardAction={onWhiteboardAction} 
-                 remoteWhiteboardAction={remoteWhiteboardAction} 
-               />
-             </div>
-          );
-        }
+      </div>
 
-        if (element.type === 'document' && element.document_url) {
-          return (
-             <div key={element.id} className="flex-1 min-w-0 h-full max-h-full bg-white rounded-2xl overflow-hidden shadow-2xl relative">
-                <iframe src={element.document_url} title={element.document_name || "Document"} className="w-full h-full border-0" />
-             </div>
-          );
-        }
+      <div ref={desktopRef} className="relative flex-1 overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_28%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,1))] p-3 md:p-4">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        {activeScene.elements.map((element) => {
+          const layout = windowLayouts[element.id] || createDefaultLayout(element, 0);
+          const Icon = getElementIcon(element.type);
 
-        if (element.type === 'notes') {
+          if (layout.minimized) {
+            return null;
+          }
+
           return (
-            <div key={element.id} className="w-80 min-w-0 h-full max-h-full bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 overflow-y-auto">
-              <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                <BookOpen className="h-6 w-6 text-amber-400" />
-                <h3 className="text-lg font-bold text-white">Notes du cours</h3>
+            <div
+              key={element.id}
+              className="absolute overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+              style={{
+                left: `${layout.x}%`,
+                top: `${layout.y}%`,
+                width: `${layout.width}%`,
+                height: `${layout.height}%`,
+                zIndex: layout.zIndex,
+              }}
+              onMouseDown={() => focusWindow(element.id)}
+            >
+              <div
+                className={cn(
+                  'flex h-12 items-center justify-between border-b border-white/10 px-4',
+                  isHost ? 'cursor-grab active:cursor-grabbing' : ''
+                )}
+                onPointerDown={(event) => startWindowInteraction(event, element.id, 'move')}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/8 text-zinc-200">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{element.title}</p>
+                    <p className="truncate text-[11px] uppercase tracking-[0.2em] text-zinc-500">{element.type}</p>
+                  </div>
+                </div>
+                {isHost && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg text-zinc-400 hover:bg-white/10 hover:text-white"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      minimizeWindow(element.id);
+                    }}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
-              <div className="text-sm leading-relaxed text-zinc-300 whitespace-pre-wrap">
-                {element.content || "Aucune note ajoutée."}
-              </div>
+
+              <div className="h-[calc(100%-3rem)] w-full">{renderSceneElement(element)}</div>
+
+              {isHost && (
+                <div
+                  className="absolute bottom-2 right-2 flex h-6 w-6 cursor-se-resize items-center justify-center rounded bg-white/10 text-zinc-300"
+                  onPointerDown={(event) => startWindowInteraction(event, element.id, 'resize')}
+                >
+                  <GripHorizontal className="h-3.5 w-3.5 rotate-45" />
+                </div>
+              )}
             </div>
           );
-        }
+        })}
+      </div>
 
-        return null;
-      })}
+      <div className="flex items-center gap-2 overflow-x-auto border-t border-white/10 bg-zinc-950/95 px-3 py-3 backdrop-blur-md">
+        {activeScene.elements.map((element) => {
+          const layout = windowLayouts[element.id] || createDefaultLayout(element, 0);
+          const Icon = getElementIcon(element.type);
+
+          return (
+            <button
+              key={element.id}
+              type="button"
+              onClick={() => focusWindow(element.id)}
+              className={cn(
+                'flex min-w-[140px] items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors',
+                layout.minimized
+                  ? 'border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white'
+                  : 'border-sky-400/30 bg-sky-500/15 text-sky-100'
+              )}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/25">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{element.title}</p>
+                <p className="truncate text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                  {layout.minimized ? 'Réouvrir' : 'Ouvert'}
+                </p>
+              </div>
+              {layout.minimized ? <PanelBottomOpen className="h-4 w-4 shrink-0" /> : <Minus className="h-4 w-4 shrink-0" />}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
