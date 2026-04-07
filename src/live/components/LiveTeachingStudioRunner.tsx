@@ -232,6 +232,9 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     } else if (remoteWhiteboardAction.type === 'text') {
        setHistory(prev => [...prev, remoteWhiteboardAction]);
        drawText(ctx, remoteWhiteboardAction.payload);
+    } else if (remoteWhiteboardAction.type === 'image') {
+       setHistory(prev => [...prev, remoteWhiteboardAction]);
+       drawImage(ctx, remoteWhiteboardAction.payload);
     } else if (remoteWhiteboardAction.type === 'sync_full') {
        const newHistory = remoteWhiteboardAction.history || [];
        setHistory(newHistory);
