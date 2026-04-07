@@ -371,6 +371,21 @@ const UserLive: React.FC = () => {
     state.localUid,
   ]);
 
+  const requestLiveScreenState = useCallback((reason: string = 'viewer_resync') => {
+    if (isHost || !presenceChannelRef.current) {
+      return;
+    }
+
+    void presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'request_live_screen_state',
+      payload: {
+        requesterUserId: stableUserId,
+        reason,
+      },
+    });
+  }, [isHost, stableUserId]);
+
   const connectedPeople = useMemo(() => {
       const merged = new Map<string, any>();
 
@@ -567,7 +582,11 @@ const UserLive: React.FC = () => {
           return presence.role === 'host' && presenceUserId === stableHostId;
         });
 
-        setPublicLiveScreen(isLiveScreen(hostPresence?.public_live_screen) ? hostPresence.public_live_screen : null);
+        if (isLiveScreen(hostPresence?.public_live_screen)) {
+          setPublicLiveScreen(hostPresence.public_live_screen);
+        } else if (!publicLiveScreenRef.current) {
+          requestLiveScreenState('presence_sync_missing_screen');
+        }
       }
 
       currentViewers.forEach((presence) => {
@@ -819,6 +838,7 @@ const UserLive: React.FC = () => {
     };
   }, [
     downgradeToAudience,
+    requestLiveScreenState,
     requestedHostMode,
     setCameraEnabled,
     setMicrophoneEnabled,
@@ -984,13 +1004,9 @@ const UserLive: React.FC = () => {
   const handleStudioSceneChange = useCallback((sceneId: string) => {
     if (!isHost || !publicLiveScreen || publicLiveScreen.type !== 'teaching_studio') return;
     
-    // Toggle active state
     const nextStudio = {
       ...publicLiveScreen.studio,
-      scenes: publicLiveScreen.studio.scenes.map(s => ({
-        ...s,
-        is_active: s.id === sceneId
-      }))
+      activeSceneId: sceneId,
     };
     
     const nextScreen = {
@@ -1055,14 +1071,7 @@ const UserLive: React.FC = () => {
         return;
       }
 
-      void presenceChannelRef.current.send({
-        type: 'broadcast',
-        event: 'request_live_screen_state',
-        payload: {
-          requesterUserId: stableUserId,
-          reason: 'viewer_resync',
-        },
-      });
+      requestLiveScreenState('viewer_resync');
     };
 
     const handleVisibilityChange = () => {
@@ -1080,7 +1089,7 @@ const UserLive: React.FC = () => {
       window.removeEventListener('online', requestLatestWhiteboardState);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isHost, stableUserId]);
+  }, [isHost, requestLiveScreenState]);
 
   const handleSelectPrivateLiveScreen = useCallback((screen: LiveScreen | null) => {
     setPrivateLiveScreen(screen);
