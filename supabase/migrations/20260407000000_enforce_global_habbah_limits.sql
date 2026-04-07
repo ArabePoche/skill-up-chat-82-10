@@ -3,6 +3,10 @@
 -- The previous version of earn_habbah only checked per-action limits and ignored
 -- the cross-action global caps entirely.
 
+-- Index to speed up the global daily/monthly sum queries added in this migration.
+CREATE INDEX IF NOT EXISTS idx_habbah_events_user_earned_at
+  ON public.habbah_events (user_id, habbah_earned, created_at);
+
 CREATE OR REPLACE FUNCTION public.earn_habbah(
   p_action_type text,
   p_reference_id text DEFAULT NULL
@@ -13,14 +17,15 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_user_id          uuid := auth.uid();
-  v_rule             record;
-  v_global_limits    record;
-  v_last_event_time  timestamptz;
-  v_daily_count      integer;
-  v_monthly_count    integer;
-  v_global_day_sum   integer;
-  v_global_month_sum integer;
+  v_user_id            uuid := auth.uid();
+  v_rule               record;
+  v_global_limits      record;
+  v_has_global_limits  boolean := false;
+  v_last_event_time    timestamptz;
+  v_daily_count        integer;
+  v_monthly_count      integer;
+  v_global_day_sum     integer;
+  v_global_month_sum   integer;
 BEGIN
   -- 0. Authentication check
   IF v_user_id IS NULL THEN
@@ -77,12 +82,15 @@ BEGIN
     RETURN json_build_object('success', false, 'message', 'Monthly limit reached');
   END IF;
 
-  -- 5. Global daily limit (sum across ALL action types)
+  -- 5. Load global limits once and remember whether a row was found
   SELECT * INTO v_global_limits
   FROM public.currency_global_limits
   LIMIT 1;
 
-  IF FOUND AND v_global_limits.max_habbah_per_day > 0 THEN
+  v_has_global_limits := FOUND;
+
+  -- 6. Global daily limit (sum across ALL action types)
+  IF v_has_global_limits AND v_global_limits.max_habbah_per_day > 0 THEN
     SELECT COALESCE(SUM(habbah_earned), 0) INTO v_global_day_sum
     FROM public.habbah_events
     WHERE user_id = v_user_id
@@ -94,8 +102,8 @@ BEGIN
     END IF;
   END IF;
 
-  -- 6. Global monthly limit (sum across ALL action types)
-  IF FOUND AND v_global_limits.max_habbah_per_month > 0 THEN
+  -- 7. Global monthly limit (sum across ALL action types)
+  IF v_has_global_limits AND v_global_limits.max_habbah_per_month > 0 THEN
     SELECT COALESCE(SUM(habbah_earned), 0) INTO v_global_month_sum
     FROM public.habbah_events
     WHERE user_id = v_user_id
@@ -107,7 +115,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- 7. Insert event (trigger handle_habbah_gain updates the wallet)
+  -- 8. Insert event (trigger handle_habbah_gain updates the wallet)
   INSERT INTO public.habbah_events (user_id, event_type, habbah_earned, reference_id)
   VALUES (v_user_id, p_action_type, v_rule.habbah_amount, p_reference_id);
 
