@@ -1006,12 +1006,12 @@ const UserLive: React.FC = () => {
     
     if (action.type === 'clear') {
       whiteboardHistoryRef.current = [];
-    } else if (action.type === 'stroke' || action.type === 'text') {
-      whiteboardHistoryRef.current = [...whiteboardHistoryRef.current, action.payload];
-      // Note: action.payload is what is needed. Wait, in remoteWhiteboardAction, it expects { type: 'stroke', payload: ... }.
-      // So we should store the whole action.
+    } else if (action.type === 'sync_full' && Array.isArray(action.history)) {
+      whiteboardHistoryRef.current = action.history;
+    } else if (action.type === 'stroke' || action.type === 'text' || action.type === 'image') {
       whiteboardHistoryRef.current = [...whiteboardHistoryRef.current, action];
     }
+    // stroke_update is not persisted to history, it is only used for live preview.
 
     void presenceChannelRef.current.send({
       type: 'broadcast',

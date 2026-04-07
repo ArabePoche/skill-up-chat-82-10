@@ -1,10 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LiveTeachingStudio } from '@/live/types';
 
-export type WhiteboardTool = 'pen' | 'eraser' | 'type';
+export type WhiteboardTool = 'pen' | 'eraser' | 'type' | 'move';
 
 interface WhiteboardProps {
   isHost: boolean;
@@ -12,18 +12,85 @@ interface WhiteboardProps {
   remoteWhiteboardAction?: any;
 }
 
+interface WhiteboardPoint {
+  x: number;
+  y: number;
+}
+
+interface WhiteboardStroke {
+  id: string;
+  tool: 'pen' | 'eraser';
+  color: string;
+  strokeWidth: number;
+  points: WhiteboardPoint[];
+}
+
+interface WhiteboardText {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  fontSize: number;
+}
+
+interface WhiteboardImage {
+  id: string;
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+type WhiteboardHistoryAction =
+  | { type: 'stroke'; payload: WhiteboardStroke }
+  | { type: 'text'; payload: WhiteboardText }
+  | { type: 'image'; payload: WhiteboardImage };
+
+interface TextDraft {
+  canvasX: number;
+  canvasY: number;
+  screenX: number;
+  screenY: number;
+  value: string;
+}
+
+interface DragState {
+  imageId: string;
+  offsetX: number;
+  offsetY: number;
+}
+
 const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, remoteWhiteboardAction }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const historyRef = useRef<WhiteboardHistoryAction[]>([]);
+  const currentStrokeRef = useRef<WhiteboardStroke | null>(null);
+  const imageInsertModeRef = useRef<'full' | 'floating'>('full');
+  const drawSequenceRef = useRef(0);
+  const imageCacheRef = useRef<Record<string, HTMLImageElement>>({});
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<WhiteboardTool>('pen');
   const [color, setColor] = useState('#38bdf8');
   const [strokeWidth, setStrokeWidth] = useState(4);
-  const [currentStroke, setCurrentStroke] = useState<any>(null);
-  const [textInput, setTextInput] = useState<{x: number, y: number, value: string} | null>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [textDraft, setTextDraft] = useState<TextDraft | null>(null);
+  const [history, setHistory] = useState<WhiteboardHistoryAction[]>([]);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+
+  const createActionId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const commitHistory = (nextHistory: WhiteboardHistoryAction[]) => {
+    historyRef.current = nextHistory;
+    setHistory(nextHistory);
+  };
+
+  const appendToHistory = (action: WhiteboardHistoryAction) => {
+    const nextHistory = [...historyRef.current, action];
+    commitHistory(nextHistory);
+    return nextHistory;
+  };
 
   const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -42,75 +109,29 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     return { x, y, clientX, clientY, rect };
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isHost) return;
-    const { x, y, clientX, clientY, rect } = getCoordinates(e);
-
-    if (tool === 'type') {
-      setTextInput({ x: clientX - rect.left, y: clientY - rect.top, value: '' });
+  const getImageElement = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+    const cached = imageCacheRef.current[src];
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      resolve(cached);
       return;
     }
 
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.beginPath();
-    ctx.moveTo(x, y);
+    const image = cached || new Image();
+    imageCacheRef.current[src] = image;
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Image whiteboard load failed'));
 
-    setCurrentStroke({ tool, color, strokeWidth, points: [{ x, y }] });
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !isHost || tool === 'type') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.lineWidth = tool === 'eraser' ? strokeWidth * 6 : strokeWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
-    
-    const { x, y } = getCoordinates(e);
-
-    ctx.strokeStyle = color;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-
-    if (currentStroke) {
-      setCurrentStroke((prev: any) => ({ ...prev, points: [...prev.points, { x, y }] }));
+    if (image.src !== src) {
+      image.src = src;
+    } else if (image.complete && image.naturalWidth > 0) {
+      resolve(image);
     }
-  };
+  });
 
-  const endDrawing = () => {
-    if (isDrawing && currentStroke) {
-      setHistory(prev => [...prev, { type: 'stroke', payload: currentStroke }]);
-      if (onWhiteboardAction) {
-        onWhiteboardAction({ type: 'stroke', payload: currentStroke });
-      }
-    }
-    setIsDrawing(false);
-    setCurrentStroke(null);
-  };
+  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: WhiteboardStroke) => {
+    if (!stroke.points.length) return;
 
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHistory([]);
-    if (isHost && onWhiteboardAction) {
-      onWhiteboardAction({ type: 'clear' });
-    }
-  };
-
-  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: any) => {
-    if (!stroke || !stroke.points || stroke.points.length === 0) return;
+    ctx.save();
     ctx.beginPath();
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
     ctx.lineWidth = stroke.tool === 'eraser' ? stroke.strokeWidth * 6 : stroke.strokeWidth;
@@ -119,131 +140,272 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = stroke.color;
 
-    for (let i = 1; i < stroke.points.length; i++) {
-       ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    for (let index = 1; index < stroke.points.length; index += 1) {
+      ctx.lineTo(stroke.points[index].x, stroke.points[index].y);
     }
+
+    if (stroke.points.length === 1) {
+      ctx.lineTo(stroke.points[0].x + 0.01, stroke.points[0].y + 0.01);
+    }
+
     ctx.stroke();
+    ctx.restore();
   };
 
-  const drawText = (ctx: CanvasRenderingContext2D, textData: any) => {
+  const drawText = (ctx: CanvasRenderingContext2D, textData: WhiteboardText) => {
+    ctx.save();
     ctx.globalCompositeOperation = 'source-over';
-    ctx.font = `bold ${textData.fontSize}px sans-serif`;
+    ctx.font = `700 ${textData.fontSize}px sans-serif`;
+    ctx.textBaseline = 'top';
     ctx.fillStyle = textData.color;
     ctx.fillText(textData.text, textData.x, textData.y);
+    ctx.restore();
   };
 
-  const handleTextSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && textInput) {
-       const canvas = canvasRef.current;
-       if (!canvas) return;
-       const rect = canvas.getBoundingClientRect();
-       const canvasX = textInput.x * (canvas.width / rect.width);
-       const canvasY = textInput.y * (canvas.height / rect.height);
-       
-       const ctx = canvas.getContext('2d');
-       if (ctx && textInput.value) {
-         const textData = {
-           text: textInput.value,
-           x: canvasX,
-           y: canvasY + 28, // adjust baseline below the top of text
-           color,
-           fontSize: 36
-         };
-         drawText(ctx, textData);
-         setHistory(prev => [...prev, { type: 'text', payload: textData }]);
-         if (isHost && onWhiteboardAction) {
-           onWhiteboardAction({ type: 'text', payload: textData });
-         }
-       }
-       setTextInput(null);
-       setTool('pen');
+  const drawImageAction = async (ctx: CanvasRenderingContext2D, imageData: WhiteboardImage) => {
+    const image = await getImageElement(imageData.src);
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(image, imageData.x, imageData.y, imageData.width, imageData.height);
+    ctx.restore();
+  };
+
+  const renderAction = async (ctx: CanvasRenderingContext2D, action: WhiteboardHistoryAction) => {
+    if (action.type === 'stroke') {
+      drawStroke(ctx, action.payload);
+      return;
     }
-    if (e.key === 'Escape') {
-      setTextInput(null);
-      setTool('pen');
+
+    if (action.type === 'text') {
+      drawText(ctx, action.payload);
+      return;
+    }
+
+    await drawImageAction(ctx, action.payload);
+  };
+
+  const redrawHistory = async (items: WhiteboardHistoryAction[], previewStroke?: WhiteboardStroke | null) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    const sequence = ++drawSequenceRef.current;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (const action of items) {
+      await renderAction(ctx, action);
+      if (sequence !== drawSequenceRef.current) {
+        return;
+      }
+    }
+
+    if (previewStroke) {
+      drawStroke(ctx, previewStroke);
     }
   };
 
-  const drawImage = (ctx: CanvasRenderingContext2D, imgData: { dataUrl: string; x: number; y: number; width: number; height: number }) => {
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, imgData.x, imgData.y, imgData.width, imgData.height);
+  const findImageAtPoint = (x: number, y: number) => {
+    for (let index = historyRef.current.length - 1; index >= 0; index -= 1) {
+      const action = historyRef.current[index];
+      if (action.type !== 'image') {
+        continue;
+      }
+
+      const { payload } = action;
+      const isInside = x >= payload.x && x <= payload.x + payload.width && y >= payload.y && y <= payload.y + payload.height;
+      if (isInside) {
+        return payload;
+      }
+    }
+
+    return null;
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isHost) return;
+    const { x, y, clientX, clientY, rect } = getCoordinates(e);
+
+    if (tool === 'type') {
+      setTextDraft({
+        canvasX: x,
+        canvasY: y,
+        screenX: clientX - rect.left,
+        screenY: clientY - rect.top,
+        value: '',
+      });
+      return;
+    }
+
+    if (tool === 'move') {
+      const image = findImageAtPoint(x, y);
+      if (image) {
+        setDragState({
+          imageId: image.id,
+          offsetX: x - image.x,
+          offsetY: y - image.y,
+        });
+      }
+      return;
+    }
+
+    setIsDrawing(true);
+    const nextStroke: WhiteboardStroke = {
+      id: createActionId(),
+      tool: tool === 'eraser' ? 'eraser' : 'pen',
+      color,
+      strokeWidth,
+      points: [{ x, y }],
     };
-    img.src = imgData.dataUrl;
+
+    currentStrokeRef.current = nextStroke;
+    void redrawHistory(historyRef.current, nextStroke);
   };
 
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !isHost) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const img = new Image();
-      img.onload = () => {
-        // Scale image to fit within canvas while maintaining aspect ratio
-        const maxW = canvas.width * 0.6;
-        const maxH = canvas.height * 0.6;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxW) { h = h * (maxW / w); w = maxW; }
-        if (h > maxH) { w = w * (maxH / h); h = maxH; }
-        const x = (canvas.width - w) / 2;
-        const y = (canvas.height - h) / 2;
-        const imgData = { dataUrl, x, y, width: w, height: h };
-        ctx.drawImage(img, x, y, w, h);
-        setHistory(prev => [...prev, { type: 'image', payload: imgData }]);
-        if (onWhiteboardAction) {
-          onWhiteboardAction({ type: 'image', payload: imgData });
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const { x, y } = getCoordinates(e);
+
+    if (dragState) {
+      const nextHistory = historyRef.current.map((action) => {
+        if (action.type !== 'image' || action.payload.id !== dragState.imageId) {
+          return action;
         }
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-    // Reset input
-    if (imageInputRef.current) imageInputRef.current.value = '';
-  }, [isHost, onWhiteboardAction]);
 
-  const redrawHistory = (ctx: CanvasRenderingContext2D, items: any[]) => {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    items.forEach(action => {
-      if (action.type === 'stroke') drawStroke(ctx, action.payload);
-      else if (action.type === 'text') drawText(ctx, action.payload);
-      else if (action.type === 'image') drawImage(ctx, action.payload);
-    });
+        return {
+          ...action,
+          payload: {
+            ...action.payload,
+            x: x - dragState.offsetX,
+            y: y - dragState.offsetY,
+          },
+        };
+      }) as WhiteboardHistoryAction[];
+
+      commitHistory(nextHistory);
+      void redrawHistory(nextHistory);
+      return;
+    }
+
+    if (!isDrawing || !isHost || tool === 'type' || tool === 'move') return;
+
+    const currentStroke = currentStrokeRef.current;
+    if (!currentStroke) return;
+
+    const lastPoint = currentStroke.points[currentStroke.points.length - 1];
+    if (lastPoint?.x === x && lastPoint?.y === y) {
+      return;
+    }
+
+    const updatedStroke: WhiteboardStroke = {
+      ...currentStroke,
+      points: [...currentStroke.points, { x, y }],
+    };
+
+    currentStrokeRef.current = updatedStroke;
+    void redrawHistory(historyRef.current, updatedStroke);
+
+    if (onWhiteboardAction) {
+      onWhiteboardAction({ type: 'stroke_update', payload: updatedStroke });
+    }
+  };
+
+  const endDrawing = () => {
+    if (dragState) {
+      if (onWhiteboardAction) {
+        onWhiteboardAction({ type: 'sync_full', history: historyRef.current });
+      }
+      setDragState(null);
+      return;
+    }
+
+    if (isDrawing && currentStrokeRef.current) {
+      const finalizedStrokeAction: WhiteboardHistoryAction = {
+        type: 'stroke',
+        payload: currentStrokeRef.current,
+      };
+      appendToHistory(finalizedStrokeAction);
+      if (onWhiteboardAction) {
+        onWhiteboardAction(finalizedStrokeAction);
+      }
+      currentStrokeRef.current = null;
+      void redrawHistory(historyRef.current);
+    }
+
+    setIsDrawing(false);
+  };
+
+  const clearCanvas = () => {
+    commitHistory([]);
+    void redrawHistory([]);
+    if (isHost && onWhiteboardAction) {
+      onWhiteboardAction({ type: 'clear' });
+    }
+  };
+
+  const commitTextDraft = () => {
+    if (!textDraft) return;
+
+    const value = textDraft.value.trim();
+    if (!value) {
+      setTextDraft(null);
+      setTool('pen');
+      return;
+    }
+
+    const nextTextAction: WhiteboardHistoryAction = {
+      type: 'text',
+      payload: {
+        id: createActionId(),
+        text: value,
+        x: textDraft.canvasX,
+        y: textDraft.canvasY,
+        color,
+        fontSize: 42,
+      },
+    };
+
+    appendToHistory(nextTextAction);
+    void redrawHistory(historyRef.current);
+    if (isHost && onWhiteboardAction) {
+      onWhiteboardAction(nextTextAction);
+    }
+
+    setTextDraft(null);
+    setTool('pen');
+  };
+
+  const cancelTextDraft = () => {
+    setTextDraft(null);
+    setTool('pen');
   };
 
   useEffect(() => {
     if (!remoteWhiteboardAction || isHost) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
     if (remoteWhiteboardAction.type === 'clear') {
-       setHistory([]);
-       ctx.clearRect(0, 0, canvas.width, canvas.height);
-    } else if (remoteWhiteboardAction.type === 'stroke') {
-       setHistory(prev => [...prev, remoteWhiteboardAction]);
-       drawStroke(ctx, remoteWhiteboardAction.payload);
-    } else if (remoteWhiteboardAction.type === 'text') {
-       setHistory(prev => [...prev, remoteWhiteboardAction]);
-       drawText(ctx, remoteWhiteboardAction.payload);
-    } else if (remoteWhiteboardAction.type === 'image') {
-       setHistory(prev => [...prev, remoteWhiteboardAction]);
-       drawImage(ctx, remoteWhiteboardAction.payload);
-    } else if (remoteWhiteboardAction.type === 'sync_full') {
-       const newHistory = remoteWhiteboardAction.history || [];
-       setHistory(newHistory);
-       redrawHistory(ctx, newHistory);
+      commitHistory([]);
+      void redrawHistory([]);
+      return;
+    }
+
+    if (remoteWhiteboardAction.type === 'stroke_update') {
+      void redrawHistory(historyRef.current, remoteWhiteboardAction.payload as WhiteboardStroke);
+      return;
+    }
+
+    if (remoteWhiteboardAction.type === 'sync_full') {
+      const nextHistory = Array.isArray(remoteWhiteboardAction.history) ? remoteWhiteboardAction.history : [];
+      commitHistory(nextHistory);
+      void redrawHistory(nextHistory);
+      return;
+    }
+
+    if (remoteWhiteboardAction.type === 'stroke' || remoteWhiteboardAction.type === 'text' || remoteWhiteboardAction.type === 'image') {
+      const nextHistory = [...historyRef.current, remoteWhiteboardAction as WhiteboardHistoryAction];
+      commitHistory(nextHistory);
+      void redrawHistory(nextHistory);
     }
   }, [remoteWhiteboardAction, isHost]);
-  
-  // Setup sizing
-  const historyRef = useRef<any[]>([]);
+
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
@@ -256,18 +418,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     const resizeCanvas = () => {
       canvas.width = 1920;
       canvas.height = 1080;
-      
-      const ctx = canvas.getContext('2d');
-      if (ctx) redrawHistory(ctx, historyRef.current);
+      void redrawHistory(historyRef.current, currentStrokeRef.current);
     };
     
     resizeCanvas();
-    
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-      // Wait a tick for the browser layout to complete in fullscreen before redraw
-      setTimeout(resizeCanvas, 100);
-    };
+    const handleFullscreenChange = () => window.setTimeout(resizeCanvas, 100);
     
     window.addEventListener('resize', resizeCanvas);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -292,11 +447,76 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     }
   };
 
+  const openImagePicker = (mode: 'full' | 'floating') => {
+    imageInsertModeRef.current = mode;
+    fileInputRef.current?.click();
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    const canvas = canvasRef.current;
+    if (!file || !canvas) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = typeof reader.result === 'string' ? reader.result : null;
+      if (!src) {
+        return;
+      }
+
+      const image = new Image();
+      image.onload = () => {
+        const mode = imageInsertModeRef.current;
+        const maxWidth = mode === 'full' ? canvas.width * 0.88 : canvas.width * 0.34;
+        const maxHeight = mode === 'full' ? canvas.height * 0.88 : canvas.height * 0.34;
+        const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+        const width = image.width * scale;
+        const height = image.height * scale;
+
+        const imageAction: WhiteboardHistoryAction = {
+          type: 'image',
+          payload: {
+            id: createActionId(),
+            src,
+            x: (canvas.width - width) / 2,
+            y: (canvas.height - height) / 2,
+            width,
+            height,
+          },
+        };
+
+        appendToHistory(imageAction);
+        void redrawHistory(historyRef.current);
+
+        if (onWhiteboardAction) {
+          onWhiteboardAction(imageAction);
+        }
+
+        if (mode === 'floating') {
+          setTool('move');
+        }
+      };
+      image.src = src;
+    };
+
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
   return (
     <div className="flex h-full w-full flex-col bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
       {isHost && (
         <div className="flex items-center justify-between bg-zinc-950 p-3 border-b border-white/5">
           <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
             <Button
               variant="ghost"
               size="icon"
@@ -327,19 +547,30 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => imageInputRef.current?.click()}
-              className={cn("h-8 w-8 rounded-lg text-emerald-400 hover:bg-emerald-500/20")}
-              title="Ajouter une image"
+              onClick={() => setTool('move')}
+              className={cn("h-8 w-8 rounded-lg", tool === 'move' && "bg-amber-500/20 text-amber-300")}
+              title="Déplacer une image"
             >
-              <ImagePlus className="h-4 w-4" />
+              <Move className="h-4 w-4" />
             </Button>
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openImagePicker('full')}
+              className="h-8 border-white/10 bg-white/5 text-white hover:bg-white/10"
+            >
+              <ImagePlus className="mr-2 h-3.5 w-3.5" />
+              Image plein tableau
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openImagePicker('floating')}
+              className="h-8 border-white/10 bg-white/5 text-white hover:bg-white/10"
+            >
+              <Move className="mr-2 h-3.5 w-3.5" />
+              Image libre
+            </Button>
             
             <div className="h-4 w-[1px] bg-white/10 mx-2" />
             
@@ -392,30 +623,41 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
             className="w-full h-full block"
           />
         
-          {textInput && (
-             <input
-               autoFocus
-               type="text"
-               value={textInput.value}
-               onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
-               onKeyDown={handleTextSubmit}
-               onBlur={() => { 
-                 if (textInput.value.trim()) {
-                   handleTextSubmit({ key: 'Enter' } as any);
-                 } else {
-                   setTextInput(null); 
-                   setTool('pen'); 
-                 }
-               }}
-               className="absolute bg-transparent border-b border-dashed border-indigo-500 text-xl md:text-2xl lg:text-3xl p-0 m-0 z-50 focus:outline-none focus:ring-0"
-               style={{ 
-                 left: `${textInput.x}px`, 
-                 top: `${textInput.y}px`, 
-                 color, 
-                 fontFamily: 'sans-serif'
-               }}
-               placeholder="Taper... (Entrée)"
-             />
+          {textDraft && (
+            <div
+              className="absolute z-50 rounded-xl border border-indigo-400/30 bg-zinc-950/90 p-2 shadow-2xl backdrop-blur-md"
+              style={{
+                left: `${Math.min(textDraft.screenX, 1540)}px`,
+                top: `${Math.min(textDraft.screenY, 960)}px`,
+              }}
+            >
+              <input
+                autoFocus
+                type="text"
+                value={textDraft.value}
+                onChange={(event) => setTextDraft((current) => current ? { ...current, value: event.target.value } : current)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    commitTextDraft();
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cancelTextDraft();
+                  }
+                }}
+                className="w-56 bg-transparent text-base text-white placeholder:text-zinc-500 focus:outline-none"
+                placeholder="Écrire puis valider"
+              />
+              <div className="mt-2 flex items-center justify-end gap-2">
+                <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-zinc-300 hover:text-white" onClick={cancelTextDraft}>
+                  <X className="h-4 w-4" />
+                </Button>
+                <Button type="button" size="icon" className="h-8 w-8 bg-indigo-600 hover:bg-indigo-500" onClick={commitTextDraft}>
+                  <Check className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
 
           {!isHost && (
