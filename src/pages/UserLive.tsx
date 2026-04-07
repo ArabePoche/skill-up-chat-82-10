@@ -113,6 +113,8 @@ interface GiftOverlayState {
   content: string;
 }
 
+type WhiteboardHistoryMap = Record<string, any[]>;
+
 interface LiveGiftTotals {
   soumboulah_cash: number;
   soumboulah_bonus: number;
@@ -184,7 +186,7 @@ const RemoteVideoTile: React.FC<{
       const el = containerRef.current;
       if (el && track) {
         el.innerHTML = '';
-        track.play(el, { fit: 'cover' });
+        track.play(el, { fit: 'contain' });
       }
     };
     tryPlay();
@@ -277,12 +279,15 @@ const UserLive: React.FC = () => {
   const [isScreenManagerOpen, setIsScreenManagerOpen] = useState(false);
   const [isBuyProductDialogOpen, setIsBuyProductDialogOpen] = useState(false);
   const [remoteWhiteboardAction, setRemoteWhiteboardAction] = useState<any>(null);
+  const [whiteboardHistories, setWhiteboardHistories] = useState<WhiteboardHistoryMap>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
   const publicLiveScreenRef = useRef<LiveScreen | null>(null);
-  const whiteboardHistoryRef = useRef<any[]>([]);
+  const whiteboardHistoriesRef = useRef<WhiteboardHistoryMap>({});
   const endedLiveHandledRef = useRef<string | null>(null);
+  const pendingStudioBroadcastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingStudioScreenRef = useRef<LiveScreen | null>(null);
   
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -341,6 +346,18 @@ const UserLive: React.FC = () => {
     publicLiveScreenRef.current = publicLiveScreen;
   }, [publicLiveScreen]);
 
+  useEffect(() => {
+    whiteboardHistoriesRef.current = whiteboardHistories;
+  }, [whiteboardHistories]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingStudioBroadcastRef.current) {
+        clearTimeout(pendingStudioBroadcastRef.current);
+      }
+    };
+  }, []);
+
   const syncLivePresence = useCallback((screenOverride?: LiveScreen | null) => {
     if (!presenceChannelRef.current) {
       return;
@@ -385,6 +402,96 @@ const UserLive: React.FC = () => {
       },
     });
   }, [isHost, stableUserId]);
+
+  const applyWhiteboardActionToHistories = useCallback((current: WhiteboardHistoryMap, action: any): WhiteboardHistoryMap => {
+    const boardId = action?.boardId;
+    if (!boardId || typeof boardId !== 'string') {
+      return current;
+    }
+
+    const boardHistory = Array.isArray(current[boardId]) ? current[boardId] : [];
+
+    if (action.type === 'clear') {
+      return {
+        ...current,
+        [boardId]: [],
+      };
+    }
+
+    if (action.type === 'sync_full' && Array.isArray(action.history)) {
+      return {
+        ...current,
+        [boardId]: action.history,
+      };
+    }
+
+    if (action.type === 'item_transform' && action.payload?.targetId && action.payload?.targetType) {
+      return {
+        ...current,
+        [boardId]: boardHistory.map((entry) => {
+          if (entry.type !== action.payload.targetType || entry.payload?.id !== action.payload.targetId) {
+            return entry;
+          }
+
+          return {
+            ...entry,
+            payload: {
+              ...entry.payload,
+              ...(action.payload.updates || {}),
+            },
+          };
+        }),
+      };
+    }
+
+    if (action.type === 'stroke' || action.type === 'text' || action.type === 'image') {
+      return {
+        ...current,
+        [boardId]: [...boardHistory, action],
+      };
+    }
+
+    return current;
+  }, []);
+
+  const updateWhiteboardHistories = useCallback((updater: WhiteboardHistoryMap | ((current: WhiteboardHistoryMap) => WhiteboardHistoryMap)) => {
+    setWhiteboardHistories((current) => {
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      whiteboardHistoriesRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const broadcastPublicLiveScreen = useCallback((screen: LiveScreen | null) => {
+    syncLivePresence(screen);
+
+    if (!presenceChannelRef.current) {
+      return;
+    }
+
+    void presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'live_screen_update',
+      payload: {
+        screen,
+      },
+    });
+  }, [syncLivePresence]);
+
+  const scheduleStudioBroadcast = useCallback((screen: LiveScreen | null) => {
+    pendingStudioScreenRef.current = screen;
+
+    if (pendingStudioBroadcastRef.current) {
+      return;
+    }
+
+    pendingStudioBroadcastRef.current = setTimeout(() => {
+      pendingStudioBroadcastRef.current = null;
+      const pendingScreen = pendingStudioScreenRef.current;
+      pendingStudioScreenRef.current = null;
+      broadcastPublicLiveScreen(pendingScreen);
+    }, 120);
+  }, [broadcastPublicLiveScreen]);
 
   const connectedPeople = useMemo(() => {
       const merged = new Map<string, any>();
@@ -793,21 +900,48 @@ const UserLive: React.FC = () => {
           event: 'live_screen_state',
           payload: {
             screen: publicLiveScreenRef.current,
-            whiteboard_history: whiteboardHistoryRef.current,
+            whiteboard_histories: whiteboardHistoriesRef.current,
           },
         });
       })
       .on('broadcast', { event: 'live_screen_state' }, (payload) => {
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
         setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
-        
-        const whiteboardHistory = (payload.payload as any)?.whiteboard_history;
-        if (whiteboardHistory && Array.isArray(whiteboardHistory)) {
-          setRemoteWhiteboardAction({ type: 'sync_full', history: whiteboardHistory });
+
+        const receivedHistories = (payload.payload as any)?.whiteboard_histories;
+        if (receivedHistories && typeof receivedHistories === 'object' && !Array.isArray(receivedHistories)) {
+          updateWhiteboardHistories(receivedHistories as WhiteboardHistoryMap);
+        } else {
+          const legacyWhiteboardHistory = (payload.payload as any)?.whiteboard_history;
+          if (Array.isArray(legacyWhiteboardHistory) && isLiveScreen(nextScreen) && nextScreen.type === 'teaching_studio') {
+            const activeScene = nextScreen.studio.scenes.find((scene) => scene.id === nextScreen.studio.activeSceneId) || nextScreen.studio.scenes[0];
+            const activeWhiteboard = activeScene?.elements.find((element) => element.type === 'whiteboard');
+
+            if (activeScene && activeWhiteboard) {
+              updateWhiteboardHistories((current) => ({
+                ...current,
+                [`${activeScene.id}:${activeWhiteboard.id}`]: legacyWhiteboardHistory,
+              }));
+            }
+          }
         }
+
+        setRemoteWhiteboardAction(null);
       })
       .on('broadcast', { event: 'whiteboard_update' }, (payload) => {
-        setRemoteWhiteboardAction((payload.payload as any)?.action);
+        const action = (payload.payload as any)?.action;
+
+        if (!action) {
+          return;
+        }
+
+        if (action.type === 'stroke_update') {
+          setRemoteWhiteboardAction(action);
+          return;
+        }
+
+        updateWhiteboardHistories((current) => applyWhiteboardActionToHistories(current, action));
+        setRemoteWhiteboardAction(null);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -986,20 +1120,8 @@ const UserLive: React.FC = () => {
     publicLiveScreenRef.current = screen;
     setPublicLiveScreen(screen);
 
-    syncLivePresence(screen);
-
-    if (!presenceChannelRef.current) {
-      return;
-    }
-
-    void presenceChannelRef.current.send({
-      type: 'broadcast',
-      event: 'live_screen_update',
-      payload: {
-        screen,
-      },
-    });
-  }, [syncLivePresence]);
+    broadcastPublicLiveScreen(screen);
+  }, [broadcastPublicLiveScreen]);
 
   const handleStudioSceneChange = useCallback((sceneId: string) => {
     if (!isHost || !publicLiveScreen || publicLiveScreen.type !== 'teaching_studio') return;
@@ -1022,44 +1144,29 @@ const UserLive: React.FC = () => {
       return;
     }
 
-    handleSelectPublicLiveScreen({
+    const nextScreen = {
       ...publicLiveScreen,
       studio: nextStudio,
-    });
-  }, [handleSelectPublicLiveScreen, isHost, publicLiveScreen]);
+    };
+
+    publicLiveScreenRef.current = nextScreen;
+    setPublicLiveScreen(nextScreen);
+    scheduleStudioBroadcast(nextScreen);
+  }, [isHost, publicLiveScreen, scheduleStudioBroadcast]);
 
   const handleWhiteboardAction = useCallback((action: any) => {
     if (!isHost || !presenceChannelRef.current) return;
-    
-    if (action.type === 'clear') {
-      whiteboardHistoryRef.current = [];
-    } else if (action.type === 'sync_full' && Array.isArray(action.history)) {
-      whiteboardHistoryRef.current = action.history;
-    } else if (action.type === 'item_transform' && action.payload?.targetId && action.payload?.targetType) {
-      whiteboardHistoryRef.current = whiteboardHistoryRef.current.map((entry) => {
-        if (entry.type !== action.payload.targetType || entry.payload?.id !== action.payload.targetId) {
-          return entry;
-        }
 
-        return {
-          ...entry,
-          payload: {
-            ...entry.payload,
-            ...(action.payload.updates || {}),
-          },
-        };
-      });
-    } else if (action.type === 'stroke' || action.type === 'text' || action.type === 'image') {
-      whiteboardHistoryRef.current = [...whiteboardHistoryRef.current, action];
+    if (action.type !== 'stroke_update') {
+      updateWhiteboardHistories((current) => applyWhiteboardActionToHistories(current, action));
     }
-    // stroke_update is not persisted to history, it is only used for live preview.
 
     void presenceChannelRef.current.send({
       type: 'broadcast',
       event: 'whiteboard_update',
       payload: { action }
     });
-  }, [isHost]);
+  }, [applyWhiteboardActionToHistories, isHost, updateWhiteboardHistories]);
 
   useEffect(() => {
     if (isHost) {
@@ -1493,6 +1600,7 @@ const UserLive: React.FC = () => {
                 onStudioChange={handleStudioUpdate}
                 onWhiteboardAction={handleWhiteboardAction}
                 remoteWhiteboardAction={remoteWhiteboardAction}
+                remoteWhiteboardHistories={whiteboardHistories}
               />
             </div>
           {/* Bloc de Droite : Caméra + commentaires superposés */}

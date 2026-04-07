@@ -7,9 +7,11 @@ import type { LiveTeachingStudio, LiveTeachingStudioElement, LiveTeachingStudioE
 export type WhiteboardTool = 'pen' | 'eraser' | 'type' | 'move';
 
 interface WhiteboardProps {
+  boardId: string;
   isHost: boolean;
   onWhiteboardAction?: (action: any) => void;
   remoteWhiteboardAction?: any;
+  historySnapshot?: WhiteboardHistoryAction[];
 }
 
 interface WhiteboardPoint {
@@ -87,7 +89,7 @@ type WhiteboardRuntimeAction =
   | { type: 'sync_full'; history: WhiteboardHistoryAction[] }
   | { type: 'clear' };
 
-const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, remoteWhiteboardAction }) => {
+const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAction, remoteWhiteboardAction, historySnapshot = [] }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +107,13 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
   const [history, setHistory] = useState<WhiteboardHistoryAction[]>([]);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [selectedItem, setSelectedItem] = useState<SelectionState | null>(null);
+
+  const emitWhiteboardAction = (action: WhiteboardRuntimeAction | WhiteboardHistoryAction | { type: 'clear' }) => {
+    onWhiteboardAction?.({
+      ...action,
+      boardId,
+    });
+  };
 
   const createActionId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -445,16 +454,14 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
       const nextHistory = updateHistoryItem(dragState.targetId, dragState.targetType, updates);
       void redrawHistory(nextHistory);
 
-      if (onWhiteboardAction) {
-        onWhiteboardAction({
-          type: 'item_transform',
-          payload: {
-            targetId: dragState.targetId,
-            targetType: dragState.targetType,
-            updates,
-          },
-        });
-      }
+      emitWhiteboardAction({
+        type: 'item_transform',
+        payload: {
+          targetId: dragState.targetId,
+          targetType: dragState.targetType,
+          updates,
+        },
+      });
       return;
     }
 
@@ -476,9 +483,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     currentStrokeRef.current = updatedStroke;
     void redrawHistory(historyRef.current, updatedStroke);
 
-    if (onWhiteboardAction) {
-      onWhiteboardAction({ type: 'stroke_update', payload: updatedStroke });
-    }
+    emitWhiteboardAction({ type: 'stroke_update', payload: updatedStroke });
   };
 
   const endDrawing = () => {
@@ -493,9 +498,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
         payload: currentStrokeRef.current,
       };
       appendToHistory(finalizedStrokeAction);
-      if (onWhiteboardAction) {
-        onWhiteboardAction(finalizedStrokeAction);
-      }
+      emitWhiteboardAction(finalizedStrokeAction);
       currentStrokeRef.current = null;
       void redrawHistory(historyRef.current);
     }
@@ -506,8 +509,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
   const clearCanvas = () => {
     commitHistory([]);
     void redrawHistory([]);
-    if (isHost && onWhiteboardAction) {
-      onWhiteboardAction({ type: 'clear' });
+    if (isHost) {
+      emitWhiteboardAction({ type: 'clear' });
     }
   };
 
@@ -537,8 +540,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     selectedItemRef.current = { id: nextTextAction.payload.id, type: 'text' };
     setSelectedItem({ id: nextTextAction.payload.id, type: 'text' });
     void redrawHistory(historyRef.current);
-    if (isHost && onWhiteboardAction) {
-      onWhiteboardAction(nextTextAction);
+    if (isHost) {
+      emitWhiteboardAction(nextTextAction);
     }
 
     setTextDraft(null);
@@ -551,42 +554,17 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
   };
 
   useEffect(() => {
-    if (!remoteWhiteboardAction || isHost) return;
+    commitHistory(historySnapshot);
+    void redrawHistory(historySnapshot, currentStrokeRef.current);
+  }, [historySnapshot]);
 
-    if (remoteWhiteboardAction.type === 'clear') {
-      commitHistory([]);
-      void redrawHistory([]);
-      return;
-    }
+  useEffect(() => {
+    if (!remoteWhiteboardAction) return;
+    if (remoteWhiteboardAction.boardId !== boardId) return;
+    if (remoteWhiteboardAction.type !== 'stroke_update') return;
 
-    if (remoteWhiteboardAction.type === 'stroke_update') {
-      void redrawHistory(historyRef.current, remoteWhiteboardAction.payload as WhiteboardStroke);
-      return;
-    }
-
-    if (remoteWhiteboardAction.type === 'sync_full') {
-      const nextHistory = Array.isArray(remoteWhiteboardAction.history) ? remoteWhiteboardAction.history : [];
-      commitHistory(nextHistory);
-      void redrawHistory(nextHistory);
-      return;
-    }
-
-    if (remoteWhiteboardAction.type === 'item_transform') {
-      const nextHistory = updateHistoryItem(
-        remoteWhiteboardAction.payload.targetId,
-        remoteWhiteboardAction.payload.targetType,
-        remoteWhiteboardAction.payload.updates || {}
-      );
-      void redrawHistory(nextHistory);
-      return;
-    }
-
-    if (remoteWhiteboardAction.type === 'stroke' || remoteWhiteboardAction.type === 'text' || remoteWhiteboardAction.type === 'image') {
-      const nextHistory = [...historyRef.current, remoteWhiteboardAction as WhiteboardHistoryAction];
-      commitHistory(nextHistory);
-      void redrawHistory(nextHistory);
-    }
-  }, [remoteWhiteboardAction, isHost]);
+    void redrawHistory(historyRef.current, remoteWhiteboardAction.payload as WhiteboardStroke);
+  }, [boardId, remoteWhiteboardAction]);
 
   useEffect(() => {
     historyRef.current = history;
@@ -687,9 +665,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
         setSelectedItem({ id: imageAction.payload.id, type: 'image' });
         void redrawHistory(historyRef.current);
 
-        if (onWhiteboardAction) {
-          onWhiteboardAction(imageAction);
-        }
+        emitWhiteboardAction(imageAction);
 
         if (mode === 'floating') {
           setTool('move');
@@ -880,6 +856,7 @@ export interface LiveTeachingStudioRunnerProps {
   onStudioChange?: (studio: LiveTeachingStudio) => void;
   onWhiteboardAction?: (action: any) => void;
   remoteWhiteboardAction?: any;
+  remoteWhiteboardHistories?: Record<string, WhiteboardHistoryAction[]>;
 }
 
 interface StudioWindowLayout {
@@ -899,7 +876,7 @@ interface WindowInteractionState {
   startLayout: StudioWindowLayout;
 }
 
-export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onStudioChange, onWhiteboardAction, remoteWhiteboardAction }) => {
+export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onStudioChange, onWhiteboardAction, remoteWhiteboardAction, remoteWhiteboardHistories = {} }) => {
   const activeScene = studio.scenes.find((s) => s.id === studio.activeSceneId) || studio.scenes[0];
   const desktopRef = useRef<HTMLDivElement>(null);
   const nextZIndexRef = useRef(4);
@@ -1111,11 +1088,15 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
 
   const renderSceneElement = (element: LiveTeachingStudio['scenes'][number]['elements'][number]) => {
     if (element.type === 'whiteboard') {
+      const boardId = `${activeScene.id}:${element.id}`;
+
       return (
         <Whiteboard
+          boardId={boardId}
           isHost={isHost}
           onWhiteboardAction={onWhiteboardAction}
           remoteWhiteboardAction={remoteWhiteboardAction}
+          historySnapshot={remoteWhiteboardHistories[boardId] || []}
         />
       );
     }
