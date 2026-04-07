@@ -37,6 +37,15 @@ export type LiveTeachingLesson = Pick<
 
 export type LiveTeachingStudioElementType = 'whiteboard' | 'notes' | 'document';
 
+export interface LiveTeachingStudioElementWindowState {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+  minimized: boolean;
+}
+
 export interface LiveTeachingStudioElement {
   id: string;
   type: LiveTeachingStudioElementType;
@@ -44,6 +53,7 @@ export interface LiveTeachingStudioElement {
   content?: string | null;
   document_name?: string | null;
   document_url?: string | null;
+  window_state?: LiveTeachingStudioElementWindowState | null;
 }
 
 export interface LiveTeachingStudioScene {

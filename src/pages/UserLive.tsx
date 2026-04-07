@@ -43,7 +43,7 @@ import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
 import { LiveTeachingStudioRunner } from '@/live/components/LiveTeachingStudioRunner';
 import LiveScreenManager, { buildScreenFromStudio } from '@/live/components/LiveScreenManager';
 import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
-import type { LiveScreen } from '@/live/types';
+import type { LiveScreen, LiveTeachingStudio } from '@/live/types';
 import { isLiveScreen } from '@/live/types';
 import { useEnrollmentWithProtection } from '@/hooks/useEnrollments';
 import BuyWithScDialog from '@/marketplace/components/BuyWithScDialog';
@@ -1001,6 +1001,17 @@ const UserLive: React.FC = () => {
     handleSelectPublicLiveScreen(nextScreen);
   }, [isHost, publicLiveScreen, handleSelectPublicLiveScreen]);
 
+  const handleStudioUpdate = useCallback((nextStudio: LiveTeachingStudio) => {
+    if (!isHost || !publicLiveScreen || publicLiveScreen.type !== 'teaching_studio') {
+      return;
+    }
+
+    handleSelectPublicLiveScreen({
+      ...publicLiveScreen,
+      studio: nextStudio,
+    });
+  }, [handleSelectPublicLiveScreen, isHost, publicLiveScreen]);
+
   const handleWhiteboardAction = useCallback((action: any) => {
     if (!isHost || !presenceChannelRef.current) return;
     
@@ -1470,6 +1481,7 @@ const UserLive: React.FC = () => {
                 studio={publicLiveScreen.studio}
                 isHost={isHost}
                 onSceneChange={handleStudioSceneChange}
+                onStudioChange={handleStudioUpdate}
                 onWhiteboardAction={handleWhiteboardAction}
                 remoteWhiteboardAction={remoteWhiteboardAction}
               />

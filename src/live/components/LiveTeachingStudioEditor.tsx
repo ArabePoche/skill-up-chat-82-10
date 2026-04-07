@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, FileText, LayoutTemplate, MonitorPlay, NotebookPen, Plus, Presentation, Rows3, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { BookOpen, FileText, LayoutTemplate, Loader2, MonitorPlay, NotebookPen, Plus, Presentation, Rows3, Trash2, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import type { LiveTeachingStudio, LiveTeachingStudioElement, LiveTeachingStudioElementType } from '@/live/types';
+import { useFileUpload } from '@/hooks/useFileUpload';
+
+const getDefaultWindowState = (type: LiveTeachingStudioElementType, index: number) => {
+  if (type === 'whiteboard') {
+    return { x: 2, y: 4, width: 66, height: 78, zIndex: 2, minimized: false };
+  }
+
+  if (type === 'notes') {
+    return { x: 70, y: 8 + index * 3, width: 28, height: 38, zIndex: 3 + index, minimized: false };
+  }
+
+  return { x: 64, y: 48, width: 34, height: 34, zIndex: 3 + index, minimized: false };
+};
 
 interface LiveTeachingStudioEditorProps {
   open: boolean;
@@ -26,6 +39,7 @@ const buildDefaultElement = (type: LiveTeachingStudioElementType): LiveTeachingS
         type,
         title: 'Tableau',
         content: 'Objectifs du cours\n- Point 1\n- Point 2\n- Point 3',
+        window_state: getDefaultWindowState(type, 0),
       };
     case 'notes':
       return {
@@ -33,6 +47,7 @@ const buildDefaultElement = (type: LiveTeachingStudioElementType): LiveTeachingS
         type,
         title: 'Notes',
         content: 'Résumé rapide\n- Idée clé\n- Astuce\n- Exercice à retenir',
+        window_state: getDefaultWindowState(type, 0),
       };
     case 'document':
       return {
@@ -42,12 +57,14 @@ const buildDefaultElement = (type: LiveTeachingStudioElementType): LiveTeachingS
         content: 'Décrivez ici le support partagé pendant le cours.',
         document_name: 'Support PDF',
         document_url: '',
+        window_state: getDefaultWindowState(type, 0),
       };
     default:
       return {
         id: createElementId(),
         type,
         title: 'Élément',
+        window_state: getDefaultWindowState(type, 0),
       };
   }
 };
@@ -78,6 +95,8 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
 }) => {
   const [studio, setStudio] = useState<LiveTeachingStudio | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading } = useFileUpload();
 
   useEffect(() => {
     if (!open) {
@@ -86,8 +105,19 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
 
     const nextStudio = initialStudio || buildDefaultStudio();
 
-    setStudio(nextStudio);
-    setSelectedElementId(nextStudio.scenes[0]?.elements[0]?.id || null);
+    const normalizedStudio: LiveTeachingStudio = {
+      ...nextStudio,
+      scenes: nextStudio.scenes.map((scene) => ({
+        ...scene,
+        elements: scene.elements.map((element, index) => ({
+          ...element,
+          window_state: element.window_state || getDefaultWindowState(element.type, index),
+        })),
+      })),
+    };
+
+    setStudio(normalizedStudio);
+    setSelectedElementId(normalizedStudio.scenes[0]?.elements[0]?.id || null);
   }, [initialStudio, open]);
 
   const activeScene = useMemo(() => {
@@ -156,11 +186,24 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
     }
 
     const element = buildDefaultElement(type);
+    element.window_state = getDefaultWindowState(type, activeScene.elements.length);
     updateStudio((current) => ({
       ...current,
       scenes: current.scenes.map((scene) => scene.id === activeScene.id ? { ...scene, elements: [...scene.elements, element] } : scene),
     }));
     setSelectedElementId(element.id);
+  };
+
+  const handleDocumentUpload = async (file: File) => {
+    if (!selectedElement || selectedElement.type !== 'document') {
+      return;
+    }
+
+    const uploadResult = await uploadFile(file, 'lesson_discussion_files');
+    updateElement(selectedElement.id, {
+      document_name: file.name,
+      document_url: uploadResult.fileUrl,
+    });
   };
 
   const updateElement = (elementId: string, updates: Partial<LiveTeachingStudioElement>) => {
@@ -454,6 +497,25 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
 
                   {selectedElement.type === 'document' && (
                     <>
+                      <input
+                        ref={documentInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.odt,.ods,.odp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        className="hidden"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) {
+                            return;
+                          }
+
+                          try {
+                            await handleDocumentUpload(file);
+                          } finally {
+                            event.target.value = '';
+                          }
+                        }}
+                      />
+
                       <div className="space-y-2">
                         <Label>Nom du document</Label>
                         <Input
@@ -462,6 +524,24 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                           placeholder="Ex: Support PDF chapitre 1"
                           className="border-zinc-800 bg-zinc-900 text-white"
                         />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-center border-zinc-700 bg-transparent text-white hover:bg-zinc-800"
+                          onClick={() => documentInputRef.current?.click()}
+                          disabled={isUploading}
+                        >
+                          {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                          Uploader un document
+                        </Button>
+                        {selectedElement.document_url && (
+                          <p className="break-all text-xs text-emerald-300">
+                            URL stockée: {selectedElement.document_url}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">

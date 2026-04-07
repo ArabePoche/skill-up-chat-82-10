@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X, Minus, PanelBottomOpen, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { LiveTeachingStudio } from '@/live/types';
+import type { LiveTeachingStudio, LiveTeachingStudioElement, LiveTeachingStudioElementWindowState } from '@/live/types';
 
 export type WhiteboardTool = 'pen' | 'eraser' | 'type' | 'move';
 
@@ -877,6 +877,7 @@ export interface LiveTeachingStudioRunnerProps {
   studio: LiveTeachingStudio;
   isHost: boolean;
   onSceneChange?: (sceneId: string) => void;
+  onStudioChange?: (studio: LiveTeachingStudio) => void;
   onWhiteboardAction?: (action: any) => void;
   remoteWhiteboardAction?: any;
 }
@@ -898,14 +899,25 @@ interface WindowInteractionState {
   startLayout: StudioWindowLayout;
 }
 
-export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onWhiteboardAction, remoteWhiteboardAction }) => {
+export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onStudioChange, onWhiteboardAction, remoteWhiteboardAction }) => {
   const activeScene = studio.scenes.find((s) => s.id === studio.activeSceneId) || studio.scenes[0];
   const desktopRef = useRef<HTMLDivElement>(null);
   const nextZIndexRef = useRef(4);
   const [windowLayouts, setWindowLayouts] = useState<Record<string, StudioWindowLayout>>({});
   const [interaction, setInteraction] = useState<WindowInteractionState | null>(null);
 
-  const createDefaultLayout = (element: LiveTeachingStudio['scenes'][number]['elements'][number], index: number): StudioWindowLayout => {
+  const createDefaultLayout = (element: LiveTeachingStudioElement, index: number): StudioWindowLayout => {
+    if (element.window_state) {
+      return {
+        x: element.window_state.x,
+        y: element.window_state.y,
+        width: element.window_state.width,
+        height: element.window_state.height,
+        zIndex: element.window_state.zIndex,
+        minimized: element.window_state.minimized,
+      };
+    }
+
     if (element.type === 'whiteboard') {
       return { x: 2, y: 4, width: 66, height: 78, zIndex: 2, minimized: false };
     }
@@ -915,6 +927,34 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     }
 
     return { x: 64, y: 48, width: 34, height: 34, zIndex: 3 + index, minimized: false };
+  };
+
+  const publishWindowLayouts = (layoutMap: Record<string, StudioWindowLayout>) => {
+    if (!isHost || !onStudioChange) {
+      return;
+    }
+
+    const nextStudio: LiveTeachingStudio = {
+      ...studio,
+      scenes: studio.scenes.map((scene) => ({
+        ...scene,
+        elements: scene.elements.map((element) => ({
+          ...element,
+          window_state: layoutMap[element.id]
+            ? {
+                x: layoutMap[element.id].x,
+                y: layoutMap[element.id].y,
+                width: layoutMap[element.id].width,
+                height: layoutMap[element.id].height,
+                zIndex: layoutMap[element.id].zIndex,
+                minimized: layoutMap[element.id].minimized,
+              }
+            : element.window_state || null,
+        })),
+      })),
+    };
+
+    onStudioChange(nextStudio);
   };
 
   useEffect(() => {
@@ -927,12 +967,12 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
       const nextLayouts: Record<string, StudioWindowLayout> = {};
 
       activeScene.elements.forEach((element, index) => {
-        nextLayouts[element.id] = current[element.id] || createDefaultLayout(element, index);
+        nextLayouts[element.id] = createDefaultLayout(element, index);
       });
 
       return nextLayouts;
     });
-  }, [activeScene?.id]);
+  }, [activeScene]);
 
   useEffect(() => {
     if (!interaction) {
@@ -969,10 +1009,13 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
           nextLayout.height = Math.max(18, Math.min(90 - interaction.startLayout.y, interaction.startLayout.height + deltaY));
         }
 
-        return {
+        const nextMap = {
           ...current,
           [interaction.elementId]: nextLayout,
         };
+
+        publishWindowLayouts(nextMap);
+        return nextMap;
       });
     };
 
@@ -999,7 +1042,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
       const nextZIndex = nextZIndexRef.current + 1;
       nextZIndexRef.current = nextZIndex;
 
-      return {
+      const nextMap = {
         ...current,
         [elementId]: {
           ...target,
@@ -1007,6 +1050,9 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
           minimized: false,
         },
       };
+
+      publishWindowLayouts(nextMap);
+      return nextMap;
     });
   };
 
@@ -1017,13 +1063,16 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
         return current;
       }
 
-      return {
+      const nextMap = {
         ...current,
         [elementId]: {
           ...target,
           minimized: true,
         },
       };
+
+      publishWindowLayouts(nextMap);
+      return nextMap;
     });
   };
 
@@ -1115,6 +1164,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[1.5rem] bg-zinc-950">
+      {isHost && (
       <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-zinc-950/95 px-4 py-3 backdrop-blur-md">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">Studio live</p>
@@ -1140,6 +1190,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
           ))}
         </div>
       </div>
+      )}
 
       <div ref={desktopRef} className="relative flex-1 overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_28%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,1))] p-3 md:p-4">
         <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
@@ -1211,6 +1262,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
         })}
       </div>
 
+      {isHost && (
       <div className="flex items-center gap-2 overflow-x-auto border-t border-white/10 bg-zinc-950/95 px-3 py-3 backdrop-blur-md">
         {activeScene.elements.map((element) => {
           const layout = windowLayouts[element.id] || createDefaultLayout(element, 0);
@@ -1242,6 +1294,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
           );
         })}
       </div>
+      )}
     </div>
   );
 };
