@@ -85,71 +85,72 @@ const TeachingStudio: React.FC<TeachingStudioProps> = ({
   };
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col">
+    <div className="h-[100dvh] bg-gray-900 text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-gray-800 p-4 flex items-center justify-between border-b border-gray-700">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold">Studio de cours</h1>
-          <span className="text-sm text-gray-300">{lesson.title}</span>
+      <div className="bg-gray-800 px-3 py-2 sm:p-4 flex items-center justify-between border-b border-gray-700 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="text-sm sm:text-xl font-bold whitespace-nowrap">Studio</h1>
+          <span className="text-xs sm:text-sm text-gray-300 truncate">{lesson.title}</span>
         </div>
         
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Button
             variant={isStreaming ? "destructive" : "default"}
             size="sm"
             onClick={isStreaming ? handleStopStream : handleStartStream}
-            className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white"
+            className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm px-2 sm:px-3"
           >
-            {isStreaming ? <Square size={16} /> : <Play size={16} />}
-            <span>{isStreaming ? 'Arrêter' : 'Commencer'} le Direct</span>
+            {isStreaming ? <Square size={14} /> : <Play size={14} />}
+            <span className="hidden sm:inline">{isStreaming ? 'Arrêter' : 'Commencer'} le Direct</span>
+            <span className="sm:hidden">{isStreaming ? 'Stop' : 'Live'}</span>
           </Button>
           
-          <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)} className="bg-blue-500 hover:bg-blue-600 text-white">
-            <Settings size={16} />
+          <Button variant="outline" size="icon" onClick={() => setShowSettings(!showSettings)} className="bg-blue-500 hover:bg-blue-600 text-white h-8 w-8">
+            <Settings size={14} />
           </Button>
           
-          <Button variant="outline" size="sm" onClick={onClose} className="bg-blue-500 hover:bg-blue-600 text-white">
+          <Button variant="outline" size="sm" onClick={onClose} className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 sm:px-3">
             Fermer
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 flex">
-        {/* Panneau gauche - Contrôles */}
-        <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        {/* Panneau gauche - Contrôles (horizontal scroll on mobile) */}
+        <div className="md:w-72 lg:w-80 bg-gray-800 border-b md:border-b-0 md:border-r border-gray-700 flex flex-row md:flex-col overflow-x-auto md:overflow-x-hidden md:overflow-y-auto shrink-0">
           {/* Contrôles audio/vidéo */}
-          <div className="p-4 border-b border-gray-700">
-            <h3 className="text-sm font-semibold mb-3">Contrôles Média</h3>
-            <div className="flex space-x-2">
+          <div className="p-3 sm:p-4 border-r md:border-r-0 md:border-b border-gray-700 min-w-[200px] md:min-w-0">
+            <h3 className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Contrôles Média</h3>
+            <div className="flex gap-1 sm:gap-2">
               <Button
                 variant={cameraEnabled ? "default" : "outline"}
                 size="sm"
                 onClick={toggleCamera}
-                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs px-1 sm:px-2"
               >
-                {cameraEnabled ? <Camera size={16} /> : <CameraOff size={16} />}
-                Caméra
+                {cameraEnabled ? <Camera size={14} /> : <CameraOff size={14} />}
+                <span className="hidden sm:inline ml-1">Caméra</span>
               </Button>
               
               <Button
                 variant={micEnabled ? "default" : "outline"}
                 size="sm"
                 onClick={toggleMic}
-                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs px-1 sm:px-2"
               >
-                {micEnabled ? <Mic size={16} /> : <MicOff size={16} />}
-                Micro
+                {micEnabled ? <Mic size={14} /> : <MicOff size={14} />}
+                <span className="hidden sm:inline ml-1">Micro</span>
               </Button>
               
-              <Button variant="outline" size="sm" onClick={startScreenShare} className="bg-blue-500 hover:bg-blue-600 text-white">
-                <Monitor size={16} />
+              <Button variant="outline" size="icon" onClick={startScreenShare} className="bg-blue-500 hover:bg-blue-600 text-white h-8 w-8 shrink-0">
+                <Monitor size={14} />
               </Button>
             </div>
           </div>
 
           {/* Gestionnaire de scènes */}
-          <div className="p-4 border-b border-gray-700">
-            <h3 className="text-sm font-semibold mb-3">Scènes</h3>
+          <div className="p-3 sm:p-4 border-r md:border-r-0 md:border-b border-gray-700 min-w-[200px] md:min-w-0">
+            <h3 className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Scènes</h3>
             <SceneManager
               scenes={scenes}
               activeSceneId={activeScene?.id || ''}
@@ -159,52 +160,52 @@ const TeachingStudio: React.FC<TeachingStudioProps> = ({
           </div>
 
           {/* Éléments à ajouter */}
-          <div className="p-4 border-b border-gray-700">
-            <h3 className="text-sm font-semibold mb-3">Ajouter un élément</h3>
-            <div className="grid grid-cols-2 gap-2">
+          <div className="p-3 sm:p-4 border-r md:border-r-0 md:border-b border-gray-700 min-w-[200px] md:min-w-0">
+            <h3 className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">Ajouter</h3>
+            <div className="grid grid-cols-2 gap-1 sm:gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => handleAddElement('camera')}
-                className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-1 sm:px-2"
               >
-                <Camera size={14} className="mr-1" />
+                <Camera size={12} className="mr-1" />
                 Caméra
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => handleAddElement('whiteboard')}
-                className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-1 sm:px-2"
               >
-                <Plus size={14} className="mr-1" />
+                <Plus size={12} className="mr-1" />
                 Tableau
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => handleAddElement('notes')}
-                className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-1 sm:px-2"
               >
-                <Plus size={14} className="mr-1" />
+                <Plus size={12} className="mr-1" />
                 Notes
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => handleAddElement('document')}
-                className="text-xs bg-blue-500 hover:bg-blue-600 text-white"
+                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-1 sm:px-2"
               >
-                <Plus size={14} className="mr-1" />
+                <Plus size={12} className="mr-1" />
                 Document
               </Button>
             </div>
           </div>
 
           {/* Soumissions des élèves */}
-          <div className="flex-1 p-4">
-            <h3 className="text-sm font-semibold mb-3">
-              Soumissions des élèves ({pendingSubmissions.length})
+          <div className="p-3 sm:p-4 min-w-[200px] md:min-w-0 md:flex-1">
+            <h3 className="text-xs sm:text-sm font-semibold mb-2 sm:mb-3">
+              Soumissions ({pendingSubmissions.length})
             </h3>
             <MediaDropzone
               submissions={pendingSubmissions}

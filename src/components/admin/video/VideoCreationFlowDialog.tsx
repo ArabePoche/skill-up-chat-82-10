@@ -884,24 +884,24 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                 })}
 
                 <Dialog open={isLiveSetupOpen} onOpenChange={setIsLiveSetupOpen}>
-                  <DialogContent className="max-w-lg border-0 bg-zinc-950 text-white sm:rounded-3xl">
+                  <DialogContent className="max-h-[100dvh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto border-0 bg-zinc-950 p-0 text-white sm:max-h-[90vh] sm:rounded-3xl">
                     <div className="rounded-3xl bg-[radial-gradient(circle_at_top,_rgba(255,90,90,0.18),_transparent_42%),linear-gradient(160deg,#0b0b12_0%,#19111a_48%,#120f12_100%)] p-1">
-                      <div className="rounded-[22px] border border-white/10 bg-black/50 p-6">
+                      <div className="rounded-[22px] border border-white/10 bg-black/50 p-4 sm:p-6">
                         <DialogHeader className="space-y-2 text-left">
-                          <DialogTitle className="text-2xl font-semibold">Configurer le live</DialogTitle>
+                          <DialogTitle className="text-xl font-semibold sm:text-2xl">Configurer le live</DialogTitle>
                           <DialogDescription className="text-zinc-300">
                             Choisissez le titre, la description et qui pourra rejoindre votre direct.
                           </DialogDescription>
                         </DialogHeader>
 
-                        <div className="mt-6 space-y-4">
-                          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4">
-                            <div className="flex items-center justify-between gap-4">
+                        <div className="mt-4 space-y-4 sm:mt-6">
+                          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-3 sm:p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                               <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
                                   <Presentation size={20} />
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                   <p className="text-sm font-semibold text-white">Studio d'Enseignement Libre</p>
                                   <p className="text-xs text-zinc-400">
                                     {preparedStudio ? "Configuration prête (Modifiable en direct)" : "Optionnel : préparez vos tableaux et documents"}
@@ -913,7 +913,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => setIsStudioEditorOpen(true)}
-                                className="border-sky-500/50 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300"
+                                className="w-full border-sky-500/50 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300 sm:w-auto"
                               >
                                 {preparedStudio ? "Modifier" : "Configurer"}
                               </Button>
@@ -938,19 +938,19 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                               value={liveData.description}
                               onChange={(event) => setLiveData((current) => ({ ...current, description: event.target.value }))}
                               placeholder="Décrivez rapidement le sujet du live."
-                              className="min-h-24 border-white/10 bg-white/5 text-white placeholder:text-zinc-500"
+                              className="min-h-20 border-white/10 bg-white/5 text-white placeholder:text-zinc-500 sm:min-h-24"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Visibilite</Label>
-                            <div className="grid gap-3 md:grid-cols-2">
+                            <Label>Visibilité</Label>
+                            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                               <button
                                 type="button"
                                 onClick={() => setLiveData((current) => ({ ...current, visibility: 'public' }))}
-                                className={`rounded-2xl border p-4 text-left transition ${liveData.visibility === 'public' ? 'border-red-400/60 bg-red-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                                className={`rounded-2xl border p-3 sm:p-4 text-left transition ${liveData.visibility === 'public' ? 'border-red-400/60 bg-red-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
                               >
-                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                                <div className="mb-2 sm:mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
                                   <Globe size={20} />
                                 </div>
                                 <div className="text-sm font-semibold">Tout le monde</div>
@@ -960,23 +960,23 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                               <button
                                 type="button"
                                 onClick={() => setLiveData((current) => ({ ...current, visibility: 'friends_followers' }))}
-                                className={`rounded-2xl border p-4 text-left transition ${liveData.visibility === 'friends_followers' ? 'border-red-400/60 bg-red-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                                className={`rounded-2xl border p-3 sm:p-4 text-left transition ${liveData.visibility === 'friends_followers' ? 'border-red-400/60 bg-red-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
                               >
-                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                                <div className="mb-2 sm:mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
                                   <Users size={20} />
                                 </div>
                                 <div className="text-sm font-semibold">Amis et suiveurs</div>
-                                <p className="mt-1 text-xs leading-5 text-zinc-300">Seuls vos amis acceptes et vos followers peuvent regarder.</p>
+                                <p className="mt-1 text-xs leading-5 text-zinc-300">Seuls vos amis acceptés et vos followers peuvent regarder.</p>
                               </button>
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-6 flex items-center justify-end gap-3">
-                          <Button type="button" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" onClick={() => setIsLiveSetupOpen(false)}>
+                        <div className="mt-4 flex flex-col-reverse gap-2 sm:mt-6 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                          <Button type="button" variant="ghost" className="w-full text-white hover:bg-white/10 hover:text-white sm:w-auto" onClick={() => setIsLiveSetupOpen(false)}>
                             Annuler
                           </Button>
-                          <Button type="button" onClick={() => void launchLive()} disabled={isLaunchingLive} className="bg-red-600 text-white hover:bg-red-700">
+                          <Button type="button" onClick={() => void launchLive()} disabled={isLaunchingLive} className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto">
                             {isLaunchingLive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}
                             Lancer le live
                           </Button>

@@ -231,7 +231,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-none flex-col overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-white sm:max-h-[94vh] sm:max-w-6xl">
+      <DialogContent className="flex max-h-[100dvh] w-full max-w-none flex-col overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-white sm:max-h-[94vh] sm:w-[calc(100vw-0.75rem)] sm:max-w-6xl sm:rounded-xl">
         <DialogHeader className="border-b border-zinc-800 px-4 py-4 sm:px-6 sm:py-5">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Presentation className="h-5 w-5 text-sky-300" />
@@ -243,8 +243,8 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-hidden">
-          <div className="grid h-full min-h-0 gap-0 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
-            <div className="min-h-0 max-h-[28vh] overflow-hidden border-b border-zinc-800 bg-zinc-950/80 p-4 lg:flex lg:max-h-none lg:flex-col lg:border-b-0 lg:border-r">
+          <div className="flex h-full min-h-0 flex-col gap-0 overflow-y-auto lg:grid lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:overflow-hidden">
+            <div className="min-h-0 overflow-hidden border-b border-zinc-800 bg-zinc-950/80 p-3 sm:p-4 lg:flex lg:max-h-none lg:flex-col lg:border-b-0 lg:border-r">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Scènes</p>
@@ -303,7 +303,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
               </div>
             </div>
 
-            <div className="min-h-0 max-h-[34vh] overflow-hidden border-b border-zinc-800 p-4 sm:p-5 lg:flex lg:max-h-none lg:flex-col lg:border-b-0">
+            <div className="min-h-0 overflow-hidden border-b border-zinc-800 p-3 sm:p-5 lg:flex lg:max-h-none lg:flex-col lg:border-b-0">
             <div className="min-h-0 overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-sky-500/12 via-zinc-950 to-emerald-500/10 p-5 shadow-[0_16px_60px_rgba(0,0,0,0.35)] lg:flex lg:flex-1 lg:flex-col">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -366,7 +366,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
             </div>
             </div>
 
-            <div className="min-h-0 max-h-[34vh] bg-zinc-950/80 p-4 lg:flex lg:max-h-none lg:flex-col lg:border-l lg:border-zinc-800">
+            <div className="min-h-0 bg-zinc-950/80 p-3 sm:p-4 lg:flex lg:max-h-none lg:flex-col lg:border-l lg:border-zinc-800">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Paramètres</p>
             <div className="mt-4 min-h-0 space-y-4 overflow-y-auto pr-1 lg:flex-1">
               <div className="space-y-2">
@@ -496,11 +496,11 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-zinc-800 px-4 py-4 sm:px-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-zinc-700 bg-transparent text-white hover:bg-zinc-800 sm:w-auto">
+        <DialogFooter className="flex-col-reverse gap-2 border-t border-zinc-800 px-3 py-3 sm:flex-row sm:px-6 sm:py-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full border-zinc-700 bg-transparent text-white hover:bg-zinc-800 sm:w-auto">
             Annuler
           </Button>
-          <Button onClick={handleSave} className="bg-sky-500 text-white hover:bg-sky-600 sm:w-auto">
+          <Button onClick={handleSave} className="w-full bg-sky-500 text-white hover:bg-sky-600 sm:w-auto">
             <BookOpen className="mr-2 h-4 w-4" />
             Utiliser cet écran
           </Button>
