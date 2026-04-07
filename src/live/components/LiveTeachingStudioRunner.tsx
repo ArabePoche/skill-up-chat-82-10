@@ -99,6 +99,12 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
   const drawSequenceRef = useRef(0);
   const imageCacheRef = useRef<Record<string, HTMLImageElement>>({});
   const selectedItemRef = useRef<SelectionState | null>(null);
+  const pendingTransformPayloadRef = useRef<{
+    targetId: string;
+    targetType: 'image' | 'text';
+    updates: Partial<WhiteboardImage & WhiteboardText>;
+  } | null>(null);
+  const transformFrameRef = useRef<number | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<WhiteboardTool>('pen');
   const [color, setColor] = useState('#38bdf8');
@@ -112,6 +118,35 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
     onWhiteboardAction?.({
       ...action,
       boardId,
+    });
+  };
+
+  const flushPendingTransform = () => {
+    if (!pendingTransformPayloadRef.current) {
+      return;
+    }
+
+    emitWhiteboardAction({
+      type: 'item_transform',
+      payload: pendingTransformPayloadRef.current,
+    });
+    pendingTransformPayloadRef.current = null;
+  };
+
+  const scheduleTransformBroadcast = (payload: {
+    targetId: string;
+    targetType: 'image' | 'text';
+    updates: Partial<WhiteboardImage & WhiteboardText>;
+  }) => {
+    pendingTransformPayloadRef.current = payload;
+
+    if (transformFrameRef.current !== null) {
+      return;
+    }
+
+    transformFrameRef.current = window.requestAnimationFrame(() => {
+      transformFrameRef.current = null;
+      flushPendingTransform();
     });
   };
 
@@ -454,13 +489,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
       const nextHistory = updateHistoryItem(dragState.targetId, dragState.targetType, updates);
       void redrawHistory(nextHistory);
 
-      emitWhiteboardAction({
-        type: 'item_transform',
-        payload: {
-          targetId: dragState.targetId,
-          targetType: dragState.targetType,
-          updates,
-        },
+      scheduleTransformBroadcast({
+        targetId: dragState.targetId,
+        targetType: dragState.targetType,
+        updates,
       });
       return;
     }
@@ -488,6 +520,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
 
   const endDrawing = () => {
     if (dragState) {
+      flushPendingTransform();
       setDragState(null);
       return;
     }
@@ -576,12 +609,21 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
 
   useEffect(() => {
     if (tool !== 'move') {
+      flushPendingTransform();
       selectedItemRef.current = null;
       setSelectedItem(null);
       setDragState(null);
       void redrawHistory(historyRef.current, currentStrokeRef.current);
     }
   }, [tool]);
+
+  useEffect(() => {
+    return () => {
+      if (transformFrameRef.current !== null) {
+        window.cancelAnimationFrame(transformFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;

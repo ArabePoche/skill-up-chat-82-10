@@ -77,6 +77,21 @@ const getDisplayName = (profile?: HostProfile | { first_name?: string | null; la
   return profile.username || 'Utilisateur';
 };
 
+const getActiveWhiteboardBoardId = (screen: LiveScreen | null): string | null => {
+  if (!screen || screen.type !== 'teaching_studio') {
+    return null;
+  }
+
+  const activeScene = screen.studio.scenes.find((scene) => scene.id === screen.studio.activeSceneId) || screen.studio.scenes[0];
+  const activeWhiteboard = activeScene?.elements.find((element) => element.type === 'whiteboard');
+
+  if (!activeScene || !activeWhiteboard) {
+    return null;
+  }
+
+  return `${activeScene.id}:${activeWhiteboard.id}`;
+};
+
 interface LiveMessage {
   id: string;
   userId: string;
@@ -398,6 +413,22 @@ const UserLive: React.FC = () => {
       event: 'request_live_screen_state',
       payload: {
         requesterUserId: stableUserId,
+        reason,
+      },
+    });
+  }, [isHost, stableUserId]);
+
+  const requestWhiteboardState = useCallback((boardId: string, reason: string = 'viewer_board_sync') => {
+    if (isHost || !presenceChannelRef.current || !boardId) {
+      return;
+    }
+
+    void presenceChannelRef.current.send({
+      type: 'broadcast',
+      event: 'request_whiteboard_state',
+      payload: {
+        requesterUserId: stableUserId,
+        boardId,
         reason,
       },
     });
@@ -911,6 +942,26 @@ const UserLive: React.FC = () => {
           },
         });
       })
+      .on('broadcast', { event: 'request_whiteboard_state' }, (payload) => {
+        if (!isHostRole) {
+          return;
+        }
+
+        const boardId = (payload.payload as { boardId?: string | null })?.boardId;
+        if (!boardId) {
+          return;
+        }
+
+        void roomChannel.send({
+          type: 'broadcast',
+          event: 'whiteboard_state',
+          payload: {
+            boardId,
+            history: whiteboardHistoriesRef.current[boardId] || [],
+            senderUserId: stableUserId,
+          },
+        });
+      })
       .on('broadcast', { event: 'live_screen_state' }, (payload) => {
         const senderUserId = (payload.payload as { senderUserId?: string | null })?.senderUserId;
         if (senderUserId === stableUserId) {
@@ -938,6 +989,25 @@ const UserLive: React.FC = () => {
           }
         }
 
+        setRemoteWhiteboardAction(null);
+      })
+      .on('broadcast', { event: 'whiteboard_state' }, (payload) => {
+        const senderUserId = (payload.payload as { senderUserId?: string | null })?.senderUserId;
+        if (senderUserId === stableUserId) {
+          return;
+        }
+
+        const boardId = (payload.payload as { boardId?: string | null })?.boardId;
+        const history = (payload.payload as { history?: any[] })?.history;
+
+        if (!boardId || !Array.isArray(history)) {
+          return;
+        }
+
+        updateWhiteboardHistories((current) => ({
+          ...current,
+          [boardId]: history,
+        }));
         setRemoteWhiteboardAction(null);
       })
       .on('broadcast', { event: 'whiteboard_update' }, (payload) => {
@@ -1193,12 +1263,28 @@ const UserLive: React.FC = () => {
       return;
     }
 
+    const activeBoardId = getActiveWhiteboardBoardId(publicLiveScreen);
+    if (activeBoardId) {
+      requestWhiteboardState(activeBoardId, 'active_board_changed');
+    }
+  }, [isHost, publicLiveScreen, requestWhiteboardState]);
+
+  useEffect(() => {
+    if (isHost) {
+      return;
+    }
+
     const requestLatestWhiteboardState = () => {
       if (document.visibilityState === 'hidden' || !presenceChannelRef.current) {
         return;
       }
 
       requestLiveScreenState('viewer_resync');
+
+      const activeBoardId = getActiveWhiteboardBoardId(publicLiveScreenRef.current);
+      if (activeBoardId) {
+        requestWhiteboardState(activeBoardId, 'viewer_resync');
+      }
     };
 
     const handleVisibilityChange = () => {
@@ -1216,7 +1302,7 @@ const UserLive: React.FC = () => {
       window.removeEventListener('online', requestLatestWhiteboardState);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isHost, requestLiveScreenState]);
+  }, [isHost, requestLiveScreenState, requestWhiteboardState]);
 
   const handleSelectPrivateLiveScreen = useCallback((screen: LiveScreen | null) => {
     setPrivateLiveScreen(screen);
