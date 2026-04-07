@@ -164,11 +164,55 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     }
   };
 
+  const drawImage = (ctx: CanvasRenderingContext2D, imgData: { dataUrl: string; x: number; y: number; width: number; height: number }) => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, imgData.x, imgData.y, imgData.width, imgData.height);
+    };
+    img.src = imgData.dataUrl;
+  };
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !isHost) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const img = new Image();
+      img.onload = () => {
+        // Scale image to fit within canvas while maintaining aspect ratio
+        const maxW = canvas.width * 0.6;
+        const maxH = canvas.height * 0.6;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW) { h = h * (maxW / w); w = maxW; }
+        if (h > maxH) { w = w * (maxH / h); h = maxH; }
+        const x = (canvas.width - w) / 2;
+        const y = (canvas.height - h) / 2;
+        const imgData = { dataUrl, x, y, width: w, height: h };
+        ctx.drawImage(img, x, y, w, h);
+        setHistory(prev => [...prev, { type: 'image', payload: imgData }]);
+        if (onWhiteboardAction) {
+          onWhiteboardAction({ type: 'image', payload: imgData });
+        }
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  }, [isHost, onWhiteboardAction]);
+
   const redrawHistory = (ctx: CanvasRenderingContext2D, items: any[]) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     items.forEach(action => {
       if (action.type === 'stroke') drawStroke(ctx, action.payload);
       else if (action.type === 'text') drawText(ctx, action.payload);
+      else if (action.type === 'image') drawImage(ctx, action.payload);
     });
   };
 
