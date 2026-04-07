@@ -1008,6 +1008,20 @@ const UserLive: React.FC = () => {
       whiteboardHistoryRef.current = [];
     } else if (action.type === 'sync_full' && Array.isArray(action.history)) {
       whiteboardHistoryRef.current = action.history;
+    } else if (action.type === 'item_transform' && action.payload?.targetId && action.payload?.targetType) {
+      whiteboardHistoryRef.current = whiteboardHistoryRef.current.map((entry) => {
+        if (entry.type !== action.payload.targetType || entry.payload?.id !== action.payload.targetId) {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          payload: {
+            ...entry.payload,
+            ...(action.payload.updates || {}),
+          },
+        };
+      });
     } else if (action.type === 'stroke' || action.type === 'text' || action.type === 'image') {
       whiteboardHistoryRef.current = [...whiteboardHistoryRef.current, action];
     }
@@ -1019,6 +1033,43 @@ const UserLive: React.FC = () => {
       payload: { action }
     });
   }, [isHost]);
+
+  useEffect(() => {
+    if (isHost) {
+      return;
+    }
+
+    const requestLatestWhiteboardState = () => {
+      if (document.visibilityState === 'hidden' || !presenceChannelRef.current) {
+        return;
+      }
+
+      void presenceChannelRef.current.send({
+        type: 'broadcast',
+        event: 'request_live_screen_state',
+        payload: {
+          requesterUserId: stableUserId,
+          reason: 'viewer_resync',
+        },
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestLatestWhiteboardState();
+      }
+    };
+
+    window.addEventListener('focus', requestLatestWhiteboardState);
+    window.addEventListener('online', requestLatestWhiteboardState);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', requestLatestWhiteboardState);
+      window.removeEventListener('online', requestLatestWhiteboardState);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isHost, stableUserId]);
 
   const handleSelectPrivateLiveScreen = useCallback((screen: LiveScreen | null) => {
     setPrivateLiveScreen(screen);

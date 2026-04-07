@@ -57,10 +57,35 @@ interface TextDraft {
 }
 
 interface DragState {
-  imageId: string;
+  targetId: string;
+  targetType: 'image' | 'text';
+  mode: 'move' | 'resize';
   offsetX: number;
   offsetY: number;
+  originX: number;
+  originY: number;
+  originWidth?: number;
+  originHeight?: number;
 }
+
+interface SelectionState {
+  id: string;
+  type: 'image' | 'text';
+}
+
+type WhiteboardRuntimeAction =
+  | WhiteboardHistoryAction
+  | { type: 'stroke_update'; payload: WhiteboardStroke }
+  | {
+      type: 'item_transform';
+      payload: {
+        targetId: string;
+        targetType: 'image' | 'text';
+        updates: Partial<WhiteboardImage & WhiteboardText>;
+      };
+    }
+  | { type: 'sync_full'; history: WhiteboardHistoryAction[] }
+  | { type: 'clear' };
 
 const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, remoteWhiteboardAction }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,6 +96,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
   const imageInsertModeRef = useRef<'full' | 'floating'>('full');
   const drawSequenceRef = useRef(0);
   const imageCacheRef = useRef<Record<string, HTMLImageElement>>({});
+  const selectedItemRef = useRef<SelectionState | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<WhiteboardTool>('pen');
   const [color, setColor] = useState('#38bdf8');
@@ -78,6 +104,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
   const [textDraft, setTextDraft] = useState<TextDraft | null>(null);
   const [history, setHistory] = useState<WhiteboardHistoryAction[]>([]);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [selectedItem, setSelectedItem] = useState<SelectionState | null>(null);
 
   const createActionId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -88,6 +115,29 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
 
   const appendToHistory = (action: WhiteboardHistoryAction) => {
     const nextHistory = [...historyRef.current, action];
+    commitHistory(nextHistory);
+    return nextHistory;
+  };
+
+  const updateHistoryItem = (
+    targetId: string,
+    targetType: 'image' | 'text',
+    updates: Partial<WhiteboardImage & WhiteboardText>
+  ) => {
+    const nextHistory = historyRef.current.map((action) => {
+      if (action.type !== targetType || action.payload.id !== targetId) {
+        return action;
+      }
+
+      return {
+        ...action,
+        payload: {
+          ...action.payload,
+          ...updates,
+        },
+      } as WhiteboardHistoryAction;
+    });
+
     commitHistory(nextHistory);
     return nextHistory;
   };
@@ -162,6 +212,57 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     ctx.restore();
   };
 
+  const measureTextBounds = (ctx: CanvasRenderingContext2D, textData: WhiteboardText) => {
+    ctx.save();
+    ctx.font = `700 ${textData.fontSize}px sans-serif`;
+    const metrics = ctx.measureText(textData.text);
+    ctx.restore();
+
+    return {
+      x: textData.x,
+      y: textData.y,
+      width: Math.max(metrics.width, 24),
+      height: textData.fontSize,
+    };
+  };
+
+  const getSelectionBounds = (ctx: CanvasRenderingContext2D, selection: SelectionState | null) => {
+    if (!selection) return null;
+
+    const action = historyRef.current.find((entry) => entry.type === selection.type && entry.payload.id === selection.id);
+    if (!action) return null;
+
+    if (action.type === 'image') {
+      return {
+        x: action.payload.x,
+        y: action.payload.y,
+        width: action.payload.width,
+        height: action.payload.height,
+      };
+    }
+
+    return measureTextBounds(ctx, action.payload);
+  };
+
+  const drawSelectionOverlay = (ctx: CanvasRenderingContext2D) => {
+    if (!isHost || tool !== 'move') return;
+
+    const bounds = getSelectionBounds(ctx, selectedItemRef.current);
+    if (!bounds) return;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.95)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 8]);
+    ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.setLineDash([]);
+
+    const handleSize = 16;
+    ctx.fillStyle = 'rgba(250, 204, 21, 1)';
+    ctx.fillRect(bounds.x + bounds.width - handleSize / 2, bounds.y + bounds.height - handleSize / 2, handleSize, handleSize);
+    ctx.restore();
+  };
+
   const drawImageAction = async (ctx: CanvasRenderingContext2D, imageData: WhiteboardImage) => {
     const image = await getImageElement(imageData.src);
     ctx.save();
@@ -202,6 +303,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     if (previewStroke) {
       drawStroke(ctx, previewStroke);
     }
+
+    drawSelectionOverlay(ctx);
   };
 
   const findImageAtPoint = (x: number, y: number) => {
@@ -219,6 +322,37 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     }
 
     return null;
+  };
+
+  const findTextAtPoint = (x: number, y: number) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return null;
+
+    for (let index = historyRef.current.length - 1; index >= 0; index -= 1) {
+      const action = historyRef.current[index];
+      if (action.type !== 'text') {
+        continue;
+      }
+
+      const bounds = measureTextBounds(ctx, action.payload);
+      const isInside = x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+      if (isInside) {
+        return action.payload;
+      }
+    }
+
+    return null;
+  };
+
+  const isOnResizeHandle = (x: number, y: number, image: WhiteboardImage) => {
+    const handleSize = 28;
+    return (
+      x >= image.x + image.width - handleSize &&
+      x <= image.x + image.width + handleSize &&
+      y >= image.y + image.height - handleSize &&
+      y <= image.y + image.height + handleSize
+    );
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -239,11 +373,44 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     if (tool === 'move') {
       const image = findImageAtPoint(x, y);
       if (image) {
+        const mode = isOnResizeHandle(x, y, image) ? 'resize' : 'move';
+        const nextSelection = { id: image.id, type: 'image' as const };
+        selectedItemRef.current = nextSelection;
+        setSelectedItem(nextSelection);
         setDragState({
-          imageId: image.id,
+          targetId: image.id,
+          targetType: 'image',
+          mode,
           offsetX: x - image.x,
           offsetY: y - image.y,
+          originX: image.x,
+          originY: image.y,
+          originWidth: image.width,
+          originHeight: image.height,
         });
+        void redrawHistory(historyRef.current);
+        return;
+      }
+
+      const text = findTextAtPoint(x, y);
+      if (text) {
+        const nextSelection = { id: text.id, type: 'text' as const };
+        selectedItemRef.current = nextSelection;
+        setSelectedItem(nextSelection);
+        setDragState({
+          targetId: text.id,
+          targetType: 'text',
+          mode: 'move',
+          offsetX: x - text.x,
+          offsetY: y - text.y,
+          originX: text.x,
+          originY: text.y,
+        });
+        void redrawHistory(historyRef.current);
+      } else {
+        selectedItemRef.current = null;
+        setSelectedItem(null);
+        void redrawHistory(historyRef.current);
       }
       return;
     }
@@ -265,23 +432,29 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     const { x, y } = getCoordinates(e);
 
     if (dragState) {
-      const nextHistory = historyRef.current.map((action) => {
-        if (action.type !== 'image' || action.payload.id !== dragState.imageId) {
-          return action;
-        }
-
-        return {
-          ...action,
-          payload: {
-            ...action.payload,
+      const updates = dragState.mode === 'resize'
+        ? {
+            width: Math.max(80, (dragState.originWidth || 0) + (x - dragState.originX - (dragState.originWidth || 0))),
+            height: Math.max(80, (dragState.originHeight || 0) + (y - dragState.originY - (dragState.originHeight || 0))),
+          }
+        : {
             x: x - dragState.offsetX,
             y: y - dragState.offsetY,
-          },
-        };
-      }) as WhiteboardHistoryAction[];
+          };
 
-      commitHistory(nextHistory);
+      const nextHistory = updateHistoryItem(dragState.targetId, dragState.targetType, updates);
       void redrawHistory(nextHistory);
+
+      if (onWhiteboardAction) {
+        onWhiteboardAction({
+          type: 'item_transform',
+          payload: {
+            targetId: dragState.targetId,
+            targetType: dragState.targetType,
+            updates,
+          },
+        });
+      }
       return;
     }
 
@@ -310,9 +483,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
 
   const endDrawing = () => {
     if (dragState) {
-      if (onWhiteboardAction) {
-        onWhiteboardAction({ type: 'sync_full', history: historyRef.current });
-      }
       setDragState(null);
       return;
     }
@@ -364,6 +534,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
     };
 
     appendToHistory(nextTextAction);
+    selectedItemRef.current = { id: nextTextAction.payload.id, type: 'text' };
+    setSelectedItem({ id: nextTextAction.payload.id, type: 'text' });
     void redrawHistory(historyRef.current);
     if (isHost && onWhiteboardAction) {
       onWhiteboardAction(nextTextAction);
@@ -399,6 +571,16 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
       return;
     }
 
+    if (remoteWhiteboardAction.type === 'item_transform') {
+      const nextHistory = updateHistoryItem(
+        remoteWhiteboardAction.payload.targetId,
+        remoteWhiteboardAction.payload.targetType,
+        remoteWhiteboardAction.payload.updates || {}
+      );
+      void redrawHistory(nextHistory);
+      return;
+    }
+
     if (remoteWhiteboardAction.type === 'stroke' || remoteWhiteboardAction.type === 'text' || remoteWhiteboardAction.type === 'image') {
       const nextHistory = [...historyRef.current, remoteWhiteboardAction as WhiteboardHistoryAction];
       commitHistory(nextHistory);
@@ -409,6 +591,19 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
+
+  useEffect(() => {
+    selectedItemRef.current = selectedItem;
+  }, [selectedItem]);
+
+  useEffect(() => {
+    if (tool !== 'move') {
+      selectedItemRef.current = null;
+      setSelectedItem(null);
+      setDragState(null);
+      void redrawHistory(historyRef.current, currentStrokeRef.current);
+    }
+  }, [tool]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -488,6 +683,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
         };
 
         appendToHistory(imageAction);
+        selectedItemRef.current = { id: imageAction.payload.id, type: 'image' };
+        setSelectedItem({ id: imageAction.payload.id, type: 'image' });
         void redrawHistory(historyRef.current);
 
         if (onWhiteboardAction) {
@@ -660,12 +857,6 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
             </div>
           )}
 
-          {!isHost && (
-            <div className="absolute top-4 left-4 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-sky-400 backdrop-blur-md shadow-xl flex items-center z-50">
-              <NotebookPen className="h-3.5 w-3.5 mr-2" />
-              Vue en direct de l'enseignant
-            </div>
-          )}
         </div>
         
         {/* Fullscreen Toggle */}
