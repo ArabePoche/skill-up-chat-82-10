@@ -324,6 +324,22 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ isHost, onWhiteboardAction, rem
             >
               <Eraser className="h-4 w-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => imageInputRef.current?.click()}
+              className={cn("h-8 w-8 rounded-lg text-emerald-400 hover:bg-emerald-500/20")}
+              title="Ajouter une image"
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
             
             <div className="h-4 w-[1px] bg-white/10 mx-2" />
             
