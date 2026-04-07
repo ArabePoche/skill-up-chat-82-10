@@ -474,9 +474,10 @@ const UserLive: React.FC = () => {
       event: 'live_screen_update',
       payload: {
         screen,
+        senderUserId: stableUserId,
       },
     });
-  }, [syncLivePresence]);
+  }, [stableUserId, syncLivePresence]);
 
   const scheduleStudioBroadcast = useCallback((screen: LiveScreen | null) => {
     pendingStudioScreenRef.current = screen;
@@ -887,6 +888,11 @@ const UserLive: React.FC = () => {
         setAcceptedParticipants(prev => prev.filter(participant => participant.userId !== userId));
       })
       .on('broadcast', { event: 'live_screen_update' }, (payload) => {
+        const senderUserId = (payload.payload as { senderUserId?: string | null })?.senderUserId;
+        if (senderUserId === stableUserId) {
+          return;
+        }
+
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
         setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
       })
@@ -901,10 +907,16 @@ const UserLive: React.FC = () => {
           payload: {
             screen: publicLiveScreenRef.current,
             whiteboard_histories: whiteboardHistoriesRef.current,
+            senderUserId: stableUserId,
           },
         });
       })
       .on('broadcast', { event: 'live_screen_state' }, (payload) => {
+        const senderUserId = (payload.payload as { senderUserId?: string | null })?.senderUserId;
+        if (senderUserId === stableUserId) {
+          return;
+        }
+
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
         setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
 
@@ -930,6 +942,11 @@ const UserLive: React.FC = () => {
       })
       .on('broadcast', { event: 'whiteboard_update' }, (payload) => {
         const action = (payload.payload as any)?.action;
+        const senderUserId = (payload.payload as { senderUserId?: string | null })?.senderUserId;
+
+        if (senderUserId === stableUserId) {
+          return;
+        }
 
         if (!action) {
           return;
@@ -1113,8 +1130,8 @@ const UserLive: React.FC = () => {
   }, [isAcceptedParticipant, stableAvatarUrl, stableDisplayName, stableUserId, state.localUid]);
 
   useEffect(() => {
-    syncLivePresence(publicLiveScreen);
-  }, [publicLiveScreen, syncLivePresence]);
+    syncLivePresence();
+  }, [syncLivePresence]);
 
   const handleSelectPublicLiveScreen = useCallback((screen: LiveScreen | null) => {
     publicLiveScreenRef.current = screen;
@@ -1164,9 +1181,12 @@ const UserLive: React.FC = () => {
     void presenceChannelRef.current.send({
       type: 'broadcast',
       event: 'whiteboard_update',
-      payload: { action }
+      payload: {
+        action,
+        senderUserId: stableUserId,
+      }
     });
-  }, [applyWhiteboardActionToHistories, isHost, updateWhiteboardHistories]);
+  }, [applyWhiteboardActionToHistories, isHost, stableUserId, updateWhiteboardHistories]);
 
   useEffect(() => {
     if (isHost) {
