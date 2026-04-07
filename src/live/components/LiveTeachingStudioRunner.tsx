@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw } from 'lucide-react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LiveTeachingStudio } from '@/live/types';
@@ -385,7 +385,7 @@ export interface LiveTeachingStudioRunnerProps {
 }
 
 export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onWhiteboardAction, remoteWhiteboardAction }) => {
-  const activeScene = studio.scenes.find((s) => s.is_active) || studio.scenes[0];
+  const activeScene = studio.scenes.find((s) => s.id === studio.activeSceneId) || studio.scenes[0];
 
   if (!activeScene || activeScene.elements.length === 0) {
     return (
