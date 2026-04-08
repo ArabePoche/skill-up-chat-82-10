@@ -33,6 +33,7 @@ const UploadVideo = () => {
   const [activeTab, setActiveTab] = useState<CreationTab>('record');
   const [showFullDialog, setShowFullDialog] = useState(false);
   const [dialogInitialMethod, setDialogInitialMethod] = useState<'record' | 'upload' | 'url' | null>(null);
+  const [showLiveDialog, setShowLiveDialog] = useState(false);
 
   // Camera state
   const [isRecording, setIsRecording] = useState(false);
@@ -201,9 +202,7 @@ const UploadVideo = () => {
     }
     if (tab === 'live') {
       stopCamera();
-      setDialogInitialMethod(null);
-      setShowFullDialog(true);
-      // Will trigger live setup in the dialog
+      setShowLiveDialog(true);
       return;
     }
     setActiveTab(tab);
@@ -224,6 +223,13 @@ const UploadVideo = () => {
       setShowFullDialog(false);
       setDialogInitialMethod(null);
       // Restart camera
+      setActiveTab('record');
+    }
+  };
+
+  const handleLiveDialogClose = (open: boolean) => {
+    if (!open) {
+      setShowLiveDialog(false);
       setActiveTab('record');
     }
   };
@@ -360,7 +366,7 @@ const UploadVideo = () => {
         onChange={handleFileUpload}
       />
 
-      {/* Full creation dialog (for finalize, details, live setup, URL) */}
+      {/* Full creation dialog (for finalize, details, URL) */}
       <VideoCreationFlowDialog
         open={showFullDialog}
         onOpenChange={handleDialogClose}
@@ -368,6 +374,13 @@ const UploadVideo = () => {
           setShowFullDialog(false);
           navigate('/profil');
         }}
+      />
+
+      {/* Live setup dialog — opens directly on the live configuration step */}
+      <VideoCreationFlowDialog
+        open={showLiveDialog}
+        onOpenChange={handleLiveDialogClose}
+        initialStep="live"
       />
     </div>
   );
