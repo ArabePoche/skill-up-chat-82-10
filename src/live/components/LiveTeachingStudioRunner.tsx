@@ -315,7 +315,11 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
       };
     }
 
-    return measureTextBounds(ctx, action.payload);
+    if (action.type === 'text') {
+      return measureTextBounds(ctx, action.payload);
+    }
+
+    return null;
   };
 
   const drawSelectionOverlay = (ctx: CanvasRenderingContext2D) => {
