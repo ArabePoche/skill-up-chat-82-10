@@ -9814,6 +9814,57 @@ export type Database = {
           },
         ]
       }
+      live_satisfaction_feedbacks: {
+        Row: {
+          id: string
+          live_stream_id: string
+          viewer_id: string
+          is_satisfied: boolean
+          reason: string | null
+          refund_requested: boolean
+          refund_status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          live_stream_id: string
+          viewer_id: string
+          is_satisfied: boolean
+          reason?: string | null
+          refund_requested?: boolean
+          refund_status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          live_stream_id?: string
+          viewer_id?: string
+          is_satisfied?: boolean
+          reason?: string | null
+          refund_requested?: boolean
+          refund_status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_satisfaction_feedbacks_live_stream_id_fkey"
+            columns: ["live_stream_id"]
+            isOneToOne: false
+            referencedRelation: "user_live_streams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_satisfaction_feedbacks_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_live_streams: {
         Row: {
           agora_channel: string
