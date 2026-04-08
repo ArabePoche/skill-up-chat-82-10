@@ -46,7 +46,7 @@ const buildDefaultElement = (type: LiveTeachingStudioElementType): LiveTeachingS
         id: createElementId(),
         type,
         title: 'Notes',
-        content: 'Résumé rapide\n- Idée clé\n- Astuce\n- Exercice à retenir',
+        content: '',
         window_state: getDefaultWindowState(type, 0),
       };
     case 'document':
@@ -54,8 +54,8 @@ const buildDefaultElement = (type: LiveTeachingStudioElementType): LiveTeachingS
         id: createElementId(),
         type,
         title: 'Document',
-        content: 'Décrivez ici le support partagé pendant le cours.',
-        document_name: 'Support PDF',
+        content: '',
+        document_name: '',
         document_url: '',
         window_state: getDefaultWindowState(type, 0),
       };

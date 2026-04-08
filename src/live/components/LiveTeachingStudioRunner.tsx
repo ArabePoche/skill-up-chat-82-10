@@ -1128,6 +1128,24 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     return FileText;
   };
 
+  const getEmbeddedDocumentUrl = (documentUrl: string) => {
+    const lowerUrl = documentUrl.toLowerCase();
+
+    if (
+      lowerUrl.endsWith('.pdf') ||
+      lowerUrl.endsWith('.txt') ||
+      lowerUrl.endsWith('.png') ||
+      lowerUrl.endsWith('.jpg') ||
+      lowerUrl.endsWith('.jpeg') ||
+      lowerUrl.endsWith('.gif') ||
+      lowerUrl.endsWith('.webp')
+    ) {
+      return documentUrl;
+    }
+
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(documentUrl)}`;
+  };
+
   const renderSceneElement = (element: LiveTeachingStudio['scenes'][number]['elements'][number]) => {
     if (element.type === 'whiteboard') {
       const boardId = `${activeScene.id}:${element.id}`;
@@ -1144,9 +1162,32 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     }
 
     if (element.type === 'document' && element.document_url) {
+      const embeddedDocumentUrl = getEmbeddedDocumentUrl(element.document_url);
+
       return (
-        <div className="h-full w-full overflow-hidden rounded-b-2xl bg-white">
-          <iframe src={element.document_url} title={element.document_name || 'Document'} className="h-full w-full border-0" />
+        <div className="flex h-full w-full flex-col overflow-hidden rounded-b-2xl bg-white">
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 text-zinc-700">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-zinc-900">{element.document_name || element.title || 'Document'}</p>
+              {element.content && <p className="truncate text-xs text-zinc-500">{element.content}</p>}
+            </div>
+            <a href={element.document_url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-sky-600 hover:text-sky-700">
+              Ouvrir
+            </a>
+          </div>
+          <iframe src={embeddedDocumentUrl} title={element.document_name || 'Document'} className="h-full w-full border-0" />
+        </div>
+      );
+    }
+
+    if (element.type === 'document') {
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-b-2xl bg-zinc-900 p-6 text-center text-zinc-400">
+          <FileText className="h-10 w-10 text-emerald-300" />
+          <div>
+            <p className="text-sm font-semibold text-white">{element.title || 'Document'}</p>
+            <p className="mt-1 text-xs text-zinc-500">Aucun document n'a encore été uploadé.</p>
+          </div>
         </div>
       );
     }
@@ -1156,7 +1197,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
         <div className="flex h-full w-full flex-col gap-4 overflow-y-auto rounded-b-2xl bg-zinc-900 p-6 text-zinc-300">
           <div className="flex items-center gap-3 border-b border-white/5 pb-4">
             <BookOpen className="h-6 w-6 text-amber-400" />
-            <h3 className="text-lg font-bold text-white">Notes du cours</h3>
+            <h3 className="text-lg font-bold text-white">{element.title || 'Notes'}</h3>
           </div>
           <div className="whitespace-pre-wrap text-sm leading-relaxed">
             {element.content || 'Aucune note ajoutée.'}
@@ -1236,7 +1277,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
                 height: `${layout.height}%`,
                 zIndex: layout.zIndex,
               }}
-              onMouseDown={() => focusWindow(element.id)}
+              onPointerDownCapture={() => focusWindow(element.id)}
             >
               <div
                 className={cn(

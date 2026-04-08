@@ -925,7 +925,15 @@ const UserLive: React.FC = () => {
         }
 
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
-        setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
+        const validScreen = isLiveScreen(nextScreen) ? nextScreen : null;
+        setPublicLiveScreen(validScreen);
+
+        if (!isHostRole) {
+          const activeBoardId = getActiveWhiteboardBoardId(validScreen);
+          if (activeBoardId) {
+            requestWhiteboardState(activeBoardId, 'live_screen_update');
+          }
+        }
       })
       .on('broadcast', { event: 'request_live_screen_state' }, () => {
         if (!isHostRole) {
@@ -969,15 +977,16 @@ const UserLive: React.FC = () => {
         }
 
         const nextScreen = (payload.payload as { screen?: unknown })?.screen;
-        setPublicLiveScreen(isLiveScreen(nextScreen) ? nextScreen : null);
+        const validScreen = isLiveScreen(nextScreen) ? nextScreen : null;
+        setPublicLiveScreen(validScreen);
 
         const receivedHistories = (payload.payload as any)?.whiteboard_histories;
         if (receivedHistories && typeof receivedHistories === 'object' && !Array.isArray(receivedHistories)) {
           updateWhiteboardHistories(receivedHistories as WhiteboardHistoryMap);
         } else {
           const legacyWhiteboardHistory = (payload.payload as any)?.whiteboard_history;
-          if (Array.isArray(legacyWhiteboardHistory) && isLiveScreen(nextScreen) && nextScreen.type === 'teaching_studio') {
-            const activeScene = nextScreen.studio.scenes.find((scene) => scene.id === nextScreen.studio.activeSceneId) || nextScreen.studio.scenes[0];
+          if (Array.isArray(legacyWhiteboardHistory) && validScreen && validScreen.type === 'teaching_studio') {
+            const activeScene = validScreen.studio.scenes.find((scene) => scene.id === validScreen.studio.activeSceneId) || validScreen.studio.scenes[0];
             const activeWhiteboard = activeScene?.elements.find((element) => element.type === 'whiteboard');
 
             if (activeScene && activeWhiteboard) {
@@ -986,6 +995,13 @@ const UserLive: React.FC = () => {
                 [`${activeScene.id}:${activeWhiteboard.id}`]: legacyWhiteboardHistory,
               }));
             }
+          }
+        }
+
+        if (!isHostRole) {
+          const activeBoardId = getActiveWhiteboardBoardId(validScreen);
+          if (activeBoardId) {
+            requestWhiteboardState(activeBoardId, 'live_screen_state');
           }
         }
 
@@ -1058,8 +1074,10 @@ const UserLive: React.FC = () => {
       supabase.removeChannel(roomChannel);
     };
   }, [
+    applyWhiteboardActionToHistories,
     downgradeToAudience,
     requestLiveScreenState,
+    requestWhiteboardState,
     requestedHostMode,
     setCameraEnabled,
     setMicrophoneEnabled,
@@ -1068,6 +1086,7 @@ const UserLive: React.FC = () => {
     stableHostId,
     stableStreamId,
     stableUserId,
+    updateWhiteboardHistories,
     upgradeToHost,
     upsertAcceptedParticipant,
   ]);
@@ -1692,10 +1711,15 @@ const UserLive: React.FC = () => {
     );
   };
 
+  const isStudioMode = publicLiveScreen?.type === 'teaching_studio';
+  const participantLookup = acceptedParticipants.filter((participant) => participant.userId !== stableUserId);
+  const panelParticipants = participantLookup.filter((participant) => participant.agoraUid);
+  const showParticipantPanel = panelParticipants.length > 0 || isAcceptedParticipant;
+
   return (
-    <div className={`relative flex h-[100dvh] min-h-screen w-full bg-black text-white overflow-hidden ${publicLiveScreen?.type === 'teaching_studio' ? 'flex-col md:flex-row' : 'flex-col'}`}>
+    <div className={`relative flex h-[100dvh] min-h-screen w-full bg-black text-white overflow-hidden ${isStudioMode ? 'flex-col md:flex-row' : 'flex-col'}`}>
       {/* Background Video Layer or Split Screen */}
-      {publicLiveScreen?.type === 'teaching_studio' ? (
+      {isStudioMode ? (
         <>
           {/* Bloc de Gauche : Contenu Studio */}
             <div className="flex-[2] md:flex-[3] relative bg-zinc-950 border-b md:border-b-0 md:border-r border-white/10 flex flex-col items-center justify-center p-0">
@@ -1720,6 +1744,128 @@ const UserLive: React.FC = () => {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
             </div>
+
+            {isHost && privateLiveScreen && (
+              <div className="absolute inset-x-2 top-12 z-20 pointer-events-auto md:hidden">
+                <LiveScreenDisplay screen={privateLiveScreen} variant="private" isHost />
+              </div>
+            )}
+
+            {showParticipantPanel && (
+              <div className="absolute right-2 top-12 bottom-16 z-20 flex w-[76px] flex-col gap-2 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-events-auto md:hidden">
+                {isAcceptedParticipant && (
+                  <div className="relative w-full overflow-hidden rounded-xl bg-zinc-900 aspect-[9/16] shrink-0">
+                    <div ref={localVideoContainerRef} className="w-full h-full" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5">
+                      <span className="text-white text-[9px] font-semibold bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-full truncate block text-center">
+                        {getDisplayName(profile)}
+                      </span>
+                    </div>
+                    <div className="absolute top-1 right-1 flex flex-col gap-0.5">
+                      {state.isMuted && (
+                        <div className="bg-red-500/80 rounded-full p-0.5">
+                          <MicOff className="h-2.5 w-2.5 text-white" />
+                        </div>
+                      )}
+                      {!state.isVideoEnabled && (
+                        <div className="bg-red-500/80 rounded-full p-0.5">
+                          <VideoOff className="h-2.5 w-2.5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {panelParticipants.map((participant, index) => {
+                  const uid = participant.agoraUid;
+                  if (!uid) {
+                    return null;
+                  }
+
+                  return (
+                    <RemoteVideoTile
+                      key={`${uid}-${participant?.userId ?? index}`}
+                      uid={uid}
+                      getRemoteVideoTrack={getRemoteVideoTrack}
+                      label={participant?.userName}
+                      avatarUrl={participant?.userAvatar ?? undefined}
+                      remoteUsers={state.remoteUsers}
+                      showMicOff={participant ? !participant.isMicEnabled : false}
+                      showCameraOff={participant ? !participant.isCameraEnabled : false}
+                      onRevealControls={() => setExpandedParticipantControlsId((current) => current === participant.userId ? null : participant.userId)}
+                    >
+                      {isHost && participant && (
+                        <div className={`absolute inset-x-1 top-1 flex flex-col gap-1 pointer-events-auto transition-all duration-200 ${expandedParticipantControlsId === participant.userId ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0'}`}>
+                          <button
+                            type="button"
+                            className={`flex h-5 items-center justify-center rounded-full backdrop-blur-sm text-white ${participant.isMicEnabled ? 'bg-black/55 hover:bg-red-500/80' : 'bg-red-500/80 hover:bg-red-500'}`}
+                            onClick={() => handleParticipantControl(participant, participant.isMicEnabled ? 'mic_off' : 'mic_on')}
+                            title={participant.isMicEnabled ? 'Couper le micro' : 'Activer le micro'}
+                          >
+                            {participant.isMicEnabled ? <Mic className="h-2.5 w-2.5" /> : <MicOff className="h-2.5 w-2.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            className={`flex h-5 items-center justify-center rounded-full backdrop-blur-sm text-white ${participant.isCameraEnabled ? 'bg-black/55 hover:bg-red-500/80' : 'bg-red-500/80 hover:bg-red-500'}`}
+                            onClick={() => handleParticipantControl(participant, participant.isCameraEnabled ? 'camera_off' : 'camera_on')}
+                            title={participant.isCameraEnabled ? 'Couper la caméra' : 'Activer la caméra'}
+                          >
+                            {participant.isCameraEnabled ? <Video className="h-2.5 w-2.5" /> : <VideoOff className="h-2.5 w-2.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            className="flex h-5 items-center justify-center rounded-full bg-red-600/85 text-white backdrop-blur-sm hover:bg-red-600"
+                            onClick={() => handleParticipantControl(participant, 'stop')}
+                            title="Arrêter l'intervention"
+                          >
+                            <PhoneOff className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      )}
+                    </RemoteVideoTile>
+                  );
+                })}
+              </div>
+            )}
+
+            {handRaiseRequests.length > 0 && (
+              <div className="absolute left-2 bottom-16 z-20 flex max-h-[60%] flex-col gap-2 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-events-auto md:hidden">
+                {handRaiseRequests.map((req) => (
+                  <div key={req.userId} className="flex flex-col items-center gap-1 bg-black/60 backdrop-blur-sm rounded-xl p-2 w-14">
+                    <Avatar className="h-9 w-9 border-2 border-amber-400/70">
+                      <AvatarImage src={req.userAvatar || ''} />
+                      <AvatarFallback className="bg-zinc-800 text-[10px]">
+                        {req.userName?.substring(0, 2).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-[8px] text-white/90 text-center truncate w-full leading-tight">
+                      {req.userName}
+                    </span>
+                    {isHost ? (
+                      <div className="flex gap-1 mt-0.5">
+                        <button
+                          onClick={() => handleAcceptHand(req.userId, req.userName, req.userAvatar)}
+                          className="rounded-full bg-green-500/80 px-1.5 py-0.5 hover:bg-green-500 transition-colors text-[10px] text-white font-bold"
+                          title="Accepter"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => dismissHandRaise(req.userId)}
+                          className="rounded-full bg-red-500/80 px-1.5 py-0.5 hover:bg-red-500 transition-colors text-[10px] text-white font-bold"
+                          title="Refuser"
+                        >
+                          ✗
+                        </button>
+                      </div>
+                    ) : (
+                      <Hand className="h-3 w-3 text-amber-400 animate-pulse mt-0.5" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
               
             {/* Badge créateur en haut */}
             <div className="absolute top-3 left-3 z-20 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/10 flex items-center gap-2">
@@ -1791,7 +1937,7 @@ const UserLive: React.FC = () => {
         </div>
       )}
 
-      {isHost && privateLiveScreen && (
+      {isHost && privateLiveScreen && !isStudioMode && (
         <div className="pointer-events-auto absolute left-4 top-24 z-30 hidden max-w-sm md:block">
           <LiveScreenDisplay screen={privateLiveScreen} variant="private" isHost />
         </div>
@@ -1799,13 +1945,10 @@ const UserLive: React.FC = () => {
 
       {/* Right panel: accepted participants displayed vertically */}
       {(() => {
-        const participantLookup = acceptedParticipants.filter(participant => participant.userId !== stableUserId);
-        const panelParticipants = participantLookup.filter(participant => participant.agoraUid);
-        const showPanel = panelParticipants.length > 0 || isAcceptedParticipant;
-        if (!showPanel) return null;
+        if (!showParticipantPanel) return null;
 
         return (
-          <div className="absolute right-2 top-16 bottom-24 z-20 flex flex-col gap-2 w-[76px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-events-auto">
+          <div className={`absolute right-2 top-16 bottom-24 z-20 w-[76px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-events-auto ${isStudioMode ? 'hidden md:flex md:flex-col md:gap-2' : 'flex flex-col gap-2'}`}>
             {/* Own local video preview for accepted participant */}
             {isAcceptedParticipant && (
               <div className="relative w-full overflow-hidden rounded-xl bg-zinc-900 aspect-[9/16] shrink-0">
@@ -1965,9 +2108,6 @@ const UserLive: React.FC = () => {
                 <img src={iconSC} alt="S" className="h-4 w-4 object-contain" />
                 {liveGiftTotals.soumboulah_cash.toLocaleString('fr-FR')}
               </div>
-              <div className="rounded-full bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200 backdrop-blur-sm">
-                Commission selon niveau
-              </div>
             </div>
           )}
 
@@ -2029,7 +2169,7 @@ const UserLive: React.FC = () => {
 
       {/* Hand raise requests panel */}
       {handRaiseRequests.length > 0 && (
-        <div className="absolute left-2 bottom-24 flex flex-col gap-2 z-20 pointer-events-auto max-h-[60vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className={`absolute left-2 bottom-24 z-20 pointer-events-auto max-h-[60vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${isStudioMode ? 'hidden md:flex md:flex-col md:gap-2' : 'flex flex-col gap-2'}`}>
           {handRaiseRequests.map((req) => (
             <div key={req.userId} className="flex flex-col items-center gap-1 bg-black/60 backdrop-blur-sm rounded-xl p-2 w-14">
               <Avatar className="h-9 w-9 border-2 border-amber-400/70">
