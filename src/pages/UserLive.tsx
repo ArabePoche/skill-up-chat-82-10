@@ -267,6 +267,16 @@ const extractPresenceEntries = (value: unknown): Record<string, any>[] => {
   return Object.values(record).flatMap(item => extractPresenceEntries(item));
 };
 
+/** Format a SC amount to at most 2 decimal places */
+const formatScAmount = (sc: number) =>
+  sc.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+/** Convert a FCFA price to SC, rounded to 2 decimal places to avoid floating-point drift */
+const fcfaToScRounded = (priceFcfa: number, rate: number): number => {
+  if (!rate || rate <= 0) return 0;
+  return Math.round((priceFcfa / rate) * 100) / 100;
+};
+
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -707,17 +717,17 @@ const UserLive: React.FC = () => {
         setScToFcfaRate(rateData.sc_to_fcfa_rate ?? 0);
       }
 
-      // Check if user already paid entry for this live
-      const { data: existingTx } = await supabase
+      // Check if user already paid entry for this live (uses limit(1) to safely handle duplicates)
+      const { data: existingTxList, error: txCheckError } = await supabase
         .from('wallet_transactions')
         .select('id')
         .eq('user_id', user.id)
         .eq('reference_id', stream.id)
         .eq('transaction_type', 'live_entry')
-        .maybeSingle();
+        .limit(1);
 
       if (isMounted) {
-        setHasPaidEntry(!!existingTx);
+        setHasPaidEntry(!txCheckError && Array.isArray(existingTxList) && existingTxList.length > 0);
       }
     };
 
@@ -737,7 +747,7 @@ const UserLive: React.FC = () => {
       return;
     }
 
-    const scAmount = stream.entry_price / scToFcfaRate;
+    const scAmount = fcfaToScRounded(stream.entry_price, scToFcfaRate);
 
     // Check wallet balance
     const { data: walletData, error: walletError } = await supabase
@@ -752,7 +762,7 @@ const UserLive: React.FC = () => {
     }
 
     if ((walletData.soumboulah_cash || 0) < scAmount) {
-      toast.error(`Solde insuffisant. Il vous faut ${scAmount.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} SC pour accéder à ce live.`);
+      toast.error(`Solde insuffisant. Il vous faut ${formatScAmount(scAmount)} SC pour accéder à ce live.`);
       return;
     }
 
@@ -772,7 +782,7 @@ const UserLive: React.FC = () => {
 
       // Insert a zero-amount live_entry marker so we can detect on reload that the user has paid.
       // Amount is 0 because the actual debit was handled atomically by the RPC above.
-      await supabase.from('wallet_transactions').insert({
+      const { error: markerError } = await supabase.from('wallet_transactions').insert({
         user_id: user.id,
         currency: 'soumboulah_cash',
         amount: 0,
@@ -781,6 +791,11 @@ const UserLive: React.FC = () => {
         reference_id: stream.id,
         reference_type: 'user_live_stream',
       });
+
+      if (markerError) {
+        // Non-fatal: the user has paid, just log the tracking failure
+        console.error('Erreur enregistrement marqueur live_entry:', markerError);
+      }
 
       toast.success('Paiement effectué ! Bienvenue dans le live.');
       setHasPaidEntry(true);
@@ -1781,8 +1796,7 @@ const UserLive: React.FC = () => {
   // Payment gate: show while checking or when payment is required
   if (!isHost && stream.entry_price && stream.entry_price > 0 && hasPaidEntry !== true) {
     const entryPriceFcfa = stream.entry_price;
-    const entryPriceSc = scToFcfaRate > 0 ? entryPriceFcfa / scToFcfaRate : 0;
-    const formatSc = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+    const entryPriceSc = fcfaToScRounded(entryPriceFcfa, scToFcfaRate);
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
@@ -1816,7 +1830,7 @@ const UserLive: React.FC = () => {
               <div className="flex flex-col items-center gap-1">
                 <p className="text-xs uppercase tracking-widest text-zinc-500">Prix d'accès</p>
                 <p className="text-3xl font-black text-emerald-400">
-                  {scToFcfaRate > 0 ? `${formatSc(entryPriceSc)} SC` : '…'}
+                  {scToFcfaRate > 0 ? `${formatScAmount(entryPriceSc)} SC` : '…'}
                 </p>
                 <p className="text-sm text-zinc-400">{entryPriceFcfa.toLocaleString('fr-FR')} FCFA</p>
                 {scToFcfaRate > 0 && (
@@ -1847,7 +1861,7 @@ const UserLive: React.FC = () => {
                   ) : (
                     <>
                       <Coins className="mr-2 h-4 w-4" />
-                      Payer {formatSc(entryPriceSc)} SC
+                      Payer {formatScAmount(entryPriceSc)} SC
                     </>
                   )}
                 </Button>
