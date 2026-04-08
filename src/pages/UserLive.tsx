@@ -24,7 +24,13 @@ import {
   Video,
   VideoOff,
   X,
+  Clock,
+  ThumbsUp,
+  ThumbsDown,
+  BarChart2,
+  AlertCircle,
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -311,6 +317,17 @@ const UserLive: React.FC = () => {
   const [hasPaidEntry, setHasPaidEntry] = useState<boolean | null>(null);
   const [isPayingEntry, setIsPayingEntry] = useState(false);
   const [scToFcfaRate, setScToFcfaRate] = useState<number>(0);
+  // Creator live report
+  const [showCreatorReport, setShowCreatorReport] = useState(false);
+  const [reportPaidEntryCount, setReportPaidEntryCount] = useState<number>(0);
+  const [reportEndedAt, setReportEndedAt] = useState<Date | null>(null);
+  const peakAudienceRef = useRef<number>(0);
+  // Viewer satisfaction survey
+  const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
+  const [satisfactionStep, setSatisfactionStep] = useState<'rating' | 'reason'>('rating');
+  const [satisfactionReason, setSatisfactionReason] = useState('');
+  const [isSubmittingSatisfaction, setIsSubmittingSatisfaction] = useState(false);
+  const [navigateAfterSurvey, setNavigateAfterSurvey] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
@@ -586,6 +603,13 @@ const UserLive: React.FC = () => {
       return presenceUserId && presenceUserId !== stableHostId;
     }).length;
   }, [stableHostId, viewersList]);
+
+  // Track peak audience count throughout the live session
+  useEffect(() => {
+    if (audienceCount > peakAudienceRef.current) {
+      peakAudienceRef.current = audienceCount;
+    }
+  }, [audienceCount]);
 
   const upsertAcceptedParticipant = useCallback((participant: AcceptedParticipant) => {
     setAcceptedParticipants(prev => {
@@ -1704,9 +1728,17 @@ const UserLive: React.FC = () => {
 
     if (!isHost) {
       toast.info('Le créateur a mis fin au live.');
-      navigate('/video', { replace: true });
+      // For paid live: show satisfaction survey before redirecting
+      if (hasPaidEntry === true && stream?.entry_price && stream.entry_price > 0 && user?.id) {
+        setNavigateAfterSurvey('/video');
+        setSatisfactionStep('rating');
+        setSatisfactionReason('');
+        setShowSatisfactionSurvey(true);
+      } else {
+        navigate('/video', { replace: true });
+      }
     }
-  }, [isHost, leaveCall, navigate, stream?.id, stream?.status]);
+  }, [hasPaidEntry, isHost, leaveCall, navigate, stream?.entry_price, stream?.id, stream?.status, user?.id]);
 
   const handleStopLive = async () => {
     if (!stream || !isHost) return;
@@ -1714,11 +1746,12 @@ const UserLive: React.FC = () => {
     setIsStopping(true);
 
     try {
+      const endedAt = new Date();
       const { error } = await supabase
         .from('user_live_streams')
         .update({
           status: 'ended',
-          ended_at: new Date().toISOString(),
+          ended_at: endedAt.toISOString(),
         })
         .eq('id', stream.id)
         .eq('host_id', user?.id || '');
@@ -1727,12 +1760,66 @@ const UserLive: React.FC = () => {
 
       await leaveCall();
       toast.success('Live terminé.');
-      navigate('/profil');
+
+      // Fetch paid entry count for the report
+      let paidCount = 0;
+      if (stream.entry_price && stream.entry_price > 0) {
+        const { count } = await supabase
+          .from('wallet_transactions')
+          .select('id', { count: 'exact', head: true })
+          .eq('transaction_type', 'live_entry')
+          .eq('reference_id', stream.id);
+        paidCount = count ?? 0;
+      }
+
+      setReportPaidEntryCount(paidCount);
+      setReportEndedAt(endedAt);
+      setShowCreatorReport(true);
     } catch (error) {
       console.error('Erreur arrêt live:', error);
       toast.error('Impossible de terminer ce live.');
     } finally {
       setIsStopping(false);
+    }
+  };
+
+  const handleViewerLeave = () => {
+    // For paid live: show satisfaction survey before leaving
+    if (hasPaidEntry === true && stream?.entry_price && stream.entry_price > 0 && user?.id) {
+      setNavigateAfterSurvey('/profil');
+      setSatisfactionStep('rating');
+      setSatisfactionReason('');
+      setShowSatisfactionSurvey(true);
+    } else {
+      navigate('/profil');
+    }
+  };
+
+  const handleSatisfactionSubmit = async (isSatisfied: boolean, refundRequested: boolean) => {
+    if (!stream || !user?.id) return;
+    setIsSubmittingSatisfaction(true);
+    try {
+      await supabase.from('live_satisfaction_feedbacks').upsert({
+        live_stream_id: stream.id,
+        viewer_id: user.id,
+        is_satisfied: isSatisfied,
+        reason: satisfactionReason.trim() || null,
+        refund_requested: refundRequested,
+        refund_status: refundRequested ? 'pending' : 'none',
+      }, { onConflict: 'live_stream_id,viewer_id' });
+
+      if (refundRequested) {
+        toast.success('Votre demande de remboursement a été soumise aux administrateurs.');
+      } else {
+        toast.success('Merci pour votre retour !');
+      }
+    } catch (err) {
+      console.error('Erreur soumission satisfaction:', err);
+      toast.error('Impossible d'envoyer votre retour. Veuillez réessayer.');
+    } finally {
+      setIsSubmittingSatisfaction(false);
+      setShowSatisfactionSurvey(false);
+      navigate(navigateAfterSurvey ?? '/profil', { replace: true });
     }
   };
 
@@ -2308,7 +2395,7 @@ const UserLive: React.FC = () => {
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 hover:text-red-500"
-              onClick={isHost ? handleStopLive : () => navigate('/profil')}
+              onClick={isHost ? handleStopLive : handleViewerLeave}
               disabled={isStopping}
             >
               {isStopping ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-5 w-5" />}
@@ -2658,6 +2745,192 @@ const UserLive: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Creator Live Report Dialog */}
+      {isHost && stream && (
+        <Dialog open={showCreatorReport} onOpenChange={(open) => { if (!open) { setShowCreatorReport(false); navigate('/profil'); } }}>
+          <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-white z-[9999]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                <BarChart2 className="h-5 w-5 text-indigo-400" />
+                Rapport du live
+              </DialogTitle>
+              <DialogDescription className="text-zinc-400 text-sm">
+                Résumé de votre session en direct
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {/* Duration */}
+              <div className="flex items-center justify-between rounded-xl bg-zinc-800/60 px-4 py-3">
+                <div className="flex items-center gap-2 text-zinc-300 text-sm">
+                  <Clock className="h-4 w-4 text-zinc-400" />
+                  Durée
+                </div>
+                <span className="font-semibold text-white">
+                  {(() => {
+                    if (!stream.started_at) return '—';
+                    const start = new Date(stream.started_at);
+                    const end = reportEndedAt ?? new Date();
+                    const diffSec = Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000));
+                    const h = Math.floor(diffSec / 3600);
+                    const m = Math.floor((diffSec % 3600) / 60);
+                    const s = diffSec % 60;
+                    if (h > 0) return `${h}h ${m}min ${s}s`;
+                    if (m > 0) return `${m}min ${s}s`;
+                    return `${s}s`;
+                  })()}
+                </span>
+              </div>
+
+              {/* Peak viewers */}
+              <div className="flex items-center justify-between rounded-xl bg-zinc-800/60 px-4 py-3">
+                <div className="flex items-center gap-2 text-zinc-300 text-sm">
+                  <Users className="h-4 w-4 text-zinc-400" />
+                  Spectateurs (pic)
+                </div>
+                <span className="font-semibold text-white">{peakAudienceRef.current}</span>
+              </div>
+
+              {/* Paid entries */}
+              {stream.entry_price && stream.entry_price > 0 && (
+                <div className="flex items-center justify-between rounded-xl bg-zinc-800/60 px-4 py-3">
+                  <div className="flex items-center gap-2 text-zinc-300 text-sm">
+                    <Coins className="h-4 w-4 text-emerald-400" />
+                    Entrées payantes
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-white">{reportPaidEntryCount} spectateur{reportPaidEntryCount !== 1 ? 's' : ''}</div>
+                    <div className="text-xs text-emerald-400">
+                      {(reportPaidEntryCount * stream.entry_price).toLocaleString('fr-FR')} FCFA
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Gift totals */}
+              {(liveGiftTotals.soumboulah_cash > 0 || liveGiftTotals.soumboulah_bonus > 0 || liveGiftTotals.habbah > 0) && (
+                <div className="rounded-xl bg-zinc-800/60 px-4 py-3 space-y-2">
+                  <p className="text-zinc-300 text-sm flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-pink-400" />
+                    Cadeaux reçus
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {liveGiftTotals.soumboulah_cash > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                        <img src={iconSC} alt="SC" className="h-4 w-4 object-contain" />
+                        {liveGiftTotals.soumboulah_cash.toLocaleString('fr-FR')} SC
+                      </span>
+                    )}
+                    {liveGiftTotals.soumboulah_bonus > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/20 border border-blue-500/30 px-2.5 py-1 text-xs font-semibold text-blue-300">
+                        <img src={iconSB} alt="SB" className="h-4 w-4 object-contain" />
+                        {liveGiftTotals.soumboulah_bonus.toLocaleString('fr-FR')} SB
+                      </span>
+                    )}
+                    {liveGiftTotals.habbah > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/30 px-2.5 py-1 text-xs font-semibold text-amber-300">
+                        <img src={iconH} alt="H" className="h-4 w-4 object-contain" />
+                        {liveGiftTotals.habbah.toLocaleString('fr-FR')} H
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <Button
+              className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={() => { setShowCreatorReport(false); navigate('/profil'); }}
+            >
+              Retour au profil
+            </Button>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Viewer Satisfaction Survey Dialog */}
+      {!isHost && user?.id && (
+        <Dialog open={showSatisfactionSurvey} onOpenChange={(open) => {
+          if (!open) {
+            setShowSatisfactionSurvey(false);
+            navigate(navigateAfterSurvey ?? '/profil', { replace: true });
+          }
+        }}>
+          <DialogContent className="sm:max-w-sm bg-zinc-900 border-zinc-800 text-white z-[9999]">
+            {satisfactionStep === 'rating' ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-center text-lg">Évaluation du live</DialogTitle>
+                  <DialogDescription className="text-center text-zinc-400 text-sm">
+                    Étiez-vous satisfait de ce live payant ?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-3 py-4">
+                  <Button
+                    className="w-full flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12"
+                    onClick={() => handleSatisfactionSubmit(true, false)}
+                    disabled={isSubmittingSatisfaction}
+                  >
+                    <ThumbsUp className="h-5 w-5" />
+                    Oui, je suis satisfait(e)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center gap-2 border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-12"
+                    onClick={() => setSatisfactionStep('reason')}
+                    disabled={isSubmittingSatisfaction}
+                  >
+                    <ThumbsDown className="h-5 w-5" />
+                    Non, je suis insatisfait(e)
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-base">
+                    <AlertCircle className="h-5 w-5 text-red-400" />
+                    Motif d'insatisfaction
+                  </DialogTitle>
+                  <DialogDescription className="text-zinc-400 text-sm">
+                    Dites-nous ce qui n'a pas fonctionné. Vous pouvez aussi demander un remboursement.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <Textarea
+                    placeholder="Décrivez votre problème (optionnel)..."
+                    value={satisfactionReason}
+                    onChange={(e) => setSatisfactionReason(e.target.value)}
+                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 resize-none"
+                    rows={4}
+                  />
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => handleSatisfactionSubmit(false, true)}
+                      disabled={isSubmittingSatisfaction}
+                    >
+                      {isSubmittingSatisfaction ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Envoi…</>
+                      ) : (
+                        'Demander un remboursement'
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full text-zinc-400 hover:text-white"
+                      onClick={() => handleSatisfactionSubmit(false, false)}
+                      disabled={isSubmittingSatisfaction}
+                    >
+                      Envoyer sans remboursement
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+
     </div>
   );
 };
