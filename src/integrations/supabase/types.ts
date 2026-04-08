@@ -2479,6 +2479,218 @@ export type Database = {
           },
         ]
       }
+      live_commission_settings: {
+        Row: {
+          commission_description: string | null
+          commission_label: string
+          commission_rate: number
+          id: string
+          is_active: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          commission_description?: string | null
+          commission_label?: string
+          commission_rate?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          commission_description?: string | null
+          commission_label?: string
+          commission_rate?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_commission_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_fraud_limits: {
+        Row: {
+          auto_block_threshold: number
+          escrow_duration_hours: number
+          id: string
+          is_active: boolean
+          max_disputes_per_month: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_block_threshold?: number
+          escrow_duration_hours?: number
+          id?: string
+          is_active?: boolean
+          max_disputes_per_month?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_block_threshold?: number
+          escrow_duration_hours?: number
+          id?: string
+          is_active?: boolean
+          max_disputes_per_month?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_fraud_limits_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_payment_disputes: {
+        Row: {
+          admin_notes: string | null
+          claimant_id: string
+          created_at: string
+          id: string
+          payment_id: string
+          reason: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          claimant_id: string
+          created_at?: string
+          id?: string
+          payment_id: string
+          reason: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          claimant_id?: string
+          created_at?: string
+          id?: string
+          payment_id?: string
+          reason?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_payment_disputes_claimant_id_fkey"
+            columns: ["claimant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_payment_disputes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "live_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_payment_disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_payments: {
+        Row: {
+          amount: number
+          buyer_id: string
+          commission_amount: number
+          commission_rate: number
+          created_at: string
+          creator_amount: number
+          creator_id: string
+          currency: string
+          disputed_at: string | null
+          id: string
+          live_id: string
+          release_at: string
+          released_at: string | null
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          commission_amount?: number
+          commission_rate?: number
+          created_at?: string
+          creator_amount?: number
+          creator_id: string
+          currency?: string
+          disputed_at?: string | null
+          id?: string
+          live_id: string
+          release_at: string
+          released_at?: string | null
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          commission_amount?: number
+          commission_rate?: number
+          created_at?: string
+          creator_amount?: number
+          creator_id?: string
+          currency?: string
+          disputed_at?: string | null
+          id?: string
+          live_id?: string
+          release_at?: string
+          released_at?: string | null
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_payments_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_payments_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_commission_settings: {
         Row: {
           auto_release_days: number
