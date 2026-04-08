@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import {
   ArrowLeft,
   BookOpen,
+  Coins,
   Copy,
   Crown,
   Globe,
@@ -68,6 +69,7 @@ interface LiveStreamRecord {
   agora_channel: string;
   started_at: string;
   ended_at: string | null;
+  entry_price: number | null;
   host: HostProfile | null;
 }
 
@@ -265,6 +267,16 @@ const extractPresenceEntries = (value: unknown): Record<string, any>[] => {
   return Object.values(record).flatMap(item => extractPresenceEntries(item));
 };
 
+/** Format a SC amount to at most 2 decimal places */
+const formatScAmount = (sc: number) =>
+  sc.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+/** Convert a FCFA price to SC, rounded to 2 decimal places to avoid floating-point drift */
+const fcfaToScRounded = (priceFcfa: number, rate: number): number => {
+  if (!rate || rate <= 0) return 0;
+  return Math.round((priceFcfa / rate) * 100) / 100;
+};
+
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -295,6 +307,10 @@ const UserLive: React.FC = () => {
   const [isBuyProductDialogOpen, setIsBuyProductDialogOpen] = useState(false);
   const [remoteWhiteboardAction, setRemoteWhiteboardAction] = useState<any>(null);
   const [whiteboardHistories, setWhiteboardHistories] = useState<WhiteboardHistoryMap>({});
+  // Payment gate state: null = checking, true = access granted, false = payment required
+  const [hasPaidEntry, setHasPaidEntry] = useState<boolean | null>(null);
+  const [isPayingEntry, setIsPayingEntry] = useState(false);
+  const [scToFcfaRate, setScToFcfaRate] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const commentsScrollRef = useRef<HTMLDivElement>(null);
   const commentsTouchStartXRef = useRef<number | null>(null);
@@ -601,7 +617,7 @@ const UserLive: React.FC = () => {
 
       const { data: liveData, error: liveError } = await supabase
         .from('user_live_streams')
-        .select('id, host_id, title, description, visibility, status, agora_channel, started_at, ended_at')
+        .select('id, host_id, title, description, visibility, status, agora_channel, started_at, ended_at, entry_price')
         .eq('id', id)
         .maybeSingle();
 
@@ -670,9 +686,132 @@ const UserLive: React.FC = () => {
     };
   }, [id]);
 
+  // Check payment status and fetch SC rate when stream loads
+  useEffect(() => {
+    if (!stream) return;
+
+    const entryPrice = stream.entry_price;
+
+    // Host and free lives don't require payment
+    if (isHost || !entryPrice || entryPrice <= 0) {
+      setHasPaidEntry(true);
+      return;
+    }
+
+    // Unauthenticated viewers need to log in first
+    if (!user?.id) {
+      setHasPaidEntry(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const checkPaymentAndRate = async () => {
+      // Fetch conversion rate
+      const { data: rateData } = await supabase
+        .from('currency_conversion_settings')
+        .select('sc_to_fcfa_rate')
+        .single();
+
+      if (isMounted && rateData) {
+        setScToFcfaRate(rateData.sc_to_fcfa_rate ?? 0);
+      }
+
+      // Check if user already paid entry for this live (uses limit(1) to safely handle duplicates)
+      const { data: existingTxList, error: txCheckError } = await supabase
+        .from('wallet_transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('reference_id', stream.id)
+        .eq('transaction_type', 'live_entry')
+        .limit(1);
+
+      if (isMounted) {
+        setHasPaidEntry(!txCheckError && Array.isArray(existingTxList) && existingTxList.length > 0);
+      }
+    };
+
+    void checkPaymentAndRate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isHost, stream, user?.id]);
+
+  // Payment handler for live entry
+  const handlePayLiveEntry = useCallback(async () => {
+    if (!stream || !user?.id || !stream.entry_price || stream.entry_price <= 0) return;
+
+    if (scToFcfaRate <= 0) {
+      toast.error('Le taux de conversion SC n\'est pas configuré. Contactez un administrateur.');
+      return;
+    }
+
+    const scAmount = fcfaToScRounded(stream.entry_price, scToFcfaRate);
+
+    // Check wallet balance
+    const { data: walletData, error: walletError } = await supabase
+      .from('user_wallets')
+      .select('soumboulah_cash')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (walletError || !walletData) {
+      toast.error('Impossible de vérifier votre portefeuille.');
+      return;
+    }
+
+    if ((walletData.soumboulah_cash || 0) < scAmount) {
+      toast.error(`Solde insuffisant. Il vous faut ${formatScAmount(scAmount)} SC pour accéder à ce live.`);
+      return;
+    }
+
+    setIsPayingEntry(true);
+
+    try {
+      const { data, error } = await supabase.rpc('transfer_soumboulah_cash', {
+        p_recipient_id: stream.host_id,
+        p_amount: scAmount,
+        p_reason: `Accès au live payant : ${stream.title}`,
+        p_reference_id: stream.id,
+      });
+
+      if (error) throw error;
+      const result = data as any;
+      if (result && !result.success) throw new Error(result.message || 'Paiement refusé');
+
+      // Insert a zero-amount live_entry marker so we can detect on reload that the user has paid.
+      // Amount is 0 because the actual debit was handled atomically by the RPC above.
+      const { error: markerError } = await supabase.from('wallet_transactions').insert({
+        user_id: user.id,
+        currency: 'soumboulah_cash',
+        amount: 0,
+        transaction_type: 'live_entry',
+        description: `Accès au live : ${stream.title}`,
+        reference_id: stream.id,
+        reference_type: 'user_live_stream',
+      });
+
+      if (markerError) {
+        // Non-fatal: the user has paid, just log the tracking failure
+        console.error('Erreur enregistrement marqueur live_entry:', markerError);
+      }
+
+      toast.success('Paiement effectué ! Bienvenue dans le live.');
+      setHasPaidEntry(true);
+    } catch (err: any) {
+      console.error('Erreur paiement live:', err);
+      toast.error(err?.message || 'Erreur lors du paiement.');
+    } finally {
+      setIsPayingEntry(false);
+    }
+  }, [scToFcfaRate, stream, user?.id]);
+
   // Presence tracking - stabilized to prevent re-subscriptions
   useEffect(() => {
     if (!stableStreamId) return;
+    // Wait until payment is confirmed before subscribing to presence
+    if (hasPaidEntry !== true) return;
 
     const channelName = `live-room-${stableStreamId}`;
     const isHostRole = user?.id && stableUserId === stableHostId && requestedHostMode;
@@ -1093,6 +1232,7 @@ const UserLive: React.FC = () => {
     updateWhiteboardHistories,
     upgradeToHost,
     upsertAcceptedParticipant,
+    hasPaidEntry,
   ]);
 
   useEffect(() => {
@@ -1520,6 +1660,8 @@ const UserLive: React.FC = () => {
 
   useEffect(() => {
     if (!stream || stream.status !== 'active') return;
+    // Do not join until payment is confirmed
+    if (hasPaidEntry !== true) return;
 
     void joinCall(stream.agora_channel, 'video', {
       role: isHost ? 'host' : 'viewer',
@@ -1530,7 +1672,7 @@ const UserLive: React.FC = () => {
     return () => {
       void leaveCall();
     };
-  }, [isHost, joinCall, leaveCall, stream?.agora_channel, stream?.status]);
+  }, [hasPaidEntry, isHost, joinCall, leaveCall, stream?.agora_channel, stream?.status]);
 
   useEffect(() => {
     if (stream?.status === 'ended' && state.isJoined) {
@@ -1647,6 +1789,90 @@ const UserLive: React.FC = () => {
         <Button onClick={() => navigate('/profil')} variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
           Retour au profil
         </Button>
+      </div>
+    );
+  }
+
+  // Payment gate: show while checking or when payment is required
+  if (!isHost && stream.entry_price && stream.entry_price > 0 && hasPaidEntry !== true) {
+    const entryPriceFcfa = stream.entry_price;
+    const entryPriceSc = fcfaToScRounded(entryPriceFcfa, scToFcfaRate);
+
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour
+        </button>
+
+        {hasPaidEntry === null ? (
+          <div className="flex items-center gap-3 text-sm text-zinc-300">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Vérification en cours...
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20">
+                <Coins className="h-8 w-8 text-emerald-400" />
+              </div>
+              <h1 className="text-2xl font-bold">Live payant</h1>
+              <p className="max-w-xs text-sm text-zinc-400">
+                Ce live est réservé aux spectateurs ayant payé l'accès.
+              </p>
+            </div>
+
+            <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">Prix d'accès</p>
+                <p className="text-3xl font-black text-emerald-400">
+                  {scToFcfaRate > 0 ? `${formatScAmount(entryPriceSc)} SC` : '…'}
+                </p>
+                <p className="text-sm text-zinc-400">{entryPriceFcfa.toLocaleString('fr-FR')} FCFA</p>
+                {scToFcfaRate > 0 && (
+                  <p className="text-xs text-zinc-500">Taux : 1 SC = {scToFcfaRate.toLocaleString('fr-FR')} FCFA</p>
+                )}
+              </div>
+
+              {!user?.id ? (
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => navigate('/auth', { state: { from: location.pathname + location.search } })}
+                >
+                  Se connecter pour accéder
+                </Button>
+              ) : (
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={handlePayLiveEntry}
+                  disabled={isPayingEntry || scToFcfaRate <= 0}
+                >
+                  {isPayingEntry ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Paiement en cours…
+                    </>
+                  ) : scToFcfaRate <= 0 ? (
+                    'Taux non configuré'
+                  ) : (
+                    <>
+                      <Coins className="mr-2 h-4 w-4" />
+                      Payer {formatScAmount(entryPriceSc)} SC
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+
+            <p className="text-xs text-zinc-600 max-w-xs">
+              Le montant sera débité de votre portefeuille Soumboulah Cash et transféré au créateur du live.
+            </p>
+          </>
+        )}
       </div>
     );
   }
