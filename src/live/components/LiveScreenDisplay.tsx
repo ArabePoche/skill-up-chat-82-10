@@ -118,6 +118,7 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
     const image = getLiveTeachingStudioImage(screen.studio);
     const activeScene = getLiveTeachingStudioActiveScene(screen.studio);
     const documentElement = activeScene?.elements.find((element) => element.type === 'document' && element.document_url);
+    const canDownloadDocument = Boolean(documentElement?.document_allow_download);
     const studioTitle = screen.studio.title || 'Studio de cours';
     const studioSubtitle = screen.studio.subtitle || 'Écran enseignant libre et accessible à tous.';
 
@@ -184,11 +185,11 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
 
           {!isPrivate && (
             <div className="flex flex-wrap justify-end gap-2">
-              {documentElement?.document_url && (
+              {documentElement?.document_url && (isHost || canDownloadDocument) && (
                 <Button asChild variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10">
-                  <a href={documentElement.document_url} target="_blank" rel="noreferrer">
+                  <a href={documentElement.document_url} target="_blank" rel="noreferrer" download={documentElement.document_name || 'document.pdf'}>
                     <FileText className="mr-2 h-4 w-4" />
-                    Ouvrir le doc
+                    {isHost ? 'Ouvrir le doc' : 'Télécharger le PDF'}
                   </a>
                 </Button>
               )}

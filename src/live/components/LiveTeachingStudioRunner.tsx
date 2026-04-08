@@ -1504,6 +1504,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
       const redoHighlights = documentHighlightRedoMap[element.id] || [];
       const isHighlightMode = activeDocumentHighlighterId === element.id;
       const documentZoom = element.document_zoom || 1;
+      const canDownloadForViewers = Boolean(element.document_allow_download);
 
       return (
         <div className="flex h-full w-full flex-col overflow-hidden rounded-b-2xl bg-white">
@@ -1585,9 +1586,15 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
                   </Button>
                 </>
               )}
-              <a href={element.document_url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-sky-600 hover:text-sky-700">
-                Ouvrir
-              </a>
+              {isHost ? (
+                <a href={element.document_url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-sky-600 hover:text-sky-700">
+                  Ouvrir
+                </a>
+              ) : canDownloadForViewers ? (
+                <a href={element.document_url} target="_blank" rel="noreferrer" download={element.document_name || 'document.pdf'} className="shrink-0 text-xs font-semibold text-sky-600 hover:text-sky-700">
+                  Télécharger
+                </a>
+              ) : null}
             </div>
           </div>
           <div className="relative h-full w-full overflow-auto bg-zinc-50">

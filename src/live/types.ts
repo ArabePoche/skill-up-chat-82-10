@@ -66,6 +66,7 @@ export interface LiveTeachingStudioElement {
   document_name?: string | null;
   document_url?: string | null;
   document_path?: string | null;
+  document_allow_download?: boolean | null;
   document_zoom?: number | null;
   document_highlights?: LiveTeachingStudioDocumentHighlightStroke[] | null;
   window_state?: LiveTeachingStudioElementWindowState | null;

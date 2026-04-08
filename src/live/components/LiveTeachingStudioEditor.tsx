@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import type { LiveTeachingStudio, LiveTeachingStudioElement, LiveTeachingStudioElementType } from '@/live/types';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,6 +61,7 @@ const buildDefaultElement = (type: LiveTeachingStudioElementType): LiveTeachingS
         document_name: '',
         document_url: '',
         document_path: '',
+        document_allow_download: false,
         window_state: getDefaultWindowState(type, 0),
       };
     default:
@@ -244,10 +246,13 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
         download: false,
       });
 
+    const shouldAllowDownload = window.confirm('Afficher le bouton Télécharger pour les spectateurs ?');
+
     updateElement(selectedElement.id, {
       document_name: file.name,
       document_url: signedUrlData?.signedUrl || uploadResult.fileUrl,
       document_path: uploadResult.filePath,
+      document_allow_download: shouldAllowDownload,
     });
   };
 
@@ -606,6 +611,17 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                             URL stockée: {selectedElement.document_url}
                           </p>
                         )}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-white">Téléchargement spectateurs</p>
+                          <p className="text-xs text-zinc-400">Afficher ou non le bouton Télécharger pour les spectateurs.</p>
+                        </div>
+                        <Switch
+                          checked={Boolean(selectedElement.document_allow_download)}
+                          onCheckedChange={(checked) => updateElement(selectedElement.id, { document_allow_download: checked })}
+                        />
                       </div>
 
                       <div className="space-y-2">
