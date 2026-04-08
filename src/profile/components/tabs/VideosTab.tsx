@@ -268,7 +268,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
                   setShowVerificationDialog(true);
                   return;
                 }
-                setShowVideoCreationDialog(true);
+                navigate('/upload-video');
               }}
               className="w-full bg-edu-primary hover:bg-edu-primary/90 text-white"
             >
