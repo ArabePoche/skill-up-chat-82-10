@@ -346,6 +346,10 @@ const UserLive: React.FC = () => {
   }, [isHost, location.state?.preparedStudio, publicLiveScreen]);
 
   const hostName = useMemo(() => getDisplayName(stream?.host), [stream?.host]);
+  const compactHostName = useMemo(() => {
+    if (hostName.length <= 14) return hostName;
+    return `${hostName.slice(0, 12).trimEnd()}…`;
+  }, [hostName]);
   const { data: creatorLiveAssets } = useLiveCreatorAssets(isHost ? stableUserId : null);
   const { enroll, isFormationPending } = useEnrollmentWithProtection();
 
@@ -1873,9 +1877,19 @@ const UserLive: React.FC = () => {
                 <AvatarImage src={stream.host?.avatar_url || ''} />
                 <AvatarFallback className="bg-zinc-800 text-[9px]">{hostName.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="text-xs font-bold text-white uppercase tracking-tight shadow-sm drop-shadow-md">{hostName}</span>
+              <span className="text-xs font-bold text-white uppercase tracking-tight shadow-sm drop-shadow-md sm:hidden">{compactHostName}</span>
+              <span className="hidden text-xs font-bold text-white uppercase tracking-tight shadow-sm drop-shadow-md sm:block">{hostName}</span>
               <Badge className="border-0 bg-red-600/90 text-white text-[8px] py-0 px-1 leading-tight h-3 h-3.5 flex items-center"><Radio className="mr-0.5 h-1.5 w-1.5" /> STUDIO</Badge>
             </div>
+
+            <button
+              type="button"
+              className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-zinc-100 backdrop-blur-sm transition-colors hover:bg-white/10 md:hidden"
+              onClick={() => setShowViewersModal(true)}
+            >
+              <Users className="h-3.5 w-3.5" />
+              {audienceCount}
+            </button>
 
             {/* Commentaires superposés sur la vidéo */}
             <div className="absolute bottom-16 left-2 right-2 z-20 pointer-events-auto">
@@ -2039,7 +2053,8 @@ const UserLive: React.FC = () => {
               <AvatarFallback className="bg-zinc-800 text-xs">{hostName.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0 mr-1 gap-0.5">
-              <span className="truncate text-sm font-semibold leading-none text-white">{hostName}</span>
+              <span className="truncate text-sm font-semibold leading-none text-white sm:hidden">{compactHostName}</span>
+              <span className="hidden truncate text-sm font-semibold leading-none text-white sm:block">{hostName}</span>
               <div className="flex items-center gap-1">
                 <Badge className="border-0 bg-red-600 text-white hover:bg-red-600 text-[9px] py-0 px-1 leading-tight h-3"><Radio className="mr-0.5 h-2 w-2" />DIRECT</Badge>
                 <Badge variant="secondary" className="border-0 bg-white/10 text-white text-[9px] py-0 px-1 leading-tight h-3">{stream.visibility === 'public' ? <Globe className="mr-0.5 h-2 w-2" /> : <Lock className="mr-0.5 h-2 w-2" />}{stream.visibility === 'public' ? 'Public' : 'Amis'}</Badge>
@@ -2056,7 +2071,7 @@ const UserLive: React.FC = () => {
           {/* Top Row: Viewers & Close */}
           <div className="flex items-center gap-2 shrink-0">
             <button
-              className="flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold text-zinc-200 backdrop-blur-sm hover:bg-white/10 transition-colors"
+              className={`items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold text-zinc-200 backdrop-blur-sm hover:bg-white/10 transition-colors ${isStudioMode ? 'hidden md:flex' : 'flex'}`}
               onClick={() => setShowViewersModal(true)}
             >
               <Users className="h-3.5 w-3.5" />
@@ -2095,7 +2110,7 @@ const UserLive: React.FC = () => {
           )}
 
           {isHost && (
-            <div className="flex flex-wrap justify-end gap-2 w-full">
+            <div className={`flex flex-wrap justify-end gap-2 w-full ${isStudioMode ? 'hidden md:flex' : 'flex'}`}>
               <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                 <img src={iconH} alt="H" className="h-4 w-4 object-contain" />
                 {liveGiftTotals.habbah.toLocaleString('fr-FR')}
