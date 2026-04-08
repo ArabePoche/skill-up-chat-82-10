@@ -9820,6 +9820,7 @@ export type Database = {
           created_at: string
           description: string | null
           ended_at: string | null
+          entry_price: number | null
           host_id: string
           id: string
           started_at: string
@@ -9833,6 +9834,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           ended_at?: string | null
+          entry_price?: number | null
           host_id: string
           id?: string
           started_at?: string
@@ -9846,6 +9848,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           ended_at?: string | null
+          entry_price?: number | null
           host_id?: string
           id?: string
           started_at?: string
