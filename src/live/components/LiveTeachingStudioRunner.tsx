@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X, Minus, PanelBottomOpen, GripHorizontal } from 'lucide-react';
+import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X, Minus, PanelBottomOpen, GripHorizontal, Undo2, Redo2, Palette, Highlighter, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { LiveTeachingStudio, LiveTeachingStudioElement, LiveTeachingStudioElementWindowState } from '@/live/types';
+import type { LiveTeachingStudio, LiveTeachingStudioDocumentHighlightStroke, LiveTeachingStudioElement, LiveTeachingStudioElementWindowState } from '@/live/types';
 
 export type WhiteboardTool = 'pen' | 'eraser' | 'type' | 'move';
 
@@ -89,16 +89,21 @@ type WhiteboardRuntimeAction =
   | { type: 'sync_full'; history: WhiteboardHistoryAction[] }
   | { type: 'clear' };
 
+const getWhiteboardHistorySignature = (items: WhiteboardHistoryAction[]) => JSON.stringify(items);
+
 const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAction, remoteWhiteboardAction, historySnapshot = [] }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<WhiteboardHistoryAction[]>([]);
+  const undoStackRef = useRef<WhiteboardHistoryAction[][]>([]);
+  const redoStackRef = useRef<WhiteboardHistoryAction[][]>([]);
   const currentStrokeRef = useRef<WhiteboardStroke | null>(null);
   const imageInsertModeRef = useRef<'full' | 'floating'>('full');
   const drawSequenceRef = useRef(0);
   const imageCacheRef = useRef<Record<string, HTMLImageElement>>({});
   const selectedItemRef = useRef<SelectionState | null>(null);
+  const dragOriginHistoryRef = useRef<WhiteboardHistoryAction[] | null>(null);
   const pendingTransformPayloadRef = useRef<{
     targetId: string;
     targetType: 'image' | 'text';
@@ -113,6 +118,8 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
   const [history, setHistory] = useState<WhiteboardHistoryAction[]>([]);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [selectedItem, setSelectedItem] = useState<SelectionState | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   const emitWhiteboardAction = (action: WhiteboardRuntimeAction | WhiteboardHistoryAction | { type: 'clear' }) => {
     onWhiteboardAction?.({
@@ -157,7 +164,30 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
     setHistory(nextHistory);
   };
 
+  const syncHistoryControls = () => {
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(redoStackRef.current.length > 0);
+  };
+
+  const pushUndoSnapshot = (snapshot: WhiteboardHistoryAction[]) => {
+    undoStackRef.current = [...undoStackRef.current, snapshot];
+    redoStackRef.current = [];
+    syncHistoryControls();
+  };
+
+  const broadcastFullHistory = (nextHistory: WhiteboardHistoryAction[]) => {
+    if (!isHost) {
+      return;
+    }
+
+    emitWhiteboardAction({
+      type: 'sync_full',
+      history: nextHistory,
+    });
+  };
+
   const appendToHistory = (action: WhiteboardHistoryAction) => {
+    pushUndoSnapshot(historyRef.current);
     const nextHistory = [...historyRef.current, action];
     commitHistory(nextHistory);
     return nextHistory;
@@ -421,6 +451,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
         const nextSelection = { id: image.id, type: 'image' as const };
         selectedItemRef.current = nextSelection;
         setSelectedItem(nextSelection);
+        dragOriginHistoryRef.current = historyRef.current;
         setDragState({
           targetId: image.id,
           targetType: 'image',
@@ -441,6 +472,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
         const nextSelection = { id: text.id, type: 'text' as const };
         selectedItemRef.current = nextSelection;
         setSelectedItem(nextSelection);
+        dragOriginHistoryRef.current = historyRef.current;
         setDragState({
           targetId: text.id,
           targetType: 'text',
@@ -521,6 +553,10 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
   const endDrawing = () => {
     if (dragState) {
       flushPendingTransform();
+      if (dragOriginHistoryRef.current && dragOriginHistoryRef.current !== historyRef.current) {
+        pushUndoSnapshot(dragOriginHistoryRef.current);
+      }
+      dragOriginHistoryRef.current = null;
       setDragState(null);
       return;
     }
@@ -540,11 +576,50 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
   };
 
   const clearCanvas = () => {
+    if (!historyRef.current.length) {
+      return;
+    }
+
+    pushUndoSnapshot(historyRef.current);
     commitHistory([]);
     void redrawHistory([]);
     if (isHost) {
       emitWhiteboardAction({ type: 'clear' });
     }
+  };
+
+  const undoLastAction = () => {
+    const previousHistory = undoStackRef.current[undoStackRef.current.length - 1];
+    if (!previousHistory) {
+      return;
+    }
+
+    undoStackRef.current = undoStackRef.current.slice(0, -1);
+    redoStackRef.current = [...redoStackRef.current, historyRef.current];
+    commitHistory(previousHistory);
+    selectedItemRef.current = null;
+    setSelectedItem(null);
+    setDragState(null);
+    void redrawHistory(previousHistory);
+    broadcastFullHistory(previousHistory);
+    syncHistoryControls();
+  };
+
+  const redoLastAction = () => {
+    const nextHistory = redoStackRef.current[redoStackRef.current.length - 1];
+    if (!nextHistory) {
+      return;
+    }
+
+    redoStackRef.current = redoStackRef.current.slice(0, -1);
+    undoStackRef.current = [...undoStackRef.current, historyRef.current];
+    commitHistory(nextHistory);
+    selectedItemRef.current = null;
+    setSelectedItem(null);
+    setDragState(null);
+    void redrawHistory(nextHistory);
+    broadcastFullHistory(nextHistory);
+    syncHistoryControls();
   };
 
   const commitTextDraft = () => {
@@ -587,9 +662,20 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
   };
 
   useEffect(() => {
+    if (getWhiteboardHistorySignature(historySnapshot) === getWhiteboardHistorySignature(historyRef.current)) {
+      return;
+    }
+
     commitHistory(historySnapshot);
     void redrawHistory(historySnapshot, currentStrokeRef.current);
   }, [historySnapshot]);
+
+  useEffect(() => {
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    dragOriginHistoryRef.current = null;
+    syncHistoryControls();
+  }, [boardId]);
 
   useEffect(() => {
     if (!remoteWhiteboardAction) return;
@@ -724,7 +810,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
     <div className="flex h-full w-full flex-col bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
       {isHost && (
         <div className="flex items-center justify-between bg-zinc-950 p-3 border-b border-white/5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <input
               ref={fileInputRef}
               type="file"
@@ -732,6 +818,27 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
               className="hidden"
               onChange={handleImageUpload}
             />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={undoLastAction}
+              disabled={!canUndo}
+              className="h-8 w-8 rounded-lg text-white disabled:opacity-40"
+              title="Annuler"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={redoLastAction}
+              disabled={!canRedo}
+              className="h-8 w-8 rounded-lg text-white disabled:opacity-40"
+              title="Rétablir"
+            >
+              <Redo2 className="h-4 w-4" />
+            </Button>
+            <div className="h-4 w-[1px] bg-white/10 mx-1" />
             <Button
               variant="ghost"
               size="icon"
@@ -770,37 +877,34 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
             </Button>
             <Button
               variant="outline"
-              size="sm"
-              onClick={() => openImagePicker('full')}
-              className="h-8 border-white/10 bg-white/5 text-white hover:bg-white/10"
-            >
-              <ImagePlus className="mr-2 h-3.5 w-3.5" />
-              Image plein tableau
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => openImagePicker('floating')}
-              className="h-8 border-white/10 bg-white/5 text-white hover:bg-white/10"
+              className="h-8 w-8 border-white/10 bg-white/5 text-white hover:bg-white/10"
+              title="Importer une image"
             >
-              <Move className="mr-2 h-3.5 w-3.5" />
-              Image libre
+              <ImagePlus className="h-3.5 w-3.5" />
             </Button>
             
             <div className="h-4 w-[1px] bg-white/10 mx-2" />
             
-            {/* Colors */}
-            {['#ffffff', '#f87171', '#34d399', '#38bdf8', '#fbbf24', '#f472b6'].map((c) => (
-              <button
-                key={c}
-                onClick={() => { setColor(c); if(tool === 'eraser') setTool('pen'); }}
-                className={cn(
-                  "h-6 w-6 rounded-full border-2 transition-transform", 
-                  color === c && tool !== 'eraser' ? "border-white scale-110" : "border-transparent"
-                )}
-                style={{ backgroundColor: c }}
+            <label className="group relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10">
+              <Palette className="h-4 w-4" />
+              <span
+                className="absolute bottom-0.5 left-1.5 right-1.5 h-[3px] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.2)]"
+                style={{ backgroundColor: color }}
               />
-            ))}
+              <input
+                type="color"
+                value={color}
+                onChange={(event) => {
+                  setColor(event.target.value.toUpperCase());
+                  if (tool === 'eraser') setTool('pen');
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                aria-label="Choisir une couleur"
+                title="Choisir une couleur"
+              />
+            </label>
           </div>
 
           <Button 
@@ -810,7 +914,7 @@ const Whiteboard: React.FC<WhiteboardProps> = ({ boardId, isHost, onWhiteboardAc
             className="h-8 border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
           >
             <RotateCcw className="mr-2 h-3.5 w-3.5" />
-            Effacer tout
+            
           </Button>
         </div>
       )}
@@ -918,12 +1022,153 @@ interface WindowInteractionState {
   startLayout: StudioWindowLayout;
 }
 
+interface DocumentHighlightOverlayProps {
+  strokes: LiveTeachingStudioDocumentHighlightStroke[];
+  isHost: boolean;
+  isActive: boolean;
+  onAddStroke?: (stroke: LiveTeachingStudioDocumentHighlightStroke) => void;
+}
+
+const buildHighlightPath = (points: LiveTeachingStudioDocumentHighlightStroke['points']) => {
+  if (!points.length) {
+    return '';
+  }
+
+  if (points.length === 1) {
+    const point = points[0];
+    return `M ${point.x * 100} ${point.y * 100} L ${(point.x * 100) + 0.01} ${(point.y * 100) + 0.01}`;
+  }
+
+  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x * 100} ${point.y * 100}`).join(' ');
+};
+
+const DocumentHighlightOverlay: React.FC<DocumentHighlightOverlayProps> = ({ strokes, isHost, isActive, onAddStroke }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const draftStrokeRef = useRef<LiveTeachingStudioDocumentHighlightStroke | null>(null);
+  const [draftStroke, setDraftStroke] = useState<LiveTeachingStudioDocumentHighlightStroke | null>(null);
+
+  const getPoint = (event: React.PointerEvent<HTMLDivElement>) => {
+    const bounds = containerRef.current?.getBoundingClientRect();
+    if (!bounds || !bounds.width || !bounds.height) {
+      return null;
+    }
+
+    return {
+      x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height)),
+    };
+  };
+
+  const startStroke = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isHost || !isActive) {
+      return;
+    }
+
+    const point = getPoint(event);
+    if (!point) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    const nextStroke: LiveTeachingStudioDocumentHighlightStroke = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      color: 'rgba(250, 204, 21, 0.42)',
+      strokeWidth: 18,
+      points: [point],
+    };
+
+    draftStrokeRef.current = nextStroke;
+    setDraftStroke(nextStroke);
+  };
+
+  const moveStroke = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draftStrokeRef.current || !isHost || !isActive) {
+      return;
+    }
+
+    const point = getPoint(event);
+    if (!point) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const current = draftStrokeRef.current;
+    const lastPoint = current.points[current.points.length - 1];
+    if (lastPoint && Math.abs(lastPoint.x - point.x) < 0.002 && Math.abs(lastPoint.y - point.y) < 0.002) {
+      return;
+    }
+
+    const nextStroke = {
+      ...current,
+      points: [...current.points, point],
+    };
+
+    draftStrokeRef.current = nextStroke;
+    setDraftStroke(nextStroke);
+  };
+
+  const endStroke = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draftStrokeRef.current || !isHost || !isActive) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const finalizedStroke = draftStrokeRef.current;
+    draftStrokeRef.current = null;
+    setDraftStroke(null);
+
+    if (finalizedStroke.points.length) {
+      onAddStroke?.(finalizedStroke);
+    }
+  };
+
+  const allStrokes = draftStroke ? [...strokes, draftStroke] : strokes;
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn('absolute inset-0 z-20', isHost && isActive ? 'pointer-events-auto cursor-crosshair' : 'pointer-events-none')}
+      onPointerDown={startStroke}
+      onPointerMove={moveStroke}
+      onPointerUp={endStroke}
+      onPointerCancel={endStroke}
+      onPointerLeave={endStroke}
+    >
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+        {allStrokes.map((stroke) => (
+          <path
+            key={stroke.id}
+            d={buildHighlightPath(stroke.points)}
+            fill="none"
+            stroke={stroke.color}
+            strokeWidth={stroke.strokeWidth / 10}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+      </svg>
+    </div>
+  );
+};
+
 export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> = ({ studio, isHost, onSceneChange, onStudioChange, onWhiteboardAction, remoteWhiteboardAction, remoteWhiteboardHistories = {} }) => {
   const activeScene = studio.scenes.find((s) => s.id === studio.activeSceneId) || studio.scenes[0];
   const desktopRef = useRef<HTMLDivElement>(null);
   const nextZIndexRef = useRef(4);
   const [windowLayouts, setWindowLayouts] = useState<Record<string, StudioWindowLayout>>({});
   const [interaction, setInteraction] = useState<WindowInteractionState | null>(null);
+  const [activeDocumentHighlighterId, setActiveDocumentHighlighterId] = useState<string | null>(null);
 
   const createDefaultLayout = (element: LiveTeachingStudioElement, index: number): StudioWindowLayout => {
     if (element.window_state) {
@@ -976,6 +1221,24 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     onStudioChange(nextStudio);
   };
 
+  const updateStudioElement = (elementId: string, updates: Partial<LiveTeachingStudioElement>) => {
+    if (!isHost || !onStudioChange) {
+      return;
+    }
+
+    const nextStudio: LiveTeachingStudio = {
+      ...studio,
+      scenes: studio.scenes.map((scene) => ({
+        ...scene,
+        elements: scene.elements.map((element) => (
+          element.id === elementId ? { ...element, ...updates } : element
+        )),
+      })),
+    };
+
+    onStudioChange(nextStudio);
+  };
+
   useEffect(() => {
     if (!activeScene) {
       return;
@@ -992,6 +1255,17 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
       return nextLayouts;
     });
   }, [activeScene]);
+
+  useEffect(() => {
+    if (!activeDocumentHighlighterId) {
+      return;
+    }
+
+    const activeDocument = activeScene?.elements.find((element) => element.id === activeDocumentHighlighterId && element.type === 'document');
+    if (!activeDocument) {
+      setActiveDocumentHighlighterId(null);
+    }
+  }, [activeDocumentHighlighterId, activeScene]);
 
   useEffect(() => {
     if (!interaction) {
@@ -1128,22 +1402,21 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     return FileText;
   };
 
-  const getEmbeddedDocumentUrl = (documentUrl: string) => {
-    const lowerUrl = documentUrl.toLowerCase();
+  const isPdfDocumentUrl = (documentUrl: string) => {
+    try {
+      const parsedUrl = new URL(documentUrl);
+      return parsedUrl.pathname.toLowerCase().endsWith('.pdf');
+    } catch {
+      return documentUrl.toLowerCase().includes('.pdf');
+    }
+  };
 
-    if (
-      lowerUrl.endsWith('.pdf') ||
-      lowerUrl.endsWith('.txt') ||
-      lowerUrl.endsWith('.png') ||
-      lowerUrl.endsWith('.jpg') ||
-      lowerUrl.endsWith('.jpeg') ||
-      lowerUrl.endsWith('.gif') ||
-      lowerUrl.endsWith('.webp')
-    ) {
-      return documentUrl;
+  const getEmbeddedDocumentUrl = (documentUrl: string) => {
+    if (isPdfDocumentUrl(documentUrl)) {
+      return `${documentUrl}${documentUrl.includes('#') ? '&' : '#'}toolbar=0&navpanes=0&scrollbar=0`;
     }
 
-    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(documentUrl)}`;
+    return documentUrl;
   };
 
   const renderSceneElement = (element: LiveTeachingStudio['scenes'][number]['elements'][number]) => {
@@ -1163,6 +1436,9 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
 
     if (element.type === 'document' && element.document_url) {
       const embeddedDocumentUrl = getEmbeddedDocumentUrl(element.document_url);
+      const isPdfDocument = isPdfDocumentUrl(element.document_url);
+      const documentHighlights = element.document_highlights || [];
+      const isHighlightMode = activeDocumentHighlighterId === element.id;
 
       return (
         <div className="flex h-full w-full flex-col overflow-hidden rounded-b-2xl bg-white">
@@ -1171,11 +1447,68 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
               <p className="truncate text-sm font-semibold text-zinc-900">{element.document_name || element.title || 'Document'}</p>
               {element.content && <p className="truncate text-xs text-zinc-500">{element.content}</p>}
             </div>
-            <a href={element.document_url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-sky-600 hover:text-sky-700">
-              Ouvrir
-            </a>
+            <div className="flex items-center gap-2">
+              {isHost && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn('h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700', isHighlightMode && 'bg-amber-100 text-amber-700')}
+                    title="Surligneur"
+                    onClick={() => setActiveDocumentHighlighterId((current) => current === element.id ? null : element.id)}
+                  >
+                    <Highlighter className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-zinc-500 hover:bg-zinc-100 hover:text-rose-600 disabled:opacity-40"
+                    title="Effacer les surlignages"
+                    disabled={documentHighlights.length === 0}
+                    onClick={() => updateStudioElement(element.id, { document_highlights: [] })}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              <a href={element.document_url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-sky-600 hover:text-sky-700">
+                Ouvrir
+              </a>
+            </div>
           </div>
-          <iframe src={embeddedDocumentUrl} title={element.document_name || 'Document'} className="h-full w-full border-0" />
+          <div className="relative h-full w-full bg-zinc-50">
+            {isPdfDocument ? (
+              <object data={embeddedDocumentUrl} type="application/pdf" className="h-full w-full">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-50 p-6 text-center">
+                  <FileText className="h-10 w-10 text-emerald-500" />
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-900">Aperçu PDF indisponible sur cet appareil.</p>
+                    <p className="mt-1 text-xs text-zinc-500">Ouvrez le fichier dans un nouvel onglet pour le consulter.</p>
+                  </div>
+                  <a href={element.document_url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-sky-600 hover:text-sky-700">
+                    Ouvrir le PDF
+                  </a>
+                </div>
+              </object>
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-50 p-6 text-center">
+                <FileText className="h-10 w-10 text-emerald-500" />
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">Seuls les PDF sont pris en charge pour le moment.</p>
+                  <p className="mt-1 text-xs text-zinc-500">Remplacez ce document par un fichier PDF depuis la configuration.</p>
+                </div>
+              </div>
+            )}
+
+            <DocumentHighlightOverlay
+              strokes={documentHighlights}
+              isHost={isHost}
+              isActive={isHighlightMode}
+              onAddStroke={(stroke) => updateStudioElement(element.id, { document_highlights: [...documentHighlights, stroke] })}
+            />
+          </div>
         </div>
       );
     }

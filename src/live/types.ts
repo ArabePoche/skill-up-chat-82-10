@@ -46,6 +46,18 @@ export interface LiveTeachingStudioElementWindowState {
   minimized: boolean;
 }
 
+export interface LiveTeachingStudioDocumentHighlightPoint {
+  x: number;
+  y: number;
+}
+
+export interface LiveTeachingStudioDocumentHighlightStroke {
+  id: string;
+  color: string;
+  strokeWidth: number;
+  points: LiveTeachingStudioDocumentHighlightPoint[];
+}
+
 export interface LiveTeachingStudioElement {
   id: string;
   type: LiveTeachingStudioElementType;
@@ -53,6 +65,8 @@ export interface LiveTeachingStudioElement {
   content?: string | null;
   document_name?: string | null;
   document_url?: string | null;
+  document_path?: string | null;
+  document_highlights?: LiveTeachingStudioDocumentHighlightStroke[] | null;
   window_state?: LiveTeachingStudioElementWindowState | null;
 }
 

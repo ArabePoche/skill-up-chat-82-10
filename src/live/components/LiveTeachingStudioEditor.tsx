@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import type { LiveTeachingStudio, LiveTeachingStudioElement, LiveTeachingStudioElementType } from '@/live/types';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const getDefaultWindowState = (type: LiveTeachingStudioElementType, index: number) => {
   if (type === 'whiteboard') {
@@ -57,6 +59,7 @@ const buildDefaultElement = (type: LiveTeachingStudioElementType): LiveTeachingS
         content: '',
         document_name: '',
         document_url: '',
+        document_path: '',
         window_state: getDefaultWindowState(type, 0),
       };
     default:
@@ -96,7 +99,14 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
   const [studio, setStudio] = useState<LiveTeachingStudio | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const shouldOpenDocumentPickerRef = useRef(false);
+  const pendingDocumentUploadRef = useRef<Promise<void> | null>(null);
+  const studioRef = useRef<LiveTeachingStudio | null>(null);
   const { uploadFile, isUploading } = useFileUpload();
+
+  useEffect(() => {
+    studioRef.current = studio;
+  }, [studio]);
 
   useEffect(() => {
     if (!open) {
@@ -131,6 +141,17 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
   const selectedElement = useMemo(() => {
     return activeScene?.elements.find((element) => element.id === selectedElementId) || activeScene?.elements[0] || null;
   }, [activeScene, selectedElementId]);
+
+  useEffect(() => {
+    if (!open || !selectedElement || selectedElement.type !== 'document' || !shouldOpenDocumentPickerRef.current) {
+      return;
+    }
+
+    shouldOpenDocumentPickerRef.current = false;
+    window.requestAnimationFrame(() => {
+      documentInputRef.current?.click();
+    });
+  }, [open, selectedElement]);
 
   const updateStudio = (updater: (current: LiveTeachingStudio) => LiveTeachingStudio) => {
     setStudio((current) => (current ? updater(current) : current));
@@ -191,6 +212,17 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
       ...current,
       scenes: current.scenes.map((scene) => scene.id === activeScene.id ? { ...scene, elements: [...scene.elements, element] } : scene),
     }));
+    if (type === 'document') {
+      shouldOpenDocumentPickerRef.current = true;
+    }
+    setSelectedElementId(element.id);
+  };
+
+  const handleSelectElement = (element: LiveTeachingStudioElement) => {
+    if (element.type === 'document' && !element.document_url) {
+      shouldOpenDocumentPickerRef.current = true;
+    }
+
     setSelectedElementId(element.id);
   };
 
@@ -199,10 +231,23 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
       return;
     }
 
+    const isPdfFile = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdfFile) {
+      toast.error('Seuls les fichiers PDF sont autorisés pour le moment.');
+      return;
+    }
+
     const uploadResult = await uploadFile(file, 'lesson_discussion_files');
+    const { data: signedUrlData } = await supabase.storage
+      .from('lesson_discussion_files')
+      .createSignedUrl(uploadResult.filePath, 60 * 60 * 24 * 7, {
+        download: false,
+      });
+
     updateElement(selectedElement.id, {
       document_name: file.name,
-      document_url: uploadResult.fileUrl,
+      document_url: signedUrlData?.signedUrl || uploadResult.fileUrl,
+      document_path: uploadResult.filePath,
     });
   };
 
@@ -235,12 +280,25 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
     setSelectedElementId(null);
   };
 
-  const handleSave = () => {
-    if (!studio) {
+  const handleSave = async () => {
+    if (!studioRef.current) {
       return;
     }
 
-    onSave(studio);
+    if (pendingDocumentUploadRef.current) {
+      try {
+        await pendingDocumentUploadRef.current;
+      } catch {
+        toast.error('L\'upload du PDF a échoué. Corrigez le document avant de lancer le live.');
+        return;
+      }
+    }
+
+    if (!studioRef.current) {
+      return;
+    }
+
+    onSave(studioRef.current);
     onOpenChange(false);
   };
 
@@ -388,7 +446,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                       key={element.id}
                       type="button"
                       className={`rounded-3xl border p-0 text-left transition ${selectedElement?.id === element.id ? 'border-sky-400 bg-white/5' : 'border-white/10 bg-black/15 hover:bg-white/5'}`}
-                      onClick={() => setSelectedElementId(element.id)}
+                      onClick={() => handleSelectElement(element)}
                     >
                       <div className="border-b border-white/10 px-4 py-3">
                         <p className="text-sm font-semibold text-white">{element.title}</p>
@@ -500,7 +558,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                       <input
                         ref={documentInputRef}
                         type="file"
-                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.odt,.ods,.odp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        accept=".pdf,application/pdf"
                         className="hidden"
                         onChange={async (event) => {
                           const file = event.target.files?.[0];
@@ -508,9 +566,15 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                             return;
                           }
 
+                          const uploadPromise = handleDocumentUpload(file);
+                          pendingDocumentUploadRef.current = uploadPromise;
+
                           try {
-                            await handleDocumentUpload(file);
+                            await uploadPromise;
                           } finally {
+                            if (pendingDocumentUploadRef.current === uploadPromise) {
+                              pendingDocumentUploadRef.current = null;
+                            }
                             event.target.value = '';
                           }
                         }}
@@ -521,7 +585,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                         <Input
                           value={selectedElement.document_name || ''}
                           onChange={(event) => updateElement(selectedElement.id, { document_name: event.target.value })}
-                          placeholder="Ex: Support PDF chapitre 1"
+                          placeholder="Ex: Support du cours.pdf"
                           className="border-zinc-800 bg-zinc-900 text-white"
                         />
                       </div>
@@ -535,7 +599,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                           disabled={isUploading}
                         >
                           {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                          Uploader un document
+                          Uploader un PDF
                         </Button>
                         {selectedElement.document_url && (
                           <p className="break-all text-xs text-emerald-300">
@@ -545,11 +609,11 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Lien du document</Label>
+                        <Label>Lien du PDF</Label>
                         <Input
                           value={selectedElement.document_url || ''}
-                          onChange={(event) => updateElement(selectedElement.id, { document_url: event.target.value })}
-                          placeholder="https://..."
+                          onChange={(event) => updateElement(selectedElement.id, { document_url: event.target.value, document_path: '' })}
+                          placeholder="https://.../mon-document.pdf"
                           className="border-zinc-800 bg-zinc-900 text-white"
                         />
                       </div>
@@ -577,12 +641,12 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
         </div>
 
         <DialogFooter className="flex-col-reverse gap-2 border-t border-zinc-800 px-3 py-3 sm:flex-row sm:px-6 sm:py-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full border-zinc-700 bg-transparent text-white hover:bg-zinc-800 sm:w-auto">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading} className="w-full border-zinc-700 bg-transparent text-white hover:bg-zinc-800 sm:w-auto disabled:opacity-50">
             Annuler
           </Button>
-          <Button onClick={handleSave} className="w-full bg-sky-500 text-white hover:bg-sky-600 sm:w-auto">
-            <BookOpen className="mr-2 h-4 w-4" />
-            Utiliser cet écran
+          <Button onClick={() => void handleSave()} disabled={isUploading} className="w-full bg-sky-500 text-white hover:bg-sky-600 sm:w-auto disabled:opacity-50">
+            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BookOpen className="mr-2 h-4 w-4" />}
+            {isUploading ? 'Upload du PDF...' : 'Utiliser cet écran'}
           </Button>
         </DialogFooter>
       </DialogContent>
