@@ -116,8 +116,8 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
     title: '',
     description: '',
     visibility: 'public' as LiveVisibility,
-    is_paid: false,
-    entry_price: '',
+    isPaid: false,
+    entryPrice: '',
   });
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
@@ -192,7 +192,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
     setIsProcessing(false);
     setProcessingLabel('');
     setIsLaunchingLive(false);
-    setLiveData({ title: '', description: '', visibility: 'public', is_paid: false, entry_price: '' });
+    setLiveData({ title: '', description: '', visibility: 'public', isPaid: false, entryPrice: '' });
     setPreparedStudio(null);
   };
 
@@ -533,9 +533,9 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
       return;
     }
 
-    if (liveData.is_paid) {
-      const priceValue = parseFloat(liveData.entry_price);
-      if (!liveData.entry_price || isNaN(priceValue) || priceValue <= 0) {
+    if (liveData.isPaid) {
+      const priceValue = parseFloat(liveData.entryPrice);
+      if (!liveData.entryPrice || isNaN(priceValue) || priceValue <= 0) {
         toast.error('Veuillez saisir un prix valide pour le live payant.');
         return;
       }
@@ -545,7 +545,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
 
     try {
       const agoraChannel = `live_${user.id.replace(/-/g, '')}_${Date.now()}`;
-      const entryPrice = liveData.is_paid ? parseFloat(liveData.entry_price) : null;
+      const entryPrice = liveData.isPaid ? parseFloat(liveData.entryPrice) : null;
       const { data: createdLive, error } = await supabase
         .from('user_live_streams')
         .insert({
@@ -850,6 +850,14 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
     }
   };
 
+  const handleLiveCancel = () => {
+    if (initialStep === 'live') {
+      onOpenChange(false);
+    } else {
+      setStep('choice');
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -991,8 +999,8 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                       <button
                         type="button"
-                        onClick={() => setLiveData((current) => ({ ...current, is_paid: false, entry_price: '' }))}
-                        className={`rounded-2xl border p-3 sm:p-4 text-left transition ${!liveData.is_paid ? 'border-emerald-400/60 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                        onClick={() => setLiveData((current) => ({ ...current, isPaid: false, entryPrice: '' }))}
+                        className={`rounded-2xl border p-3 sm:p-4 text-left transition ${!liveData.isPaid ? 'border-emerald-400/60 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
                       >
                         <div className="mb-2 sm:mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
                           <Zap size={20} />
@@ -1003,8 +1011,8 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
 
                       <button
                         type="button"
-                        onClick={() => setLiveData((current) => ({ ...current, is_paid: true }))}
-                        className={`rounded-2xl border p-3 sm:p-4 text-left transition ${liveData.is_paid ? 'border-emerald-400/60 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                        onClick={() => setLiveData((current) => ({ ...current, isPaid: true }))}
+                        className={`rounded-2xl border p-3 sm:p-4 text-left transition ${liveData.isPaid ? 'border-emerald-400/60 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
                       >
                         <div className="mb-2 sm:mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
                           <Timer size={20} />
@@ -1014,16 +1022,20 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                       </button>
                     </div>
 
-                    {liveData.is_paid && (
+                    {liveData.isPaid && (
                       <div className="mt-3 space-y-1">
                         <Label htmlFor="live-price">Prix d'entrée (FCFA)</Label>
                         <Input
                           id="live-price"
-                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           min="1"
                           step="1"
-                          value={liveData.entry_price}
-                          onChange={(event) => setLiveData((current) => ({ ...current, entry_price: event.target.value }))}
+                          value={liveData.entryPrice}
+                          onChange={(event) => {
+                            const raw = event.target.value.replace(/[^0-9]/g, '');
+                            setLiveData((current) => ({ ...current, entryPrice: raw }));
+                          }}
                           placeholder="Ex : 500"
                           className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500"
                         />
@@ -1033,7 +1045,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                 </div>
 
                 <div className="mt-4 flex flex-col-reverse gap-2 sm:mt-6 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-                  <Button type="button" variant="ghost" className="w-full text-white hover:bg-white/10 hover:text-white sm:w-auto" onClick={() => { initialStep === 'live' ? onOpenChange(false) : setStep('choice'); }}>
+                  <Button type="button" variant="ghost" className="w-full text-white hover:bg-white/10 hover:text-white sm:w-auto" onClick={handleLiveCancel}>
                     Annuler
                   </Button>
                   <Button type="button" onClick={() => void launchLive()} disabled={isLaunchingLive} className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto">
