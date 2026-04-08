@@ -1815,6 +1815,7 @@ const UserLive: React.FC = () => {
       }
     } catch (err) {
       console.error('Erreur soumission satisfaction:', err);
+      toast.error('Impossible d'envoyer votre retour. Veuillez réessayer.');
     } finally {
       setIsSubmittingSatisfaction(false);
       setShowSatisfactionSurvey(false);
