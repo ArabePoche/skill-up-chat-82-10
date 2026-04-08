@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X, Minus, PanelBottomOpen, GripHorizontal, Undo2, Redo2, Palette, Highlighter, Trash2 } from 'lucide-react';
+import { BookOpen, FileText, NotebookPen, Eraser, Type, Download, Play, Pause, Maximize, RotateCcw, ImagePlus, Move, Check, X, Minus, PanelBottomOpen, GripHorizontal, Undo2, Redo2, Palette, Highlighter, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LiveTeachingStudio, LiveTeachingStudioDocumentHighlightStroke, LiveTeachingStudioElement, LiveTeachingStudioElementWindowState } from '@/live/types';
@@ -1169,6 +1169,7 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
   const [windowLayouts, setWindowLayouts] = useState<Record<string, StudioWindowLayout>>({});
   const [interaction, setInteraction] = useState<WindowInteractionState | null>(null);
   const [activeDocumentHighlighterId, setActiveDocumentHighlighterId] = useState<string | null>(null);
+  const [documentHighlightRedoMap, setDocumentHighlightRedoMap] = useState<Record<string, LiveTeachingStudioDocumentHighlightStroke[]>>({});
 
   const createDefaultLayout = (element: LiveTeachingStudioElement, index: number): StudioWindowLayout => {
     if (element.window_state) {
@@ -1266,6 +1267,16 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
       setActiveDocumentHighlighterId(null);
     }
   }, [activeDocumentHighlighterId, activeScene]);
+
+  useEffect(() => {
+    setDocumentHighlightRedoMap((current) => {
+      const activeDocumentIds = new Set(
+        studio.scenes.flatMap((scene) => scene.elements.filter((element) => element.type === 'document').map((element) => element.id))
+      );
+
+      return Object.fromEntries(Object.entries(current).filter(([elementId]) => activeDocumentIds.has(elementId)));
+    });
+  }, [studio]);
 
   useEffect(() => {
     if (!interaction) {
@@ -1419,6 +1430,58 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     return documentUrl;
   };
 
+  const updateDocumentZoom = (element: LiveTeachingStudioElement, nextZoom: number) => {
+    updateStudioElement(element.id, {
+      document_zoom: Math.max(0.75, Math.min(2.5, Number(nextZoom.toFixed(2)))),
+    });
+  };
+
+  const pushDocumentHighlight = (element: LiveTeachingStudioElement, stroke: LiveTeachingStudioDocumentHighlightStroke) => {
+    const currentHighlights = element.document_highlights || [];
+    updateStudioElement(element.id, { document_highlights: [...currentHighlights, stroke] });
+    setDocumentHighlightRedoMap((current) => ({
+      ...current,
+      [element.id]: [],
+    }));
+  };
+
+  const undoDocumentHighlight = (element: LiveTeachingStudioElement) => {
+    const currentHighlights = element.document_highlights || [];
+    if (!currentHighlights.length) {
+      return;
+    }
+
+    const removedStroke = currentHighlights[currentHighlights.length - 1];
+    updateStudioElement(element.id, { document_highlights: currentHighlights.slice(0, -1) });
+    setDocumentHighlightRedoMap((current) => ({
+      ...current,
+      [element.id]: [...(current[element.id] || []), removedStroke],
+    }));
+  };
+
+  const redoDocumentHighlight = (element: LiveTeachingStudioElement) => {
+    const redoHighlights = documentHighlightRedoMap[element.id] || [];
+    const strokeToRestore = redoHighlights[redoHighlights.length - 1];
+    if (!strokeToRestore) {
+      return;
+    }
+
+    const currentHighlights = element.document_highlights || [];
+    updateStudioElement(element.id, { document_highlights: [...currentHighlights, strokeToRestore] });
+    setDocumentHighlightRedoMap((current) => ({
+      ...current,
+      [element.id]: redoHighlights.slice(0, -1),
+    }));
+  };
+
+  const clearDocumentHighlights = (element: LiveTeachingStudioElement) => {
+    updateStudioElement(element.id, { document_highlights: [] });
+    setDocumentHighlightRedoMap((current) => ({
+      ...current,
+      [element.id]: [],
+    }));
+  };
+
   const renderSceneElement = (element: LiveTeachingStudio['scenes'][number]['elements'][number]) => {
     if (element.type === 'whiteboard') {
       const boardId = `${activeScene.id}:${element.id}`;
@@ -1438,7 +1501,9 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
       const embeddedDocumentUrl = getEmbeddedDocumentUrl(element.document_url);
       const isPdfDocument = isPdfDocumentUrl(element.document_url);
       const documentHighlights = element.document_highlights || [];
+      const redoHighlights = documentHighlightRedoMap[element.id] || [];
       const isHighlightMode = activeDocumentHighlighterId === element.id;
+      const documentZoom = element.document_zoom || 1;
 
       return (
         <div className="flex h-full w-full flex-col overflow-hidden rounded-b-2xl bg-white">
@@ -1454,6 +1519,31 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
                     type="button"
                     variant="ghost"
                     size="icon"
+                    className="h-8 w-8 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40"
+                    title="Zoom arrière"
+                    disabled={documentZoom <= 0.75}
+                    onClick={() => updateDocumentZoom(element, documentZoom - 0.25)}
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[3rem] text-center text-xs font-semibold text-zinc-500">
+                    {Math.round(documentZoom * 100)}%
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40"
+                    title="Zoom avant"
+                    disabled={documentZoom >= 2.5}
+                    onClick={() => updateDocumentZoom(element, documentZoom + 0.25)}
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
                     className={cn('h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700', isHighlightMode && 'bg-amber-100 text-amber-700')}
                     title="Surligneur"
                     onClick={() => setActiveDocumentHighlighterId((current) => current === element.id ? null : element.id)}
@@ -1464,10 +1554,32 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
                     type="button"
                     variant="ghost"
                     size="icon"
+                    className="h-8 w-8 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40"
+                    title="Annuler le dernier surlignage"
+                    disabled={documentHighlights.length === 0}
+                    onClick={() => undoDocumentHighlight(element)}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40"
+                    title="Rétablir le dernier surlignage"
+                    disabled={redoHighlights.length === 0}
+                    onClick={() => redoDocumentHighlight(element)}
+                  >
+                    <Redo2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
                     className="h-8 w-8 text-zinc-500 hover:bg-zinc-100 hover:text-rose-600 disabled:opacity-40"
                     title="Effacer les surlignages"
                     disabled={documentHighlights.length === 0}
-                    onClick={() => updateStudioElement(element.id, { document_highlights: [] })}
+                    onClick={() => clearDocumentHighlights(element)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -1478,20 +1590,22 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
               </a>
             </div>
           </div>
-          <div className="relative h-full w-full bg-zinc-50">
+          <div className="relative h-full w-full overflow-auto bg-zinc-50">
+            <div
+              className="relative min-h-full min-w-full bg-zinc-50"
+              style={{
+                width: `${documentZoom * 100}%`,
+                height: `${documentZoom * 100}%`,
+              }}
+            >
             {isPdfDocument ? (
-              <object data={embeddedDocumentUrl} type="application/pdf" className="h-full w-full">
-                <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-50 p-6 text-center">
-                  <FileText className="h-10 w-10 text-emerald-500" />
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-900">Aperçu PDF indisponible sur cet appareil.</p>
-                    <p className="mt-1 text-xs text-zinc-500">Ouvrez le fichier dans un nouvel onglet pour le consulter.</p>
-                  </div>
-                  <a href={element.document_url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-sky-600 hover:text-sky-700">
-                    Ouvrir le PDF
-                  </a>
-                </div>
-              </object>
+              <iframe
+                key={embeddedDocumentUrl}
+                src={embeddedDocumentUrl}
+                title={element.document_name || 'Document PDF'}
+                className="h-full w-full border-0 bg-white"
+                loading="lazy"
+              />
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-50 p-6 text-center">
                 <FileText className="h-10 w-10 text-emerald-500" />
@@ -1506,8 +1620,9 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
               strokes={documentHighlights}
               isHost={isHost}
               isActive={isHighlightMode}
-              onAddStroke={(stroke) => updateStudioElement(element.id, { document_highlights: [...documentHighlights, stroke] })}
+              onAddStroke={(stroke) => pushDocumentHighlight(element, stroke)}
             />
+            </div>
           </div>
         </div>
       );
