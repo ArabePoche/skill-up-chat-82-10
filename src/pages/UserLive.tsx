@@ -2814,13 +2814,13 @@ const UserLive: React.FC = () => {
                 </span>
               </div>
 
-              {/* Peak viewers */}
+              {/* Total viewers from DB */}
               <div className="flex items-center justify-between rounded-xl bg-zinc-800/60 px-4 py-3">
                 <div className="flex items-center gap-2 text-zinc-300 text-sm">
                   <Users className="h-4 w-4 text-zinc-400" />
-                  Spectateurs (pic)
+                  Spectateurs (total)
                 </div>
-                <span className="font-semibold text-white">{peakAudienceRef.current}</span>
+                <span className="font-semibold text-white">{reportViewerCount}</span>
               </div>
 
               {/* Paid entries */}
