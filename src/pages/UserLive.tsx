@@ -1224,6 +1224,19 @@ const UserLive: React.FC = () => {
             online_at: new Date().toISOString(),
           });
 
+          // Persister la présence du spectateur en base de données
+          if (stableStreamId && stableUserId) {
+            supabase
+              .from('live_viewers')
+              .upsert(
+                { live_id: stableStreamId, user_id: stableUserId, joined_at: new Date().toISOString() },
+                { onConflict: 'live_id,user_id' }
+              )
+              .then(({ error }) => {
+                if (error) console.error('Erreur enregistrement spectateur:', error);
+              });
+          }
+
           if (!isHostRole) {
             await roomChannel.send({
               type: 'broadcast',
@@ -1237,6 +1250,17 @@ const UserLive: React.FC = () => {
       });
 
     return () => {
+      // Enregistrer le départ du spectateur
+      if (stableStreamId && stableUserId) {
+        supabase
+          .from('live_viewers')
+          .update({ left_at: new Date().toISOString() })
+          .eq('live_id', stableStreamId)
+          .eq('user_id', stableUserId)
+          .then(({ error }) => {
+            if (error) console.error('Erreur mise à jour départ spectateur:', error);
+          });
+      }
       presenceChannelRef.current = null;
       supabase.removeChannel(roomChannel);
     };
