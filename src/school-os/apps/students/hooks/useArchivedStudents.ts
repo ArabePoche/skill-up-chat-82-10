@@ -172,33 +172,11 @@ export const useArchiveStudent = () => {
 
       if (archiveError) throw archiveError;
 
-      // 2. Supprimer manuellement les paiements AVANT l'élève
-      // (les triggers sur school_students_payment tentent de réinsérer dans
-      //  school_student_payment_progress, ce qui échoue si l'élève est déjà supprimé)
-      const { error: paymentDeleteError } = await (supabase
-        .from('school_students_payment' as any)
-        .delete()
-        .eq('student_id', student.id) as any);
-
-      if (paymentDeleteError) {
-        console.warn('Error deleting payments (non-blocking):', paymentDeleteError);
-      }
-
-      // 3. Supprimer la progression de paiement (créée/mise à jour par le trigger ci-dessus)
-      const { error: progressDeleteError } = await (supabase
-        .from('school_student_payment_progress' as any)
-        .delete()
-        .eq('student_id', student.id) as any);
-
-      if (progressDeleteError) {
-        console.warn('Error deleting payment progress (non-blocking):', progressDeleteError);
-      }
-
-      // 4. Supprimer l'élève de la table students_school
-      const { error: deleteError } = await supabase
-        .from('students_school')
-        .delete()
-        .eq('id', student.id);
+      // 2. Supprimer l'élève et toutes ses dépendances via la fonction RPC sécurisée
+      // (paiements, progression paiement, notes enseignants, bulletins, compositions, etc.)
+      const { error: deleteError } = await supabase.rpc('delete_student_cascade', {
+        p_student_id: student.id,
+      });
 
       if (deleteError) {
         // Rollback: supprimer l'archive créée
@@ -209,7 +187,7 @@ export const useArchiveStudent = () => {
         throw deleteError;
       }
 
-      // 5. Si c'est un transfert vers une école connue, créer la demande de transfert
+      // 3. Si c'est un transfert vers une école connue, créer la demande de transfert
       if (archive_reason === 'transfer' && target_school_id) {
         try {
           await createTransferRequestInDb({
