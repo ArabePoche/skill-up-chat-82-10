@@ -82,6 +82,22 @@ interface LiveStreamRecord {
   host: HostProfile | null;
 }
 
+interface LiveRegistrant {
+  buyer_id: string;
+  amount: number;
+  creator_amount: number;
+  status: string;
+  profiles: {
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string | null;
+    avatar_url?: string | null;
+  } | null;
+}
+
+const getTicketPageUrl = (liveId: string) =>
+  `${window.location.origin}/live/${liveId}/ticket`;
+
 const getDisplayName = (profile?: HostProfile | { first_name?: string | null; last_name?: string | null; username?: string | null } | null) => {
   if (!profile) return 'Utilisateur';
   if (profile.first_name && profile.last_name) return `${profile.first_name} ${profile.last_name}`;
@@ -399,7 +415,7 @@ const UserLive: React.FC = () => {
   const [scToFcfaRate, setScToFcfaRate] = useState<number>(0);
   // Creator registrant dashboard
   const [showRegistrantsPanel, setShowRegistrantsPanel] = useState(false);
-  const [registrants, setRegistrants] = useState<{ buyer_id: string; amount: number; creator_amount: number; status: string; profiles: { first_name?: string | null; last_name?: string | null; username?: string | null; avatar_url?: string | null } | null }[]>([]);
+  const [registrants, setRegistrants] = useState<LiveRegistrant[]>([]);
   const [registrantsLoading, setRegistrantsLoading] = useState(false);
   // Creator live report
   const [showCreatorReport, setShowCreatorReport] = useState(false);
@@ -1885,7 +1901,7 @@ const UserLive: React.FC = () => {
     try {
       // For paid lives, share the ticket page; for free lives share the stream directly
       const link = stream.entry_price && stream.entry_price > 0
-        ? `${window.location.origin}/live/${stream.id}/ticket`
+        ? getTicketPageUrl(stream.id)
         : `${window.location.origin}/live/${stream.id}`;
       await navigator.clipboard.writeText(link);
       toast.success(stream.entry_price && stream.entry_price > 0 ? 'Lien du ticket copié.' : 'Lien du live copié.');
@@ -1943,11 +1959,12 @@ const UserLive: React.FC = () => {
   // Scheduled live: non-hosts see a waiting room / ticket page
   if (!isHost && stream.status === 'scheduled') {
     const scheduledDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null;
+    const ticketUrl = getTicketPageUrl(stream.id);
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
         <button
           type="button"
-          onClick={() => navigate(`/live/${stream.id}/ticket`)}
+          onClick={() => navigate(ticketUrl.replace(window.location.origin, ''))}
           className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />

@@ -553,15 +553,16 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
         return;
       }
       const scheduled = new Date(`${liveData.scheduledDate}T${liveData.scheduledTime}`);
-      if (isNaN(scheduled.getTime()) || scheduled <= new Date()) {
-        toast.error('La date du live doit être dans le futur.');
+      const minScheduled = new Date(Date.now() + 5 * 60 * 1000); // at least 5 minutes in the future
+      if (isNaN(scheduled.getTime()) || scheduled <= minScheduled) {
+        toast.error('La date du live doit être au moins 5 minutes dans le futur.');
         return;
       }
       scheduledAt = scheduled.toISOString();
     }
 
     const maxAttendees = liveData.maxAttendees ? parseInt(liveData.maxAttendees, 10) : null;
-    if (liveData.maxAttendees && (isNaN(maxAttendees!) || maxAttendees! < 1)) {
+    if (liveData.maxAttendees && (maxAttendees === null || isNaN(maxAttendees) || maxAttendees < 1)) {
       toast.error('Le nombre maximum de places doit être un entier positif.');
       return;
     }
