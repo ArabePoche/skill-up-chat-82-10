@@ -72,11 +72,13 @@ interface LiveStreamRecord {
   title: string;
   description: string | null;
   visibility: LiveVisibility;
-  status: 'active' | 'ended';
+  status: 'active' | 'ended' | 'scheduled';
   agora_channel: string;
   started_at: string;
   ended_at: string | null;
   entry_price: number | null;
+  scheduled_at: string | null;
+  max_attendees: number | null;
   host: HostProfile | null;
 }
 
@@ -395,6 +397,10 @@ const UserLive: React.FC = () => {
   const [hasPaidEntry, setHasPaidEntry] = useState<boolean | null>(null);
   const [isPayingEntry, setIsPayingEntry] = useState(false);
   const [scToFcfaRate, setScToFcfaRate] = useState<number>(0);
+  // Creator registrant dashboard
+  const [showRegistrantsPanel, setShowRegistrantsPanel] = useState(false);
+  const [registrants, setRegistrants] = useState<{ buyer_id: string; amount: number; creator_amount: number; status: string; profiles: { first_name?: string | null; last_name?: string | null; username?: string | null; avatar_url?: string | null } | null }[]>([]);
+  const [registrantsLoading, setRegistrantsLoading] = useState(false);
   // Creator live report
   const [showCreatorReport, setShowCreatorReport] = useState(false);
   const [reportPaidEntryCount, setReportPaidEntryCount] = useState<number>(0);
@@ -682,7 +688,7 @@ const UserLive: React.FC = () => {
 
       const { data: liveData, error: liveError } = await supabase
         .from('user_live_streams')
-        .select('id, host_id, title, description, visibility, status, agora_channel, started_at, ended_at, entry_price')
+        .select('id, host_id, title, description, visibility, status, agora_channel, started_at, ended_at, entry_price, scheduled_at, max_attendees')
         .eq('id', id)
         .maybeSingle();
 
@@ -708,7 +714,7 @@ const UserLive: React.FC = () => {
         setStream({
           ...liveData,
           visibility: liveData.visibility as LiveVisibility,
-          status: liveData.status as 'active' | 'ended',
+          status: liveData.status as 'active' | 'ended' | 'scheduled',
           host: hostProfile || null,
         });
         setIsLoading(false);
@@ -738,7 +744,7 @@ const UserLive: React.FC = () => {
           setStream({
             ...updated,
             visibility: updated.visibility as LiveVisibility,
-            status: updated.status as 'active' | 'ended',
+            status: updated.status as 'active' | 'ended' | 'scheduled',
             host: hostProfile || null,
           });
         }
@@ -772,7 +778,7 @@ const UserLive: React.FC = () => {
     let isMounted = true;
 
     const checkPaymentAndRate = async () => {
-      // Fetch conversion rate
+      // Fetch conversion rate (for display only — actual calculation happens server-side)
       const { data: rateData } = await supabase
         .from('currency_conversion_settings')
         .select('sc_to_fcfa_rate')
@@ -782,17 +788,17 @@ const UserLive: React.FC = () => {
         setScToFcfaRate(rateData.sc_to_fcfa_rate ?? 0);
       }
 
-      // Check if user already paid entry for this live (uses limit(1) to safely handle duplicates)
-      const { data: existingTxList, error: txCheckError } = await supabase
-        .from('wallet_transactions')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('reference_id', stream.id)
-        .eq('transaction_type', 'live_entry')
-        .limit(1);
+      // Check if user already has a valid ticket via live_payments (escrow table)
+      const { data: payment } = await supabase
+        .from('live_payments')
+        .select('id, status')
+        .eq('buyer_id', user.id)
+        .eq('live_id', stream.id)
+        .in('status', ['pending', 'released'])
+        .maybeSingle();
 
       if (isMounted) {
-        setHasPaidEntry(!txCheckError && Array.isArray(existingTxList) && existingTxList.length > 0);
+        setHasPaidEntry(payment != null);
       }
     };
 
@@ -803,63 +809,23 @@ const UserLive: React.FC = () => {
     };
   }, [isHost, stream, user?.id]);
 
-  // Payment handler for live entry
+  // Payment handler for live entry — all financial logic runs server-side in Edge Function
   const handlePayLiveEntry = useCallback(async () => {
     if (!stream || !user?.id || !stream.entry_price || stream.entry_price <= 0) return;
-
-    if (scToFcfaRate <= 0) {
-      toast.error('Le taux de conversion SC n\'est pas configuré. Contactez un administrateur.');
-      return;
-    }
-
-    const scAmount = fcfaToScRounded(stream.entry_price, scToFcfaRate);
-
-    // Check wallet balance
-    const { data: walletData, error: walletError } = await supabase
-      .from('user_wallets')
-      .select('soumboulah_cash')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (walletError || !walletData) {
-      toast.error('Impossible de vérifier votre portefeuille.');
-      return;
-    }
-
-    if ((walletData.soumboulah_cash || 0) < scAmount) {
-      toast.error(`Solde insuffisant. Il vous faut ${formatScAmount(scAmount)} SC pour accéder à ce live.`);
-      return;
-    }
 
     setIsPayingEntry(true);
 
     try {
-      const { data, error } = await supabase.rpc('transfer_soumboulah_cash', {
-        p_recipient_id: stream.host_id,
-        p_amount: scAmount,
-        p_reason: `Accès au live payant : ${stream.title}`,
-        p_reference_id: stream.id,
+      const { data, error } = await supabase.functions.invoke('purchase-live-ticket', {
+        body: { live_id: stream.id },
       });
 
       if (error) throw error;
-      const result = data as any;
-      if (result && !result.success) throw new Error(result.message || 'Paiement refusé');
 
-      // Insert a zero-amount live_entry marker so we can detect on reload that the user has paid.
-      // Amount is 0 because the actual debit was handled atomically by the RPC above.
-      const { error: markerError } = await supabase.from('wallet_transactions').insert({
-        user_id: user.id,
-        currency: 'soumboulah_cash',
-        amount: 0,
-        transaction_type: 'live_entry',
-        description: `Accès au live : ${stream.title}`,
-        reference_id: stream.id,
-        reference_type: 'user_live_stream',
-      });
-
-      if (markerError) {
-        // Non-fatal: the user has paid, just log the tracking failure
-        console.error('Erreur enregistrement marqueur live_entry:', markerError);
+      const result = data as { success: boolean; message: string; sc_amount?: number };
+      if (!result.success) {
+        toast.error(result.message || 'Paiement refusé.');
+        return;
       }
 
       toast.success('Paiement effectué ! Bienvenue dans le live.');
@@ -870,9 +836,49 @@ const UserLive: React.FC = () => {
     } finally {
       setIsPayingEntry(false);
     }
-  }, [scToFcfaRate, stream, user?.id]);
+  }, [stream, user?.id]);
 
-  // Presence tracking - stabilized to prevent re-subscriptions
+  // Load registrants for creator dashboard
+  const loadRegistrants = useCallback(async () => {
+    if (!stream || !isHost) return;
+    setRegistrantsLoading(true);
+    try {
+      const { data } = await supabase
+        .from('live_payments')
+        .select('buyer_id, amount, creator_amount, status')
+        .eq('live_id', stream.id)
+        .in('status', ['pending', 'released', 'disputed'])
+        .order('created_at', { ascending: false });
+
+      if (!data) { setRegistrantsLoading(false); return; }
+
+      // Fetch profiles in batch
+      const buyerIds = data.map((p) => p.buyer_id);
+      const { data: profiles } = buyerIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, username, avatar_url')
+            .in('id', buyerIds)
+        : { data: [] };
+
+      const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+      setRegistrants(
+        data.map((p) => ({
+          ...p,
+          profiles: profileMap.get(p.buyer_id) ?? null,
+        }))
+      );
+    } finally {
+      setRegistrantsLoading(false);
+    }
+  }, [isHost, stream]);
+
+  useEffect(() => {
+    if (showRegistrantsPanel) void loadRegistrants();
+  }, [loadRegistrants, showRegistrantsPanel]);
+
+
   useEffect(() => {
     if (!stableStreamId) return;
     // Wait until payment is confirmed before subscribing to presence
@@ -1804,14 +1810,14 @@ const UserLive: React.FC = () => {
       await leaveCall();
       toast.success('Live terminé.');
 
-      // Fetch paid entry count for the report
+      // Fetch paid entry count for the report (from live_payments escrow table)
       let paidCount = 0;
       if (stream.entry_price && stream.entry_price > 0) {
         const { count } = await supabase
-          .from('wallet_transactions')
+          .from('live_payments')
           .select('id', { count: 'exact', head: true })
-          .eq('transaction_type', 'live_entry')
-          .eq('reference_id', stream.id);
+          .eq('live_id', stream.id)
+          .in('status', ['pending', 'released', 'disputed']);
         paidCount = count ?? 0;
       }
 
@@ -1877,8 +1883,12 @@ const UserLive: React.FC = () => {
     if (!stream) return;
 
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/live/${stream.id}`);
-      toast.success('Lien du live copié.');
+      // For paid lives, share the ticket page; for free lives share the stream directly
+      const link = stream.entry_price && stream.entry_price > 0
+        ? `${window.location.origin}/live/${stream.id}/ticket`
+        : `${window.location.origin}/live/${stream.id}`;
+      await navigator.clipboard.writeText(link);
+      toast.success(stream.entry_price && stream.entry_price > 0 ? 'Lien du ticket copié.' : 'Lien du live copié.');
     } catch (error) {
       console.error('Erreur copie lien live:', error);
       toast.error('Impossible de copier le lien.');
@@ -1930,10 +1940,52 @@ const UserLive: React.FC = () => {
     );
   }
 
+  // Scheduled live: non-hosts see a waiting room / ticket page
+  if (!isHost && stream.status === 'scheduled') {
+    const scheduledDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
+        <button
+          type="button"
+          onClick={() => navigate(`/live/${stream.id}/ticket`)}
+          className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Page ticket
+        </button>
+        <Clock className="h-12 w-12 text-sky-400" />
+        <div>
+          <h1 className="text-xl font-semibold">Live programmé</h1>
+          {scheduledDate && (
+            <p className="mt-2 text-sm text-zinc-400">
+              {scheduledDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {' à '}
+              {scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+          <p className="mt-2 text-sm text-zinc-400">{stream.title}</p>
+        </div>
+        {hasPaidEntry === true ? (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-6 py-4">
+            <p className="text-sm font-semibold text-emerald-300">✅ Ticket confirmé</p>
+            <p className="text-xs text-zinc-400 mt-1">Vous recevrez accès dès le démarrage.</p>
+          </div>
+        ) : (
+          <Button
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => navigate(`/live/${stream.id}/ticket`)}
+          >
+            Acheter un ticket
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   // Payment gate: show while checking or when payment is required
   if (!isHost && stream.entry_price && stream.entry_price > 0 && hasPaidEntry !== true) {
     const entryPriceFcfa = stream.entry_price;
-    const entryPriceSc = fcfaToScRounded(entryPriceFcfa, scToFcfaRate);
+    const entryPriceSc = scToFcfaRate > 0 ? fcfaToScRounded(entryPriceFcfa, scToFcfaRate) : null;
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
@@ -1967,7 +2019,7 @@ const UserLive: React.FC = () => {
               <div className="flex flex-col items-center gap-1">
                 <p className="text-xs uppercase tracking-widest text-zinc-500">Prix d'accès</p>
                 <p className="text-3xl font-black text-emerald-400">
-                  {scToFcfaRate > 0 ? `${formatScAmount(entryPriceSc)} SC` : '…'}
+                  {entryPriceSc != null ? `${formatScAmount(entryPriceSc)} SC` : '…'}
                 </p>
                 <p className="text-sm text-zinc-400">{entryPriceFcfa.toLocaleString('fr-FR')} FCFA</p>
                 {scToFcfaRate > 0 && (
@@ -1986,19 +2038,17 @@ const UserLive: React.FC = () => {
                 <Button
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={handlePayLiveEntry}
-                  disabled={isPayingEntry || scToFcfaRate <= 0}
+                  disabled={isPayingEntry}
                 >
                   {isPayingEntry ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Paiement en cours…
                     </>
-                  ) : scToFcfaRate <= 0 ? (
-                    'Taux non configuré'
                   ) : (
                     <>
                       <Coins className="mr-2 h-4 w-4" />
-                      Payer {formatScAmount(entryPriceSc)} SC
+                      Payer {entryPriceSc != null ? `${formatScAmount(entryPriceSc)} SC` : ''}
                     </>
                   )}
                 </Button>
@@ -2006,7 +2056,7 @@ const UserLive: React.FC = () => {
             </div>
 
             <p className="text-xs text-zinc-600 max-w-xs">
-              Le montant sera débité de votre portefeuille Soumboulah Cash et transféré au créateur du live.
+              Le paiement est sécurisé. Les fonds sont placés en escrow 24h — remboursement possible en cas de problème.
             </p>
           </>
         )}
@@ -2440,6 +2490,25 @@ const UserLive: React.FC = () => {
               <Users className="h-3.5 w-3.5" />
               {audienceCount}
             </button>
+            {isHost && stream.status === 'scheduled' && (
+              <Button
+                type="button"
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white text-xs h-8 px-3 rounded-full"
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from('user_live_streams')
+                    .update({ status: 'active', started_at: new Date().toISOString() })
+                    .eq('id', stream.id)
+                    .eq('host_id', user?.id || '');
+                  if (!error) toast.success('Live démarré !');
+                  else toast.error('Impossible de démarrer le live.');
+                }}
+              >
+                <Radio className="h-3 w-3 mr-1" />
+                Démarrer
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -2671,6 +2740,18 @@ const UserLive: React.FC = () => {
                   <BookOpen size={18} />
                 </Button>
               )}
+              {isHost && stream.entry_price && stream.entry_price > 0 && (
+                <Button
+                  type="button"
+                  onClick={() => setShowRegistrantsPanel(true)}
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  title="Inscrits et revenus"
+                >
+                  <Users size={18} />
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={toggleMute}
@@ -2795,6 +2876,74 @@ const UserLive: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Registrant Dashboard Dialog */}
+      {isHost && stream && (
+        <Dialog open={showRegistrantsPanel} onOpenChange={setShowRegistrantsPanel}>
+          <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-white z-[9999]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                <Users className="h-5 w-5 text-sky-400" />
+                Inscrits et revenus
+              </DialogTitle>
+              <DialogDescription className="text-zinc-400 text-sm">
+                Participants ayant acheté un ticket pour ce live
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2 max-h-96 overflow-y-auto">
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-zinc-800/60 px-4 py-3 text-center">
+                  <p className="text-xs text-zinc-400">Inscrits</p>
+                  <p className="text-2xl font-bold text-white">{registrants.length}</p>
+                  {stream.max_attendees != null && (
+                    <p className="text-xs text-zinc-500">/ {stream.max_attendees} places</p>
+                  )}
+                </div>
+                <div className="rounded-xl bg-zinc-800/60 px-4 py-3 text-center">
+                  <p className="text-xs text-zinc-400">Revenus nets</p>
+                  <p className="text-2xl font-bold text-emerald-400">
+                    {registrants.reduce((sum, r) => sum + (r.creator_amount || 0), 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-zinc-500">SC</p>
+                </div>
+              </div>
+
+              {/* Registrant list */}
+              {registrantsLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+                </div>
+              ) : registrants.length === 0 ? (
+                <p className="py-4 text-center text-sm text-zinc-500">Aucun inscrit pour le moment.</p>
+              ) : (
+                registrants.map((r) => {
+                  const name = r.profiles
+                    ? (r.profiles.first_name && r.profiles.last_name
+                        ? `${r.profiles.first_name} ${r.profiles.last_name}`
+                        : r.profiles.username || 'Utilisateur')
+                    : 'Utilisateur';
+                  return (
+                    <div key={r.buyer_id} className="flex items-center gap-3 rounded-xl bg-zinc-800/40 px-3 py-2">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={r.profiles?.avatar_url ?? undefined} />
+                        <AvatarFallback className="bg-zinc-700 text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{name}</p>
+                        <p className="text-xs text-zinc-500 capitalize">{r.status === 'pending' ? '⏳ Escrow' : r.status === 'released' ? '✅ Libéré' : r.status === 'disputed' ? '⚠️ Litige' : r.status}</p>
+                      </div>
+                      <p className="text-xs text-emerald-400 shrink-0">
+                        +{(r.creator_amount || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} SC
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Creator Live Report Dialog */}
       {isHost && stream && (

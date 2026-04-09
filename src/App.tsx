@@ -39,6 +39,7 @@ import GroupLessonChat from '@/pages/cours/GroupLessonChat';
 import Conversations from '@/pages/Conversations';
 import UploadVideo from '@/pages/UploadVideo';
 import UserLive from '@/pages/UserLive';
+import LiveTicketPage from '@/pages/LiveTicketPage';
 import PublicCv from '@/pages/PublicCv';
 import School from '@/pages/School';
 import SchoolSitePage from '@/pages/SchoolSitePage';
@@ -132,6 +133,7 @@ const AppWithRouter: React.FC = () => {
         {/* Route pour upload vidéo */}
         <Route path="/upload-video" element={<UploadVideo />} />
         <Route path="/live/:id" element={<UserLive />} />
+        <Route path="/live/:id/ticket" element={<LiveTicketPage />} />
         
         {/* Route pour le système de gestion d'école */}
         <Route path="/school" element={<School />} />
