@@ -17,7 +17,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { generateShareableLink } from '@/hooks/useDeeplinks';
 import { supabase } from '@/integrations/supabase/client';
+import { purchaseLiveTicket } from '@/live/lib/purchaseLiveTicket';
 import iconSC from '@/assets/coin-soumboulah-cash.png';
 
 interface LiveInfo {
@@ -177,23 +179,13 @@ const LiveTicketPage: React.FC = () => {
 
     setIsPurchasing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('purchase-live-ticket', {
-        body: { live_id: live.id },
-      });
-
-      if (error) throw error;
-
-      const result = data as { success: boolean; message: string; sc_amount?: number };
-      if (!result.success) {
-        toast.error(result.message || 'Paiement refusé.');
-        return;
-      }
+      await purchaseLiveTicket(live.id);
 
       toast.success('Ticket acheté ! Vous aurez accès au live dès son démarrage.');
       setTicketStatus('purchased');
       setSoldCount((c) => c + 1);
     } catch (err: any) {
-      console.error('purchase-live-ticket error:', err);
+      console.error('purchase-live-ticket rpc error:', err);
       toast.error(err?.message || 'Erreur lors de l\'achat du ticket.');
     } finally {
       setIsPurchasing(false);
@@ -201,7 +193,7 @@ const LiveTicketPage: React.FC = () => {
   };
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}/live/${id}/ticket`;
+    const url = generateShareableLink(`/live/${id}/ticket`);
     await navigator.clipboard.writeText(url).catch(() => {});
     toast.success('Lien du ticket copié !');
   };

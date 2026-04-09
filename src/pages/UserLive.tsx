@@ -54,6 +54,8 @@ import { useLiveAudience } from '@/live/hooks/useLiveAudience';
 import type { LiveScreen, LiveTeachingStudio } from '@/live/types';
 import { isLiveScreen } from '@/live/types';
 import { useEnrollmentWithProtection } from '@/hooks/useEnrollments';
+import { generateShareableLink } from '@/hooks/useDeeplinks';
+import { purchaseLiveTicket } from '@/live/lib/purchaseLiveTicket';
 import BuyWithScDialog from '@/marketplace/components/BuyWithScDialog';
 
 type LiveVisibility = 'public' | 'friends_followers';
@@ -96,7 +98,10 @@ interface LiveRegistrant {
 }
 
 const getTicketPageUrl = (liveId: string) =>
-  `${window.location.origin}/live/${liveId}/ticket`;
+  generateShareableLink(`/live/${liveId}/ticket`);
+
+const getLivePageUrl = (liveId: string) =>
+  generateShareableLink(`/live/${liveId}`);
 
 const getDisplayName = (profile?: HostProfile | { first_name?: string | null; last_name?: string | null; username?: string | null } | null) => {
   if (!profile) return 'Utilisateur';
@@ -702,11 +707,13 @@ const UserLive: React.FC = () => {
     const loadStream = async () => {
       setIsLoading(true);
 
-      const { data: liveData, error: liveError } = await supabase
+      const { data: liveDataRaw, error: liveError } = await supabase
         .from('user_live_streams')
         .select('id, host_id, title, description, visibility, status, agora_channel, started_at, ended_at, entry_price, scheduled_at, max_attendees')
         .eq('id', id)
         .maybeSingle();
+
+      const liveData = liveDataRaw as unknown as LiveStreamRecord | null;
 
       if (liveError) {
         console.error('Erreur chargement live:', liveError);
@@ -832,22 +839,12 @@ const UserLive: React.FC = () => {
     setIsPayingEntry(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('purchase-live-ticket', {
-        body: { live_id: stream.id },
-      });
-
-      if (error) throw error;
-
-      const result = data as { success: boolean; message: string; sc_amount?: number };
-      if (!result.success) {
-        toast.error(result.message || 'Paiement refusé.');
-        return;
-      }
+      await purchaseLiveTicket(stream.id);
 
       toast.success('Paiement effectué ! Bienvenue dans le live.');
       setHasPaidEntry(true);
     } catch (err: any) {
-      console.error('Erreur paiement live:', err);
+      console.error('Erreur paiement live via RPC:', err);
       toast.error(err?.message || 'Erreur lors du paiement.');
     } finally {
       setIsPayingEntry(false);
@@ -1902,7 +1899,7 @@ const UserLive: React.FC = () => {
       // For paid lives, share the ticket page; for free lives share the stream directly
       const link = stream.entry_price && stream.entry_price > 0
         ? getTicketPageUrl(stream.id)
-        : `${window.location.origin}/live/${stream.id}`;
+        : getLivePageUrl(stream.id);
       await navigator.clipboard.writeText(link);
       toast.success(stream.entry_price && stream.entry_price > 0 ? 'Lien du ticket copié.' : 'Lien du live copié.');
     } catch (error) {
@@ -2003,6 +2000,7 @@ const UserLive: React.FC = () => {
   if (!isHost && stream.entry_price && stream.entry_price > 0 && hasPaidEntry !== true) {
     const entryPriceFcfa = stream.entry_price;
     const entryPriceSc = scToFcfaRate > 0 ? fcfaToScRounded(entryPriceFcfa, scToFcfaRate) : null;
+    const scheduledDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null;
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
@@ -2033,6 +2031,20 @@ const UserLive: React.FC = () => {
             </div>
 
             <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-left">
+                <p className="text-sm font-semibold text-white">{stream.title}</p>
+                {stream.description && (
+                  <p className="mt-2 text-xs leading-relaxed text-zinc-400">{stream.description}</p>
+                )}
+                {scheduledDate && (
+                  <p className="mt-3 text-xs text-zinc-500">
+                    Programme le {scheduledDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {' a '}
+                    {scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
+              </div>
+
               <div className="flex flex-col items-center gap-1">
                 <p className="text-xs uppercase tracking-widest text-zinc-500">Prix d'accès</p>
                 <p className="text-3xl font-black text-emerald-400">
@@ -2070,6 +2082,14 @@ const UserLive: React.FC = () => {
                   )}
                 </Button>
               )}
+
+              <Button
+                variant="outline"
+                className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                onClick={() => navigate(`/live/${stream.id}/ticket`)}
+              >
+                Voir la page ticket complete
+              </Button>
             </div>
 
             <p className="text-xs text-zinc-600 max-w-xs">

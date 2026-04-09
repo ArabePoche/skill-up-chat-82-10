@@ -58,9 +58,14 @@ const DEEP_LINK_ROUTES: DeepLinkRoute[] = [
     pattern: /\/solidarity\/([a-zA-Z0-9-]+)(?:\/[^/?#]+)?/,
     handler: (matches) => `/solidarity/${matches[1]}`
   },
+  // Lives: /live/:id ou /live/:id/ticket
+  {
+    pattern: /\/live\/([a-zA-Z0-9-]+)(\/ticket)?/,
+    handler: (matches) => matches[2] ? `/live/${matches[1]}/ticket` : `/live/${matches[1]}`
+  },
   // Pages principales
   {
-    pattern: /^\/(video|post|search|home|shop|messages|profil|solidarity)$/,
+    pattern: /^\/(video|post|search|home|shop|messages|profil|solidarity|live)$/,
     handler: (matches) => `/${matches[1]}`
   }
 ];

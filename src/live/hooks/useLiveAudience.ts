@@ -62,11 +62,15 @@ export const useLiveAudience = ({
   }, [acceptedParticipants, hostId, viewersList]);
 
   const audienceCount = useMemo(() => {
-    return viewersList.filter((presence) => {
-      const presenceUserId = presence.user_id || presence.userId;
-      return Boolean(presenceUserId && presenceUserId !== hostId);
+    return connectedPeople.filter((presence) => {
+      const presenceUserId = presence.user_id || presence.userId || presence.presence_ref;
+      return Boolean(
+        presenceUserId &&
+        presenceUserId !== hostId &&
+        presence.role !== 'preview_observer'
+      );
     }).length;
-  }, [hostId, viewersList]);
+  }, [connectedPeople, hostId]);
 
   const [peakAudienceCount, setPeakAudienceCount] = useState(0);
 
