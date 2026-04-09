@@ -321,6 +321,7 @@ const UserLive: React.FC = () => {
   const [showCreatorReport, setShowCreatorReport] = useState(false);
   const [reportPaidEntryCount, setReportPaidEntryCount] = useState<number>(0);
   const [reportEndedAt, setReportEndedAt] = useState<Date | null>(null);
+  const [reportViewerCount, setReportViewerCount] = useState<number>(0);
   const peakAudienceRef = useRef<number>(0);
   // Viewer satisfaction survey
   const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
@@ -1796,8 +1797,15 @@ const UserLive: React.FC = () => {
         paidCount = count ?? 0;
       }
 
+      // Récupérer le nombre total de spectateurs depuis la DB
+      const { count: dbViewerCount } = await supabase
+        .from('live_viewers')
+        .select('id', { count: 'exact', head: true })
+        .eq('live_id', stream.id);
+
       setReportPaidEntryCount(paidCount);
       setReportEndedAt(endedAt);
+      setReportViewerCount(Math.max(dbViewerCount ?? 0, peakAudienceRef.current));
       setShowCreatorReport(true);
     } catch (error) {
       console.error('Erreur arrêt live:', error);
