@@ -2017,7 +2017,7 @@ const UserLive: React.FC = () => {
       const m = Math.floor((diffSec % 3600) / 60);
       if (h > 0) return `Commencé il y a ${h}h${m > 0 ? ` ${m}min` : ''}`;
       if (m > 0) return `Commencé il y a ${m} min`;
-      return 'Commence maintenant';
+      return 'Commencé à l\'instant';
     })();
 
     return (
@@ -2053,8 +2053,7 @@ const UserLive: React.FC = () => {
                 <Avatar className="h-7 w-7 border border-white/20">
                   <AvatarImage src={stream.host?.avatar_url || ''} />
                   <AvatarFallback className="bg-zinc-800 text-[10px]">
-                    {hostName.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
+                    {hostName.slice(0, 2).toUpperCase()}                  </AvatarFallback>
                 </Avatar>
                 <span className="text-sm text-zinc-300">{hostName}</span>
               </div>
