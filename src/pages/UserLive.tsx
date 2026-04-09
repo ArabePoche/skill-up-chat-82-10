@@ -2004,6 +2004,22 @@ const UserLive: React.FC = () => {
     const entryPriceFcfa = stream.entry_price;
     const entryPriceSc = scToFcfaRate > 0 ? fcfaToScRounded(entryPriceFcfa, scToFcfaRate) : null;
 
+    const hostName = stream.host
+      ? [stream.host.first_name, stream.host.last_name].filter(Boolean).join(' ') ||
+        stream.host.username ||
+        'Animateur'
+      : 'Animateur';
+
+    const liveElapsed = (() => {
+      if (!stream.started_at) return null;
+      const diffSec = Math.max(0, Math.round((Date.now() - new Date(stream.started_at).getTime()) / 1000));
+      const h = Math.floor(diffSec / 3600);
+      const m = Math.floor((diffSec % 3600) / 60);
+      if (h > 0) return `Commencé il y a ${h}h${m > 0 ? ` ${m}min` : ''}`;
+      if (m > 0) return `Commencé il y a ${m} min`;
+      return 'Commence maintenant';
+    })();
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
         <button
@@ -2022,14 +2038,34 @@ const UserLive: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="flex flex-col items-center gap-3">
+            {/* Live info */}
+            <div className="flex flex-col items-center gap-3 max-w-xs">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20">
                 <Coins className="h-8 w-8 text-emerald-400" />
               </div>
-              <h1 className="text-2xl font-bold">Live payant</h1>
-              <p className="max-w-xs text-sm text-zinc-400">
-                Ce live est réservé aux spectateurs ayant payé l'accès.
-              </p>
+              <h1 className="text-2xl font-bold leading-tight">{stream.title}</h1>
+              {stream.description && (
+                <p className="text-sm text-zinc-400 leading-snug">{stream.description}</p>
+              )}
+
+              {/* Host info */}
+              <div className="flex items-center gap-2 mt-1">
+                <Avatar className="h-7 w-7 border border-white/20">
+                  <AvatarImage src={stream.host?.avatar_url || ''} />
+                  <AvatarFallback className="bg-zinc-800 text-[10px]">
+                    {hostName.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-zinc-300">{hostName}</span>
+              </div>
+
+              {/* Elapsed time */}
+              {liveElapsed && (
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                  <Clock className="h-3.5 w-3.5" />
+                  {liveElapsed}
+                </div>
+              )}
             </div>
 
             <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
