@@ -118,6 +118,10 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
     visibility: 'public' as LiveVisibility,
     isPaid: false,
     entryPrice: '',
+    isScheduled: false,
+    scheduledDate: '',
+    scheduledTime: '',
+    maxAttendees: '',
   });
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
@@ -192,7 +196,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
     setIsProcessing(false);
     setProcessingLabel('');
     setIsLaunchingLive(false);
-    setLiveData({ title: '', description: '', visibility: 'public', isPaid: false, entryPrice: '' });
+    setLiveData({ title: '', description: '', visibility: 'public', isPaid: false, entryPrice: '', isScheduled: false, scheduledDate: '', scheduledTime: '', maxAttendees: '' });
     setPreparedStudio(null);
   };
 
@@ -541,11 +545,35 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
       }
     }
 
+    // Validate scheduled date if scheduling
+    let scheduledAt: string | null = null;
+    if (liveData.isScheduled) {
+      if (!liveData.scheduledDate || !liveData.scheduledTime) {
+        toast.error('Veuillez saisir la date et l\'heure du live programmé.');
+        return;
+      }
+      const scheduled = new Date(`${liveData.scheduledDate}T${liveData.scheduledTime}`);
+      const minScheduled = new Date(Date.now() + 5 * 60 * 1000); // at least 5 minutes in the future
+      if (isNaN(scheduled.getTime()) || scheduled <= minScheduled) {
+        toast.error('La date du live doit être au moins 5 minutes dans le futur.');
+        return;
+      }
+      scheduledAt = scheduled.toISOString();
+    }
+
+    const maxAttendees = liveData.maxAttendees ? parseInt(liveData.maxAttendees, 10) : null;
+    if (liveData.maxAttendees && (maxAttendees === null || isNaN(maxAttendees) || maxAttendees < 1)) {
+      toast.error('Le nombre maximum de places doit être un entier positif.');
+      return;
+    }
+
     setIsLaunchingLive(true);
 
     try {
       const agoraChannel = `live_${user.id.replace(/-/g, '')}_${Date.now()}`;
       const entryPrice = liveData.isPaid ? parseFloat(liveData.entryPrice) : null;
+      const isScheduled = liveData.isScheduled && scheduledAt != null;
+
       const { data: createdLive, error } = await supabase
         .from('user_live_streams')
         .insert({
@@ -553,9 +581,11 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
           title: liveTitle,
           description: liveData.description.trim() || null,
           visibility: liveData.visibility,
-          status: 'active',
+          status: isScheduled ? 'scheduled' : 'active',
           agora_channel: agoraChannel,
           entry_price: entryPrice,
+          scheduled_at: scheduledAt,
+          max_attendees: maxAttendees,
         })
         .select('id')
         .single();
@@ -564,9 +594,14 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
         throw error;
       }
 
-      await notifyAudienceAboutLive(createdLive.id, liveTitle, liveData.visibility);
-      toast.success('Live demarre.');
-      navigate(`/live/${createdLive.id}?host=1`, { state: { preparedStudio } });
+      if (isScheduled) {
+        toast.success('Live programmé ! Partagez le lien de ticket pour que les gens réservent.');
+        navigate(`/live/${createdLive.id}/ticket`);
+      } else {
+        await notifyAudienceAboutLive(createdLive.id, liveTitle, liveData.visibility);
+        toast.success('Live demarre.');
+        navigate(`/live/${createdLive.id}?host=1`, { state: { preparedStudio } });
+      }
     } catch (error) {
       console.error('Erreur demarrage live:', error);
       toast.error('Impossible de demarrer le live.');
@@ -1042,7 +1077,82 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                       </div>
                     )}
                   </div>
+
+                  {/* Scheduling */}
+                  <div className="space-y-2">
+                    <Label>Programmation</Label>
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setLiveData((current) => ({ ...current, isScheduled: false, scheduledDate: '', scheduledTime: '' }))}
+                        className={`rounded-2xl border p-3 sm:p-4 text-left transition ${!liveData.isScheduled ? 'border-sky-400/60 bg-sky-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                      >
+                        <div className="mb-2 sm:mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                          <Radio size={20} />
+                        </div>
+                        <div className="text-sm font-semibold">Démarrer maintenant</div>
+                        <p className="mt-1 text-xs leading-5 text-zinc-300">Le live commence immédiatement.</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setLiveData((current) => ({ ...current, isScheduled: true }))}
+                        className={`rounded-2xl border p-3 sm:p-4 text-left transition ${liveData.isScheduled ? 'border-sky-400/60 bg-sky-500/10' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                      >
+                        <div className="mb-2 sm:mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                          <Timer size={20} />
+                        </div>
+                        <div className="text-sm font-semibold">Programmer</div>
+                        <p className="mt-1 text-xs leading-5 text-zinc-300">Choisissez une date et heure.</p>
+                      </button>
+                    </div>
+
+                    {liveData.isScheduled && (
+                      <div className="mt-3 grid gap-3 grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="live-date">Date</Label>
+                          <Input
+                            id="live-date"
+                            type="date"
+                            value={liveData.scheduledDate}
+                            onChange={(event) => setLiveData((current) => ({ ...current, scheduledDate: event.target.value }))}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="border-white/10 bg-white/5 text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="live-time">Heure</Label>
+                          <Input
+                            id="live-time"
+                            type="time"
+                            value={liveData.scheduledTime}
+                            onChange={(event) => setLiveData((current) => ({ ...current, scheduledTime: event.target.value }))}
+                            className="border-white/10 bg-white/5 text-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Max attendees */}
+                  <div className="space-y-2">
+                    <Label htmlFor="live-max">Places maximales (optionnel)</Label>
+                    <Input
+                      id="live-max"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="1"
+                      value={liveData.maxAttendees}
+                      onChange={(event) => {
+                        const raw = event.target.value.replace(/[^0-9]/g, '');
+                        setLiveData((current) => ({ ...current, maxAttendees: raw }));
+                      }}
+                      placeholder="Illimité si vide"
+                      className="border-white/10 bg-white/5 text-white placeholder:text-zinc-500"
+                    />
+                  </div>
                 </div>
+
 
                 <div className="mt-4 flex flex-col-reverse gap-2 sm:mt-6 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                   <Button type="button" variant="ghost" className="w-full text-white hover:bg-white/10 hover:text-white sm:w-auto" onClick={handleLiveCancel}>
@@ -1050,7 +1160,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
                   </Button>
                   <Button type="button" onClick={() => void launchLive()} disabled={isLaunchingLive} className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto">
                     {isLaunchingLive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}
-                    Lancer le live
+                    {liveData.isScheduled ? 'Programmer le live' : 'Lancer le live'}
                   </Button>
                 </div>
               </div>
