@@ -50,6 +50,7 @@ import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
 import { LiveTeachingStudioRunner } from '@/live/components/LiveTeachingStudioRunner';
 import LiveScreenManager, { buildScreenFromStudio } from '@/live/components/LiveScreenManager';
 import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
+import { useLiveAudience } from '@/live/hooks/useLiveAudience';
 import type { LiveScreen, LiveTeachingStudio } from '@/live/types';
 import { isLiveScreen } from '@/live/types';
 import { useEnrollmentWithProtection } from '@/hooks/useEnrollments';
@@ -273,6 +274,83 @@ const extractPresenceEntries = (value: unknown): Record<string, any>[] => {
   return Object.values(record).flatMap(item => extractPresenceEntries(item));
 };
 
+const resolvePresenceUserId = (presence: Record<string, any> | null | undefined, fallbackKey?: string): string | null => {
+  if (!presence) return fallbackKey || null;
+
+  const userId = presence.user_id || presence.userId || fallbackKey;
+  return typeof userId === 'string' && userId.length > 0 ? userId : null;
+};
+
+const mergePresenceEntries = (
+  currentEntries: Record<string, any>[],
+  incomingEntries: unknown,
+  fallbackKey?: string,
+): Record<string, any>[] => {
+  const merged = new Map<string, Record<string, any>>();
+
+  currentEntries.forEach((presence) => {
+    const userId = resolvePresenceUserId(presence);
+    if (!userId) return;
+    merged.set(userId, presence);
+  });
+
+  extractPresenceEntries(incomingEntries).forEach((presence) => {
+    const userId = resolvePresenceUserId(presence, fallbackKey);
+    if (!userId) return;
+
+    const existing = merged.get(userId);
+    const isMoreRecent = presence.online_at && (!existing?.online_at || presence.online_at > existing.online_at);
+    const hasBetterRole = (presence.role === 'participant' || presence.role === 'host') && existing?.role === 'viewer';
+
+    if (!existing || isMoreRecent || hasBetterRole) {
+      merged.set(userId, {
+        ...existing,
+        ...presence,
+        user_id: userId,
+        presence_ref: fallbackKey ?? existing?.presence_ref,
+      });
+    }
+  });
+
+  return Array.from(merged.values());
+};
+
+const extractPresenceUserIds = (entries: unknown, fallbackKey?: string): string[] => {
+  const ids = new Set<string>();
+
+  if (fallbackKey) {
+    ids.add(fallbackKey);
+  }
+
+  extractPresenceEntries(entries).forEach((presence) => {
+    const userId = resolvePresenceUserId(presence, fallbackKey);
+    if (userId) {
+      ids.add(userId);
+    }
+  });
+
+  return Array.from(ids);
+};
+
+const removePresenceEntries = (
+  currentEntries: Record<string, any>[],
+  leavingEntries: unknown,
+  fallbackKey?: string,
+): Record<string, any>[] => {
+  const leavingIds = new Set(extractPresenceUserIds(leavingEntries, fallbackKey));
+
+  return currentEntries.filter((presence) => {
+    const userId = resolvePresenceUserId(presence);
+    return Boolean(userId && !leavingIds.has(userId));
+  });
+};
+
+const syncPresenceEntries = (presenceState: Record<string, unknown>): Record<string, any>[] => {
+  return Object.entries(presenceState).reduce<Record<string, any>[]>((currentEntries, [presenceKey, presences]) => {
+    return mergePresenceEntries(currentEntries, presences, presenceKey);
+  }, []);
+};
+
 /** Format a SC amount to at most 2 decimal places */
 const formatScAmount = (sc: number) =>
   sc.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -322,7 +400,6 @@ const UserLive: React.FC = () => {
   const [reportPaidEntryCount, setReportPaidEntryCount] = useState<number>(0);
   const [reportEndedAt, setReportEndedAt] = useState<Date | null>(null);
   const [reportViewerCount, setReportViewerCount] = useState<number>(0);
-  const peakAudienceRef = useRef<number>(0);
   // Viewer satisfaction survey
   const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
   const [satisfactionStep, setSatisfactionStep] = useState<'rating' | 'reason'>('rating');
@@ -394,6 +471,13 @@ const UserLive: React.FC = () => {
   }, [profile, stableUserId]);
 
   const stableAvatarUrl = profile?.avatar_url || null;
+
+  const { connectedPeople, audienceCount, peakAudienceCount } = useLiveAudience({
+    liveId: stableStreamId,
+    hostId: stableHostId,
+    viewersList,
+    acceptedParticipants,
+  });
 
   useEffect(() => {
     publicLiveScreenRef.current = publicLiveScreen;
@@ -563,54 +647,10 @@ const UserLive: React.FC = () => {
     }, 120);
   }, [broadcastPublicLiveScreen]);
 
-  const connectedPeople = useMemo(() => {
-      const merged = new Map<string, any>();
-
-      // Étape 1: Ajouter TOUTE la présence Supabase
-      viewersList.forEach((v) => {
-        const id = v.user_id || v.userId || v.presence_ref;
-        if (!id) return;
-        merged.set(id, v);
-      });
-
-      // Étape 2: Enrichir avec les données des intervenants acceptés
-      acceptedParticipants.forEach((p) => {
-        const id = p.userId;
-        if (!id) return;
-
-        const existing = merged.get(id);
-        merged.set(id, {
-          ...(existing || {}),
-          user_id: id,
-          user_name: p.userName,
-          avatar_url: p.userAvatar,
-          // Un participant accepté DOIT avoir un rôle participant (sauf si c'est le host)
-          role: (existing?.role === 'host' || id === stableHostId) ? 'host' : 'participant',
-          agora_uid: p.agoraUid
-        });
-      });
-
-      return Array.from(merged.values());
-    }, [acceptedParticipants, viewersList, stableHostId]);
-
   const hostAgoraUid = useMemo(() => {
     const hostPresence = connectedPeople.find(p => p.role === 'host' && (p.user_id || p.userId) === stableHostId);
     return hostPresence?.agora_uid ? String(hostPresence.agora_uid) : null;
   }, [stableHostId, connectedPeople]);
-
-  const audienceCount = useMemo(() => {
-    return viewersList.filter((presence) => {
-      const presenceUserId = presence.user_id || presence.userId;
-      return presenceUserId && presenceUserId !== stableHostId;
-    }).length;
-  }, [stableHostId, viewersList]);
-
-  // Track peak audience count throughout the live session
-  useEffect(() => {
-    if (audienceCount > peakAudienceRef.current) {
-      peakAudienceRef.current = audienceCount;
-    }
-  }, [audienceCount]);
 
   const upsertAcceptedParticipant = useCallback((participant: AcceptedParticipant) => {
     setAcceptedParticipants(prev => {
@@ -855,32 +895,7 @@ const UserLive: React.FC = () => {
     presenceChannelRef.current = roomChannel;
 
     const updatePresenceState = () => {
-      const presenceState = roomChannel.presenceState();
-      const uniqueUsers = new Map<string, any>();
-
-      Object.entries(presenceState).forEach(([presenceKey, presences]) => {
-        extractPresenceEntries(presences).forEach((presence: any) => {
-          if (!presence || typeof presence !== 'object') return;
-
-          const userId = presence.user_id || presence.userId || presenceKey;
-          if (!userId) return;
-
-          // On garde les infos les plus récentes ou les rôles les plus importants
-          const existing = uniqueUsers.get(userId);
-          const isMoreRecent = presence.online_at && (!existing?.online_at || presence.online_at > existing.online_at);
-          const hasBetterRole = (presence.role === 'participant' || presence.role === 'host') && existing?.role === 'viewer';
-          
-          if (!existing || isMoreRecent || hasBetterRole) {
-            uniqueUsers.set(userId, {
-              ...presence,
-              user_id: userId,
-              presence_ref: presenceKey
-            });
-          }
-        });
-      });
-
-      const currentViewers = Array.from(uniqueUsers.values());
+      const currentViewers = syncPresenceEntries(roomChannel.presenceState());
       const reconstructedParticipants: AcceptedParticipant[] = [];
 
       if (!isHostRole) {
@@ -927,6 +942,8 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, updatePresenceState)
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        setViewersList((current) => mergePresenceEntries(current, newPresences, key));
+
         extractPresenceEntries(newPresences).forEach((presence: any) => {
           const userId = presence?.user_id || presence?.userId || key;
           if (presence.user_name && userId !== stableUserId) {
@@ -944,9 +961,10 @@ const UserLive: React.FC = () => {
         });
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        // Optionnel: On pourrait ajouter un message de départ ou nettoyer ici, 
-        // mais le 'sync' s'en occupe déjà de manière globale.
-        updatePresenceState();
+        const leavingIds = new Set(extractPresenceUserIds(leftPresences, key));
+
+        setViewersList((current) => removePresenceEntries(current, leftPresences, key));
+        setAcceptedParticipants((current) => current.filter((participant) => !leavingIds.has(participant.userId)));
       })
       .on('broadcast', { event: 'live_action' }, (payload) => {
         const newMsg = payload.payload as LiveMessage;
@@ -1805,7 +1823,7 @@ const UserLive: React.FC = () => {
 
       setReportPaidEntryCount(paidCount);
       setReportEndedAt(endedAt);
-      setReportViewerCount(Math.max(dbViewerCount ?? 0, peakAudienceRef.current));
+      setReportViewerCount(Math.max(dbViewerCount ?? 0, peakAudienceCount));
       setShowCreatorReport(true);
     } catch (error) {
       console.error('Erreur arrêt live:', error);
@@ -2729,10 +2747,10 @@ const UserLive: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Participants connectés ({audienceCount})
+                Personnes connectées ({connectedPeople.length})
             </DialogTitle>
             <DialogDescription className="text-zinc-400 text-sm">
-              Liste des personnes actuellement présentes dans ce live.
+                Liste des personnes actuellement présentes dans ce live, avec le nombre de spectateurs affiché en direct en haut à droite.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
