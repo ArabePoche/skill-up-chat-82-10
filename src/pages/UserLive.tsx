@@ -321,6 +321,7 @@ const UserLive: React.FC = () => {
   const [showCreatorReport, setShowCreatorReport] = useState(false);
   const [reportPaidEntryCount, setReportPaidEntryCount] = useState<number>(0);
   const [reportEndedAt, setReportEndedAt] = useState<Date | null>(null);
+  const [reportViewerCount, setReportViewerCount] = useState<number>(0);
   const peakAudienceRef = useRef<number>(0);
   // Viewer satisfaction survey
   const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
@@ -1224,6 +1225,19 @@ const UserLive: React.FC = () => {
             online_at: new Date().toISOString(),
           });
 
+          // Persister la présence du spectateur en base de données
+          if (stableStreamId && stableUserId) {
+            supabase
+              .from('live_viewers')
+              .upsert(
+                { live_id: stableStreamId, user_id: stableUserId, joined_at: new Date().toISOString() },
+                { onConflict: 'live_id,user_id' }
+              )
+              .then(({ error }) => {
+                if (error) console.error('Erreur enregistrement spectateur:', error);
+              });
+          }
+
           if (!isHostRole) {
             await roomChannel.send({
               type: 'broadcast',
@@ -1237,6 +1251,17 @@ const UserLive: React.FC = () => {
       });
 
     return () => {
+      // Enregistrer le départ du spectateur
+      if (stableStreamId && stableUserId) {
+        supabase
+          .from('live_viewers')
+          .update({ left_at: new Date().toISOString() })
+          .eq('live_id', stableStreamId)
+          .eq('user_id', stableUserId)
+          .then(({ error }) => {
+            if (error) console.error('Erreur mise à jour départ spectateur:', error);
+          });
+      }
       presenceChannelRef.current = null;
       supabase.removeChannel(roomChannel);
     };
@@ -1772,8 +1797,15 @@ const UserLive: React.FC = () => {
         paidCount = count ?? 0;
       }
 
+      // Récupérer le nombre total de spectateurs depuis la DB
+      const { count: dbViewerCount } = await supabase
+        .from('live_viewers')
+        .select('id', { count: 'exact', head: true })
+        .eq('live_id', stream.id);
+
       setReportPaidEntryCount(paidCount);
       setReportEndedAt(endedAt);
+      setReportViewerCount(Math.max(dbViewerCount ?? 0, peakAudienceRef.current));
       setShowCreatorReport(true);
     } catch (error) {
       console.error('Erreur arrêt live:', error);
@@ -2782,13 +2814,13 @@ const UserLive: React.FC = () => {
                 </span>
               </div>
 
-              {/* Peak viewers */}
+              {/* Total viewers from DB */}
               <div className="flex items-center justify-between rounded-xl bg-zinc-800/60 px-4 py-3">
                 <div className="flex items-center gap-2 text-zinc-300 text-sm">
                   <Users className="h-4 w-4 text-zinc-400" />
-                  Spectateurs (pic)
+                  Spectateurs (total)
                 </div>
-                <span className="font-semibold text-white">{peakAudienceRef.current}</span>
+                <span className="font-semibold text-white">{reportViewerCount}</span>
               </div>
 
               {/* Paid entries */}

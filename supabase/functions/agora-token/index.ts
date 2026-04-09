@@ -3,7 +3,7 @@
  * Retourne un vrai token RTC quand AGORA_APP_CERTIFICATE est configuré.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as AgoraAccessToken from "npm:agora-access-token@2.0.4";
+import * as AgoraAccessToken from "https://esm.sh/agora-access-token@2.0.4";
 
 const { RtcRole, RtcTokenBuilder } = AgoraAccessToken as {
   RtcRole: { PUBLISHER: number; SUBSCRIBER: number };
