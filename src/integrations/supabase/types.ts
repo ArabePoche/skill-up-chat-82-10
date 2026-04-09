@@ -2691,6 +2691,57 @@ export type Database = {
           },
         ]
       }
+      live_satisfaction_feedbacks: {
+        Row: {
+          created_at: string
+          id: string
+          is_satisfied: boolean
+          live_stream_id: string
+          reason: string | null
+          refund_requested: boolean
+          refund_status: string
+          updated_at: string
+          viewer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_satisfied: boolean
+          live_stream_id: string
+          reason?: string | null
+          refund_requested?: boolean
+          refund_status?: string
+          updated_at?: string
+          viewer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_satisfied?: boolean
+          live_stream_id?: string
+          reason?: string | null
+          refund_requested?: boolean
+          refund_status?: string
+          updated_at?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_satisfaction_feedbacks_live_stream_id_fkey"
+            columns: ["live_stream_id"]
+            isOneToOne: false
+            referencedRelation: "user_live_streams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_satisfaction_feedbacks_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_commission_settings: {
         Row: {
           auto_release_days: number
@@ -9808,57 +9859,6 @@ export type Database = {
           {
             foreignKeyName: "user_lesson_progress_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      live_satisfaction_feedbacks: {
-        Row: {
-          id: string
-          live_stream_id: string
-          viewer_id: string
-          is_satisfied: boolean
-          reason: string | null
-          refund_requested: boolean
-          refund_status: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          live_stream_id: string
-          viewer_id: string
-          is_satisfied: boolean
-          reason?: string | null
-          refund_requested?: boolean
-          refund_status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          live_stream_id?: string
-          viewer_id?: string
-          is_satisfied?: boolean
-          reason?: string | null
-          refund_requested?: boolean
-          refund_status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "live_satisfaction_feedbacks_live_stream_id_fkey"
-            columns: ["live_stream_id"]
-            isOneToOne: false
-            referencedRelation: "user_live_streams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "live_satisfaction_feedbacks_viewer_id_fkey"
-            columns: ["viewer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
