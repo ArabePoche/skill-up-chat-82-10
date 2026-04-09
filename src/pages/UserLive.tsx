@@ -1975,7 +1975,7 @@ const UserLive: React.FC = () => {
           <h1 className="text-xl font-semibold">Live programmé</h1>
           {scheduledDate && (
             <p className="mt-2 text-sm text-zinc-400">
-              {scheduledDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {scheduledDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               {' à '}
               {scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
             </p>

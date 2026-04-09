@@ -158,7 +158,7 @@ BEGIN
   ) VALUES (
     v_payment.creator_id, 'soumboulah_cash', v_payment.creator_amount,
     'live_entry',
-    'Recette live (commission ' || ROUND(v_payment.commission_rate, 0) || '% déduite)',
+    'Recette live (commission ' || ROUND(v_payment.commission_rate, 1) || '% déduite)',
     v_payment.live_id::text,
     'user_live_stream'
   );

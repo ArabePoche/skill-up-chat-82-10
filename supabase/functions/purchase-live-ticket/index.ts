@@ -138,7 +138,8 @@ serve(async (req) => {
     const fcfaAmount = live.entry_price;
     const scAmount = Math.round((fcfaAmount / scToFcfaRate) * 100) / 100;
     const commissionAmount = Math.round(scAmount * commissionRate * 100) / 100;
-    const creatorAmount = Math.round((scAmount - commissionAmount) * 100) / 100;
+    // Use subtraction without re-rounding to avoid sum(commission + creator) != scAmount discrepancy
+    const creatorAmount = scAmount - commissionAmount;
 
     const releaseAt = new Date(Date.now() + escrowHours * 60 * 60 * 1000).toISOString();
 

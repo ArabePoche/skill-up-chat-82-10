@@ -133,6 +133,9 @@ const LiveTicketPage: React.FC = () => {
     void loadUserData();
   }, [id, user?.id]);
 
+  // Display-only SC amount estimate. The authoritative calculation is performed server-side
+  // by the purchase-live-ticket Edge Function using the same formula. If the rounding
+  // logic changes server-side, update this formula to stay in sync.
   const scAmount = live && scToFcfaRate > 0
     ? Math.round((live.entry_price / scToFcfaRate) * 100) / 100
     : null;
