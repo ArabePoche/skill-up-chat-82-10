@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
 import type { LiveScreen } from '@/live/types';
 import { isLiveScreen } from '@/live/types';
+import { useAgoraCall } from '@/call-system/hooks/useAgoraCall';
 
 interface Video {
   id: string;
@@ -37,6 +38,7 @@ interface Video {
 interface LiveFeedItem {
   id: string;
   host_id: string;
+  agora_channel: string;
   title: string;
   description: string | null;
   status: 'active' | 'scheduled';
@@ -68,6 +70,56 @@ interface LivePresencePayload {
   role?: string;
   public_live_screen?: unknown;
 }
+
+const LiveAgoraPreview: React.FC<{
+  channelName: string;
+  isActive: boolean;
+  hostName: string;
+  hostAvatarUrl?: string | null;
+}> = ({ channelName, isActive, hostName, hostAvatarUrl }) => {
+  const { state, joinCall, leaveCall, remoteVideoContainerRef } = useAgoraCall();
+
+  useEffect(() => {
+    if (!isActive || !channelName) {
+      void leaveCall();
+      return;
+    }
+
+    void joinCall(channelName, 'video', {
+      role: 'viewer',
+      enableAudio: false,
+      enableVideo: false,
+    });
+
+    return () => {
+      void leaveCall();
+    };
+  }, [channelName, isActive, joinCall, leaveCall]);
+
+  const hasRemoteVideo = state.remoteUsers.length > 0;
+
+  return (
+    <div className="relative min-h-[24rem] overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+      <div ref={remoteVideoContainerRef} className="absolute inset-0 h-full w-full" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/20" />
+
+      {!hasRemoteVideo && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[radial-gradient(circle_at_top,_rgba(248,113,113,0.28),_rgba(0,0,0,0.96)_68%)] px-6 text-center">
+          <Avatar className="h-20 w-20 border-2 border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+            <AvatarImage src={hostAvatarUrl ?? undefined} />
+            <AvatarFallback className="bg-white/15 text-2xl text-white">
+              {hostName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-white/55">Live en cours</p>
+            <p className="mt-2 text-lg font-semibold text-white">Connexion au flux vidéo...</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const getHostDisplayName = (host: LiveFeedItem['host']) => {
   if (!host) return 'Createur';
@@ -146,6 +198,8 @@ const TikTokVideosView: React.FC<{
   });
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
   const visibleRatiosRef = useRef<Map<number, number>>(new Map());
+  const liveCardRefs = useRef<(HTMLElement | null)[]>([]);
+  const liveVisibleRatiosRef = useRef<Map<number, number>>(new Map());
   const livePreviewChannelsRef = useRef<Map<string, ReturnType<typeof supabase.channel>>>(new Map());
   const livePreviewRequesterIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -345,6 +399,50 @@ const TikTokVideosView: React.FC<{
   }, [isLiveFeedOpen, liveStreams]);
 
   useEffect(() => {
+    if (!isLiveFeedOpen || liveStreams.length === 0) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const liveIndex = Number(entry.target.getAttribute('data-live-index') || '0');
+          liveVisibleRatiosRef.current.set(liveIndex, entry.intersectionRatio);
+        });
+
+        let bestIndex = 0;
+        let bestRatio = 0;
+
+        entries.forEach((entry) => {
+          const liveIndex = Number(entry.target.getAttribute('data-live-index') || '0');
+          const ratio = liveVisibleRatiosRef.current.get(liveIndex) || 0;
+
+          if (entry.isIntersecting && ratio >= bestRatio && ratio >= 0.55) {
+            bestRatio = ratio;
+            bestIndex = liveIndex;
+          }
+        });
+
+        setCurrentVideoIndex(bestIndex);
+      },
+      {
+        threshold: [0.25, 0.55, 0.8],
+      }
+    );
+
+    liveCardRefs.current.forEach((ref) => {
+      if (ref) {
+        observer.observe(ref);
+      }
+    });
+
+    return () => {
+      liveVisibleRatiosRef.current.clear();
+      observer.disconnect();
+    };
+  }, [isLiveFeedOpen, liveStreams.length]);
+
+  useEffect(() => {
     let isMounted = true;
 
     const loadLives = async () => {
@@ -353,7 +451,7 @@ const TikTokVideosView: React.FC<{
 
       const { data: liveData, error } = await supabase
         .from('user_live_streams')
-        .select('id, host_id, title, description, status, entry_price, scheduled_at, max_attendees')
+        .select('id, host_id, agora_channel, title, description, status, entry_price, scheduled_at, max_attendees')
         .eq('visibility', 'public')
         .in('status', ['active', 'scheduled'])
         .order('status', { ascending: true })
@@ -552,7 +650,7 @@ const TikTokVideosView: React.FC<{
 
     const { data: liveData, error } = await supabase
       .from('user_live_streams')
-      .select('id, host_id, title, description, status, entry_price, scheduled_at, max_attendees')
+      .select('id, host_id, agora_channel, title, description, status, entry_price, scheduled_at, max_attendees')
       .eq('visibility', 'public')
       .in('status', ['active', 'scheduled'])
       .order('status', { ascending: true })
@@ -708,10 +806,16 @@ const TikTokVideosView: React.FC<{
                 const livePreview = livePreviews[live.id];
                 const audienceCount = livePreview?.audienceCount ?? 0;
                 const hasLivePreview = live.status === 'active' && !!livePreview?.screen;
+                const hostName = getHostDisplayName(live.host);
+                const shouldUseAgoraPreview = live.status === 'active' && !isPaid && !!live.agora_channel;
 
                 return (
                   <section
                     key={live.id}
+                    ref={(element) => {
+                      liveCardRefs.current[liveStreams.findIndex((item) => item.id === live.id)] = element;
+                    }}
+                    data-live-index={liveStreams.findIndex((item) => item.id === live.id)}
                     className="relative flex h-screen w-full snap-start snap-always overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(220,38,38,0.35),_rgba(0,0,0,0.92)_55%)] px-5 pb-6 pt-20 text-white"
                   >
                     <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/45 to-black/90" />
@@ -736,7 +840,14 @@ const TikTokVideosView: React.FC<{
 
                       <div className="flex min-h-0 flex-1 items-center">
                         <div className="w-full">
-                          {hasLivePreview ? (
+                          {shouldUseAgoraPreview ? (
+                            <LiveAgoraPreview
+                              channelName={live.agora_channel}
+                              isActive={liveStreams.findIndex((item) => item.id === live.id) === currentVideoIndex && isLiveFeedOpen}
+                              hostName={hostName}
+                              hostAvatarUrl={live.host?.avatar_url}
+                            />
+                          ) : hasLivePreview ? (
                             <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/35 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm">
                               <LiveScreenDisplay
                                 screen={livePreview.screen as LiveScreen}
@@ -824,26 +935,34 @@ const TikTokVideosView: React.FC<{
                         </div>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className={`space-y-2 ${shouldUseAgoraPreview ? 'rounded-[1.75rem] border border-white/10 bg-black/45 p-4 backdrop-blur-xl' : ''}`}>
                         <h2 className="max-w-lg text-2xl font-black leading-tight sm:text-4xl">{live.title}</h2>
                         {live.description && (
                           <p className="max-w-lg text-sm leading-relaxed text-white/75 sm:text-base line-clamp-2">{live.description}</p>
                         )}
+                        {shouldUseAgoraPreview && (
+                          <p className="text-sm font-semibold text-white/90">
+                            {audienceCount} spectateur{audienceCount > 1 ? 's' : ''}
+                          </p>
+                        )}
                       </div>
 
+                      {!shouldUseAgoraPreview && (
                       <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur-md">
                         <Avatar className="h-12 w-12 border border-white/10">
                           <AvatarImage src={live.host?.avatar_url ?? undefined} />
                           <AvatarFallback className="bg-white/15 text-white">
-                            {getHostDisplayName(live.host).charAt(0).toUpperCase()}
+                            {hostName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-semibold">{getHostDisplayName(live.host)}</p>
+                          <p className="font-semibold">{hostName}</p>
                           <p className="text-xs uppercase tracking-[0.18em] text-white/55">Createur du live</p>
                         </div>
                       </div>
+                      )}
 
+                      {!shouldUseAgoraPreview && (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
                           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/55">
@@ -867,6 +986,7 @@ const TikTokVideosView: React.FC<{
                           </p>
                         </div>
                       </div>
+                      )}
 
                       <div className="sticky bottom-0 z-10 -mx-1 mt-auto rounded-[1.75rem] border border-white/10 bg-black/45 p-3 backdrop-blur-xl">
                         <div className="flex flex-col gap-3 sm:flex-row">

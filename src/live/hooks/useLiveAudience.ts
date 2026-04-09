@@ -1,5 +1,6 @@
 // Hook pour centraliser les métriques d'audience d'un live à partir de la présence temps réel.
 import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ViewerPresenceRecord {
   user_id?: string;
@@ -34,8 +35,91 @@ export const useLiveAudience = ({
   viewersList,
   acceptedParticipants,
 }: UseLiveAudienceParams) => {
+  const [persistedViewers, setPersistedViewers] = useState<ViewerPresenceRecord[]>([]);
+
+  useEffect(() => {
+    if (!liveId) {
+      setPersistedViewers([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadPersistedViewers = async () => {
+      const { data: viewerRows, error } = await supabase
+        .from('live_viewers')
+        .select('user_id, joined_at, left_at')
+        .eq('live_id', liveId)
+        .is('left_at', null);
+
+      if (error || !isMounted) {
+        return;
+      }
+
+      const userIds = Array.from(new Set((viewerRows ?? []).map((viewer) => viewer.user_id).filter(Boolean)));
+      const { data: profiles } = userIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, username, avatar_url')
+            .in('id', userIds)
+        : { data: [] };
+
+      if (!isMounted) {
+        return;
+      }
+
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+
+      setPersistedViewers(
+        (viewerRows ?? []).map((viewer) => {
+          const profile = profileById.get(viewer.user_id);
+          const name = profile
+            ? [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim() || profile.username || 'Spectateur'
+            : 'Spectateur';
+
+          return {
+            user_id: viewer.user_id,
+            user_name: name,
+            avatar_url: profile?.avatar_url ?? null,
+            role: viewer.user_id === hostId ? 'host' : 'viewer',
+            joined_at: viewer.joined_at,
+          };
+        })
+      );
+    };
+
+    void loadPersistedViewers();
+
+    const channel = supabase
+      .channel(`live-viewers-${liveId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'live_viewers',
+          filter: `live_id=eq.${liveId}`,
+        },
+        () => {
+          void loadPersistedViewers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [hostId, liveId]);
+
   const connectedPeople = useMemo<ViewerPresenceRecord[]>(() => {
     const merged = new Map<string, ViewerPresenceRecord>();
+
+    persistedViewers.forEach((viewer) => {
+      const id = viewer.user_id || viewer.userId || viewer.presence_ref;
+      if (!id) return;
+      merged.set(id, viewer);
+    });
 
     viewersList.forEach((viewer) => {
       const id = viewer.user_id || viewer.userId || viewer.presence_ref;
@@ -59,7 +143,7 @@ export const useLiveAudience = ({
     });
 
     return Array.from(merged.values());
-  }, [acceptedParticipants, hostId, viewersList]);
+  }, [acceptedParticipants, hostId, persistedViewers, viewersList]);
 
   const audienceCount = useMemo(() => {
     return connectedPeople.filter((presence) => {
@@ -70,6 +154,17 @@ export const useLiveAudience = ({
         presence.role !== 'preview_observer'
       );
     }).length;
+  }, [connectedPeople, hostId]);
+
+  const audiencePeople = useMemo(() => {
+    return connectedPeople.filter((presence) => {
+      const presenceUserId = presence.user_id || presence.userId || presence.presence_ref;
+      return Boolean(
+        presenceUserId &&
+        presenceUserId !== hostId &&
+        presence.role !== 'preview_observer'
+      );
+    });
   }, [connectedPeople, hostId]);
 
   const [peakAudienceCount, setPeakAudienceCount] = useState(0);
@@ -84,6 +179,7 @@ export const useLiveAudience = ({
 
   return {
     connectedPeople,
+    audiencePeople,
     audienceCount,
     peakAudienceCount,
   };

@@ -499,7 +499,7 @@ const UserLive: React.FC = () => {
 
   const stableAvatarUrl = profile?.avatar_url || null;
 
-  const { connectedPeople, audienceCount, peakAudienceCount } = useLiveAudience({
+  const { connectedPeople, audiencePeople, audienceCount, peakAudienceCount } = useLiveAudience({
     liveId: stableStreamId,
     hostId: stableHostId,
     viewersList,
@@ -1267,7 +1267,7 @@ const UserLive: React.FC = () => {
             supabase
               .from('live_viewers')
               .upsert(
-                { live_id: stableStreamId, user_id: stableUserId, joined_at: new Date().toISOString() },
+                { live_id: stableStreamId, user_id: stableUserId, joined_at: new Date().toISOString(), left_at: null },
                 { onConflict: 'live_id,user_id' }
               )
               .then(({ error }) => {
@@ -1320,6 +1320,90 @@ const UserLive: React.FC = () => {
     upsertAcceptedParticipant,
     hasPaidEntry,
   ]);
+
+  useEffect(() => {
+    if (!stableStreamId || hasPaidEntry !== true) {
+      return;
+    }
+
+    const liveViewersChannel = supabase
+      .channel(`live-viewers-presence-${stableStreamId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'live_viewers',
+          filter: `live_id=eq.${stableStreamId}`,
+        },
+        async (payload) => {
+          const nextRow = payload.eventType === 'DELETE' ? payload.old : payload.new;
+          const viewerId = (nextRow as { user_id?: string | null } | null)?.user_id;
+
+          if (!viewerId) {
+            return;
+          }
+
+          if (payload.eventType === 'UPDATE' && (payload.new as { left_at?: string | null }).left_at) {
+            setViewersList((current) => current.filter((viewer) => {
+              const currentViewerId = viewer.user_id || viewer.userId || viewer.presence_ref;
+              return currentViewerId !== viewerId;
+            }));
+            return;
+          }
+
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, username, avatar_url')
+            .eq('id', viewerId)
+            .maybeSingle();
+
+          const viewerName = profileData
+            ? getDisplayName(profileData)
+            : viewerId === stableUserId
+            ? stableDisplayName
+            : 'Spectateur';
+
+          const joinedAt = (payload.new as { joined_at?: string | null } | null)?.joined_at || new Date().toISOString();
+          const joinMessageId = `live-viewer-join-${viewerId}-${joinedAt}`;
+
+          setViewersList((current) => mergePresenceEntries(current, [{
+            user_id: viewerId,
+            user_name: viewerName,
+            avatar_url: profileData?.avatar_url || null,
+            role: viewerId === stableHostId ? 'host' : 'viewer',
+            joined_at: joinedAt,
+            online_at: joinedAt,
+          }], viewerId));
+
+          if (viewerId !== stableUserId) {
+            setMessages((current) => {
+              if (current.some((message) => message.id === joinMessageId)) {
+                return current;
+              }
+
+              return [
+                ...current.slice(-49),
+                {
+                  id: joinMessageId,
+                  userId: viewerId,
+                  userName: viewerName,
+                  userAvatar: profileData?.avatar_url || null,
+                  type: 'join',
+                  content: 'a rejoint le live',
+                  createdAt: joinedAt,
+                },
+              ];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(liveViewersChannel);
+    };
+  }, [hasPaidEntry, stableDisplayName, stableHostId, stableStreamId, stableUserId]);
 
   useEffect(() => {
     if (!stableStreamId || !stableHostId) {
@@ -2865,17 +2949,17 @@ const UserLive: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-                Personnes connectées ({connectedPeople.length})
+                Personnes connectées ({audiencePeople.length})
             </DialogTitle>
             <DialogDescription className="text-zinc-400 text-sm">
                 Liste des personnes actuellement présentes dans ce live, avec le nombre de spectateurs affiché en direct en haut à droite.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-y-auto pr-2 space-y-3">
-            {connectedPeople.length === 0 ? (
+            {audiencePeople.length === 0 ? (
               <p className="text-center text-zinc-400 py-4">Aucun spectateur pour le moment</p>
             ) : (
-              connectedPeople.map((viewer, idx) => {
+              audiencePeople.map((viewer, idx) => {
                 const name = viewer.user_name || viewer.userName || viewer.name || 'Utilisateur';
                 const avatar = viewer.avatar_url || viewer.avatarUrl || viewer.avatar || '';
                 const role = viewer.role || 'viewer';
