@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Loader2, Radio, Clock, Coins, ArrowLeft, Users, Share2, Gift, Hand, BookOpen, Mic, MicOff, Video, VideoOff, RefreshCw, Layers3, X, BarChart2, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react';
+import { Loader2, Radio, Clock, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -26,17 +26,17 @@ import { LiveHeader } from '../components/live-classroom/user-live/components/Li
 import { LiveVideoGrid } from '../components/live-classroom/user-live/components/LiveVideoGrid';
 import { LiveChatPanel } from '../components/live-classroom/user-live/components/LiveChatPanel';
 import { LiveModals } from '../components/live-classroom/user-live/components/LiveModals';
+import { LiveCameraZone } from '../components/live-classroom/user-live/components/LiveCameraZone';
+import { LiveStudioZone } from '../components/live-classroom/user-live/components/LiveStudioZone';
 
 // Other Live components
-import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
-import { LiveTeachingStudioRunner } from '@/live/components/LiveTeachingStudioRunner';
 import LiveScreenManager from '@/live/components/LiveScreenManager';
 import { useLiveAudience } from '@/live/hooks/useLiveAudience';
 import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
 
 // Utils
 import { formatScAmount, fcfaToScRounded } from '../components/live-classroom/user-live/utils/paymentUtils';
-import type { LiveScreen, LiveTeachingStudio } from '@/live/types';
+import type { LiveScreen } from '@/live/types';
 
 const UserLive: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -296,56 +296,32 @@ const UserLive: React.FC = () => {
 
       {isStudioMode ? (
         <>
-          <div className="flex-[2] md:flex-[3] relative bg-zinc-950 border-b md:border-b-0 md:border-r border-white/10 flex flex-col items-center justify-center p-0">
-            <LiveTeachingStudioRunner
-              studio={screens.publicLiveScreen!.studio}
-              isHost={isActuallyHost}
-              onSceneChange={(sceneId) => {
-                const nextScreen = {
-                  ...screens.publicLiveScreen!,
-                  studio: {
-                    ...screens.publicLiveScreen!.studio,
-                    activeSceneId: sceneId,
-                  }
-                } as LiveScreen;
-                screens.scheduleStudioBroadcast(nextScreen);
-              }}
-              onStudioChange={screens.scheduleStudioBroadcast}
-              onWhiteboardAction={whiteboard.handleWhiteboardAction}
-              remoteWhiteboardAction={whiteboard.remoteWhiteboardAction}
-              remoteWhiteboardHistories={whiteboard.whiteboardHistories}
-            />
-          </div>
-          <div className="flex-[1] md:flex-[1.5] relative bg-black border-l border-white/5 h-[40vh] md:h-full">
-            <div className="absolute inset-0">
-              <div ref={isActuallyHost ? agoraSession.localVideoContainerRef : agoraSession.remoteVideoContainerRef} className="h-full w-full object-cover" />
-            </div>
-            
-            <div className="absolute top-2 right-2 flex flex-col gap-2">
-              {isActuallyHost && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="bg-zinc-800/80 hover:bg-zinc-700 text-white border-zinc-700"
-                  onClick={() => setIsScreenManagerOpen(true)}
-                >
-                  <Layers3 className="h-4 w-4 mr-2" />
-                  Scènes
-                </Button>
-              )}
-            </div>
-          </div>
+          <LiveStudioZone
+            publicLiveScreen={screens.publicLiveScreen!}
+            isHost={isActuallyHost}
+            onScheduleStudioBroadcast={screens.scheduleStudioBroadcast}
+            onWhiteboardAction={whiteboard.handleWhiteboardAction}
+            remoteWhiteboardAction={whiteboard.remoteWhiteboardAction}
+            remoteWhiteboardHistories={whiteboard.whiteboardHistories}
+          />
+          <LiveCameraZone
+            isStudioMode
+            isHost={isActuallyHost}
+            videoContainerRef={isActuallyHost ? agoraSession.localVideoContainerRef : agoraSession.remoteVideoContainerRef}
+            publicLiveScreen={screens.publicLiveScreen}
+            privateLiveScreen={privateLiveScreen}
+            onOpenScreenManager={() => setIsScreenManagerOpen(true)}
+          />
         </>
       ) : (
-        <div className="absolute inset-0 z-0">
-          <div ref={isActuallyHost ? agoraSession.localVideoContainerRef : agoraSession.remoteVideoContainerRef} className="h-full w-full object-cover" />
-          <LiveScreenDisplay screen={screens.publicLiveScreen} />
-          {isActuallyHost && privateLiveScreen && (
-            <div className="absolute bottom-20 left-4 z-20 w-72">
-              <LiveScreenDisplay screen={privateLiveScreen} variant="private" isHost />
-            </div>
-          )}
-        </div>
+        <LiveCameraZone
+          isStudioMode={false}
+          isHost={isActuallyHost}
+          videoContainerRef={isActuallyHost ? agoraSession.localVideoContainerRef : agoraSession.remoteVideoContainerRef}
+          publicLiveScreen={screens.publicLiveScreen}
+          privateLiveScreen={privateLiveScreen}
+          onOpenScreenManager={() => setIsScreenManagerOpen(true)}
+        />
       )}
 
       {isActuallyHost && (
