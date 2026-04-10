@@ -9,7 +9,7 @@ import type { LiveScreen } from '@/live/types';
 import { getLiveFormationImage, getLiveFormationPlanLabel, getLiveProductImage, getLiveTeachingLessonImage, getLiveTeachingStudioActiveScene, getLiveTeachingStudioImage } from '@/live/types';
 
 interface LiveScreenDisplayProps {
-  screen: LiveScreen;
+  screen: LiveScreen | null;
   variant?: 'public' | 'private';
   isHost?: boolean;
   canEnroll?: boolean;
@@ -33,6 +33,8 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   onEnroll,
   className,
 }) => {
+  if (!screen) return null;
+
   const isPrivate = variant === 'private';
   const isPublicFormation = !isPrivate && screen.type === 'formation_enrollment';
   const isPublicTeachingStudio = !isPrivate && screen.type === 'teaching_studio';
