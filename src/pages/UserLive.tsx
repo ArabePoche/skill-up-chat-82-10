@@ -340,6 +340,11 @@ const UserLive: React.FC = () => {
         <div className="absolute inset-0 z-0">
           <div ref={isActuallyHost ? agoraSession.localVideoContainerRef : agoraSession.remoteVideoContainerRef} className="h-full w-full object-cover" />
           <LiveScreenDisplay screen={screens.publicLiveScreen} />
+          {isActuallyHost && privateLiveScreen && (
+            <div className="absolute bottom-20 left-4 z-20 w-72">
+              <LiveScreenDisplay screen={privateLiveScreen} variant="private" isHost />
+            </div>
+          )}
         </div>
       )}
 
