@@ -32,9 +32,10 @@ import LikesTab from '@/profile/components/tabs/LikesTab';
 import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
 import ShopTab from '@/profile/components/tabs/ShopTab';
 import CvBuilderModal from '@/cv-builder/CvBuilderModal';
+import LivesTab from '@/profile/components/tabs/LivesTab';
 
+type TabType = 'videos' | 'posts' | 'school' | 'likes' | 'favorites' | 'shop' | 'lives';
 
-type TabType = 'videos' | 'posts' | 'school' | 'likes' | 'favorites' | 'shop';
 
 const Profil = () => {
   const { t } = useTranslation();
@@ -170,6 +171,8 @@ const Profil = () => {
         return <LikesTab userId={viewedUserId} />;
       case 'favorites':
         return <FavoritesTab userId={viewedUserId} />;
+      case 'lives':
+        return <LivesTab userId={viewedUserId} />;
       case 'shop':
         return <ShopTab userId={viewedUserId} />;
       default:

@@ -1,8 +1,8 @@
-// Vue complète du rail des lives : chargement, aperçu Agora, navigation vers le live.
-// Extraite de TikTokVideosView pour alléger ce dernier.
+// Vue immersive plein écran des lives, style TikTok (swipe vertical).
+// Infos minimalistes superposées + bouton ticket/prix pour les lives payants.
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, Ticket, Users } from 'lucide-react';
+import { Calendar, Loader2, Ticket, Users, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -62,12 +62,12 @@ const formatLiveDate = (value: string | null) => {
   if (!value) return null;
   const date = new Date(value);
   return {
-    day: date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+    day: date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }),
     time: date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
   };
 };
 
-// ─── Sous-composant : aperçu Agora d'un live actif ──────────────────────────
+// ─── Aperçu Agora plein écran ────────────────────────────────────────────────
 
 const LiveAgoraPreview: React.FC<{
   channelName: string;
@@ -78,10 +78,7 @@ const LiveAgoraPreview: React.FC<{
   const { state, joinCall, leaveCall, remoteVideoContainerRef } = useAgoraCall();
 
   useEffect(() => {
-    if (!isActive || !channelName) {
-      void leaveCall();
-      return;
-    }
+    if (!isActive || !channelName) { void leaveCall(); return; }
     void joinCall(channelName, 'video', { role: 'viewer', enableAudio: false, enableVideo: false });
     return () => { void leaveCall(); };
   }, [channelName, isActive, joinCall, leaveCall]);
@@ -89,26 +86,22 @@ const LiveAgoraPreview: React.FC<{
   const hasRemoteVideo = state.remoteUsers.length > 0;
 
   return (
-    <div className="relative min-h-[24rem] overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+    <>
       <div ref={remoteVideoContainerRef} className="absolute inset-0 h-full w-full" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/20" />
       {!hasRemoteVideo && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[radial-gradient(circle_at_top,_rgba(248,113,113,0.28),_rgba(0,0,0,0.96)_68%)] px-6 text-center">
-          <Avatar className="h-20 w-20 border-2 border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+          <Avatar className="h-20 w-20 border-2 border-white/20 shadow-lg">
             <AvatarImage src={hostAvatarUrl ?? undefined} />
             <AvatarFallback className="bg-white/15 text-2xl text-white">{hostName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-white/55">Live en cours</p>
-            <p className="mt-2 text-lg font-semibold text-white">Connexion au flux vidéo...</p>
-          </div>
+          <p className="text-sm text-white/60">Connexion au flux...</p>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
-// ─── Hook interne : chargement et souscription aux lives ─────────────────────
+// ─── Hook : chargement et souscription aux lives ─────────────────────────────
 
 export const useLiveFeed = () => {
   const [liveStreams, setLiveStreams] = useState<LiveFeedItem[]>([]);
@@ -128,11 +121,11 @@ export const useLiveFeed = () => {
       .order('scheduled_at', { ascending: true, nullsFirst: false });
 
     if (error) {
-      if (isMounted) { setLivesError("Impossible de charger les lives pour le moment."); setIsLoadingLives(false); }
+      if (isMounted) { setLivesError("Impossible de charger les lives."); setIsLoadingLives(false); }
       return;
     }
 
-    const hostIds = Array.from(new Set((liveData ?? []).map((live: any) => live.host_id).filter(Boolean)));
+    const hostIds = Array.from(new Set((liveData ?? []).map((l: any) => l.host_id).filter(Boolean)));
     const { data: profilesData } = hostIds.length > 0
       ? await supabase.from('profiles').select('id, first_name, last_name, username, avatar_url').in('id', hostIds)
       : { data: [] };
@@ -161,7 +154,7 @@ export const useLiveFeed = () => {
   return { liveStreams, isLoadingLives, livesError, retryLoadingLives: () => loadLives(true) };
 };
 
-// ─── Composant principal ─────────────────────────────────────────────────────
+// ─── Composant principal : feed plein écran ──────────────────────────────────
 
 interface LiveFeedViewProps {
   liveStreams: LiveFeedItem[];
@@ -297,7 +290,6 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
   // ── Navigation ──
 
   const openLive = (live: LiveFeedItem) => {
-    if (live.status === 'active') { navigate(`/live/${live.id}`); return; }
     if (live.entry_price && live.entry_price > 0) { navigate(`/live/${live.id}/ticket`); return; }
     navigate(`/live/${live.id}`);
   };
@@ -306,22 +298,18 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
 
   if (isLoadingLives) {
     return (
-      <div className="flex h-screen items-center justify-center text-white">
-        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-black/40 px-5 py-3 backdrop-blur-sm">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-sm text-white/80">Chargement des lives...</span>
-        </div>
+      <div className="flex h-full items-center justify-center text-white">
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
 
   if (livesError) {
     return (
-      <div className="flex h-screen items-center justify-center px-6 text-white">
-        <div className="max-w-sm text-center">
-          <h2 className="text-lg font-semibold">Lives indisponibles</h2>
-          <p className="mt-2 text-sm text-white/70">{livesError}</p>
-          <Button onClick={retryLoadingLives} className="mt-4 bg-white text-black hover:bg-white/90">Réessayer</Button>
+      <div className="flex h-full items-center justify-center px-6 text-white">
+        <div className="text-center">
+          <p className="text-sm text-white/70">{livesError}</p>
+          <Button onClick={retryLoadingLives} size="sm" className="mt-3 bg-white text-black hover:bg-white/90">Réessayer</Button>
         </div>
       </div>
     );
@@ -329,10 +317,10 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
 
   if (liveStreams.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center px-6 text-white">
-        <div className="max-w-sm text-center">
-          <h2 className="text-lg font-semibold">Aucun live pour le moment</h2>
-          <p className="mt-2 text-sm text-white/70">Reviens plus tard pour voir les directs et les lives programmés.</p>
+      <div className="flex h-full items-center justify-center px-6 text-white">
+        <div className="text-center">
+          <p className="text-lg font-semibold">Aucun live</p>
+          <p className="mt-1 text-sm text-white/60">Reviens plus tard.</p>
         </div>
       </div>
     );
@@ -341,101 +329,102 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
   return (
     <div className="h-full w-full overflow-y-auto snap-y snap-mandatory">
       {liveStreams.map((live, idx) => {
-        const liveDate = formatLiveDate(live.scheduled_at);
         const isPaid = !!live.entry_price && live.entry_price > 0;
         const livePreview = livePreviews[live.id];
         const audienceCount = livePreview?.audienceCount ?? 0;
-        const hasLivePreview = live.status === 'active' && !!livePreview?.screen;
         const hostName = getHostDisplayName(live.host);
-        const shouldUseAgoraPreview = live.status === 'active' && !isPaid && !!live.agora_channel;
+        const shouldUseAgora = live.status === 'active' && !isPaid && !!live.agora_channel;
+        const liveDate = formatLiveDate(live.scheduled_at);
+        const isActive = idx === currentLiveIndex;
 
         return (
           <section
             key={live.id}
             ref={(el) => { liveCardRefs.current[idx] = el; }}
             data-live-index={idx}
-            className="relative flex h-screen w-full snap-start snap-always overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(220,38,38,0.35),_rgba(0,0,0,0.92)_55%)] px-5 pb-6 pt-20 text-white"
+            className="relative h-screen w-full snap-start snap-always flex-shrink-0 bg-black overflow-hidden"
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/45 to-black/90" />
+            {/* Fond plein écran */}
+            {live.status === 'active' ? (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(220,38,38,0.25),_rgba(0,0,0,0.97)_70%)]" />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_rgba(0,0,0,0.97)_65%)]" />
+            )}
 
-            <div className="relative z-10 mx-auto flex h-full w-full max-w-xl flex-col gap-4">
-              {/* Badges */}
-              <div className="flex items-center gap-3">
-                <Badge className={live.status === 'active' ? 'border-0 bg-red-600 text-white animate-pulse' : 'border-0 bg-sky-600 text-white'}>
-                  {live.status === 'active' ? 'EN DIRECT' : 'PROGRAMMÉ'}
+            {/* Aperçu Agora ou avatar centré */}
+            {shouldUseAgora ? (
+              <LiveAgoraPreview channelName={live.agora_channel} isActive={isActive} hostName={hostName} hostAvatarUrl={live.host?.avatar_url} />
+            ) : livePreview?.screen ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <LiveScreenDisplay screen={livePreview.screen} className="w-full max-w-none border-0 bg-transparent text-white shadow-none" />
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Avatar className="h-28 w-28 border-2 border-white/15 shadow-2xl">
+                  <AvatarImage src={live.host?.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-white/10 text-4xl text-white">{hostName.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+
+            {/* Gradient bas pour lisibilité */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+
+            {/* Badge statut en haut */}
+            <div className="absolute top-5 left-5 z-10 flex items-center gap-2">
+              {live.status === 'active' ? (
+                <Badge className="border-0 bg-red-600 text-white text-xs animate-pulse gap-1">
+                  <Radio className="h-3 w-3" /> EN DIRECT
                 </Badge>
-                {isPaid && <Badge variant="secondary" className="border-0 bg-white/15 text-white">Ticket requis</Badge>}
-                {live.status === 'active' && audienceCount > 0 && (
-                  <Badge variant="secondary" className="border-0 bg-black/45 text-white">
-                    <Users className="mr-1 h-3.5 w-3.5" />{audienceCount} en train de regarder
-                  </Badge>
-                )}
-              </div>
-
-              {/* Zone centrale : aperçu */}
-              <div className="flex min-h-0 flex-1 items-center">
-                <div className="w-full">
-                  {shouldUseAgoraPreview ? (
-                    <LiveAgoraPreview channelName={live.agora_channel} isActive={idx === currentLiveIndex} hostName={hostName} hostAvatarUrl={live.host?.avatar_url} />
-                  ) : hasLivePreview ? (
-                    <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/35 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-sm">
-                      <LiveScreenDisplay screen={livePreview.screen as LiveScreen} className="w-full max-w-none border-0 bg-black/40 text-white shadow-none" />
-                    </div>
-                  ) : live.status === 'active' ? (
-                    <ActiveLivePlaceholder live={live} hostName={hostName} audienceCount={audienceCount} />
-                  ) : (
-                    <ScheduledLivePlaceholder live={live} hostName={hostName} liveDate={liveDate} />
-                  )}
-                </div>
-              </div>
-
-              {/* Infos */}
-              <div className={`space-y-2 ${shouldUseAgoraPreview ? 'rounded-[1.75rem] border border-white/10 bg-black/45 p-4 backdrop-blur-xl' : ''}`}>
-                <h2 className="max-w-lg text-2xl font-black leading-tight sm:text-4xl">{live.title}</h2>
-                {live.description && <p className="max-w-lg text-sm leading-relaxed text-white/75 sm:text-base line-clamp-2">{live.description}</p>}
-                {shouldUseAgoraPreview && <p className="text-sm font-semibold text-white/90">{audienceCount} spectateur{audienceCount > 1 ? 's' : ''}</p>}
-              </div>
-
-              {!shouldUseAgoraPreview && (
-                <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur-md">
-                  <Avatar className="h-12 w-12 border border-white/10">
-                    <AvatarImage src={live.host?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-white/15 text-white">{hostName.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{hostName}</p>
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/55">Créateur du live</p>
-                  </div>
-                </div>
+              ) : (
+                <Badge className="border-0 bg-sky-600 text-white text-xs gap-1">
+                  <Calendar className="h-3 w-3" /> {liveDate?.day || 'Programmé'}
+                  {liveDate?.time && ` · ${liveDate.time}`}
+                </Badge>
               )}
-
-              {!shouldUseAgoraPreview && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/55"><Calendar className="h-4 w-4" />Horaire</div>
-                    <p className="mt-3 text-base font-semibold">{liveDate?.day || (live.status === 'active' ? 'En cours maintenant' : 'Horaire à confirmer')}</p>
-                    <p className="mt-1 text-sm text-white/70">{liveDate?.time || 'Ouverture immédiate'}</p>
-                  </div>
-                  <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-white/55"><Users className="h-4 w-4" />Accès</div>
-                    <p className="mt-3 text-base font-semibold">{isPaid ? `${live.entry_price?.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}</p>
-                    <p className="mt-1 text-sm text-white/70">{live.max_attendees ? `${live.max_attendees} places max` : 'Places ouvertes'}</p>
-                  </div>
-                </div>
+              {live.status === 'active' && audienceCount > 0 && (
+                <Badge variant="secondary" className="border-0 bg-black/50 text-white text-xs gap-1">
+                  <Users className="h-3 w-3" /> {audienceCount}
+                </Badge>
               )}
+            </div>
+
+            {/* Infos bas – minimalistes */}
+            <div className="absolute bottom-6 left-0 right-0 z-10 px-5 space-y-3">
+              {/* Hôte */}
+              <div className="flex items-center gap-2.5">
+                <Avatar className="h-9 w-9 border border-white/20">
+                  <AvatarImage src={live.host?.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-white/15 text-sm text-white">{hostName.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-semibold text-white">{hostName}</span>
+              </div>
+
+              {/* Titre + description */}
+              <div>
+                <h2 className="text-lg font-bold text-white leading-tight line-clamp-2">{live.title}</h2>
+                {live.description && <p className="text-xs text-white/60 mt-0.5 line-clamp-1">{live.description}</p>}
+              </div>
 
               {/* CTA */}
-              <div className="sticky bottom-0 z-10 -mx-1 mt-auto rounded-[1.75rem] border border-white/10 bg-black/45 p-3 backdrop-blur-xl">
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button onClick={() => openLive(live)} className="h-12 flex-1 rounded-full bg-white text-black hover:bg-white/90">
-                    {live.status === 'active' ? (isPaid ? 'Acheter / rejoindre' : 'Rejoindre le live') : isPaid ? 'Voir le ticket' : 'Ouvrir le live'}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => openLive(live)}
+                  className="flex-1 h-11 rounded-full bg-white text-black font-semibold hover:bg-white/90"
+                >
+                  {live.status === 'active'
+                    ? (isPaid ? 'Acheter le ticket' : 'Rejoindre')
+                    : (isPaid ? 'Voir le ticket' : 'Ouvrir')}
+                </Button>
+                {isPaid && (
+                  <Button
+                    onClick={() => navigate(`/live/${live.id}/ticket`)}
+                    className="h-11 rounded-full bg-amber-500/90 text-black font-semibold hover:bg-amber-500 gap-1.5 px-5"
+                  >
+                    <Ticket className="h-4 w-4" />
+                    {live.entry_price?.toLocaleString('fr-FR')} SC
                   </Button>
-                  {isPaid && (
-                    <Button onClick={() => navigate(`/live/${live.id}/ticket`)} variant="outline" className="h-12 rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
-                      <Ticket className="mr-2 h-4 w-4" />{live.status === 'active' ? 'Ticket' : 'Page ticket'}
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </section>
@@ -444,66 +433,5 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
     </div>
   );
 };
-
-// ─── Placeholders internes ───────────────────────────────────────────────────
-
-const ActiveLivePlaceholder: React.FC<{ live: LiveFeedItem; hostName: string; audienceCount: number }> = ({ live, hostName, audienceCount }) => (
-  <div className="relative overflow-hidden rounded-[2rem] border border-red-400/25 bg-[radial-gradient(circle_at_top,_rgba(248,113,113,0.32),_rgba(17,24,39,0.92)_65%)] px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-    <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_36%,rgba(255,255,255,0.05)_70%,transparent)]" />
-    <div className="relative flex min-h-[20rem] flex-col justify-between gap-8">
-      <div className="flex items-center justify-between">
-        <div className="rounded-full border border-red-400/40 bg-red-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-red-100">Live en cours</div>
-        <div className="text-xs uppercase tracking-[0.22em] text-white/55">Aperçu automatique en attente</div>
-      </div>
-      <div className="space-y-5">
-        <Avatar className="h-20 w-20 border-2 border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-          <AvatarImage src={live.host?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-white/15 text-2xl text-white">{hostName.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-white/55">Diffusion en direct</p>
-          <h3 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">{live.title}</h3>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/75">Le créateur diffuse en ce moment. Ouvre le live pour voir la scène complète.</p>
-        </div>
-      </div>
-      <div className="flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-md">
-        <div><p className="text-xs uppercase tracking-[0.18em] text-white/55">Créateur</p><p className="mt-1 font-semibold text-white">{hostName}</p></div>
-        <div className="text-right"><p className="text-xs uppercase tracking-[0.18em] text-white/55">Audience</p><p className="mt-1 font-semibold text-white">{audienceCount > 0 ? `${audienceCount} spectateurs` : 'Ouvert maintenant'}</p></div>
-      </div>
-    </div>
-  </div>
-);
-
-const ScheduledLivePlaceholder: React.FC<{ live: LiveFeedItem; hostName: string; liveDate: { day: string; time: string } | null }> = ({ live, hostName, liveDate }) => (
-  <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.24),_rgba(15,23,42,0.95)_62%)] px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-    <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_36%,rgba(255,255,255,0.05)_70%,transparent)]" />
-    <div className="relative flex min-h-[20rem] flex-col justify-between gap-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.24em] text-sky-100/70">Programmé à venir</p>
-          <h3 className="max-w-md text-3xl font-black leading-tight sm:text-4xl">{live.title}</h3>
-        </div>
-        <Avatar className="h-16 w-16 border-2 border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-          <AvatarImage src={live.host?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-white/15 text-xl text-white">{hostName.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-3xl border border-white/10 bg-white/8 p-4 backdrop-blur-md">
-          <p className="text-xs uppercase tracking-[0.18em] text-white/55">Date</p>
-          <p className="mt-3 text-lg font-semibold text-white">{liveDate?.day || 'Date à confirmer'}</p>
-        </div>
-        <div className="rounded-3xl border border-white/10 bg-white/8 p-4 backdrop-blur-md">
-          <p className="text-xs uppercase tracking-[0.18em] text-white/55">Heure</p>
-          <p className="mt-3 text-lg font-semibold text-white">{liveDate?.time || 'Horaire à confirmer'}</p>
-        </div>
-      </div>
-      <div className="rounded-3xl border border-white/10 bg-black/20 p-4 backdrop-blur-md">
-        <p className="text-xs uppercase tracking-[0.18em] text-white/55">Ce que les spectateurs verront</p>
-        <p className="mt-3 text-sm leading-relaxed text-white/75">Une entrée verticale dédiée, puis l'accès direct au ticket ou au live au moment de l'ouverture.</p>
-      </div>
-    </div>
-  </div>
-);
 
 export default LiveFeedView;
