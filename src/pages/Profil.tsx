@@ -171,6 +171,8 @@ const Profil = () => {
         return <LikesTab userId={viewedUserId} />;
       case 'favorites':
         return <FavoritesTab userId={viewedUserId} />;
+      case 'lives':
+        return <LivesTab userId={viewedUserId} />;
       case 'shop':
         return <ShopTab userId={viewedUserId} />;
       default:
