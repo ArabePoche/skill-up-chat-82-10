@@ -28,7 +28,10 @@ import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 import NativeVideoPlayer from './players/NativeVideoPlayer';
 import YouTubePlayer from './players/YouTubePlayer';
 import VimeoPlayer from './players/VimeoPlayer';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+
+// Actions components
+import VideoSidebar from './videoactions/VideoSidebar';
 
 interface Video {
   id: string;
@@ -378,196 +381,30 @@ const VideoCard: React.FC<VideoCardProps> = ({
       </div>
 
 
-      {/* Actions côté droit */}
-      <div className="absolute right-3 bottom-20 flex flex-col items-center space-y-4 z-10">
-        {/* Avatar du créateur avec bouton d'abonnement / live */}
-        <div className="relative flex flex-col items-center">
-          <div 
-            className={`relative rounded-full cursor-pointer hover:opacity-90 transition-opacity ${activeLiveStream ? 'p-0.5 bg-gradient-to-tr from-pink-500 via-red-500 to-orange-500 animate-pulse' : ''}`}
-            onClick={handleProfileClick}
-          >
-            <Avatar 
-              className={`w-12 h-12 border-[1.5px] border-white ${activeLiveStream ? 'border-2 border-black/80' : ''}`}
-            >
-              <AvatarImage src={video.profiles?.avatar_url} />
-              <AvatarFallback className="bg-gray-600 text-white text-sm">
-                {video.profiles?.first_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-          
-          {activeLiveStream ? (
-            <Badge 
-              className="absolute -bottom-2 z-10 border border-black/50 bg-red-600 text-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider cursor-pointer hover:bg-red-700 pointer-events-auto"
-              onClick={handleProfileClick}
-            >
-              LIVE
-            </Badge>
-          ) : friendshipStatus === 'none' && video.author_id !== user?.id && (
-            <Button
-              onClick={handleFollow}
-              disabled={isFollowLoading}
-              size="sm"
-              className="absolute -bottom-2 z-10 w-5 h-5 p-0 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600 border border-white"
-            >
-              <Plus size={12} />
-            </Button>
-          )}
-        </div>
-
-        {/* Bouton Like */}
-        <div className="relative flex flex-col items-center">
-          <AnimatePresence>
-            {showLikeBurst && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0.9, scale: 0.45 }}
-                  animate={{ opacity: 0, scale: 3.1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 2.8, ease: 'easeOut' }}
-                  className="absolute top-0 left-1/2 h-12 w-12 -translate-x-1/2 rounded-full bg-red-500/90 blur-[1px]"
-                />
-                <motion.div
-                  initial={{ opacity: 0.95, scale: 0.8 }}
-                  animate={{ opacity: 0, scale: 2.5 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 2.2, ease: 'easeOut' }}
-                  className="absolute top-0 left-1/2 h-12 w-12 -translate-x-1/2 rounded-full border-2 border-red-300/90"
-                />
-                {[
-                  { x: 0, y: -34 },
-                  { x: 26, y: -18 },
-                  { x: 30, y: 12 },
-                  { x: 0, y: 30 },
-                  { x: -28, y: 14 },
-                  { x: -24, y: -20 },
-                ].map((particle, index) => (
-                  <motion.span
-                    key={index}
-                    initial={{ opacity: 0.95, x: 0, y: 0, scale: 0.9 }}
-                    animate={{ opacity: 0, x: particle.x, y: particle.y, scale: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 1.2, ease: 'easeOut', delay: index * 0.05 }}
-                    className="absolute left-1/2 top-6 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-red-300"
-                  />
-                ))}
-              </>
-            )}
-          </AnimatePresence>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleLike}
-            className={`relative z-10 w-12 h-12 rounded-full border-0 bg-transparent text-white shadow-none transition-all hover:scale-110 hover:bg-white/10 active:bg-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
-              isLiked ? '!text-red-500' : ''
-            }`}
-          >
-            <Heart size={24} className={isLiked ? 'fill-red-500 stroke-red-500 text-red-500' : 'text-white'} />
-          </Button>
-          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-            {formatCount(likesCount)}
-          </span>
-        </div>
-
-        {/* Bouton Commentaires - accessible à tous */}
-        <div className="flex flex-col items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowComments(true)}
-            className="w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-          >
-            <MessageCircle size={24} />
-          </Button>
-          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-            {formatCount(commentsCount)}
-          </span>
-        </div>
-
-        {/* Bouton Partager */}
-        <div className="flex flex-col items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowShare(true)}
-            className="w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-          >
-            <Share size={24} />
-          </Button>
-          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-            {t('video.share')}
-          </span>
-        </div>
-
-        {/* Bouton Cadeau */}
-        {user && user.id !== video.author_id && (
-          <div className="flex flex-col items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowGift(true)}
-              className="w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-            >
-              <Gift size={24} className="text-pink-500" />
-            </Button>
-            <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              Cadeau
-            </span>
-          </div>
-        )}
-
-        {/* Bouton Sauvegarder */}
-        <div className="flex flex-col items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSave}
-            className={`w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${
-              isSaved ? 'text-yellow-500' : ''
-            }`}
-          >
-            <Bookmark size={24} className={isSaved ? 'fill-current' : ''} />
-          </Button>
-          <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-            {isSaved ? t('video.saved') : t('video.save')}
-          </span>
-        </div>
-
-        {/* Bouton Série (pour les vidéos qui appartiennent à une série) */}
-        {seriesData && (
-          <div className="flex flex-col items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowSeries(true)}
-              className="w-12 h-12 rounded-full bg-primary/80 backdrop-blur-sm text-white hover:bg-primary"
-            >
-              <List size={24} />
-            </Button>
-            <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              {t('video.series')}
-            </span>
-          </div>
-        )}
-
-        {/* Bouton Formation (pour les vidéos promo) */}
-        {video.video_type === 'promo' && video.formation_id && (
-          <div className="flex flex-col items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleFormationRedirect}
-              className="w-12 h-12 rounded-full bg-edu-primary/80 backdrop-blur-sm text-white hover:bg-edu-primary"
-            >
-              <ShoppingBag size={24} />
-            </Button>
-            <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
-              {t('video.formation')}
-            </span>
-          </div>
-        )}
-      </div>
+      {/* Actions côté droit regroupées dans la Sidebar */}
+      <VideoSidebar
+        video={video}
+        user={user}
+        activeLiveStream={activeLiveStream}
+        friendshipStatus={friendshipStatus}
+        isFollowLoading={isFollowLoading}
+        isLiked={isLiked}
+        likesCount={likesCount}
+        commentsCount={commentsCount}
+        isSaved={isSaved}
+        showLikeBurst={showLikeBurst}
+        seriesData={seriesData}
+        onFollow={handleFollow}
+        onProfileClick={handleProfileClick}
+        onLike={handleLike}
+        onCommentClick={() => setShowComments(true)}
+        onShareClick={() => setShowShare(true)}
+        onGiftClick={() => setShowGift(true)}
+        onSave={handleSave}
+        onSeriesClick={() => setShowSeries(true)}
+        onFormationRedirect={handleFormationRedirect}
+        formatCount={formatCount}
+      />
 
       {/* Informations vidéo en bas à gauche */}
       <div className="absolute left-4 right-24 z-10 bottom-20">
