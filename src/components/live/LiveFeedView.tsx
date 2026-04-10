@@ -141,11 +141,7 @@ const LiveFeedView: React.FC = () => {
   const liveCardRefs = useRef<(HTMLElement | null)[]>([]);
   const liveVisibleRatiosRef = useRef<Map<number, number>>(new Map());
   const livePreviewChannelsRef = useRef<Map<string, ReturnType<typeof supabase.channel>>>(new Map());
-  const livePreviewRequesterIdRef = useRef(
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `live-preview-${Date.now()}-${Math.random().toString(36).slice(2)}`
-  );
+  const livePreviewRequesterIdRef = useRef(crypto.randomUUID());
 
   // ── Presence helpers ─────────────────────────────────────────────────────
 
