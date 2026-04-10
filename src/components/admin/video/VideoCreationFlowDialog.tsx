@@ -598,7 +598,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
         toast.success('Live programmé ! Partagez le lien de ticket pour que les gens réservent.');
         navigate(`/live/${createdLive.id}/ticket`);
       } else {
-        toast.success('Live demarre.');
+        toast.success('Live démarré !');
         navigate(`/live/${createdLive.id}?host=1`, { state: { preparedStudio } });
         // Notify audience in the background so a notification failure never blocks the live launch
         notifyAudienceAboutLive(createdLive.id, liveTitle, liveData.visibility).catch((err) => {
