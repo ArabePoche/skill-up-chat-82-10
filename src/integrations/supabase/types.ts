@@ -9909,6 +9909,8 @@ export type Database = {
           entry_price: number | null
           host_id: string
           id: string
+          max_attendees: number | null
+          scheduled_at: string | null
           started_at: string
           status: string
           title: string
@@ -9923,6 +9925,8 @@ export type Database = {
           entry_price?: number | null
           host_id: string
           id?: string
+          max_attendees?: number | null
+          scheduled_at?: string | null
           started_at?: string
           status?: string
           title: string
@@ -9937,6 +9941,8 @@ export type Database = {
           entry_price?: number | null
           host_id?: string
           id?: string
+          max_attendees?: number | null
+          scheduled_at?: string | null
           started_at?: string
           status?: string
           title?: string
@@ -10669,6 +10675,10 @@ export type Database = {
             }
             Returns: Record<string, unknown>
           }
+      admin_resolve_live_dispute: {
+        Args: { p_dispute_id: string; p_notes?: string; p_resolution: string }
+        Returns: Json
+      }
       approve_enrollment: {
         Args: {
           p_decided_by?: string
@@ -10834,6 +10844,10 @@ export type Database = {
       }
       earn_habbah: {
         Args: { p_action_type: string; p_reference_id?: string }
+        Returns: Json
+      }
+      file_live_dispute: {
+        Args: { p_live_id: string; p_reason: string }
         Returns: Json
       }
       find_contacts_by_phone: {
@@ -11101,6 +11115,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      purchase_live_ticket: {
+        Args: {
+          p_buyer_id: string
+          p_commission_amount: number
+          p_commission_rate: number
+          p_creator_amount: number
+          p_fcfa_amount: number
+          p_live_id: string
+          p_release_at: string
+          p_sc_amount: number
+        }
+        Returns: Json
+      }
+      purchase_live_ticket_authenticated: {
+        Args: { p_live_id: string }
+        Returns: Json
+      }
       recalculate_student_amount_due: {
         Args: {
           student_row: Database["public"]["Tables"]["students_school"]["Row"]
@@ -11118,6 +11149,10 @@ export type Database = {
           p_reviewer_id: string
         }
         Returns: undefined
+      }
+      release_live_payment_escrow: {
+        Args: { p_payment_id: string }
+        Returns: Json
       }
       resolve_gift_cancellation_claim: {
         Args: { p_action: string; p_admin_notes?: string; p_claim_id: string }
