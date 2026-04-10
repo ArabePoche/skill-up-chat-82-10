@@ -6,9 +6,9 @@ interface LiveStudioZoneProps {
   publicLiveScreen: LiveScreen;
   isHost: boolean;
   onScheduleStudioBroadcast: (screen: LiveScreen) => void;
-  onWhiteboardAction: (action: any) => void;
-  remoteWhiteboardAction: any;
-  remoteWhiteboardHistories: any;
+  onWhiteboardAction: (boardId: string, action: unknown) => void;
+  remoteWhiteboardAction: unknown;
+  remoteWhiteboardHistories: Record<string, unknown[]>;
 }
 
 export const LiveStudioZone: React.FC<LiveStudioZoneProps> = ({
