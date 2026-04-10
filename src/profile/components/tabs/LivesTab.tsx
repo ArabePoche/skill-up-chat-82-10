@@ -131,7 +131,11 @@ const LivesTab: React.FC<LiveTabProps> = ({ userId }) => {
                 <div
                   key={live.id}
                   className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(live.status === 'active' ? `/live/${live.id}?host=1` : `/live/${live.id}`)}
+                  onClick={() => navigate(
+                    live.status === 'active' || (isOwnProfile && live.status === 'scheduled')
+                      ? `/live/${live.id}?host=1`
+                      : `/live/${live.id}`
+                  )}
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{live.title}</p>
