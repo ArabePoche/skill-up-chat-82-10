@@ -32,6 +32,7 @@ import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
 import { LiveTeachingStudioRunner } from '@/live/components/LiveTeachingStudioRunner';
 import LiveScreenManager from '@/live/components/LiveScreenManager';
 import { useLiveAudience } from '@/live/hooks/useLiveAudience';
+import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
 
 // Utils
 import { formatScAmount, fcfaToScRounded } from '../components/live-classroom/user-live/utils/paymentUtils';
@@ -78,7 +79,9 @@ const UserLive: React.FC = () => {
   
   // 5. Screen Control
   const [isScreenManagerOpen, setIsScreenManagerOpen] = useState(false);
+  const [privateLiveScreen, setPrivateLiveScreen] = useState<LiveScreen | null>(null);
   const screens = useLiveScreenControl(isActuallyHost, stableUserId, presenceChannelRef, () => presence.syncLivePresence());
+  const { data: creatorAssets } = useLiveCreatorAssets(stableHostId);
 
   // 7. Payment & Permissions
   const { hasPaidEntry, isPayingEntry, scToFcfaRate, handlePayLiveEntry } = useLivePayment({
@@ -342,12 +345,18 @@ const UserLive: React.FC = () => {
 
       {isActuallyHost && (
         <LiveScreenManager
-          isOpen={isScreenManagerOpen}
-          onClose={() => setIsScreenManagerOpen(false)}
-          currentScreen={screens.publicLiveScreen}
-          onScreenChange={(s) => {
+          open={isScreenManagerOpen}
+          onOpenChange={(open) => setIsScreenManagerOpen(open)}
+          products={creatorAssets?.products ?? []}
+          formations={creatorAssets?.formations ?? []}
+          publicScreen={screens.publicLiveScreen}
+          privateScreen={privateLiveScreen}
+          onSelectPublicScreen={(s) => {
             screens.broadcastPublicLiveScreen(s);
             setIsScreenManagerOpen(false);
+          }}
+          onSelectPrivateScreen={(s) => {
+            setPrivateLiveScreen(s);
           }}
         />
       )}
