@@ -5,11 +5,13 @@ interface FollowButtonInlineProps {
   hostId: string;
 }
 
-export const FollowButtonInline: React.FC<FollowButtonInlineProps> = ({ hostId }) => {
+const FollowButtonInline: React.FC<FollowButtonInlineProps> = ({ hostId }) => {
   const { friendshipStatus, sendRequest, cancelRequest, acceptRequest, removeFriend, isLoading } = useFollow(hostId);
 
-  const label = friendshipStatus === 'friends' ? 'Abonné'
-    : friendshipStatus === 'pending_sent' ? 'Envoyé'
+  const label = friendshipStatus === 'friends'
+    ? 'Abonné'
+    : friendshipStatus === 'pending_sent'
+    ? 'Envoyé'
     : 'Suivre';
 
   const colors = friendshipStatus === 'friends'
@@ -18,8 +20,8 @@ export const FollowButtonInline: React.FC<FollowButtonInlineProps> = ({ hostId }
     ? 'bg-white/20 text-white'
     : 'bg-red-500 text-white';
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
     if (friendshipStatus === 'friends') removeFriend();
     else if (friendshipStatus === 'pending_sent') cancelRequest();
     else if (friendshipStatus === 'pending_received') acceptRequest();
@@ -36,3 +38,5 @@ export const FollowButtonInline: React.FC<FollowButtonInlineProps> = ({ hostId }
     </button>
   );
 };
+
+export default FollowButtonInline;

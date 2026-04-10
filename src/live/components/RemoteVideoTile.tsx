@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MicOff, VideoOff } from 'lucide-react';
 import type { IRemoteVideoTrack } from 'agora-rtc-sdk-ng';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const VIDEO_TRACK_RETRY_DELAY_MS = 600;
 
@@ -17,7 +17,7 @@ interface RemoteVideoTileProps {
   onRevealControls?: () => void;
 }
 
-export const RemoteVideoTile: React.FC<RemoteVideoTileProps> = ({
+const RemoteVideoTile: React.FC<RemoteVideoTileProps> = ({
   uid,
   getRemoteVideoTrack,
   label,
@@ -33,15 +33,16 @@ export const RemoteVideoTile: React.FC<RemoteVideoTileProps> = ({
   useEffect(() => {
     const tryPlay = () => {
       const track = getRemoteVideoTrack(uid);
-      const el = containerRef.current;
-      if (el && track) {
-        el.innerHTML = '';
-        track.play(el, { fit: 'contain' });
+      const element = containerRef.current;
+      if (element && track) {
+        element.innerHTML = '';
+        track.play(element, { fit: 'contain' });
       }
     };
+
     tryPlay();
-    const timer = setTimeout(tryPlay, VIDEO_TRACK_RETRY_DELAY_MS);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(tryPlay, VIDEO_TRACK_RETRY_DELAY_MS);
+    return () => window.clearTimeout(timer);
   }, [uid, getRemoteVideoTrack, remoteUsers]);
 
   return (
@@ -85,3 +86,5 @@ export const RemoteVideoTile: React.FC<RemoteVideoTileProps> = ({
     </div>
   );
 };
+
+export default RemoteVideoTile;

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LiveScreenDisplay from '@/live/components/LiveScreenDisplay';
-import LiveTeachingStudioEditor from '@/live/components/LiveTeachingStudioEditor';
+import { LiveTeachingStudioEditor } from '@/live/components/studio-live';
 import type { LiveFormation, LiveMarketplaceProduct, LiveScreen, LiveScreenKind, LiveTeachingStudio } from '@/live/types';
 import { getLiveFormationImage, getLiveProductImage, getLiveTeachingStudioImage } from '@/live/types';
 

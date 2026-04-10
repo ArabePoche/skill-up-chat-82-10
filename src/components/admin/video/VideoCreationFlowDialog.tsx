@@ -38,7 +38,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 import { captureThumbnailFromVideoElement, captureVideoThumbnail, composeVideoForPublish, type StickerPosition } from '@/utils/videoComposer';
 import type { LiveTeachingStudio } from '@/live/types';
-import LiveTeachingStudioEditor from '@/live/components/LiveTeachingStudioEditor';
+import { LiveTeachingStudioEditor } from '@/live/components/studio-live';
 
 type CreationMethod = 'record' | 'upload' | 'url';
 type FlowStep = 'choice' | 'record' | 'finalize' | 'details' | 'live';

@@ -1,0 +1,1 @@
+export { default } from '@/live/components/studio-live/whiteboard/LiveStudioWhiteboard';
