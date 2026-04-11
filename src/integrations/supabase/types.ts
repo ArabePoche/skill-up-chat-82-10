@@ -1577,6 +1577,48 @@ export type Database = {
           },
         ]
       }
+      formation_pre_registrations: {
+        Row: {
+          created_at: string
+          formation_id: string
+          id: string
+          motivation: string | null
+          notified_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          formation_id: string
+          id?: string
+          motivation?: string | null
+          notified_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          formation_id?: string
+          id?: string
+          motivation?: string | null
+          notified_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_pre_registrations_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_pre_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friend_requests: {
         Row: {
           created_at: string | null
@@ -10869,6 +10911,23 @@ export type Database = {
       get_formation_details_by_id: {
         Args: { p_formation_id: string; p_user_id: string }
         Returns: Json
+      }
+      get_formation_pre_registrations: {
+        Args: { p_formation_id: string }
+        Returns: {
+          avatar_url: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          motivation: string | null
+          notified_at: string | null
+          phone: string | null
+          user_id: string
+          username: string | null
+        }[]
       }
       get_formation_unread_count: {
         Args: { p_formation_id: string; p_teacher_id: string }

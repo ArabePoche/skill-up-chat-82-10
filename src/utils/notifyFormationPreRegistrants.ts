@@ -1,4 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables, TablesInsert } from '@/integrations/supabase/types';
+
+type PendingFormationPreRegistration = Pick<Tables<'formation_pre_registrations'>, 'id' | 'user_id'>;
 
 export const notifyFormationPreRegistrants = async (formationId: string) => {
   if (!formationId) {
@@ -19,10 +22,7 @@ export const notifyFormationPreRegistrants = async (formationId: string) => {
     return { notifiedCount: 0 };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any;
-
-  const { data: preRegistrations, error: preRegistrationsError } = await db
+  const { data: preRegistrations, error: preRegistrationsError } = await supabase
     .from('formation_pre_registrations')
     .select('id, user_id')
     .eq('formation_id', formationId)
@@ -39,9 +39,10 @@ export const notifyFormationPreRegistrants = async (formationId: string) => {
   const now = new Date().toISOString();
   const title = '🎉 Formation disponible';
   const message = `La formation "${formation.title}" est maintenant disponible. Vous pouvez finaliser votre inscription.`;
-  const userIds = preRegistrations.map((registration: { user_id: string }) => registration.user_id);
+  const pendingPreRegistrations: PendingFormationPreRegistration[] = preRegistrations || [];
+  const userIds = pendingPreRegistrations.map((registration) => registration.user_id);
 
-  const notifications = userIds.map((userId: string) => ({
+  const notifications: TablesInsert<'notifications'>[] = userIds.map((userId) => ({
     user_id: userId,
     formation_id: formationId,
     title,
@@ -75,10 +76,10 @@ export const notifyFormationPreRegistrants = async (formationId: string) => {
     console.error('Error sending pre-registration push notifications:', pushError);
   }
 
-  const { error: updateError } = await db
+  const { error: updateError } = await supabase
     .from('formation_pre_registrations')
     .update({ notified_at: now })
-    .in('id', preRegistrations.map((registration: { id: string }) => registration.id));
+    .in('id', pendingPreRegistrations.map((registration) => registration.id));
 
   if (updateError) {
     throw updateError;

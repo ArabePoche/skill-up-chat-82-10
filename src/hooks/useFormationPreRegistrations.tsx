@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesInsert } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { getFormationRequiredProfile, isFormationProfileComplete } from '@/utils/formationProfileRequirements';
 
@@ -51,10 +52,7 @@ export const useCreateFormationPreRegistration = () => {
         throw new Error('Cette formation est déjà active. Utilisez l’inscription classique.');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const db = supabase as any;
-
-      const { data: existingRegistration, error: existingRegistrationError } = await db
+      const { data: existingRegistration, error: existingRegistrationError } = await supabase
         .from('formation_pre_registrations')
         .select('id')
         .eq('formation_id', formationId)
@@ -69,13 +67,15 @@ export const useCreateFormationPreRegistration = () => {
         throw new Error('Vous êtes déjà pré-inscrit à cette formation');
       }
 
-      const { data, error } = await db
+      const payload: TablesInsert<'formation_pre_registrations'> = {
+        formation_id: formationId,
+        user_id: userId,
+        motivation: motivation?.trim() || null,
+      };
+
+      const { data, error } = await supabase
         .from('formation_pre_registrations')
-        .insert({
-          formation_id: formationId,
-          user_id: userId,
-          motivation: motivation?.trim() || null,
-        })
+        .insert(payload)
         .select()
         .single();
 
@@ -109,10 +109,7 @@ export const useFormationPreRegistrations = (formationId: string, enabled = true
         return [];
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const db = supabase as any;
-
-      const { data, error } = await db.rpc('get_formation_pre_registrations', {
+      const { data, error } = await supabase.rpc('get_formation_pre_registrations', {
         p_formation_id: formationId,
       });
 
@@ -120,7 +117,7 @@ export const useFormationPreRegistrations = (formationId: string, enabled = true
         throw error;
       }
 
-      return (data || []) as FormationPreRegistrationRecord[];
+      return data || [];
     },
     enabled: enabled && !!formationId,
   });
