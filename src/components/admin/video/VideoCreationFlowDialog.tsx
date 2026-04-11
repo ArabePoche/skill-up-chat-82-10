@@ -611,7 +611,7 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
       if (isSingleActiveLiveViolation(error as { code?: string; message?: string | null })) {
         toast.error('Vous avez déjà un live en cours. Terminez-le avant d’en lancer un autre.');
       } else {
-        toast.error('Impossible de demarrer le live.');
+        toast.error('Impossible de démarrer le live.');
       }
     } finally {
       setIsLaunchingLive(false);
