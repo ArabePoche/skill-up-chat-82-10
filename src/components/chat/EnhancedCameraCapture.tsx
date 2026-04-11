@@ -1,3 +1,7 @@
+/**
+ * Composant de capture photo responsive avec annotation
+ * Compatible mobile et desktop
+ */
 import React, { useEffect, useState, useRef } from 'react';
 import { Camera, X, Check, Upload, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -139,8 +143,8 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
       <Dialog open={true} onOpenChange={() => setShowAnnotation(false)}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0">
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Annoter la photo</h3>
+            <div className="flex items-center justify-between p-3 border-b">
+              <h3 className="text-base font-semibold">Annoter la photo</h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -169,11 +173,12 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
 
   if (isCapturing) {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col">
-        <div className="flex-1 relative">
+      <div className="fixed inset-0 bg-black z-50 flex flex-col safe-area-inset">
+        {/* Zone de prévisualisation — occupe tout l'espace */}
+        <div className="flex-1 relative overflow-hidden">
           <video
             ref={videoRef}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             autoPlay
             playsInline
             muted
@@ -182,55 +187,64 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
           
           {capturedImage && (
             <div className="absolute inset-0 bg-black flex items-center justify-center">
-              <img src={capturedImage} alt="Captured" className="max-w-full max-h-full object-contain" />
+              <img 
+                src={capturedImage} 
+                alt="Captured" 
+                className="max-w-full max-h-full object-contain" 
+              />
             </div>
           )}
-        </div>
-        
-        <div className="bg-black p-4 flex justify-center space-x-4">
+
+          {/* Bouton fermer en haut à gauche */}
           <Button
             onClick={cancelCapture}
-            variant="outline"
-            size="lg"
-            className="bg-red-500 text-white border-red-500 hover:bg-red-600"
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 left-4 z-10 bg-black/40 text-white rounded-full h-10 w-10 hover:bg-black/60"
           >
-            <X size={20} />
+            <X size={22} />
           </Button>
-          
+        </div>
+        
+        {/* Barre d'actions en bas — responsive */}
+        <div className="bg-black/90 backdrop-blur-sm px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-center gap-6">
           {!capturedImage ? (
             <>
               <Button
                 onClick={handleGalleryUpload}
-                size="lg"
-                className="bg-blue-500 text-white hover:bg-blue-600"
+                size="icon"
+                className="bg-white/15 text-white hover:bg-white/25 rounded-full h-12 w-12"
               >
                 <Upload size={20} />
               </Button>
-              <Button
+              <button
                 onClick={capturePhoto}
-                size="lg"
-                className="bg-white text-black hover:bg-gray-200 w-16 h-16 rounded-full"
+                className="h-16 w-16 rounded-full border-4 border-white bg-transparent flex items-center justify-center hover:bg-white/10 transition-colors"
               >
-                <Camera size={24} />
-              </Button>
+                <div className="h-12 w-12 rounded-full bg-white" />
+              </button>
+              {/* Espace pour équilibrer le layout */}
+              <div className="h-12 w-12" />
             </>
           ) : (
-            <div className="flex gap-4">
+            <>
               <Button
                 onClick={openAnnotation}
-                size="lg"
-                className="bg-purple-500 text-white hover:bg-purple-600"
+                size="icon"
+                className="bg-purple-500/80 text-white hover:bg-purple-600 rounded-full h-12 w-12"
               >
                 <Edit3 size={20} />
               </Button>
               <Button
                 onClick={confirmCapture}
-                size="lg"
-                className="bg-green-500 text-white hover:bg-green-600"
+                size="icon"
+                className="bg-green-500 text-white hover:bg-green-600 rounded-full h-14 w-14"
               >
-                <Check size={20} />
+                <Check size={24} />
               </Button>
-            </div>
+              {/* Espace pour équilibrer */}
+              <div className="h-12 w-12" />
+            </>
           )}
         </div>
         

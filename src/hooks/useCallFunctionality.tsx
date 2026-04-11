@@ -7,7 +7,7 @@ import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
-import { NotificationSoundService } from '@/services/NotificationSoundService';
+
 
 export interface AcceptedCall {
   id: string;
@@ -99,18 +99,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     channelRef.current = callChannel;
   }, [clearCallState, cleanupRealtimeChannel]);
 
-  // Gérer le son d'attente pour l'appelant
-  useEffect(() => {
-    if (isCallActive && currentCall?.status === 'pending') {
-      NotificationSoundService.startCallingTone();
-    } else {
-      NotificationSoundService.stopCallingTone();
-    }
-
-    return () => {
-      NotificationSoundService.stopCallingTone();
-    };
-  }, [isCallActive, currentCall?.status]);
+  // Son d'attente supprimé — l'appelant n'a plus de sonnerie
 
   const initiateCall = useCallback(async (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => {
     if (!user) {

@@ -291,7 +291,7 @@ export const useAgoraCall = () => {
         localUid: typeof assignedUid === 'number' ? assignedUid : agoraUid,
       }));
 
-      toast.success('Connecté à l\'appel');
+      console.log('✅ Connecté à l\'appel Agora');
     } catch (error) {
       console.error('❌ Error joining Agora call:', error);
       if (typeof error === 'object' && error && 'code' in error) {
