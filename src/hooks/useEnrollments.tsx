@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useCallback, useState } from 'react';
+import { getFormationRequiredProfile, isFormationProfileComplete } from '@/utils/formationProfileRequirements';
 
 export const useCreateEnrollment = () => {
   const queryClient = useQueryClient();
@@ -19,19 +20,10 @@ export const useCreateEnrollment = () => {
       console.log('Creating enrollment request for:', { formationId, userId, planType });
 
       // Vérifier d'abord si le profil est complet
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('phone, country, gender')
-        .eq('id', userId)
-        .single();
-
-      if (profileError) {
-        console.error('Error checking profile:', profileError);
-        throw new Error('Erreur lors de la vérification du profil');
-      }
+      const profile = await getFormationRequiredProfile(userId);
 
       // Vérifier si les champs obligatoires sont remplis
-      if (!profile.phone || !profile.country || !profile.gender) {
+      if (!isFormationProfileComplete(profile)) {
         throw new Error('PROFILE_INCOMPLETE');
       }
 

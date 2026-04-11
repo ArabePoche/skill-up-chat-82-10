@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Trash2, Plus, Layers } from 'lucide-react';
+import { Edit, Trash2, Plus, Layers, Users } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import LevelsManagement from './LevelsManagement';
 import DynamicFormationForm from './DynamicFormationForm';
 import FormationPricingManager from './FormationPricingManager';
+import { FormationPreRegistrationRecord, useFormationPreRegistrations } from '@/hooks/useFormationPreRegistrations';
+import { notifyFormationPreRegistrants } from '@/utils/notifyFormationPreRegistrants';
 
 interface FormationsManagementProps { authorId?: string; }
 
@@ -32,8 +34,13 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
   const [isPricingDialogOpen, setIsPricingDialogOpen] = useState(false);
   const [pricingFormationId, setPricingFormationId] = useState<string | null>(null);
   const [pricingFormationLessons, setPricingFormationLessons] = useState<any[]>([]);
+  const [selectedPreRegistrationFormation, setSelectedPreRegistrationFormation] = useState<{ id: string; title: string } | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { data: preRegistrations = [], isLoading: preRegistrationsLoading } = useFormationPreRegistrations(
+    selectedPreRegistrationFormation?.id || '',
+    !!selectedPreRegistrationFormation?.id
+  );
 
   const { data: formations, isLoading } = useQuery({
     queryKey: ['admin-formations', authorId || 'all'],
@@ -197,7 +204,7 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
   });
 
   const updateCompleteFormationMutation = useMutation({
-    mutationFn: async ({ id, formationData }: { id: string; formationData: any }) => {
+    mutationFn: async ({ id, formationData, previousIsActive }: { id: string; formationData: any; previousIsActive: boolean }) => {
       console.log('Updating complete formation:', formationData);
       
       try {
@@ -373,15 +380,30 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
           }
         }
 
-        return { id };
+        return { id, activated: !previousIsActive && Boolean(formationData.isActive) };
       } catch (error) {
         console.error('Error updating formation:', error);
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async ({ id, activated }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-formations'] });
-      toast.success('Formation mise à jour avec succès');
+      if (activated) {
+        try {
+          const { notifiedCount } = await notifyFormationPreRegistrants(id);
+          toast.success(
+            notifiedCount > 0
+              ? `Formation mise à jour et ${notifiedCount} pré-inscrit(s) notifié(s)`
+              : 'Formation mise à jour avec succès'
+          );
+        } catch (notificationError) {
+          console.error('Error notifying pre-registrants:', notificationError);
+          toast.success('Formation mise à jour avec succès');
+          toast.error('La formation a été activée, mais la notification des pré-inscrits a échoué.');
+        }
+      } else {
+        toast.success('Formation mise à jour avec succès');
+      }
       setIsEditDialogOpen(false);
       setEditingFormation(null);
     },
@@ -564,10 +586,10 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
     if (items.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-            Aucune création dans cette catégorie.
-          </TableCell>
-        </TableRow>
+            <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+              Aucune création dans cette catégorie.
+            </TableCell>
+          </TableRow>
       );
     }
 
@@ -591,6 +613,16 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
             <Badge variant="outline">
               {formation.badge || 'N/A'}
             </Badge>
+          </TableCell>
+          <TableCell>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedPreRegistrationFormation({ id: formation.id, title: formation.title })}
+            >
+              <Users size={14} className="mr-1" />
+              Préinscrits
+            </Button>
           </TableCell>
           <TableCell>{formation.price ? `${formation.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}</TableCell>
           <TableCell>
@@ -692,7 +724,8 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
               <DynamicFormationForm
                 onSubmit={(data) => updateCompleteFormationMutation.mutate({ 
                   id: editingFormation.id, 
-                  formationData: data 
+                  formationData: data,
+                  previousIsActive: Boolean(editingFormation.isActive),
                 })}
                 isLoading={updateCompleteFormationMutation.isPending}
                 initialData={editingFormation}
@@ -718,6 +751,57 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
             )}
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={!!selectedPreRegistrationFormation}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedPreRegistrationFormation(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                Pré-inscrits — {selectedPreRegistrationFormation?.title}
+              </DialogTitle>
+            </DialogHeader>
+
+            {preRegistrationsLoading ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">Chargement des pré-inscrits...</div>
+            ) : preRegistrations.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">Aucun pré-inscrit pour cette formation.</div>
+            ) : (
+              <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+                {preRegistrations.map((registration: FormationPreRegistrationRecord) => {
+                  const name = `${registration.first_name || ''} ${registration.last_name || ''}`.trim() || registration.username || 'Utilisateur';
+
+                  return (
+                    <div key={registration.id} className="rounded-lg border p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium">{name}</p>
+                          <p className="text-sm text-muted-foreground">{registration.email || 'Email non renseigné'}</p>
+                          <p className="text-sm text-muted-foreground">Téléphone : {registration.phone || 'Non renseigné'}</p>
+                          <p className="text-sm text-muted-foreground">Pays : {registration.country || 'Non renseigné'}</p>
+                        </div>
+                        <Badge variant={registration.notified_at ? 'default' : 'outline'}>
+                          {registration.notified_at ? 'Notifié' : 'En attente'}
+                        </Badge>
+                      </div>
+                      {registration.motivation && (
+                        <p className="mt-3 text-sm text-gray-700">{registration.motivation}</p>
+                      )}
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Pré-inscription le {new Date(registration.created_at).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="active" className="space-y-4">
@@ -737,6 +821,7 @@ const FormationsManagement = ({ authorId }: FormationsManagementProps) => {
                     <TableHead>Auteur</TableHead>
                     <TableHead>Enseignants</TableHead>
                     <TableHead>Badge</TableHead>
+                    <TableHead>Pré-inscrits</TableHead>
                     <TableHead>Prix</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Actions</TableHead>
