@@ -7,7 +7,7 @@ import { usePlanLimits } from '@/plan-limits/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
-import { NotificationSoundService } from '@/services/NotificationSoundService';
+
 
 export interface AcceptedCall {
   id: string;
