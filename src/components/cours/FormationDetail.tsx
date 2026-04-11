@@ -14,6 +14,13 @@ import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
 import { GroupChatInterface } from '@/components/group-chat/GroupChatInterface';
 import { useTranslation } from 'react-i18next';
 import { OfflineDownloadButton } from '@/offline';
+import PublicMessageBanner from '@/components/formation-public-messages/PublicMessageBanner';
+import PublicMessagePlayerOverlay from '@/components/formation-public-messages/PublicMessagePlayerOverlay';
+import {
+  type FormationPublicMessage,
+  useFormationPublicMessages,
+  useMarkFormationPublicMessageViewed,
+} from '@/hooks/formation-public-messages/useFormationPublicMessages';
 
 interface Lesson {
   id: number | string;
@@ -67,6 +74,9 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   const { data: userRole } = useUserRole(String(formation.id));
   const { subscription } = useUserSubscription(String(formation.id));
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
+  const [openedPrivateLevelId, setOpenedPrivateLevelId] = useState<string | null>(null);
+  const [previewMessage, setPreviewMessage] = useState<FormationPublicMessage | null>(null);
+  const [activeUrgentMessage, setActiveUrgentMessage] = useState<FormationPublicMessage | null>(null);
 
   // Gérer l'ancrage vers la section pricing
   useEffect(() => {
@@ -81,6 +91,24 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   }, []);
 
   const { data: paymentProgress } = useStudentPaymentProgress(String(formation.id));
+  const { bannerMessages, pendingUrgentMessage } = useFormationPublicMessages({
+    formationId: String(formation.id),
+    levelId: openedPrivateLevelId,
+    enabled: subscription?.plan_type !== 'groupe' && userRole?.role !== 'teacher',
+  });
+  const markPublicMessageViewed = useMarkFormationPublicMessageViewed(String(formation.id), openedPrivateLevelId);
+
+  useEffect(() => {
+    if (pendingUrgentMessage) {
+      setActiveUrgentMessage((currentMessage) => {
+        if (currentMessage?.id === pendingUrgentMessage.id) {
+          return currentMessage;
+        }
+
+        return pendingUrgentMessage;
+      });
+    }
+  }, [pendingUrgentMessage]);
 
   if (userRole?.role === 'teacher') {
     return (
@@ -113,6 +141,15 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
     if (subscription?.plan_type === 'groupe') {
       setSelectedLevel(level);
     }
+  };
+
+  const handlePrivateLevelOpen = (level: Level) => {
+    setOpenedPrivateLevelId(level.id.toString());
+  };
+
+  const closePublicMessageOverlay = () => {
+    setPreviewMessage(null);
+    setActiveUrgentMessage(null);
   };
 
   return (
@@ -209,6 +246,12 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
         </Collapsible>
       </div>
 
+      {subscription?.plan_type !== 'groupe' && bannerMessages.length > 0 && openedPrivateLevelId && (
+        <div className="px-4 pb-2">
+          <PublicMessageBanner messages={bannerMessages} onOpenMessage={setPreviewMessage} />
+        </div>
+      )}
+
       {/* Lessons List - Affichage conditionnel selon le plan */}
       {subscription?.plan_type === 'groupe' ? (
         <GroupLevelsList 
@@ -221,8 +264,17 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
           levels={formation.levels}
           formationId={String(formation.id)}
           onLessonClick={onLessonClick}
+          onLevelOpen={handlePrivateLevelOpen}
         />
       )}
+
+      <PublicMessagePlayerOverlay
+        open={!!activeUrgentMessage || !!previewMessage}
+        message={activeUrgentMessage ?? previewMessage}
+        blocking={!!activeUrgentMessage}
+        onClose={closePublicMessageOverlay}
+        onCompleted={(messageId) => markPublicMessageViewed.mutateAsync(messageId)}
+      />
     </div>
   );
 };

@@ -15,6 +15,7 @@ import ModernMediaPreview from '@/components/chat/ModernMediaPreview';
 import { useConversationMessageReactions, useToggleConversationReaction } from '@/hooks/conversations/useConversationMessageReactions';
 import { useDeleteConversationMessage, useEditConversationMessage } from '@/hooks/conversations/useConversationOperations';
 import { LinkifiedText } from '@/utils/linkify';
+import { formatMessageTime } from '@/utils/dateUtils';
 
 interface ConversationMedia {
   id: string;
@@ -62,6 +63,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
   const aggregatedReactions = useMemo(() => {
     return Object.entries(reactions || {}).map(([emoji, info]) => ({ emoji, ...info }));
   }, [reactions]);
+  const hasAttachment = Boolean(message.conversation_media?.length);
 
   const onSelectEmoji = async (emoji: string) => {
     setShowEmojiPicker(false);
@@ -92,7 +94,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
       <ContextMenuTrigger asChild>
         <div className="relative">
           <div
-            className={`relative max-w-[70%] p-3 rounded-lg shadow-sm ${
+            className={`relative w-fit max-w-[min(82vw,28rem)] p-3 rounded-lg shadow-sm ${
               isOwnMessage
                 ? 'bg-[#25d366] text-white rounded-br-sm ml-auto'
                 : 'bg-white text-gray-800 rounded-bl-sm border border-[#25d366]/20'
@@ -149,6 +151,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
                         fileUrl={media.file_url}
                         fileName={media.file_name}
                         fileType={media.file_type}
+                        timeLabel={formatMessageTime(message.created_at)}
                       />
                     ))}
                   </div>
@@ -171,7 +174,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
                 <Smile size={14} />
               </button>
               <span>
-                {new Date(message.created_at).toLocaleTimeString('fr-FR', {
+                {!hasAttachment && new Date(message.created_at).toLocaleTimeString('fr-FR', {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}

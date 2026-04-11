@@ -216,7 +216,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
       {/* Messages groupés par date */}
       {Object.entries(groupedMessages).map(([dateLabel, messagesInGroup]) => (
-        <React.Fragment key={dateLabel}>
+        <div key={dateLabel} className="space-y-4">
           <DateSeparator date={dateLabel} />
           
           {messagesInGroup.map((message) => {
@@ -348,7 +348,7 @@ const MessageList: React.FC<MessageListProps> = ({
           </div>
         );
           })}
-        </React.Fragment>
+        </div>
       ))}
 
       {/* Affichage des évaluations en attente pour les étudiants - APRÈS les messages */}

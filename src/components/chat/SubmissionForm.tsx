@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import CameraCapture from './CameraCapture';
+import EnhancedCameraCapture from './EnhancedCameraCapture';
 import AudioRecorder from './AudioRecorder';
 
 interface SubmissionFormProps {
@@ -35,7 +35,11 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
 
   const handleCameraCapture = (file: File) => {
     setSelectedFile(file);
-    setSubmissionText(`Photo capturée pour l'exercice: ${exerciseTitle}`);
+    setSubmissionText(
+      file.type.startsWith('video/')
+        ? `Vidéo enregistrée pour l'exercice: ${exerciseTitle}`
+        : `Photo capturée pour l'exercice: ${exerciseTitle}`
+    );
   };
 
   const handleAudioCapture = (file: File) => {
@@ -88,7 +92,7 @@ const SubmissionForm: React.FC<SubmissionFormProps> = ({
             </Button>
 
             <div className="flex-shrink-0">
-              <CameraCapture
+              <EnhancedCameraCapture
                 onCapture={handleCameraCapture}
                 disabled={isSubmitting}
               />

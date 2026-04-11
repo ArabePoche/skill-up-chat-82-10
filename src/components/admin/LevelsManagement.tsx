@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import LessonsManagement from './LessonsManagement';
+import PublicMessageManagerDialog from '@/components/formation-public-messages/PublicMessageManagerDialog';
 
 interface LevelsManagementProps {
   formationId: string;
@@ -178,36 +179,42 @@ const LevelsManagement: React.FC<LevelsManagementProps> = ({ formationId, format
                 <p className="text-blue-100 text-sm mt-1">{formationTitle}</p>
               </div>
             </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-white text-blue-600 hover:bg-blue-50">
-                  <Plus size={16} className="mr-2" />
-                  Nouveau niveau
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Créer un nouveau niveau</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleCreateSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Titre</label>
-                    <Input name="title" required />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Description</label>
-                    <Textarea name="description" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Numéro d'ordre</label>
-                    <Input name="order_index" type="number" min="1" defaultValue="1" required />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={createLevelMutation.isPending}>
-                    {createLevelMutation.isPending ? 'Création...' : 'Créer le niveau'}
+            <div className="flex items-center gap-2">
+              <PublicMessageManagerDialog
+                formationId={formationId}
+                levels={(levels ?? []).map((level) => ({ id: level.id, title: level.title }))}
+              />
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-white text-blue-600 hover:bg-blue-50">
+                    <Plus size={16} className="mr-2" />
+                    Nouveau niveau
                   </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Créer un nouveau niveau</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Titre</label>
+                      <Input name="title" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Description</label>
+                      <Textarea name="description" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Numéro d'ordre</label>
+                      <Input name="order_index" type="number" min="1" defaultValue="1" required />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={createLevelMutation.isPending}>
+                      {createLevelMutation.isPending ? 'Création...' : 'Créer le niveau'}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">

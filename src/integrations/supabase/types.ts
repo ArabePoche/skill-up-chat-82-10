@@ -1470,6 +1470,205 @@ export type Database = {
         }
         Relationships: []
       }
+      formation_public_message_views: {
+        Row: {
+          completed_at: string
+          created_at: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_public_message_views_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "formation_public_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_public_message_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formation_public_message_comments: {
+        Row: {
+          audio_path: string | null
+          audio_url: string | null
+          comment_type: string
+          content: string | null
+          created_at: string
+          id: string
+          message_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_path?: string | null
+          audio_url?: string | null
+          comment_type?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          message_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_path?: string | null
+          audio_url?: string | null
+          comment_type?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_public_message_comments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "formation_public_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_public_message_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formation_public_message_likes: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_public_message_likes_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "formation_public_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_public_message_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formation_public_messages: {
+        Row: {
+          author_id: string
+          created_at: string
+          description: string | null
+          formation_id: string
+          id: string
+          is_active: boolean
+          level_id: string | null
+          media_path: string | null
+          media_type: string
+          media_url: string
+          scope: string
+          title: string | null
+          updated_at: string
+          urgent: boolean
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          description?: string | null
+          formation_id: string
+          id?: string
+          is_active?: boolean
+          level_id?: string | null
+          media_path?: string | null
+          media_type: string
+          media_url: string
+          scope?: string
+          title?: string | null
+          updated_at?: string
+          urgent?: boolean
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          description?: string | null
+          formation_id?: string
+          id?: string
+          is_active?: boolean
+          level_id?: string | null
+          media_path?: string | null
+          media_type?: string
+          media_url?: string
+          scope?: string
+          title?: string | null
+          updated_at?: string
+          urgent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_public_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_public_messages_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_public_messages_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formations: {
         Row: {
           accepted_payment_methods: string[] | null

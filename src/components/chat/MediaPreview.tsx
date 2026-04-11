@@ -13,6 +13,7 @@ interface MediaPreviewProps {
   isOwnMessage?: boolean;
   authorName?: string;
   authorAvatarUrl?: string;
+  timeLabel?: string;
 }
 
 const MediaPreview: React.FC<MediaPreviewProps> = ({
@@ -25,7 +26,8 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
   formationId,
   isOwnMessage = false,
   authorName,
-  authorAvatarUrl
+  authorAvatarUrl,
+  timeLabel,
 }) => {
   // Fonction de mise à jour pour permettre l'édition des images
   const handleUpdate = (newUrl: string) => {
@@ -45,6 +47,7 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
       isOwnMessage={isOwnMessage}
       authorName={authorName}
       authorAvatarUrl={authorAvatarUrl}
+      timeLabel={timeLabel}
     />
   );
 };

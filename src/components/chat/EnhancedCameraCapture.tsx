@@ -2,8 +2,8 @@
  * Composant de capture photo responsive avec annotation
  * Compatible mobile et desktop
  */
-import React, { useEffect, useState, useRef } from 'react';
-import { Camera, X, Check, Upload, Edit3 } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { Camera, Video, X, Check, Upload, Edit3, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import ImageEditor from './ImageEditor';
@@ -18,15 +18,22 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
   disabled = false 
 }) => {
   const [isCapturing, setIsCapturing] = useState(false);
+  const [captureMode, setCaptureMode] = useState<'photo' | 'video'>('photo');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedVideo, setCapturedVideo] = useState<string | null>(null);
   const [showAnnotation, setShowAnnotation] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSecondsLeft, setRecordingSecondsLeft] = useState(60);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isCapturing || capturedImage || !videoRef.current || !streamRef.current) {
+    if (!isCapturing || (capturedImage || capturedVideo) || !videoRef.current || !streamRef.current) {
       return;
     }
 
@@ -43,11 +50,47 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
     };
 
     void playVideo();
-  }, [capturedImage, isCapturing]);
+  }, [capturedImage, capturedVideo, isCapturing]);
+
+  useEffect(() => {
+    if (!isRecording) {
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      return;
+    }
+
+    recordingTimerRef.current = window.setInterval(() => {
+      setRecordingSecondsLeft((current) => {
+        if (current <= 1) {
+          window.clearInterval(recordingTimerRef.current ?? undefined);
+          recordingTimerRef.current = null;
+          stopRecording();
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    };
+  }, [isRecording]);
+
+  const recordingLabel = useMemo(() => {
+    const minutes = Math.floor(recordingSecondsLeft / 60);
+    const seconds = recordingSecondsLeft % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }, [recordingSecondsLeft]);
 
   const startCapture = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: true,
         video: { 
           width: { ideal: 1280 },
           height: { ideal: 720 },
@@ -80,9 +123,57 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
     canvas.toBlob((blob) => {
       if (blob) {
         const imageUrl = URL.createObjectURL(blob);
+        setCapturedVideo(null);
         setCapturedImage(imageUrl);
       }
     }, 'image/jpeg', 0.8);
+  };
+
+  const startRecording = () => {
+    if (!streamRef.current || isRecording || typeof MediaRecorder === 'undefined') return;
+
+    recordedChunksRef.current = [];
+
+    try {
+      const mediaRecorder = new MediaRecorder(streamRef.current, {
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+          ? 'video/webm;codecs=vp9,opus'
+          : 'video/webm',
+      });
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        if (recordedChunksRef.current.length === 0) return;
+        const blob = new Blob(recordedChunksRef.current, { type: mediaRecorder.mimeType || 'video/webm' });
+        const videoUrl = URL.createObjectURL(blob);
+        setCapturedImage(null);
+        setCapturedVideo(videoUrl);
+        setIsRecording(false);
+      };
+
+      setRecordingSecondsLeft(60);
+      setIsRecording(true);
+      mediaRecorder.start();
+    } catch (error) {
+      console.error('Erreur démarrage enregistrement:', error);
+      alert('Impossible de démarrer l\'enregistrement vidéo sur cet appareil.');
+    }
+  };
+
+  const stopRecording = () => {
+    const mediaRecorder = mediaRecorderRef.current;
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+      setIsRecording(false);
+      return;
+    }
+
+    mediaRecorder.stop();
   };
 
   const handleGalleryUpload = () => {
@@ -92,14 +183,29 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setCapturedImage(imageUrl);
+      const previewUrl = URL.createObjectURL(file);
+      setCapturedImage(file.type.startsWith('image/') ? previewUrl : null);
+      setCapturedVideo(file.type.startsWith('video/') ? previewUrl : null);
       setIsCapturing(true);
     }
     event.target.value = '';
   };
 
   const confirmCapture = () => {
+    if (capturedVideo) {
+      fetch(capturedVideo)
+        .then((response) => response.blob())
+        .then((blob) => {
+          const file = new File([blob], `video_${Date.now()}.webm`, { type: blob.type || 'video/webm' });
+          onCapture(file, false);
+          cancelCapture();
+        })
+        .catch((error) => {
+          console.error('Erreur confirmation vidéo:', error);
+        });
+      return;
+    }
+
     if (!canvasRef.current) return;
 
     canvasRef.current.toBlob((blob) => {
@@ -129,13 +235,24 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
   };
 
   const cancelCapture = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.onstop = null;
+      if (mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     setIsCapturing(false);
     setCapturedImage(null);
+    setCapturedVideo(null);
     setShowAnnotation(false);
+    setIsRecording(false);
+    setRecordingSecondsLeft(60);
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
   };
 
   if (showAnnotation && capturedImage) {
@@ -176,13 +293,15 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
       <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Zone de prévisualisation — occupe tout l'espace */}
         <div className="flex-1 relative overflow-hidden">
-          <video
-            ref={videoRef}
-            className="absolute inset-0 w-full h-full object-cover"
-            autoPlay
-            playsInline
-            muted
-          />
+          {!capturedVideo && (
+            <video
+              ref={videoRef}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              playsInline
+              muted
+            />
+          )}
           <canvas ref={canvasRef} className="hidden" />
           
           {capturedImage && (
@@ -192,6 +311,18 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
                 alt="Captured" 
                 className="max-w-full max-h-full object-contain" 
               />
+            </div>
+          )}
+
+          {capturedVideo && (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <video src={capturedVideo} controls className="max-w-full max-h-full object-contain" />
+            </div>
+          )}
+
+          {!capturedImage && !capturedVideo && (
+            <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+              {captureMode === 'video' ? `Vidéo 1 min max · ${recordingLabel}` : 'Photo'}
             </div>
           )}
 
@@ -208,8 +339,24 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
         
         {/* Barre d'actions en bas — responsive */}
         <div className="bg-black/90 backdrop-blur-sm px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-center gap-6">
-          {!capturedImage ? (
+          {!capturedImage && !capturedVideo ? (
             <>
+              <div className="absolute left-4 top-4 flex rounded-full bg-black/35 p-1 backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => setCaptureMode('photo')}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${captureMode === 'photo' ? 'bg-white text-black' : 'text-white/85'}`}
+                >
+                  Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCaptureMode('video')}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${captureMode === 'video' ? 'bg-white text-black' : 'text-white/85'}`}
+                >
+                  Vidéo
+                </button>
+              </div>
               <Button
                 onClick={handleGalleryUpload}
                 size="icon"
@@ -217,24 +364,37 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
               >
                 <Upload size={20} />
               </Button>
-              <button
-                onClick={capturePhoto}
-                className="h-16 w-16 rounded-full border-4 border-white bg-transparent flex items-center justify-center hover:bg-white/10 transition-colors"
-              >
-                <div className="h-12 w-12 rounded-full bg-white" />
-              </button>
+              {captureMode === 'photo' ? (
+                <button
+                  onClick={capturePhoto}
+                  className="h-16 w-16 rounded-full border-4 border-white bg-transparent flex items-center justify-center hover:bg-white/10 transition-colors"
+                >
+                  <div className="h-12 w-12 rounded-full bg-white" />
+                </button>
+              ) : (
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={`h-16 w-16 rounded-full border-4 border-white flex items-center justify-center transition-colors ${isRecording ? 'bg-red-600 hover:bg-red-500' : 'bg-transparent hover:bg-white/10'}`}
+                >
+                  {isRecording ? <Square className="h-6 w-6 fill-white text-white" /> : <Video className="h-8 w-8 text-white" />}
+                </button>
+              )}
               {/* Espace pour équilibrer le layout */}
               <div className="h-12 w-12" />
             </>
           ) : (
             <>
-              <Button
-                onClick={openAnnotation}
-                size="icon"
-                className="bg-purple-500/80 text-white hover:bg-purple-600 rounded-full h-12 w-12"
-              >
-                <Edit3 size={20} />
-              </Button>
+              {capturedImage ? (
+                <Button
+                  onClick={openAnnotation}
+                  size="icon"
+                  className="bg-purple-500/80 text-white hover:bg-purple-600 rounded-full h-12 w-12"
+                >
+                  <Edit3 size={20} />
+                </Button>
+              ) : (
+                <div className="h-12 w-12" />
+              )}
               <Button
                 onClick={confirmCapture}
                 size="icon"
@@ -251,7 +411,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -266,10 +426,10 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
       variant="actionPurple"
       size="sm"
       className="gap-1.5"
-      title="Prendre une photo ou importer depuis la galerie"
+      title="Prendre une photo ou filmer jusqu'à une minute"
     >
       <Camera size={16} />
-      <span className="hidden sm:inline">Photo</span>
+      <span className="hidden sm:inline">Photo/Vidéo</span>
     </Button>
   );
 };

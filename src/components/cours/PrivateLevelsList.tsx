@@ -29,17 +29,25 @@ interface PrivateLevelsListProps {
   levels: Level[];
   formationId: string;
   onLessonClick: (lesson: Lesson) => void;
+  onLevelOpen?: (level: Level) => void;
 }
 
-const PrivateLevelsList: React.FC<PrivateLevelsListProps> = ({ levels, formationId, onLessonClick }) => {
+const PrivateLevelsList: React.FC<PrivateLevelsListProps> = ({ levels, formationId, onLessonClick, onLevelOpen }) => {
   const [expandedLevels, setExpandedLevels] = useState<string[]>([]);
   const { data: unlockedLessons = [] } = useLessonUnlocking(formationId);
   const { data: unreadCounts = {} } = useUnreadMessagesByLevel(formationId);
 
-  const toggleLevel = (levelId: string) => {
+  const toggleLevel = (level: Level) => {
+    const levelId = level.id.toString();
+    const willOpen = !expandedLevels.includes(levelId);
+
     setExpandedLevels(prev =>
       prev.includes(levelId) ? prev.filter(id => id !== levelId) : [...prev, levelId]
     );
+
+    if (willOpen) {
+      onLevelOpen?.(level);
+    }
   };
 
   const isLessonUnlocked = (lessonId: string | number) => {
@@ -88,7 +96,7 @@ const PrivateLevelsList: React.FC<PrivateLevelsListProps> = ({ levels, formation
             {/* Level Header - Style WhatsApp amélioré */}
             <div
               className="flex items-center justify-between p-4 bg-[#f0f0f0] hover:bg-[#e8e8e8] cursor-pointer border-b border-gray-200"
-              onClick={() => toggleLevel(level.id.toString())}
+              onClick={() => toggleLevel(level)}
             >
               <div className="flex items-center space-x-3">
                 {expandedLevels.includes(level.id.toString()) ? (

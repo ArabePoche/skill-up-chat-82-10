@@ -29,6 +29,14 @@ import { useLessonUnlocking } from '@/hooks/useLessonUnlocking';
 import { useMarkLessonAsCompleted } from '@/hooks/useMarkLessonAsCompleted';
 import { useQuiz } from '@/hooks/quiz/useQuiz';
 import { CheckCircle } from 'lucide-react';
+import PublicMessageBanner from '@/components/formation-public-messages/PublicMessageBanner';
+import PublicMessagePlayerOverlay from '@/components/formation-public-messages/PublicMessagePlayerOverlay';
+import {
+  type FormationPublicMessage,
+  useFormationPublicMessages,
+  useLessonLevelId,
+  useMarkFormationPublicMessageViewed,
+} from '@/hooks/formation-public-messages/useFormationPublicMessages';
 
 
 interface ChatInterfaceProps {
@@ -55,6 +63,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
     sender_name: string;
   } | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [previewMessage, setPreviewMessage] = useState<FormationPublicMessage | null>(null);
+  const [activeUrgentMessage, setActiveUrgentMessage] = useState<FormationPublicMessage | null>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   
@@ -70,9 +80,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   const { data: unlockedLessons } = useLessonUnlocking(formation.id);
   const { data: quiz, isLoading: isQuizLoading } = useQuiz(lesson.id.toString());
   const { mutate: markAsCompleted, isPending: isMarkingCompleted } = useMarkLessonAsCompleted();
+  const { data: lessonLevelId } = useLessonLevelId(lesson.id.toString());
+  const { bannerMessages, pendingUrgentMessage } = useFormationPublicMessages({
+    formationId: formation.id,
+    levelId: lessonLevelId,
+    enabled: userRole?.role === 'student',
+  });
+  const markPublicMessageViewed = useMarkFormationPublicMessageViewed(formation.id, lessonLevelId);
 
   const currentLessonProgress = unlockedLessons?.find((l: any) => l.lesson_id === lesson.id.toString());
   const isCompleted = currentLessonProgress?.status === 'completed';
+
+  useEffect(() => {
+    if (userRole?.role !== 'student' || !pendingUrgentMessage) {
+      return;
+    }
+
+    setActiveUrgentMessage((currentMessage) => {
+      if (currentMessage?.id === pendingUrgentMessage.id) {
+        return currentMessage;
+      }
+
+      return pendingUrgentMessage;
+    });
+  }, [pendingUrgentMessage, userRole?.role]);
 
   const handleMarkAsCompleted = () => {
     markAsCompleted({ lessonId: lesson.id, formationId: formation.id });
@@ -207,6 +238,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         setTimeout(() => setHighlightedMessageId(null), 3000);
       }
     }, 100);
+  };
+
+  const closePublicMessageOverlay = () => {
+    setPreviewMessage(null);
+    setActiveUrgentMessage(null);
   };
 
   if (authLoading) {
@@ -377,6 +413,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
 
       {/* Messages - responsive */}
       <div ref={messagesRef} className="flex-1 flex flex-col p-24 min-h-0 pt-[100px] pb-[80px] px-2 md:px-4">
+        {userRole?.role === 'student' && bannerMessages.length > 0 && (
+          <div className="sticky top-[100px] z-40 bg-[#e5ddd5] pb-2 pt-1">
+            <PublicMessageBanner messages={bannerMessages} onOpenMessage={setPreviewMessage} />
+          </div>
+        )}
         <MessageList
           messages={messages}
           exercises={exercises}
@@ -414,6 +455,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           onEndCall={endCall}
         />
       )}
+
+      <PublicMessagePlayerOverlay
+        open={!!activeUrgentMessage || !!previewMessage}
+        message={activeUrgentMessage ?? previewMessage}
+        blocking={!!activeUrgentMessage}
+        onClose={closePublicMessageOverlay}
+        onCompleted={(messageId) => markPublicMessageViewed.mutateAsync(messageId)}
+      />
 
     </div>
   );

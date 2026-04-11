@@ -7,6 +7,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ChatInputBar from '@/components/chat/ChatInputBar';
 import ConversationMessageBubble from '@/components/conversation/ConversationMessageBubble';
+import DateSeparator from '@/components/chat/DateSeparator';
+import { groupMessagesByDate } from '@/utils/dateUtils';
 import { useOfflineConversations } from '@/offline/hooks/useOfflineConversations';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
@@ -419,12 +421,17 @@ const Conversations = () => {
             </p>
           </div>
         ) : (
-          messages.map((msg: any) => (
-            <ConversationMessageBubble 
-              key={msg.id}
-              message={msg} 
-              onReply={(message) => setReplyingTo(message)}
-            />
+          Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+            <div key={date} className="space-y-3">
+              <DateSeparator date={date} />
+              {dateMessages.map((msg: any) => (
+                <ConversationMessageBubble 
+                  key={msg.id}
+                  message={msg} 
+                  onReply={(message) => setReplyingTo(message)}
+                />
+              ))}
+            </div>
           ))
         )}
         <div ref={messagesEndRef} />

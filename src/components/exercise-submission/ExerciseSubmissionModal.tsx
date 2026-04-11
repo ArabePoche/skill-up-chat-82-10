@@ -7,7 +7,7 @@ import React, { useState, useRef } from 'react';
 import { X, Upload, Trash2, FileText, Film, Music, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import CameraCapture from '@/components/chat/CameraCapture';
+import EnhancedCameraCapture from '@/components/chat/EnhancedCameraCapture';
 import AudioRecorder from '@/components/chat/AudioRecorder';
 import {
   Dialog,
@@ -89,6 +89,8 @@ const ExerciseSubmissionModal: React.FC<ExerciseSubmissionModalProps> = ({
       return;
     }
 
+    const fileType = getFileType(file);
+
     const preview = await new Promise<string>((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target?.result as string);
@@ -98,10 +100,10 @@ const ExerciseSubmissionModal: React.FC<ExerciseSubmissionModalProps> = ({
     setFiles([...files, {
       file,
       preview,
-      type: 'image',
+      type: fileType,
     }]);
     
-    toast.success('Photo capturée');
+    toast.success(fileType === 'video' ? 'Vidéo enregistrée' : 'Photo capturée');
   };
 
   const handleAudioCapture = (file: File) => {
@@ -211,7 +213,7 @@ const ExerciseSubmissionModal: React.FC<ExerciseSubmissionModalProps> = ({
                 <span>Fichiers</span>
               </Button>
 
-              <CameraCapture
+              <EnhancedCameraCapture
                 onCapture={handleCameraCapture}
                 disabled={isSubmitting || files.length >= 10}
               />

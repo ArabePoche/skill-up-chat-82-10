@@ -26,6 +26,7 @@ interface ModernMediaPreviewProps {
   isOwnMessage?: boolean;
   authorName?: string;
   authorAvatarUrl?: string; // Add new props
+  timeLabel?: string;
 }
 
 const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
@@ -42,7 +43,8 @@ const ModernMediaPreview: React.FC<ModernMediaPreviewProps> = ({
   formationId,
   isOwnMessage = false,
   authorName,
-  authorAvatarUrl
+  authorAvatarUrl,
+  timeLabel,
 }) => {
 const [showFullscreen, setShowFullscreen] = useState(false);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
@@ -55,6 +57,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
   const isVideo = !isAudio && (fileType?.startsWith('video/') || /\.(mp4|webm|ogg|avi|mov|mkv)$/i.test(fileName));
   const isYouTubeVideo = fileUrl.includes('youtube.com') || fileUrl.includes('youtu.be');
   const isPDF = fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
+  const fileExtension = fileName.split('.').pop()?.toUpperCase() || (isPDF ? 'PDF' : 'FILE');
 
   const handleDownload = () => {
     downloadFile(fileUrl, fileName, fileType);
@@ -156,10 +159,15 @@ const [showFullscreen, setShowFullscreen] = useState(false);
             <OfflineImage
               src={fileUrl}
               alt={fileName}
-              className={`w-full max-w-xs sm:max-w-sm max-h-48 sm:max-h-64 object-contain rounded-lg ${className}`}
+              className={`h-auto w-auto max-w-[min(70vw,20rem)] sm:max-w-sm max-h-64 object-contain rounded-lg ${className}`}
               autoDownload={isOwnMessage}
             />
           </div>
+          {timeLabel && (
+            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+              {timeLabel}
+            </div>
+          )}
           {/* Bouton d'annotation visible pour les profs */}
           {isTeacher && lessonId && formationId && (
             <div className="absolute top-2 right-2 z-10">
@@ -196,24 +204,38 @@ const [showFullscreen, setShowFullscreen] = useState(false);
       )}
 
       {isAudio && (
-        <OfflineAudio
-          src={fileUrl}
-          fileName={fileName}
-          autoDownload={isOwnMessage}
-          className="max-w-xs sm:max-w-sm"
-        />
+        <div className="relative max-w-xs sm:max-w-sm">
+          <OfflineAudio
+            src={fileUrl}
+            fileName={fileName}
+            autoDownload={isOwnMessage}
+            className="max-w-xs sm:max-w-sm"
+          />
+          {timeLabel && (
+            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+              {timeLabel}
+            </div>
+          )}
+        </div>
       )}
 
       {(isVideo && !isYouTubeVideo) && (
-        <OfflineVideo
-          src={fileUrl}
-          autoDownload={isOwnMessage}
-          className={`max-w-xs sm:max-w-sm ${className}`}
-        />
+        <div className="relative w-fit max-w-xs sm:max-w-sm">
+          <OfflineVideo
+            src={fileUrl}
+            autoDownload={isOwnMessage}
+            className={className}
+          />
+          {timeLabel && (
+            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+              {timeLabel}
+            </div>
+          )}
+        </div>
       )}
 
       {isYouTubeVideo && (
-        <div className="max-w-xs sm:max-w-sm">
+        <div className="relative max-w-xs sm:max-w-sm">
           <LessonVideoPlayer 
             url={fileUrl} 
             className="w-full"
@@ -221,24 +243,38 @@ const [showFullscreen, setShowFullscreen] = useState(false);
             authorName={authorName}
             authorAvatarUrl={authorAvatarUrl}
           />
+          {timeLabel && (
+            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+              {timeLabel}
+            </div>
+          )}
         </div>
       )}
 
-
-      {!isImage && !isVideo && !isAudio && !isPDF && (
-        <div className="bg-gray-50 p-3 sm:p-4 rounded-lg max-w-xs sm:max-w-sm border">
-          <div className="flex items-center gap-2 mb-2 sm:mb-3">
-            <div className="bg-gray-500 p-1.5 sm:p-2 rounded-full text-white text-xs font-bold">
-              FILE
+      {!isImage && !isVideo && !isAudio && (
+        <div className="relative max-w-xs sm:max-w-sm">
+          <div className="rounded-lg border bg-gray-50 px-3 py-3 sm:px-4 sm:py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="rounded-full bg-gray-600 px-2 py-1 text-[10px] font-bold tracking-[0.16em] text-white">
+                  {fileExtension}
+                </div>
+                <span className="text-xs font-medium text-gray-600 sm:text-sm">
+                  {isPDF ? 'Document PDF' : 'Fichier partagé'}
+                </span>
+              </div>
+              {!isOwnMessage && (
+                <Button variant="outline" size="sm" onClick={handleDownload} className="h-8 px-3 text-xs sm:text-sm">
+                  <Download size={14} className="mr-1" />
+                  Télécharger
+                </Button>
+              )}
             </div>
-            <span className="font-medium text-xs sm:text-sm truncate">{fileName}</span>
           </div>
-          {/* Masquer le bouton télécharger pour l'expéditeur - fichier déjà local */}
-          {!isOwnMessage && (
-            <Button variant="outline" size="sm" onClick={handleDownload} className="w-full text-xs sm:text-sm">
-              <Download size={14} className="mr-1" />
-              Télécharger
-            </Button>
+          {timeLabel && (
+            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+              {timeLabel}
+            </div>
           )}
         </div>
       )}

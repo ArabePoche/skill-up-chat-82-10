@@ -25,6 +25,7 @@ import {
 import { useMessageReactions, useToggleReaction } from '@/hooks/useMessageReactions';
 import { useEditLessonMessage, useDeleteLessonMessage } from '@/hooks/useLessonOperations.messages';
 import { LinkifiedText } from '@/utils/linkify';
+import { formatMessageTime } from '@/utils/dateUtils';
 
 interface Message {
   id: string;
@@ -216,6 +217,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   const isHighlighted = highlightedMessageId === message.id;
+  const hasAttachment = Boolean(message.file_url);
 
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
@@ -224,7 +226,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           <div
             ref={bubbleRef}
             data-message-id={message.id}
-            className={`rounded-lg shadow-sm max-w-xs p-3 relative transition-all duration-300 ${
+            className={`w-fit max-w-[min(82vw,24rem)] rounded-lg shadow-sm p-3 relative transition-all duration-300 ${
               isOwnMessage ? 'bg-[#dcf8c6]' : 'bg-white'
             } ${isHighlighted ? 'ring-2 ring-[#25d366] scale-105' : ''}`}
           >
@@ -284,6 +286,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   fileUrl={message.file_url}
                   fileName={message.file_name}
                   fileType={message.file_type}
+                  timeLabel={formatMessageTime(message.created_at)}
                   messageId={message.id}
                   isTeacher={isTeacher}
                   lessonId={message.lesson_id}
@@ -368,7 +371,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               >
                 <Smile size={14} />
               </button>
-              <span>{formatTime(message.created_at)}</span>
+              {!hasAttachment && <span>{formatTime(message.created_at)}</span>}
             </div>
 
             {/* Triangle */}

@@ -39,6 +39,13 @@ import { Button } from '../ui/button';
 import { GroupInfoDrawer } from './GroupInfoDrawer';
 import { GroupChatFilters, GroupFilterType } from './GroupChatFilters';
 import { toast } from 'sonner';
+import PublicMessageBanner from '@/components/formation-public-messages/PublicMessageBanner';
+import PublicMessagePlayerOverlay from '@/components/formation-public-messages/PublicMessagePlayerOverlay';
+import {
+  type FormationPublicMessage,
+  useFormationPublicMessages,
+  useMarkFormationPublicMessageViewed,
+} from '@/hooks/formation-public-messages/useFormationPublicMessages';
 
 // Types
 interface Level {
@@ -84,6 +91,8 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [activeFilter, setActiveFilter] = useState<GroupFilterType>('all');
+  const [previewMessage, setPreviewMessage] = useState<FormationPublicMessage | null>(null);
+  const [activeUrgentMessage, setActiveUrgentMessage] = useState<FormationPublicMessage | null>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   
@@ -125,6 +134,26 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const exercises = levelExercises;
   
   const { data: userRole } = useUserRole(formation.id);
+  const { bannerMessages, pendingUrgentMessage } = useFormationPublicMessages({
+    formationId: formation.id,
+    levelId: level.id.toString(),
+    enabled: userRole?.role === 'student',
+  });
+  const markPublicMessageViewed = useMarkFormationPublicMessageViewed(formation.id, level.id.toString());
+
+  useEffect(() => {
+    if (userRole?.role !== 'student' || !pendingUrgentMessage) {
+      return;
+    }
+
+    setActiveUrgentMessage((currentMessage) => {
+      if (currentMessage?.id === pendingUrgentMessage.id) {
+        return currentMessage;
+      }
+
+      return pendingUrgentMessage;
+    });
+  }, [pendingUrgentMessage, userRole?.role]);
 
   // Filtrage des messages selon le filtre actif (pour les élèves - basé sur currentUser)
   const filteredMessages = useMemo(() => {
@@ -308,6 +337,11 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         setTimeout(() => setHighlightedMessageId(null), 3000);
       }
     }, 100);
+  };
+
+  const closePublicMessageOverlay = () => {
+    setPreviewMessage(null);
+    setActiveUrgentMessage(null);
   };
 
   const handleOpenVideo = (lesson: any) => {
@@ -557,11 +591,14 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
       />
 
       {/* Messages - réutilise MessageList de ChatInterface */}
-      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[100px] pb-[80px] px-2 md:px-4">
-        
-        {/* Filtres pour les élèves */}
-        {userRole?.role === 'student' && (
-          <div className="sticky top-[100px] z-40 bg-[#e5ddd5] py-2">
+      <div ref={messagesRef} className="flex-1 flex flex-col min-h-0 pt-[64px] pb-[80px] px-2 md:px-4">
+        {userRole?.role === 'student' && (bannerMessages.length > 0 || true) && (
+          <div className="sticky top-[64px] z-40 bg-[#e5ddd5] pb-2 pt-1">
+            {bannerMessages.length > 0 && (
+              <div className="pb-2">
+                <PublicMessageBanner messages={bannerMessages} onOpenMessage={setPreviewMessage} />
+              </div>
+            )}
             <GroupChatFilters
               activeFilter={activeFilter}
               onFilterChange={setActiveFilter}
@@ -612,6 +649,14 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           onEndCall={endCall}
         />
       )}
+
+      <PublicMessagePlayerOverlay
+        open={!!activeUrgentMessage || !!previewMessage}
+        message={activeUrgentMessage ?? previewMessage}
+        blocking={!!activeUrgentMessage}
+        onClose={closePublicMessageOverlay}
+        onCompleted={(messageId) => markPublicMessageViewed.mutateAsync(messageId)}
+      />
     </div>
     </ExerciseModalProvider>
   );
