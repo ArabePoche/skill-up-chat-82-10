@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { BookOpen, FileText, Download, Play, Pause, X, Minus, PanelBottomOpen, GripHorizontal, NotebookPen } from 'lucide-react';
+import { BookOpen, FileText, Download, Play, Pause, X, Minus, PanelBottomOpen, GripHorizontal, NotebookPen, Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import LiveStudioWhiteboard from '@/live/components/studio-live/LiveStudioWhiteboard';
