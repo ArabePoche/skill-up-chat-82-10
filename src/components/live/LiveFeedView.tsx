@@ -342,7 +342,7 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
             key={live.id}
             ref={(el) => { liveCardRefs.current[idx] = el; }}
             data-live-index={idx}
-            className="relative h-screen w-full snap-start snap-always flex-shrink-0 bg-black overflow-hidden"
+            className="relative h-[100dvh] w-full snap-start snap-always flex-shrink-0 bg-black overflow-hidden"
           >
             {/* Fond plein écran */}
             {live.status === 'active' ? (
@@ -370,8 +370,8 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
             {/* Gradient bas pour lisibilité */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
 
-            {/* Badge statut en haut */}
-            <div className="absolute top-5 left-5 z-10 flex items-center gap-2">
+            {/* Badge statut en haut — décalé pour ne pas chevaucher le bouton Live */}
+            <div className="absolute top-20 left-4 z-10 flex items-center gap-2 sm:top-5 sm:left-5">
               {live.status === 'active' ? (
                 <Badge className="border-0 bg-red-600 text-white text-xs animate-pulse gap-1">
                   <Radio className="h-3 w-3" /> EN DIRECT
@@ -389,8 +389,8 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
               )}
             </div>
 
-            {/* Infos bas – minimalistes */}
-            <div className="absolute bottom-6 left-0 right-0 z-10 px-5 space-y-3">
+            {/* Infos bas – minimalistes, remonté pour la navbar mobile */}
+            <div className="absolute bottom-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))] left-0 right-0 z-10 px-4 space-y-2.5 sm:bottom-6 sm:px-5 sm:space-y-3">
               {/* Hôte */}
               <div className="flex items-center gap-2.5">
                 <Avatar className="h-9 w-9 border border-white/20">
@@ -410,7 +410,7 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
               <div className="flex gap-2">
                 <Button
                   onClick={() => openLive(live)}
-                  className="flex-1 h-11 rounded-full bg-white text-black font-semibold hover:bg-white/90"
+                  className="flex-1 h-10 sm:h-11 rounded-full bg-white text-black font-semibold text-sm hover:bg-white/90"
                 >
                   {live.status === 'active'
                     ? (isPaid ? 'Acheter le ticket' : 'Rejoindre')
@@ -419,7 +419,7 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
                 {isPaid && (
                   <Button
                     onClick={() => navigate(`/live/${live.id}/ticket`)}
-                    className="h-11 rounded-full bg-amber-500/90 text-black font-semibold hover:bg-amber-500 gap-1.5 px-5"
+                    className="h-10 sm:h-11 rounded-full bg-amber-500/90 text-black font-semibold hover:bg-amber-500 gap-1.5 px-4 sm:px-5 text-sm"
                   >
                     <Ticket className="h-4 w-4" />
                     {live.entry_price?.toLocaleString('fr-FR')} SC
