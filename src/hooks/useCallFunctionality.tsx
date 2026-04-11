@@ -99,18 +99,7 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
     channelRef.current = callChannel;
   }, [clearCallState, cleanupRealtimeChannel]);
 
-  // Gérer le son d'attente pour l'appelant
-  useEffect(() => {
-    if (isCallActive && currentCall?.status === 'pending') {
-      NotificationSoundService.startCallingTone();
-    } else {
-      NotificationSoundService.stopCallingTone();
-    }
-
-    return () => {
-      NotificationSoundService.stopCallingTone();
-    };
-  }, [isCallActive, currentCall?.status]);
+  // Son d'attente supprimé — l'appelant n'a plus de sonnerie
 
   const initiateCall = useCallback(async (type: 'audio' | 'video' | 'voice', receiverId: string, lessonId: string) => {
     if (!user) {
