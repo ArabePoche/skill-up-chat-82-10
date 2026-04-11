@@ -18,6 +18,7 @@ interface StandardNotificationCardProps {
     post_id?: string | null;
     video_id?: string | null;
     live_stream_id?: string | null;
+    formation_id?: string | null;
   };
 }
 
@@ -28,7 +29,7 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
   const navigate = useNavigate();
 
   const isRestock = notification.type === 'product_restock';
-  const isContentNotification = !!notification.video_id || !!notification.post_id || !!notification.live_stream_id;
+  const isContentNotification = !!notification.video_id || !!notification.post_id || !!notification.live_stream_id || !!notification.formation_id;
 
   // Marquer automatiquement comme lue à l'affichage
   useEffect(() => {
@@ -61,6 +62,8 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
         return <Bell size={16} className="text-orange-600" />;
       case 'live_started':
         return <Bell size={16} className="text-red-600" />;
+      case 'formation_available':
+        return <Bell size={16} className="text-orange-600" />;
       default:
         return <Bell size={16} className="text-purple-600" />;
     }
@@ -77,6 +80,8 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
         return 'bg-orange-100';
       case 'live_started':
         return 'bg-red-100';
+      case 'formation_available':
+        return 'bg-orange-100';
       default:
         return 'bg-purple-100';
     }
@@ -100,6 +105,11 @@ const StandardNotificationCard: React.FC<StandardNotificationCardProps> = ({
 
     if (notification.live_stream_id) {
       navigate(`/live/${notification.live_stream_id}`);
+      return;
+    }
+
+    if (notification.formation_id) {
+      navigate(`/formation/${notification.formation_id}`);
       return;
     }
 

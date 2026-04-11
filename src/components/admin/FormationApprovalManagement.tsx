@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import FormationCommissionSettings from './FormationCommissionSettings';
+import { notifyFormationPreRegistrants } from '@/utils/notifyFormationPreRegistrants';
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   pending: { label: 'En attente', variant: 'outline' },
@@ -62,11 +63,27 @@ const FormationApprovalManagement = () => {
         .update(update)
         .eq('id', id);
       if (error) throw error;
+      return { id, activated: status === 'approved' };
     },
-    onSuccess: () => {
+    onSuccess: async ({ id, activated }) => {
       queryClient.invalidateQueries({ queryKey: ['formations-approval'] });
       queryClient.invalidateQueries({ queryKey: ['formations-list'] });
-      toast.success('Statut de la formation mis à jour');
+      if (activated) {
+        try {
+          const { notifiedCount } = await notifyFormationPreRegistrants(id);
+          toast.success(
+            notifiedCount > 0
+              ? `Statut mis à jour et ${notifiedCount} pré-inscrit(s) notifié(s)`
+              : 'Statut de la formation mis à jour'
+          );
+        } catch (notificationError) {
+          console.error('Error notifying pre-registrants:', notificationError);
+          toast.success('Statut de la formation mis à jour');
+          toast.error('La formation a été activée, mais la notification des pré-inscrits a échoué.');
+        }
+      } else {
+        toast.success('Statut de la formation mis à jour');
+      }
       setActionModal(null);
       setReason('');
     },
@@ -80,11 +97,27 @@ const FormationApprovalManagement = () => {
         .update({ is_active: isActive })
         .eq('id', id);
       if (error) throw error;
+      return { id, isActive };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async ({ id, isActive }) => {
       queryClient.invalidateQueries({ queryKey: ['formations-approval'] });
       queryClient.invalidateQueries({ queryKey: ['formations-list'] });
-      toast.success(variables.isActive ? 'Formation activée' : 'Formation désactivée');
+      if (isActive) {
+        try {
+          const { notifiedCount } = await notifyFormationPreRegistrants(id);
+          toast.success(
+            notifiedCount > 0
+              ? `Formation activée et ${notifiedCount} pré-inscrit(s) notifié(s)`
+              : 'Formation activée'
+          );
+        } catch (notificationError) {
+          console.error('Error notifying pre-registrants:', notificationError);
+          toast.success('Formation activée');
+          toast.error('La notification des pré-inscrits a échoué.');
+        }
+      } else {
+        toast.success('Formation désactivée');
+      }
     },
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
