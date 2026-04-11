@@ -333,7 +333,7 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
         const livePreview = livePreviews[live.id];
         const audienceCount = livePreview?.audienceCount ?? 0;
         const hostName = getHostDisplayName(live.host);
-        const shouldUseAgora = live.status === 'active' && !isPaid && !!live.agora_channel;
+        const shouldUseAgora = live.status === 'active' && !isPaid && !!live.agora_channel && !livePreview?.screen;
         const liveDate = formatLiveDate(live.scheduled_at);
         const isActive = idx === currentLiveIndex;
 
@@ -352,12 +352,12 @@ const LiveFeedView: React.FC<LiveFeedViewProps> = ({ liveStreams, isLoadingLives
             )}
 
             {/* Aperçu Agora ou avatar centré */}
-            {shouldUseAgora ? (
-              <LiveAgoraPreview channelName={live.agora_channel} isActive={isActive} hostName={hostName} hostAvatarUrl={live.host?.avatar_url} />
-            ) : livePreview?.screen ? (
+            {livePreview?.screen ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <LiveScreenDisplay screen={livePreview.screen} className="w-full max-w-none border-0 bg-transparent text-white shadow-none" />
               </div>
+            ) : shouldUseAgora ? (
+              <LiveAgoraPreview channelName={live.agora_channel} isActive={isActive} hostName={hostName} hostAvatarUrl={live.host?.avatar_url} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Avatar className="h-28 w-28 border-2 border-white/15 shadow-2xl">

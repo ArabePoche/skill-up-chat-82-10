@@ -35,6 +35,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useFormations } from '@/hooks/useFormations';
 import { supabase } from '@/integrations/supabase/client';
+import { isSingleActiveLiveViolation } from '@/live/lib/userLiveShared';
 import { NotificationTriggers } from '@/utils/notificationHelpers';
 import { captureThumbnailFromVideoElement, captureVideoThumbnail, composeVideoForPublish, type StickerPosition } from '@/utils/videoComposer';
 import type { LiveTeachingStudio } from '@/live/types';
@@ -607,7 +608,11 @@ const VideoCreationFlowDialog: React.FC<VideoCreationFlowDialogProps> = ({ open,
       }
     } catch (error) {
       console.error('Erreur demarrage live:', error);
-      toast.error('Impossible de demarrer le live.');
+      if (isSingleActiveLiveViolation(error as { code?: string; message?: string | null })) {
+        toast.error('Vous avez déjà un live en cours. Terminez-le avant d’en lancer un autre.');
+      } else {
+        toast.error('Impossible de demarrer le live.');
+      }
     } finally {
       setIsLaunchingLive(false);
     }
