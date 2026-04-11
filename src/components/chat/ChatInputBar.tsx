@@ -153,9 +153,8 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   const handleCameraCapture = async (file: File, annotated = false) => {
     checkAuthAndExecute(async () => {
+      const toastId = toast.loading('Envoi en cours...');
       try {
-        toast.loading('Upload de la photo en cours...');
-        
         const uploadResult = await uploadFile(file);
         const messageType = file.type.startsWith('video/') ? 'video' : 'image';
         
@@ -163,14 +162,16 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
         Object.defineProperty(uploadedFile, 'uploadUrl', { value: uploadResult.fileUrl });
 
         onSendMessage(
-          annotated ? `Image annotée: ${uploadResult.fileName}` : `Photo capturée: ${uploadResult.fileName}`,
+          '',
           messageType,
           uploadedFile
         );
         
-        toast.success('Photo envoyée avec succès');
+        toast.dismiss(toastId);
+        toast.success('Photo envoyée');
       } catch (error) {
         console.error('Upload error:', error);
+        toast.dismiss(toastId);
         toast.error('Erreur lors de l\'upload');
       }
     });
