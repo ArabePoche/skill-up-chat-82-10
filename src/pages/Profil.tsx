@@ -26,15 +26,13 @@ import NotificationPermissionDialog from '@/components/notifications/Notificatio
 import AvatarUploadModal from '@/profile/components/AvatarUploadModal';
 import FriendRequestsPanel from '@/friends/components/FriendRequestsPanel';
 import VideosTab from '@/profile/components/tabs/VideosTab';
-import PostsTab from '@/profile/components/tabs/PostsTab';
 import SchoolTab from '@/profile/components/tabs/SchoolTab';
 import LikesTab from '@/profile/components/tabs/LikesTab';
 import FavoritesTab from '@/profile/components/tabs/FavoritesTab';
-import ShopTab from '@/profile/components/tabs/ShopTab';
 import CvBuilderModal from '@/cv-builder/CvBuilderModal';
 import LivesTab from '@/profile/components/tabs/LivesTab';
 
-type TabType = 'videos' | 'posts' | 'school' | 'likes' | 'favorites' | 'shop' | 'lives';
+type TabType = 'videos' | 'school' | 'likes' | 'favorites' | 'lives';
 
 
 const Profil = () => {
@@ -163,8 +161,6 @@ const Profil = () => {
     switch (activeTab) {
       case 'videos':
         return <VideosTab userId={viewedUserId} />;
-      case 'posts':
-        return <PostsTab userId={viewedUserId} />;
       case 'school':
         return <SchoolTab userId={viewedUserId} />;
       case 'likes':
@@ -173,8 +169,6 @@ const Profil = () => {
         return <FavoritesTab userId={viewedUserId} />;
       case 'lives':
         return <LivesTab userId={viewedUserId} />;
-      case 'shop':
-        return <ShopTab userId={viewedUserId} />;
       default:
         return <VideosTab userId={viewedUserId} />;
     }
@@ -363,7 +357,6 @@ const Profil = () => {
       <ProfileTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        showShopTab={(profile as any)?.is_verified === true}
       />
 
       {/* Contenu de l'onglet actif */}

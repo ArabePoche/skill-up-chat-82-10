@@ -216,8 +216,8 @@ const TikTokVideosView: React.FC<{
     <GlobalSoundContext.Provider value={{ isMuted: globalMuted, toggleMute: toggleGlobalMute }}>
       <div className="tiktok-feed relative h-full w-full bg-black">
 
-        {/* Bouton Live en haut à gauche */}
-        <div className="fixed top-4 left-4 z-50 relative">
+        {/* Bouton Live en haut à gauche — accessible sur mobile */}
+        <div className="fixed top-[max(1rem,env(safe-area-inset-top))] left-3 z-50 sm:top-4 sm:left-4">
           <LiveRailButton
             isOpen={isLiveFeedOpen}
             liveCount={liveStreams.length}

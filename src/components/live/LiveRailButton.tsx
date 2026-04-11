@@ -16,12 +16,12 @@ const LiveRailButton: React.FC<LiveRailButtonProps> = ({ isOpen, liveCount, onTo
         <Button
             variant="ghost"
             onClick={onToggle}
-            className={`h-12 w-12 rounded-full backdrop-blur-sm text-white border transition-colors ${
+            className={`h-10 w-10 sm:h-12 sm:w-12 rounded-full backdrop-blur-md text-white border transition-colors shadow-lg ${
                 isLive
                     ? 'bg-red-600/80 border-red-400/40 hover:bg-red-500/80'
                     : isOpen
                         ? 'bg-red-600/80 border-red-400/40 hover:bg-red-500/80'
-                        : 'bg-black/30 border-white/20 hover:bg-black/50'
+                        : 'bg-black/40 border-white/20 hover:bg-black/50'
             }`}
             aria-label={isOpen ? 'Revenir au flux vidéos' : 'Afficher les lives'}
         >
