@@ -173,7 +173,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
 
   if (isCapturing) {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col safe-area-inset">
+      <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Zone de prévisualisation — occupe tout l'espace */}
         <div className="flex-1 relative overflow-hidden">
           <video
@@ -200,7 +200,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
             onClick={cancelCapture}
             variant="ghost"
             size="icon"
-            className="absolute top-4 left-4 z-10 bg-black/40 text-white rounded-full h-10 w-10 hover:bg-black/60"
+            className="absolute top-[max(1rem,env(safe-area-inset-top))] left-3 z-10 bg-black/50 text-white rounded-full h-10 w-10 hover:bg-black/60 backdrop-blur-sm"
           >
             <X size={22} />
           </Button>
