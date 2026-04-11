@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Camera, X, Check, Upload, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -21,6 +21,26 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!isCapturing || capturedImage || !videoRef.current || !streamRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    video.muted = true;
+
+    const playVideo = async () => {
+      try {
+        await video.play();
+      } catch (error) {
+        console.error('Erreur lecture caméra:', error);
+      }
+    };
+
+    void playVideo();
+  }, [capturedImage, isCapturing]);
+
   const startCapture = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -32,10 +52,6 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
       });
       
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
       setIsCapturing(true);
     } catch (error) {
       console.error('Erreur accès caméra:', error);
@@ -51,6 +67,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
     const ctx = canvas.getContext('2d');
 
     if (!ctx) return;
+    if (!video.videoWidth || !video.videoHeight) return;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;

@@ -219,3 +219,6 @@ export const fcfaToScRounded = (priceFcfa: number, rate: number): number => {
   if (!rate || rate <= 0) return 0;
   return Math.round((priceFcfa / rate) * 100) / 100;
 };
+
+export const isSingleActiveLiveViolation = (error: { code?: string; message?: string | null } | null | undefined) =>
+  error?.code === '23505' && error.message?.includes('user_live_streams_one_active_live_per_host_idx');

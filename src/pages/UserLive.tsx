@@ -80,6 +80,7 @@ import {
   LiveStreamRecord,
   LiveVisibility,
   mergePresenceEntries,
+  isSingleActiveLiveViolation,
   ParticipantControlPayload,
   removePresenceEntries,
   syncPresenceEntries,
@@ -2262,6 +2263,7 @@ const UserLive: React.FC = () => {
                     .eq('id', stream.id)
                     .eq('host_id', user?.id || '');
                   if (!error) toast.success('Live démarré !');
+                  else if (isSingleActiveLiveViolation(error)) toast.error('Vous avez déjà un live en cours. Terminez-le avant d’en lancer un autre.');
                   else toast.error('Impossible de démarrer le live.');
                 }}
               >
