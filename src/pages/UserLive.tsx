@@ -79,6 +79,8 @@ import {
   LiveRegistrant,
   LiveStreamRecord,
   LiveVisibility,
+  extractPresenceEntries,
+  extractPresenceUserIds,
   mergePresenceEntries,
   isSingleActiveLiveViolation,
   ParticipantControlPayload,
@@ -202,6 +204,53 @@ const UserLive: React.FC = () => {
   }, [profile, stableUserId]);
 
   const stableAvatarUrl = profile?.avatar_url || null;
+
+  const appendJoinMessage = useCallback((params: {
+    userId: string;
+    userName: string;
+    userAvatar?: string | null;
+    createdAt?: string;
+  }) => {
+    const createdAt = params.createdAt || new Date().toISOString();
+    const messageId = `live-join-${params.userId}-${createdAt}`;
+
+    setMessages((current) => {
+      if (current.some((message) => message.id === messageId)) {
+        return current;
+      }
+
+      const createdAtTime = Date.parse(createdAt);
+      const hasRecentJoinMessage = current.some((message) => {
+        if (message.type !== 'join' || message.userId !== params.userId) {
+          return false;
+        }
+
+        const messageTime = Date.parse(message.createdAt);
+        if (Number.isNaN(createdAtTime) || Number.isNaN(messageTime)) {
+          return false;
+        }
+
+        return Math.abs(createdAtTime - messageTime) <= 5000;
+      });
+
+      if (hasRecentJoinMessage) {
+        return current;
+      }
+
+      return [
+        ...current.slice(-49),
+        {
+          id: messageId,
+          userId: params.userId,
+          userName: params.userName,
+          userAvatar: params.userAvatar || null,
+          type: 'join',
+          content: 'a rejoint le live',
+          createdAt,
+        },
+      ];
+    });
+  }, []);
 
   const { connectedPeople, audiencePeople, audienceCount, peakAudienceCount } = useLiveAudience({
     liveId: stableStreamId,
@@ -484,7 +533,29 @@ const UserLive: React.FC = () => {
     };
   }, [id]);
 
-  // Check payment status and fetch SC rate when stream loads
+  // Fetch conversion rate for live pricing display.
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadScRate = async () => {
+      const { data: rateData } = await supabase
+        .from('currency_conversion_settings')
+        .select('sc_to_fcfa_rate')
+        .single();
+
+      if (isMounted && rateData) {
+        setScToFcfaRate(rateData.sc_to_fcfa_rate ?? 0);
+      }
+    };
+
+    void loadScRate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Check payment status when stream loads.
   useEffect(() => {
     if (!stream) return;
 
@@ -504,17 +575,7 @@ const UserLive: React.FC = () => {
 
     let isMounted = true;
 
-    const checkPaymentAndRate = async () => {
-      // Fetch conversion rate (for display only — actual calculation happens server-side)
-      const { data: rateData } = await supabase
-        .from('currency_conversion_settings')
-        .select('sc_to_fcfa_rate')
-        .single();
-
-      if (isMounted && rateData) {
-        setScToFcfaRate(rateData.sc_to_fcfa_rate ?? 0);
-      }
-
+    const checkPayment = async () => {
       // Check if user already has a valid ticket via live_payments (escrow table)
       const { data: payment } = await supabase
         .from('live_payments')
@@ -529,7 +590,7 @@ const UserLive: React.FC = () => {
       }
     };
 
-    void checkPaymentAndRate();
+    void checkPayment();
 
     return () => {
       isMounted = false;
@@ -594,6 +655,16 @@ const UserLive: React.FC = () => {
   useEffect(() => {
     if (showRegistrantsPanel) void loadRegistrants();
   }, [loadRegistrants, showRegistrantsPanel]);
+
+  useEffect(() => {
+    if (!isHost || !stream?.id || !stream.entry_price || stream.entry_price <= 0) {
+      return;
+    }
+
+    if (stream.status === 'scheduled') {
+      void loadRegistrants();
+    }
+  }, [isHost, loadRegistrants, stream?.entry_price, stream?.id, stream?.status]);
 
 
   useEffect(() => {
@@ -665,26 +736,24 @@ const UserLive: React.FC = () => {
     roomChannel
       .on('presence', { event: 'sync' }, updatePresenceState)
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        setViewersList((current) => mergePresenceEntries(current, newPresences, key));
+        const joinedPresences = extractPresenceEntries(newPresences);
 
-        newPresences.forEach((presence: any) => {
+        setViewersList((current) => mergePresenceEntries(current, joinedPresences, key));
+
+        joinedPresences.forEach((presence: any) => {
           const userId = presence?.user_id || presence?.userId || key;
           if (presence.user_name && userId !== stableUserId) {
-            const joinMsg: LiveMessage = {
-              id: crypto.randomUUID(),
-              userId: userId || 'system',
+            appendJoinMessage({
+              userId,
               userName: presence.user_name,
               userAvatar: presence.avatar_url,
-              type: 'join',
-              content: 'a rejoint le live',
-              createdAt: new Date().toISOString(),
-            };
-            setMessages(prev => [...prev.slice(-49), joinMsg]);
+              createdAt: presence.online_at,
+            });
           }
         });
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        const leavingIds = new Set(leftPresences.map((p: any) => p?.user_id || p?.userId || key).filter(Boolean));
+        const leavingIds = new Set(extractPresenceUserIds(leftPresences, key));
 
         setViewersList((current) => removePresenceEntries(current, leftPresences, key));
         setAcceptedParticipants((current) => current.filter((participant) => !leavingIds.has(participant.userId)));
@@ -1069,8 +1138,6 @@ const UserLive: React.FC = () => {
             : 'Spectateur';
 
           const joinedAt = (payload.new as { joined_at?: string | null } | null)?.joined_at || new Date().toISOString();
-          const joinMessageId = `live-viewer-join-${viewerId}-${joinedAt}`;
-
           setViewersList((current) => mergePresenceEntries(current, [{
             user_id: viewerId,
             user_name: viewerName,
@@ -1081,23 +1148,11 @@ const UserLive: React.FC = () => {
           }], viewerId));
 
           if (viewerId !== stableUserId) {
-            setMessages((current) => {
-              if (current.some((message) => message.id === joinMessageId)) {
-                return current;
-              }
-
-              return [
-                ...current.slice(-49),
-                {
-                  id: joinMessageId,
-                  userId: viewerId,
-                  userName: viewerName,
-                  userAvatar: profileData?.avatar_url || null,
-                  type: 'join',
-                  content: 'a rejoint le live',
-                  createdAt: joinedAt,
-                },
-              ];
+            appendJoinMessage({
+              userId: viewerId,
+              userName: viewerName,
+              userAvatar: profileData?.avatar_url || null,
+              createdAt: joinedAt,
             });
           }
         }
@@ -1107,7 +1162,7 @@ const UserLive: React.FC = () => {
     return () => {
       void supabase.removeChannel(liveViewersChannel);
     };
-  }, [hasPaidEntry, stableDisplayName, stableHostId, stableStreamId, stableUserId]);
+  }, [appendJoinMessage, hasPaidEntry, stableDisplayName, stableHostId, stableStreamId, stableUserId]);
 
   useEffect(() => {
     if (!stableStreamId || !stableHostId) {
@@ -1353,6 +1408,14 @@ const UserLive: React.FC = () => {
     navigate(`/cours/lesson/${lessonId}`);
   }, [navigate]);
 
+  const canBuyOwnLiveProduct = useMemo(() => {
+    return publicLiveScreen?.type === 'shop_product' && !!user?.id && publicLiveScreen.product.seller_id !== user.id;
+  }, [publicLiveScreen, user?.id]);
+
+  const canEnrollFromLiveFormation = useMemo(() => {
+    return publicLiveScreen?.type === 'formation_enrollment' && !isHost && !!user?.id && publicLiveScreen.formation.author_id !== user.id;
+  }, [isHost, publicLiveScreen, user?.id]);
+
   const handleOpenBuyProductFromScreen = useCallback(() => {
     if (!user?.id) {
       navigate('/auth');
@@ -1360,6 +1423,11 @@ const UserLive: React.FC = () => {
     }
 
     if (publicLiveScreen?.type !== 'shop_product') {
+      return;
+    }
+
+    if (publicLiveScreen.product.seller_id === user.id) {
+      toast.error('Vous ne pouvez pas acheter votre propre produit.');
       return;
     }
 
@@ -1376,6 +1444,11 @@ const UserLive: React.FC = () => {
 
     if (!user?.id) {
       navigate('/auth');
+      return;
+    }
+
+    if (screen.formation.author_id === user.id) {
+      toast.error('Vous ne pouvez pas vous inscrire à votre propre formation.');
       return;
     }
 
@@ -1714,6 +1787,14 @@ const UserLive: React.FC = () => {
     }
   };
 
+  const registrantsGrossRevenue = useMemo(() => {
+    return registrants.reduce((sum, registrant) => sum + (registrant.amount || 0), 0);
+  }, [registrants]);
+
+  const registrantsNetRevenue = useMemo(() => {
+    return registrants.reduce((sum, registrant) => sum + (registrant.creator_amount || 0), 0);
+  }, [registrants]);
+
 
   if (isLoading) {
     return (
@@ -1916,9 +1997,9 @@ const UserLive: React.FC = () => {
             {/* Vidéo plein bloc */}
             <div className="absolute inset-0">
               {isHost ? (
-                <div ref={localVideoContainerRef} className="h-full w-full object-cover" />
+                <div ref={localVideoContainerRef} className="h-full w-full [&>div]:h-full [&>div]:w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
               ) : (
-                <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
+                <div ref={remoteVideoContainerRef} className="h-full w-full [&>div]:h-full [&>div]:w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
             </div>
@@ -2076,9 +2157,9 @@ const UserLive: React.FC = () => {
       ) : (
         <div className="absolute inset-0 z-0">
           {isHost ? (
-            <div ref={localVideoContainerRef} className="h-full w-full object-cover" />
+            <div ref={localVideoContainerRef} className="h-full w-full [&>div]:h-full [&>div]:w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
           ) : (
-            <div ref={remoteVideoContainerRef} className="h-full w-full object-cover" />
+            <div ref={remoteVideoContainerRef} className="h-full w-full [&>div]:h-full [&>div]:w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
           )}
         </div>
       )}
@@ -2115,12 +2196,15 @@ const UserLive: React.FC = () => {
             screen={publicLiveScreen}
             variant="public"
             isHost={isHost}
-            canEnroll={publicLiveScreen.type === 'formation_enrollment' && !isHost}
+            scToFcfaRate={scToFcfaRate}
+            canBuyProduct={publicLiveScreen.type === 'shop_product' && canBuyOwnLiveProduct}
+            canEnroll={publicLiveScreen.type === 'formation_enrollment' && canEnrollFromLiveFormation}
             isEnrollmentPending={publicLiveScreen.type === 'formation_enrollment' ? isFormationPending(publicLiveScreen.formation.id) : false}
             onBuyProduct={publicLiveScreen.type === 'shop_product' ? handleOpenBuyProductFromScreen : undefined}
             onOpenFormation={publicLiveScreen.type === 'formation_enrollment' ? () => handleOpenFormationFromScreen(publicLiveScreen.formation.id) : undefined}
             onOpenLesson={publicLiveScreen.type === 'teaching_lesson' ? () => handleOpenLessonFromScreen(publicLiveScreen.lesson.id) : undefined}
             onEnroll={publicLiveScreen.type === 'formation_enrollment' ? (planType) => handleEnrollFromScreen(publicLiveScreen, planType) : undefined}
+            className={publicLiveScreen.type === 'shop_product' ? 'w-full max-w-[42rem] border-white/15 bg-black/70 text-white shadow-[0_18px_60px_rgba(0,0,0,0.35)]' : undefined}
           />
         </div>
       )}
@@ -2254,6 +2338,20 @@ const UserLive: React.FC = () => {
             {isHost && stream.status === 'scheduled' && (
               <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                className="border-white/15 bg-black/35 text-white text-xs h-8 px-3 rounded-full hover:bg-white/10 hover:text-white"
+                onClick={() => setShowRegistrantsPanel(true)}
+              >
+                <Users className="h-3 w-3 mr-1" />
+                {registrantsLoading
+                  ? 'Reservations...'
+                  : `${registrants.length} reservation${registrants.length !== 1 ? 's' : ''} · ${registrantsGrossRevenue.toLocaleString('fr-FR')} SC`}
+              </Button>
+            )}
+            {isHost && stream.status === 'scheduled' && (
+              <Button
+                type="button"
                 size="sm"
                 className="bg-red-600 hover:bg-red-700 text-white text-xs h-8 px-3 rounded-full"
                 onClick={async () => {
@@ -2305,6 +2403,18 @@ const UserLive: React.FC = () => {
 
           {isHost && (
             <div className={`flex flex-wrap justify-end gap-2 w-full ${isStudioMode ? 'hidden md:flex' : 'flex'}`}>
+              {stream.status === 'scheduled' && stream.entry_price && stream.entry_price > 0 && (
+                <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                  <Users className="h-4 w-4 text-sky-300" />
+                  {registrants.length} ticket{registrants.length !== 1 ? 's' : ''}
+                </div>
+              )}
+              {stream.status === 'scheduled' && stream.entry_price && stream.entry_price > 0 && (
+                <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                  <Coins className="h-4 w-4 text-emerald-300" />
+                  {registrantsNetRevenue.toLocaleString('fr-FR')} SC net
+                </div>
+              )}
               <div className="flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                 <img src={iconH} alt="H" className="h-4 w-4 object-contain" />
                 {liveGiftTotals.habbah.toLocaleString('fr-FR')}
@@ -2412,6 +2522,7 @@ const UserLive: React.FC = () => {
           }}
           isOpen={isBuyProductDialogOpen}
           onClose={() => setIsBuyProductDialogOpen(false)}
+          fallbackScRate={scToFcfaRate}
         />
       )}
 

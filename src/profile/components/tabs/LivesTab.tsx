@@ -1,7 +1,7 @@
 // Onglet profil : lives programmés (créateur) et tickets achetés (spectateur).
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, Radio, Ticket, Users } from 'lucide-react';
+import { Calendar, Clock, Coins, Radio, Ticket, TrendingUp, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,12 @@ interface LiveStreamRow {
 
 interface LiveTabProps {
   userId?: string;
+}
+
+interface LivePaymentSummary {
+  reservationCount: number;
+  grossAmount: number;
+  netAmount: number;
 }
 
 const formatDate = (value: string | null) => {
@@ -58,6 +64,41 @@ const LivesTab: React.FC<LiveTabProps> = ({ userId }) => {
       return (data ?? []) as LiveStreamRow[];
     },
     enabled: !!userId,
+  });
+
+  const myLiveIds = myLives.map((live) => live.id);
+  const { data: livePaymentSummaryMap = new Map<string, LivePaymentSummary>() } = useQuery({
+    queryKey: ['profile-live-payment-summary', myLiveIds, isOwnProfile],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('live_payments')
+        .select('live_id, amount, creator_amount, status')
+        .in('live_id', myLiveIds)
+        .in('status', ['pending', 'released', 'disputed']);
+
+      const summaryMap = new Map<string, LivePaymentSummary>();
+
+      for (const payment of data ?? []) {
+        if (!payment.live_id) {
+          continue;
+        }
+
+        const current = summaryMap.get(payment.live_id) ?? {
+          reservationCount: 0,
+          grossAmount: 0,
+          netAmount: 0,
+        };
+
+        summaryMap.set(payment.live_id, {
+          reservationCount: current.reservationCount + 1,
+          grossAmount: current.grossAmount + Number(payment.amount || 0),
+          netAmount: current.netAmount + Number(payment.creator_amount || 0),
+        });
+      }
+
+      return summaryMap;
+    },
+    enabled: isOwnProfile && myLiveIds.length > 0,
   });
 
   // Tickets achetés (escrow) — seulement pour son propre profil
@@ -126,6 +167,14 @@ const LivesTab: React.FC<LiveTabProps> = ({ userId }) => {
               const st = statusLabel(live.status);
               const dt = formatDate(live.scheduled_at);
               const isPaid = !!live.entry_price && live.entry_price > 0;
+              const paymentSummary = livePaymentSummaryMap.get(live.id);
+              const reservationCount = paymentSummary?.reservationCount ?? 0;
+              const grossAmount = paymentSummary?.grossAmount ?? 0;
+              const netAmount = paymentSummary?.netAmount ?? 0;
+              const fillRate = live.max_attendees && live.max_attendees > 0
+                ? Math.min(100, Math.round((reservationCount / live.max_attendees) * 100))
+                : null;
+              const showOwnerReservationDetails = isOwnProfile && live.status === 'scheduled' && isPaid;
 
               return (
                 <div
@@ -151,6 +200,28 @@ const LivesTab: React.FC<LiveTabProps> = ({ userId }) => {
                         </span>
                       )}
                     </div>
+                    {showOwnerReservationDetails && (
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-1 font-medium text-sky-700 dark:text-sky-300">
+                          <Users className="h-3 w-3" />
+                          {reservationCount} reservation{reservationCount !== 1 ? 's' : ''}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 font-medium text-emerald-700 dark:text-emerald-300">
+                          <Coins className="h-3 w-3" />
+                          Brut {grossAmount.toLocaleString('fr-FR')} SC
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-1 font-medium text-indigo-700 dark:text-indigo-300">
+                          <TrendingUp className="h-3 w-3" />
+                          Net {netAmount.toLocaleString('fr-FR')} SC
+                        </span>
+                        {fillRate !== null && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 font-medium text-amber-700 dark:text-amber-300">
+                            <Clock className="h-3 w-3" />
+                            Remplissage {fillRate}%
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <Badge className={`border-0 text-[10px] ${st.cls}`}>{st.text}</Badge>
                   {isOwnProfile && live.status === 'scheduled' && (

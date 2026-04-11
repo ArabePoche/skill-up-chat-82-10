@@ -19,6 +19,7 @@ interface Formation {
   rating: number;
   students_count: number;
   is_active: boolean;
+  author_id?: string;
   profiles?: {
     first_name?: string;
     last_name?: string;
@@ -161,10 +162,11 @@ const FormationSections: React.FC<FormationSectionsProps> = ({
 
                   <Button 
                     className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium shadow-md"
+                    disabled={user?.id === formation.author_id}
                     onClick={() => handlePreInscription(formation)}
                   >
                     <Clock size={16} className="mr-2" />
-                    {t('shop.freePreRegistration')}
+                    {user?.id === formation.author_id ? 'Votre formation' : t('shop.freePreRegistration')}
                   </Button>
                 </CardContent>
               </Card>

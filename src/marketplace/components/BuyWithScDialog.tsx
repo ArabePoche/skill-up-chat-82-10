@@ -25,6 +25,7 @@ interface BuyWithScDialogProps {
   } | null;
   isOpen: boolean;
   onClose: () => void;
+  fallbackScRate?: number;
 }
 
 const normalizeNumericValue = (value: unknown) => {
@@ -40,7 +41,7 @@ const normalizeNumericValue = (value: unknown) => {
   return 0;
 };
 
-const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onClose }) => {
+const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onClose, fallbackScRate = 0 }) => {
   const [quantity, setQuantity] = useState(1);
   const [shippingAddress, setShippingAddress] = useState('');
   const [notes, setNotes] = useState('');
@@ -55,7 +56,8 @@ const BuyWithScDialog: React.FC<BuyWithScDialogProps> = ({ product, isOpen, onCl
 
   const normalizedPrice = normalizeNumericValue(product.price);
   const adminRate = normalizeNumericValue(scRate);
-  const rate = adminRate > 0 ? adminRate : 0;
+  const liveFallbackRate = normalizeNumericValue(fallbackScRate);
+  const rate = adminRate > 0 ? adminRate : liveFallbackRate > 0 ? liveFallbackRate : 0;
   const commissionRate = commissionSettings?.commission_rate || 5;
   const unitPriceSc = fcfaToSc(normalizedPrice, rate);
   const totalSc = unitPriceSc * quantity;

@@ -19,6 +19,7 @@ interface PreInscriptionModalProps {
     id: string;
     title: string;
     description?: string;
+    author_id?: string;
   };
 }
 
@@ -70,6 +71,12 @@ const PreInscriptionModal: React.FC<PreInscriptionModalProps> = ({
       toast.error('Connectez-vous pour vous pré-inscrire.');
       onClose();
       navigate('/auth');
+      return;
+    }
+
+    if (formation.author_id === user.id) {
+      toast.error('Vous ne pouvez pas vous pré-inscrire à votre propre formation.');
+      onClose();
       return;
     }
 

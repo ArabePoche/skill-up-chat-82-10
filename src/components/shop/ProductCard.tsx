@@ -20,11 +20,13 @@ interface Product {
   rating?: number;
   product_type: string;
   stock?: number;
+  seller_id?: string;
   product_media?: Array<{
     media_url: string;
     display_order: number;
   }>;
   profiles?: {
+    id?: string;
     first_name?: string;
     last_name?: string;
     username?: string;
@@ -49,6 +51,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
 
   const hasMultipleImages = images.length > 1;
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+  const isOwnProduct = !!user?.id && (product.seller_id === user.id || product.profiles?.id === user.id);
 
   const scrollPrev = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -238,14 +241,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, user, onAddToCart, o
         ) : (
           <Button
             className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-            disabled={!user}
+            disabled={!user || isOwnProduct}
             onClick={(e) => {
               e.stopPropagation();
+              if (isOwnProduct) {
+                toast.error('Vous ne pouvez pas acheter votre propre produit.');
+                return;
+              }
               onAddToCart?.(product.id);
             }}
           >
             <ShoppingCart size={16} className="mr-2" />
-            {!user ? 'Connectez-vous' : 'Ajouter au panier'}
+            {!user ? 'Connectez-vous' : isOwnProduct ? 'Votre produit' : 'Ajouter au panier'}
           </Button>
         )}
       </CardFooter>

@@ -107,6 +107,8 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
   const discountedPrice = product.original_price && product.discount_percentage
     ? product.original_price * (1 - product.discount_percentage / 100)
     : product.price;
+  const resolvedSellerId = product.seller_id || product.profiles?.id;
+  const isOwnProduct = !!user?.id && resolvedSellerId === user.id;
 
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
 
@@ -295,25 +297,35 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
                     <>
                       <Button
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base"
-                        disabled={!user}
+                        disabled={!user || isOwnProduct}
                         onClick={() => {
                           if (!user) {
                             toast.error('Connectez-vous pour acheter');
+                            return;
+                          }
+                          if (isOwnProduct) {
+                            toast.error('Vous ne pouvez pas acheter votre propre produit.');
                             return;
                           }
                           setShowBuyScDialog(true);
                         }}
                       >
                         <ShieldCheck size={20} className="mr-2" />
-                        {!user ? 'Connectez-vous' : 'Acheter en SC'}
+                        {!user ? 'Connectez-vous' : isOwnProduct ? 'Votre produit' : 'Acheter en SC'}
                       </Button>
                       <Button
                         className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-12 text-base"
-                        disabled={!user}
-                        onClick={() => onAddToCart?.(product.id)}
+                        disabled={!user || isOwnProduct}
+                        onClick={() => {
+                          if (isOwnProduct) {
+                            toast.error('Vous ne pouvez pas acheter votre propre produit.');
+                            return;
+                          }
+                          onAddToCart?.(product.id);
+                        }}
                       >
                         <ShoppingCart size={20} className="mr-2" />
-                        Panier
+                        {isOwnProduct ? 'Votre produit' : 'Panier'}
                       </Button>
                     </>
                   )}
@@ -330,7 +342,7 @@ const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
 
             {/* Buy with SC dialog */}
             <BuyWithScDialog
-              product={product ? { ...product, seller_id: product.seller_id || product.profiles?.id } : null}
+              product={product ? { ...product, seller_id: resolvedSellerId } : null}
               isOpen={showBuyScDialog}
               onClose={() => setShowBuyScDialog(false)}
             />

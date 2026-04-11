@@ -97,7 +97,7 @@ export const useAgoraCall = () => {
     }
 
     localVideoElementRef.current.innerHTML = '';
-    localVideoTrackRef.current.play(localVideoElementRef.current, { fit: 'contain' });
+    localVideoTrackRef.current.play(localVideoElementRef.current, { fit: 'cover' });
     console.log('🎥 local track played on element');
   }, []);
 
@@ -111,7 +111,7 @@ export const useAgoraCall = () => {
     }
 
     remoteVideoElementRef.current.innerHTML = '';
-    latestRemoteVideoTrackRef.current.play(remoteVideoElementRef.current, { fit: 'contain' });
+    latestRemoteVideoTrackRef.current.play(remoteVideoElementRef.current, { fit: 'cover' });
     console.log('🎥 remote track played on element');
   }, []);
 

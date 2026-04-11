@@ -19,7 +19,11 @@ const LiveRegistrantsDialog: React.FC<LiveRegistrantsDialogProps> = ({
   registrants,
   registrantsLoading,
 }) => {
+  const grossRevenue = registrants.reduce((sum, registrant) => sum + (registrant.amount || 0), 0);
   const netRevenue = registrants.reduce((sum, registrant) => sum + (registrant.creator_amount || 0), 0);
+  const pendingCount = registrants.filter((registrant) => registrant.status === 'pending').length;
+  const releasedCount = registrants.filter((registrant) => registrant.status === 'released').length;
+  const disputedCount = registrants.filter((registrant) => registrant.status === 'disputed').length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,7 +34,7 @@ const LiveRegistrantsDialog: React.FC<LiveRegistrantsDialogProps> = ({
             Inscrits et revenus
           </DialogTitle>
           <DialogDescription className="text-zinc-400 text-sm">
-            Participants ayant acheté un ticket pour ce live
+            Reservations, achats de tickets et revenus de ce live
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2 max-h-96 overflow-y-auto">
@@ -43,11 +47,24 @@ const LiveRegistrantsDialog: React.FC<LiveRegistrantsDialogProps> = ({
               )}
             </div>
             <div className="rounded-xl bg-zinc-800/60 px-4 py-3 text-center">
+              <p className="text-xs text-zinc-400">Total tickets</p>
+              <p className="text-2xl font-bold text-sky-300">
+                {grossRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-zinc-500">SC</p>
+            </div>
+            <div className="rounded-xl bg-zinc-800/60 px-4 py-3 text-center">
               <p className="text-xs text-zinc-400">Revenus nets</p>
               <p className="text-2xl font-bold text-emerald-400">
                 {netRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </p>
               <p className="text-xs text-zinc-500">SC</p>
+            </div>
+            <div className="rounded-xl bg-zinc-800/60 px-4 py-3 text-center">
+              <p className="text-xs text-zinc-400">Statuts</p>
+              <p className="text-xs text-zinc-300 mt-1">⏳ {pendingCount} en escrow</p>
+              <p className="text-xs text-zinc-300">✅ {releasedCount} liberes</p>
+              <p className="text-xs text-zinc-300">⚠️ {disputedCount} litiges</p>
             </div>
           </div>
 

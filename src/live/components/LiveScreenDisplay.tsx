@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Clapperboard, Coins, Eye, FileText, GraduationCap, NotebookPen, ShoppingBag, Sparkles, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BookOpen, Clapperboard, Coins, Eye, FileText, GraduationCap, NotebookPen, ShoppingBag, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import iconSC from '@/assets/coin-soumboulah-cash.png';
 import type { LiveScreen } from '@/live/types';
 import { getLiveFormationImage, getLiveFormationPlanLabel, getLiveProductImage, getLiveTeachingLessonImage, getLiveTeachingStudioActiveScene, getLiveTeachingStudioImage } from '@/live/types';
 
@@ -12,6 +13,8 @@ interface LiveScreenDisplayProps {
   screen: LiveScreen | null;
   variant?: 'public' | 'private';
   isHost?: boolean;
+  canBuyProduct?: boolean;
+  scToFcfaRate?: number;
   canEnroll?: boolean;
   isEnrollmentPending?: boolean;
   onBuyProduct?: () => void;
@@ -25,6 +28,8 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   screen,
   variant = 'public',
   isHost = false,
+  canBuyProduct = false,
+  scToFcfaRate = 0,
   canEnroll = false,
   isEnrollmentPending = false,
   onBuyProduct,
@@ -33,19 +38,23 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   onEnroll,
   className,
 }) => {
-  if (!screen) return null;
-
-  const isPrivate = variant === 'private';
-  const isPublicFormation = !isPrivate && screen.type === 'formation_enrollment';
-  const isPublicTeachingStudio = !isPrivate && screen.type === 'teaching_studio';
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
 
   useEffect(() => {
     setIsPlanDialogOpen(false);
   }, [screen]);
 
+  if (!screen) return null;
+
+  const isPrivate = variant === 'private';
+  const isPublicProduct = !isPrivate && screen.type === 'shop_product';
+  const isPublicFormation = !isPrivate && screen.type === 'formation_enrollment';
+  const isPublicTeachingStudio = !isPrivate && screen.type === 'teaching_studio';
+
   const wrapperClassName = className || (isPrivate
     ? 'w-full max-w-sm border-white/10 bg-black/65 text-white shadow-2xl'
+    : isPublicProduct
+    ? 'w-full max-w-[16rem] border-white/15 bg-black/62 text-white shadow-[0_16px_40px_rgba(0,0,0,0.26)]'
     : isPublicFormation
     ? 'w-full max-w-[19rem] border-white/15 bg-black/62 text-white shadow-[0_16px_50px_rgba(0,0,0,0.28)]'
     : isPublicTeachingStudio
@@ -54,64 +63,58 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
 
   if (screen.type === 'shop_product') {
     const image = getLiveProductImage(screen.product);
+    const productPriceSc = scToFcfaRate > 0 ? screen.product.price / scToFcfaRate : 0;
+    const formatSc = (value: number) =>
+      new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
+    const showBuyCta = !isPrivate && (canBuyProduct || isHost);
+    const isBuyDisabled = isHost || !canBuyProduct;
 
     return (
       <Card className={cn('overflow-hidden backdrop-blur-xl', wrapperClassName)}>
-        <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-emerald-500/30 via-teal-500/15 to-cyan-500/30 sm:h-40">
-          {image ? (
-            <img src={image} alt={screen.product.title} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <ShoppingBag className="h-10 w-10 text-white/60" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-          <div className="absolute left-3 top-3 flex gap-2">
-            <Badge className="border-0 bg-emerald-500/90 text-white hover:bg-emerald-500/90">
-              <Sparkles className="mr-1 h-3 w-3" />
-              {isPrivate ? 'Écran privé' : 'Écran shop'}
-            </Badge>
-            {screen.product.stock !== null && screen.product.stock !== undefined && (
-              <Badge variant="secondary" className="border-0 bg-black/45 text-white">
-                Stock {screen.product.stock}
-              </Badge>
+        <div className="flex gap-0">
+          <div className="relative h-20 w-[32%] min-w-[92px] overflow-hidden bg-gradient-to-br from-emerald-500/30 via-teal-500/15 to-cyan-500/30 sm:h-24 sm:min-w-[120px]">
+            {image ? (
+              <img src={image} alt={screen.product.title} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <ShoppingBag className="h-10 w-10 text-white/60" />
+              </div>
             )}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/10" />
           </div>
-        </div>
-        <CardContent className="space-y-3 p-4">
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-200/90">
-              Marketplace en direct
-            </p>
-            <h3 className="line-clamp-2 text-lg font-bold text-white">{screen.product.title}</h3>
-            {screen.product.seller_name && (
-              <p className="text-xs text-white/70">Par {screen.product.seller_name}</p>
-            )}
-          </div>
-          {screen.product.description && (
-            <p className="line-clamp-3 text-sm text-white/80">{screen.product.description}</p>
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">Prix</p>
-              <p className="text-xl font-black text-emerald-300">{screen.product.price.toLocaleString('fr-FR')} FCFA</p>
+          <CardContent className="flex min-w-0 flex-1 flex-col justify-between gap-2 p-2.5 sm:p-3">
+            <div className="space-y-1">
+              <h3 className="line-clamp-1 text-sm font-bold text-white sm:text-base">{screen.product.title}</h3>
+              {screen.product.description && (
+                <p className="line-clamp-1 text-[11px] text-white/80 sm:text-xs">{screen.product.description}</p>
+              )}
             </div>
-            {!isPrivate && (
-              <Button
-                onClick={onBuyProduct}
-                className="group relative overflow-hidden rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-5 py-5 text-white shadow-[0_14px_35px_rgba(249,115,22,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(249,115,22,0.6)]"
-              >
-                <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_45%)] opacity-80" />
-                <span className="relative flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em]">
-                  <span className="rounded-full bg-white/18 p-1.5 backdrop-blur-sm">
-                    <Coins className="h-4 w-4" />
-                  </span>
-                  Acheter
+            <div className="flex items-end justify-between gap-2">
+              <div className="min-w-0 flex flex-col gap-1 overflow-hidden">
+                <p className="truncate text-sm font-black leading-none text-emerald-300 sm:text-base">{screen.product.price.toLocaleString('fr-FR')} FCFA</p>
+                <span className="inline-flex items-center gap-1 truncate text-[11px] font-semibold leading-none text-amber-200/95 sm:text-xs">
+                  <img src={iconSC} alt="SC" className="h-3.5 w-3.5 shrink-0 object-contain" />
+                  {scToFcfaRate > 0 ? `${formatSc(productPriceSc)} SC` : 'SC indisponible'}
                 </span>
-              </Button>
-            )}
-          </div>
-        </CardContent>
+              </div>
+              {showBuyCta && (
+                <Button
+                  onClick={onBuyProduct}
+                  disabled={isBuyDisabled}
+                  className="group relative h-9 shrink-0 overflow-hidden rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-3 text-white shadow-[0_14px_35px_rgba(249,115,22,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(249,115,22,0.6)]"
+                >
+                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_45%)] opacity-80" />
+                  <span className="relative flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] sm:text-xs">
+                    <span className="rounded-full bg-white/18 p-1 backdrop-blur-sm">
+                      <Coins className="h-3.5 w-3.5" />
+                    </span>
+                    Acheter
+                  </span>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </div>
       </Card>
     );
   }
@@ -262,14 +265,12 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
   }
 
   const image = getLiveFormationImage(screen.formation);
-  const pricingOptions = useMemo(() => {
-    return (screen.formation.pricing_options || [])
-      .filter((option) => option.is_active !== false)
-      .sort((left, right) => {
-        const order = { free: 0, standard: 1, premium: 2, groupe: 3 } as const;
-        return (order[left.plan_type as keyof typeof order] ?? 99) - (order[right.plan_type as keyof typeof order] ?? 99);
-      });
-  }, [screen.formation.pricing_options]);
+  const pricingOptions = (screen.formation.pricing_options || [])
+    .filter((option) => option.is_active !== false)
+    .sort((left, right) => {
+      const order = { free: 0, standard: 1, premium: 2, groupe: 3 } as const;
+      return (order[left.plan_type as keyof typeof order] ?? 99) - (order[right.plan_type as keyof typeof order] ?? 99);
+    });
 
   const renderPricingOption = (option: typeof pricingOptions[number]) => {
     const monthlyPrice = option.price_monthly || 0;
@@ -349,10 +350,12 @@ const LiveScreenDisplay: React.FC<LiveScreenDisplayProps> = ({
           )}
           {!isPrivate && (
             <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={onOpenFormation}>
-                <Eye className="mr-2 h-4 w-4" />
-                Voir
-              </Button>
+              {!isHost && (
+                <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={onOpenFormation}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Voir
+                </Button>
+              )}
               {!isHost && canEnroll && pricingOptions.length > 0 && (
                 <Button onClick={() => setIsPlanDialogOpen(true)} disabled={isEnrollmentPending} className="bg-orange-500 text-white hover:bg-orange-600">
                   <BookOpen className="mr-2 h-4 w-4" />
