@@ -667,7 +667,7 @@ const UserLive: React.FC = () => {
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         setViewersList((current) => mergePresenceEntries(current, newPresences, key));
 
-        extractPresenceEntries(newPresences).forEach((presence: any) => {
+        newPresences.forEach((presence: any) => {
           const userId = presence?.user_id || presence?.userId || key;
           if (presence.user_name && userId !== stableUserId) {
             const joinMsg: LiveMessage = {
@@ -684,7 +684,7 @@ const UserLive: React.FC = () => {
         });
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        const leavingIds = new Set(extractPresenceUserIds(leftPresences, key));
+        const leavingIds = new Set(leftPresences.map((p: any) => p?.user_id || p?.userId || key).filter(Boolean));
 
         setViewersList((current) => removePresenceEntries(current, leftPresences, key));
         setAcceptedParticipants((current) => current.filter((participant) => !leavingIds.has(participant.userId)));
