@@ -41,7 +41,7 @@ export const downloadFile = async (
           checkedAt: Date.now(),
         });
       } catch (storageError) {
-        console.warn('⚠️ Persistance locale impossible, téléchargement appareil conservé:', storageError);
+        console.warn('⚠️ Persistence locale impossible, téléchargement appareil conservé:', storageError);
       }
 
       const result = await saveMediaToDevice(blob, fileName, mimeType);
