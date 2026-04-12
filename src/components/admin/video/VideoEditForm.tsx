@@ -59,7 +59,7 @@ const extractYouTubeVideoId = (url: string): string => {
       }
     }
   } catch {
-    return url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([^&\n?#/]+)/)?.[1] ?? '';
+    return '';
   }
 
   return '';
@@ -69,11 +69,16 @@ const extractVimeoVideoId = (url: string): string => {
   try {
     const parsedUrl = new URL(url);
     const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
-    const numericSegment = [...pathSegments].reverse().find((segment) => /^\d+$/.test(segment));
-    return numericSegment ?? '';
+    for (let index = pathSegments.length - 1; index >= 0; index -= 1) {
+      if (/^\d+$/.test(pathSegments[index])) {
+        return pathSegments[index];
+      }
+    }
   } catch {
     return url.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1] ?? '';
   }
+
+  return '';
 };
 
 const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCancel }) => {
@@ -100,6 +105,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
   const canCaptureFrame = isNativeVideo;
   const youtubeVideoId = isYouTubeVideo ? extractYouTubeVideoId(formData.video_url) : '';
   const vimeoVideoId = isVimeoVideo ? extractVimeoVideoId(formData.video_url) : '';
+  const hasPreviewPlayer = isNativeVideo || (isYouTubeVideo && !!youtubeVideoId) || (isVimeoVideo && !!vimeoVideoId);
 
   useEffect(() => {
     setIsPortraitVideo(null);
@@ -276,7 +282,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
                   />
                 </div>
               )}
-              {!isNativeVideo && !youtubeVideoId && !vimeoVideoId && (
+              {!hasPreviewPlayer && (
                 <div className="rounded-md border border-border bg-black/40 px-3 py-6 text-center text-sm text-muted-foreground">
                   Impossible de prévisualiser cette URL dans l’éditeur.
                 </div>
