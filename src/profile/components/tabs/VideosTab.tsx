@@ -430,7 +430,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
       {/* Dialog de modification de vidéo */}
       {editingVideo && (
         <Dialog open={!!editingVideo} onOpenChange={(open) => !open && setEditingVideo(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Modifier la vidéo</DialogTitle>
             </DialogHeader>
