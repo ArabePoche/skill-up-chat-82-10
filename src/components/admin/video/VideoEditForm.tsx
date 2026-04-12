@@ -10,10 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useFormations } from '@/hooks/useFormations';
-import { Upload, Camera, Play, Pause } from 'lucide-react';
+import { Upload, Camera } from 'lucide-react';
 
 interface Video {
   id: string;
@@ -40,8 +39,49 @@ interface VideoEditFormProps {
   onCancel: () => void;
 }
 
+const extractYouTubeVideoId = (url: string): string => {
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.replace(/^www\./, '');
+
+    if (hostname === 'youtu.be') {
+      return parsedUrl.pathname.split('/').filter(Boolean)[0] ?? '';
+    }
+
+    if (hostname === 'youtube.com' || hostname === 'm.youtube.com' || hostname === 'youtube-nocookie.com') {
+      if (parsedUrl.pathname === '/watch') {
+        return parsedUrl.searchParams.get('v') ?? '';
+      }
+
+      const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+      if (pathSegments[0] === 'embed' || pathSegments[0] === 'shorts') {
+        return pathSegments[1] ?? '';
+      }
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+};
+
+const extractVimeoVideoId = (url: string): string => {
+  try {
+    const parsedUrl = new URL(url);
+    const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+    for (let index = pathSegments.length - 1; index >= 0; index -= 1) {
+      if (/^\d+$/.test(pathSegments[index])) {
+        return pathSegments[index] ?? '';
+      }
+    }
+  } catch {
+    return url.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1] ?? '';
+  }
+
+  return '';
+};
+
 const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCancel }) => {
-  const { user } = useAuth();
   const { uploadFile, isUploading } = useFileUpload();
   const { data: formations = [] } = useFormations();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -57,8 +97,15 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
   
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
   const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isPortraitVideo, setIsPortraitVideo] = useState<boolean | null>(null);
+
+  const isYouTubeVideo = /(youtube\.com|youtu\.be|youtube-nocookie\.com)/i.test(formData.video_url);
+  const isVimeoVideo = /vimeo\.com/i.test(formData.video_url);
+  const isNativeVideo = !!formData.video_url && !isYouTubeVideo && !isVimeoVideo;
+  const canCaptureFrame = isNativeVideo;
+  const youtubeVideoId = isYouTubeVideo ? extractYouTubeVideoId(formData.video_url) : '';
+  const vimeoVideoId = isVimeoVideo ? extractVimeoVideoId(formData.video_url) : '';
+  const hasPreviewPlayer = isNativeVideo || (isYouTubeVideo && !!youtubeVideoId) || (isVimeoVideo && !!vimeoVideoId);
 
   useEffect(() => {
     setIsPortraitVideo(null);
@@ -104,18 +151,6 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
       toast.success('Miniature capturée !');
     }, 'image/jpeg', 0.92);
   }, [videoRef]);
-
-  const togglePlayPause = useCallback(() => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    if (vid.paused) {
-      vid.play();
-      setIsVideoPlaying(true);
-    } else {
-      vid.pause();
-      setIsVideoPlaying(false);
-    }
-  }, []);
 
   const uploadThumbnailFile = async (file: File): Promise<string> => {
     const result = await uploadFile(file, 'lesson_discussion_files');
@@ -205,49 +240,70 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
           {/* Lecteur vidéo pour capture */}
           {formData.video_url && (
             <div className="rounded-lg border border-border bg-black/95 p-2">
-              <div className="flex justify-center">
-                <video
-                  ref={videoRef}
-                  src={formData.video_url}
-                  crossOrigin="anonymous"
-                  playsInline
-                  controls
-                  preload="metadata"
-                  className={
-                    isPortraitVideo === true
-                      ? 'max-h-[26rem] w-auto max-w-full rounded-md object-contain'
-                      : 'w-full max-h-64 rounded-md object-contain'
-                  }
-                  onLoadedMetadata={handleVideoMetadataLoaded}
-                  onLoadedData={handleVideoMetadataLoaded}
-                  onError={() => setIsPortraitVideo(false)}
-                  onPlay={() => setIsVideoPlaying(true)}
-                  onPause={() => setIsVideoPlaying(false)}
-                />
-              </div>
+              {isNativeVideo && (
+                <div className="flex justify-center">
+                  <video
+                    ref={videoRef}
+                    src={formData.video_url}
+                    crossOrigin="anonymous"
+                    playsInline
+                    controls
+                    preload="metadata"
+                    className={
+                      isPortraitVideo === true
+                        ? 'max-h-[26rem] w-auto max-w-full rounded-md object-contain'
+                        : 'w-full max-h-64 rounded-md object-contain'
+                    }
+                    onLoadedMetadata={handleVideoMetadataLoaded}
+                    onLoadedData={handleVideoMetadataLoaded}
+                    onError={() => setIsPortraitVideo(false)}
+                  />
+                </div>
+              )}
+              {isYouTubeVideo && youtubeVideoId && (
+                <div className="flex justify-center">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${youtubeVideoId}?controls=1&rel=0&modestbranding=1&playsinline=1`}
+                    title="Prévisualisation de la vidéo"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="aspect-video w-full rounded-md border-0"
+                  />
+                </div>
+              )}
+              {isVimeoVideo && vimeoVideoId && (
+                <div className="flex justify-center">
+                  <iframe
+                    src={`https://player.vimeo.com/video/${vimeoVideoId}?controls=1&title=0&byline=0&portrait=0`}
+                    title="Prévisualisation de la vidéo"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    className="aspect-video w-full rounded-md border-0"
+                  />
+                </div>
+              )}
+              {!hasPreviewPlayer && (
+                <div className="rounded-md border border-border bg-black/40 px-3 py-6 text-center text-sm text-muted-foreground">
+                  Impossible de prévisualiser cette URL dans l’éditeur.
+                </div>
+              )}
               <div className="mt-3 flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  className="bg-black/60 text-white hover:bg-black/80 backdrop-blur-sm h-8"
-                  onClick={togglePlayPause}
-                >
-                  {isVideoPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
                   className="bg-black/60 text-white hover:bg-black/80 backdrop-blur-sm h-8 flex-1"
                   onClick={captureCurrentFrame}
+                  disabled={!canCaptureFrame}
                 >
                   <Camera className="h-3.5 w-3.5 mr-1.5" />
                   Capturer cette frame
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground text-center pt-2">
-                Naviguez dans la vidéo puis capturez la frame souhaitée
+                {canCaptureFrame
+                  ? 'Naviguez dans la vidéo puis capturez la frame souhaitée'
+                  : 'La capture de frame est disponible uniquement pour les vidéos hébergées directement.'}
               </p>
             </div>
           )}
