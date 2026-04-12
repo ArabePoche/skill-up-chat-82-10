@@ -29,7 +29,7 @@ interface WalletGiftModalProps {
     liveStreamId: string;
     liveTitle: string;
   };
-  onGiftSent?: (amount: number, currency: CurrencyType, giftLabel: string, isAnonymous: boolean) => void;
+  onGiftSent?: (amount: number, currency: CurrencyType, giftLabel: string, isAnonymous: boolean, giftId?: string) => void;
 }
 
 interface UserProfile {
@@ -41,11 +41,30 @@ interface UserProfile {
 }
 
 type CurrencyType = 'soumboulah_cash' | 'habbah' | 'soumboulah_bonus';
+type LiveGiftPresetId = 'tea';
 
 const CURRENCY_OPTIONS: { value: CurrencyType; label: string; unit: string; color: string }[] = [
   { value: 'soumboulah_cash', label: 'Soumboulah Cash', unit: 'S.', color: 'text-emerald-400' },
   { value: 'habbah', label: 'Habbah', unit: 'H.', color: 'text-amber-400' },
   { value: 'soumboulah_bonus', label: 'Soumboulah Bonus', unit: 'SB', color: 'text-blue-400' },
+];
+
+const LIVE_GIFT_PRESETS: Array<{
+  id: LiveGiftPresetId;
+  name: string;
+  amount: number;
+  currency: CurrencyType;
+  accentClassName: string;
+  description: string;
+}> = [
+  {
+    id: 'tea',
+    name: 'Thé',
+    amount: 1,
+    currency: 'soumboulah_cash',
+    accentClassName: 'from-amber-400/20 via-orange-400/10 to-emerald-400/15 border-amber-300/25',
+    description: 'Déclenche une animation théière premium pendant le live.',
+  },
 ];
 
 const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
@@ -74,6 +93,7 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
   const [motif, setMotif] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [requestCancellation, setRequestCancellation] = useState(false);
+  const [selectedLiveGiftId, setSelectedLiveGiftId] = useState<LiveGiftPresetId | null>(null);
 
   const getDisplayName = (profile: UserProfile) => {
     if (profile.first_name && profile.last_name) {
@@ -120,6 +140,7 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
       setMotif('');
       setIsAnonymous(false);
       setRequestCancellation(false);
+      setSelectedLiveGiftId(null);
       setShowConfetti(false);
       if (user?.id) {
         loadFriendIds();
@@ -231,26 +252,34 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
 
   const handleSend = async () => {
     if (!selectedUser || !user?.id) return;
-    const parsedAmount = parseFloat(amount);
+    const selectedLiveGift = LIVE_GIFT_PRESETS.find((preset) => preset.id === selectedLiveGiftId) ?? null;
+    const effectiveCurrency = selectedLiveGift?.currency ?? currency;
+    const parsedAmount = selectedLiveGift?.amount ?? parseFloat(amount);
     if (!parsedAmount || parsedAmount <= 0) {
       toast.error('Veuillez saisir un montant valide');
       return;
     }
-    const balance = getBalance(currency);
+    const balance = getBalance(effectiveCurrency);
     if (balance < parsedAmount) {
-      const currOption = CURRENCY_OPTIONS.find((c) => c.value === currency);
+      const currOption = CURRENCY_OPTIONS.find((c) => c.value === effectiveCurrency);
       toast.error(`Solde ${currOption?.label} insuffisant`);
       return;
     }
 
     setIsSending(true);
-    const reason = motif.trim() || (liveGiftContext ? `Cadeau live : ${liveGiftContext.liveTitle}` : 'Cadeau depuis le portefeuille');
-    const currOption = CURRENCY_OPTIONS.find((c) => c.value === currency)!;
-    const giftLabel = `${parsedAmount} ${currOption.unit}`;
+    const reason =
+      motif.trim() ||
+      (selectedLiveGift && liveGiftContext
+        ? `Cadeau live ${selectedLiveGift.name} : ${liveGiftContext.liveTitle}`
+        : liveGiftContext
+        ? `Cadeau live : ${liveGiftContext.liveTitle}`
+        : 'Cadeau depuis le portefeuille');
+    const currOption = CURRENCY_OPTIONS.find((c) => c.value === effectiveCurrency)!;
+    const giftLabel = selectedLiveGift ? `un ${selectedLiveGift.name}` : `${parsedAmount} ${currOption.unit}`;
     const referenceId = liveGiftContext?.liveStreamId ?? null;
 
     try {
-      if (currency === 'soumboulah_cash') {
+      if (effectiveCurrency === 'soumboulah_cash') {
         const { data, error } = await supabase.rpc('transfer_soumboulah_cash', {
           p_recipient_id: selectedUser.id,
           p_amount: parsedAmount,
@@ -260,7 +289,7 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
         if (error) throw error;
         const result = data as any;
         if (result && !result.success) throw new Error(result.message);
-      } else if (currency === 'habbah') {
+      } else if (effectiveCurrency === 'habbah') {
         const result = await transferHabbah(selectedUser.id, parsedAmount, reason, referenceId ?? undefined);
         if (!result.success) throw new Error(result.message);
       } else {
@@ -300,7 +329,7 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
       }
       
       if (onGiftSent) {
-        onGiftSent(parsedAmount, currency, giftLabel, isAnonymous);
+        onGiftSent(parsedAmount, effectiveCurrency, giftLabel, isAnonymous, selectedLiveGift?.id);
       }
 
       setShowConfetti(true);
@@ -328,10 +357,15 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
     setMotif('');
     setIsAnonymous(false);
     setRequestCancellation(false);
+    setSelectedLiveGiftId(null);
     onClose();
   };
 
   const selectedCurrencyOption = CURRENCY_OPTIONS.find((c) => c.value === currency)!;
+  const selectedLiveGift = LIVE_GIFT_PRESETS.find((preset) => preset.id === selectedLiveGiftId) ?? null;
+  const availableCurrencyOption = selectedLiveGift
+    ? CURRENCY_OPTIONS.find((option) => option.value === selectedLiveGift.currency) ?? selectedCurrencyOption
+    : selectedCurrencyOption;
 
   return (
     <>
@@ -441,6 +475,52 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
             </div>
           ) : (
             <div className="px-6 pb-6 space-y-4 overflow-y-auto max-h-[70vh]">
+              {liveGiftContext && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-zinc-300 text-sm">Cadeaux live</Label>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300/80">
+                      nouveauté
+                    </span>
+                  </div>
+                  {LIVE_GIFT_PRESETS.map((preset) => {
+                    const isSelected = selectedLiveGiftId === preset.id;
+
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedLiveGiftId(preset.id);
+                          setCurrency(preset.currency);
+                          setAmount(String(preset.amount));
+                        }}
+                        className={`w-full rounded-2xl border bg-gradient-to-r p-4 text-left transition-all ${
+                          isSelected
+                            ? `${preset.accentClassName} shadow-[0_12px_32px_rgba(245,158,11,0.18)]`
+                            : 'border-white/10 from-zinc-800 via-zinc-900 to-zinc-900 hover:border-amber-300/20'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl">🫖</span>
+                              <div>
+                                <p className="text-sm font-semibold text-white">{preset.name}</p>
+                                <p className="text-xs text-zinc-400">{preset.description}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-200">
+                            {preset.amount} SC
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Soldes */}
               <div className="flex gap-2 text-xs font-medium justify-around bg-zinc-800/50 p-2 rounded-lg">
                 {CURRENCY_OPTIONS.map((opt, idx) => (
@@ -468,7 +548,11 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => { setCurrency(opt.value); setAmount(''); }}
+                      onClick={() => {
+                        setSelectedLiveGiftId(null);
+                        setCurrency(opt.value);
+                        setAmount('');
+                      }}
                       className={`p-2 rounded-lg border text-xs font-medium transition-all ${
                         currency === opt.value
                           ? `border-orange-500 bg-orange-500/10 ${opt.color}`
@@ -491,16 +575,23 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={amount}
+                  disabled={Boolean(selectedLiveGift)}
                   onChange={(e) => {
                     const val = e.target.value.replace(/[^0-9]/g, '');
+                    setSelectedLiveGiftId(null);
                     setAmount(val);
                   }}
-                  placeholder="Ex: 10"
-                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                  placeholder={selectedLiveGift ? `${selectedLiveGift.amount}` : 'Ex: 10'}
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 disabled:cursor-not-allowed disabled:opacity-70"
                 />
                 <p className="text-xs text-zinc-500 mt-1">
-                  Disponible : {formatNumber(getBalance(currency))} {selectedCurrencyOption.unit}
+                  Disponible : {formatNumber(getBalance(selectedLiveGift?.currency ?? currency))} {availableCurrencyOption.unit}
                 </p>
+                {selectedLiveGift && (
+                  <p className="mt-1 text-xs text-amber-300/80">
+                    Montant verrouillé sur le cadeau live sélectionné.
+                  </p>
+                )}
               </div>
 
               {/* Motif (optional) */}
@@ -554,7 +645,7 @@ const WalletGiftModal: React.FC<WalletGiftModalProps> = ({
               {/* Send button */}
               <Button
                 onClick={handleSend}
-                disabled={isSending || !amount || parseFloat(amount) <= 0}
+                disabled={isSending || (!selectedLiveGift && (!amount || parseFloat(amount) <= 0))}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50"
               >
                 {isSending ? (
