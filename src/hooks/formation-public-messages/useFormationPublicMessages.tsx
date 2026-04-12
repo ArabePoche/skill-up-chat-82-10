@@ -34,7 +34,7 @@ interface UseFormationPublicMessagesOptions {
   enabled?: boolean;
 }
 
-const matchesLevel = (message: FormationPublicMessageRecord, levelId?: string | null) => {
+const matchesLevel = (message: { scope: string; level_id: string | null }, levelId?: string | null) => {
   if (message.scope === 'all_levels') {
     return true;
   }
@@ -73,7 +73,7 @@ export const useFormationPublicMessages = ({
         throw error;
       }
 
-      const relevantMessages = (messages ?? []).filter((message) => matchesLevel(message, levelId));
+      const relevantMessages = (messages ?? []).filter((message) => matchesLevel(message, levelId)) as unknown as FormationPublicMessageRecord[];
 
       if (!user?.id || relevantMessages.length === 0) {
         return relevantMessages.map((message) => ({
@@ -230,7 +230,7 @@ export const useFormationPublicMessagesAdmin = (formationId?: string) => {
         throw error;
       }
 
-      return data ?? [];
+      return (data ?? []) as FormationPublicMessageRecord[];
     },
   });
 };

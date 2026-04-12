@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Video, List, Plus, Trash2 } from 'lucide-react';
+import { Video, List, Plus, Trash2, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserVideos } from '@/profile/hooks/useUserVideos';
 import { useUserSeries } from '@/profile/hooks/useUserSeries';
@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import VideoEditForm from '@/components/admin/video/VideoEditForm';
 
 interface VideosTabProps {
   userId?: string;
@@ -101,6 +103,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
   const [showVideoCreationDialog, setShowVideoCreationDialog] = useState(false);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [isDeletingVideo, setIsDeletingVideo] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<any | null>(null);
   
   const { data: seriesEpisodes, refetch: refetchEpisodes } = useSeriesVideos(manageSeriesId || undefined);
   
@@ -346,17 +349,30 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
                 )}
 
                 {isOwner && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingVideoId(video.id);
-                    }}
-                    className="absolute top-2 left-2 p-1.5 bg-destructive/90 text-white backdrop-blur-sm rounded-md hover:bg-destructive transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                    title="Supprimer la vidéo"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="absolute top-2 left-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingVideo(video);
+                      }}
+                      className="p-1.5 bg-primary/90 text-white backdrop-blur-sm rounded-md hover:bg-primary transition-colors"
+                      title="Modifier la vidéo"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingVideoId(video.id);
+                      }}
+                      className="p-1.5 bg-destructive/90 text-white backdrop-blur-sm rounded-md hover:bg-destructive transition-colors"
+                      title="Supprimer la vidéo"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 )}
               </div>
             );
@@ -410,6 +426,25 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
         onOpenChange={setShowVideoCreationDialog}
         onSuccess={handleVideoCreationSuccess}
       />
+
+      {/* Dialog de modification de vidéo */}
+      {editingVideo && (
+        <Dialog open={!!editingVideo} onOpenChange={(open) => !open && setEditingVideo(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Modifier la vidéo</DialogTitle>
+            </DialogHeader>
+            <VideoEditForm
+              video={editingVideo}
+              onSuccess={() => {
+                setEditingVideo(null);
+                refetchVideos();
+              }}
+              onCancel={() => setEditingVideo(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       <AlertDialog open={!!deletingVideoId} onOpenChange={(open) => !open && setDeletingVideoId(null)}>
         <AlertDialogContent>
