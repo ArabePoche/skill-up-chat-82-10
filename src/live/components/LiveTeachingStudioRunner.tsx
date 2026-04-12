@@ -378,7 +378,29 @@ export const LiveTeachingStudioRunner: React.FC<LiveTeachingStudioRunnerProps> =
     }
 
     if (element.type === 'notes') {
-      return <StudioNotesPanel element={element} />;
+      return (
+        <StudioNotesPanel
+          element={element}
+          isHost={isHost}
+          onContentChange={(elementId, newContent) => {
+            if (!onStudioChange) return;
+            const updatedStudio = {
+              ...studio,
+              scenes: studio.scenes.map(s =>
+                s.id === activeScene?.id
+                  ? {
+                      ...s,
+                      elements: s.elements.map(el =>
+                        el.id === elementId ? { ...el, content: newContent } : el
+                      ),
+                    }
+                  : s
+              ),
+            };
+            onStudioChange(updatedStudio);
+          }}
+        />
+      );
     }
 
     return null;
