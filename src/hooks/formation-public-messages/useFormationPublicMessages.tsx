@@ -73,7 +73,7 @@ export const useFormationPublicMessages = ({
         throw error;
       }
 
-      const relevantMessages = (messages ?? []).filter((message) => matchesLevel(message, levelId));
+      const relevantMessages = (messages ?? []).filter((message) => matchesLevel(message, levelId)) as FormationPublicMessageRecord[];
 
       if (!user?.id || relevantMessages.length === 0) {
         return relevantMessages.map((message) => ({
@@ -230,7 +230,7 @@ export const useFormationPublicMessagesAdmin = (formationId?: string) => {
         throw error;
       }
 
-      return data ?? [];
+      return (data ?? []) as FormationPublicMessageRecord[];
     },
   });
 };
