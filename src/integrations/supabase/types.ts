@@ -1345,6 +1345,48 @@ export type Database = {
         }
         Relationships: []
       }
+      formation_pre_registrations: {
+        Row: {
+          created_at: string
+          formation_id: string
+          id: string
+          motivation: string | null
+          notified_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          formation_id: string
+          id?: string
+          motivation?: string | null
+          notified_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          formation_id?: string
+          id?: string
+          motivation?: string | null
+          notified_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_pre_registrations_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_pre_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formation_pricing_options: {
         Row: {
           allow_calls: boolean | null
@@ -1427,84 +1469,6 @@ export type Database = {
             columns: ["formation_id"]
             isOneToOne: false
             referencedRelation: "formations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      formation_sales_stats: {
-        Row: {
-          created_at: string | null
-          date: string | null
-          formation_id: string
-          id: string
-          teacher_payments_total: number | null
-          total_exercises_validated: number | null
-          total_interviews_completed: number | null
-          total_sales: number | null
-          units_sold: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          date?: string | null
-          formation_id: string
-          id?: string
-          teacher_payments_total?: number | null
-          total_exercises_validated?: number | null
-          total_interviews_completed?: number | null
-          total_sales?: number | null
-          units_sold?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          date?: string | null
-          formation_id?: string
-          id?: string
-          teacher_payments_total?: number | null
-          total_exercises_validated?: number | null
-          total_interviews_completed?: number | null
-          total_sales?: number | null
-          units_sold?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      formation_public_message_views: {
-        Row: {
-          completed_at: string
-          created_at: string
-          id: string
-          message_id: string
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string
-          created_at?: string
-          id?: string
-          message_id: string
-          user_id: string
-        }
-        Update: {
-          completed_at?: string
-          created_at?: string
-          id?: string
-          message_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "formation_public_message_views_message_id_fkey"
-            columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "formation_public_messages"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "formation_public_message_views_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1596,6 +1560,45 @@ export type Database = {
           },
         ]
       }
+      formation_public_message_views: {
+        Row: {
+          completed_at: string
+          created_at: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_public_message_views_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "formation_public_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formation_public_message_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formation_public_messages: {
         Row: {
           author_id: string
@@ -1668,6 +1671,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      formation_sales_stats: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          formation_id: string
+          id: string
+          teacher_payments_total: number | null
+          total_exercises_validated: number | null
+          total_interviews_completed: number | null
+          total_sales: number | null
+          units_sold: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          formation_id: string
+          id?: string
+          teacher_payments_total?: number | null
+          total_exercises_validated?: number | null
+          total_interviews_completed?: number | null
+          total_sales?: number | null
+          units_sold?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          formation_id?: string
+          id?: string
+          teacher_payments_total?: number | null
+          total_exercises_validated?: number | null
+          total_interviews_completed?: number | null
+          total_sales?: number | null
+          units_sold?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       formations: {
         Row: {
@@ -1770,48 +1812,6 @@ export type Database = {
           {
             foreignKeyName: "formations_author_id_fkey"
             columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      formation_pre_registrations: {
-        Row: {
-          created_at: string
-          formation_id: string
-          id: string
-          motivation: string | null
-          notified_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          formation_id: string
-          id?: string
-          motivation?: string | null
-          notified_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          formation_id?: string
-          id?: string
-          motivation?: string | null
-          notified_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "formation_pre_registrations_formation_id_fkey"
-            columns: ["formation_id"]
-            isOneToOne: false
-            referencedRelation: "formations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "formation_pre_registrations_user_id_fkey"
-            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -11114,18 +11114,18 @@ export type Database = {
       get_formation_pre_registrations: {
         Args: { p_formation_id: string }
         Returns: {
-          avatar_url: string | null
-          country: string | null
+          avatar_url: string
+          country: string
           created_at: string
-          email: string | null
-          first_name: string | null
+          email: string
+          first_name: string
           id: string
-          last_name: string | null
-          motivation: string | null
-          notified_at: string | null
-          phone: string | null
+          last_name: string
+          motivation: string
+          notified_at: string
+          phone: string
           user_id: string
-          username: string | null
+          username: string
         }[]
       }
       get_formation_unread_count: {
