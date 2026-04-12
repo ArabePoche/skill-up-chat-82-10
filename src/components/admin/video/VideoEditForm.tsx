@@ -58,10 +58,10 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
   const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isPortraitVideo, setIsPortraitVideo] = useState(false);
+  const [isPortraitVideo, setIsPortraitVideo] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setIsPortraitVideo(false);
+    setIsPortraitVideo(null);
   }, [formData.video_url]);
 
   const handleInputChange = (field: string, value: string) => {
@@ -103,7 +103,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
       setCapturedPreview(canvas.toDataURL('image/jpeg', 0.92));
       toast.success('Miniature capturée !');
     }, 'image/jpeg', 0.92);
-  }, []);
+  }, [videoRef]);
 
   const togglePlayPause = useCallback(() => {
     const vid = videoRef.current;
@@ -214,7 +214,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
                   controls
                   preload="metadata"
                   className={
-                    isPortraitVideo
+                    isPortraitVideo === true
                       ? 'max-h-[26rem] w-auto max-w-full rounded-md object-contain'
                       : 'w-full max-h-64 rounded-md object-contain'
                   }
