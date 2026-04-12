@@ -219,6 +219,8 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
                       : 'w-full max-h-64 rounded-md object-contain'
                   }
                   onLoadedMetadata={handleVideoMetadataLoaded}
+                  onLoadedData={handleVideoMetadataLoaded}
+                  onError={() => setIsPortraitVideo(false)}
                   onPlay={() => setIsVideoPlaying(true)}
                   onPause={() => setIsVideoPlaying(false)}
                 />
