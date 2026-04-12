@@ -54,6 +54,7 @@ import LiveCreatorReportDialog from '@/live/components/LiveCreatorReportDialog';
 import LiveHandRaisePanel from '@/live/components/LiveHandRaisePanel';
 import LiveMessageItem from '@/live/components/LiveMessageItem';
 import LiveRegistrantsDialog from '@/live/components/LiveRegistrantsDialog';
+import LiveTeaGiftOverlay from '@/live/components/LiveTeaGiftOverlay';
 import RemoteVideoTile from '@/live/components/RemoteVideoTile';
 import { useLiveCreatorAssets } from '@/live/hooks/useLiveCreatorAssets';
 import { useLiveAudience } from '@/live/hooks/useLiveAudience';
@@ -775,6 +776,7 @@ const UserLive: React.FC = () => {
           setActiveGiftOverlay({
             id: newMsg.id,
             userName: newMsg.userName,
+            giftId: newMsg.giftId,
             currency: newMsg.currency,
             content: newMsg.content,
           });
@@ -1581,7 +1583,7 @@ const UserLive: React.FC = () => {
     setShowGiftModal(true);
   };
 
-  const handleGiftSuccess = (amount: number, currency: string, giftLabel: string, isAnonymous: boolean) => {
+  const handleGiftSuccess = (amount: number, currency: string, giftLabel: string, isAnonymous: boolean, giftId?: string) => {
     if (!presenceChannelRef.current) return;
 
     const senderName = isAnonymous ? 'Un utilisateur anonyme' : stableDisplayName;
@@ -1593,6 +1595,7 @@ const UserLive: React.FC = () => {
       userAvatar: isAnonymous ? null : stableAvatarUrl,
       type: 'gift',
       content: `a envoyé ${giftLabel}`,
+      giftId,
       currency,
       amount,
       createdAt: new Date().toISOString(),
@@ -2165,29 +2168,36 @@ const UserLive: React.FC = () => {
       )}
 
       {activeGiftOverlay && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-gradient-to-br from-fuchsia-600/25 via-transparent to-amber-500/25"
-        >
-          <div className="flex flex-col items-center gap-4 rounded-[2rem] border border-white/20 bg-black/45 px-8 py-10 backdrop-blur-xl shadow-[0_0_80px_rgba(255,255,255,0.12)]">
-            <motion.img
-              initial={{ y: 20, scale: 0.7, rotate: -8 }}
-              animate={{ y: 0, scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-              src={activeGiftOverlay.currency === 'soumboulah_cash' ? iconSC : activeGiftOverlay.currency === 'soumboulah_bonus' ? iconSB : iconH}
-              alt={activeGiftOverlay.currency || 'cadeau'}
-              className="h-28 w-28 object-contain drop-shadow-[0_12px_30px_rgba(255,215,0,0.5)]"
-            />
-            <div className="text-center">
-              <p className="text-lg font-black uppercase tracking-[0.25em] text-amber-300">Cadeau reçu</p>
-              <p className="mt-2 text-2xl font-bold text-white">{activeGiftOverlay.userName}</p>
-              <p className="mt-1 text-base font-semibold text-white/90">{activeGiftOverlay.content}</p>
+        activeGiftOverlay.giftId === 'tea' ? (
+          <LiveTeaGiftOverlay
+            userName={activeGiftOverlay.userName}
+            content={activeGiftOverlay.content}
+          />
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.88 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-gradient-to-br from-fuchsia-600/25 via-transparent to-amber-500/25"
+          >
+            <div className="flex flex-col items-center gap-4 rounded-[2rem] border border-white/20 bg-black/45 px-8 py-10 backdrop-blur-xl shadow-[0_0_80px_rgba(255,255,255,0.12)]">
+              <motion.img
+                initial={{ y: 20, scale: 0.7, rotate: -8 }}
+                animate={{ y: 0, scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+                src={activeGiftOverlay.currency === 'soumboulah_cash' ? iconSC : activeGiftOverlay.currency === 'soumboulah_bonus' ? iconSB : iconH}
+                alt={activeGiftOverlay.currency || 'cadeau'}
+                className="h-28 w-28 object-contain drop-shadow-[0_12px_30px_rgba(255,215,0,0.5)]"
+              />
+              <div className="text-center">
+                <p className="text-lg font-black uppercase tracking-[0.25em] text-amber-300">Cadeau reçu</p>
+                <p className="mt-2 text-2xl font-bold text-white">{activeGiftOverlay.userName}</p>
+                <p className="mt-1 text-base font-semibold text-white/90">{activeGiftOverlay.content}</p>
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )
       )}
 
       {publicLiveScreen && publicLiveScreen.type !== 'teaching_studio' && (

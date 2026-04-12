@@ -47,6 +47,7 @@ export interface LiveMessage {
   userAvatar?: string | null;
   type: 'comment' | 'gift' | 'join' | 'raise_hand';
   content: string;
+  giftId?: string;
   currency?: string;
   amount?: number;
   createdAt: string;
@@ -72,6 +73,7 @@ export interface ParticipantControlPayload {
 export interface GiftOverlayState {
   id: string;
   userName: string;
+  giftId?: string;
   currency?: string;
   content: string;
 }
