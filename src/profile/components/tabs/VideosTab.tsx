@@ -312,7 +312,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
             return (
               <div
                 key={video.id}
-                className="relative aspect-video bg-muted rounded-lg overflow-hidden group"
+                className="relative aspect-[9/16] bg-muted rounded-lg overflow-hidden group"
               >
                 <div onClick={() => navigate(`/video/${video.id}`)} className="w-full h-full cursor-pointer hover:opacity-90 transition-opacity">
                   {video.thumbnail_url ? (
