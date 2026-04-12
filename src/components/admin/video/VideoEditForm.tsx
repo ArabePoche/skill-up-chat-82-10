@@ -71,7 +71,7 @@ const extractVimeoVideoId = (url: string): string => {
     const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
     for (let index = pathSegments.length - 1; index >= 0; index -= 1) {
       if (/^\d+$/.test(pathSegments[index])) {
-        return pathSegments[index];
+        return pathSegments[index] ?? '';
       }
     }
   } catch {
