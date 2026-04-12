@@ -500,8 +500,7 @@ export const saveMediaToDevice = async (
 
   if (
     isNativePlatform() &&
-    Capacitor.getPlatform() === 'android' &&
-    (mediaType === 'audio' || mediaType === 'document')
+    Capacitor.getPlatform() === 'android'
   ) {
     await requestStoragePermissions();
   }
