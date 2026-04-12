@@ -2,7 +2,7 @@
  * Formulaire d'édition des métadonnées d'une vidéo (titre, description, miniature, type, formation).
  * Permet de capturer une miniature directement depuis la vidéo en mettant en pause.
  */
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,6 +58,11 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
   const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isPortraitVideo, setIsPortraitVideo] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setIsPortraitVideo(null);
+  }, [formData.video_url]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -98,7 +103,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
       setCapturedPreview(canvas.toDataURL('image/jpeg', 0.92));
       toast.success('Miniature capturée !');
     }, 'image/jpeg', 0.92);
-  }, []);
+  }, [videoRef]);
 
   const togglePlayPause = useCallback(() => {
     const vid = videoRef.current;
@@ -116,6 +121,12 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
     const result = await uploadFile(file, 'lesson_discussion_files');
     return result.fileUrl;
   };
+
+  const handleVideoMetadataLoaded = useCallback(() => {
+    const vid = videoRef.current;
+    if (!vid?.videoWidth || !vid.videoHeight) return;
+    setIsPortraitVideo(vid.videoHeight > vid.videoWidth);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,18 +204,28 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
         <div className="space-y-3 mt-1">
           {/* Lecteur vidéo pour capture */}
           {formData.video_url && (
-            <div className="rounded-lg overflow-hidden border border-border bg-black relative">
-              <video
-                ref={videoRef}
-                src={formData.video_url}
-                crossOrigin="anonymous"
-                playsInline
-                preload="metadata"
-                className="w-full max-h-48 object-contain"
-                onPlay={() => setIsVideoPlaying(true)}
-                onPause={() => setIsVideoPlaying(false)}
-              />
-              <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+            <div className="rounded-lg border border-border bg-black/95 p-2">
+              <div className="flex justify-center">
+                <video
+                  ref={videoRef}
+                  src={formData.video_url}
+                  crossOrigin="anonymous"
+                  playsInline
+                  controls
+                  preload="metadata"
+                  className={
+                    isPortraitVideo === true
+                      ? 'max-h-[26rem] w-auto max-w-full rounded-md object-contain'
+                      : 'w-full max-h-64 rounded-md object-contain'
+                  }
+                  onLoadedMetadata={handleVideoMetadataLoaded}
+                  onLoadedData={handleVideoMetadataLoaded}
+                  onError={() => setIsPortraitVideo(false)}
+                  onPlay={() => setIsVideoPlaying(true)}
+                  onPause={() => setIsVideoPlaying(false)}
+                />
+              </div>
+              <div className="mt-3 flex items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -225,7 +246,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
                   Capturer cette frame
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground text-center py-1 bg-muted/50">
+              <p className="text-[10px] text-muted-foreground text-center pt-2">
                 Naviguez dans la vidéo puis capturez la frame souhaitée
               </p>
             </div>

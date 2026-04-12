@@ -5,6 +5,8 @@
  */
 
 import { saveMediaToDevice, isNativePlatform } from './mediaGallery';
+import { fileStatusCache } from '../stores/FileStatusCache';
+import { fileStore } from '../stores/FileStore';
 import { toast } from 'sonner';
 
 /**
@@ -22,6 +24,26 @@ export const downloadFile = async (
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const mimeType = fileType || blob.type || 'application/octet-stream';
+
+      try {
+        await fileStore.saveFile(fileUrl, blob, {
+          remoteUrl: fileUrl,
+          fileName,
+          fileType: mimeType,
+          fileSize: blob.size,
+          isOwnFile: false,
+        });
+
+        const localUrl = URL.createObjectURL(blob);
+        fileStatusCache.setByUrl(fileUrl, {
+          status: 'downloaded',
+          blobUrl: localUrl,
+          checkedAt: Date.now(),
+        });
+      } catch (storageError) {
+        console.warn('⚠️ Persistence locale impossible, téléchargement appareil conservé:', storageError);
+      }
+
       const result = await saveMediaToDevice(blob, fileName, mimeType);
       if (result.success) {
         toast.success(
@@ -32,7 +54,7 @@ export const downloadFile = async (
       } else {
         toast.error(`Erreur: ${result.error || 'Sauvegarde échouée'}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Erreur téléchargement natif:', error);
       toast.error('Erreur lors du téléchargement');
     }
