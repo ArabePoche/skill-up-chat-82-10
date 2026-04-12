@@ -1,5 +1,8 @@
-
-import React, { useState } from 'react';
+/**
+ * Formulaire d'édition des métadonnées d'une vidéo (titre, description, miniature, type, formation).
+ * Permet de capturer une miniature directement depuis la vidéo en mettant en pause.
+ */
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +13,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useFormations } from '@/hooks/useFormations';
-import { Upload } from 'lucide-react';
+import { Upload, Camera, Play, Pause } from 'lucide-react';
 
 interface Video {
   id: string;
@@ -41,6 +44,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
   const { user } = useAuth();
   const { uploadFile, isUploading } = useFileUpload();
   const { data: formations = [] } = useFormations();
+  const videoRef = useRef<HTMLVideoElement>(null);
   
   const [formData, setFormData] = useState({
     title: video.title || '',
@@ -52,12 +56,11 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
   });
   
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState<File | null>(null);
+  const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleThumbnailFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,17 +71,50 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
         return;
       }
       setSelectedThumbnailFile(file);
+      setCapturedPreview(URL.createObjectURL(file));
     }
   };
 
-  const uploadThumbnailFile = async (file: File): Promise<string> => {
-    try {
-      const result = await uploadFile(file, 'lesson_discussion_files');
-      return result.fileUrl;
-    } catch (error) {
-      console.error('Erreur upload miniature:', error);
-      throw error;
+  // Capturer la frame actuelle de la vidéo comme miniature
+  const captureCurrentFrame = useCallback(() => {
+    const vid = videoRef.current;
+    if (!vid || !vid.videoWidth || !vid.videoHeight) {
+      toast.error('Mettez la vidéo en pause sur la frame souhaitée');
+      return;
     }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = vid.videoWidth;
+    canvas.height = vid.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `thumbnail_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setSelectedThumbnailFile(file);
+      setCapturedPreview(canvas.toDataURL('image/jpeg', 0.92));
+      toast.success('Miniature capturée !');
+    }, 'image/jpeg', 0.92);
+  }, []);
+
+  const togglePlayPause = useCallback(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    if (vid.paused) {
+      vid.play();
+      setIsVideoPlaying(true);
+    } else {
+      vid.pause();
+      setIsVideoPlaying(false);
+    }
+  }, []);
+
+  const uploadThumbnailFile = async (file: File): Promise<string> => {
+    const result = await uploadFile(file, 'lesson_discussion_files');
+    return result.fileUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,11 +128,8 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
     try {
       let thumbnailUrl = formData.thumbnail_url;
 
-      // Uploader la miniature si un fichier est sélectionné
       if (selectedThumbnailFile) {
-        console.log('Upload de la miniature:', selectedThumbnailFile.name);
         thumbnailUrl = await uploadThumbnailFile(selectedThumbnailFile);
-        console.log('Miniature uploadée:', thumbnailUrl);
       }
 
       const videoData = {
@@ -131,7 +164,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
       <div>
         <Label htmlFor="title">Titre</Label>
         <Input
@@ -153,60 +186,76 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
           rows={3}
         />
       </div>
-      
+
+      {/* Section miniature avec capture vidéo */}
       <div>
-        <Label htmlFor="video_url">URL de la vidéo</Label>
-        <Input
-          id="video_url"
-          type="url"
-          value={formData.video_url}
-          onChange={(e) => handleInputChange('video_url', e.target.value)}
-          placeholder="https://example.com/video.mp4"
-          required
-        />
-      </div>
-      
-      <div>
-        <Label>Miniature de couverture (optionnel)</Label>
-        <div className="space-y-3">
-          {/* Prévisualisation actuelle */}
-          {formData.thumbnail_url && !selectedThumbnailFile && (
+        <Label>Miniature de couverture</Label>
+        <div className="space-y-3 mt-1">
+          {/* Lecteur vidéo pour capture */}
+          {formData.video_url && (
+            <div className="rounded-lg overflow-hidden border border-border bg-black relative">
+              <video
+                ref={videoRef}
+                src={formData.video_url}
+                crossOrigin="anonymous"
+                playsInline
+                preload="metadata"
+                className="w-full max-h-48 object-contain"
+                onPlay={() => setIsVideoPlaying(true)}
+                onPause={() => setIsVideoPlaying(false)}
+              />
+              <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="bg-black/60 text-white hover:bg-black/80 backdrop-blur-sm h-8"
+                  onClick={togglePlayPause}
+                >
+                  {isVideoPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="bg-black/60 text-white hover:bg-black/80 backdrop-blur-sm h-8 flex-1"
+                  onClick={captureCurrentFrame}
+                >
+                  <Camera className="h-3.5 w-3.5 mr-1.5" />
+                  Capturer cette frame
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center py-1 bg-muted/50">
+                Naviguez dans la vidéo puis capturez la frame souhaitée
+              </p>
+            </div>
+          )}
+
+          {/* Prévisualisation de la miniature */}
+          {(capturedPreview || (formData.thumbnail_url && !selectedThumbnailFile)) && (
             <div className="border border-border rounded-lg p-2">
               <img 
-                src={formData.thumbnail_url} 
-                alt="Miniature actuelle" 
-                className="w-full h-32 object-cover rounded"
+                src={capturedPreview || formData.thumbnail_url} 
+                alt="Miniature" 
+                className="w-full h-28 object-cover rounded"
               />
-              <p className="text-xs text-muted-foreground mt-1">Miniature actuelle</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {capturedPreview ? 'Nouvelle miniature capturée' : 'Miniature actuelle'}
+              </p>
             </div>
           )}
           
-          {/* URL de la miniature */}
-          <Input
-            type="url"
-            value={formData.thumbnail_url}
-            onChange={(e) => handleInputChange('thumbnail_url', e.target.value)}
-            placeholder="https://example.com/thumbnail.jpg"
-          />
-          
-          {/* Upload de fichier */}
-          <div className="border-2 border-dashed border-border rounded-lg p-4">
+          {/* Upload de fichier alternatif */}
+          <div className="border-2 border-dashed border-border rounded-lg p-3">
             <div className="text-center">
-              <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mt-1">
-                Ou uploadez une nouvelle image
-              </p>
+              <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground mt-1">Ou uploadez une image</p>
               <Input
                 type="file"
                 accept="image/*"
                 onChange={handleThumbnailFileSelect}
                 className="mt-2"
               />
-              {selectedThumbnailFile && (
-                <p className="mt-2 text-sm text-green-600">
-                  Nouveau fichier: {selectedThumbnailFile.name}
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -252,8 +301,7 @@ const VideoEditForm: React.FC<VideoEditFormProps> = ({ video, onSuccess, onCance
         </div>
       )}
 
-      
-      <div className="flex space-x-2">
+      <div className="flex space-x-2 pt-2">
         <Button type="submit" className="flex-1" disabled={isUploading}>
           {isUploading ? 'Upload en cours...' : 'Modifier'}
         </Button>
