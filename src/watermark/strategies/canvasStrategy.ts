@@ -49,8 +49,11 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
 
       onProgress?.(WATERMARK_CONSTANTS.RENDER_START);
 
+      // Garder la résolution originale pour éviter le ralentissement du rendu
       const scaledWidth = Math.min(w, WATERMARK_CONSTANTS.MAX_VIDEO_WIDTH);
       const scaledHeight = Math.round((scaledWidth / w) * h);
+      
+      console.log(`[Watermark] Vidéo: ${w}x${h} → Canvas: ${scaledWidth}x${scaledHeight}, durée: ${duration}s`);
 
       const canvas = document.createElement('canvas');
       canvas.width = scaledWidth;
@@ -105,61 +108,76 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
 
         mediaRecorder.onerror = () => reject(new Error('Erreur MediaRecorder'));
 
-        // Démarrer l'enregistrement avec des chunks fréquents
-        mediaRecorder.start(500);
+        // Démarrer l'enregistrement
+        mediaRecorder.start(250);
         video.playbackRate = 1.0;
         video.currentTime = 0;
 
-        video.play().catch(() => {
+        // Utiliser un intervalle fixe au lieu de requestAnimationFrame
+        // pour garantir un rythme constant et éviter que la vidéo traîne
+        const FPS = 30;
+        const frameInterval = 1000 / FPS;
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+        let stopped = false;
+
+        const stopRecording = () => {
+          if (stopped) return;
+          stopped = true;
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+          // Dessiner la dernière frame
+          ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
+          drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
+          if ((canvasVideoTrack as any).requestFrame) {
+            (canvasVideoTrack as any).requestFrame();
+          }
+          setTimeout(() => {
+            if (mediaRecorder.state === 'recording') {
+              mediaRecorder.stop();
+            }
+          }, 300);
+        };
+
+        video.onended = stopRecording;
+
+        video.play().then(() => {
+          // Boucle de rendu à intervalle fixe - synchronisé avec la lecture réelle
+          intervalId = setInterval(() => {
+            if (video.ended || video.paused || stopped) {
+              if (video.ended) stopRecording();
+              return;
+            }
+
+            // Dessiner la frame courante + watermark
+            ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
+            drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
+
+            // Émettre la frame
+            if ((canvasVideoTrack as any).requestFrame) {
+              (canvasVideoTrack as any).requestFrame();
+            }
+
+            // Progression
+            const pct = Math.round(
+              WATERMARK_CONSTANTS.RENDER_START +
+              (video.currentTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
+            );
+            onProgress?.(Math.min(pct, 95));
+          }, frameInterval);
+        }).catch(() => {
           mediaRecorder.stop();
           reject(new Error('Impossible de lire la vidéo'));
         });
 
-        // Boucle de rendu synchronisée avec la lecture vidéo
-        const renderFrame = () => {
-          if (video.ended || video.paused) {
-            if (video.ended && mediaRecorder.state === 'recording') {
-              // Dessiner la dernière frame
-              ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
-              drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
-              if ((canvasVideoTrack as any).requestFrame) {
-                (canvasVideoTrack as any).requestFrame();
-              }
-              // Petit délai pour que la dernière frame soit bien enregistrée
-              setTimeout(() => mediaRecorder.stop(), 200);
-            }
-            return;
-          }
-
-          // Dessiner la frame courante + watermark
-          ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
-          drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
-
-          // Signaler manuellement qu'une nouvelle frame est prête
-          // Cela synchronise exactement le canvas avec le moment du dessin
-          if ((canvasVideoTrack as any).requestFrame) {
-            (canvasVideoTrack as any).requestFrame();
-          }
-
-          // Progression
-          const pct = Math.round(
-            WATERMARK_CONSTANTS.RENDER_START +
-            (video.currentTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
-          );
-          onProgress?.(Math.min(pct, 95));
-
-          requestAnimationFrame(renderFrame);
-        };
-
-        requestAnimationFrame(renderFrame);
-
         // Timeout de sécurité
         setTimeout(() => {
-          if (mediaRecorder.state === 'recording') {
+          if (!stopped) {
             console.warn('Forçage arrêt MediaRecorder (timeout)');
-            mediaRecorder.stop();
+            stopRecording();
           }
-        }, (duration * 1000) + 8000);
+        }, (duration * 1000) + 5000);
       });
     } finally {
       if (document.body.contains(video)) document.body.removeChild(video);
