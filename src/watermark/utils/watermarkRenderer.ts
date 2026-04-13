@@ -17,8 +17,8 @@ export function drawWatermark(
   ctx.save();
 
   const paddingX = Math.round(width * 0.04);
-  const cycle = Math.floor(currentTime / WATERMARK_CONSTANTS.SWITCH_INTERVAL);
-  const isRight = cycle % 2 === 1;
+  // Gauche pendant les 7 premières secondes, puis droite pour le reste
+  const isRight = currentTime >= WATERMARK_CONSTANTS.SWITCH_INTERVAL;
 
   ctx.globalAlpha = 0.8;
   ctx.fillStyle = '#ffffff';
