@@ -149,12 +149,18 @@ export const useMediaDownload = (
           chunks.push(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
           loaded += value.length;
           
+          // Capper à 99% pendant la lecture : 100% sera affiché uniquement une fois
+          // tous les chunks lus et avant les opérations de stockage (IndexedDB / galerie)
           setProgress({
             loaded,
             total,
-            percentage: Math.round((loaded / total) * 100),
+            percentage: Math.min(99, Math.round((loaded / total) * 100)),
           });
         }
+
+        // Lecture terminée → forcer 100% avant les opérations de stockage qui peuvent
+        // être lentes sur mobile (IndexedDB, galerie) et bloqueraient l'affichage à 95%
+        setProgress({ loaded, total, percentage: 100 });
 
         blob = new Blob(chunks, { type: mimeType });
       } else {
