@@ -13,8 +13,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { toast } from 'sonner';
-import { downloadVideoWithWatermark } from '@/utils/videoWatermark';
-import { requestServerWatermarkVideo } from '@/services/watermarkService';
+import { downloadVideoWithWatermark } from '@/watermark';
 import { useTranslation } from 'react-i18next';
 
 interface VideoDownloadModalProps {
