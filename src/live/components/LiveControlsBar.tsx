@@ -111,61 +111,61 @@ const LiveControlsBar: React.FC<LiveControlsBarProps> = ({
         </>
       )}
 
+      {isHost && (
+        <Button
+          type="button"
+          onClick={onOpenScreenManager}
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+          title="Piloter les écrans du live"
+        >
+          <BookOpen size={18} />
+        </Button>
+      )}
+      {isHost && hasPaidEntry && (
+        <Button
+          type="button"
+          onClick={onOpenRegistrants}
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+          title="Inscrits et revenus"
+        >
+          <Users size={18} />
+        </Button>
+      )}
+      <Button
+        type="button"
+        onClick={onToggleMute}
+        variant={isMuted ? 'destructive' : 'outline'}
+        size="icon"
+        className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+        title={isHost || isAcceptedParticipant ? (isMuted ? 'Réactiver le micro' : 'Couper le micro') : (isMuted ? 'Activer le micro quand vous intervenez' : 'Démarrer avec le micro coupé')}
+      >
+        {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+      </Button>
+      <Button
+        type="button"
+        onClick={onToggleVideo}
+        variant={!isVideoEnabled ? 'destructive' : 'outline'}
+        size="icon"
+        className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+        title={isHost || isAcceptedParticipant ? (!isVideoEnabled ? 'Réactiver la caméra' : 'Couper la caméra') : (!isVideoEnabled ? 'Démarrer sans caméra quand vous intervenez' : 'Démarrer avec la caméra')}
+      >
+        {isVideoEnabled ? <Video size={20} /> : <VideoOff size={20} />}
+      </Button>
       {(isHost || isAcceptedParticipant) && (
-        <>
-          {isHost && (
-            <Button
-              type="button"
-              onClick={onOpenScreenManager}
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              title="Piloter les écrans du live"
-            >
-              <BookOpen size={18} />
-            </Button>
-          )}
-          {isHost && hasPaidEntry && (
-            <Button
-              type="button"
-              onClick={onOpenRegistrants}
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              title="Inscrits et revenus"
-            >
-              <Users size={18} />
-            </Button>
-          )}
-          <Button
-            type="button"
-            onClick={onToggleMute}
-            variant={isMuted ? 'destructive' : 'outline'}
-            size="icon"
-            className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-          </Button>
-          <Button
-            type="button"
-            onClick={onToggleVideo}
-            variant={!isVideoEnabled ? 'destructive' : 'outline'}
-            size="icon"
-            className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            {isVideoEnabled ? <Video size={20} /> : <VideoOff size={20} />}
-          </Button>
-          <Button
-            type="button"
-            onClick={onSwitchCamera}
-            variant="outline"
-            size="icon"
-            className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-            title="Basculer entre caméra avant et arrière"
-          >
-            <RefreshCw size={18} />
-          </Button>
-        </>
+        <Button
+          type="button"
+          onClick={onSwitchCamera}
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 shrink-0 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+          title="Basculer entre caméra avant et arrière"
+        >
+          <RefreshCw size={18} />
+        </Button>
       )}
     </div>
   );

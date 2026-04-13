@@ -181,6 +181,24 @@ const UserLive: React.FC = () => {
 
   const isHost = !!user?.id && !!stream?.host_id && user.id === stream.host_id && requestedHostMode;
 
+  const handleLocalMuteControl = useCallback(() => {
+    if (isHost || isAcceptedParticipant) {
+      toggleMute();
+      return;
+    }
+
+    void setMicrophoneEnabled(state.isMuted);
+  }, [isAcceptedParticipant, isHost, setMicrophoneEnabled, state.isMuted, toggleMute]);
+
+  const handleLocalVideoControl = useCallback(() => {
+    if (isHost || isAcceptedParticipant) {
+      toggleVideo();
+      return;
+    }
+
+    void setCameraEnabled(!state.isVideoEnabled);
+  }, [isAcceptedParticipant, isHost, setCameraEnabled, state.isVideoEnabled, toggleVideo]);
+
   useEffect(() => {
     const preparedStudio = location.state?.preparedStudio;
     if (preparedStudio && isHost && !publicLiveScreen) {
@@ -810,10 +828,24 @@ const UserLive: React.FC = () => {
       .on('broadcast', { event: 'hand_accepted' }, (payload) => {
         const { userId, userName, userAvatar } = payload.payload;
         if (userId === stableUserId) {
+          const shouldEnableAudio = !state.isMuted;
+          const shouldEnableVideo = state.isVideoEnabled;
+
           toast.success('Le créateur a accepté votre demande ! Vous pouvez maintenant parler.');
           setHasRaisedHand(false);
           setIsAcceptedParticipant(true);
-          void upgradeToHost({ enableAudio: true, enableVideo: true });
+
+          void (async () => {
+            await upgradeToHost({ enableAudio: true, enableVideo: true });
+
+            if (!shouldEnableAudio) {
+              await setMicrophoneEnabled(false);
+            }
+
+            if (!shouldEnableVideo) {
+              await setCameraEnabled(false);
+            }
+          })();
         }
         setHandRaiseRequests(prev => prev.filter(r => r.userId !== userId));
         upsertAcceptedParticipant({
@@ -2502,8 +2534,8 @@ const UserLive: React.FC = () => {
           onSendGift={handleSendGiftClick}
           onOpenScreenManager={() => setIsScreenManagerOpen(true)}
           onOpenRegistrants={() => setShowRegistrantsPanel(true)}
-          onToggleMute={toggleMute}
-          onToggleVideo={toggleVideo}
+          onToggleMute={handleLocalMuteControl}
+          onToggleVideo={handleLocalVideoControl}
           onSwitchCamera={switchCamera}
           hasPaidEntry={Boolean(stream.entry_price && stream.entry_price > 0)}
           isMuted={state.isMuted}

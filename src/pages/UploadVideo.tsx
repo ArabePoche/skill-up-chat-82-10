@@ -33,6 +33,7 @@ const UploadVideo = () => {
   const [activeTab, setActiveTab] = useState<CreationTab>('record');
   const [showFullDialog, setShowFullDialog] = useState(false);
   const [dialogInitialMethod, setDialogInitialMethod] = useState<'record' | 'upload' | 'url' | null>(null);
+  const [dialogSourceVideoFile, setDialogSourceVideoFile] = useState<File | null>(null);
   const [showLiveDialog, setShowLiveDialog] = useState(false);
 
   // Camera state
@@ -145,9 +146,8 @@ const UploadVideo = () => {
       setIsRecording(false);
       setIsRecordingPaused(false);
       setDialogInitialMethod('record');
+      setDialogSourceVideoFile(file);
       setShowFullDialog(true);
-      // Store file for dialog - we'll pass via a custom event
-      window.dispatchEvent(new CustomEvent('video-recorded', { detail: { file } }));
     };
     recorder.start(150);
     setIsRecording(true);
@@ -197,6 +197,7 @@ const UploadVideo = () => {
     if (tab === 'url') {
       stopCamera();
       setDialogInitialMethod('url');
+      setDialogSourceVideoFile(null);
       setShowFullDialog(true);
       return;
     }
@@ -213,8 +214,8 @@ const UploadVideo = () => {
     if (!file) return;
     stopCamera();
     setDialogInitialMethod('upload');
+    setDialogSourceVideoFile(file);
     setShowFullDialog(true);
-    window.dispatchEvent(new CustomEvent('video-recorded', { detail: { file } }));
     e.target.value = '';
   };
 
@@ -222,6 +223,7 @@ const UploadVideo = () => {
     if (!open) {
       setShowFullDialog(false);
       setDialogInitialMethod(null);
+      setDialogSourceVideoFile(null);
       // Restart camera
       setActiveTab('record');
     }
@@ -370,8 +372,11 @@ const UploadVideo = () => {
       <VideoCreationFlowDialog
         open={showFullDialog}
         onOpenChange={handleDialogClose}
+        initialMethod={dialogInitialMethod}
+        initialSourceVideoFile={dialogSourceVideoFile}
         onSuccess={() => {
           setShowFullDialog(false);
+          setDialogSourceVideoFile(null);
           navigate('/profil');
         }}
       />

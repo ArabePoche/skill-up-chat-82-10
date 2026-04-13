@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Video, List, Plus, Trash2, Edit } from 'lucide-react';
+import { Video, List, Plus, Trash2, Edit, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserVideos } from '@/profile/hooks/useUserVideos';
 import { useUserSeries } from '@/profile/hooks/useUserSeries';
@@ -31,6 +31,20 @@ import VideoEditForm from '@/components/admin/video/VideoEditForm';
 interface VideosTabProps {
   userId?: string;
 }
+
+const formatViewsCount = (value: number | null | undefined) => {
+  const safeValue = value ?? 0;
+
+  if (safeValue < 1000) {
+    return `${safeValue}`;
+  }
+
+  if (safeValue < 1_000_000) {
+    return `${(safeValue / 1000).toFixed(safeValue >= 10_000 ? 0 : 1).replace(/\.0$/, '')}K`;
+  }
+
+  return `${(safeValue / 1_000_000).toFixed(safeValue >= 10_000_000 ? 0 : 1).replace(/\.0$/, '')}M`;
+};
 
 const extractStorageObjectFromPublicUrl = (publicUrl?: string | null) => {
   if (!publicUrl) {
@@ -305,7 +319,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
         )}
 
         {/* Grille de vidéos */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 px-4">
+        <div className="grid grid-cols-3 gap-2 px-4">
           {videos?.map((video) => {
             const videoSeries = videoSeriesMap?.[video.id];
             
@@ -327,6 +341,10 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                    <Eye size={12} />
+                    <span>{formatViewsCount((video as { views_count?: number | null }).views_count)} vues</span>
+                  </div>
                   <div className="absolute bottom-0 left-0 right-0 p-2">
                     <h3 className="text-white text-sm font-medium line-clamp-2">
                       {video.title}
@@ -349,7 +367,7 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
                 )}
 
                 {isOwner && (
-                  <div className="absolute top-2 left-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                  <div className="absolute top-10 left-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={(e) => {

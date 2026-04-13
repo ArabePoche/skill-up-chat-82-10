@@ -337,7 +337,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[100dvh] w-full max-w-none flex-col overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-white sm:max-h-[94vh] sm:w-[calc(100vw-0.75rem)] sm:max-w-6xl sm:rounded-xl">
+      <DialogContent className="flex h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-none flex-col overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-white sm:h-auto sm:max-h-[94vh] sm:w-[calc(100vw-0.75rem)] sm:max-w-6xl sm:rounded-xl">
         <DialogHeader className="border-b border-zinc-800 px-4 py-4 sm:px-6 sm:py-5">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Presentation className="h-5 w-5 text-sky-300" />
@@ -348,9 +348,9 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <div className="flex h-full min-h-0 flex-col gap-0 overflow-y-auto lg:grid lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:overflow-hidden">
-            <div className="min-h-0 overflow-hidden border-b border-zinc-800 bg-zinc-950/80 p-3 sm:p-4 lg:flex lg:max-h-none lg:flex-col lg:border-b-0 lg:border-r">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex min-h-full flex-col gap-0 lg:grid lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:overflow-hidden">
+            <div className="min-h-0 border-b border-zinc-800 bg-zinc-950/80 p-3 sm:p-4 lg:flex lg:max-h-none lg:flex-col lg:overflow-hidden lg:border-b-0 lg:border-r">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Scènes</p>
@@ -409,8 +409,8 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
               </div>
             </div>
 
-            <div className="min-h-0 overflow-hidden border-b border-zinc-800 p-3 sm:p-5 lg:flex lg:max-h-none lg:flex-col lg:border-b-0">
-            <div className="min-h-0 overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-sky-500/12 via-zinc-950 to-emerald-500/10 p-5 shadow-[0_16px_60px_rgba(0,0,0,0.35)] lg:flex lg:flex-1 lg:flex-col">
+            <div className="min-h-0 border-b border-zinc-800 p-3 sm:p-5 lg:flex lg:max-h-none lg:flex-col lg:overflow-hidden lg:border-b-0">
+            <div className="min-h-0 rounded-[28px] border border-white/10 bg-gradient-to-br from-sky-500/12 via-zinc-950 to-emerald-500/10 p-5 shadow-[0_16px_60px_rgba(0,0,0,0.35)] lg:flex lg:flex-1 lg:flex-col lg:overflow-hidden">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-200/80">Prévisualisation</p>
@@ -472,7 +472,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
             </div>
             </div>
 
-            <div className="min-h-0 bg-zinc-950/80 p-3 sm:p-4 lg:flex lg:max-h-none lg:flex-col lg:border-l lg:border-zinc-800">
+            <div className="min-h-0 bg-zinc-950/80 p-3 pb-5 sm:p-4 lg:flex lg:max-h-none lg:flex-col lg:overflow-hidden lg:border-l lg:border-zinc-800">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Paramètres</p>
             <div className="mt-4 min-h-0 space-y-4 overflow-y-auto pr-1 lg:flex-1">
               <div className="space-y-2">
@@ -527,6 +527,29 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                 </div>
               )}
 
+              {!!studio?.scenes.length && (
+                <div className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Renommer les scènes</p>
+                    <p className="text-xs text-zinc-400">Modifiez directement les noms de chaque scène depuis la configuration.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {studio.scenes.map((scene, index) => (
+                      <div key={scene.id} className="space-y-1">
+                        <Label htmlFor={`scene-name-${scene.id}`}>Scène {index + 1}</Label>
+                        <Input
+                          id={`scene-name-${scene.id}`}
+                          value={scene.name}
+                          onChange={(event) => updateSceneName(scene.id, event.target.value)}
+                          className="border-zinc-800 bg-zinc-900 text-white"
+                          placeholder={`Scène ${index + 1}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {selectedElement ? (
                 <div className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -540,11 +563,18 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Titre</Label>
+                    <Label>
+                      {selectedElement.type === 'whiteboard'
+                        ? 'Nom du whiteboard'
+                        : selectedElement.type === 'notes'
+                          ? 'Nom des notes'
+                          : 'Titre du document'}
+                    </Label>
                     <Input
                       value={selectedElement.title}
                       onChange={(event) => updateElement(selectedElement.id, { title: event.target.value })}
                       className="border-zinc-800 bg-zinc-900 text-white"
+                      placeholder={selectedElement.type === 'whiteboard' ? 'Ex: Tableau principal' : selectedElement.type === 'notes' ? 'Ex: Notes du cours' : 'Ex: Support PDF'}
                     />
                   </div>
 
@@ -656,7 +686,7 @@ const LiveTeachingStudioEditor: React.FC<LiveTeachingStudioEditorProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-col-reverse gap-2 border-t border-zinc-800 px-3 py-3 sm:flex-row sm:px-6 sm:py-4">
+        <DialogFooter className="sticky bottom-0 flex-col-reverse gap-2 border-t border-zinc-800 bg-zinc-950 px-3 py-3 sm:flex-row sm:px-6 sm:py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading} className="w-full border-zinc-700 bg-transparent text-white hover:bg-zinc-800 sm:w-auto disabled:opacity-50">
             Annuler
           </Button>

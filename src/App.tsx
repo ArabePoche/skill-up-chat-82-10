@@ -51,7 +51,7 @@ import MyOrdersScreen from '@/marketplace/components/MyOrdersScreen';
 import { StreakTrackerWrapper } from '@/streak/components/StreakTrackerWrapper';
 import { ActivityTrackerWrapper } from '@/components/ActivityTrackerWrapper';
 import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
-import { OfflineIndicator, OfflineGate, ConversationSyncProvider } from '@/offline';
+import { OfflineGate, ConversationSyncProvider } from '@/offline';
 import { OfflineAuthBanner } from '@/offline/components/OfflineAuthBanner';
 import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt';
 
@@ -102,7 +102,6 @@ const AppWithRouter: React.FC = () => {
       <StreakTrackerWrapper />
       <ActivityTrackerWrapper />
       <VisitorTrackerWrapper />
-      <OfflineIndicator />
       <OfflineAuthBanner />
       <PushNotificationPrompt />
       <Routes>

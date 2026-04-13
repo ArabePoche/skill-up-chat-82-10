@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Loader2, Mic, Paperclip, Pause, Play, Send, Smile, Square, Trash2, X } from 'lucide-react';
+import { Loader2, Mic, Paperclip, Send, Smile, Square, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,11 +48,9 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const [recordingTime, setRecordingTime] = useState(0);
   const [voiceDraftBlob, setVoiceDraftBlob] = useState<Blob | null>(null);
   const [voiceDraftUrl, setVoiceDraftUrl] = useState<string | null>(null);
-  const [isPlayingVoiceDraft, setIsPlayingVoiceDraft] = useState(false);
   const [voiceDraftDuration, setVoiceDraftDuration] = useState(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioPreviewRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
@@ -75,8 +73,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   };
 
   const clearVoiceDraft = () => {
-    audioPreviewRef.current?.pause();
-    setIsPlayingVoiceDraft(false);
     setVoiceDraftBlob(null);
     setVoiceDraftDuration(0);
     setRecordingTime(0);
@@ -352,25 +348,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
     }
   };
 
-  const handleToggleVoiceDraftPlayback = async () => {
-    const audio = audioPreviewRef.current;
-    if (!audio || !voiceDraftUrl) {
-      return;
-    }
-
-    if (isPlayingVoiceDraft) {
-      audio.pause();
-      return;
-    }
-
-    try {
-      await audio.play();
-    } catch (error) {
-      console.error('Lecture audio impossible:', error);
-      toast.error('Impossible de lire ce vocal.');
-    }
-  };
-
   const handleSendVoiceDraft = () => {
     if (!voiceDraftBlob) {
       return;
@@ -520,16 +497,15 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               {hasVoiceDraft ? (
                 <div className="flex flex-1 items-center justify-between gap-2 py-[4px] sm:py-[8px] min-w-0">
                   <div className="flex min-w-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleToggleVoiceDraftPlayback()}
-                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#e8f5e9] text-[#25d366] transition-colors hover:bg-[#d9f2dc]"
-                    >
-                      {isPlayingVoiceDraft ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </button>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-700">Message vocal prêt</p>
-                      <p className="text-xs text-slate-500">{formatTime(Math.floor(voiceDraftDuration || recordingTime))}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="mb-1 truncate text-sm font-medium text-slate-700">Message vocal prêt</p>
+                      <audio
+                        src={voiceDraftUrl ?? undefined}
+                        controls
+                        preload="metadata"
+                        className="h-8 w-full min-w-[160px] max-w-[220px]"
+                      />
+                      <p className="mt-1 text-xs text-slate-500">{formatTime(Math.floor(voiceDraftDuration || recordingTime))}</p>
                     </div>
                   </div>
                   <button
@@ -584,16 +560,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </div>
         </div>
 
-        {voiceDraftUrl && (
-          <audio
-            ref={audioPreviewRef}
-            src={voiceDraftUrl}
-            onPlay={() => setIsPlayingVoiceDraft(true)}
-            onPause={() => setIsPlayingVoiceDraft(false)}
-            onEnded={() => setIsPlayingVoiceDraft(false)}
-            className="hidden"
-          />
-        )}
     </>
   );
 };
