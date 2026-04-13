@@ -11,7 +11,15 @@ import { getSupportedRecorderMimeType } from '../utils/mediaRecorderHelper';
 
 type VideoFrameRequestCallback = (
   now: DOMHighResTimeStamp,
-  metadata: { mediaTime: number }
+  metadata: {
+    mediaTime: number;
+    presentedFrames?: number;
+    expectedDisplayTime?: number;
+    width?: number;
+    height?: number;
+    presentationTime?: number;
+    captureTime?: number;
+  }
 ) => void;
 
 type HTMLVideoElementWithFrameCallback = HTMLVideoElement & {
@@ -77,7 +85,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
 
       // captureStream(0) = mode manuel : on contrôle exactement quand une frame est émise
       const canvasStream = canvas.captureStream(0);
-      const canvasVideoTrack = canvasStream.getVideoTracks()[0];
+      const canvasVideoTrack = canvasStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
 
       // Extraire l'audio depuis la vidéo source
       let combinedStream: MediaStream;
@@ -111,13 +119,15 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         let intervalId: ReturnType<typeof setInterval> | null = null;
         let videoFrameHandle: number | null = null;
         let stopped = false;
+        let lastRenderedMediaTime = 0;
 
         const emitFrame = (mediaTime = video.currentTime) => {
+          lastRenderedMediaTime = mediaTime;
           ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
           drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, mediaTime, logoImg);
 
-          if ((canvasVideoTrack as CanvasCaptureMediaStreamTrack).requestFrame) {
-            (canvasVideoTrack as CanvasCaptureMediaStreamTrack).requestFrame();
+          if (canvasVideoTrack.requestFrame) {
+            canvasVideoTrack.requestFrame();
           }
 
           const pct = Math.round(
@@ -142,7 +152,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           if (stopped) return;
           stopped = true;
           clearSchedulers();
-          emitFrame(duration);
+          emitFrame(video.currentTime || lastRenderedMediaTime || duration);
           setTimeout(() => {
             if (mediaRecorder.state === 'recording') {
               mediaRecorder.stop();
