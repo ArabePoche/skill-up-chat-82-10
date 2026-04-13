@@ -9,6 +9,8 @@ import { drawWatermark } from '../utils/watermarkRenderer';
 import { loadLogoImage } from '../utils/logoLoader';
 import { getSupportedRecorderMimeType } from '../utils/mediaRecorderHelper';
 
+// Some browser/runtime combinations expose requestVideoFrameCallback before
+// the TypeScript DOM lib available in this project declares the full API.
 type VideoFrameRequestCallback = (
   now: DOMHighResTimeStamp,
   metadata: {
@@ -152,7 +154,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           if (stopped) return;
           stopped = true;
           clearSchedulers();
-          emitFrame(video.currentTime || lastRenderedMediaTime || duration);
+          emitFrame(video.currentTime || lastRenderedMediaTime);
           setTimeout(() => {
             if (mediaRecorder.state === 'recording') {
               mediaRecorder.stop();
@@ -169,6 +171,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
               return;
             }
 
+            // mediaTime matches the decoded frame timing, unlike the callback wall clock.
             emitFrame(metadata.mediaTime);
             scheduleNextVideoFrame();
           });
