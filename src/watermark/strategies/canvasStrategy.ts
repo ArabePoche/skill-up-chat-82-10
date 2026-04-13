@@ -1,6 +1,6 @@
 /**
  * Stratégie Canvas+MediaRecorder : applique le watermark en temps réel côté client.
- * Utilise captureStream(0) + requestFrame() pour synchroniser audio et vidéo.
+ * Utilise un captureStream à FPS fixe pour préserver la vitesse réelle de lecture.
  */
 
 import { WatermarkOptions, WATERMARK_CONSTANTS } from '../types';
@@ -85,8 +85,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         throw new Error('captureStream non supporté');
       }
 
-      // captureStream(0) = mode manuel : on contrôle exactement quand une frame est émise
-      const canvasStream = canvas.captureStream(0);
+      const canvasStream = canvas.captureStream(WATERMARK_CONSTANTS.TARGET_FPS);
       const canvasVideoTrack = canvasStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
 
       // Extraire l'audio depuis la vidéo source
@@ -96,7 +95,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         // mais capturer le stream AVANT de muter pour avoir l'audio
         video.muted = false;
         video.volume = 0;
-        const videoStream = (video as any).captureStream?.() as MediaStream;
+        const videoStream = (video as HTMLVideoElementWithFrameCallback).captureStream?.();
         const audioTracks = videoStream?.getAudioTracks?.() || [];
         if (audioTracks.length > 0) {
           combinedStream = new MediaStream([canvasVideoTrack, ...audioTracks]);
@@ -128,13 +127,9 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
           drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, mediaTime, logoImg);
 
-          if (canvasVideoTrack.requestFrame) {
-            canvasVideoTrack.requestFrame();
-          }
-
           const pct = Math.round(
             WATERMARK_CONSTANTS.RENDER_START +
-            (mediaTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
+              (mediaTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
           );
           onProgress?.(Math.min(pct, 95));
         };
@@ -190,15 +185,15 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
 
         mediaRecorder.onerror = () => reject(new Error('Erreur MediaRecorder'));
 
-        mediaRecorder.start(250);
         video.playbackRate = 1.0;
         video.currentTime = 0;
-
         video.onended = stopRecording;
+        // Pré-remplir le canvas avant de démarrer l'enregistrement pour éviter
+        // un premier segment vidéo vide pendant que l'audio démarre.
+        emitFrame(0);
+        mediaRecorder.start(250);
 
         video.play().then(() => {
-          emitFrame(0);
-
           if (frameReadyVideo.requestVideoFrameCallback) {
             scheduleNextVideoFrame();
             return;
