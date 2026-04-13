@@ -152,7 +152,8 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           emitFrame(video.currentTime || lastRenderedMediaTime);
           // Push the final canvas frame to the stream immediately so it is
           // included in the recording before the recorder stops.
-          canvasVideoTrack.requestFrame?.();
+          // requestFrame() is always present on CanvasCaptureMediaStreamTrack.
+          canvasVideoTrack.requestFrame();
           if (mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
           }
