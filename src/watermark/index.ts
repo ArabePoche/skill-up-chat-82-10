@@ -47,7 +47,7 @@ function canUseCanvasWatermark(): boolean {
 export async function downloadVideoWithWatermark(options: WatermarkOptions): Promise<void> {
   const { fileName, onProgress, onStageChange } = options;
 
-  let resultBlob: Blob;
+  let resultBlob: Blob | null = null;
   let mimeType = 'video/mp4';
 
   try {
@@ -69,6 +69,10 @@ export async function downloadVideoWithWatermark(options: WatermarkOptions): Pro
     resultBlob = await processWithCanvas(options);
     const supportedMime = getSupportedRecorderMimeType();
     if (supportedMime) mimeType = supportedMime;
+  }
+
+  if (!resultBlob) {
+    throw new Error('Aucun export watermark n’a été généré');
   }
 
   // Déterminer le nom final
