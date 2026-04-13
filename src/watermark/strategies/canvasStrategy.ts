@@ -1,13 +1,13 @@
 /**
  * Stratégie Canvas+MediaRecorder : applique le watermark en temps réel côté client.
- * Fonctionne sur Web (desktop et mobile avec support MediaRecorder).
+ * Utilise captureStream(0) + requestFrame() pour synchroniser audio et vidéo.
  */
 
 import { WatermarkOptions, WATERMARK_CONSTANTS } from '../types';
 import { fetchVideoAsBlob } from '../utils/videoFetcher';
 import { drawWatermark } from '../utils/watermarkRenderer';
 import { loadLogoImage } from '../utils/logoLoader';
-import { getSupportedRecorderMimeType, getFileExtension } from '../utils/mediaRecorderHelper';
+import { getSupportedRecorderMimeType } from '../utils/mediaRecorderHelper';
 
 export async function processWithCanvas(options: WatermarkOptions): Promise<Blob> {
   const { videoUrl, watermarkText, authorName, onProgress, onStageChange } = options;
@@ -27,17 +27,17 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
     // 2. Préparer l'élément vidéo
     onStageChange?.('Traitement en cours...');
     const video = document.createElement('video');
-    video.muted = false;
     video.playsInline = true;
     video.preload = 'auto';
     video.crossOrigin = 'anonymous';
     video.src = localBlobUrl;
-    video.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    video.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;z-index:-9999';
     document.body.appendChild(video);
 
     try {
+      // Attendre que la vidéo soit entièrement chargeable
       await new Promise<void>((res, rej) => {
-        video.onloadedmetadata = () => res();
+        video.oncanplaythrough = () => res();
         video.onerror = () => rej(new Error('Impossible de charger la vidéo'));
         video.load();
       });
@@ -55,21 +55,30 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
       const canvas = document.createElement('canvas');
       canvas.width = scaledWidth;
       canvas.height = scaledHeight;
-      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
+      const ctx = canvas.getContext('2d', { alpha: false })!;
 
       if (typeof canvas.captureStream !== 'function') {
         throw new Error('captureStream non supporté');
       }
 
-      const canvasStream = canvas.captureStream(WATERMARK_CONSTANTS.TARGET_FPS);
-      let combinedStream: MediaStream;
+      // captureStream(0) = mode manuel : on contrôle exactement quand une frame est émise
+      const canvasStream = canvas.captureStream(0);
+      const canvasVideoTrack = canvasStream.getVideoTracks()[0];
 
+      // Extraire l'audio depuis la vidéo source
+      let combinedStream: MediaStream;
       try {
+        // Muter la vidéo pour éviter le son dans les haut-parleurs
+        // mais capturer le stream AVANT de muter pour avoir l'audio
+        video.muted = false;
+        video.volume = 0;
         const videoStream = (video as any).captureStream?.() as MediaStream;
         const audioTracks = videoStream?.getAudioTracks?.() || [];
-        combinedStream = audioTracks.length > 0
-          ? new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
-          : canvasStream;
+        if (audioTracks.length > 0) {
+          combinedStream = new MediaStream([canvasVideoTrack, ...audioTracks]);
+        } else {
+          combinedStream = canvasStream;
+        }
       } catch {
         combinedStream = canvasStream;
       }
@@ -96,9 +105,9 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
 
         mediaRecorder.onerror = () => reject(new Error('Erreur MediaRecorder'));
 
-        mediaRecorder.start(1000);
+        // Démarrer l'enregistrement avec des chunks fréquents
+        mediaRecorder.start(500);
         video.playbackRate = 1.0;
-        video.volume = 0.01;
         video.currentTime = 0;
 
         video.play().catch(() => {
@@ -106,31 +115,39 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           reject(new Error('Impossible de lire la vidéo'));
         });
 
-        const fpsInterval = 1000 / WATERMARK_CONSTANTS.TARGET_FPS;
-        let lastDrawTime = 0;
-
-        const renderFrame = (timestamp: number) => {
+        // Boucle de rendu synchronisée avec la lecture vidéo
+        const renderFrame = () => {
           if (video.ended || video.paused) {
             if (video.ended && mediaRecorder.state === 'recording') {
-              mediaRecorder.stop();
+              // Dessiner la dernière frame
+              ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
+              drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
+              if ((canvasVideoTrack as any).requestFrame) {
+                (canvasVideoTrack as any).requestFrame();
+              }
+              // Petit délai pour que la dernière frame soit bien enregistrée
+              setTimeout(() => mediaRecorder.stop(), 200);
             }
             return;
           }
 
-          if (timestamp - lastDrawTime < fpsInterval) {
-            requestAnimationFrame(renderFrame);
-            return;
-          }
-          lastDrawTime = timestamp;
-
+          // Dessiner la frame courante + watermark
           ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
           drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
 
+          // Signaler manuellement qu'une nouvelle frame est prête
+          // Cela synchronise exactement le canvas avec le moment du dessin
+          if ((canvasVideoTrack as any).requestFrame) {
+            (canvasVideoTrack as any).requestFrame();
+          }
+
+          // Progression
           const pct = Math.round(
             WATERMARK_CONSTANTS.RENDER_START +
             (video.currentTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
           );
           onProgress?.(Math.min(pct, 95));
+
           requestAnimationFrame(renderFrame);
         };
 
@@ -142,7 +159,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
             console.warn('Forçage arrêt MediaRecorder (timeout)');
             mediaRecorder.stop();
           }
-        }, (duration * 1000) + 5000);
+        }, (duration * 1000) + 8000);
       });
     } finally {
       if (document.body.contains(video)) document.body.removeChild(video);
