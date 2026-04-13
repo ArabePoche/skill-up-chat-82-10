@@ -44,11 +44,7 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
     setDownloadStage('Préparation du téléchargement');
 
     try {
-      toast.info('Préparation du téléchargement...');
-
-      // Retour temporaire à la méthode locale optimisée :
-      // Les "Edge Functions" de Supabase (Serverless) ne supportent pas l'exécution de logiciels lourds comme FFmpeg (ce qui causait l'erreur 500).
-      // On utilise donc le fallback local en attendant l'intégration d'une API tierce ou d'un worker Web.
+      toast.info('Préparation du téléchargement sécurisé...');
       await downloadVideoWithWatermark({
         videoUrl,
         watermarkText: 'EducaTok',
@@ -60,9 +56,12 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
 
       toast.success('Vidéo téléchargée avec succès !');
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur téléchargement vidéo:', error);
-      toast.error(error?.message || 'Impossible de télécharger cette vidéo avec watermark');
+      const message = error instanceof Error
+        ? error.message
+        : 'Impossible de télécharger cette vidéo avec watermark';
+      toast.error(message);
     } finally {
       setIsDownloading(false);
       setProgress(0);
