@@ -572,6 +572,8 @@ serve(async (req) => {
         stage: job.stage,
         progress: job.progress,
         fileName: sanitizeFileName(job.file_name),
+        outputBucket: job.output_bucket,
+        outputPath: job.output_path,
         outputMimeType: job.output_mime_type,
         downloadUrl,
         errorMessage: job.error_message,
