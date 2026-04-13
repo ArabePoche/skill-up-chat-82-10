@@ -188,12 +188,16 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         video.playbackRate = 1.0;
         video.currentTime = 0;
         video.onended = stopRecording;
-        // Pré-remplir le canvas avant de démarrer l'enregistrement pour éviter
-        // un premier segment vidéo vide pendant que l'audio démarre.
+        // Pré-remplir le canvas avec la première image avant le démarrage.
         emitFrame(0);
-        mediaRecorder.start(250);
 
+        // Démarrer la lecture en premier, puis lancer l'enregistrement dans le
+        // callback .then() pour garantir que la piste audio (captureStream) et
+        // la piste canvas sont toutes deux actives au même instant, évitant
+        // ainsi le décalage où l'audio démarre avant la vidéo.
         video.play().then(() => {
+          mediaRecorder.start(250);
+
           if (frameReadyVideo.requestVideoFrameCallback) {
             scheduleNextVideoFrame();
             return;

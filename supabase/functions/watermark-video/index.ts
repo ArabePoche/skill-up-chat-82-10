@@ -346,6 +346,8 @@ async function runFfmpeg(inputPath: string, outputPath: string, authorName: stri
       "veryfast",
       "-crf",
       "24",
+      "-bf",
+      "0",
       "-pix_fmt",
       "yuv420p",
       "-c:a",
