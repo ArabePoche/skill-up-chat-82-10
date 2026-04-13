@@ -87,7 +87,11 @@ async function downloadRenderedVideo(status: JobStatusResponse): Promise<Blob> {
       return data.type ? data : new Blob([data], { type: mimeType });
     }
 
-    console.warn('⚠️ Watermark download via storage.download failed:', error);
+    console.warn('⚠️ Watermark download via storage.download failed', {
+      error,
+      outputBucket: status.outputBucket,
+      outputPath: status.outputPath,
+    });
   }
 
   if (!status.downloadUrl) {
