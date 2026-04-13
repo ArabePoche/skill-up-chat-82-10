@@ -188,6 +188,8 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         video.playbackRate = 1.0;
         video.currentTime = 0;
         video.onended = stopRecording;
+        // Pré-remplir le canvas avant de démarrer l'enregistrement pour éviter
+        // un premier segment vidéo vide pendant que l'audio démarre.
         emitFrame(0);
         mediaRecorder.start(250);
 
