@@ -91,15 +91,18 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
       // Extraire l'audio depuis la vidéo source
       let combinedStream: MediaStream;
       try {
-        // Muter la vidéo pour éviter le son dans les haut-parleurs
-        // mais capturer le stream AVANT de muter pour avoir l'audio
-        video.muted = false;
-        video.volume = 0;
+        // Capturer l'audio AVANT de muter : muted n'affecte pas les pistes capturées.
+        // On utilise muted=true plutôt que volume=0 : volume est en lecture seule sur iOS.
+        // Un élément muted=true peut aussi démarrer en autoplay sans geste utilisateur.
         const videoStream = (video as HTMLVideoElementWithFrameCallback).captureStream?.();
+        video.muted = true;
         const audioTracks = videoStream?.getAudioTracks?.() || [];
         if (audioTracks.length > 0) {
           combinedStream = new MediaStream([canvasVideoTrack, ...audioTracks]);
         } else {
+          if (!videoStream) {
+            console.warn('⚠️ captureStream non disponible sur cet élément vidéo - la vidéo sera muette');
+          }
           combinedStream = canvasStream;
         }
       } catch {
@@ -207,7 +210,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           const frameInterval = 1000 / WATERMARK_CONSTANTS.TARGET_FPS;
           intervalId = setInterval(() => {
             if (video.ended || video.paused || stopped) {
-              if (video.ended) stopRecording();
+              if (video.ended || video.paused) stopRecording();
               return;
             }
 

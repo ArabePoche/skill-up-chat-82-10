@@ -58,17 +58,28 @@ export async function downloadVideoWithWatermark(options: WatermarkOptions): Pro
     console.error('❌ Erreur watermark serveur:', serverError);
 
     if (!canUseCanvasWatermark()) {
-      throw serverError;
+      // Sur plateforme native (Android/iOS), le Canvas n'est pas disponible.
+      // On tente un téléchargement direct comme dernier recours plutôt que
+      // de laisser l'utilisateur face à une erreur bloquante.
+      if (isCapacitorNative()) {
+        console.warn('⚠️ Watermark: serveur indisponible sur plateforme native, fallback téléchargement direct');
+        onStageChange?.('Serveur indisponible, téléchargement en cours...');
+        onProgress?.(10);
+        const { processDirectDownload } = await import('./strategies/directDownloadStrategy');
+        resultBlob = await processDirectDownload(options);
+      } else {
+        throw serverError;
+      }
+    } else {
+      onStageChange?.('Serveur indisponible, bascule locale de compatibilité...');
+      onProgress?.(10);
+
+      console.log('🎨 Watermark: fallback Canvas explicite');
+      const { processWithCanvas } = await import('./strategies/canvasStrategy');
+      resultBlob = await processWithCanvas(options);
+      const supportedMime = getSupportedRecorderMimeType();
+      if (supportedMime) mimeType = supportedMime;
     }
-
-    onStageChange?.('Serveur indisponible, bascule locale de compatibilité...');
-    onProgress?.(10);
-
-    console.log('🎨 Watermark: fallback Canvas explicite');
-    const { processWithCanvas } = await import('./strategies/canvasStrategy');
-    resultBlob = await processWithCanvas(options);
-    const supportedMime = getSupportedRecorderMimeType();
-    if (supportedMime) mimeType = supportedMime;
   }
 
   if (!resultBlob) {
