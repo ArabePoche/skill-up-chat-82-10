@@ -1,6 +1,6 @@
 /**
  * Stratégie Canvas+MediaRecorder : applique le watermark en temps réel côté client.
- * Utilise captureStream(0) + requestFrame() pour synchroniser audio et vidéo.
+ * Utilise un captureStream à FPS fixe pour préserver la vitesse réelle de lecture.
  */
 
 import { WatermarkOptions, WATERMARK_CONSTANTS } from '../types';
@@ -85,9 +85,8 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         throw new Error('captureStream non supporté');
       }
 
-      // captureStream(0) = mode manuel : on contrôle exactement quand une frame est émise
-      const canvasStream = canvas.captureStream(0);
-      const canvasVideoTrack = canvasStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+       const canvasStream = canvas.captureStream(WATERMARK_CONSTANTS.TARGET_FPS);
+       const canvasVideoTrack = canvasStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
 
       // Extraire l'audio depuis la vidéo source
       let combinedStream: MediaStream;
@@ -128,13 +127,9 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
           drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, mediaTime, logoImg);
 
-          if (canvasVideoTrack.requestFrame) {
-            canvasVideoTrack.requestFrame();
-          }
-
-          const pct = Math.round(
-            WATERMARK_CONSTANTS.RENDER_START +
-            (mediaTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
+           const pct = Math.round(
+             WATERMARK_CONSTANTS.RENDER_START +
+             (mediaTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
           );
           onProgress?.(Math.min(pct, 95));
         };
@@ -190,18 +185,16 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
 
         mediaRecorder.onerror = () => reject(new Error('Erreur MediaRecorder'));
 
-        mediaRecorder.start(250);
-        video.playbackRate = 1.0;
-        video.currentTime = 0;
+         video.playbackRate = 1.0;
+         video.currentTime = 0;
+         video.onended = stopRecording;
+         emitFrame(0);
+         mediaRecorder.start(250);
 
-        video.onended = stopRecording;
-
-        video.play().then(() => {
-          emitFrame(0);
-
-          if (frameReadyVideo.requestVideoFrameCallback) {
-            scheduleNextVideoFrame();
-            return;
+         video.play().then(() => {
+           if (frameReadyVideo.requestVideoFrameCallback) {
+             scheduleNextVideoFrame();
+             return;
           }
 
           const frameInterval = 1000 / WATERMARK_CONSTANTS.TARGET_FPS;
