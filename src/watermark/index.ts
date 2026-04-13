@@ -12,12 +12,19 @@ import { saveVideoBlob } from './utils/videoSaver';
 
 export type { WatermarkOptions } from './types';
 
+type WindowWithCapacitor = Window & {
+  Capacitor?: {
+    isNativePlatform?: () => boolean;
+  };
+};
+
 /**
  * Détecte si on est sur une plateforme native Capacitor.
  */
 function isCapacitorNative(): boolean {
-  return typeof (window as any)?.Capacitor?.isNativePlatform === 'function'
-    && (window as any).Capacitor.isNativePlatform();
+  const runtimeWindow = window as WindowWithCapacitor;
+  return typeof runtimeWindow.Capacitor?.isNativePlatform === 'function'
+    && runtimeWindow.Capacitor.isNativePlatform();
 }
 
 /**
