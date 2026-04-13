@@ -9,6 +9,17 @@ import { drawWatermark } from '../utils/watermarkRenderer';
 import { loadLogoImage } from '../utils/logoLoader';
 import { getSupportedRecorderMimeType } from '../utils/mediaRecorderHelper';
 
+type VideoFrameRequestCallback = (
+  now: DOMHighResTimeStamp,
+  metadata: { mediaTime: number }
+) => void;
+
+type HTMLVideoElementWithFrameCallback = HTMLVideoElement & {
+  requestVideoFrameCallback?: (callback: VideoFrameRequestCallback) => number;
+  cancelVideoFrameCallback?: (handle: number) => void;
+  captureStream?: () => MediaStream;
+};
+
 export async function processWithCanvas(options: WatermarkOptions): Promise<Blob> {
   const { videoUrl, watermarkText, authorName, onProgress, onStageChange } = options;
 
@@ -96,43 +107,42 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         });
 
         const chunks: Blob[] = [];
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunks.push(e.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          canvasStream.getTracks().forEach(t => t.stop());
-          combinedStream.getTracks().forEach(t => t.stop());
-          resolve(new Blob(chunks, { type: selectedMime }));
-        };
-
-        mediaRecorder.onerror = () => reject(new Error('Erreur MediaRecorder'));
-
-        // Démarrer l'enregistrement
-        mediaRecorder.start(250);
-        video.playbackRate = 1.0;
-        video.currentTime = 0;
-
-        // Utiliser un intervalle fixe au lieu de requestAnimationFrame
-        // pour garantir un rythme constant et éviter que la vidéo traîne
-        const FPS = 30;
-        const frameInterval = 1000 / FPS;
+        const frameReadyVideo = video as HTMLVideoElementWithFrameCallback;
         let intervalId: ReturnType<typeof setInterval> | null = null;
+        let videoFrameHandle: number | null = null;
         let stopped = false;
 
-        const stopRecording = () => {
-          if (stopped) return;
-          stopped = true;
+        const emitFrame = (mediaTime = video.currentTime) => {
+          ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
+          drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, mediaTime, logoImg);
+
+          if ((canvasVideoTrack as CanvasCaptureMediaStreamTrack).requestFrame) {
+            (canvasVideoTrack as CanvasCaptureMediaStreamTrack).requestFrame();
+          }
+
+          const pct = Math.round(
+            WATERMARK_CONSTANTS.RENDER_START +
+            (mediaTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
+          );
+          onProgress?.(Math.min(pct, 95));
+        };
+
+        const clearSchedulers = () => {
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
-          // Dessiner la dernière frame
-          ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
-          drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
-          if ((canvasVideoTrack as any).requestFrame) {
-            (canvasVideoTrack as any).requestFrame();
+          if (videoFrameHandle !== null && frameReadyVideo.cancelVideoFrameCallback) {
+            frameReadyVideo.cancelVideoFrameCallback(videoFrameHandle);
+            videoFrameHandle = null;
           }
+        };
+
+        const stopRecording = () => {
+          if (stopped) return;
+          stopped = true;
+          clearSchedulers();
+          emitFrame(duration);
           setTimeout(() => {
             if (mediaRecorder.state === 'recording') {
               mediaRecorder.stop();
@@ -140,34 +150,61 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           }, 300);
         };
 
+        const scheduleNextVideoFrame = () => {
+          if (stopped || !frameReadyVideo.requestVideoFrameCallback) return;
+
+          videoFrameHandle = frameReadyVideo.requestVideoFrameCallback((_, metadata) => {
+            if (video.ended || video.paused || stopped) {
+              if (video.ended) stopRecording();
+              return;
+            }
+
+            emitFrame(metadata.mediaTime);
+            scheduleNextVideoFrame();
+          });
+        };
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          clearSchedulers();
+          canvasStream.getTracks().forEach(t => t.stop());
+          combinedStream.getTracks().forEach(t => t.stop());
+          resolve(new Blob(chunks, { type: selectedMime }));
+        };
+
+        mediaRecorder.onerror = () => reject(new Error('Erreur MediaRecorder'));
+
+        mediaRecorder.start(250);
+        video.playbackRate = 1.0;
+        video.currentTime = 0;
+
         video.onended = stopRecording;
 
         video.play().then(() => {
-          // Boucle de rendu à intervalle fixe - synchronisé avec la lecture réelle
+          emitFrame(0);
+
+          if (frameReadyVideo.requestVideoFrameCallback) {
+            scheduleNextVideoFrame();
+            return;
+          }
+
+          const frameInterval = 1000 / WATERMARK_CONSTANTS.TARGET_FPS;
           intervalId = setInterval(() => {
             if (video.ended || video.paused || stopped) {
               if (video.ended) stopRecording();
               return;
             }
 
-            // Dessiner la frame courante + watermark
-            ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
-            drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, video.currentTime, logoImg);
-
-            // Émettre la frame
-            if ((canvasVideoTrack as any).requestFrame) {
-              (canvasVideoTrack as any).requestFrame();
-            }
-
-            // Progression
-            const pct = Math.round(
-              WATERMARK_CONSTANTS.RENDER_START +
-              (video.currentTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
-            );
-            onProgress?.(Math.min(pct, 95));
+            emitFrame(video.currentTime);
           }, frameInterval);
         }).catch(() => {
-          mediaRecorder.stop();
+          clearSchedulers();
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
           reject(new Error('Impossible de lire la vidéo'));
         });
 
