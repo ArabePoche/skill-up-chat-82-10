@@ -85,8 +85,8 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         throw new Error('captureStream non supporté');
       }
 
-       const canvasStream = canvas.captureStream(WATERMARK_CONSTANTS.TARGET_FPS);
-       const canvasVideoTrack = canvasStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+      const canvasStream = canvas.captureStream(WATERMARK_CONSTANTS.TARGET_FPS);
+      const canvasVideoTrack = canvasStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
 
       // Extraire l'audio depuis la vidéo source
       let combinedStream: MediaStream;
@@ -95,7 +95,7 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         // mais capturer le stream AVANT de muter pour avoir l'audio
         video.muted = false;
         video.volume = 0;
-        const videoStream = (video as any).captureStream?.() as MediaStream;
+        const videoStream = (video as HTMLVideoElementWithFrameCallback).captureStream?.();
         const audioTracks = videoStream?.getAudioTracks?.() || [];
         if (audioTracks.length > 0) {
           combinedStream = new MediaStream([canvasVideoTrack, ...audioTracks]);
@@ -127,9 +127,9 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           ctx.drawImage(video, 0, 0, scaledWidth, scaledHeight);
           drawWatermark(ctx, scaledWidth, scaledHeight, watermarkText, authorName, mediaTime, logoImg);
 
-           const pct = Math.round(
-             WATERMARK_CONSTANTS.RENDER_START +
-             (mediaTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
+          const pct = Math.round(
+            WATERMARK_CONSTANTS.RENDER_START +
+              (mediaTime / duration) * (WATERMARK_CONSTANTS.RENDER_END - WATERMARK_CONSTANTS.RENDER_START)
           );
           onProgress?.(Math.min(pct, 95));
         };
@@ -185,16 +185,16 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
 
         mediaRecorder.onerror = () => reject(new Error('Erreur MediaRecorder'));
 
-         video.playbackRate = 1.0;
-         video.currentTime = 0;
-         video.onended = stopRecording;
-         emitFrame(0);
-         mediaRecorder.start(250);
+        video.playbackRate = 1.0;
+        video.currentTime = 0;
+        video.onended = stopRecording;
+        emitFrame(0);
+        mediaRecorder.start(250);
 
-         video.play().then(() => {
-           if (frameReadyVideo.requestVideoFrameCallback) {
-             scheduleNextVideoFrame();
-             return;
+        video.play().then(() => {
+          if (frameReadyVideo.requestVideoFrameCallback) {
+            scheduleNextVideoFrame();
+            return;
           }
 
           const frameInterval = 1000 / WATERMARK_CONSTANTS.TARGET_FPS;
