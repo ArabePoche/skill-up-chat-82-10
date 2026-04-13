@@ -150,11 +150,12 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
           stopped = true;
           clearSchedulers();
           emitFrame(video.currentTime || lastRenderedMediaTime);
-          setTimeout(() => {
-            if (mediaRecorder.state === 'recording') {
-              mediaRecorder.stop();
-            }
-          }, 300);
+          // Push the final canvas frame to the stream immediately so it is
+          // included in the recording before the recorder stops.
+          canvasVideoTrack.requestFrame?.();
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
         };
 
         const scheduleNextVideoFrame = () => {
@@ -188,12 +189,15 @@ export async function processWithCanvas(options: WatermarkOptions): Promise<Blob
         video.playbackRate = 1.0;
         video.currentTime = 0;
         video.onended = stopRecording;
-        // Pré-remplir le canvas avant de démarrer l'enregistrement pour éviter
-        // un premier segment vidéo vide pendant que l'audio démarre.
+        // Pre-fill canvas so the first recorded video frame is not blank.
         emitFrame(0);
-        mediaRecorder.start(250);
 
         video.play().then(() => {
+          // Start the recorder only after the video (and its audio track) has
+          // started playing so that audio and canvas recording begin at the
+          // same instant, preventing audio from leading the video.
+          mediaRecorder.start(250);
+
           if (frameReadyVideo.requestVideoFrameCallback) {
             scheduleNextVideoFrame();
             return;
