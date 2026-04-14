@@ -276,19 +276,23 @@ export const GradesApp: React.FC = () => {
     <div className="p-4 sm:p-6 h-full flex flex-col overflow-hidden">
 
       {/* Onglets principaux */}
-      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="grid w-full grid-cols-3 mb-1 flex-shrink-0">
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats' | 'cards')} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="grid w-full grid-cols-4 mb-1 flex-shrink-0">
           <TabsTrigger value="grades" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <ClipboardList className="h-3.5 w-3.5" />
-            Notes
+            <span className="hidden sm:inline">Notes</span>
           </TabsTrigger>
           <TabsTrigger value="bulletins" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <ScrollText className="h-3.5 w-3.5" />
-            Bulletins
+            <span className="hidden sm:inline">Bulletins</span>
+          </TabsTrigger>
+          <TabsTrigger value="cards" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <CreditCard className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Cartes</span>
           </TabsTrigger>
           <TabsTrigger value="stats" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <BarChart3 className="h-3.5 w-3.5" />
-            Stats
+            <span className="hidden sm:inline">Stats</span>
           </TabsTrigger>
         </TabsList>
 
