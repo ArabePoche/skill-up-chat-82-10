@@ -10,7 +10,7 @@ interface Props {
 }
 
 const CreatorEarningsView = ({ authorId }: Props) => {
-  const { data: walletData } = useUserWallet();
+  const { wallet: walletData } = useUserWallet();
 
   const { data: earningsData, isLoading } = useQuery({
     queryKey: ['creator-earnings-stats', authorId],

@@ -452,7 +452,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
 
   return (
     <Button
-      onClick={startCapture}
+      onClick={() => startCapture()}
       disabled={disabled}
       variant="actionPurple"
       size="sm"
