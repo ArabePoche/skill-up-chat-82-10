@@ -228,6 +228,14 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
           </p>
         )}
 
+        {/* Badges mensuels payés/impayés */}
+        {monthlyStatuses && monthlyStatuses.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Détail mensuel:</p>
+            <MonthlyStatusBadges months={monthlyStatuses} />
+          </div>
+        )}
+
         <div className="flex gap-2">
           <Button onClick={onAddPayment} className="flex-1" size="sm">
             <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
