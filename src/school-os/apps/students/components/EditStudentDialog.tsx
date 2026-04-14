@@ -91,6 +91,8 @@ export const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
       mother_name: student.mother_name || '',
       mother_occupation: student.mother_occupation || '',
       observations: student.observations || '',
+      enrollment_date: student.enrollment_date || '',
+      first_due_month: student.first_due_month || '',
     },
   });
 
