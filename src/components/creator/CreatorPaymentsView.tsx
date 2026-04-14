@@ -89,7 +89,7 @@ const CreatorPaymentsView = ({ authorId }: Props) => {
                 </TableCell>
               </TableRow>
             ) : (
-              requests?.map((req) => (
+              requests?.map((req: any) => (
                 <TableRow key={req.id}>
                   <TableCell>{format(new Date(req.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}</TableCell>
                   <TableCell className="font-medium text-gray-900">
