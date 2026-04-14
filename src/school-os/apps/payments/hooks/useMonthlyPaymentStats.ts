@@ -1,6 +1,7 @@
 /**
  * Hook pour calculer les statistiques détaillées des paiements mensuels
  * Utilise directement les données de school_student_payment_progress
+ * Prend en compte la proratisation par élève (billable_months, prorated_amount_due)
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -25,6 +26,7 @@ export interface GlobalMonthlyStats {
 
 /**
  * Charge les statistiques de paiement depuis la DB
+ * Utilise prorated_amount_due et billable_months pour un calcul mensuel précis
  */
 export const useMonthlyPaymentStats = (schoolId?: string, schoolYearId?: string) => {
   const { data: statsData, isLoading } = useQuery({
@@ -42,7 +44,9 @@ export const useMonthlyPaymentStats = (schoolId?: string, schoolYearId?: string)
           school_student_payment_progress!inner(
             total_amount_due,
             total_amount_paid,
-            remaining_amount
+            remaining_amount,
+            billable_months,
+            prorated_amount_due
           )
         `)
         .eq('school_id', schoolId)
@@ -55,25 +59,8 @@ export const useMonthlyPaymentStats = (schoolId?: string, schoolYearId?: string)
     enabled: !!schoolId && !!schoolYearId,
   });
 
-  const { data: schoolYear } = useQuery({
-    queryKey: ['school-year', schoolYearId],
-    queryFn: async () => {
-      if (!schoolYearId) return null;
-      
-      const { data, error } = await supabase
-        .from('school_years')
-        .select('start_date, end_date')
-        .eq('id', schoolYearId)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!schoolYearId,
-  });
-
   const stats = useMemo(() => {
-    if (!statsData || !schoolYear) {
+    if (!statsData) {
       return {
         totalExpectedMonthly: 0,
         totalPaid: 0,
@@ -82,12 +69,6 @@ export const useMonthlyPaymentStats = (schoolId?: string, schoolYearId?: string)
         classesList: [],
       } as GlobalMonthlyStats;
     }
-
-    // Calculer le nombre de mois de l'année scolaire
-    const yearStart = new Date(schoolYear.start_date);
-    const yearEnd = new Date(schoolYear.end_date);
-    const schoolMonths = (yearEnd.getFullYear() - yearStart.getFullYear()) * 12 + 
-                         (yearEnd.getMonth() - yearStart.getMonth()) + 1;
 
     // Grouper par classe
     const classesByClassId = new Map<string, {
@@ -114,15 +95,20 @@ export const useMonthlyPaymentStats = (schoolId?: string, schoolYearId?: string)
       let classTotalDue = 0;
       let classTotalPaid = 0;
       let classTotalRemaining = 0;
+      let classExpectedMonthly = 0;
 
       students.forEach((student: any) => {
         const progress = student.school_student_payment_progress;
-        classTotalDue += Number(progress.total_amount_due || 0);
+        const proratedDue = Number(progress.prorated_amount_due || progress.total_amount_due || 0);
+        const billableMonths = Number(progress.billable_months || 1);
+        
+        classTotalDue += proratedDue;
         classTotalPaid += Number(progress.total_amount_paid || 0);
         classTotalRemaining += Number(progress.remaining_amount || 0);
+        
+        // Mensualité individuelle basée sur le prorata
+        classExpectedMonthly += billableMonths > 0 ? proratedDue / billableMonths : 0;
       });
-
-      const classExpectedMonthly = classTotalDue / schoolMonths;
 
       return {
         classId,
@@ -152,7 +138,7 @@ export const useMonthlyPaymentStats = (schoolId?: string, schoolYearId?: string)
     );
 
     return globalStats;
-  }, [statsData, schoolYear]);
+  }, [statsData]);
 
   return { stats, isLoading };
 };

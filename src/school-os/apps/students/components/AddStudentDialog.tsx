@@ -12,7 +12,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAddStudents, NewStudent } from '../hooks/useStudents';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { StudentFamilySelector, FamilyFormSelector } from '@/school-os/families';
-import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -39,6 +41,8 @@ const studentSchema = z.object({
   last_name: z.string().min(1, 'Le nom est requis'),
   date_of_birth: z.string().min(1, 'La date de naissance est requise'),
   gender: z.enum(['male', 'female'], { required_error: 'Le genre est requis' }),
+  enrollment_date: z.string().optional(),
+  include_enrollment_month: z.boolean().optional(),
   father_name: z.string().optional(),
   father_occupation: z.string().optional(),
   birth_place: z.string().optional(),
@@ -85,6 +89,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
           last_name: '',
           date_of_birth: '',
           gender: 'male',
+          enrollment_date: new Date().toISOString().split('T')[0],
+          include_enrollment_month: true,
           father_name: '',
           father_occupation: '',
           birth_place: '',
@@ -118,6 +124,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
       last_name: student.last_name,
       date_of_birth: student.date_of_birth,
       gender: student.gender,
+      enrollment_date: student.enrollment_date || new Date().toISOString().split('T')[0],
+      include_enrollment_month: student.include_enrollment_month !== false,
       father_name: student.father_name,
       father_occupation: student.father_occupation,
       birth_place: student.birth_place,
@@ -197,6 +205,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                     last_name: '',
                     date_of_birth: '',
                     gender: 'male',
+                    enrollment_date: new Date().toISOString().split('T')[0],
+                    include_enrollment_month: true,
                     father_name: '',
                     father_occupation: '',
                     birth_place: '',
@@ -337,7 +347,74 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                     )}
                   />
 
-                  {/* Bouton pour remplir depuis une famille */}
+                  {/* Date d'inscription et règle du 10 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`students.${index}.enrollment_date`}
+                      render={({ field }) => {
+                        // Vérifier si la date est après le 10 du mois
+                        const enrollDate = field.value ? new Date(field.value) : null;
+                        const isAfter10 = enrollDate ? enrollDate.getDate() > 10 : false;
+                        
+                        return (
+                          <FormItem>
+                            <FormLabel>Date d'inscription *</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            {isAfter10 && (
+                              <Alert className="mt-2 bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800 py-2">
+                                <AlertCircle className="h-3 w-3 text-amber-600" />
+                                <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+                                  Inscription après le 10 du mois. Choisissez si le mois courant est dû.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    {/* Checkbox pour inclure le mois d'inscription (visible si après le 10) */}
+                    <FormField
+                      control={form.control}
+                      name={`students.${index}.include_enrollment_month`}
+                      render={({ field }) => {
+                        const enrollDate = form.watch(`students.${index}.enrollment_date`);
+                        const date = enrollDate ? new Date(enrollDate) : null;
+                        const isAfter10 = date ? date.getDate() > 10 : false;
+                        
+                        // Si avant le 10, le mois est toujours dû (pas de choix)
+                        if (!isAfter10) {
+                          return (
+                            <FormItem className="flex items-end pb-2">
+                              <p className="text-xs text-muted-foreground">
+                                ✅ Inscription avant le 10 : le mois d'arrivée est automatiquement dû
+                              </p>
+                            </FormItem>
+                          );
+                        }
+                        
+                        return (
+                          <FormItem className="flex flex-col justify-end pb-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                              <FormLabel className="text-sm font-normal cursor-pointer">
+                                Inclure le mois d'inscription dans les mensualités
+                              </FormLabel>
+                            </div>
+                          </FormItem>
+                        );
+                      }}
+                    />
+                  </div>
+
+
                   <div className="flex items-center justify-between pt-2 pb-1 border-t">
                     <Label className="text-sm font-semibold">Informations du parent/tuteur</Label>
                     <Button
@@ -646,6 +723,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                               last_name: '',
                               date_of_birth: '',
                               gender: 'male',
+                              enrollment_date: new Date().toISOString().split('T')[0],
+                              include_enrollment_month: true,
                               class_id: '',
                               parent_name: '',
                               parent_phone: '',
@@ -683,6 +762,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
                           last_name: '',
                           date_of_birth: '',
                           gender: 'male',
+                          enrollment_date: new Date().toISOString().split('T')[0],
+                          include_enrollment_month: true,
                           class_id: '',
                           parent_name: '',
                           parent_phone: '',

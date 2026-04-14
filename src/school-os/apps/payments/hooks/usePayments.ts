@@ -50,6 +50,8 @@ export const useSchoolStudents = (schoolId?: string) => {
           total_amount_paid: progress?.total_amount_paid || 0,
           remaining_amount: progress?.remaining_amount || 0,
           last_payment_date: progress?.last_payment_date || null,
+          billable_months: progress?.billable_months || null,
+          prorated_amount_due: progress?.prorated_amount_due || 0,
           has_discount: !!(student.discount_percentage || student.discount_amount),
           is_family_member: !!student.family_id,
           family_name: student.school_student_families?.family_name || null,

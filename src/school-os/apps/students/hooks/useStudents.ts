@@ -43,6 +43,8 @@ export interface NewStudent {
   last_name: string;
   date_of_birth: string;
   gender: 'male' | 'female';
+  enrollment_date?: string;
+  include_enrollment_month?: boolean;
   student_code?: string;
   photo_url?: string;
   parent_name?: string;
