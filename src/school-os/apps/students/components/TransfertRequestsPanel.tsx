@@ -59,7 +59,7 @@
              <ScrollArea className="h-[500px]">
                <div className="space-y-3 pr-4">
                 {incomingRequests.map((request) => (
-                   <TransferRequestCard key={request.id} request={request} />
+                   <TransferRequestCard key={request.id} request={request} direction="incoming" />
                  ))}
               </div>
              </ScrollArea>
@@ -80,7 +80,7 @@
              <ScrollArea className="h-[500px]">
                <div className="space-y-3 pr-4">
                 {outgoingRequests.map((request) => (
-                   <TransferRequestCard key={request.id} request={request} />
+                   <TransferRequestCard key={request.id} request={request} direction="outgoing" />
                  ))}
               </div>
              </ScrollArea>

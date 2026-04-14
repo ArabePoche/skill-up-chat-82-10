@@ -35,9 +35,11 @@ import {
  
  interface TransferRequestCardProps {
    request: TransferRequest;
+   /** 'incoming' = école destination (peut approuver/rejeter), 'outgoing' = école source (lecture seule) */
+   direction?: 'incoming' | 'outgoing';
  }
  
- export const TransferRequestCard: React.FC<TransferRequestCardProps> = ({ request }) => {
+ export const TransferRequestCard: React.FC<TransferRequestCardProps> = ({ request, direction = 'incoming' }) => {
    const { user } = useAuth();
    const { school, activeSchoolYear } = useSchoolYear();
    const { data: classes = [] } = useSchoolClasses(school?.id, activeSchoolYear?.id);
@@ -153,7 +155,7 @@ import {
              </div>
  
              {/* Actions */}
-             {isPending && (
+             {isPending && direction === 'incoming' && (
                <div className="flex flex-col gap-2">
                  <Button
                    size="sm"
