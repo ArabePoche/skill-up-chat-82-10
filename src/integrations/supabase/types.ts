@@ -6643,9 +6643,11 @@ export type Database = {
       }
       school_student_payment_progress: {
         Row: {
+          billable_months: number | null
           created_at: string
           id: string
           last_payment_date: string | null
+          prorated_amount_due: number | null
           registration_fee_paid_amount: number | null
           remaining_amount: number
           school_id: string
@@ -6655,9 +6657,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billable_months?: number | null
           created_at?: string
           id?: string
           last_payment_date?: string | null
+          prorated_amount_due?: number | null
           registration_fee_paid_amount?: number | null
           remaining_amount?: number
           school_id: string
@@ -6667,9 +6671,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billable_months?: number | null
           created_at?: string
           id?: string
           last_payment_date?: string | null
+          prorated_amount_due?: number | null
           registration_fee_paid_amount?: number | null
           remaining_amount?: number
           school_id?: string
@@ -9362,12 +9368,15 @@ export type Database = {
           date_of_birth: string
           discount_amount: number | null
           discount_percentage: number | null
+          enrollment_date: string
           family_id: string | null
           father_name: string | null
           father_occupation: string | null
+          first_due_month: string | null
           first_name: string
           gender: string
           id: string
+          include_enrollment_month: boolean | null
           last_name: string
           medical_notes: string | null
           mother_name: string | null
@@ -9392,12 +9401,15 @@ export type Database = {
           date_of_birth: string
           discount_amount?: number | null
           discount_percentage?: number | null
+          enrollment_date?: string
           family_id?: string | null
           father_name?: string | null
           father_occupation?: string | null
+          first_due_month?: string | null
           first_name: string
           gender: string
           id?: string
+          include_enrollment_month?: boolean | null
           last_name: string
           medical_notes?: string | null
           mother_name?: string | null
@@ -9422,12 +9434,15 @@ export type Database = {
           date_of_birth?: string
           discount_amount?: number | null
           discount_percentage?: number | null
+          enrollment_date?: string
           family_id?: string | null
           father_name?: string | null
           father_occupation?: string | null
+          first_due_month?: string | null
           first_name?: string
           gender?: string
           id?: string
+          include_enrollment_month?: boolean | null
           last_name?: string
           medical_notes?: string | null
           mother_name?: string | null
@@ -11040,6 +11055,17 @@ export type Database = {
           discount_percentage: number
         }
         Returns: number
+      }
+      calculate_billable_months: {
+        Args: { p_first_due_month: string; p_school_year_end: string }
+        Returns: number
+      }
+      calculate_first_due_month: {
+        Args: {
+          p_enrollment_date: string
+          p_include_enrollment_month?: boolean
+        }
+        Returns: string
       }
       can_access_solidarity_campaign: {
         Args: { p_campaign_id: string; p_user_id?: string }
