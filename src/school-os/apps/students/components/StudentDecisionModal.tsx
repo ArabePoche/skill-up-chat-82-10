@@ -25,12 +25,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, TrendingUp, TrendingDown, ArrowRightLeft, UserX, AlertTriangle, School, Search, Archive } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, ArrowRightLeft, UserX, AlertTriangle, School, Search, Archive, Download, Printer, Share2 } from 'lucide-react';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useApplyStudentDecision, useAllSchools, type DecisionType } from '../hooks/useStudentDecision';
 import { useArchiveStudent, type ArchiveReason } from '../hooks/useArchivedStudents';
+import { downloadTransferPdf, generateTransferPdf, printTransferPdf, shareTransferPdfs, type TransferPdfAction } from '../utils/transferPdf';
+import { toast } from 'sonner';
 
 interface StudentDecisionModalProps {
   isOpen: boolean;
@@ -57,6 +59,7 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
   const [useManualSchool, setUseManualSchool] = useState(false);
   const [comment, setComment] = useState('');
   const [schoolSearch, setSchoolSearch] = useState('');
+  const [transferPdfAction, setTransferPdfAction] = useState<TransferPdfAction>('download');
 
   // Filtrer les classes pour promotion/rétrogradation
   const currentClassIndex = classes.findIndex((c: any) => c.id === student?.class_id);
@@ -65,19 +68,38 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
     if (!decisionType || (decisionType !== 'promotion' && decisionType !== 'demotion')) {
       return classes;
     }
-    // Retourner toutes les classes sauf celle actuelle
-    return classes.filter((c: any) => c.id !== student?.class_id);
-  }, [classes, decisionType, student?.class_id]);
+
+    if (currentClassIndex < 0) {
+      return classes.filter((c: any) => c.id !== student?.class_id);
+    }
+
+    return classes.filter((c: any, index: number) => {
+      if (c.id === student?.class_id) {
+        return false;
+      }
+
+      return decisionType === 'promotion'
+        ? index > currentClassIndex
+        : index < currentClassIndex;
+    });
+  }, [classes, currentClassIndex, decisionType, student?.class_id]);
 
   // Filtrer les écoles
   const filteredSchools = useMemo(() => {
-    if (!schoolSearch.trim()) return allSchools;
+    const availableSchools = allSchools.filter((s: any) => s.id !== school?.id);
+
+    if (!schoolSearch.trim()) return availableSchools;
     const search = schoolSearch.toLowerCase();
-    return allSchools.filter((s: any) => 
+    return availableSchools.filter((s: any) => 
       s.name?.toLowerCase().includes(search) ||
       s.city?.toLowerCase().includes(search)
     );
-  }, [allSchools, schoolSearch]);
+  }, [allSchools, school?.id, schoolSearch]);
+
+  const selectedTargetSchool = useMemo(
+    () => allSchools.find((schoolItem: any) => schoolItem.id === targetSchoolId) || null,
+    [allSchools, targetSchoolId]
+  );
 
   const handleSubmit = async () => {
     if (!decisionType || !user?.id) return;
@@ -94,8 +116,8 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
     // Pour exclusion et transfert, on archive l'élève au lieu de juste changer le statut
     if (decisionType === 'exclusion' || decisionType === 'transfer') {
       const archiveReason: ArchiveReason = decisionType === 'exclusion' ? 'exclusion' : 'transfer';
-      
-      await archiveStudent.mutateAsync({
+
+      const archivedStudent = await archiveStudent.mutateAsync({
         student,
         archive_reason: archiveReason,
         archive_comment: comment || undefined,
@@ -106,6 +128,94 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
            source_school_name: school?.name || null,
         archived_by: user.id,
       });
+
+      if (decisionType === 'transfer') {
+        const transferDate = archivedStudent?.archived_at || new Date().toISOString();
+        const sourceSchool = {
+          name: school?.name || 'Ecole source',
+          city: (school as any)?.city || null,
+          country: (school as any)?.country || null,
+        };
+        const targetSchool = useManualSchool
+          ? { name: manualSchoolName, city: null, country: null }
+          : {
+              name: selectedTargetSchool?.name || 'Ecole de destination',
+              city: selectedTargetSchool?.city || null,
+              country: selectedTargetSchool?.country || null,
+            };
+
+        const pdfOptions = {
+          student: {
+            firstName: student.first_name,
+            lastName: student.last_name,
+            studentCode: student.student_code,
+            className: student.classes?.name || null,
+            dateOfBirth: student.date_of_birth,
+            parentName: student.parent_name,
+            parentPhone: student.parent_phone,
+            parentEmail: student.parent_email,
+          },
+          sourceSchool,
+          targetSchool,
+          comment,
+          transferDate,
+        };
+
+        if (transferPdfAction === 'print') {
+          await printTransferPdf({
+            audience: 'family',
+            ...pdfOptions,
+          });
+
+          if (!useManualSchool && targetSchoolId && selectedTargetSchool) {
+            await printTransferPdf({
+              audience: 'destination-school',
+              ...pdfOptions,
+            });
+          }
+        } else if (transferPdfAction === 'share') {
+          const documents = [
+            await generateTransferPdf({
+              audience: 'family',
+              ...pdfOptions,
+            }),
+          ];
+
+          if (!useManualSchool && targetSchoolId && selectedTargetSchool) {
+            documents.push(
+              await generateTransferPdf({
+                audience: 'destination-school',
+                ...pdfOptions,
+              })
+            );
+          }
+
+          const shared = await shareTransferPdfs(documents);
+          if (!shared) {
+            for (const document of documents) {
+              const url = URL.createObjectURL(document.blob);
+              const anchor = window.document.createElement('a');
+              anchor.href = url;
+              anchor.download = document.fileName;
+              anchor.click();
+              URL.revokeObjectURL(url);
+            }
+            toast.info('Partage natif indisponible, les PDF ont ete telecharges.');
+          }
+        } else {
+          await downloadTransferPdf({
+            audience: 'family',
+            ...pdfOptions,
+          });
+
+          if (!useManualSchool && targetSchoolId && selectedTargetSchool) {
+            await downloadTransferPdf({
+              audience: 'destination-school',
+              ...pdfOptions,
+            });
+          }
+        }
+      }
     } else {
       // Pour promotion/rétrogradation, on garde le comportement existant
       await applyDecision.mutateAsync({
@@ -130,6 +240,7 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
     setUseManualSchool(false);
     setComment('');
     setSchoolSearch('');
+    setTransferPdfAction('download');
     onClose();
   };
 
@@ -166,31 +277,32 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[92dvh] w-[calc(100vw-1rem)] max-w-xl min-h-0 flex-col gap-0 overflow-hidden p-0 sm:h-auto">
+        <DialogHeader className="px-4 pt-4 sm:px-6 sm:pt-6">
           <DialogTitle>Décision concernant l'élève</DialogTitle>
           <DialogDescription>
             Sélectionnez le type de décision à appliquer
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6 py-4">
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="h-full px-4 sm:px-6">
+            <div className="space-y-6 py-4 pr-1 sm:pr-3">
             {/* Info élève */}
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-              <Avatar className="w-12 h-12">
+            <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+              <Avatar className="h-12 w-12 shrink-0">
                 <AvatarImage src={student.photo_url} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {student.first_name?.[0]}{student.last_name?.[0]}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <p className="font-semibold">{student.first_name} {student.last_name}</p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold break-words">{student.first_name} {student.last_name}</p>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   {student.classes?.name && (
                     <Badge variant="outline">{student.classes.name}</Badge>
                   )}
-                  <span>{student.student_code}</span>
+                  {student.student_code && <span className="break-all">{student.student_code}</span>}
                 </div>
               </div>
             </div>
@@ -204,6 +316,9 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                   setDecisionType(value as DecisionType);
                   setTargetClassId('');
                   setTargetSchoolId('');
+                  setManualSchoolName('');
+                  setUseManualSchool(false);
+                  setSchoolSearch('');
                 }}
                 className="grid grid-cols-1 gap-3"
               >
@@ -269,8 +384,18 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
             {(decisionType === 'promotion' || decisionType === 'demotion') && (
               <div className="space-y-2">
                 <Label>Classe cible *</Label>
+                {availableClasses.length === 0 && (
+                  <Alert>
+                    <AlertTriangle className="w-4 h-4" />
+                    <AlertDescription>
+                      {decisionType === 'promotion'
+                        ? 'Aucune classe supérieure disponible pour cet élève.'
+                        : 'Aucune classe inférieure disponible pour cet élève.'}
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <Select value={targetClassId} onValueChange={setTargetClassId}>
-                  <SelectTrigger>
+                    <SelectTrigger className="w-full">
                     <SelectValue placeholder="Sélectionner une classe" />
                   </SelectTrigger>
                   <SelectContent>
@@ -302,17 +427,17 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                     </div>
                     
                     <Select value={targetSchoolId} onValueChange={setTargetSchoolId}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Sélectionner une école" />
                       </SelectTrigger>
                       <SelectContent>
                         {filteredSchools.map((sch: any) => (
                           <SelectItem key={sch.id} value={sch.id}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex min-w-0 items-center gap-2">
                               <School className="w-4 h-4" />
-                              <span>{sch.name}</span>
+                              <span className="truncate">{sch.name}</span>
                               {sch.city && (
-                                <span className="text-xs text-muted-foreground">({sch.city})</span>
+                                <span className="truncate text-xs text-muted-foreground">({sch.city})</span>
                               )}
                             </div>
                           </SelectItem>
@@ -325,7 +450,10 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                       variant="ghost"
                       size="sm"
                       className="w-full text-xs"
-                      onClick={() => setUseManualSchool(true)}
+                      onClick={() => {
+                        setUseManualSchool(true);
+                        setTargetSchoolId('');
+                      }}
                     >
                       L'école n'est pas dans la liste ? Saisir manuellement
                     </Button>
@@ -345,12 +473,46 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                       onClick={() => {
                         setUseManualSchool(false);
                         setManualSchoolName('');
+                        setTargetSchoolId('');
                       }}
                     >
                       Revenir à la liste des écoles
                     </Button>
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label>Action sur les documents de transfert</Label>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <Button
+                      type="button"
+                      variant={transferPdfAction === 'download' ? 'default' : 'outline'}
+                      className="justify-start sm:justify-center"
+                      onClick={() => setTransferPdfAction('download')}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Télécharger
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={transferPdfAction === 'print' ? 'default' : 'outline'}
+                      className="justify-start sm:justify-center"
+                      onClick={() => setTransferPdfAction('print')}
+                    >
+                      <Printer className="mr-2 h-4 w-4" />
+                      Imprimer
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={transferPdfAction === 'share' ? 'default' : 'outline'}
+                      className="justify-start sm:justify-center"
+                      onClick={() => setTransferPdfAction('share')}
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Partager
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -361,6 +523,11 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                 <AlertDescription className="text-amber-800 dark:text-amber-200">
                   L'élève sera archivé et pourra être restauré ultérieurement depuis l'onglet "Archives".
                   Toutes ses données académiques et administratives seront conservées.
+                  {decisionType === 'transfer' && (
+                    <span className="mt-2 block">
+                      Des PDF de transfert seront générés pour impression ou envoi après validation.
+                    </span>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -377,17 +544,19 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
                 />
               </div>
             )}
-          </div>
-        </ScrollArea>
+            </div>
+          </ScrollArea>
+        </div>
 
-        <DialogFooter className="pt-4 border-t">
-          <Button variant="outline" onClick={handleClose}>
+        <DialogFooter className="border-t px-4 py-4 sm:px-6 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
             Annuler
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!isFormValid() || isPending}
             variant={decisionType === 'exclusion' ? 'destructive' : 'default'}
+            className="w-full sm:w-auto"
           >
             {isPending ? (
               <>

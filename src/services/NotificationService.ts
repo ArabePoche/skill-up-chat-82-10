@@ -13,6 +13,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Capacitor } from '@capacitor/core';
 
+const isDevelopment = import.meta.env.DEV;
+
 /**
  * Détecte le type d'appareil de manière fiable
  * Utilise Capacitor.getPlatform() qui est la source de vérité
@@ -47,12 +49,11 @@ export const NotificationService = {
   async saveToken(userId: string, token: string): Promise<void> {
     const deviceType = getDeviceType();
 
-    console.log('💾 [NotificationService] Sauvegarde token push:', {
-      userId: userId.substring(0, 8) + '...',
-      tokenPreview: token.substring(0, 20) + '...',
-      deviceType,
-      timestamp: new Date().toISOString(),
-    });
+    if (isDevelopment) {
+      console.log('💾 [NotificationService] Saving push token', {
+        deviceType,
+      });
+    }
 
     const { error } = await supabase
       .from('push_tokens')
@@ -77,20 +78,20 @@ export const NotificationService = {
       throw error;
     }
     
-    console.log('✅ [NotificationService] Token sauvegardé avec succès!', {
-      deviceType,
-      tokenPreview: token.substring(0, 20) + '...',
-    });
+    if (isDevelopment) {
+      console.log('✅ [NotificationService] Push token saved successfully', {
+        deviceType,
+      });
+    }
   },
 
   /**
    * Envoie une notification de test via l'edge function
    */
   async sendTestNotification(userId: string, token: string): Promise<void> {
-    console.log('🧪 [NotificationService] Envoi notification de test:', {
-      userId: userId.substring(0, 8) + '...',
-      tokenPreview: token.substring(0, 20) + '...',
-    });
+    if (isDevelopment) {
+      console.log('🧪 [NotificationService] Sending test notification');
+    }
 
     const { error } = await supabase.functions.invoke('send-push-notification', {
       body: {
@@ -100,7 +101,6 @@ export const NotificationService = {
         type: 'test',
         data: {
           url: '/',
-          tokenPreview: token?.slice(0, 12),
         },
       },
     });

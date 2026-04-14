@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+const isDevelopment = import.meta.env.DEV;
+
 export const useRealtimeMessages = (lessonId?: string, formationId?: string) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -50,7 +52,9 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           filter: `lesson_id=eq.${lessonId}`
         },
         (payload) => {
-          console.log('📨 New message received via realtime:', payload);
+          if (isDevelopment) {
+            console.log('New realtime message received');
+          }
           
           const queriesToUpdate = [
             ['lesson-messages', lessonId, formationId], // Hook unifié principal
@@ -80,7 +84,9 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           filter: `lesson_id=eq.${lessonId}`
         },
         (payload) => {
-          console.log('📝 Message updated via realtime:', payload);
+          if (isDevelopment) {
+            console.log('Realtime message updated');
+          }
           
           const queriesToUpdate = [
             ['lesson-messages', lessonId, formationId], // Hook unifié principal
@@ -106,7 +112,9 @@ export const useRealtimeMessages = (lessonId?: string, formationId?: string) => 
           filter: `lesson_id=eq.${lessonId}`
         },
         (payload) => {
-          console.log('🗑️ Message deleted via realtime:', payload);
+          if (isDevelopment) {
+            console.log('Realtime message deleted');
+          }
 
           const queriesToUpdate = [
             ['lesson-messages', lessonId, formationId],

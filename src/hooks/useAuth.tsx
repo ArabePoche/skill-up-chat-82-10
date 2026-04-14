@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { authStore } from '@/offline/utils/authStore';
 import { syncManager } from '@/offline/utils/syncManager';
 
+const isDevelopment = import.meta.env.DEV;
+
 interface Profile {
   id: string;
   first_name?: string;
@@ -180,7 +182,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
-      console.log('Auth state changed:', event, session?.user?.email);
+      if (isDevelopment) {
+        console.log('Auth state changed:', event);
+      }
 
       // Rediriger vers /reset-password si l'événement est PASSWORD_RECOVERY
       if (event === 'PASSWORD_RECOVERY' && session) {

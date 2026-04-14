@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { fileStore } from '@/file-manager/stores/FileStore';
 import { notifyFormationTeachers } from '@/utils/notifyFormationTeachers';
 
+const isDevelopment = import.meta.env.DEV;
+
 export const useSubmitExercise = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -79,10 +81,19 @@ export const useSubmitExercise = () => {
           }
         }
         
-        console.log('Exercise files uploaded successfully:', uploadedFiles);
+        if (isDevelopment) {
+          console.log(`Exercise files uploaded successfully: ${uploadedFiles.length}`);
+        }
       }
 
-      console.log('Submitting exercise via lesson_messages:', { lessonId, formationId, exerciseId, content });
+      if (isDevelopment) {
+        console.log('Submitting exercise via lesson_messages', {
+          lessonId,
+          formationId,
+          exerciseId,
+          hasContent: Boolean(content?.trim()),
+        });
+      }
 
       // Vérifier que l'utilisateur est inscrit à la formation
       const { data: enrollmentCheck, error: enrollmentError } = await supabase

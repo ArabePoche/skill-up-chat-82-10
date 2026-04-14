@@ -7,6 +7,8 @@ import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
 import { notifyFormationTeachers } from '@/utils/notifyFormationTeachers';
 
+const isDevelopment = import.meta.env.DEV;
+
 export const useSendMessage = (lessonId: string, formationId: string) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -91,10 +93,14 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
         fileUrl = (file as any).uploadUrl;
         fileName = file.name;
         fileType = file.type;
-        console.log('Using pre-uploaded file:', { fileUrl, fileName, fileType });
+        if (isDevelopment) {
+          console.log('Using pre-uploaded file for lesson message');
+        }
       } else if (file) {
         // Fallback: upload to students_exercises_submission_files bucket if not pre-uploaded
-        console.log('Uploading file to students_exercises_submission_files bucket:', file.name, file.type);
+        if (isDevelopment) {
+          console.log('Uploading attachment for lesson message');
+        }
         
         const fileExt = file.name.split('.').pop();
         const filePath = `${user.id}/${lessonId}/${Date.now()}.${fileExt}`;
@@ -115,18 +121,19 @@ export const useSendMessage = (lessonId: string, formationId: string) => {
         fileUrl = publicUrl;
         fileName = file.name;
         fileType = file.type;
-        
-        console.log('File uploaded successfully to students_exercises_submission_files:', { fileUrl, fileName, fileType });
+
+        if (isDevelopment) {
+          console.log('Lesson message attachment uploaded successfully');
+        }
       }
 
-      console.log('Sending message with promotion:', { 
-        content, 
-        messageType, 
-        fileUrl, 
-        fileName, 
-        fileType,
-        promotionId: studentPromotion?.promotion_id 
-      });
+      if (isDevelopment) {
+        console.log('Sending lesson message', {
+          messageType,
+          hasFile: Boolean(fileUrl),
+          hasPromotion: Boolean(studentPromotion?.promotion_id),
+        });
+      }
 
       const { data, error } = await supabase
         .from('lesson_messages')

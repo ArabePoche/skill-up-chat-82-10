@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+const isDevelopment = import.meta.env.DEV;
+
 export const useSendTeacherStudentMessage = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -32,7 +34,14 @@ export const useSendTeacherStudentMessage = () => {
       if (!user?.id) throw new Error('User not authenticated');
       if (!lessonId) throw new Error('lesson_id is required');
 
-      console.log('Sending teacher-student message:', { formationId, studentId, lessonId, content, messageType });
+      if (isDevelopment) {
+        console.log('Sending teacher-student message', {
+          formationId,
+          studentId,
+          lessonId,
+          messageType,
+        });
+      }
 
       // Vérifier que l'utilisateur est bien professeur de cette formation via teacher_formations
       const { data: teacherCheck } = await supabase

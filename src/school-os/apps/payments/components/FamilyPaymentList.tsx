@@ -1,7 +1,7 @@
 /**
  * Liste des paiements par famille (vue existante)
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useFamiliesWithPayments, type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { FamilyPaymentCard } from './FamilyPaymentCard';
 import { FamilyPaymentDialog } from './FamilyPaymentDialog';
@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
+import { useMonthlyPaymentTracking } from '../hooks/useMonthlyPaymentTracking';
 
 interface FamilyPaymentListProps {
   schoolId?: string;
@@ -20,6 +21,7 @@ interface FamilyPaymentListProps {
 
 export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }) => {
   const { data: families = [], isLoading, refetch } = useFamiliesWithPayments(schoolId);
+  const { trackingData } = useMonthlyPaymentTracking(schoolId);
   const { school } = useSchoolYear();
   const { data: roleData } = useSchoolUserRole(school?.id);
   const isParent = roleData?.isParent || false;
@@ -51,6 +53,70 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
       )
     );
   });
+
+  const trackingByStudentId = useMemo(
+    () => new Map(trackingData.map(item => [item.student.id, item.months])),
+    [trackingData]
+  );
+
+  const monthlyStatusesByFamilyId = useMemo(() => {
+    const epsilon = 0.01;
+
+    return new Map(
+      families.map((family) => {
+        const familyMonthMap = new Map<string, {
+          month: string;
+          monthLabel: string;
+          expectedAmount: number;
+          paidAmount: number;
+          isPastDue: boolean;
+        }>();
+
+        family.students.forEach((student) => {
+          const studentMonths = trackingByStudentId.get(student.id) || [];
+
+          studentMonths.forEach((month) => {
+            const existingMonth = familyMonthMap.get(month.month);
+
+            if (existingMonth) {
+              existingMonth.expectedAmount += month.expectedAmount;
+              existingMonth.paidAmount += month.paidAmount;
+              existingMonth.isPastDue = existingMonth.isPastDue || month.isPastDue;
+              return;
+            }
+
+            familyMonthMap.set(month.month, {
+              month: month.month,
+              monthLabel: month.monthLabel,
+              expectedAmount: month.expectedAmount,
+              paidAmount: month.paidAmount,
+              isPastDue: month.isPastDue,
+            });
+          });
+        });
+
+        const monthlyStatuses = Array.from(familyMonthMap.values())
+          .sort((left, right) => left.month.localeCompare(right.month))
+          .map((month) => ({
+            month: month.month,
+            monthLabel: month.monthLabel,
+            expectedAmount: month.expectedAmount,
+            paidAmount: month.paidAmount,
+            isPastDue: month.isPastDue,
+            status:
+              month.expectedAmount > 0 && month.paidAmount >= month.expectedAmount - epsilon
+                ? 'paid'
+                : month.paidAmount > epsilon
+                ? 'partial'
+                : month.isPastDue
+                ? 'late'
+                : 'unpaid',
+          }));
+
+        return [family.family_id, monthlyStatuses];
+      })
+    );
+  }, [families, trackingByStudentId]);
 
   if (isLoading) {
     return (
@@ -107,6 +173,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
               <FamilyPaymentCard 
                 key={family.family_id} 
                 family={family} 
+                monthlyStatuses={monthlyStatusesByFamilyId.get(family.family_id)}
                 onAddPayment={() => handleAddPayment(family)}
                 onAddRegistrationPayment={() => {
                   setSelectedFamily(family);

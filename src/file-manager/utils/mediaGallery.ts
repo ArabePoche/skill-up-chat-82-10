@@ -15,6 +15,31 @@ import { Media as MediaPlugin } from '@capacitor-community/media';
 
 // Nom de l'album dans la galerie
 const ALBUM_NAME = 'REZO';
+const isDevelopment = import.meta.env.DEV;
+
+const debugLog = (...args: unknown[]) => {
+  if (isDevelopment) {
+    console.log(...args);
+  }
+};
+
+const logWarning = (message: string, error?: unknown) => {
+  if (isDevelopment && error !== undefined) {
+    console.warn(message, error);
+    return;
+  }
+
+  console.warn(message);
+};
+
+const logError = (message: string, error?: unknown) => {
+  if (isDevelopment && error !== undefined) {
+    console.error(message, error);
+    return;
+  }
+
+  console.error(message);
+};
 
 // Cache pour l'identifiant de l'album
 let albumIdentifier: string | null = null;
@@ -54,7 +79,7 @@ export const requestStoragePermissions = async (): Promise<boolean> => {
     permissionsRequested = true;
     return true;
   } catch (error) {
-    console.warn('⚠️ Erreur demande permissions:', error);
+    logWarning('⚠️ Erreur demande permissions');
     permissionsRequested = true;
     return false;
   }
@@ -73,7 +98,7 @@ const findAlbumByName = async (Media: typeof MediaPlugin, albumName: string) => 
     const { albums } = await Media.getAlbums();
     return albums.find(album => album.name === albumName) ?? null;
   } catch (error) {
-    console.warn('⚠️ Lecture albums impossible:', error);
+    logWarning('⚠️ Lecture albums impossible', error);
     return null;
   }
 };
@@ -96,32 +121,32 @@ export const ensureAlbumExists = async (): Promise<string | null> => {
       const existingAlbum = await findAlbumByName(Media, ALBUM_NAME);
       if (existingAlbum?.identifier) {
         albumIdentifier = existingAlbum.identifier;
-        console.log('📁 Album Android existant trouvé:', albumIdentifier);
+        debugLog('📁 Album Android existant trouvé');
         return albumIdentifier;
       }
 
       try {
         await Media.createAlbum({ name: ALBUM_NAME });
-        console.log('✅ Album Android créé:', ALBUM_NAME);
+        debugLog('✅ Album Android créé');
       } catch (error: any) {
         const message = String(error?.message || '').toLowerCase();
         if (!message.includes('already exists')) {
-          console.warn('⚠️ Création album Android:', error);
+          logWarning('⚠️ Création album Android', error);
         }
       }
 
       const createdAlbum = await findAlbumByName(Media, ALBUM_NAME);
       if (createdAlbum?.identifier) {
         albumIdentifier = createdAlbum.identifier;
-        console.log('📁 Album Android validé:', albumIdentifier);
+        debugLog('📁 Album Android validé');
         return albumIdentifier;
       }
 
       albumIdentifier = expectedAlbumPath;
-      console.log('📁 Album Android prêt (fallback chemin):', albumIdentifier);
+      debugLog('📁 Album Android prêt (fallback chemin)');
       return albumIdentifier;
     } catch (error) {
-      console.error('❌ Erreur création album Android:', error);
+      logError('❌ Erreur création album Android', error);
       return null;
     }
   }
@@ -132,7 +157,7 @@ export const ensureAlbumExists = async (): Promise<string | null> => {
 
     if (existingAlbum) {
       albumIdentifier = existingAlbum.identifier;
-      console.log('📁 Album existant trouvé:', ALBUM_NAME);
+      debugLog('📁 Album existant trouvé');
       return albumIdentifier;
     }
 
@@ -143,13 +168,13 @@ export const ensureAlbumExists = async (): Promise<string | null> => {
 
     if (newAlbum) {
       albumIdentifier = newAlbum.identifier;
-      console.log('✅ Album créé:', ALBUM_NAME);
+      debugLog('✅ Album créé');
       return albumIdentifier;
     }
 
     return null;
   } catch (error) {
-    console.error('❌ Erreur création album:', error);
+    logError('❌ Erreur création album', error);
     return null;
   }
 };
@@ -212,7 +237,7 @@ const saveTempFile = async (
     // Ignorer si le fichier n'existe pas
   }
 
-  console.log(`💾 Écriture fichier ${fileName} (${(blob.size / 1024 / 1024).toFixed(1)} MB)...`);
+  debugLog(`💾 Écriture fichier temporaire (${(blob.size / 1024 / 1024).toFixed(1)} MB)`);
 
   const base64 = await blobToBase64(blob);
   await new Promise(resolve => setTimeout(resolve, 10));
@@ -223,7 +248,7 @@ const saveTempFile = async (
     directory: Directory.Cache,
   });
 
-  console.log(`✅ Fichier temporaire écrit: ${result.uri}`);
+  debugLog('✅ Fichier temporaire écrit');
   return result.uri;
 };
 
@@ -267,7 +292,7 @@ export const saveImageToGallery = async (
   const Media = await getMediaPlugin();
 
   if (!Media) {
-    console.log('📱 Plateforme web - pas de sauvegarde galerie');
+    debugLog('📱 Plateforme web - pas de sauvegarde galerie');
     return { success: true, savedToGallery: false };
   }
 
@@ -284,9 +309,9 @@ export const saveImageToGallery = async (
           directory: Directory.ExternalStorage,
           recursive: true,
         });
-        console.log('✅ Image copiée dans Download/REZO/Images');
+        debugLog('✅ Image copiée dans Download/REZO/Images');
       } catch (fsError) {
-        console.warn('⚠️ Erreur copie dans Download/REZO/Images', fsError);
+        logWarning('⚠️ Erreur copie dans Download/REZO/Images', fsError);
       }
     }
 
@@ -301,14 +326,14 @@ export const saveImageToGallery = async (
     }
 
     const tempPath = await saveTempFile(blob, fileName);
-    console.log('📁 Fichier temporaire créé:', tempPath);
+    debugLog('📁 Fichier temporaire image créé');
 
     const result = await Media.savePhoto({
       path: tempPath,
       albumIdentifier: albumId,
     });
 
-    console.log('✅ Image sauvegardée dans la galerie:', result.filePath);
+    debugLog('✅ Image sauvegardée dans la galerie');
 
     try {
       await Filesystem.deleteFile({
@@ -325,7 +350,7 @@ export const saveImageToGallery = async (
       savedToGallery: true,
     };
   } catch (error: any) {
-    console.error('❌ Erreur sauvegarde galerie image:', error);
+    logError('❌ Erreur sauvegarde galerie image', error);
     return {
       success: false,
       error: error.message || 'Erreur inconnue',
@@ -341,13 +366,12 @@ export const saveImageToGallery = async (
  */
 export const saveVideoToGallery = async (
   blob: Blob,
-  fileName: string,
-  mimeType?: string
+  fileName: string
 ): Promise<SaveToGalleryResult> => {
   const Media = await getMediaPlugin();
 
   if (!Media) {
-    console.log('📱 Plateforme web - pas de sauvegarde galerie');
+    debugLog('📱 Plateforme web - pas de sauvegarde galerie');
     return { success: true, savedToGallery: false };
   }
 
@@ -364,7 +388,7 @@ export const saveVideoToGallery = async (
     }
 
     const tempPath = await saveTempFile(blob, fileName);
-    console.log('📁 Fichier vidéo temporaire créé:', tempPath);
+    debugLog('📁 Fichier vidéo temporaire créé');
 
     const result = await Media.saveVideo({
       path: tempPath,
@@ -372,7 +396,7 @@ export const saveVideoToGallery = async (
       ...(platform === 'android' ? { fileName: getBaseFileName(fileName) } : {}),
     });
 
-    console.log(`✅ Vidéo sauvegardée dans la galerie ${platform}:`, result.filePath);
+    debugLog(`✅ Vidéo sauvegardée dans la galerie ${platform}`);
 
     try {
       await Filesystem.deleteFile({
@@ -389,7 +413,7 @@ export const saveVideoToGallery = async (
       savedToGallery: true,
     };
   } catch (error: any) {
-    console.error('❌ Erreur sauvegarde galerie vidéo:', error);
+    logError('❌ Erreur sauvegarde galerie vidéo', error);
     return {
       success: false,
       error: error.message || 'Erreur inconnue',
@@ -423,7 +447,7 @@ export const saveAudioToDevice = async (
       recursive: true,
     });
 
-    console.log('✅ Audio sauvegardé:', result.uri);
+    debugLog('✅ Audio sauvegardé');
 
     return {
       success: true,
@@ -431,7 +455,7 @@ export const saveAudioToDevice = async (
       savedToGallery: false,
     };
   } catch (error: any) {
-    console.error('❌ Erreur sauvegarde audio:', error);
+    logError('❌ Erreur sauvegarde audio', error);
     return {
       success: false,
       error: error.message,
@@ -464,7 +488,7 @@ export const saveDocumentToDevice = async (
       recursive: true,
     });
 
-    console.log('✅ Document sauvegardé:', result.uri);
+    debugLog('✅ Document sauvegardé');
 
     return {
       success: true,
@@ -472,7 +496,7 @@ export const saveDocumentToDevice = async (
       savedToGallery: false,
     };
   } catch (error: any) {
-    console.error('❌ Erreur sauvegarde document:', error);
+    logError('❌ Erreur sauvegarde document', error);
     return {
       success: false,
       error: error.message,
@@ -507,13 +531,13 @@ export const saveMediaToDevice = async (
 
   const finalFileName = generateFileName(fileName, mediaType);
 
-  console.log(`📥 Sauvegarde ${mediaType}: ${finalFileName}`);
+  debugLog(`📥 Sauvegarde ${mediaType}`);
 
   switch (mediaType) {
     case 'image':
       return saveImageToGallery(blob, finalFileName);
     case 'video':
-      return saveVideoToGallery(blob, finalFileName, mimeType);
+      return saveVideoToGallery(blob, finalFileName);
     case 'audio':
       return saveAudioToDevice(blob, finalFileName);
     default:

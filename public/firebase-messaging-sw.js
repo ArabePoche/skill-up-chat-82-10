@@ -30,7 +30,7 @@ const messaging = firebase.messaging();
 
 // Gérer les messages en arrière-plan
 messaging.onBackgroundMessage(function(payload) {
-  console.log('📨 Message reçu en arrière-plan:', payload);
+  console.log('📨 Message reçu en arrière-plan');
 
   const notificationTitle = payload.notification?.title || 'REZO';
   const imageUrl = payload.notification?.image || payload.data?.imageUrl || null;
@@ -64,7 +64,7 @@ messaging.onBackgroundMessage(function(payload) {
 
 // Gérer les clics sur les notifications
 self.addEventListener('notificationclick', function(event) {
-  console.log('👆 Clic sur notification:', event);
+  console.log('👆 Clic sur notification');
   
   event.notification.close();
 

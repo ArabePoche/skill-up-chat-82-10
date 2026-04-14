@@ -11,6 +11,8 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { NotificationService } from './NotificationService';
 
+const isDevelopment = import.meta.env.DEV;
+
 /**
  * Détection STRICTE de la plateforme native
  * Utilise Capacitor.getPlatform() qui est la seule méthode fiable
@@ -146,9 +148,9 @@ export class NativePushService {
     console.log('🔧 [NativePushService] Configuration des listeners natifs...');
 
     PushNotifications.addListener('registration', (token: { value: string }) => {
-      console.log('🎯 [NativePushService] EVENT registration reçu!');
-      console.log('🎯 [NativePushService] Token FCM:', token.value?.substring(0, 30) + '...');
-      console.log('🎯 [NativePushService] Token length:', token.value?.length);
+      if (isDevelopment) {
+        console.log('🎯 [NativePushService] Native registration event received');
+      }
 
       if (token?.value) {
         this.emitToken(token.value);
@@ -158,15 +160,19 @@ export class NativePushService {
     });
 
     PushNotifications.addListener('registrationError', (error: any) => {
-      console.error('❌ [NativePushService] EVENT registrationError:', JSON.stringify(error));
+      console.error('❌ [NativePushService] EVENT registrationError:', error);
     });
 
     PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-      console.log('📨 [NativePushService] Notification foreground:', JSON.stringify(notification));
+      if (isDevelopment) {
+        console.log('📨 [NativePushService] Foreground notification received');
+      }
     });
 
     PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
-      console.log('👆 [NativePushService] Action notification:', JSON.stringify(notification));
+      if (isDevelopment) {
+        console.log('👆 [NativePushService] Notification action received');
+      }
       
       // Récupérer la page de redirection depuis les données FCM
       // Structure standard Capacitor: notification.notification.data
@@ -175,11 +181,11 @@ export class NativePushService {
       // Chercher le chemin dans différentes propriétés communes
       const clickAction = data?.click_action || data?.clickAction || data?.path || data?.redirect_to || '/';
       
-      console.log('🔗 [NativePushService] Redirection vers:', clickAction);
-      
       // Naviguer vers la page cible via un CustomEvent pour React Router
       if (clickAction && clickAction !== '/') {
-        console.log('🚀 [NativePushService] Dispatch event push-notification-action');
+        if (isDevelopment) {
+          console.log('🚀 [NativePushService] Dispatching push-notification-action event');
+        }
         const event = new CustomEvent('push-notification-action', { 
             detail: { path: clickAction } 
         });
@@ -311,7 +317,7 @@ export class NativePushService {
           if (done) return;
           done = true;
           unsub();
-          console.warn('⏱️ Timeout: pas de token reçu (il peut arriver plus tard)');
+          console.warn('⏱️ [NativePushService] Token wait timed out');
           resolve(null);
         }, 15000);
       });

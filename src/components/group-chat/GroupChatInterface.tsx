@@ -257,7 +257,13 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
         fileName = uploadResult.fileName;
       }
 
-      console.log('📤 Sending group message with data:', { content, messageType, fileUrl, fileType, fileName, groupLessonId });
+      if (import.meta.env.DEV) {
+        console.log('Sending group message', {
+          messageType,
+          hasFile: Boolean(fileUrl),
+          groupLessonId,
+        });
+      }
 
       if (!groupLessonId) {
         console.error('❌ GroupChatInterface: No lesson ID available for sending message');

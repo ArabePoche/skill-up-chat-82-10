@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useAddFamilyPayment, useFamiliesWithPayments, calculateDiscountedAmount, type FamilyWithStudents } from '../hooks/useFamilyPayments';
+import { useAddFamilyPayment, useFamiliesWithPayments, type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { Users, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { distributeFamilyPaymentByMonthlyLoop } from '../utils/familyPaymentDistribution';
 
 interface FamilyPaymentDialogProps {
   open: boolean;
@@ -55,7 +56,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
     }
   }, [selectedFamily]);
 
-  // Calculer la répartition par mois complets selon les frais mensuels de chaque élève
+  // Préremplir la répartition selon la boucle mensuelle retenue pour les paiements familiaux.
   useEffect(() => {
     if (!currentFamily || !totalAmount) return;
 
@@ -65,60 +66,16 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
     const selected = currentFamily.students.filter(s => selectedStudents[s.id]);
     if (selected.length === 0) return;
 
-    // Calculer les frais mensuels de chaque élève (total_amount_due / 9 mois par défaut)
-    const SCHOOL_MONTHS = 9; // TODO: Récupérer depuis l'année scolaire
-    
-    const studentsWithMonthlyFees = selected.map(student => ({
-      ...student,
-      monthlyFee: student.total_amount_due / SCHOOL_MONTHS,
-    }));
-
-    // Calculer le total des frais mensuels
-    const totalMonthlyFees = studentsWithMonthlyFees.reduce((sum, s) => sum + s.monthlyFee, 0);
-    
-    if (totalMonthlyFees === 0) {
-      // Répartition égale si pas de frais définis
-      const equalAmount = (amount / selected.length).toFixed(2);
-      const newAmounts: Record<string, string> = {};
-      selected.forEach(student => {
-        newAmounts[student.id] = equalAmount;
-      });
-      setStudentAmounts(newAmounts);
-      return;
-    }
-
-    // Calculer combien de mois complets peuvent être payés pour la famille
-    const monthsPayable = Math.floor(amount / totalMonthlyFees);
-    const remainder = amount - (monthsPayable * totalMonthlyFees);
-
-    // Répartir en mois complets
-    const newAmounts: Record<string, string> = {};
-    
-    studentsWithMonthlyFees.forEach(student => {
-      // Payer les mois complets
-      let studentAmount = monthsPayable * student.monthlyFee;
-      
-      // Ne pas dépasser le montant restant dû
-      studentAmount = Math.min(studentAmount, student.remaining_amount);
-      
-      newAmounts[student.id] = studentAmount.toFixed(2);
-    });
-
-    // Si il reste de l'argent, le répartir proportionnellement
-    if (remainder > 0) {
-      studentsWithMonthlyFees.forEach(student => {
-        const proportion = student.monthlyFee / totalMonthlyFees;
-        const additionalAmount = remainder * proportion;
-        const currentAmount = parseFloat(newAmounts[student.id] || '0');
-        const totalAmount = Math.min(
-          currentAmount + additionalAmount,
-          student.remaining_amount
-        );
-        newAmounts[student.id] = totalAmount.toFixed(2);
-      });
-    }
-
-    setStudentAmounts(newAmounts);
+    setStudentAmounts(
+      distributeFamilyPaymentByMonthlyLoop(
+        selected.map((student) => ({
+          id: student.id,
+          total_amount_due: student.total_amount_due,
+          remaining_amount: student.remaining_amount,
+        })),
+        amount
+      )
+    );
   }, [totalAmount, selectedStudents, currentFamily]);
 
   const handleToggleStudent = (studentId: string) => {

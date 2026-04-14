@@ -6,6 +6,10 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function toErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 // Re-use logic for FCM (similar to send-push-notification)
 async function createJWT(clientEmail: string, privateKey: string): Promise<string> {
     const header = { alg: 'RS256', typ: 'JWT' };
@@ -61,9 +65,10 @@ Deno.serve(async (req) => {
 
     try {
         const body = await req.json().catch(() => ({}));
-        console.log('Request body:', JSON.stringify(body));
         const { productId } = body;
         if (!productId) throw new Error('Product ID is required');
+
+        console.log(`[notify-restock] Processing product ${productId}`);
 
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -86,7 +91,7 @@ Deno.serve(async (req) => {
             .select('user_id')
             .eq('product_id', productId);
 
-        console.log(`Found ${subscriptions?.length || 0} subscribers for product ${productId}`);
+        console.log(`[notify-restock] Found ${subscriptions?.length || 0} subscribers for product ${productId}`);
 
         if (subError) throw subError;
         if (!subscriptions || subscriptions.length === 0) {
@@ -106,17 +111,15 @@ Deno.serve(async (req) => {
             is_for_all_admins: false,
         }));
 
-        console.log(`Payload for ${notifications.length} notifications:`, JSON.stringify(notifications));
-
         const { data: insertedData, error: notifyError } = await supabase
             .from('notifications')
             .insert(notifications)
             .select();
 
         if (notifyError) {
-            console.error('Error creating in-app notifications:', JSON.stringify(notifyError));
+            console.error('[notify-restock] Error creating in-app notifications:', toErrorMessage(notifyError));
         } else {
-            console.log('Successfully inserted notifications:', JSON.stringify(insertedData));
+            console.log(`[notify-restock] Created ${insertedData?.length || 0} in-app notifications`);
         }
 
         // 4. Send Push Notifications
@@ -161,7 +164,7 @@ Deno.serve(async (req) => {
                         });
                         pushSent++;
                     } catch (err) {
-                        console.error(`Error sending push to ${tokenData.user_id}:`, err);
+                        console.error('[notify-restock] Error sending push notification:', toErrorMessage(err));
                     }
                 }
             }
@@ -182,7 +185,7 @@ Deno.serve(async (req) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     } catch (error) {
-        console.error('Error notify-restock:', error);
+        console.error('[notify-restock] Error:', toErrorMessage(error));
         return new Response(
             JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

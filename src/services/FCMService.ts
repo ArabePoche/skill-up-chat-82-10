@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
+const isDevelopment = import.meta.env.DEV;
+
 // Configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDa4NhETpsY6DzzujBdlKctwCCG9aiy9GQ",
@@ -72,11 +74,15 @@ export const FCMService = {
           return { success: false, error: 'Impossible d\'obtenir le token FCM' };
         }
 
-        console.log('🎯 Token FCM obtenu:', token.substring(0, 20) + '...');
+        if (isDevelopment) {
+          console.log('FCM token obtained successfully');
+        }
 
         // Écouter les messages en foreground
         onMessage(messaging, (payload) => {
-          console.log('📨 Message reçu en foreground:', payload);
+          if (isDevelopment) {
+            console.log('Foreground push message received');
+          }
           
           // Afficher une notification même en foreground
           if (payload.notification) {

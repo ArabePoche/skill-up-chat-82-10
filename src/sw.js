@@ -183,7 +183,7 @@ try {
 
   // Gérer les messages en arrière-plan
   messaging.onBackgroundMessage((payload: any) => {
-    console.log('📨 Message reçu en arrière-plan:', payload);
+    console.log('📨 Message reçu en arrière-plan');
 
     const notificationTitle = payload.notification?.title || 'REZO';
     const notificationOptions = {
@@ -227,7 +227,6 @@ self.addEventListener('notificationclick', (event) => {
   // Récupérer la page de redirection depuis les données de la notification
   const clickAction = event.notification.data?.click_action || event.notification.data?.clickAction || '/';
   const urlToOpen = new URL(clickAction, self.location.origin).href;
-  console.log('🔗 Redirection vers:', urlToOpen);
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

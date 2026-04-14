@@ -8,9 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Users, AlertCircle, CheckCircle, Clock, History, GraduationCap } from 'lucide-react';
 import { type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { FamilyPaymentHistoryModal } from './FamilyPaymentHistoryModal';
+import { MonthlyStatusBadges } from './MonthlyStatusBadges';
+import { type MonthlyPaymentStatus } from '../hooks/useMonthlyPaymentTracking';
 
 interface FamilyPaymentCardProps {
   family: FamilyWithStudents;
+  monthlyStatuses?: MonthlyPaymentStatus[];
   onAddPayment: () => void;
   onAddRegistrationPayment?: () => void;
   /** Si true, masque les boutons de paiement (ex: pour les parents) */
@@ -19,6 +22,7 @@ interface FamilyPaymentCardProps {
 
 export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
   family,
+  monthlyStatuses,
   onAddPayment,
   onAddRegistrationPayment,
   hidePaymentActions = false,
@@ -143,24 +147,41 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
           </div>
         </div>
 
+        {monthlyStatuses?.length ? (
+          <div className="border-t pt-2 sm:pt-3 space-y-1.5 sm:space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">
+                Mois payés / impayés de la famille
+              </p>
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground text-right">
+                Vue globale
+              </span>
+            </div>
+            <MonthlyStatusBadges months={monthlyStatuses} />
+          </div>
+        ) : null}
+
         <div className="border-t pt-2 sm:pt-3">
           <p className="text-[10px] sm:text-xs text-muted-foreground mb-1.5 sm:mb-2">Élèves:</p>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {family.students.map((student) => (
-              <div key={student.id} className="flex justify-between items-start gap-2 text-[10px] sm:text-xs">
-                <span className="text-muted-foreground flex-1 min-w-0">
-                  <span className="block truncate">{student.first_name} {student.last_name}</span>
-                  {(student.discount_percentage || student.discount_amount) && (
-                    <Badge variant="outline" className="mt-0.5 text-[9px] py-0 px-1">
-                      {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
-                    </Badge>
-                  )}
-                </span>
-                <span className={`font-medium shrink-0 ${student.remaining_amount > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                  {student.remaining_amount > 0 
-                    ? `${student.remaining_amount.toLocaleString('fr-FR')} FCFA` 
-                    : '✓'}
-                </span>
+              <div key={student.id} className="rounded-lg border bg-muted/30 px-2 py-2">
+                <div className="flex justify-between items-start gap-2 text-[10px] sm:text-xs">
+                  <span className="text-muted-foreground flex-1 min-w-0">
+                    <span className="block truncate">{student.first_name} {student.last_name}</span>
+                    <span className="block text-[9px] sm:text-[10px]">{student.class_name || 'Sans classe'}</span>
+                    {(student.discount_percentage || student.discount_amount) && (
+                      <Badge variant="outline" className="mt-0.5 text-[9px] py-0 px-1">
+                        {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
+                      </Badge>
+                    )}
+                  </span>
+                  <span className={`font-medium shrink-0 ${student.remaining_amount > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                    {student.remaining_amount > 0 
+                      ? `${student.remaining_amount.toLocaleString('fr-FR')} FCFA` 
+                      : '✓'}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

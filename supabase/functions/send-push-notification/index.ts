@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     const payload: NotificationPayload = await req.json();
 
     console.log('📨 Envoi de notification push via FCM v1:', {
-      userIds: payload.userIds,
+      recipients: payload.userIds.length,
       title: payload.title,
     });
 
@@ -203,10 +203,10 @@ Deno.serve(async (req) => {
 
         if (fcmResponse.ok) {
           sent++;
-          console.log(`✅ Notification envoyée à user ${tokenData.user_id}`);
+          console.log('✅ Notification envoyée à un destinataire');
         } else {
           failed++;
-          console.error(`❌ Erreur FCM pour user ${tokenData.user_id}:`, fcmResult);
+          console.error('❌ Erreur FCM pour un destinataire:', fcmResult);
           
           // Si le token est invalide, désactiver dans la base
           if (fcmResult.error?.code === 404 || 
@@ -215,12 +215,12 @@ Deno.serve(async (req) => {
               .from('push_tokens')
               .update({ is_active: false })
               .eq('token', tokenData.token);
-            console.log(`🗑️ Token désactivé pour user ${tokenData.user_id}`);
+            console.log('🗑️ Token invalide désactivé');
           }
         }
       } catch (err) {
         failed++;
-        console.error(`❌ Erreur pour user ${tokenData.user_id}:`, err);
+        console.error('❌ Erreur envoi notification push:', err);
       }
     }
 

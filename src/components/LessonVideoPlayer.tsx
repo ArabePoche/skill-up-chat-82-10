@@ -115,7 +115,6 @@ const LessonVideoPlayer: React.FC<LessonVideoPlayerProps> = ({
   };
   
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce commentaire ?')) return;
     const success = await deleteComment(commentId);
     if (success) {
       toast.success('Commentaire supprimé');
