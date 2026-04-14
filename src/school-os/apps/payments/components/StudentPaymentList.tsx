@@ -113,20 +113,24 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
               </CardContent>
             </Card>
           ) : (
-            filteredStudents.map(student => (
-              <StudentPaymentCard 
-                key={student.id} 
-                student={student}
-                onAddPayment={() => {
-                  setSelectedStudent(student);
-                  setIsAddPaymentOpen(true);
-                }}
-                onAddRegistrationPayment={() => {
-                  setSelectedStudent(student);
-                  setIsAddRegistrationPaymentOpen(true);
-                }}
-              />
-            ))
+            filteredStudents.map(student => {
+              const studentTracking = trackingData.find(t => t.student.id === student.id);
+              return (
+                <StudentPaymentCard 
+                  key={student.id} 
+                  student={student}
+                  monthlyStatuses={studentTracking?.months}
+                  onAddPayment={() => {
+                    setSelectedStudent(student);
+                    setIsAddPaymentOpen(true);
+                  }}
+                  onAddRegistrationPayment={() => {
+                    setSelectedStudent(student);
+                    setIsAddRegistrationPaymentOpen(true);
+                  }}
+                />
+              );
+            })
           )}
         </div>
       </ScrollArea>
