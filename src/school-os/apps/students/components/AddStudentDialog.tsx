@@ -122,6 +122,8 @@ export const AddStudentDialog: React.FC<AddStudentDialogProps> = ({
       last_name: student.last_name,
       date_of_birth: student.date_of_birth,
       gender: student.gender,
+      enrollment_date: student.enrollment_date || new Date().toISOString().split('T')[0],
+      include_enrollment_month: student.include_enrollment_month !== false,
       father_name: student.father_name,
       father_occupation: student.father_occupation,
       birth_place: student.birth_place,
