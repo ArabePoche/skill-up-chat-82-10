@@ -121,6 +121,8 @@ export const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
           mother_name: data.mother_name,
           mother_occupation: data.mother_occupation,
           observations: data.observations,
+          enrollment_date: data.enrollment_date || null,
+          first_due_month: data.first_due_month || null,
         })
         .eq('id', student.id);
 
