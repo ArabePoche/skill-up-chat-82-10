@@ -53,6 +53,8 @@ const studentSchema = z.object({
   mother_name: z.string().optional(),
   mother_occupation: z.string().optional(),
   observations: z.string().optional(),
+  enrollment_date: z.string().optional(),
+  first_due_month: z.string().optional(),
 });
 
 type StudentFormValues = z.infer<typeof studentSchema>;
@@ -89,6 +91,8 @@ export const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
       mother_name: student.mother_name || '',
       mother_occupation: student.mother_occupation || '',
       observations: student.observations || '',
+      enrollment_date: student.enrollment_date || '',
+      first_due_month: student.first_due_month || '',
     },
   });
 
@@ -117,6 +121,8 @@ export const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
           mother_name: data.mother_name,
           mother_occupation: data.mother_occupation,
           observations: data.observations,
+          enrollment_date: data.enrollment_date || null,
+          first_due_month: data.first_due_month || null,
         })
         .eq('id', student.id);
 
@@ -358,6 +364,33 @@ export const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
                     <FormLabel>Remise fixe (FCFA)</FormLabel>
                     <FormControl>
                       <Input {...field} type="number" min="0" placeholder="0" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="enrollment_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date d'inscription</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="first_due_month"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Premier mois dû</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" placeholder="Ex: 2025-10-01" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
