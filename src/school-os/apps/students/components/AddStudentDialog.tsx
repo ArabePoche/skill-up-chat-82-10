@@ -39,6 +39,8 @@ const studentSchema = z.object({
   last_name: z.string().min(1, 'Le nom est requis'),
   date_of_birth: z.string().min(1, 'La date de naissance est requise'),
   gender: z.enum(['male', 'female'], { required_error: 'Le genre est requis' }),
+  enrollment_date: z.string().optional(),
+  include_enrollment_month: z.boolean().optional(),
   father_name: z.string().optional(),
   father_occupation: z.string().optional(),
   birth_place: z.string().optional(),
