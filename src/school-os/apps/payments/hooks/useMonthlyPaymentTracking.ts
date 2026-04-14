@@ -2,6 +2,7 @@
  * Hook pour le suivi mensuel des paiements
  * Calcule automatiquement le statut de paiement par mois pour chaque élève
  * Les remises sont déjà appliquées dans total_amount_due
+ * Le suivi commence au first_due_month de l'élève (pas au début de l'année scolaire)
  */
 import { useMemo } from 'react';
 import { useSchoolStudents } from './usePayments';
@@ -41,7 +42,29 @@ const getMonthsBetweenDates = (startDate: Date, endDate: Date): number => {
 };
 
 /**
+ * Calcule le premier mois dû pour un élève selon la règle du 10
+ * Réplique la logique SQL de calculate_first_due_month
+ */
+const calculateFirstDueMonth = (enrollmentDate: Date, includeEnrollmentMonth: boolean): Date => {
+  const day = enrollmentDate.getDate();
+  const monthStart = new Date(enrollmentDate.getFullYear(), enrollmentDate.getMonth(), 1);
+  
+  // Si arrivée avant ou le 10 : le mois d'arrivée est dû
+  if (day <= 10) {
+    return monthStart;
+  }
+  
+  // Si arrivée après le 10 : selon le choix utilisateur
+  if (includeEnrollmentMonth) {
+    return monthStart;
+  } else {
+    return new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+  }
+};
+
+/**
  * Calcule le suivi mensuel des paiements pour tous les élèves
+ * Utilise enrollment_date et first_due_month pour ne générer que les mois réellement exigibles
  */
 export const useMonthlyPaymentTracking = (schoolId?: string) => {
   const { data: students = [], isLoading } = useSchoolStudents(schoolId);
@@ -50,37 +73,57 @@ export const useMonthlyPaymentTracking = (schoolId?: string) => {
   const trackingData = useMemo(() => {
     if (!students.length || !schoolYear) return [];
 
-    // Utiliser les dates de l'année scolaire
     const yearStart = new Date(schoolYear.start_date);
     const yearEnd = new Date(schoolYear.end_date);
     const currentDate = new Date();
     
-    // Calculer le nombre de mois dans l'année scolaire
-    const schoolMonths = getMonthsBetweenDates(yearStart, yearEnd);
+    // Nombre total de mois de l'année scolaire
+    const totalSchoolMonths = getMonthsBetweenDates(yearStart, yearEnd);
     
     return students.map(student => {
-      // Le montant total_amount_due contient déjà la remise appliquée côté serveur
-      // grâce à la fonction calculate_amount_with_discount dans la DB
+      // Utiliser le montant proratisé (déjà calculé côté DB)
       const effectiveAnnualFee = student.total_amount_due || 0;
+      
+      // Déterminer le premier mois dû pour cet élève
+      const enrollmentDate = student.enrollment_date 
+        ? new Date(student.enrollment_date) 
+        : new Date(student.created_at);
+      const includeEnrollmentMonth = student.include_enrollment_month !== false;
+      
+      // Utiliser first_due_month de la DB si disponible, sinon calculer
+      let firstDueMonth: Date;
+      if (student.first_due_month) {
+        firstDueMonth = new Date(student.first_due_month);
+      } else {
+        firstDueMonth = calculateFirstDueMonth(enrollmentDate, includeEnrollmentMonth);
+      }
+      
+      // S'assurer que le premier mois dû n'est pas avant le début de l'année scolaire
+      if (firstDueMonth < yearStart) {
+        firstDueMonth = new Date(yearStart.getFullYear(), yearStart.getMonth(), 1);
+      }
+      
+      // Nombre de mois exigibles pour cet élève
+      const billableMonths = student.billable_months || getMonthsBetweenDates(firstDueMonth, yearEnd);
+      
+      // Mensualité calculée sur les mois exigibles
+      const monthlyFee = billableMonths > 0 ? effectiveAnnualFee / billableMonths : 0;
 
-      const monthlyFee = effectiveAnnualFee / schoolMonths;
-
-      // Générer les mois de l'année scolaire
+      // Générer uniquement les mois exigibles (pas toute l'année scolaire)
       const months: MonthlyPaymentStatus[] = [];
-      for (let i = 0; i < schoolMonths; i++) {
-        const monthDate = new Date(yearStart);
-        monthDate.setMonth(yearStart.getMonth() + i);
+      for (let i = 0; i < billableMonths; i++) {
+        const monthDate = new Date(firstDueMonth.getFullYear(), firstDueMonth.getMonth() + i, 1);
+        
+        // Ne pas dépasser la fin de l'année scolaire
+        if (monthDate > yearEnd) break;
         
         const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
         const monthLabel = `${MONTH_NAMES[monthDate.getMonth()]} ${monthDate.getFullYear()}`;
         
-        // Un mois est en retard si :
-        // 1. La date du mois est passée
-        // 2. ET ce n'est pas le mois en cours (on laisse jusqu'à la fin du mois)
-        const monthEndDate = new Date(monthDate);
-        monthEndDate.setMonth(monthEndDate.getMonth() + 1);
-        monthEndDate.setDate(0); // Dernier jour du mois
-        const isPastDue = monthEndDate < currentDate;
+        // Un mois est en retard si la date limite est passée
+        // Date limite : le 1er du mois suivant
+        const deadlineDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+        const isPastDue = deadlineDate < currentDate;
         
         months.push({
           month: monthKey,
@@ -94,8 +137,8 @@ export const useMonthlyPaymentTracking = (schoolId?: string) => {
 
       // Calculer combien de mois ont été payés en fonction du total payé
       const totalPaid = student.total_amount_paid || 0;
-      const monthsPaidCount = Math.floor(totalPaid / monthlyFee);
-      const remainderAmount = totalPaid % monthlyFee;
+      const monthsPaidCount = monthlyFee > 0 ? Math.floor(totalPaid / monthlyFee) : 0;
+      const remainderAmount = monthlyFee > 0 ? totalPaid % monthlyFee : 0;
 
       // Marquer les mois comme payés
       let totalMonthsPaid = 0;
@@ -110,15 +153,8 @@ export const useMonthlyPaymentTracking = (schoolId?: string) => {
           months[i].paidAmount = remainderAmount;
           months[i].status = 'partial';
         } else if (months[i].isPastDue) {
-          // Un élève est en retard si le mois précédent n'est pas totalement payé
-          const previousMonth = i > 0 ? months[i - 1] : null;
-          if (previousMonth && previousMonth.status !== 'paid') {
-            months[i].status = 'late';
-            totalMonthsLate++;
-          } else if (i === 0 || (previousMonth && previousMonth.status === 'paid')) {
-            months[i].status = 'late';
-            totalMonthsLate++;
-          }
+          months[i].status = 'late';
+          totalMonthsLate++;
         }
       }
 
