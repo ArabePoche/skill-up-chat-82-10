@@ -53,6 +53,8 @@ const studentSchema = z.object({
   mother_name: z.string().optional(),
   mother_occupation: z.string().optional(),
   observations: z.string().optional(),
+  enrollment_date: z.string().optional(),
+  first_due_month: z.string().optional(),
 });
 
 type StudentFormValues = z.infer<typeof studentSchema>;
