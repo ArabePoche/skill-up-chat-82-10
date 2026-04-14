@@ -500,6 +500,16 @@ export const GradesApp: React.FC = () => {
           />
         </TabsContent>
 
+        {/* Onglet Cartes scolaires */}
+        <TabsContent value="cards" className="flex-1 overflow-auto m-0">
+          <SchoolCardsSection
+            availableClasses={availableClasses}
+            schoolName={school?.name || ''}
+            schoolYearLabel={activeSchoolYear?.year_label || ''}
+            schoolLogoUrl={(school as any)?.logo_url}
+          />
+        </TabsContent>
+
         {/* Onglet Statistiques */}
         <TabsContent value="stats" className="flex-1 overflow-auto m-0">
           <GradesStatsView
