@@ -10687,6 +10687,81 @@ export type Database = {
           },
         ]
       }
+      video_watermark_jobs: {
+        Row: {
+          attempts: number
+          author_name: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          expires_at: string | null
+          failed_at: string | null
+          file_name: string
+          id: string
+          metadata: Json
+          output_bucket: string
+          output_mime_type: string
+          output_path: string | null
+          progress: number
+          requested_by: string
+          source_host: string
+          source_url: string
+          stage: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          watermark_text: string
+        }
+        Insert: {
+          attempts?: number
+          author_name: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string | null
+          failed_at?: string | null
+          file_name: string
+          id?: string
+          metadata?: Json
+          output_bucket?: string
+          output_mime_type?: string
+          output_path?: string | null
+          progress?: number
+          requested_by: string
+          source_host: string
+          source_url: string
+          stage?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          watermark_text: string
+        }
+        Update: {
+          attempts?: number
+          author_name?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          expires_at?: string | null
+          failed_at?: string | null
+          file_name?: string
+          id?: string
+          metadata?: Json
+          output_bucket?: string
+          output_mime_type?: string
+          output_path?: string | null
+          progress?: number
+          requested_by?: string
+          source_host?: string
+          source_url?: string
+          stage?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          watermark_text?: string
+        }
+        Relationships: []
+      }
       videos: {
         Row: {
           author_id: string | null
