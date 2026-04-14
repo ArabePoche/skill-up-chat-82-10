@@ -8,9 +8,12 @@ import { EditDiscountDialog } from './EditDiscountDialog';
 import { PaymentHistoryModal } from './PaymentHistoryModal';
 import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
 import { calculateDiscountedAmount } from '../utils/discountCalculations';
+import { MonthlyStatusBadges } from './MonthlyStatusBadges';
+import { MonthlyPaymentStatus } from '../hooks/useMonthlyPaymentTracking';
 
 interface StudentPaymentCardProps {
   student: any;
+  monthlyStatuses?: MonthlyPaymentStatus[];
   onAddPayment: () => void;
   onAddRegistrationPayment?: () => void;
 }
