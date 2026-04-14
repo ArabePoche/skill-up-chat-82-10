@@ -11497,6 +11497,10 @@ export type Database = {
         }
         Returns: number
       }
+      recalculate_student_payment_progress: {
+        Args: { p_school_id: string; p_student_id: string }
+        Returns: undefined
+      }
       reject_school_join_request: {
         Args: { p_reason?: string; p_request_id: string; p_reviewer_id: string }
         Returns: Json
