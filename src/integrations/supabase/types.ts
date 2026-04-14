@@ -5014,6 +5014,62 @@ export type Database = {
           },
         ]
       }
+      scheduled_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          last_confirmed_at: string | null
+          next_due_date: string
+          payment_method: string | null
+          recurrence: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_confirmed_at?: string | null
+          next_due_date: string
+          payment_method?: string | null
+          recurrence?: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_confirmed_at?: string | null
+          next_due_date?: string
+          payment_method?: string | null
+          recurrence?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_expenses_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_bulletin_appreciation_templates: {
         Row: {
           category: string

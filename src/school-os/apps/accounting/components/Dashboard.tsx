@@ -309,7 +309,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ schoolId }) => {
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                     <XAxis
-                      data={expenseCategoryData}
                       dataKey="category"
                       tickLine={false}
                       axisLine={false}
