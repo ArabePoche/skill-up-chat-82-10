@@ -21,6 +21,7 @@ interface StudentPaymentCardProps {
 
 export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   student,
+  monthlyStatuses,
   onAddPayment,
   onAddRegistrationPayment,
 }) => {
