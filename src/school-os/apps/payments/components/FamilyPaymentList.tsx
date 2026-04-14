@@ -103,14 +103,15 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
             expectedAmount: month.expectedAmount,
             paidAmount: month.paidAmount,
             isPastDue: month.isPastDue,
-            status:
+            status: (
               month.expectedAmount > 0 && month.paidAmount >= month.expectedAmount - epsilon
                 ? 'paid'
                 : month.paidAmount > epsilon
                 ? 'partial'
                 : month.isPastDue
                 ? 'late'
-                : 'unpaid',
+                : 'unpaid'
+            ) as 'paid' | 'partial' | 'late' | 'unpaid',
           }));
 
         return [family.family_id, monthlyStatuses];
