@@ -369,6 +369,33 @@ export const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="enrollment_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date d'inscription</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="first_due_month"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Premier mois dû</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" placeholder="Ex: 2025-10-01" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
