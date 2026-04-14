@@ -82,6 +82,7 @@ import {
    const isPending = request.status === 'pending';
    const isApproved = request.status === 'approved';
    const isRejected = request.status === 'rejected';
+  const requestDateLabel = direction === 'outgoing' ? 'Demande envoyée le' : 'Demande reçue le';
  
    return (
      <>
@@ -144,7 +145,7 @@ import {
                </div>
  
                <p className="text-xs text-muted-foreground mt-2">
-                 Demande reçue le {format(new Date(request.created_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                {requestDateLabel} {format(new Date(request.created_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
                </p>
  
                {isRejected && request.rejection_reason && (
