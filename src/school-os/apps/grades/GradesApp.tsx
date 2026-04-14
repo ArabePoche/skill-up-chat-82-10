@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked, ScrollText, BarChart3, FileCheck } from 'lucide-react';
+import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked, ScrollText, BarChart3, FileCheck, CreditCard } from 'lucide-react';
 import { EvaluationsListView } from './components/EvaluationsListView';
 import { GradeEntryView } from './components/GradeEntryView';
 import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListView';
@@ -30,10 +30,11 @@ import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluation
 import { SubjectEvaluation } from './hooks/useSubjectEvaluations';
 import { useEvaluationGrades } from './hooks/useGrades';
 import { exportClassGradesToExcel } from './utils/exportGrades';
+import { SchoolCardsSection } from './components/school-cards/SchoolCardsSection';
 
 export const GradesApp: React.FC = () => {
   const { t } = useTranslation();
-  const [mainTab, setMainTab] = useState<'grades' | 'bulletins' | 'stats'>('grades');
+  const [mainTab, setMainTab] = useState<'grades' | 'bulletins' | 'stats' | 'cards'>('grades');
   const [parentTab, setParentTab] = useState<'notes' | 'bulletins'>('notes');
   const [gradeSubTab, setGradeSubTab] = useState<'evaluations' | 'compositions'>('evaluations');
   const { school, activeSchoolYear } = useSchoolYear();
