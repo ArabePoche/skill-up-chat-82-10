@@ -1,6 +1,6 @@
 /**
  * Utilitaire de téléchargement de fichier cross-platform
- * - Sur native (Capacitor): sauvegarde dans la galerie (images/vidéos) ou dans EducaTok (audio/docs)
+ * - Sur native (Capacitor): sauvegarde dans la galerie (images/vidéos) ou dans REZO (audio/docs)
  * - Sur web: téléchargement classique via lien <a>
  */
 
@@ -49,7 +49,7 @@ export const downloadFile = async (
         toast.success(
           result.savedToGallery
             ? 'Fichier sauvegardé dans la galerie !'
-            : 'Fichier sauvegardé dans EducaTok !'
+            : 'Fichier sauvegardé dans REZO !'
         );
       } else {
         toast.error(`Erreur: ${result.error || 'Sauvegarde échouée'}`);

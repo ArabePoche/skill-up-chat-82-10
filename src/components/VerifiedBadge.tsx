@@ -8,7 +8,7 @@ interface VerifiedBadgeProps {
 }
 
 /**
- * Badge de certification EducaTok Verified
+ * Badge de certification REZO Verified
  * Affiche un badge professionnel avec bordures dentelées style Instagram/WhatsApp
  */
 const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({ 
@@ -88,7 +88,7 @@ const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({
           {badge}
         </TooltipTrigger>
         <TooltipContent>
-          <p className="font-medium">EducaTok Verified</p>
+          <p className="font-medium">REZO Verified</p>
           <p className="text-xs text-muted-foreground">Compte certifié</p>
         </TooltipContent>
       </Tooltip>

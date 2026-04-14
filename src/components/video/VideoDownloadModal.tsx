@@ -47,7 +47,7 @@ const VideoDownloadModal: React.FC<VideoDownloadModalProps> = ({
       toast.info('Préparation du téléchargement sécurisé...');
       await downloadVideoWithWatermark({
         videoUrl,
-        watermarkText: 'EducaTok',
+        watermarkText: 'REZO',
         authorName,
         fileName: `${videoTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`,
         onProgress: (p) => setProgress(p),

@@ -193,12 +193,12 @@ try {
   messaging.onBackgroundMessage((payload: any) => {
     console.log('📨 Message reçu en arrière-plan:', payload);
 
-    const notificationTitle = payload.notification?.title || 'EducaTok';
+    const notificationTitle = payload.notification?.title || 'REZO';
     const notificationOptions = {
       body: payload.notification?.body || 'Vous avez une nouvelle notification',
       icon: '/icon-192x192.png',
       badge: '/icon-192x192.png',
-      tag: 'educatok-notification',
+      tag: 'rezo-notification',
       data: payload.data || {},
     };
 

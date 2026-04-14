@@ -93,9 +93,9 @@ const CreatorPaymentsView = ({ authorId }: Props) => {
                 <TableRow key={req.id}>
                   <TableCell>{format(new Date(req.created_at), 'dd MMM yyyy, HH:mm', { locale: fr })}</TableCell>
                   <TableCell className="font-medium text-gray-900">
-                    {(req as any).user_profile ? `${(req as any).user_profile.first_name || ''} ${(req as any).user_profile.last_name || ''}`.trim() || (req as any).user_profile.username : 'Privé/Inconnu'}
+                    {req.user_profile ? `${req.user_profile.first_name || ''} ${req.user_profile.last_name || ''}`.trim() || req.user_profile.username : 'Privé/Inconnu'}
                   </TableCell>
-                  <TableCell>{(req as any).formation_detail?.title || 'Formation protégée'}</TableCell>
+                  <TableCell>{req.formation_detail?.title || 'Formation protégée'}</TableCell>
                   <TableCell className="text-gray-600">
                     {req.plan_type === 'lifetime' ? 'Accès à vie' 
                     : req.plan_type === 'monthly' ? 'Abonnement Mensuel'

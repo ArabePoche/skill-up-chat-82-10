@@ -65,7 +65,7 @@ const VerificationRequestsManagement = () => {
         <CardHeader>
           <CardTitle>Demandes de certification</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Gérez les demandes de certification EducaTok Verified
+            Gérez les demandes de certification REZO Verified
           </p>
         </CardHeader>
         <CardContent>

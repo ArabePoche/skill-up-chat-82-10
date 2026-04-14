@@ -172,7 +172,7 @@ export const usePushNotifications = () => {
         return;
       }
       if (!isNative && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('Test EducTok', {
+        new Notification('Test REZO', {
           body: 'Les notifications fonctionnent correctement ! 🎉',
           icon: '/favicon.ico',
         });

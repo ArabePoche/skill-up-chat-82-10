@@ -67,8 +67,8 @@ export default defineConfig(({ mode }) => ({
         navigateFallback: '/offline.html'
       },
       manifest: {
-        name: 'EducaTok - Plateforme éducative interactive',
-        short_name: 'EducaTok',
+        name: 'REZO - Plateforme éducative interactive',
+        short_name: 'REZO',
         description: 'Plateforme éducative moderne avec cours interactifs et chat pédagogique',
         theme_color: '#1a1f37',
         background_color: '#ffffff',

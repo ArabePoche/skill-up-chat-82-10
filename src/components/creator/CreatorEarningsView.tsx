@@ -10,7 +10,7 @@ interface Props {
 }
 
 const CreatorEarningsView = ({ authorId }: Props) => {
-  const walletData = useUserWallet();
+  const { data: walletData } = useUserWallet();
 
   const { data: earningsData, isLoading } = useQuery({
     queryKey: ['creator-earnings-stats', authorId],
@@ -43,7 +43,7 @@ const CreatorEarningsView = ({ authorId }: Props) => {
     }
   });
 
-  const currencyStr = 'FCFA';
+  const currencyStr = walletData?.currency || 'FCFA';
 
   if (isLoading) {
     return <div className="text-center py-8 text-gray-500">Chargement des gains...</div>;

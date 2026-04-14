@@ -4,8 +4,8 @@
  *
  * Comportement type WhatsApp:
  * - Les médias téléchargés apparaissent dans la galerie (images/vidéos)
- * - Dossier EducaTok dans Downloads pour les audios/documents
- * - Album dédié "EducaTok" pour regrouper les médias
+ * - Dossier REZO dans Downloads pour les audios/documents
+ * - Album dédié "REZO" pour regrouper les médias
  * - Fallback web pour les environnements non-natifs
  */
 
@@ -14,7 +14,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Media as MediaPlugin } from '@capacitor-community/media';
 
 // Nom de l'album dans la galerie
-const ALBUM_NAME = 'EducaTok';
+const ALBUM_NAME = 'REZO';
 
 // Cache pour l'identifiant de l'album
 let albumIdentifier: string | null = null;
@@ -68,8 +68,18 @@ const getMediaPlugin = async (): Promise<typeof MediaPlugin | null> => {
   return MediaPlugin;
 };
 
+const findAlbumByName = async (Media: typeof MediaPlugin, albumName: string) => {
+  try {
+    const { albums } = await Media.getAlbums();
+    return albums.find(album => album.name === albumName) ?? null;
+  } catch (error) {
+    console.warn('⚠️ Lecture albums impossible:', error);
+    return null;
+  }
+};
+
 /**
- * Crée ou récupère l'album EducTok dans la galerie.
+ * Crée ou récupère l'album REZO dans la galerie.
  * Sur Android, on évite getAlbums() qui peut être lent et bloquant.
  */
 export const ensureAlbumExists = async (): Promise<string | null> => {
@@ -81,7 +91,14 @@ export const ensureAlbumExists = async (): Promise<string | null> => {
   if (Capacitor.getPlatform() === 'android') {
     try {
       const { path } = await Media.getAlbumsPath();
-      albumIdentifier = `${path}/${ALBUM_NAME}`;
+      const expectedAlbumPath = `${path}/${ALBUM_NAME}`;
+
+      const existingAlbum = await findAlbumByName(Media, ALBUM_NAME);
+      if (existingAlbum?.identifier) {
+        albumIdentifier = existingAlbum.identifier;
+        console.log('📁 Album Android existant trouvé:', albumIdentifier);
+        return albumIdentifier;
+      }
 
       try {
         await Media.createAlbum({ name: ALBUM_NAME });
@@ -93,7 +110,15 @@ export const ensureAlbumExists = async (): Promise<string | null> => {
         }
       }
 
-      console.log('📁 Album Android prêt:', albumIdentifier);
+      const createdAlbum = await findAlbumByName(Media, ALBUM_NAME);
+      if (createdAlbum?.identifier) {
+        albumIdentifier = createdAlbum.identifier;
+        console.log('📁 Album Android validé:', albumIdentifier);
+        return albumIdentifier;
+      }
+
+      albumIdentifier = expectedAlbumPath;
+      console.log('📁 Album Android prêt (fallback chemin):', albumIdentifier);
       return albumIdentifier;
     } catch (error) {
       console.error('❌ Erreur création album Android:', error);
@@ -149,7 +174,7 @@ export const generateFileName = (originalName: string, mediaType: MediaType): st
   const extension = originalName.split('.').pop() || getDefaultExtension(mediaType);
   const baseName = originalName.replace(/\.[^/.]+$/, '').slice(0, 30);
 
-  return `EducaTok_${mediaType}_${timestamp}_${baseName}.${extension}`;
+  return `REZO_${mediaType}_${timestamp}_${baseName}.${extension}`;
 };
 
 /**
@@ -249,19 +274,19 @@ export const saveImageToGallery = async (
   try {
     const platform = Capacitor.getPlatform();
     
-    // Sauvegarde également dans File Manager (Download/EducaTok/Images)
+    // Sauvegarde également dans File Manager (Download/REZO/Images)
     if (platform === 'android') {
       try {
         const base64 = await blobToBase64(blob);
         await Filesystem.writeFile({
-          path: `Download/EducaTok/Images/${fileName}`,
+          path: `Download/REZO/Images/${fileName}`,
           data: base64,
           directory: Directory.ExternalStorage,
           recursive: true,
         });
-        console.log('✅ Image copiée dans Download/EducaTok/Images');
+        console.log('✅ Image copiée dans Download/REZO/Images');
       } catch (fsError) {
-        console.warn('⚠️ Erreur copie dans Download/EducaTok/Images', fsError);
+        console.warn('⚠️ Erreur copie dans Download/REZO/Images', fsError);
       }
     }
 
@@ -311,8 +336,8 @@ export const saveImageToGallery = async (
 
 /**
  * Sauvegarde une vidéo dans la galerie Android/iOS.
- * Sur Android, on passe directement une data URI au plugin pour éviter
- * une écriture cache supplémentaire qui rallonge fortement la fin à 97 %.
+ * On passe par un vrai fichier temporaire pour éviter les échecs intermittents
+ * observés sur Android avec les data URI volumineuses.
  */
 export const saveVideoToGallery = async (
   blob: Blob,
@@ -330,44 +355,11 @@ export const saveVideoToGallery = async (
     const platform = Capacitor.getPlatform();
     const albumId = await ensureAlbumExists();
 
-    // Copie de sauvegarde dans File Manager (Download/EducaTok/Videos)
-    if (platform === 'android') {
-      try {
-        const base64 = await blobToBase64(blob);
-        await Filesystem.writeFile({
-          path: `Download/EducaTok/Videos/${fileName}`,
-          data: base64,
-          directory: Directory.ExternalStorage,
-          recursive: true,
-        });
-        console.log('✅ Vidéo copiée dans Download/EducaTok/Videos');
-      } catch (fsError) {
-        console.warn('⚠️ Erreur copie dans Download/EducaTok/Videos', fsError);
-      }
-    }
-
     if (!albumId) {
       return {
         success: false,
         error: 'Album de destination inaccessible',
         savedToGallery: false,
-      };
-    }
-
-    if (platform === 'android') {
-      const base64 = await blobToBase64(blob);
-      const result = await Media.saveVideo({
-        path: `data:${mimeType || blob.type || 'video/mp4'};base64,${base64}`,
-        albumIdentifier: albumId,
-        fileName: getBaseFileName(fileName),
-      });
-
-      console.log('✅ Vidéo sauvegardée dans la galerie Android:', result.filePath);
-
-      return {
-        success: true,
-        filePath: result.filePath,
-        savedToGallery: true,
       };
     }
 
@@ -377,9 +369,10 @@ export const saveVideoToGallery = async (
     const result = await Media.saveVideo({
       path: tempPath,
       albumIdentifier: albumId,
+      ...(platform === 'android' ? { fileName: getBaseFileName(fileName) } : {}),
     });
 
-    console.log('✅ Vidéo sauvegardée dans la galerie:', result.filePath);
+    console.log(`✅ Vidéo sauvegardée dans la galerie ${platform}:`, result.filePath);
 
     try {
       await Filesystem.deleteFile({
@@ -407,7 +400,7 @@ export const saveVideoToGallery = async (
 
 /**
  * Sauvegarde un audio dans le système de fichiers.
- * Les audios vont dans le dossier EducaTok dédié.
+ * Les audios vont dans le dossier REZO dédié.
  */
 export const saveAudioToDevice = async (
   blob: Blob,
@@ -421,7 +414,7 @@ export const saveAudioToDevice = async (
     const base64 = await blobToBase64(blob);
     const platform = Capacitor.getPlatform();
     const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
-    const basePath = platform === 'android' ? 'Download/EducaTok/Audio' : 'EducaTok/Audio';
+    const basePath = platform === 'android' ? 'Download/REZO/Audio' : 'REZO/Audio';
 
     const result = await Filesystem.writeFile({
       path: `${basePath}/${fileName}`,
@@ -462,7 +455,7 @@ export const saveDocumentToDevice = async (
     const base64 = await blobToBase64(blob);
     const platform = Capacitor.getPlatform();
     const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
-    const basePath = platform === 'android' ? 'Download/EducaTok/Documents' : 'EducaTok/Documents';
+    const basePath = platform === 'android' ? 'Download/REZO/Documents' : 'REZO/Documents';
 
     const result = await Filesystem.writeFile({
       path: `${basePath}/${fileName}`,
@@ -502,7 +495,14 @@ export const saveMediaToDevice = async (
     isNativePlatform() &&
     Capacitor.getPlatform() === 'android'
   ) {
-    await requestStoragePermissions();
+    const hasStoragePermission = await requestStoragePermissions();
+    if (!hasStoragePermission) {
+      return {
+        success: false,
+        error: 'Autorisation de stockage refusée',
+        savedToGallery: false,
+      };
+    }
   }
 
   const finalFileName = generateFileName(fileName, mediaType);

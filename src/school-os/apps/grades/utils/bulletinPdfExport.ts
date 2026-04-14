@@ -521,7 +521,7 @@ const downloadBlob = async (blob: Blob, fileName: string) => {
     toast.info('Téléchargement en cours...');
     const result = await saveDocumentToDevice(blob, fileName);
     if (result.success) {
-      toast.success('Bulletin sauvegardé dans EducaTok !');
+      toast.success('Bulletin sauvegardé dans REZO !');
     } else {
       toast.error(`Erreur: ${result.error || 'Sauvegarde échouée'}`);
     }

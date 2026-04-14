@@ -38,7 +38,7 @@ const ShopHeader: React.FC<ShopHeaderProps> = ({
               <Menu className="w-[1rem] h-[1rem] sm:hidden" />
               <Menu className="w-[1.25rem] h-[1.25rem] hidden sm:block" />
             </Button>
-            <h1 className="text-[1.125rem] sm:text-[1.25rem] font-bold">EducaShop</h1>
+            <h1 className="text-[1.125rem] sm:text-[1.25rem] font-bold">REZOShop</h1>
           </div>
 
           {/* Actions */}

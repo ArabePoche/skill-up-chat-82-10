@@ -6,7 +6,7 @@ export async function requestServerWatermarkVideo(options: {
   watermarkText?: string;
   outputFormat?: 'mp4' | 'webm';
 }): Promise<Blob> {
-  const { videoUrl, authorName, watermarkText = 'EducaTok', outputFormat = 'mp4' } = options;
+  const { videoUrl, authorName, watermarkText = 'REZO', outputFormat = 'mp4' } = options;
 
   const { data, error } = await supabase.functions.invoke('watermark-video', {
     body: { videoUrl, authorName, watermarkText, outputFormat },

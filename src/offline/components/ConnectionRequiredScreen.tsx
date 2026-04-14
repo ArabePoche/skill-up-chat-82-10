@@ -74,7 +74,7 @@ export const ConnectionRequiredScreen: React.FC<ConnectionRequiredScreenProps> =
         {/* Logo */}
         <div className="pt-4">
           <p className="text-sm font-semibold text-muted-foreground">
-            EducaTok
+            REZO
           </p>
         </div>
       </div>

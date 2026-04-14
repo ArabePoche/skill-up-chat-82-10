@@ -3,7 +3,7 @@
  * Compatible mobile et desktop
  */
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Camera, Video, X, Check, Upload, Edit3, Square } from 'lucide-react';
+import { Camera, Video, X, Check, Upload, Edit3, Square, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import ImageEditor from './ImageEditor';
@@ -23,6 +23,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
   const [capturedVideo, setCapturedVideo] = useState<string | null>(null);
   const [showAnnotation, setShowAnnotation] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('environment');
   const [recordingSecondsLeft, setRecordingSecondsLeft] = useState(60);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -87,14 +88,23 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
   }, [recordingSecondsLeft]);
 
-  const startCapture = async () => {
+  const stopCaptureStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const startCapture = async (facingMode: 'user' | 'environment' = cameraFacingMode) => {
     try {
+      stopCaptureStream();
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: true,
         video: { 
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          facingMode: 'environment'
+          facingMode
         } 
       });
       
@@ -104,6 +114,21 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
       console.error('Erreur accès caméra:', error);
       alert('Impossible d\'accéder à la caméra. Vérifiez vos permissions.');
     }
+  };
+
+  const toggleCameraFacingMode = async () => {
+    if (isRecording) {
+      return;
+    }
+
+    const nextFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    setCameraFacingMode(nextFacingMode);
+
+    if (!isCapturing || capturedImage || capturedVideo) {
+      return;
+    }
+
+    await startCapture(nextFacingMode);
   };
 
   const capturePhoto = () => {
@@ -241,10 +266,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
         mediaRecorderRef.current.stop();
       }
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
+    stopCaptureStream();
     setIsCapturing(false);
     setCapturedImage(null);
     setCapturedVideo(null);
@@ -380,7 +402,16 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
                 </button>
               )}
               {/* Espace pour équilibrer le layout */}
-              <div className="h-12 w-12" />
+              <Button
+                onClick={() => void toggleCameraFacingMode()}
+                size="icon"
+                variant="ghost"
+                disabled={isRecording}
+                className="bg-white/15 text-white hover:bg-white/25 rounded-full h-12 w-12 disabled:opacity-50"
+                title={cameraFacingMode === 'environment' ? 'Passer à la caméra avant' : 'Passer à la caméra arrière'}
+              >
+                <RefreshCw size={20} />
+              </Button>
             </>
           ) : (
             <>

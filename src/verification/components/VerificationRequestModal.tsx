@@ -6,7 +6,7 @@ import { useVerification } from '@/hooks/useVerification';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
- * Modal de demande de certification EducaTok Verified
+ * Modal de demande de certification REZO Verified
  * Présente les avantages et conditions pour obtenir la certification
  */
 interface VerificationRequestModalProps {
@@ -40,7 +40,7 @@ const VerificationRequestModal: React.FC<VerificationRequestModalProps> = ({ isO
           <div className="sticky top-0 bg-background border-b border-border p-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <VerifiedBadge size={24} showTooltip={false} />
-              <h2 className="text-xl font-bold">Certification EducaTok</h2>
+              <h2 className="text-xl font-bold">Certification REZO</h2>
             </div>
             <button 
               onClick={onClose}
@@ -103,7 +103,7 @@ const VerificationRequestModal: React.FC<VerificationRequestModalProps> = ({ isO
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Compte actif et régulier sur EducaTok</span>
+                  <span>Compte actif et régulier sur REZO</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
@@ -115,7 +115,7 @@ const VerificationRequestModal: React.FC<VerificationRequestModalProps> = ({ isO
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Validation par l'équipe EducaTok</span>
+                  <span>Validation par l'équipe REZO</span>
                 </li>
               </ul>
             </div>

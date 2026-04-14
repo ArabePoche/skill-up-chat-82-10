@@ -155,7 +155,7 @@ const Auth = () => {
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div className="bg-[#25d366] text-white p-6 text-center">
-              <h1 className="text-2xl font-bold mb-2">EducaTok</h1>
+              <h1 className="text-2xl font-bold mb-2">REZO</h1>
               <p className="text-white/80">
                 {t('auth.forgotPassword', 'Mot de passe oublié ?')}
               </p>
@@ -231,7 +231,7 @@ const Auth = () => {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Header */}
           <div className="bg-[#25d366] text-white p-6 text-center">
-            <h1 className="text-2xl font-bold mb-2">EducaTok</h1>
+            <h1 className="text-2xl font-bold mb-2">REZO</h1>
             <p className="text-white/80">
               {isLogin ? t('auth.loginTitle') : t('auth.signupTitle')}
             </p>

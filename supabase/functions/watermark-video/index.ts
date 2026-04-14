@@ -581,8 +581,8 @@ serve(async (req) => {
     }
 
     const videoUrl = String(body?.videoUrl || "").trim();
-    const authorName = String(body?.authorName || "EducaTok").trim().slice(0, 80);
-    const watermarkText = String(body?.watermarkText || "EducaTok").trim().slice(0, 80);
+    const authorName = String(body?.authorName || "REZO").trim().slice(0, 80);
+    const watermarkText = String(body?.watermarkText || "REZO").trim().slice(0, 80);
     const fileName = sanitizeFileName(String(body?.fileName || "video-watermark.mp4"));
 
     if (!videoUrl) {
@@ -597,8 +597,8 @@ serve(async (req) => {
         requested_by: auth.user.id,
         source_url: validatedUrl.toString(),
         source_host: validatedUrl.hostname,
-        author_name: authorName || "EducaTok",
-        watermark_text: watermarkText || "EducaTok",
+        author_name: authorName || "REZO",
+        watermark_text: watermarkText || "REZO",
         file_name: fileName,
         output_bucket: WATERMARK_EXPORT_BUCKET,
         output_mime_type: OUTPUT_MIME_TYPE,
