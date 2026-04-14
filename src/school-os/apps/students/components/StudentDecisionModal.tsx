@@ -277,7 +277,7 @@ export const StudentDecisionModal: React.FC<StudentDecisionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[92dvh] w-[calc(100vw-1rem)] max-w-xl min-h-0 flex-col gap-0 overflow-hidden p-0 sm:h-auto">
+      <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[92dvh] w-[calc(100vw-1rem)] max-w-xl min-h-0 flex-col gap-0 overflow-hidden p-0 sm:max-h-[85dvh]">
         <DialogHeader className="px-4 pt-4 sm:px-6 sm:pt-6">
           <DialogTitle>Décision concernant l'élève</DialogTitle>
           <DialogDescription>
