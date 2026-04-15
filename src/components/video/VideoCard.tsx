@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye, Gift } from 'lucide-react';
+import ExpandableDescription from './ExpandableDescription';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -425,7 +426,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
           </div>
           <h3 className="font-bold text-lg mb-1 line-clamp-2">{video.title}</h3>
           {video.description && (
-            <p className="text-sm opacity-90 line-clamp-3">{video.description}</p>
+            <ExpandableDescription description={video.description} />
           )}
           
           {/* Afficher le nombre de vues */}
