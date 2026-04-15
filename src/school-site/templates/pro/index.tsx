@@ -13,7 +13,7 @@ import type { TemplateDefinition, TemplateLayoutProps, SectionDefinition } from 
 import {
   AboutSection, StatsSection, CyclesSection,
   GallerySection, LocationSection, ContactSection, SocialEditSection,
-  CoverImageUpload,
+  CoverImageUpload, ActivitiesSection,
 } from '../../components/SharedSections';
 
 const getSchoolTypeLabel = (type: string) => {
@@ -28,6 +28,7 @@ const ProNav: React.FC<{ primaryColor: string }> = ({ primaryColor }) => {
   const links = [
     { href: '#about', label: 'À propos' },
     { href: '#programs', label: 'Programmes' },
+    { href: '#activities', label: 'Activités' },
     { href: '#gallery', label: 'Galerie' },
     { href: '#contact', label: 'Contact' },
   ];
@@ -244,6 +245,7 @@ const sections: SectionDefinition[] = [
   { id: 'about', label: 'À propos', component: AboutSection },
   { id: 'cycles', label: 'Programmes', component: CyclesSection },
   { id: 'gallery', label: 'Galerie', optional: true, component: GallerySection },
+  { id: 'activities', label: 'Activités', optional: true, component: ActivitiesSection },
   { id: 'location', label: 'Localisation', component: LocationSection },
   { id: 'contact', label: 'Contact', optional: true, component: ContactSection },
   { id: 'social-edit', label: 'Réseaux sociaux', optional: true, component: SocialEditSection },
