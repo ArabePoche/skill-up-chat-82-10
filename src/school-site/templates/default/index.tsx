@@ -13,6 +13,7 @@ import type { TemplateDefinition, TemplateLayoutProps, SectionDefinition } from 
 import {
   AboutSection, StatsSection, CyclesSection,
   GallerySection, LocationSection, ContactSection, SocialEditSection,
+  CoverImageUpload,
 } from '../../components/SharedSections';
 
 const getSchoolTypeLabel = (type: string) => {
@@ -27,10 +28,11 @@ const DefaultLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar,
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { school, templateConfig, isPersonnel } = data;
+  const { school, templateConfig, isPersonnel, editMode, isOwner } = data;
 
   const primaryColor = templateConfig.primary_color || school.primary_color || '#3b82f6';
   const secondaryColor = templateConfig.secondary_color || school.secondary_color || '#1e40af';
+  const coverUrl = (data as any).draft?.site_cover_url ?? school.site_cover_url;
 
   return (
     <div className="min-h-screen pb-24 bg-background">
@@ -42,13 +44,36 @@ const DefaultLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar,
       >
         {/* Hero */}
         <div className="relative rounded-xl overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}>
+          style={{
+            background: coverUrl
+              ? undefined
+              : `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
+          }}>
+          {/* Image de couverture */}
+          {coverUrl && (
+            <div className="absolute inset-0">
+              <img src={coverUrl} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40" />
+            </div>
+          )}
+
           {/* Toolbar (back, edit, save) */}
           <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
             {toolbar}
           </div>
 
-          <div className="px-6 pt-20 pb-10 text-white">
+          {/* Bouton upload couverture en mode édition */}
+          {editMode && isOwner && (
+            <div className="absolute top-4 right-4 z-10">
+              <CoverImageUpload
+                currentUrl={coverUrl}
+                onUpload={(url) => (data as any).onDraftChange?.('site_cover_url', url)}
+                onRemove={() => (data as any).onDraftChange?.('site_cover_url', '')}
+              />
+            </div>
+          )}
+
+          <div className="relative px-6 pt-20 pb-10 text-white">
             <div className="flex items-center gap-6 mb-4">
               <div className="w-28 h-28 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 shadow-xl flex items-center justify-center overflow-hidden shrink-0">
                 {school.logo_url ? (

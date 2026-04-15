@@ -13,6 +13,7 @@ import type { TemplateDefinition, TemplateLayoutProps, SectionDefinition } from 
 import {
   AboutSection, StatsSection, CyclesSection,
   GallerySection, LocationSection, ContactSection, SocialEditSection,
+  CoverImageUpload,
 } from '../../components/SharedSections';
 
 const getSchoolTypeLabel = (type: string) => {
@@ -30,7 +31,6 @@ const Sidebar: React.FC<{ data: TemplateLayoutProps['data'] }> = ({ data }) => {
   return (
     <aside className="hidden lg:block w-80 shrink-0">
       <div className="sticky top-6 space-y-4">
-        {/* Card identité */}
         <div className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
           <div className="w-24 h-24 mx-auto rounded-2xl overflow-hidden border-2 shadow-md mb-4"
             style={{ borderColor: primaryColor }}>
@@ -53,7 +53,6 @@ const Sidebar: React.FC<{ data: TemplateLayoutProps['data'] }> = ({ data }) => {
           )}
         </div>
 
-        {/* Stats compactes */}
         {stats && (stats.students > 0 || stats.teachers > 0 || stats.classes > 0) && (
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="grid grid-cols-3 gap-2 text-center">
@@ -79,7 +78,6 @@ const Sidebar: React.FC<{ data: TemplateLayoutProps['data'] }> = ({ data }) => {
           </div>
         )}
 
-        {/* Contact rapide */}
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-2">
           {school.phone && (
             <a href={`tel:${school.phone}`} className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
@@ -110,23 +108,49 @@ const ModernLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { school, templateConfig, isPersonnel } = data;
+  const { school, templateConfig, isPersonnel, editMode, isOwner } = data;
 
   const primaryColor = templateConfig.primary_color || school.primary_color || '#3b82f6';
   const secondaryColor = templateConfig.secondary_color || school.secondary_color || '#1e40af';
+  const coverUrl = (data as any).draft?.site_cover_url ?? school.site_cover_url;
 
   return (
     <div className="min-h-screen pb-24 bg-background">
       {/* Hero plein largeur */}
       <div className="relative w-full min-h-[280px] lg:min-h-[360px] flex items-end"
-        style={{ background: `linear-gradient(160deg, ${primaryColor} 0%, ${secondaryColor} 50%, ${primaryColor}dd 100%)` }}>
-        {/* Motif décoratif */}
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+        style={{
+          background: coverUrl
+            ? undefined
+            : `linear-gradient(160deg, ${primaryColor} 0%, ${secondaryColor} 50%, ${primaryColor}dd 100%)`,
+        }}>
+        {/* Image de couverture */}
+        {coverUrl && (
+          <div className="absolute inset-0">
+            <img src={coverUrl} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40" />
+          </div>
+        )}
+
+        {/* Motif décoratif (si pas de cover) */}
+        {!coverUrl && (
+          <div className="absolute inset-0 opacity-10"
+            style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+        )}
         
         <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
           {toolbar}
         </div>
+
+        {/* Bouton upload couverture */}
+        {editMode && isOwner && (
+          <div className="absolute top-4 right-4 z-10">
+            <CoverImageUpload
+              currentUrl={coverUrl}
+              onUpload={(url) => (data as any).onDraftChange?.('site_cover_url', url)}
+              onRemove={() => (data as any).onDraftChange?.('site_cover_url', '')}
+            />
+          </div>
+        )}
 
         <div className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8 pt-20">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
@@ -173,16 +197,12 @@ const ModernLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, 
 
       {/* Contenu 2 colonnes */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex gap-8">
-        {/* Contenu principal */}
         <div className="flex-1 min-w-0 space-y-6">
           {children}
         </div>
-
-        {/* Sidebar desktop */}
         <Sidebar data={data} />
       </div>
 
-      {/* Footer */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {footer}
       </div>
@@ -190,7 +210,6 @@ const ModernLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, 
   );
 };
 
-/** Sections du template Modern — même contenu, ordre différent, stats dans sidebar */
 const sections: SectionDefinition[] = [
   { id: 'about', label: 'À propos', component: AboutSection },
   { id: 'cycles', label: 'Cycles et programmes', component: CyclesSection },
