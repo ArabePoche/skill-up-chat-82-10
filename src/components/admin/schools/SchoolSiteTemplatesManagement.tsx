@@ -207,7 +207,7 @@ export default function SchoolSiteTemplatesManagement() {
           {templates.map((t) => (
             <Card key={t.id} className={!t.is_active ? 'opacity-60' : ''}>
               {t.thumbnail_url && (
-                <div className="aspect-video overflow-hidden rounded-t-lg">
+                <div className="aspect-[9/16] overflow-hidden rounded-t-lg">
                   <img src={t.thumbnail_url} alt={t.name} className="w-full h-full object-cover" />
                 </div>
               )}
@@ -282,8 +282,8 @@ export default function SchoolSiteTemplatesManagement() {
                 }}
               />
               {form.thumbnail_url ? (
-                <div className="relative rounded-lg overflow-hidden border">
-                  <img src={form.thumbnail_url} alt="Miniature" className="w-full h-40 object-cover" />
+                <div className="relative rounded-lg overflow-hidden border aspect-[9/16]">
+                  <img src={form.thumbnail_url} alt="Miniature" className="w-full h-full object-cover" />
                   <div className="absolute top-2 right-2 flex gap-1">
                     <Button
                       type="button"
@@ -310,14 +310,14 @@ export default function SchoolSiteTemplatesManagement() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  className="w-full aspect-[9/16] max-h-64 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
                 >
                   {uploading ? (
                     <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
                     <>
                       <Image className="h-8 w-8" />
-                      <span className="text-sm">Cliquez pour uploader une image</span>
+                      <span className="text-sm text-center px-4">Cliquez pour uploader une image (format mobile vertical recommandé)</span>
                     </>
                   )}
                 </button>

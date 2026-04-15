@@ -144,9 +144,9 @@ export function SchoolSiteTemplatesModal({
                     isSelected ? 'ring-2 ring-indigo-600 border-transparent' : 'border-border'
                   }`}
                 >
-                  {/* Miniature du template */}
+                  {/* Miniature du template - format vertical mobile */}
                   {tpl.thumbnail_url && (
-                    <div className="w-full h-40 overflow-hidden bg-muted">
+                    <div className="w-full aspect-[9/16] overflow-hidden bg-muted">
                       <img 
                         src={tpl.thumbnail_url} 
                         alt={tpl.name} 
