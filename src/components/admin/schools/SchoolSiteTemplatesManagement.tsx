@@ -132,6 +132,7 @@ export default function SchoolSiteTemplatesManagement() {
       price_sc: t.price_sc,
       is_active: t.is_active,
       theme_config: JSON.stringify(t.theme_config, null, 2),
+      template_key: t.template_key || '',
     });
     setDialogOpen(true);
   };
