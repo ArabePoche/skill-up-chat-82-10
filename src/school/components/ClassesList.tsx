@@ -27,6 +27,37 @@ interface ClassesListProps {
   schoolYearId: string;
 }
 
+// Helper hook to get school name & logo
+const useSchoolInfo = (schoolId: string) => {
+  return useQuery({
+    queryKey: ['school-info-cards', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('schools')
+        .select('name, logo_url')
+        .eq('id', schoolId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+};
+
+const useSchoolYearLabel = (schoolYearId: string) => {
+  return useQuery({
+    queryKey: ['school-year-label', schoolYearId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('school_years')
+        .select('year_label')
+        .eq('id', schoolYearId)
+        .maybeSingle();
+      return data?.year_label || '';
+    },
+    enabled: !!schoolYearId,
+  });
+};
+
 const CYCLE_COLORS: Record<string, string> = {
   maternel: 'bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/20',
   primaire: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
