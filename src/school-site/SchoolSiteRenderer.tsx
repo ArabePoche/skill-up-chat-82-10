@@ -56,7 +56,7 @@ const SchoolSiteRenderer: React.FC<SchoolSiteRendererProps> = ({
     };
 
     return (
-      <section key={section.id} className={sectionClass}>
+      <section key={section.id} id={section.id} className={sectionClass}>
         <SectionComponent {...sectionProps} />
       </section>
     );
