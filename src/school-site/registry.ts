@@ -8,8 +8,8 @@ import type { TemplateDefinition } from './types';
 type TemplateLoader = () => Promise<{ default: TemplateDefinition }>;
 
 const templateLoaders: Record<string, TemplateLoader> = {
-  default: () => import('./templates/default'),
-  modern: () => import('./templates/modern'),
+  default: () => import('./templates/default/index'),
+  modern: () => import('./templates/modern/index'),
 };
 
 /** Charge la définition d'un template par sa clé */
