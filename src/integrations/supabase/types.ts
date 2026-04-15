@@ -7669,6 +7669,7 @@ export type Database = {
           primary_color: string | null
           school_type: Database["public"]["Enums"]["school_type"]
           secondary_color: string | null
+          site_cover_url: string | null
           site_cycles_programs: string | null
           site_facebook_url: string | null
           site_gallery_urls: string[] | null
@@ -7699,6 +7700,7 @@ export type Database = {
           primary_color?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
           secondary_color?: string | null
+          site_cover_url?: string | null
           site_cycles_programs?: string | null
           site_facebook_url?: string | null
           site_gallery_urls?: string[] | null
@@ -7729,6 +7731,7 @@ export type Database = {
           primary_color?: string | null
           school_type?: Database["public"]["Enums"]["school_type"]
           secondary_color?: string | null
+          site_cover_url?: string | null
           site_cycles_programs?: string | null
           site_facebook_url?: string | null
           site_gallery_urls?: string[] | null
