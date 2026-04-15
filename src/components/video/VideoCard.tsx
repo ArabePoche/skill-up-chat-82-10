@@ -426,7 +426,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
           </div>
           <h3 className="font-bold text-lg mb-1 line-clamp-2">{video.title}</h3>
           {video.description && (
-            <p className="text-sm opacity-90 line-clamp-3">{video.description}</p>
+            <ExpandableDescription description={video.description} />
           )}
           
           {/* Afficher le nombre de vues */}
