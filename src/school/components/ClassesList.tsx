@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Users, Trash2, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -17,6 +18,7 @@ import { EditClassModal } from './EditClassModal';
 import { AssignSubjectsToClassDialog } from '@/school-os/apps/subjects/components/AssignSubjectsToClassDialog';
 import { AssignTeachersToClassDialog } from './AssignTeachersToClassDialog';
 import { ClassSettingsMenu } from './ClassSettingsMenu';
+import { SchoolCardsSection } from '@/school-os/apps/grades/components/school-cards/SchoolCardsSection';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
