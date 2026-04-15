@@ -179,7 +179,7 @@ export function SchoolSiteTemplatesModal({
                       />
                       {/* Overlay dimensions */}
                       {dimensions && (
-                        <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+                        <div className="absolute bottom-2 right-2 bg-background/90 text-foreground text-xs px-2 py-1 rounded-md flex items-center gap-1 shadow-sm border border-border">
                           <ImageIcon className="h-3 w-3" />
                           {dimensions.width} × {dimensions.height}px
                         </div>
