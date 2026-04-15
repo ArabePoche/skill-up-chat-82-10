@@ -25,6 +25,7 @@ import type { SchoolSiteData } from '@/school-site/types';
 type SiteDraft = {
   site_cycles_programs: string;
   galleryText: string;
+  galleryUrls: string[];
   address: string;
   city: string;
   country: string;
@@ -33,11 +34,13 @@ type SiteDraft = {
   site_twitter_url: string;
   site_linkedin_url: string;
   site_youtube_url: string;
+  site_cover_url: string;
 };
 
 const emptyDraft = (): SiteDraft => ({
   site_cycles_programs: '',
   galleryText: '',
+  galleryUrls: [],
   address: '',
   city: '',
   country: '',
@@ -46,11 +49,13 @@ const emptyDraft = (): SiteDraft => ({
   site_twitter_url: '',
   site_linkedin_url: '',
   site_youtube_url: '',
+  site_cover_url: '',
 });
 
 const draftFromSchool = (s: School): SiteDraft => ({
   site_cycles_programs: s.site_cycles_programs ?? '',
   galleryText: (s.site_gallery_urls ?? []).filter(Boolean).join('\n'),
+  galleryUrls: (s.site_gallery_urls ?? []).filter(Boolean),
   address: s.address ?? '',
   city: s.city ?? '',
   country: s.country ?? '',
@@ -59,6 +64,7 @@ const draftFromSchool = (s: School): SiteDraft => ({
   site_twitter_url: s.site_twitter_url ?? '',
   site_linkedin_url: s.site_linkedin_url ?? '',
   site_youtube_url: s.site_youtube_url ?? '',
+  site_cover_url: s.site_cover_url ?? '',
 });
 
 const SchoolSitePage: React.FC = () => {
@@ -129,12 +135,16 @@ const SchoolSitePage: React.FC = () => {
 
   const saveEdit = useCallback(async () => {
     if (!school) return;
-    const urls = draft.galleryText.split('\n').map((s) => s.trim()).filter(Boolean);
+    // Utiliser galleryUrls (upload) en priorité, sinon fallback sur galleryText (legacy)
+    const urls = draft.galleryUrls.length > 0
+      ? draft.galleryUrls.filter(Boolean)
+      : draft.galleryText.split('\n').map((s) => s.trim()).filter(Boolean);
     try {
       await updateSchool.mutateAsync({
         id: school.id,
         site_cycles_programs: draft.site_cycles_programs.trim() || null,
         site_gallery_urls: urls,
+        site_cover_url: draft.site_cover_url.trim() || null,
         address: draft.address.trim() || null,
         city: draft.city.trim() || null,
         country: draft.country.trim() || null,
@@ -224,6 +234,8 @@ const SchoolSitePage: React.FC = () => {
     isPersonnel,
     editMode,
     templateConfig,
+    draft: editMode ? (draft as unknown as Record<string, any>) : undefined,
+    onDraftChange: editMode ? handleDraftChange : undefined,
   };
 
   // Toolbar partagée

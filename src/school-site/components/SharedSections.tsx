@@ -2,10 +2,11 @@
  * Sections partagées réutilisables par tous les templates.
  * Chaque section reçoit SectionProps et affiche les données de l'école.
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Building2, MapPin, Phone, Mail, Globe, Calendar, Languages,
   Users, GraduationCap, BookOpen, BarChart2, Layers, ImageIcon, ExternalLink,
+  Upload, X, Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import type { SectionProps } from '../types';
+import { useSchoolSiteUpload } from '../hooks/useSchoolSiteUpload';
 
 /** Section À propos */
 export const AboutSection: React.FC<SectionProps> = ({ data, primaryColor }) => {
@@ -125,11 +127,41 @@ export const CyclesSection: React.FC<SectionProps> = ({ data, primaryColor, draf
   );
 };
 
-/** Section Galerie */
+/** Section Galerie — Upload d'images au lieu d'URLs */
 export const GallerySection: React.FC<SectionProps> = ({ data, primaryColor, draft, onDraftChange }) => {
   const { t } = useTranslation();
   const { school, editMode, isOwner } = data;
-  const galleryUrls = (school.site_gallery_urls ?? []).filter(Boolean);
+  const { uploadGalleryImage, isUploading } = useSchoolSiteUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // En mode édition, on travaille avec le draft (tableau d'URLs)
+  const galleryUrls: string[] = editMode
+    ? (draft?.galleryUrls ?? (school.site_gallery_urls ?? []).filter(Boolean))
+    : (school.site_gallery_urls ?? []).filter(Boolean);
+
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const currentUrls = [...(draft?.galleryUrls ?? galleryUrls)];
+    
+    for (const file of files) {
+      const url = await uploadGalleryImage(file);
+      if (url) {
+        currentUrls.push(url);
+      }
+    }
+    
+    onDraftChange?.('galleryUrls', currentUrls);
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    const currentUrls = [...(draft?.galleryUrls ?? galleryUrls)];
+    currentUrls.splice(index, 1);
+    onDraftChange?.('galleryUrls', currentUrls);
+  };
 
   return (
     <>
@@ -138,15 +170,50 @@ export const GallerySection: React.FC<SectionProps> = ({ data, primaryColor, dra
         {t('school.gallery', { defaultValue: 'Galerie' })}
       </h2>
       {editMode && isOwner ? (
-        <div className="space-y-2">
-          <Label>{t('school.galleryEdit', { defaultValue: "Une URL d'image par ligne (https://…)" })}</Label>
-          <Textarea
-            rows={5}
-            value={draft?.galleryText ?? ''}
-            onChange={(e) => onDraftChange?.('galleryText', e.target.value)}
-            placeholder="https://…"
-            className="font-mono text-xs"
+        <div className="space-y-3">
+          {/* Grille des images existantes avec bouton supprimer */}
+          {galleryUrls.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {galleryUrls.map((src, i) => (
+                <div key={`${src}-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted group">
+                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Bouton d'upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFilesSelected}
           />
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+            ) : (
+              <Upload size={16} />
+            )}
+            {isUploading
+              ? t('school.uploading', { defaultValue: 'Upload en cours…' })
+              : t('school.addGalleryImages', { defaultValue: 'Ajouter des photos' })}
+          </Button>
         </div>
       ) : galleryUrls.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">
@@ -302,5 +369,61 @@ export const SocialEditSection: React.FC<SectionProps> = ({ data, draft, onDraft
         ))}
       </div>
     </>
+  );
+};
+
+/** Composant d'upload d'image de couverture (hero) — utilisé par les templates */
+export const CoverImageUpload: React.FC<{
+  currentUrl?: string | null;
+  onUpload: (url: string) => void;
+  onRemove: () => void;
+}> = ({ currentUrl, onUpload, onRemove }) => {
+  const { uploadCover, isUploading } = useSchoolSiteUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadCover(file);
+    if (url) onUpload(url);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="gap-1.5 bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading}
+      >
+        {isUploading ? (
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+        ) : (
+          <Camera size={14} />
+        )}
+        {currentUrl ? 'Changer la couverture' : 'Ajouter une couverture'}
+      </Button>
+      {currentUrl && (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="gap-1.5 bg-red-500/20 hover:bg-red-500/30 text-white border-0 backdrop-blur-sm"
+          onClick={onRemove}
+        >
+          <X size={14} />
+        </Button>
+      )}
+    </div>
   );
 };

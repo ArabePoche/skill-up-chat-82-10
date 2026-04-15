@@ -1,7 +1,6 @@
 /**
  * Template Pro — Layout premium avec bannière immersive, grille de features,
  * navigation par ancres et sections visuellement riches.
- * Design haut de gamme distinctif : glassmorphism, cards animées, layout asymétrique.
  */
 import React from 'react';
 import { Building2, MapPin, UserPlus, School as SchoolIcon, ChevronDown, Sparkles } from 'lucide-react';
@@ -14,6 +13,7 @@ import type { TemplateDefinition, TemplateLayoutProps, SectionDefinition } from 
 import {
   AboutSection, StatsSection, CyclesSection,
   GallerySection, LocationSection, ContactSection, SocialEditSection,
+  CoverImageUpload,
 } from '../../components/SharedSections';
 
 const getSchoolTypeLabel = (type: string) => {
@@ -55,10 +55,11 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { school, templateConfig, isPersonnel, stats } = data;
+  const { school, templateConfig, isPersonnel, stats, editMode, isOwner } = data;
 
   const primaryColor = templateConfig.primary_color || school.primary_color || '#3b82f6';
   const secondaryColor = templateConfig.secondary_color || school.secondary_color || '#1e40af';
+  const coverUrl = data.draft?.site_cover_url ?? school.site_cover_url;
 
   return (
     <div className="min-h-screen pb-24 bg-background">
@@ -66,29 +67,50 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
       <div
         className="relative w-full min-h-[420px] lg:min-h-[520px] flex flex-col justify-end overflow-hidden"
         style={{
-          background: `linear-gradient(145deg, ${primaryColor} 0%, ${secondaryColor} 40%, #0f172a 100%)`,
+          background: coverUrl
+            ? undefined
+            : `linear-gradient(145deg, ${primaryColor} 0%, ${secondaryColor} 40%, #0f172a 100%)`,
         }}
       >
-        {/* Motifs décoratifs */}
-        <div className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, white 2px, transparent 2px),
-                              radial-gradient(circle at 75% 75%, white 1px, transparent 1px)`,
-            backgroundSize: '60px 60px, 40px 40px',
-          }}
-        />
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-20 blur-3xl"
-          style={{ background: primaryColor }} />
-        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-15 blur-3xl"
-          style={{ background: secondaryColor }} />
+        {/* Image de couverture */}
+        {coverUrl && (
+          <div className="absolute inset-0">
+            <img src={coverUrl} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+          </div>
+        )}
+
+        {/* Motifs décoratifs (si pas de cover) */}
+        {!coverUrl && (
+          <>
+            <div className="absolute inset-0 opacity-[0.07]"
+              style={{
+                backgroundImage: `radial-gradient(circle at 25% 25%, white 2px, transparent 2px),
+                                  radial-gradient(circle at 75% 75%, white 1px, transparent 1px)`,
+                backgroundSize: '60px 60px, 40px 40px',
+              }}
+            />
+            <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-20 blur-3xl"
+              style={{ background: primaryColor }} />
+            <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-15 blur-3xl"
+              style={{ background: secondaryColor }} />
+          </>
+        )}
 
         {/* Toolbar */}
         <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
           {toolbar}
         </div>
 
-        {/* Badge premium */}
-        <div className="absolute top-4 right-4 z-10">
+        {/* Badge premium + Upload couverture */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          {editMode && isOwner && (
+            <CoverImageUpload
+              currentUrl={coverUrl}
+              onUpload={(url) => data.onDraftChange?.('site_cover_url', url)}
+              onRemove={() => data.onDraftChange?.('site_cover_url', '')}
+            />
+          )}
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 backdrop-blur-sm border border-amber-400/30">
             <Sparkles size={12} /> PRO
           </span>
@@ -220,7 +242,6 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
   );
 };
 
-/** Sections du template Pro — about et cycles avec IDs d'ancre */
 const sections: SectionDefinition[] = [
   { id: 'about', label: 'À propos', component: AboutSection },
   { id: 'cycles', label: 'Programmes', component: CyclesSection },
