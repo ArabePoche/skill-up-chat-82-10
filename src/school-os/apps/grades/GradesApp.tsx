@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked, ScrollText, BarChart3, FileCheck, CreditCard } from 'lucide-react';
+import { BookOpen, Users, FileText, GraduationCap, Download, Filter, ClipboardList, BookMarked, ScrollText, BarChart3, FileCheck } from 'lucide-react';
 import { EvaluationsListView } from './components/EvaluationsListView';
 import { GradeEntryView } from './components/GradeEntryView';
 import { SubjectEvaluationsListView } from './components/SubjectEvaluationsListView';
@@ -30,11 +30,10 @@ import { ClassEvaluation, useClassEvaluations } from './hooks/useClassEvaluation
 import { SubjectEvaluation } from './hooks/useSubjectEvaluations';
 import { useEvaluationGrades } from './hooks/useGrades';
 import { exportClassGradesToExcel } from './utils/exportGrades';
-import { SchoolCardsSection } from './components/school-cards/SchoolCardsSection';
 
 export const GradesApp: React.FC = () => {
   const { t } = useTranslation();
-  const [mainTab, setMainTab] = useState<'grades' | 'bulletins' | 'stats' | 'cards'>('grades');
+  const [mainTab, setMainTab] = useState<'grades' | 'bulletins' | 'stats'>('grades');
   const [parentTab, setParentTab] = useState<'notes' | 'bulletins'>('notes');
   const [gradeSubTab, setGradeSubTab] = useState<'evaluations' | 'compositions'>('evaluations');
   const { school, activeSchoolYear } = useSchoolYear();
@@ -276,23 +275,19 @@ export const GradesApp: React.FC = () => {
     <div className="p-4 sm:p-6 h-full flex flex-col overflow-hidden">
 
       {/* Onglets principaux */}
-      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats' | 'cards')} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="grid w-full grid-cols-4 mb-1 flex-shrink-0">
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'grades' | 'bulletins' | 'stats')} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="grid w-full grid-cols-3 mb-1 flex-shrink-0">
           <TabsTrigger value="grades" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <ClipboardList className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Notes</span>
+            Notes
           </TabsTrigger>
           <TabsTrigger value="bulletins" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <ScrollText className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Bulletins</span>
-          </TabsTrigger>
-          <TabsTrigger value="cards" className="flex items-center gap-1.5 text-xs sm:text-sm">
-            <CreditCard className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Cartes</span>
+            Bulletins
           </TabsTrigger>
           <TabsTrigger value="stats" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <BarChart3 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Stats</span>
+            Stats
           </TabsTrigger>
         </TabsList>
 
@@ -500,15 +495,6 @@ export const GradesApp: React.FC = () => {
           />
         </TabsContent>
 
-        {/* Onglet Cartes scolaires */}
-        <TabsContent value="cards" className="flex-1 overflow-auto m-0">
-          <SchoolCardsSection
-            availableClasses={availableClasses}
-            schoolName={school?.name || ''}
-            schoolYearLabel={activeSchoolYear?.year_label || ''}
-            schoolLogoUrl={(school as any)?.logo_url}
-          />
-        </TabsContent>
 
         {/* Onglet Statistiques */}
         <TabsContent value="stats" className="flex-1 overflow-auto m-0">

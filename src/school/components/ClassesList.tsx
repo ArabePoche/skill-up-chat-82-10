@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Users, Trash2, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -17,6 +18,7 @@ import { EditClassModal } from './EditClassModal';
 import { AssignSubjectsToClassDialog } from '@/school-os/apps/subjects/components/AssignSubjectsToClassDialog';
 import { AssignTeachersToClassDialog } from './AssignTeachersToClassDialog';
 import { ClassSettingsMenu } from './ClassSettingsMenu';
+import { SchoolCardsSection } from '@/school-os/apps/grades/components/school-cards/SchoolCardsSection';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -24,6 +26,37 @@ interface ClassesListProps {
   schoolId: string;
   schoolYearId: string;
 }
+
+// Helper hook to get school name & logo
+const useSchoolInfo = (schoolId: string) => {
+  return useQuery({
+    queryKey: ['school-info-cards', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('schools')
+        .select('name, logo_url')
+        .eq('id', schoolId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+};
+
+const useSchoolYearLabel = (schoolYearId: string) => {
+  return useQuery({
+    queryKey: ['school-year-label', schoolYearId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('school_years')
+        .select('year_label')
+        .eq('id', schoolYearId)
+        .maybeSingle();
+      return data?.year_label || '';
+    },
+    enabled: !!schoolYearId,
+  });
+};
 
 const CYCLE_COLORS: Record<string, string> = {
   maternel: 'bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/20',
@@ -42,6 +75,10 @@ export const ClassesList: React.FC<ClassesListProps> = ({
   const [assignSubjectsClass, setAssignSubjectsClass] = useState<{ id: string; name: string } | null>(null);
   const [assignTeachersClass, setAssignTeachersClass] = useState<{ id: string; name: string } | null>(null);
   const [editingClass, setEditingClass] = useState<any>(null);
+  const [cardsClassId, setCardsClassId] = useState<string | null>(null);
+
+  const { data: schoolInfo } = useSchoolInfo(schoolId);
+  const { data: yearLabel } = useSchoolYearLabel(schoolYearId);
 
   // Récupérer le nombre réel d'élèves par classe
   const { data: studentCounts } = useQuery({
@@ -245,6 +282,7 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                                   onManageTeachers={() => setAssignTeachersClass({ id: cls.id, name: cls.name })}
                                   onEditClass={() => setEditingClass(cls)}
                                   onDeleteClass={() => handleDelete(cls.id)}
+                                  onGenerateCards={() => setCardsClassId(cls.id)}
                                 />
                               </div>
                             </CardHeader>
@@ -312,6 +350,30 @@ export const ClassesList: React.FC<ClassesListProps> = ({
           open={!!editingClass}
           onOpenChange={(open) => !open && setEditingClass(null)}
         />
+      )}
+
+      {/* Dialog pour générer les cartes scolaires */}
+      {cardsClassId && (
+        <Dialog open={!!cardsClassId} onOpenChange={(open) => !open && setCardsClassId(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Cartes scolaires</DialogTitle>
+            </DialogHeader>
+            <SchoolCardsSection
+              availableClasses={classes?.filter(c => c.id === cardsClassId).map(c => ({
+                id: c.id,
+                name: c.name,
+                cycle: c.cycle,
+                current_students: studentCounts?.[c.id] || 0,
+                max_students: c.max_students,
+              })) || []}
+              schoolName={schoolInfo?.name || ''}
+              schoolYearLabel={yearLabel || ''}
+              schoolLogoUrl={schoolInfo?.logo_url || undefined}
+              preSelectedClassId={cardsClassId}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
