@@ -6562,6 +6562,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           price_sc: number
+          template_key: string | null
           theme_config: Json | null
           thumbnail_url: string | null
         }
@@ -6572,6 +6573,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           price_sc?: number
+          template_key?: string | null
           theme_config?: Json | null
           thumbnail_url?: string | null
         }
@@ -6582,6 +6584,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           price_sc?: number
+          template_key?: string | null
           theme_config?: Json | null
           thumbnail_url?: string | null
         }
