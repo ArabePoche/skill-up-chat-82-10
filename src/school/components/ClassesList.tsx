@@ -75,6 +75,10 @@ export const ClassesList: React.FC<ClassesListProps> = ({
   const [assignSubjectsClass, setAssignSubjectsClass] = useState<{ id: string; name: string } | null>(null);
   const [assignTeachersClass, setAssignTeachersClass] = useState<{ id: string; name: string } | null>(null);
   const [editingClass, setEditingClass] = useState<any>(null);
+  const [cardsClassId, setCardsClassId] = useState<string | null>(null);
+
+  const { data: schoolInfo } = useSchoolInfo(schoolId);
+  const { data: yearLabel } = useSchoolYearLabel(schoolYearId);
 
   // Récupérer le nombre réel d'élèves par classe
   const { data: studentCounts } = useQuery({
