@@ -210,10 +210,10 @@ export function SchoolSiteTemplatesModal({
                       </p>
                     )}
                     {/* Prix */}
-                    <div className="flex items-center gap-1 mt-3 text-sm font-semibold">
-                      <Coins className="h-4 w-4 text-amber-500" />
+                    <div className="flex items-center gap-1 mt-3 text-sm font-semibold text-warning">
+                      <Coins className="h-4 w-4" />
                       {isFree ? (
-                        <span className="text-green-600">Gratuit</span>
+                        <span className="text-success">Gratuit</span>
                       ) : (
                         <span>{tpl.price_sc} SC</span>
                       )}
