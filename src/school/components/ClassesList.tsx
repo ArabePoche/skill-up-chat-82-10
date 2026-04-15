@@ -351,6 +351,30 @@ export const ClassesList: React.FC<ClassesListProps> = ({
           onOpenChange={(open) => !open && setEditingClass(null)}
         />
       )}
+
+      {/* Dialog pour générer les cartes scolaires */}
+      {cardsClassId && (
+        <Dialog open={!!cardsClassId} onOpenChange={(open) => !open && setCardsClassId(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Cartes scolaires</DialogTitle>
+            </DialogHeader>
+            <SchoolCardsSection
+              availableClasses={classes?.filter(c => c.id === cardsClassId).map(c => ({
+                id: c.id,
+                name: c.name,
+                cycle: c.cycle,
+                current_students: studentCounts?.[c.id] || 0,
+                max_students: c.max_students,
+              })) || []}
+              schoolName={schoolInfo?.name || ''}
+              schoolYearLabel={yearLabel || ''}
+              schoolLogoUrl={schoolInfo?.logo_url || undefined}
+              preSelectedClassId={cardsClassId}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
