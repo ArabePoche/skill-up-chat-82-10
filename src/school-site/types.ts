@@ -13,6 +13,9 @@ export interface SchoolSiteData {
   isPersonnel: boolean;
   editMode: boolean;
   templateConfig: Record<string, any>;
+  /** Draft state et callback — utilisés par les templates pour le cover upload */
+  draft?: Record<string, any>;
+  onDraftChange?: (field: string, value: any) => void;
 }
 
 /** Props de base pour toute section de template */
