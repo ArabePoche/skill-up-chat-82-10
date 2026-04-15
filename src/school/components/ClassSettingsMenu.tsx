@@ -2,7 +2,7 @@
  * Menu unifié pour les actions de gestion d'une classe
  */
 import React from 'react';
-import { Settings, BookOpen, Pencil, Trash2, Users } from 'lucide-react';
+import { Settings, BookOpen, Pencil, Trash2, Users, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ interface ClassSettingsMenuProps {
   onManageTeachers: () => void;
   onEditClass: () => void;
   onDeleteClass: () => void;
+  onGenerateCards?: () => void;
 }
 
 export const ClassSettingsMenu: React.FC<ClassSettingsMenuProps> = ({
@@ -24,6 +25,7 @@ export const ClassSettingsMenu: React.FC<ClassSettingsMenuProps> = ({
   onManageTeachers,
   onEditClass,
   onDeleteClass,
+  onGenerateCards,
 }) => {
   return (
     <DropdownMenu>
@@ -41,6 +43,12 @@ export const ClassSettingsMenu: React.FC<ClassSettingsMenuProps> = ({
           <Users className="h-4 w-4 mr-2" />
           Assigner des professeurs
         </DropdownMenuItem>
+        {onGenerateCards && (
+          <DropdownMenuItem onClick={onGenerateCards}>
+            <CreditCard className="h-4 w-4 mr-2" />
+            Générer les cartes scolaires
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={onEditClass}>
           <Pencil className="h-4 w-4 mr-2" />
           Modifier la classe
