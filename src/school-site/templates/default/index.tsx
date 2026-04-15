@@ -134,6 +134,7 @@ const sections: SectionDefinition[] = [
   { id: 'stats', label: 'Statistiques', optional: true, component: StatsSection },
   { id: 'cycles', label: 'Cycles et programmes', component: CyclesSection },
   { id: 'gallery', label: 'Galerie', optional: true, component: GallerySection },
+  { id: 'activities', label: 'Activités', optional: true, component: ActivitiesSection },
   { id: 'location', label: 'Localisation', component: LocationSection },
   { id: 'contact', label: 'Contact', optional: true, component: ContactSection },
   { id: 'social-edit', label: 'Réseaux sociaux', optional: true, component: SocialEditSection },
