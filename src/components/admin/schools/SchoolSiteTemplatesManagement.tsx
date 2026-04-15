@@ -24,6 +24,7 @@ interface SiteTemplate {
   theme_config: any;
   price_sc: number;
   is_active: boolean;
+  template_key: string | null;
   created_at: string;
 }
 
@@ -34,6 +35,7 @@ type TemplateForm = {
   price_sc: number;
   is_active: boolean;
   theme_config: string;
+  template_key: string;
 };
 
 const emptyForm: TemplateForm = {
@@ -43,6 +45,7 @@ const emptyForm: TemplateForm = {
   price_sc: 0,
   is_active: true,
   theme_config: '{}',
+  template_key: '',
 };
 
 export default function SchoolSiteTemplatesManagement() {
@@ -79,6 +82,7 @@ export default function SchoolSiteTemplatesManagement() {
         price_sc: data.price_sc,
         is_active: data.is_active,
         theme_config: themeConfig,
+        template_key: data.template_key.trim() || null,
       };
 
       if (data.id) {
@@ -129,6 +133,7 @@ export default function SchoolSiteTemplatesManagement() {
       price_sc: t.price_sc,
       is_active: t.is_active,
       theme_config: JSON.stringify(t.theme_config, null, 2),
+      template_key: t.template_key || '',
     });
     setDialogOpen(true);
   };
@@ -233,6 +238,10 @@ export default function SchoolSiteTemplatesManagement() {
             <div className="space-y-2">
               <Label>Nom *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Clé du template (slug unique : default, modern, etc.)</Label>
+              <Input value={form.template_key} onChange={(e) => setForm({ ...form, template_key: e.target.value })} placeholder="modern" />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
