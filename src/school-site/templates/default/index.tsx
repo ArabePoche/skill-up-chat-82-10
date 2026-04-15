@@ -13,7 +13,7 @@ import type { TemplateDefinition, TemplateLayoutProps, SectionDefinition } from 
 import {
   AboutSection, StatsSection, CyclesSection,
   GallerySection, LocationSection, ContactSection, SocialEditSection,
-  CoverImageUpload,
+  CoverImageUpload, ActivitiesSection,
 } from '../../components/SharedSections';
 
 const getSchoolTypeLabel = (type: string) => {
