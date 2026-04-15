@@ -260,6 +260,7 @@ export const useUpdateSchool = () => {
       site_twitter_url?: string | null;
       site_linkedin_url?: string | null;
       site_youtube_url?: string | null; site_template_id?: string | null;
+      site_cover_url?: string | null;
     }) => {
       const { id, ...updates } = data;
       const { data: school, error } = await supabase
