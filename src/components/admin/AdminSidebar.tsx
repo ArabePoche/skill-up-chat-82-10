@@ -40,6 +40,7 @@ const menuGroups = [
       { title: 'Toutes les Ã‰coles', value: 'schools-management', icon: Building2 },
       { title: 'Abonnements & Plans', value: 'school-subscriptions', icon: CreditCard },
       { title: 'Revenus & Paiements', value: 'school-revenue', icon: TrendingUp },
+      { title: 'Modèles de Sites', value: 'school-site-templates', icon: ScrollText },
     ]
   },
   {

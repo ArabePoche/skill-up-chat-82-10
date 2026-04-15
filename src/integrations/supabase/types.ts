@@ -6561,6 +6561,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          price_sc: number
           theme_config: Json | null
           thumbnail_url: string | null
         }
@@ -6570,6 +6571,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          price_sc?: number
           theme_config?: Json | null
           thumbnail_url?: string | null
         }
@@ -6579,6 +6581,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          price_sc?: number
           theme_config?: Json | null
           thumbnail_url?: string | null
         }
