@@ -144,6 +144,16 @@ export function SchoolSiteTemplatesModal({
                     isSelected ? 'ring-2 ring-indigo-600 border-transparent' : 'border-border'
                   }`}
                 >
+                  {/* Miniature du template */}
+                  {tpl.thumbnail_url && (
+                    <div className="w-full h-40 overflow-hidden bg-muted">
+                      <img 
+                        src={tpl.thumbnail_url} 
+                        alt={tpl.name} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
                   <div className="p-6 pb-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-semibold text-lg">{tpl.name}</h3>
