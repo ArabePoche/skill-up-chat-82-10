@@ -75,13 +75,11 @@ const DefaultLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar,
 
           <div className="relative px-6 pt-20 pb-10 text-white">
             <div className="flex items-center gap-6 mb-4">
-              <div className="w-28 h-28 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 shadow-xl flex items-center justify-center overflow-hidden shrink-0">
-                {school.logo_url ? (
+              {school.logo_url && (
+                <div className="w-28 h-28 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 shadow-xl flex items-center justify-center overflow-hidden shrink-0">
                   <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Building2 size={48} className="text-white" />
-                )}
-              </div>
+                </div>
+              )}
               <div className="text-left">
                 <h1 className="text-2xl font-bold">{school.name}</h1>
                 <div className="flex flex-wrap gap-2 mt-3">
@@ -111,7 +109,7 @@ const DefaultLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar,
                 </Button>
                 {isPersonnel && (
                   <Button onClick={() => navigate(`/school?id=${school.id}`)}
-                    className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border-0" variant="outline">
+                    className="flex items-center gap-2 backdrop-blur-sm border-white/30 text-white bg-black/30 hover:bg-black/50" variant="outline">
                     <SchoolIcon size={18} />
                     {t('school.accessSchoolOS', { defaultValue: 'Accéder à School-OS' })}
                   </Button>
