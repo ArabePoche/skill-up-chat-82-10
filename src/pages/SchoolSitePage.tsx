@@ -135,12 +135,16 @@ const SchoolSitePage: React.FC = () => {
 
   const saveEdit = useCallback(async () => {
     if (!school) return;
-    const urls = draft.galleryText.split('\n').map((s) => s.trim()).filter(Boolean);
+    // Utiliser galleryUrls (upload) en priorité, sinon fallback sur galleryText (legacy)
+    const urls = draft.galleryUrls.length > 0
+      ? draft.galleryUrls.filter(Boolean)
+      : draft.galleryText.split('\n').map((s) => s.trim()).filter(Boolean);
     try {
       await updateSchool.mutateAsync({
         id: school.id,
         site_cycles_programs: draft.site_cycles_programs.trim() || null,
         site_gallery_urls: urls,
+        site_cover_url: draft.site_cover_url.trim() || null,
         address: draft.address.trim() || null,
         city: draft.city.trim() || null,
         country: draft.country.trim() || null,
