@@ -24,6 +24,7 @@ interface SiteTemplate {
   theme_config: any;
   price_sc: number;
   is_active: boolean;
+  template_key: string | null;
   created_at: string;
 }
 
@@ -34,6 +35,7 @@ type TemplateForm = {
   price_sc: number;
   is_active: boolean;
   theme_config: string;
+  template_key: string;
 };
 
 const emptyForm: TemplateForm = {
@@ -43,6 +45,7 @@ const emptyForm: TemplateForm = {
   price_sc: 0,
   is_active: true,
   theme_config: '{}',
+  template_key: '',
 };
 
 export default function SchoolSiteTemplatesManagement() {
