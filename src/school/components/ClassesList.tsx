@@ -282,6 +282,7 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                                   onManageTeachers={() => setAssignTeachersClass({ id: cls.id, name: cls.name })}
                                   onEditClass={() => setEditingClass(cls)}
                                   onDeleteClass={() => handleDelete(cls.id)}
+                                  onGenerateCards={() => setCardsClassId(cls.id)}
                                 />
                               </div>
                             </CardHeader>
