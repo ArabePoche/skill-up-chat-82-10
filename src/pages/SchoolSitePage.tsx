@@ -234,6 +234,8 @@ const SchoolSitePage: React.FC = () => {
     isPersonnel,
     editMode,
     templateConfig,
+    draft: editMode ? (draft as unknown as Record<string, any>) : undefined,
+    onDraftChange: editMode ? handleDraftChange : undefined,
   };
 
   // Toolbar partagée
