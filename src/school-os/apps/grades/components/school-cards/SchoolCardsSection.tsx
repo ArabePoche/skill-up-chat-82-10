@@ -24,6 +24,7 @@ interface SchoolCardsSectionProps {
   schoolName: string;
   schoolYearLabel: string;
   schoolLogoUrl?: string;
+  preSelectedClassId?: string;
 }
 
 export const SchoolCardsSection: React.FC<SchoolCardsSectionProps> = ({
@@ -31,8 +32,9 @@ export const SchoolCardsSection: React.FC<SchoolCardsSectionProps> = ({
   schoolName,
   schoolYearLabel,
   schoolLogoUrl,
+  preSelectedClassId,
 }) => {
-  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState(preSelectedClassId || '');
   const [isExporting, setIsExporting] = useState(false);
   const cardsContainerRef = useRef<HTMLDivElement>(null);
 
