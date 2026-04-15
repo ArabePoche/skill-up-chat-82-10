@@ -28,6 +28,7 @@ import CurrencyDashboard from '@/components/admin/CurrencyDashboard';
 import SchoolSubscriptionsManagement from '@/components/admin/subscriptions/SchoolSubscriptionsManagement';
 import SchoolsManagement from '@/components/admin/schools/SchoolsManagement';
 import SchoolRevenueDashboard from '@/components/admin/schools/SchoolRevenueDashboard';
+import SchoolSiteTemplatesManagement from '@/components/admin/schools/SchoolSiteTemplatesManagement';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -117,6 +118,8 @@ const AdminDashboard = () => {
         return <SchoolsManagement />;
       case 'school-revenue':
         return <SchoolRevenueDashboard />;
+      case 'school-site-templates':
+        return <SchoolSiteTemplatesManagement />;
       default:
         return <DashboardStats />;
     }
