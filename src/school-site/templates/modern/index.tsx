@@ -112,7 +112,7 @@ const ModernLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, 
 
   const primaryColor = templateConfig.primary_color || school.primary_color || '#3b82f6';
   const secondaryColor = templateConfig.secondary_color || school.secondary_color || '#1e40af';
-  const coverUrl = (data as any).draft?.site_cover_url ?? school.site_cover_url;
+  const coverUrl = data.draft?.site_cover_url ?? school.site_cover_url;
 
   return (
     <div className="min-h-screen pb-24 bg-background">
@@ -146,8 +146,8 @@ const ModernLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, 
           <div className="absolute top-4 right-4 z-10">
             <CoverImageUpload
               currentUrl={coverUrl}
-              onUpload={(url) => (data as any).onDraftChange?.('site_cover_url', url)}
-              onRemove={() => (data as any).onDraftChange?.('site_cover_url', '')}
+              onUpload={(url) => data.onDraftChange?.('site_cover_url', url)}
+              onRemove={() => data.onDraftChange?.('site_cover_url', '')}
             />
           </div>
         )}

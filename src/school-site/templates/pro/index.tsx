@@ -59,7 +59,7 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
 
   const primaryColor = templateConfig.primary_color || school.primary_color || '#3b82f6';
   const secondaryColor = templateConfig.secondary_color || school.secondary_color || '#1e40af';
-  const coverUrl = (data as any).draft?.site_cover_url ?? school.site_cover_url;
+  const coverUrl = data.draft?.site_cover_url ?? school.site_cover_url;
 
   return (
     <div className="min-h-screen pb-24 bg-background">
@@ -107,8 +107,8 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
           {editMode && isOwner && (
             <CoverImageUpload
               currentUrl={coverUrl}
-              onUpload={(url) => (data as any).onDraftChange?.('site_cover_url', url)}
-              onRemove={() => (data as any).onDraftChange?.('site_cover_url', '')}
+              onUpload={(url) => data.onDraftChange?.('site_cover_url', url)}
+              onRemove={() => data.onDraftChange?.('site_cover_url', '')}
             />
           )}
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 backdrop-blur-sm border border-amber-400/30">
