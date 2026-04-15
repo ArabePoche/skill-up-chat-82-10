@@ -28,6 +28,7 @@ const ProNav: React.FC<{ primaryColor: string }> = ({ primaryColor }) => {
   const links = [
     { href: '#about', label: 'À propos' },
     { href: '#programs', label: 'Programmes' },
+    { href: '#activities', label: 'Activités' },
     { href: '#gallery', label: 'Galerie' },
     { href: '#contact', label: 'Contact' },
   ];
