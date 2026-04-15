@@ -35,6 +35,8 @@ export interface School {
   site_linkedin_url?: string | null;
   site_youtube_url?: string | null;
   site_template_id?: string | null;
+  /** Site public : image de couverture hero */
+  site_cover_url?: string | null;
 }
 
 export interface SchoolYear {
