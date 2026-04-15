@@ -82,6 +82,7 @@ export default function SchoolSiteTemplatesManagement() {
         price_sc: data.price_sc,
         is_active: data.is_active,
         theme_config: themeConfig,
+        template_key: data.template_key.trim() || null,
       };
 
       if (data.id) {
@@ -237,6 +238,10 @@ export default function SchoolSiteTemplatesManagement() {
             <div className="space-y-2">
               <Label>Nom *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Clé du template (slug unique : default, modern, etc.)</Label>
+              <Input value={form.template_key} onChange={(e) => setForm({ ...form, template_key: e.target.value })} placeholder="modern" />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
