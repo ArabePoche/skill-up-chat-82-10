@@ -156,13 +156,11 @@ const ModernLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, 
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}>
             <div className="flex items-end gap-6">
-              <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-2xl bg-white shadow-xl flex items-center justify-center overflow-hidden shrink-0 -mb-12 lg:-mb-16 border-4 border-white">
-                {school.logo_url ? (
+              {school.logo_url && (
+                <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-2xl bg-white shadow-xl flex items-center justify-center overflow-hidden shrink-0 -mb-12 lg:-mb-16 border-4 border-white">
                   <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Building2 size={48} style={{ color: primaryColor }} />
-                )}
-              </div>
+                </div>
+              )}
               <div className="text-white pb-1">
                 <h1 className="text-3xl lg:text-5xl font-bold drop-shadow-md">{school.name}</h1>
                 <div className="flex flex-wrap gap-2 mt-3">

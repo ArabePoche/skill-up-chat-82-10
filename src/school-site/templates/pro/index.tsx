@@ -125,13 +125,11 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
           >
             <div className="flex flex-col lg:flex-row lg:items-end gap-6">
               {/* Logo */}
-              <div className="w-28 h-28 lg:w-36 lg:h-36 rounded-3xl bg-white/10 backdrop-blur-md shadow-2xl flex items-center justify-center overflow-hidden shrink-0 border-2 border-white/20 ring-4 ring-white/5">
-                {school.logo_url ? (
+              {school.logo_url && (
+                <div className="w-28 h-28 lg:w-36 lg:h-36 rounded-3xl bg-white/10 backdrop-blur-md shadow-2xl flex items-center justify-center overflow-hidden shrink-0 border-2 border-white/20 ring-4 ring-white/5">
                   <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Building2 size={56} className="text-white/80" />
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="text-white flex-1">
                 <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight drop-shadow-lg">
@@ -205,7 +203,7 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
                   <Button
                     onClick={() => navigate(`/school?id=${school.id}`)}
                     variant="outline"
-                    className="gap-2 px-6 py-3 text-sm font-bold rounded-full border-white/30 text-white hover:bg-white/10"
+                    className="gap-2 px-6 py-3 text-sm font-bold rounded-full border-white/30 text-white bg-black/30 hover:bg-black/50"
                   >
                     <SchoolIcon size={16} />
                     {t('school.accessSchoolOS', { defaultValue: 'Accéder à School-OS' })}
