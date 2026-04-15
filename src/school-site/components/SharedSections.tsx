@@ -372,7 +372,196 @@ export const SocialEditSection: React.FC<SectionProps> = ({ data, draft, onDraft
   );
 };
 
-/** Composant d'upload d'image de couverture (hero) — utilisé par les templates */
+/** Section Activités — affiche les activités en cours, passées et à venir */
+export const ActivitiesSection: React.FC<SectionProps> = ({ data, primaryColor }) => {
+  const { t } = useTranslation();
+  const { school, editMode, isOwner } = data;
+
+  // Import dynamique pour éviter les imports circulaires
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', activity_date: '', end_date: '', location: '', status: 'upcoming' });
+
+  // Charger les activités
+  React.useEffect(() => {
+    if (!school.id) return;
+    import('@/integrations/supabase/client').then(({ supabase }) => {
+      supabase
+        .from('school_activities' as any)
+        .select('*')
+        .eq('school_id', school.id)
+        .order('activity_date', { ascending: true })
+        .then(({ data: rows }) => {
+          setActivities((rows ?? []) as any[]);
+          setLoaded(true);
+        });
+    });
+  }, [school.id]);
+
+  const handleCreate = async () => {
+    if (!form.title || !form.activity_date) return;
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session?.session?.user?.id;
+    const { data: row, error } = await supabase
+      .from('school_activities' as any)
+      .insert({
+        school_id: school.id,
+        title: form.title,
+        description: form.description || null,
+        activity_date: form.activity_date,
+        end_date: form.end_date || null,
+        location: form.location || null,
+        status: form.status,
+        created_by: userId,
+      } as any)
+      .select()
+      .single();
+    if (!error && row) {
+      setActivities((prev) => [...prev, row as any]);
+      setForm({ title: '', description: '', activity_date: '', end_date: '', location: '', status: 'upcoming' });
+      setShowForm(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const { supabase } = await import('@/integrations/supabase/client');
+    await supabase.from('school_activities' as any).delete().eq('id', id);
+    setActivities((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const upcoming = activities.filter((a) => a.status === 'upcoming');
+  const ongoing = activities.filter((a) => a.status === 'ongoing');
+  const past = activities.filter((a) => a.status === 'past');
+
+  const statusLabel: Record<string, string> = {
+    upcoming: 'À venir',
+    ongoing: 'En cours',
+    past: 'Passée',
+  };
+
+  const statusColor: Record<string, string> = {
+    upcoming: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    ongoing: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+    past: 'bg-muted text-muted-foreground',
+  };
+
+  const renderCard = (a: any) => (
+    <div key={a.id} className="flex gap-3 p-3 rounded-lg border border-border bg-card">
+      {a.image_url && (
+        <img src={a.image_url} alt="" className="w-16 h-16 rounded-md object-cover shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-sm truncate">{a.title}</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusColor[a.status]}`}>
+            {statusLabel[a.status]}
+          </span>
+        </div>
+        {a.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.description}</p>}
+        <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><CalendarDays size={12} />{new Date(a.activity_date).toLocaleDateString('fr-FR')}</span>
+          {a.end_date && <span>→ {new Date(a.end_date).toLocaleDateString('fr-FR')}</span>}
+          {a.location && <span className="flex items-center gap-1"><MapPin size={12} />{a.location}</span>}
+        </div>
+      </div>
+      {editMode && isOwner && (
+        <button onClick={() => handleDelete(a.id)} className="text-destructive hover:text-destructive/80 shrink-0 self-start p-1">
+          <Trash2 size={14} />
+        </button>
+      )}
+    </div>
+  );
+
+  const renderGroup = (label: string, items: any[], icon: React.ReactNode) => {
+    if (items.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold flex items-center gap-1.5 text-muted-foreground">{icon}{label}</h3>
+        {items.map(renderCard)}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <CalendarDays size={18} style={{ color: primaryColor }} />
+          {t('school.activities', { defaultValue: 'Activités' })}
+        </h2>
+        {editMode && isOwner && (
+          <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setShowForm(!showForm)}>
+            <Plus size={14} /> Ajouter
+          </Button>
+        )}
+      </div>
+
+      {/* Formulaire d'ajout */}
+      {showForm && editMode && isOwner && (
+        <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-3 mb-4">
+          <div>
+            <Label>Titre *</Label>
+            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1" />
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-1" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Date de début *</Label>
+              <Input type="date" value={form.activity_date} onChange={(e) => setForm({ ...form, activity_date: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label>Date de fin</Label>
+              <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="mt-1" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Lieu</Label>
+              <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label>Statut</Label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="mt-1 w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="upcoming">À venir</option>
+                <option value="ongoing">En cours</option>
+                <option value="past">Passée</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>Annuler</Button>
+            <Button type="button" size="sm" onClick={handleCreate} disabled={!form.title || !form.activity_date}>Créer</Button>
+          </div>
+        </div>
+      )}
+
+      {!loaded ? (
+        <p className="text-sm text-muted-foreground">Chargement…</p>
+      ) : activities.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic">
+          {t('school.noActivities', { defaultValue: "Aucune activité publiée pour le moment." })}
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {renderGroup('En cours', ongoing, <Clock size={14} className="text-green-500" />)}
+          {renderGroup('À venir', upcoming, <CalendarDays size={14} className="text-blue-500" />)}
+          {renderGroup('Passées', past, <Calendar size={14} className="text-muted-foreground" />)}
+        </div>
+      )}
+    </>
+  );
+};
+
+
 export const CoverImageUpload: React.FC<{
   currentUrl?: string | null;
   onUpload: (url: string) => void;
