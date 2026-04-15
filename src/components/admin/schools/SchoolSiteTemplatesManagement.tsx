@@ -1,0 +1,268 @@
+/**
+ * Gestion des modèles de sites scolaires premium par les administrateurs.
+ * Permet de créer, modifier, activer/désactiver et définir le prix en SC des templates.
+ */
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { Plus, Pencil, Trash2, LayoutTemplate, Coins, Eye, EyeOff, Loader2 } from 'lucide-react';
+
+interface SiteTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  theme_config: any;
+  price_sc: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+type TemplateForm = {
+  name: string;
+  description: string;
+  thumbnail_url: string;
+  price_sc: number;
+  is_active: boolean;
+  theme_config: string;
+};
+
+const emptyForm: TemplateForm = {
+  name: '',
+  description: '',
+  thumbnail_url: '',
+  price_sc: 0,
+  is_active: true,
+  theme_config: '{}',
+};
+
+export default function SchoolSiteTemplatesManagement() {
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<TemplateForm>(emptyForm);
+
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['admin-school-site-templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('school_site_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as SiteTemplate[];
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: TemplateForm & { id?: string }) => {
+      let themeConfig: any;
+      try {
+        themeConfig = JSON.parse(data.theme_config);
+      } catch {
+        throw new Error('Le JSON de configuration du thème est invalide.');
+      }
+
+      const payload = {
+        name: data.name,
+        description: data.description || null,
+        thumbnail_url: data.thumbnail_url || null,
+        price_sc: data.price_sc,
+        is_active: data.is_active,
+        theme_config: themeConfig,
+      };
+
+      if (data.id) {
+        const { error } = await supabase
+          .from('school_site_templates')
+          .update(payload)
+          .eq('id', data.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('school_site_templates')
+          .insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editingId ? 'Modèle mis à jour.' : 'Modèle créé.');
+      queryClient.invalidateQueries({ queryKey: ['admin-school-site-templates'] });
+      closeDialog();
+    },
+    onError: (err: any) => toast.error(err.message || 'Erreur'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('school_site_templates').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Modèle supprimé.');
+      queryClient.invalidateQueries({ queryKey: ['admin-school-site-templates'] });
+    },
+    onError: () => toast.error('Erreur lors de la suppression.'),
+  });
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (t: SiteTemplate) => {
+    setEditingId(t.id);
+    setForm({
+      name: t.name,
+      description: t.description || '',
+      thumbnail_url: t.thumbnail_url || '',
+      price_sc: t.price_sc,
+      is_active: t.is_active,
+      theme_config: JSON.stringify(t.theme_config, null, 2),
+    });
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) return toast.error('Le nom est requis.');
+    saveMutation.mutate({ ...form, id: editingId || undefined });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <LayoutTemplate className="h-6 w-6" />
+            Modèles de sites scolaires
+          </h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Gérez les templates premium achetables en Soumboulah Cash
+          </p>
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nouveau modèle
+        </Button>
+      </div>
+
+      {templates.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center text-muted-foreground">
+            Aucun modèle de site créé pour le moment.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {templates.map((t) => (
+            <Card key={t.id} className={!t.is_active ? 'opacity-60' : ''}>
+              {t.thumbnail_url && (
+                <div className="aspect-video overflow-hidden rounded-t-lg">
+                  <img src={t.thumbnail_url} alt={t.name} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">{t.name}</CardTitle>
+                  <Badge variant={t.is_active ? 'default' : 'secondary'}>
+                    {t.is_active ? <><Eye className="h-3 w-3 mr-1" /> Actif</> : <><EyeOff className="h-3 w-3 mr-1" /> Inactif</>}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {t.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">{t.description}</p>
+                )}
+                <div className="flex items-center gap-1 text-sm font-semibold">
+                  <Coins className="h-4 w-4 text-amber-500" />
+                  {t.price_sc === 0 ? 'Gratuit' : `${t.price_sc} SC`}
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => openEdit(t)}>
+                    <Pencil className="h-3 w-3 mr-1" /> Modifier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirm('Supprimer ce modèle ?')) deleteMutation.mutate(t.id);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> Supprimer
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? 'Modifier le modèle' : 'Nouveau modèle de site'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nom *</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>URL de la miniature</Label>
+              <Input value={form.thumbnail_url} onChange={(e) => setForm({ ...form, thumbnail_url: e.target.value })} placeholder="https://..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Prix (SC)</Label>
+              <Input type="number" min={0} value={form.price_sc} onChange={(e) => setForm({ ...form, price_sc: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Configuration du thème (JSON)</Label>
+              <Textarea value={form.theme_config} onChange={(e) => setForm({ ...form, theme_config: e.target.value })} rows={4} className="font-mono text-xs" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <Label>Actif (visible par les écoles)</Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeDialog}>Annuler</Button>
+              <Button type="submit" disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Créer'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
