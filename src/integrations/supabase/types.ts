@@ -7432,6 +7432,48 @@ export type Database = {
           },
         ]
       }
+      school_template_purchases: {
+        Row: {
+          created_at: string
+          id: string
+          price_paid: number
+          purchased_by: string
+          school_id: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price_paid?: number
+          purchased_by: string
+          school_id: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price_paid?: number
+          purchased_by?: string
+          school_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_template_purchases_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_template_purchases_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "school_site_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_transaction_categories: {
         Row: {
           created_at: string
@@ -11607,6 +11649,10 @@ export type Database = {
       }
       purchase_live_ticket_authenticated: {
         Args: { p_live_id: string }
+        Returns: Json
+      }
+      purchase_school_template: {
+        Args: { p_school_id: string; p_template_id: string }
         Returns: Json
       }
       recalculate_student_amount_due: {
