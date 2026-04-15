@@ -2,11 +2,11 @@
  * Sections partagées réutilisables par tous les templates.
  * Chaque section reçoit SectionProps et affiche les données de l'école.
  */
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Building2, MapPin, Phone, Mail, Globe, Calendar, Languages,
   Users, GraduationCap, BookOpen, BarChart2, Layers, ImageIcon, ExternalLink,
-  Upload, X, Camera,
+  Upload, X, Camera, CalendarDays, Plus, Trash2, Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
