@@ -1,19 +1,22 @@
-﻿/**
- * Dialog pour dÃ©couvrir des contacts inscrits sur la plateforme
- * parmi les contacts tÃ©lÃ©phoniques locaux de l'utilisateur.
- * Ne montre JAMAIS tous les utilisateurs de la plateforme.
+/**
+ * Dialog plein écran pour découvrir les contacts téléphoniques
+ * UI inspirée Revyze : liste de tous les contacts avec :
+ *  - bouton "Discuter" (vert) pour ceux déjà inscrits
+ *  - bouton "Inviter" (jaune) pour les autres
  */
-import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useState, useEffect, useMemo } from 'react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Share2, Users, Loader2, Search, MessageCircle, Smartphone, UserPlus } from 'lucide-react';
+import {
+  ArrowLeft,
+  Loader2,
+  Search,
+  MessageCircle,
+  Mail,
+  Smartphone,
+  UserPlus,
+} from 'lucide-react';
 import { usePhoneContacts } from '../hooks/usePhoneContacts';
 import { useMatchingUsers } from '../hooks/useMatchingUsers';
 import { useNavigate } from 'react-router-dom';
@@ -27,12 +30,39 @@ interface ContactsDiscoveryDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Palette de couleurs pour les avatars (déterministe selon le nom)
+const AVATAR_COLORS = [
+  'bg-red-900/60 text-red-100',
+  'bg-emerald-900/60 text-emerald-100',
+  'bg-amber-900/60 text-amber-100',
+  'bg-blue-900/60 text-blue-100',
+  'bg-purple-900/60 text-purple-100',
+  'bg-pink-900/60 text-pink-100',
+  'bg-teal-900/60 text-teal-100',
+  'bg-orange-900/60 text-orange-100',
+];
+
+const colorFor = (name: string) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
+const initialsOf = (name: string) =>
+  (name || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
+
 export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscoveryDialogProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSynced, setHasSynced] = useState(false);
-  const [allPhoneContacts, setAllPhoneContacts] = useState<{name: string, phoneNumbers: string[]}[]>([]);
+  const [allPhoneContacts, setAllPhoneContacts] = useState<{ name: string; phoneNumbers: string[] }[]>([]);
 
-  const { contacts, requestContacts, isLoading: isLoadingContacts } = usePhoneContacts();
+  const { requestContacts, isLoading: isLoadingContacts } = usePhoneContacts();
   const { matchingUsers, isLoading: isLoadingMatches, findMatchingUsers } = useMatchingUsers();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -40,70 +70,14 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
 
   const isNative = Capacitor.isNativePlatform();
 
-  // Sur natif, synchroniser automatiquement Ã  l'ouverture
   useEffect(() => {
     if (!open || !user?.id) return;
     if (isNative && !hasSynced) {
       handleSync();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id]);
 
-  const handleSync = async () => {
-    const phoneContacts = await requestContacts();
-    setAllPhoneContacts(phoneContacts || []); // Stocker tous les contacts
-
-    if (phoneContacts) {
-      if (phoneContacts.length > 0) {
-        const allPhoneNumbers = phoneContacts.flatMap(c => c.phoneNumbers);
-        if (allPhoneNumbers.length > 0) {
-          await findMatchingUsers(allPhoneNumbers);
-        }
-      }
-      setHasSynced(true);
-    }
-  };
-  
-  const handleInvite = (contact: {name: string, phoneNumbers: string[]}) => {
-    // Logique d'invitation (SMS)
-    if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
-      const phoneNumber = contact.phoneNumbers[0];
-      const message = `Salut ${contact.name.split(' ')[0]} ! Rejoins-moi sur SkillUp pour partager des connaissances. TÃ©lÃ©charge l'appli ici : https://educatok.netlify.app`;
-      
-      // Essayer d'utiliser l'API Web Share si disponible
-      if (navigator.share) {
-        navigator.share({
-          title: 'Invitation SkillUp',
-          text: message,
-          url: 'https://educatok.netlify.app'
-        }).catch(() => {
-          // Fallback vers SMS si share Ã©choue ou annulÃ©
-           const smsUrl = `sms:${phoneNumber}?body=${encodeURIComponent(message)}`;
-           // Sur iOS, le sÃ©parateur body est '&', sur Android '?'
-           // Une solution universelle est plus complexe, mais sms: est standard
-           window.open(smsUrl, '_blank');
-        });
-      } else {
-         window.open(`sms:${phoneNumber}?body=${encodeURIComponent(message)}`, '_blank');
-      }
-    } else {
-      toast({
-        title: "Impossible d'inviter",
-        description: "Ce contact n'a pas de numÃ©ro de tÃ©lÃ©phone valide",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleStartConversation = (userId: string) => {
-    navigate(`/conversations/${userId}`);
-    onOpenChange(false);
-    toast({
-      title: "Conversation dÃ©marrÃ©e",
-      description: "Vous pouvez maintenant discuter avec ce contact",
-    });
-  };
-
-  // Reset Ã  la fermeture
   useEffect(() => {
     if (!open) {
       setSearchQuery('');
@@ -111,207 +85,244 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
     }
   }, [open]);
 
-  const isLoading = isLoadingContacts || isLoadingMatches;
+  const handleSync = async () => {
+    const phoneContacts = await requestContacts();
+    setAllPhoneContacts(phoneContacts || []);
 
-  // SÃ©parer les contacts inscrits et non inscrits
-  const matchingUserIds = new Set(matchingUsers.map(u => {
-     // Normaliser le numÃ©ro pour la comparaison
-     return u.phone ? u.phone.replace(/[^0-9]/g, '') : '';
-  }));
+    if (phoneContacts && phoneContacts.length > 0) {
+      const allPhoneNumbers = phoneContacts.flatMap((c) => c.phoneNumbers);
+      if (allPhoneNumbers.length > 0) {
+        await findMatchingUsers(allPhoneNumbers);
+      }
+    }
+    setHasSynced(true);
+  };
 
-  // Mapper les contacts du tÃ©lÃ©phone en incluant l'info s'ils sont matchÃ©s ou non
-  const displayContacts = allPhoneContacts.map(contact => {
-    // VÃ©rifier si un des numÃ©ros du contact matche un utilisateur
-    const matchingProfile = matchingUsers.find(u => {
-      // Comparer les 9 derniers chiffres
-      if (!u.phone) return false;
-      const uPhone = u.phone.replace(/[^0-9]/g, '');
-      
-      return contact.phoneNumbers.some((num: string) => {
-        const cPhone = num.replace(/[^0-9]/g, '');
-        // Si les deux font au moins 7 chiffres (pour Ãªtre sÃ»r)
-        if (cPhone.length >= 7 && uPhone.length >= 7) {
-            return uPhone.slice(-9) === cPhone.slice(-9);
-        }
-        return false;
+  const handleInvite = (contact: { name: string; phoneNumbers: string[] }) => {
+    if (!contact.phoneNumbers?.length) {
+      toast({
+        title: "Impossible d'inviter",
+        description: "Ce contact n'a pas de numéro valide",
+        variant: 'destructive',
       });
+      return;
+    }
+    const phoneNumber = contact.phoneNumbers[0];
+    const firstName = (contact.name || '').split(' ')[0] || '';
+    const message = `Salut ${firstName} ! Rejoins-moi sur SkillUp : https://educatok.netlify.app`;
+
+    if (navigator.share) {
+      navigator
+        .share({ title: 'Invitation SkillUp', text: message, url: 'https://educatok.netlify.app' })
+        .catch(() => {
+          window.open(`sms:${phoneNumber}?body=${encodeURIComponent(message)}`, '_blank');
+        });
+    } else {
+      window.open(`sms:${phoneNumber}?body=${encodeURIComponent(message)}`, '_blank');
+    }
+  };
+
+  const handleStartConversation = (userId: string) => {
+    navigate(`/conversations/${userId}`);
+    onOpenChange(false);
+  };
+
+  // Construire la liste enrichie (inscrit / non inscrit)
+  const displayContacts = useMemo(() => {
+    const enriched = allPhoneContacts.map((contact) => {
+      const matchingProfile = matchingUsers.find((u) => {
+        if (!u.phone) return false;
+        const uPhone = u.phone.replace(/[^0-9]/g, '');
+        return contact.phoneNumbers.some((num: string) => {
+          const cPhone = num.replace(/[^0-9]/g, '');
+          if (cPhone.length >= 7 && uPhone.length >= 7) {
+            return uPhone.slice(-9) === cPhone.slice(-9);
+          }
+          return false;
+        });
+      });
+      return {
+        ...contact,
+        isRegistered: !!matchingProfile,
+        profile: matchingProfile,
+      };
     });
 
-    return {
-      ...contact,
-      isRegistered: !!matchingProfile,
-      profile: matchingProfile
-    };
-  }).filter(c => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    const name = c.name ? c.name.toLowerCase() : '';
-    // Aussi chercher dans le nom du profil trouvÃ©
-    const profileName = c.profile ? `${c.profile.first_name} ${c.profile.last_name}`.toLowerCase() : '';
-    return name.includes(query) || profileName.includes(query);
-  });
-  
-  // Trier pour mettre les inscrits en premier
-  displayContacts.sort((a, b) => {
+    const filtered = enriched.filter((c) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      const name = (c.name || '').toLowerCase();
+      const profileName = c.profile
+        ? `${c.profile.first_name ?? ''} ${c.profile.last_name ?? ''}`.toLowerCase()
+        : '';
+      const phones = c.phoneNumbers.join(' ');
+      return name.includes(q) || profileName.includes(q) || phones.includes(q);
+    });
+
+    // Inscrits en haut, puis tri alphabétique
+    filtered.sort((a, b) => {
       if (a.isRegistered && !b.isRegistered) return -1;
       if (!a.isRegistered && b.isRegistered) return 1;
       return (a.name || '').localeCompare(b.name || '');
-  });
+    });
+    return filtered;
+  }, [allPhoneContacts, matchingUsers, searchQuery]);
+
+  const isLoading = isLoadingContacts || isLoadingMatches;
+  const registeredCount = displayContacts.filter((c) => c.isRegistered).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Mes Contacts
-          </DialogTitle>
-          <DialogDescription>
-            Invitez vos amis ou discutez avec ceux dÃ©jÃ  inscrits
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="p-0 max-w-full w-screen h-[100dvh] sm:h-[100dvh] sm:max-w-md sm:rounded-none border-0 bg-background flex flex-col gap-0 [&>button]:hidden">
+        {/* Header avec mascotte */}
+        <div className="shrink-0 px-4 pt-4 pb-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            className="h-10 w-10 -ml-2"
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
 
-        <div className="flex flex-col gap-3 flex-1 overflow-hidden">
-          {/* Ã‰tat initial : pas encore synchronisÃ© (web uniquement, natif = auto) */}
+          <div className="flex items-start gap-3 mt-2">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 flex items-center justify-center text-3xl shrink-0">
+              👋
+            </div>
+            <div className="bg-card text-card-foreground rounded-2xl rounded-tl-sm px-4 py-3 shadow-md flex-1">
+              <p className="font-bold text-base leading-tight">
+                Ajoute tes ami·e·s
+                <br />
+                pour discuter
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Recherche */}
+        <div className="shrink-0 px-4 pb-2">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Recherche"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 h-12 rounded-full bg-muted/50 border-muted text-base"
+            />
+          </div>
+        </div>
+
+        {/* Titre section */}
+        {hasSynced && !isLoading && displayContacts.length > 0 && (
+          <div className="shrink-0 px-4 py-2">
+            <h3 className="text-lg font-bold">
+              {registeredCount > 0
+                ? `Discute avec tes amis sur `
+                : `Invite-les à te rejoindre sur `}
+              <span className="text-amber-400">SkillUp</span>
+            </h3>
+          </div>
+        )}
+
+        {/* Contenu */}
+        <div className="flex-1 overflow-y-auto px-3 pb-24">
+          {/* État initial */}
           {!hasSynced && !isLoading && (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <div className="rounded-full bg-primary/10 p-4">
-                <Smartphone className="h-8 w-8 text-primary" />
+            <div className="flex flex-col items-center gap-4 py-12 px-6">
+              <div className="rounded-full bg-primary/10 p-5">
+                <Smartphone className="h-10 w-10 text-primary" />
               </div>
               <div className="text-center space-y-1">
-                <p className="font-medium text-sm">Synchronisez vos contacts</p>
-                <p className="text-xs text-muted-foreground max-w-[300px]">
-                  AccÃ©dez Ã  vos contacts pour retrouver vos amis sur SkillUp
+                <p className="font-semibold">Synchronise tes contacts</p>
+                <p className="text-sm text-muted-foreground">
+                  Trouve tes amis déjà inscrits et invite les autres
                 </p>
               </div>
-              <Button onClick={() => handleSync()} className="gap-2">
+              <Button onClick={handleSync} className="gap-2 rounded-full h-12 px-6">
                 <UserPlus className="h-4 w-4" />
-                Synchroniser mes contacts
+                Synchroniser
               </Button>
             </div>
           )}
 
-          {/* Chargement */}
           {isLoading && (
-            <div className="flex flex-col items-center gap-3 py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Analyse de vos contacts en cours...
-              </p>
+            <div className="flex flex-col items-center gap-3 py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Analyse de tes contacts…</p>
             </div>
           )}
 
-          {/* RÃ©sultats */}
-          {hasSynced && !isLoading && (
-            <>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Rechercher un ami ou un nom..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-24"
-                    autoFocus
-                  />
-                  {searchQuery.length >= 6 && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs" 
-                      onClick={() => {
-                          const newNum = searchQuery.replace(/[^0-9+]/g, '');
-                          if (newNum.length > 5) {
-                            const newContact = { name: "Numéro: " + newNum, phoneNumbers: [newNum] };
-                            setAllPhoneContacts(prev => [...prev, newContact]);
-                            findMatchingUsers([...allPhoneContacts.flatMap(c => c.phoneNumbers), newNum]);
-                            setSearchQuery('');
-                          }
-                      }}
-                    >
-                      Ajouter
-                    </Button>
-                  )}
-              </div>
+          {hasSynced && !isLoading && displayContacts.length === 0 && (
+            <div className="flex flex-col items-center gap-3 py-12">
+              <p className="text-sm text-muted-foreground text-center">
+                Aucun contact trouvé.
+              </p>
+              <Button variant="outline" size="sm" onClick={handleSync} className="gap-2 rounded-full">
+                <Smartphone className="h-4 w-4" />
+                Réessayer
+              </Button>
+            </div>
+          )}
 
-              <div className="flex-1 overflow-y-auto space-y-0.5 min-h-0">
-                {displayContacts.length === 0 ? (
-                   <div className="flex flex-col items-center gap-3 py-8">
-                    <p className="text-sm text-muted-foreground text-center">
-                      Aucun contact trouvé localement.
-                    </p>
-                    <Button variant="outline" size="sm" onClick={() => handleSync()} className="gap-2">
-                      <Smartphone className="h-4 w-4" />
-                      RÃ©essayer
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs font-medium text-muted-foreground px-1 mb-2 uppercase tracking-wide">
-                      {displayContacts.length} contact{displayContacts.length > 1 ? 's' : ''}
-                    </p>
-                    
-                    {displayContacts.map((contact, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+          {hasSynced && !isLoading && displayContacts.length > 0 && (
+            <div className="space-y-2">
+              {displayContacts.map((contact, index) => {
+                const displayName = contact.isRegistered
+                  ? `${contact.profile?.first_name ?? ''} ${contact.profile?.last_name ?? ''}`.trim() ||
+                    contact.name
+                  : contact.name || 'Inconnu';
+                const initials = initialsOf(displayName);
+                const colorClass = colorFor(displayName);
+
+                return (
+                  <div
+                    key={`${contact.name}-${index}`}
+                    className="flex items-center gap-3 px-2 py-2"
+                  >
+                    <Avatar className="h-14 w-14 shrink-0">
+                      {contact.isRegistered && contact.profile?.avatar_url ? (
+                        <AvatarImage src={contact.profile.avatar_url} />
+                      ) : null}
+                      <AvatarFallback className={`${colorClass} font-semibold text-base`}>
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-base truncate">{displayName}</p>
+                      {contact.isRegistered ? (
+                        <p className="text-xs text-emerald-500 font-medium">Sur SkillUp</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {contact.phoneNumbers[0] || ''}
+                        </p>
+                      )}
+                    </div>
+
+                    {contact.isRegistered ? (
+                      <Button
+                        onClick={() => handleStartConversation(contact.profile!.id)}
+                        className="shrink-0 h-12 px-5 rounded-2xl gap-2 font-bold text-sm bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white shadow-[0_4px_0_hsl(var(--background))] border border-emerald-700"
                       >
-                        <div className="flex items-center gap-3 overflow-hidden flex-1">
-                          <Avatar className="h-10 w-10 shrink-0">
-                             {contact.isRegistered && contact.profile?.avatar_url ? (
-                                <AvatarImage src={contact.profile.avatar_url} />
-                             ) : null}
-                            <AvatarFallback className={contact.isRegistered ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}>
-                              {(contact.isRegistered && contact.profile?.first_name 
-                                  ? contact.profile.first_name 
-                                  : (contact.name || '?')
-                              ).substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 pr-2">
-                            <p className="font-medium text-sm truncate">
-                              {contact.isRegistered 
-                                ? `${contact.profile?.first_name || ''} ${contact.profile?.last_name || ''}` 
-                                : (contact.name || 'Inconnu')}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                               {contact.isRegistered 
-                                 ? <span className="text-green-600 font-medium">Utilise SkillUp</span>
-                                 : (contact.phoneNumbers[0] || '')}
-                            </p>
-                          </div>
-                        </div>
-
-                        {contact.isRegistered ? (
-                             <Button 
-                                size="sm" 
-                                variant="default"
-                                className="h-8 px-3 ml-2 shrink-0 gap-1 bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => handleStartConversation(contact.profile.id)}
-                             >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                                <span className="hidden xs:inline">Discuter</span>
-                             </Button>
-                        ) : (
-                             <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="h-8 px-3 ml-2 shrink-0 gap-1 text-muted-foreground hover:text-primary hover:bg-primary/5"
-                                onClick={() => handleInvite(contact)}
-                             >
-                                <Share2 className="h-3.5 w-3.5" />
-                                <span className="hidden xs:inline">Inviter</span>
-                             </Button>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </>
+                        <MessageCircle className="h-4 w-4" strokeWidth={2.5} />
+                        Discuter
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleInvite(contact)}
+                        className="shrink-0 h-12 px-5 rounded-2xl gap-2 font-bold text-sm bg-gradient-to-b from-amber-300 to-amber-500 hover:from-amber-400 hover:to-amber-600 text-amber-950 shadow-[0_4px_0_hsl(var(--background))] border border-amber-600"
+                      >
+                        <Mail className="h-4 w-4" strokeWidth={2.5} />
+                        Inviter
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </DialogContent>
     </Dialog>
   );
 };
-
