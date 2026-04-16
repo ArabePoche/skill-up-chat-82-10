@@ -17,6 +17,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
 import { useFormationPricing } from '@/hooks/useFormationPricing';
+import { calculateRemainingDays } from '@/utils/paymentCalculations';
 
 interface PaymentRequestButtonProps {
   formationId: string;
@@ -223,12 +224,16 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       // 4. Mettre à jour student_payment_progress immédiatement
       const { data: existingProgress } = await supabase
         .from('student_payment_progress')
-        .select('total_days_remaining, hours_remaining')
+        .select('total_days_remaining, hours_remaining, last_payment_date')
         .eq('user_id', user.id)
         .eq('formation_id', formationId)
         .maybeSingle();
 
-      const currentDays = existingProgress?.total_days_remaining || 0;
+      // Calculer les jours réellement restants (en tenant compte de l'expiration)
+      const currentDays = calculateRemainingDays(
+        existingProgress?.total_days_remaining,
+        existingProgress ? (existingProgress as any).last_payment_date : null
+      );
       const currentHours = existingProgress?.hours_remaining || 0;
       let newHours = currentHours + hours;
       let newDays = currentDays + days;
