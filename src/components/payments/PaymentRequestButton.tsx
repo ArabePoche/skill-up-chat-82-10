@@ -5,6 +5,7 @@ import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -172,9 +173,14 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
         message?: string;
         days_added?: number;
         hours_added?: number;
+        diagnostics?: {
+          stage?: string;
+          details?: string;
+        };
       } | null;
 
       if (!result?.success) {
+        console.error('Paiement portefeuille refusé:', result);
         toast.error(result?.message || 'Erreur lors du paiement');
         return;
       }
@@ -248,6 +254,9 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
             <AlertDialogTitle className="text-xl font-semibold text-center">
               💳 Paiement de la formation
             </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-sm text-muted-foreground">
+              Choisissez votre méthode de paiement pour créditer immédiatement votre abonnement ou envoyer une demande manuelle.
+            </AlertDialogDescription>
           </AlertDialogHeader>
 
           <Tabs defaultValue="mobile_money" className="w-full">
