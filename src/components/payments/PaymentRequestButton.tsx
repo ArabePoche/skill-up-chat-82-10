@@ -17,6 +17,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
 import { useFormationPricing } from '@/hooks/useFormationPricing';
+import { calculateRemainingDays } from '@/utils/paymentCalculations';
 
 interface PaymentRequestButtonProps {
   formationId: string;
