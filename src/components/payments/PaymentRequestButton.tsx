@@ -122,9 +122,12 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
     }
   };
 
-  // Calcul des jours et heures à partir d'un montant en FCFA (1000 FCFA = 1 jour)
+  // Calcul des jours et heures : montant journalier = frais mensuels / 30
   const calculateDaysAndHours = (amountFCFA: number) => {
-    const totalDays = amountFCFA / 1000;
+    const monthlyFee = activePlan?.price_monthly || 0;
+    const dailyRate = monthlyFee > 0 ? monthlyFee / 30 : 0;
+    if (dailyRate <= 0) return { days: 0, hours: 0 };
+    const totalDays = amountFCFA / dailyRate;
     const wholeDays = Math.floor(totalDays);
     const fractionalDay = totalDays - wholeDays;
     const hours = Math.round(fractionalDay * 24);
