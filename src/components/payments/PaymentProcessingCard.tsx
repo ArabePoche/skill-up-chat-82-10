@@ -157,10 +157,7 @@ export const PaymentProcessingCard: React.FC<PaymentProcessingCardProps> = ({
             <Input
               type="number"
               value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                calculateDaysAndHours(e.target.value);
-              }}
+              onChange={(e) => setAmount(e.target.value)}
               placeholder="ex: 15000"
               required
             />
