@@ -2,8 +2,8 @@
  * Interface d'appel Agora en plein écran
  * Affiche les flux vidéo local/distant + contrôles (mute, caméra, raccrocher)
  */
-import React, { useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Loader2 } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Loader2, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAgoraCall } from '../hooks/useAgoraCall';
 
@@ -13,6 +13,7 @@ interface AgoraCallUIProps {
   callType: 'audio' | 'video';
   remoteUserName: string;
   onEndCall: () => void;
+  onRemoteEndCall?: () => void;
 }
 
 const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
@@ -21,16 +22,50 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
   callType,
   remoteUserName,
   onEndCall,
+  onRemoteEndCall,
 }) => {
+  const hasSeenRemoteParticipantRef = useRef(false);
   const {
     state,
     joinCall,
     leaveCall,
     toggleMute,
     toggleVideo,
+    switchCamera,
     localVideoContainerRef,
     remoteVideoContainerRef,
   } = useAgoraCall();
+
+  useEffect(() => {
+    hasSeenRemoteParticipantRef.current = false;
+  }, [callId]);
+
+  useEffect(() => {
+    if (state.remoteUsers.length > 0) {
+      hasSeenRemoteParticipantRef.current = true;
+    }
+  }, [state.remoteUsers.length]);
+
+  useEffect(() => {
+    if (!state.isJoined) {
+      return;
+    }
+
+    if (state.remoteUsers.length > 0) {
+      return;
+    }
+
+    if (!hasSeenRemoteParticipantRef.current) {
+      return;
+    }
+
+    const closeForRemoteHangup = async () => {
+      await leaveCall();
+      onRemoteEndCall?.();
+    };
+
+    void closeForRemoteHangup();
+  }, [leaveCall, onRemoteEndCall, state.isJoined, state.remoteUsers.length]);
 
   // Rejoindre automatiquement à l'ouverture
   useEffect(() => {
@@ -126,7 +161,9 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
             onClick={toggleMute}
             variant={state.isMuted ? 'destructive' : 'outline'}
             size="lg"
-            className="w-14 h-14 rounded-full border-white/20 text-white hover:text-white"
+            className={state.isMuted
+              ? 'w-14 h-14 rounded-full text-white hover:text-white'
+              : 'w-14 h-14 rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white'}
           >
             {state.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
           </Button>
@@ -136,9 +173,24 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
               onClick={toggleVideo}
               variant={!state.isVideoEnabled ? 'destructive' : 'outline'}
               size="lg"
-              className="w-14 h-14 rounded-full border-white/20 text-white hover:text-white"
+              className={!state.isVideoEnabled
+                ? 'w-14 h-14 rounded-full text-white hover:text-white'
+                : 'w-14 h-14 rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white'}
             >
               {state.isVideoEnabled ? <Video size={22} /> : <VideoOff size={22} />}
+            </Button>
+          )}
+
+          {callType === 'video' && state.isVideoEnabled && (
+            <Button
+              onClick={() => {
+                void switchCamera();
+              }}
+              variant="outline"
+              size="lg"
+              className="w-14 h-14 rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            >
+              <RefreshCcw size={22} />
             </Button>
           )}
 

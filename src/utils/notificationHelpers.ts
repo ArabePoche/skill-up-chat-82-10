@@ -9,6 +9,7 @@ export type NotificationType =
   | 'new_lesson'
   | 'new_video'
   | 'live_started'
+  | 'incoming_call'
   | 'test'
   | 'private_chat'
   | 'gift_received'

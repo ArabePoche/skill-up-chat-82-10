@@ -3,10 +3,15 @@ package com.educatok.islahmedia;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Intent;
 import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.WindowManager;
+
+import androidx.annotation.Nullable;
+
 import com.getcapacitor.BridgeActivity;
 import com.google.firebase.FirebaseApp;
 
@@ -16,6 +21,14 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         FirebaseApp.initializeApp(this);
         createNotificationChannels();
+        updateIncomingCallWindowFlags(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        updateIncomingCallWindowFlags(intent);
     }
 
     /**
@@ -55,6 +68,27 @@ public class MainActivity extends BridgeActivity {
                     NotificationManager.IMPORTANCE_DEFAULT);
             defaultChannel.setDescription("Notifications générales de l'application");
             manager.createNotificationChannel(defaultChannel);
+        }
+    }
+
+    private void updateIncomingCallWindowFlags(@Nullable Intent intent) {
+        boolean showIncomingCall = intent != null && intent.getBooleanExtra("showIncomingCall", false);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(showIncomingCall);
+            setTurnScreenOn(showIncomingCall);
+        }
+
+        if (showIncomingCall) {
+            getWindow().addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                            | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                            | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                            | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                            | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
     }
 }

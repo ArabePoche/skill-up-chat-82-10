@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FileText } from 'lucide-react';
 import { usePosts } from '@/posts/hooks/usePosts';
 import PostCard from '@/posts/components/PostCard';
@@ -8,7 +8,27 @@ interface PostsTabProps {
 }
 
 const PostsTab: React.FC<PostsTabProps> = ({ userId }) => {
-  const { data: posts, isLoading } = usePosts('all', userId);
+  const { data: posts, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = usePosts('all', userId);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        });
+      },
+      { rootMargin: '300px 0px' }
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, posts.length]);
 
   if (isLoading) {
     return (
@@ -37,6 +57,12 @@ const PostsTab: React.FC<PostsTabProps> = ({ userId }) => {
       {posts.map((post: any) => (
         <PostCard key={post.id} post={post} />
       ))}
+      <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
+      {isFetchingNextPage && (
+        <div className="text-center py-4 text-sm text-muted-foreground">
+          Chargement des posts...
+        </div>
+      )}
     </div>
   );
 };

@@ -15,12 +15,16 @@ interface PrivateCallSession {
   receiver_id: string | null;
   call_type: string;
   conversation_id: string | null;
+  created_at: string | null;
   status: string;
 }
 
 export interface PendingPrivateCall {
   id: string;
   callType: PrivateCallType;
+  callerId: string;
+  receiverId: string | null;
+  createdAt: string | null;
 }
 
 export interface ActivePrivateCall {
@@ -33,6 +37,8 @@ export interface ActivePrivateCall {
 const getCallLabel = (callType: PrivateCallType) => {
   return callType === 'video' ? 'vidéo' : 'audio';
 };
+
+const PENDING_CALL_TIMEOUT_MS = 30_000;
 
 const normalizeCallType = (callType: string): PrivateCallType => {
   return callType === 'video' ? 'video' : 'audio';
@@ -59,6 +65,8 @@ export const usePrivateConversationCall = ({
   const [activeCall, setActiveCall] = useState<ActivePrivateCall | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const activeSessionRef = useRef<string | null>(null);
+  const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timedOutSessionIdsRef = useRef<Set<string>>(new Set());
 
   const conversationId = useMemo(() => {
     if (!user?.id || !otherUserId) return null;
@@ -79,6 +87,10 @@ export const usePrivateConversationCall = ({
     setOutgoingCall(null);
     setActiveCall(null);
     activeSessionRef.current = null;
+    if (pendingTimeoutRef.current) {
+      clearTimeout(pendingTimeoutRef.current);
+      pendingTimeoutRef.current = null;
+    }
   }, []);
 
   const insertCallLog = useCallback(async (
@@ -129,11 +141,17 @@ export const usePrivateConversationCall = ({
         setOutgoingCall({
           id: session.id,
           callType: normalizeCallType(session.call_type),
+          callerId: session.caller_id,
+          receiverId: session.receiver_id,
+          createdAt: session.created_at,
         });
       } else if (session.receiver_id === user.id) {
         setIncomingCall({
           id: session.id,
           callType: normalizeCallType(session.call_type),
+          callerId: session.caller_id,
+          receiverId: session.receiver_id,
+          createdAt: session.created_at,
         });
       }
       return;
@@ -161,6 +179,14 @@ export const usePrivateConversationCall = ({
 
     if (session.status === 'ended') {
       clearPendingState(session.id);
+      if (timedOutSessionIdsRef.current.has(session.id)) {
+        timedOutSessionIdsRef.current.delete(session.id);
+        if (activeSessionRef.current === session.id) {
+          setActiveCall(null);
+          activeSessionRef.current = null;
+        }
+        return;
+      }
       if (event === 'UPDATE' && session.caller_id !== user.id && activeSessionRef.current !== session.id) {
         toast.info('L\'appel a ete annule');
       }
@@ -180,7 +206,7 @@ export const usePrivateConversationCall = ({
     try {
       const { data, error } = await supabase
         .from('call_sessions')
-        .select('id, caller_id, receiver_id, call_type, conversation_id, status')
+        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, status')
         .eq('conversation_id', conversationId)
         .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false })
@@ -253,6 +279,84 @@ export const usePrivateConversationCall = ({
     clearAllState();
   }, [clearAllState, isOnline]);
 
+  const expirePendingCall = useCallback(async (pendingCall: PendingPrivateCall) => {
+    const receiverId = pendingCall.receiverId;
+    if (!receiverId) {
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('call_sessions')
+        .update({
+          status: 'ended',
+          ended_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', pendingCall.id)
+        .eq('status', 'pending')
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        return;
+      }
+
+      timedOutSessionIdsRef.current.add(pendingCall.id);
+
+      const isCaller = pendingCall.callerId === user?.id;
+      await insertCallLog(
+        isCaller
+          ? `Appel ${getCallLabel(pendingCall.callType)} sans réponse`
+          : `Appel ${getCallLabel(pendingCall.callType)} manqué`,
+        pendingCall.callerId,
+        receiverId,
+      );
+
+      if (isCaller) {
+        toast.info(`${otherUserName} n'a pas répondu`);
+      }
+
+      clearPendingState(pendingCall.id);
+    } catch (error) {
+      console.error('Error expiring pending private call:', error);
+    }
+  }, [clearPendingState, insertCallLog, otherUserName, user?.id]);
+
+  useEffect(() => {
+    if (pendingTimeoutRef.current) {
+      clearTimeout(pendingTimeoutRef.current);
+      pendingTimeoutRef.current = null;
+    }
+
+    if (!isOnline) {
+      return;
+    }
+
+    const pendingCall = outgoingCall ?? incomingCall;
+    if (!pendingCall) {
+      return;
+    }
+
+    const createdAtMs = pendingCall.createdAt ? new Date(pendingCall.createdAt).getTime() : Date.now();
+    const remainingMs = Math.max(PENDING_CALL_TIMEOUT_MS - (Date.now() - createdAtMs), 0);
+
+    pendingTimeoutRef.current = setTimeout(() => {
+      void expirePendingCall(pendingCall);
+    }, remainingMs);
+
+    return () => {
+      if (pendingTimeoutRef.current) {
+        clearTimeout(pendingTimeoutRef.current);
+        pendingTimeoutRef.current = null;
+      }
+    };
+  }, [expirePendingCall, incomingCall, isOnline, outgoingCall]);
+
   const startCall = useCallback(async (type: PrivateCallType) => {
     if (!user?.id || !otherUserId || !conversationId) {
       toast.error('Conversation invalide pour lancer un appel');
@@ -282,7 +386,7 @@ export const usePrivateConversationCall = ({
           call_type: normalizedType,
           status: 'pending',
         })
-        .select('id, caller_id, receiver_id, call_type, conversation_id, status')
+        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, status')
         .single();
 
       if (error) throw error;
@@ -290,6 +394,9 @@ export const usePrivateConversationCall = ({
       setOutgoingCall({
         id: data.id,
         callType: normalizeCallType(data.call_type),
+        callerId: data.caller_id,
+        receiverId: data.receiver_id,
+        createdAt: data.created_at,
       });
 
       await insertCallLog(
@@ -305,7 +412,7 @@ export const usePrivateConversationCall = ({
         userIds: [otherUserId],
         title: user.user_metadata?.first_name || user.email?.split('@')[0] || 'Nouvel appel',
         message: `Appel ${type === 'video' ? 'video' : 'audio'} entrant`,
-        type: 'private_chat',
+        type: 'incoming_call',
         clickAction: `/conversations/${user.id}`,
         data: {
           senderId: user.id,
@@ -341,7 +448,7 @@ export const usePrivateConversationCall = ({
           updated_at: new Date().toISOString(),
         })
         .eq('id', incomingCall.id)
-        .select('id, caller_id, receiver_id, call_type, conversation_id, status')
+        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, status')
         .single();
 
       if (error) throw error;
@@ -359,7 +466,7 @@ export const usePrivateConversationCall = ({
       toast.error('Impossible d\'accepter l\'appel');
       return false;
     }
-  }, [incomingCall, openAcceptedCall, user?.id]);
+  }, [incomingCall, insertCallLog, openAcceptedCall, user?.id]);
 
   const rejectCall = useCallback(async () => {
     if (!incomingCall || !user?.id) {
@@ -393,7 +500,7 @@ export const usePrivateConversationCall = ({
       toast.error('Impossible de refuser l\'appel');
       return false;
     }
-  }, [incomingCall, user?.id]);
+  }, [incomingCall, insertCallLog, otherUserId, user?.id]);
 
   const cancelOutgoingCall = useCallback(async () => {
     if (!outgoingCall || !user?.id || !otherUserId) {
@@ -462,8 +569,18 @@ export const usePrivateConversationCall = ({
     }
   }, [activeCall, clearPendingState, insertCallLog, otherUserId, user?.id]);
 
+  const closeActiveCallLocally = useCallback(() => {
+    const sessionId = activeSessionRef.current;
+    setActiveCall(null);
+    activeSessionRef.current = null;
+    if (sessionId) {
+      clearPendingState(sessionId);
+    }
+  }, [clearPendingState]);
+
   return {
     activeCall,
+    closeActiveCallLocally,
     conversationId,
     incomingCall,
     isBusy: !!incomingCall || !!outgoingCall || !!activeCall,

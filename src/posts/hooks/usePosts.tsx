@@ -1,7 +1,16 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+const USER_POSTS_PAGE_SIZE = 10;
+const FRIEND_POSTS_PAGE_SIZE = 8;
+const OTHER_POSTS_PAGE_SIZE = 2;
+
+interface PostsPage {
+  posts: Post[];
+  nextPage?: number;
+}
 
 interface PostMedia {
   id: string;
@@ -31,21 +40,83 @@ interface Post {
   };
 }
 
+const enrichPosts = async (posts: any[]): Promise<Post[]> => {
+  if (posts.length === 0) {
+    return [];
+  }
+
+  const authorIds = [...new Set(posts.map((post) => post.author_id))];
+  const postIds = posts.map((post) => post.id);
+
+  const [{ data: profiles, error: profilesError }, { data: media, error: mediaError }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, first_name, last_name, username, avatar_url, is_verified')
+      .in('id', authorIds),
+    supabase
+      .from('post_media')
+      .select('id, post_id, file_url, file_type, order_index, created_at')
+      .in('post_id', postIds)
+      .order('order_index', { ascending: true })
+  ]);
+
+  if (profilesError) {
+    console.error('Error fetching profiles:', profilesError);
+  }
+
+  if (mediaError) {
+    console.error('Error fetching post media:', mediaError);
+  }
+
+  const mediaByPost = (media || []).reduce((acc: Record<string, PostMedia[]>, item) => {
+    (acc[item.post_id] ||= []).push(item as PostMedia);
+    return acc;
+  }, {} as Record<string, PostMedia[]>);
+
+  return posts.map((post) => {
+    const profile = profiles?.find((item) => item.id === post.author_id);
+
+    return {
+      ...post,
+      profiles: profile ? {
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        username: profile.username || '',
+        avatar_url: profile.avatar_url || '',
+        // @ts-ignore - is_verified est présent en base mais pas typé partout
+        is_verified: (profile as any)?.is_verified ?? false
+      } : {
+        first_name: 'Utilisateur',
+        last_name: '',
+        username: 'user',
+        avatar_url: '',
+        is_verified: false
+      },
+      media: mediaByPost[post.id] || []
+    };
+  });
+};
+
 export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'formation' | 'religion' = 'all', userId?: string) => {
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['posts', filter, userId],
     placeholderData: (previousData) => previousData,
-    queryFn: async () => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }): Promise<PostsPage> => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      // Si on affiche les posts d'un utilisateur spécifique, on garde l'ancienne logique
+      // Si on affiche les posts d'un utilisateur spécifique, on charge par pages.
       if (userId) {
+        const from = pageParam * USER_POSTS_PAGE_SIZE;
+        const to = from + USER_POSTS_PAGE_SIZE - 1;
+
         let query = supabase
           .from('posts')
           .select('*')
           .eq('is_active', true)
           .eq('author_id', userId)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(from, to);
 
         if (filter !== 'all') {
           query = query.eq('post_type', filter);
@@ -55,52 +126,15 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
 
         if (postsError) {
           console.error('Error fetching posts:', postsError);
-          return [];
+          return { posts: [] };
         }
 
-        const authorIds = [...new Set(posts.map(post => post.author_id))];
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, username, avatar_url, is_verified')
-          .in('id', authorIds);
+        const enrichedPosts = await enrichPosts(posts || []);
 
-        const postsWithProfiles = posts.map(post => {
-          const profile = profiles?.find(p => p.id === post.author_id);
-          return {
-            ...post,
-            profiles: profile ? {
-              first_name: profile.first_name || '',
-              last_name: profile.last_name || '',
-              username: profile.username || '',
-              avatar_url: profile.avatar_url || '',
-              // @ts-ignore - is_verified est présent en base mais pas typé partout
-              is_verified: (profile as any)?.is_verified ?? false
-            } : {
-              first_name: 'Utilisateur',
-              last_name: '',
-              username: 'user',
-              avatar_url: '',
-              is_verified: false
-            }
-          };
-        });
-
-        const postIds = posts.map(p => p.id);
-        const { data: media } = await supabase
-          .from('post_media')
-          .select('id, post_id, file_url, file_type, order_index, created_at')
-          .in('post_id', postIds)
-          .order('order_index', { ascending: true });
-
-        const mediaByPost = (media || []).reduce((acc: Record<string, PostMedia[]>, m) => {
-          (acc[m.post_id] ||= []).push(m as PostMedia);
-          return acc;
-        }, {} as Record<string, PostMedia[]>);
-
-        return postsWithProfiles.map((p: any) => ({
-          ...p,
-          media: mediaByPost[p.id] || []
-        }));
+        return {
+          posts: enrichedPosts,
+          nextPage: posts && posts.length === USER_POSTS_PAGE_SIZE ? pageParam + 1 : undefined
+        };
       }
 
       // Récupérer les IDs des amis/suivis (demandes acceptées)
@@ -119,14 +153,17 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
         }
       }
 
-      // Récupérer les posts des amis (limite à 100 posts récents)
+      const friendsFrom = pageParam * FRIEND_POSTS_PAGE_SIZE;
+      const friendsTo = friendsFrom + FRIEND_POSTS_PAGE_SIZE - 1;
+
+      // Récupérer les posts des amis par page
       let friendsPostsQuery = supabase
         .from('posts')
         .select('*')
         .eq('is_active', true)
         .in('author_id', friendIds.length > 0 ? friendIds : ['00000000-0000-0000-0000-000000000000'])
         .order('created_at', { ascending: false })
-        .limit(100);
+        .range(friendsFrom, friendsTo);
 
       if (filter !== 'all') {
         friendsPostsQuery = friendsPostsQuery.eq('post_type', filter);
@@ -134,14 +171,17 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
 
       const { data: friendsPosts = [] } = await friendsPostsQuery;
 
-      // Récupérer les autres posts (limite à 30 posts récents)
+      const othersFrom = pageParam * OTHER_POSTS_PAGE_SIZE;
+      const othersTo = othersFrom + OTHER_POSTS_PAGE_SIZE - 1;
+
+      // Récupérer les autres posts par page
       let otherPostsQuery = supabase
         .from('posts')
         .select('*')
         .eq('is_active', true)
         .not('author_id', 'in', `(${friendIds.length > 0 ? friendIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
         .order('created_at', { ascending: false })
-        .limit(30);
+        .range(othersFrom, othersTo);
 
       if (filter !== 'all') {
         otherPostsQuery = otherPostsQuery.eq('post_type', filter);
@@ -168,75 +208,20 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
 
       const posts = mixedPosts;
 
-      // Récupération des profils séparément
-      const authorIds = [...new Set(posts.map(post => post.author_id))];
-      
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, username, avatar_url, is_verified')
-        .in('id', authorIds);
+      const enrichedPosts = await enrichPosts(posts);
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-        return posts.map(post => ({
-          ...post,
-          profiles: {
-            first_name: 'Utilisateur',
-            last_name: '',
-            username: 'user',
-            avatar_url: ''
-          }
-        }));
-      }
-
-// Combiner les données (profils)
-const postsWithProfiles = posts.map(post => {
-  const profile = profiles?.find(p => p.id === post.author_id);
-  return {
-    ...post,
-    profiles: profile ? {
-      first_name: profile.first_name || '',
-      last_name: profile.last_name || '',
-      username: profile.username || '',
-      avatar_url: profile.avatar_url || '',
-      // @ts-ignore
-      is_verified: (profile as any)?.is_verified ?? false
-    } : {
-      first_name: 'Utilisateur',
-      last_name: '',
-      username: 'user',
-      avatar_url: '',
-      is_verified: false
-    }
-  };
-});
-
-// Charger les médias associés aux posts
-const postIds = posts.map(p => p.id);
-const { data: media, error: mediaError } = await supabase
-  .from('post_media')
-  .select('id, post_id, file_url, file_type, order_index, created_at')
-  .in('post_id', postIds)
-  .order('order_index', { ascending: true });
-
-if (mediaError) {
-  console.error('Error fetching post media:', mediaError);
-}
-
-const mediaByPost = (media || []).reduce((acc: Record<string, PostMedia[]>, m) => {
-  (acc[m.post_id] ||= []).push(m as PostMedia);
-  return acc;
-}, {} as Record<string, PostMedia[]>);
-
-const postsWithProfilesAndMedia = postsWithProfiles.map((p: any) => ({
-  ...p,
-  media: mediaByPost[p.id] || []
-}));
-
-
-return postsWithProfilesAndMedia;
+      return {
+        posts: enrichedPosts,
+        nextPage: posts.length === FRIEND_POSTS_PAGE_SIZE + OTHER_POSTS_PAGE_SIZE ? pageParam + 1 : undefined
+      };
     },
+    getNextPageParam: (lastPage) => lastPage.nextPage,
   });
+
+  return {
+    ...query,
+    data: query.data?.pages.flatMap((page) => page.posts) ?? []
+  };
 };
 
 import { recordHabbahGain } from '@/services/habbahService';

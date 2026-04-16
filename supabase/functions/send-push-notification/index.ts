@@ -10,8 +10,28 @@ interface NotificationPayload {
   title: string;
   message: string;
   type?: string;
-  data?: Record<string, string>;
+  data?: Record<string, unknown>;
 }
+
+const serializeDataPayload = (data: Record<string, unknown>) => {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => {
+      if (value === null || value === undefined) {
+        return [key, ''];
+      }
+
+      if (typeof value === 'string') {
+        return [key, value];
+      }
+
+      if (typeof value === 'number' || typeof value === 'boolean') {
+        return [key, String(value)];
+      }
+
+      return [key, JSON.stringify(value)];
+    })
+  );
+};
 
 // Fonction pour créer un JWT pour l'authentification Google OAuth2
 async function createJWT(clientEmail: string, privateKey: string): Promise<string> {
@@ -116,7 +136,7 @@ Deno.serve(async (req) => {
     // Récupérer les tokens actifs pour les utilisateurs ciblés
     const { data: tokens, error: tokensError } = await supabase
       .from('push_tokens')
-      .select('token, user_id')
+      .select('token, user_id, device_type')
       .in('user_id', payload.userIds)
       .eq('is_active', true);
 
@@ -147,26 +167,39 @@ Deno.serve(async (req) => {
 
     for (const tokenData of tokens) {
       try {
+        const isAndroidCallNotification = isCallNotification && tokenData.device_type === 'android';
+        const dataPayload = serializeDataPayload({
+          ...(payload.data || {}),
+          title: payload.title,
+          message: payload.message,
+          click_action: (payload.data as Record<string, unknown> | undefined)?.clickAction || '/',
+          type: isCallNotification ? 'incoming_call' : payload.type || '',
+        });
+
         const fcmMessage: Record<string, any> = {
           token: tokenData.token,
-          notification: {
-            title: payload.title,
-            body: payload.message,
-            ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
-          },
+          ...(isAndroidCallNotification ? {} : {
+            notification: {
+              title: payload.title,
+              body: payload.message,
+              ...((payload.data as Record<string, unknown> | undefined)?.imageUrl ? { image: (payload.data as Record<string, unknown>).imageUrl } : {}),
+            },
+          }),
           android: {
             // Priorité haute pour les appels — réveille le téléphone
             priority: isCallNotification ? 'HIGH' : 'NORMAL',
-            notification: {
-              icon: 'ic_notification',
-              ...(isCallNotification ? {
-                channel_id: 'incoming_calls',
-                sound: 'ringtone_call',
-                visibility: 'PUBLIC',
-                notification_priority: 'PRIORITY_MAX',
-              } : {}),
-              ...(payload.data?.imageUrl ? { image: payload.data.imageUrl } : {}),
-            },
+            ...(isAndroidCallNotification ? {} : {
+              notification: {
+                icon: 'ic_notification',
+                ...(isCallNotification ? {
+                  channel_id: 'incoming_calls',
+                  sound: 'ringtone_call',
+                  visibility: 'PUBLIC',
+                  notification_priority: 'PRIORITY_MAX',
+                } : {}),
+                ...((payload.data as Record<string, unknown> | undefined)?.imageUrl ? { image: (payload.data as Record<string, unknown>).imageUrl } : {}),
+              },
+            }),
           },
           webpush: {
             headers: {
@@ -184,9 +217,7 @@ Deno.serve(async (req) => {
             },
           },
           data: {
-            ...(payload.data || {}),
-            click_action: payload.data?.clickAction || '/',
-            ...(isCallNotification ? { type: 'incoming_call' } : {}),
+            ...dataPayload,
           },
         };
 

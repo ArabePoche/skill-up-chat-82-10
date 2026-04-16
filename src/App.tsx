@@ -54,6 +54,7 @@ import { VisitorTrackerWrapper } from '@/components/VisitorTrackerWrapper';
 import { OfflineGate, ConversationSyncProvider } from '@/offline';
 import { OfflineAuthBanner } from '@/offline/components/OfflineAuthBanner';
 import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt';
+import PrivateIncomingCallProvider from '@/conversations/components/PrivateIncomingCallProvider';
 
 
 // Cache-first : affichage instantané depuis IndexedDB, revalidation en arrière-plan
@@ -104,6 +105,7 @@ const AppWithRouter: React.FC = () => {
       <VisitorTrackerWrapper />
       <OfflineAuthBanner />
       <PushNotificationPrompt />
+      <PrivateIncomingCallProvider />
       <Routes>
         {/* Routes spéciales qui gardent le système de routage classique */}
         <Route path="/formation/:formationId" element={<FormationDetail />} />

@@ -17,24 +17,44 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
   const [editingPost, setEditingPost] = useState<any>(null);
   const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
   const { user, profile } = useAuth();
-  const { data: rawPosts, isLoading } = usePosts(activeFilter);
+  const { data: rawPosts, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = usePosts(activeFilter);
   const postRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const previousFilterRef = useRef(activeFilter);
+  const [posts, setPosts] = useState<any[]>([]);
 
-  // Randomize posts order when data changes
-  const posts = React.useMemo(() => {
-    if (!rawPosts) return [];
-    
-    // Create a copy to sort/shuffle
-    const shuffled = [...rawPosts];
-    
-    // Fisher-Yates shuffle algorithm
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  useEffect(() => {
+    const shufflePosts = (items: any[]) => {
+      const shuffled = [...items];
+
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      return shuffled;
+    };
+
+    if (previousFilterRef.current !== activeFilter) {
+      previousFilterRef.current = activeFilter;
+      setPosts(shufflePosts(rawPosts || []));
+      return;
     }
-    
-    return shuffled;
-  }, [rawPosts]);
+
+    setPosts((previousPosts) => {
+      const nextPosts = rawPosts || [];
+      const previousIds = new Set(previousPosts.map((post) => post.id));
+      const nextPostById = new Map(nextPosts.map((post) => [post.id, post]));
+
+      const keptPosts = previousPosts
+        .filter((post) => nextPostById.has(post.id))
+        .map((post) => nextPostById.get(post.id) || post);
+
+      const newPosts = shufflePosts(nextPosts.filter((post) => !previousIds.has(post.id)));
+
+      return [...keptPosts, ...newPosts];
+    });
+  }, [rawPosts, activeFilter]);
 
   const handleEditPost = (post: any) => {
     setEditingPost(post);
@@ -70,6 +90,25 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
 
     return () => observer.disconnect();
   }, [posts]);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        });
+      },
+      { rootMargin: '300px 0px' }
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, posts.length]);
 
   // Effacer l'ID de la route quand on scrolle vers un autre post
   useEffect(() => {
@@ -192,15 +231,23 @@ const PostsSection: React.FC<{ targetPostId?: string }> = ({ targetPostId }) => 
       {/* Liste des posts */}
       <div className="space-y-4">
         {posts && posts.length > 0 ? (
-          posts.map((post: any, index: number) => (
-            <div 
-              key={post.id} 
-              ref={(el) => (postRefs.current[index] = el)}
-              data-post-id={post.id}
-            >
-              <PostCard post={post} onEdit={handleEditPost} />
-            </div>
-          ))
+          <>
+            {posts.map((post: any, index: number) => (
+              <div 
+                key={post.id} 
+                ref={(el) => (postRefs.current[index] = el)}
+                data-post-id={post.id}
+              >
+                <PostCard post={post} onEdit={handleEditPost} />
+              </div>
+            ))}
+            <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
+            {isFetchingNextPage && (
+              <div className="text-center py-4 text-sm text-gray-500">
+                {t('posts.loading')}
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <div className="text-gray-500 mb-4">

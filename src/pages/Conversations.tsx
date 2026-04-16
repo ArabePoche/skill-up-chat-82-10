@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +18,7 @@ import CallButton from '@/call-system/components/CallButton';
 import AgoraCallUI from '@/call-system/components/AgoraCallUI';
 import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
 import { usePrivateConversationCall } from '@/hooks/conversations/usePrivateConversationCall';
+import { parseCallLogContent } from '@/utils/conversationCallLog';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
@@ -235,12 +236,33 @@ const Conversations = () => {
   // Fusionner les messages online et offline
   const messages = isOnline ? onlineMessages : offlineMessages;
 
+  const missedCallNotice = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      const callLogLabel = parseCallLogContent(message?.content);
+
+      if (!callLogLabel) {
+        return null;
+      }
+
+      const normalizedLabel = callLogLabel.toLowerCase();
+      if (normalizedLabel.includes('manqué') || normalizedLabel.includes('sans réponse')) {
+        return callLogLabel;
+      }
+
+      return null;
+    }
+
+    return null;
+  }, [messages]);
+
   const otherUserName = otherUserProfile 
     ? `${otherUserProfile.first_name || ''} ${otherUserProfile.last_name || ''}`.trim() || otherUserProfile.username || 'Utilisateur'
     : 'Utilisateur';
 
   const {
     activeCall,
+    closeActiveCallLocally,
     incomingCall,
     isBusy: isCallBusy,
     outgoingCall,
@@ -422,6 +444,10 @@ const Conversations = () => {
               <p className="text-xs text-white/80 italic animate-pulse">
                 appel {outgoingCall.callType === 'video' ? 'video' : 'audio'} en attente...
               </p>
+            ) : missedCallNotice ? (
+              <p className="text-xs text-red-100 italic">
+                {missedCallNotice}
+              </p>
             ) : isOtherTyping ? (
               <p className="text-xs text-white/80 italic animate-pulse">
                 {otherActivityType === 'recording' ? 'est en train d\'enregistrer un vocal...' : 'est en train d\'écrire...'}
@@ -541,11 +567,13 @@ const Conversations = () => {
 
       {activeCall && (
         <AgoraCallUI
+          key={activeCall.id}
           callId={activeCall.id}
           channelName={activeCall.channelName}
           callType={activeCall.callType}
           remoteUserName={activeCall.remoteUserName}
           onEndCall={endCall}
+          onRemoteEndCall={closeActiveCallLocally}
         />
       )}
     </div>
