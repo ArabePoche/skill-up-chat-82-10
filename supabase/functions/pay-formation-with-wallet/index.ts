@@ -14,6 +14,29 @@ const corsHeaders = {
 
 type WalletCurrency = "soumboulah_cash" | "soumboulah_bonus";
 
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  payment_id?: string | null;
+  days_added?: number;
+  hours_added?: number;
+  remaining_days?: number;
+  remaining_hours?: number;
+  diagnostics?: {
+    stage?: string;
+    details?: string;
+  };
+}
+
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+const respond = (payload: ApiResponse) => {
+  return new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: jsonHeaders,
+  });
+};
+
 const calculateRemainingDays = (
   totalDaysRemaining: number | null | undefined,
   lastPaymentDate: string | null | undefined,
@@ -65,18 +88,20 @@ serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
     if (!supabaseUrl || !serviceKey || !anonKey) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Configuration Supabase incomplète" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Configuration Supabase incomplète",
+        diagnostics: { stage: "config" },
+      });
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Non authentifié" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Non authentifié",
+        diagnostics: { stage: "auth_header" },
+      });
     }
 
     const userClient = createClient(supabaseUrl, anonKey, {
@@ -87,10 +112,11 @@ serve(async (req) => {
     const user = authData.user;
 
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Non authentifié" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Non authentifié",
+        diagnostics: { stage: "auth_user", details: authError?.message },
+      });
     }
 
     const body = await req.json();
@@ -99,24 +125,27 @@ serve(async (req) => {
     const amount = Number(body?.amount || 0);
 
     if (!formationId) {
-      return new Response(
-        JSON.stringify({ success: false, message: "formationId requis" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "formationId requis",
+        diagnostics: { stage: "validation" },
+      });
     }
 
     if (!["soumboulah_cash", "soumboulah_bonus"].includes(currency)) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Devise non prise en charge" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Devise non prise en charge",
+        diagnostics: { stage: "validation", details: String(currency) },
+      });
     }
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Montant invalide" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Montant invalide",
+        diagnostics: { stage: "validation", details: String(amount) },
+      });
     }
 
     const admin = createClient(supabaseUrl, serviceKey);
@@ -130,18 +159,20 @@ serve(async (req) => {
       .maybeSingle();
 
     if (formationError || !formation) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Formation introuvable" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Formation introuvable",
+        diagnostics: { stage: "formation_lookup", details: formationError?.message },
+      });
     }
 
     const acceptedMethods = formation.accepted_payment_methods || [];
     if (!acceptedMethods.includes(currency)) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Cette devise n'est pas acceptée pour cette formation" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Cette devise n'est pas acceptée pour cette formation",
+        diagnostics: { stage: "accepted_methods", details: JSON.stringify(acceptedMethods) },
+      });
     }
 
     let { data: wallet, error: walletError } = await admin
@@ -151,10 +182,11 @@ serve(async (req) => {
       .maybeSingle();
 
     if (walletError) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Impossible de charger le portefeuille" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Impossible de charger le portefeuille",
+        diagnostics: { stage: "wallet_lookup", details: walletError.message },
+      });
     }
 
     if (!wallet) {
@@ -165,10 +197,11 @@ serve(async (req) => {
         .single();
 
       if (createWalletError || !createdWallet) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Impossible de créer le portefeuille" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return respond({
+          success: false,
+          message: "Impossible de créer le portefeuille",
+          diagnostics: { stage: "wallet_create", details: createWalletError?.message },
+        });
       }
 
       wallet = createdWallet;
@@ -181,10 +214,11 @@ serve(async (req) => {
     );
 
     if (amount > currentBalance) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Solde insuffisant" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Solde insuffisant",
+        diagnostics: { stage: "wallet_balance", details: `${currentBalance}` },
+      });
     }
 
     const [{ data: subscription }, { data: pricingOptions, error: pricingError }, { data: conversion, error: conversionError }] = await Promise.all([
@@ -207,17 +241,19 @@ serve(async (req) => {
     ]);
 
     if (pricingError || !pricingOptions?.length) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Tarification indisponible" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Tarification indisponible",
+        diagnostics: { stage: "pricing", details: pricingError?.message },
+      });
     }
 
     if (conversionError) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Taux de conversion indisponible" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Taux de conversion indisponible",
+        diagnostics: { stage: "conversion", details: conversionError.message },
+      });
     }
 
     const planType = subscription?.plan_type || pricingOptions[0]?.plan_type;
@@ -226,27 +262,30 @@ serve(async (req) => {
     const scToFcfaRate = Number(conversion?.sc_to_fcfa_rate || 0);
 
     if (monthlyFee <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Tarif mensuel invalide" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Tarif mensuel invalide",
+        diagnostics: { stage: "monthly_fee", details: String(monthlyFee) },
+      });
     }
 
     if (scToFcfaRate <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Taux de conversion non configuré" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Taux de conversion non configuré",
+        diagnostics: { stage: "conversion_rate", details: String(scToFcfaRate) },
+      });
     }
 
     const amountFcfa = amount * scToFcfaRate;
     const { days, hours } = calculateDaysAndHours(amountFcfa, monthlyFee);
 
     if (days <= 0 && hours <= 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Montant insuffisant pour créditer du temps" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Montant insuffisant pour créditer du temps",
+        diagnostics: { stage: "credit_time", details: JSON.stringify({ amountFcfa, monthlyFee }) },
+      });
     }
 
     const { data: existingProgress, error: progressReadError } = await admin
@@ -257,10 +296,11 @@ serve(async (req) => {
       .maybeSingle();
 
     if (progressReadError) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Impossible de charger la progression de paiement" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Impossible de charger la progression de paiement",
+        diagnostics: { stage: "progress_lookup", details: progressReadError.message },
+      });
     }
 
     const currentDays = calculateRemainingDays(
@@ -284,10 +324,11 @@ serve(async (req) => {
       .eq("user_id", user.id);
 
     if (walletUpdateError) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Erreur lors du débit du portefeuille" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Erreur lors du débit du portefeuille",
+        diagnostics: { stage: "wallet_debit", details: walletUpdateError.message },
+      });
     }
 
     let walletTransactionId: string | null = null;
@@ -325,10 +366,11 @@ serve(async (req) => {
 
       if (walletTransactionError || !walletTransaction) {
         await rollbackWallet();
-        return new Response(
-          JSON.stringify({ success: false, message: "Erreur lors de l'enregistrement de la transaction" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return respond({
+          success: false,
+          message: "Erreur lors de l'enregistrement de la transaction",
+          diagnostics: { stage: "wallet_transaction", details: walletTransactionError?.message },
+        });
       }
 
       walletTransactionId = walletTransaction.id;
@@ -358,10 +400,11 @@ serve(async (req) => {
           await admin.from("wallet_transactions").delete().eq("id", walletTransactionId);
         }
 
-        return new Response(
-          JSON.stringify({ success: false, message: "Erreur lors de la création du paiement" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return respond({
+          success: false,
+          message: "Erreur lors de la création du paiement",
+          diagnostics: { stage: "student_payment_insert", details: paymentError?.message },
+        });
       }
 
       paymentId = payment.id;
@@ -386,24 +429,22 @@ serve(async (req) => {
           await admin.from("wallet_transactions").delete().eq("id", walletTransactionId);
         }
 
-        return new Response(
-          JSON.stringify({ success: false, message: "Erreur lors de la mise à jour des jours restants" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return respond({
+          success: false,
+          message: "Erreur lors de la mise à jour des jours restants",
+          diagnostics: { stage: "progress_upsert", details: progressUpdateError.message },
+        });
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Paiement effectué",
-          payment_id: paymentId,
-          days_added: days,
-          hours_added: hours,
-          remaining_days: newTotalDays,
-          remaining_hours: remainingHours,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: true,
+        message: "Paiement effectué",
+        payment_id: paymentId,
+        days_added: days,
+        hours_added: hours,
+        remaining_days: newTotalDays,
+        remaining_hours: remainingHours,
+      });
     } catch (error) {
       console.error("pay-formation-with-wallet unexpected error:", error);
 
@@ -415,16 +456,24 @@ serve(async (req) => {
         await admin.from("wallet_transactions").delete().eq("id", walletTransactionId);
       }
 
-      return new Response(
-        JSON.stringify({ success: false, message: "Erreur interne lors du paiement" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond({
+        success: false,
+        message: "Erreur interne lors du paiement",
+        diagnostics: {
+          stage: "unexpected_inner",
+          details: error instanceof Error ? error.message : String(error),
+        },
+      });
     }
   } catch (error) {
     console.error("pay-formation-with-wallet error:", error);
-    return new Response(
-      JSON.stringify({ success: false, message: "Erreur interne" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return respond({
+      success: false,
+      message: "Erreur interne",
+      diagnostics: {
+        stage: "unexpected_outer",
+        details: error instanceof Error ? error.message : String(error),
+      },
+    });
   }
 });
