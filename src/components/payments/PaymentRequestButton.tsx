@@ -17,7 +17,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
 import { useFormationPricing } from '@/hooks/useFormationPricing';
-import { calculateRemainingDays } from '@/utils/paymentCalculations';
 
 interface PaymentRequestButtonProps {
   formationId: string;
@@ -154,116 +153,42 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
 
     setIsSubmitting(true);
     try {
-      const newBalance = balance - amount;
-      const walletDebit = currency === 'soumboulah_cash'
-        ? { soumboulah_cash: newBalance, updated_at: new Date().toISOString() }
-        : { soumboulah_bonus: newBalance, updated_at: new Date().toISOString() };
-
-      // Convertir le montant SC/SB en FCFA pour calculer les jours
-      const amountFCFA = amount * scRate;
-      const { days, hours } = calculateDaysAndHours(amountFCFA);
-
-      // 1. Débiter le wallet
-      const { error: walletError } = await supabase
-        .from('user_wallets')
-        .update(walletDebit)
-        .eq('user_id', user.id);
-
-      if (walletError) {
-        console.error('Erreur débit wallet:', walletError);
-        toast.error('Erreur lors du débit du portefeuille');
-        return;
-      }
-
-      // 2. Enregistrer la transaction wallet
-      await supabase
-        .from('wallet_transactions')
-        .insert({
-          user_id: user.id,
+      const { data, error } = await supabase.functions.invoke('pay-formation-with-wallet', {
+        body: {
+          formationId,
           currency,
-          amount: -amount,
-          transaction_type: 'formation_payment',
-          description: `Paiement formation (${amount} ${label})`,
-          reference_id: formationId,
-          reference_type: 'formation',
-        });
-
-      // 3. Créer le paiement dans student_payment — STATUS PROCESSED immédiatement
-      const today = new Date().toISOString().split('T')[0];
-      const { error: paymentError } = await supabase
-        .from('student_payment')
-        .insert({
-          user_id: user.id,
-          formation_id: formationId,
           amount,
-          payment_method: currency,
-          is_request: false, // Pas une demande, c'est un paiement direct
-          status: 'processed',
-          payment_date: today,
-          days_added: days,
-          hours_added: hours,
-          requested_at: new Date().toISOString(),
-          created_by: user.id,
-          comment: `Paiement automatique via ${label}: ${amount} (≈ ${amountFCFA.toLocaleString()} FCFA)`,
-        });
+        },
+      });
 
-      if (paymentError) {
-        console.error('Erreur création paiement:', paymentError);
-        // Rembourser le wallet en cas d'erreur
-        const walletRefund = currency === 'soumboulah_cash'
-          ? { soumboulah_cash: balance }
-          : { soumboulah_bonus: balance };
-        await supabase
-          .from('user_wallets')
-          .update(walletRefund)
-          .eq('user_id', user.id);
-        toast.error("Erreur lors de la création du paiement");
+      if (error) {
+        console.error('Erreur paiement portefeuille:', error);
+        toast.error(error.message || 'Erreur lors du paiement');
         return;
       }
 
-      // 4. Mettre à jour student_payment_progress immédiatement
-      const { data: existingProgress } = await supabase
-        .from('student_payment_progress')
-        .select('total_days_remaining, hours_remaining, last_payment_date')
-        .eq('user_id', user.id)
-        .eq('formation_id', formationId)
-        .maybeSingle();
+      const result = data as {
+        success?: boolean;
+        message?: string;
+        days_added?: number;
+        hours_added?: number;
+      } | null;
 
-      // Calculer les jours réellement restants (en tenant compte de l'expiration)
-      const currentDays = calculateRemainingDays(
-        existingProgress?.total_days_remaining,
-        existingProgress ? (existingProgress as any).last_payment_date : null
-      );
-      const currentHours = existingProgress?.hours_remaining || 0;
-      let newHours = currentHours + hours;
-      let newDays = currentDays + days;
-      // Convertir les heures excédentaires en jours
-      if (newHours >= 24) {
-        newDays += Math.floor(newHours / 24);
-        newHours = newHours % 24;
+      if (!result?.success) {
+        toast.error(result?.message || 'Erreur lors du paiement');
+        return;
       }
 
-      const { error: progressError } = await supabase
-        .from('student_payment_progress')
-        .upsert({
-          user_id: user.id,
-          formation_id: formationId,
-          total_days_remaining: newDays,
-          hours_remaining: newHours,
-          last_payment_date: today,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,formation_id' });
-
-      if (progressError) {
-        console.error('Erreur mise à jour progress:', progressError);
-      }
-
-      // Rafraîchir les données
+      // Rafraîchir les données immédiatement après le traitement backend
       await queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
       await queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
       await queryClient.invalidateQueries({ queryKey: ['student-payment-progress'] });
       await queryClient.invalidateQueries({ queryKey: ['student-payment-history'] });
+      await queryClient.refetchQueries({ queryKey: ['student-payment-progress'] });
+      await queryClient.refetchQueries({ queryKey: ['student-payment-history'] });
 
+      const days = result?.days_added || 0;
+      const hours = result?.hours_added || 0;
       const daysLabel = days > 0 ? `${days} jour${days > 1 ? 's' : ''}` : '';
       const hoursLabel = hours > 0 ? `${hours}h` : '';
       const addedLabel = [daysLabel, hoursLabel].filter(Boolean).join(' et ');

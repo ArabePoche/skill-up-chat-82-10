@@ -1,5 +1,7 @@
 import React from 'react';
 import { useStudentPaymentHistory } from '@/hooks/useStudentPaymentProgress';
+import coinSC from '@/assets/coin-soumboulah-cash.png';
+import coinSB from '@/assets/coin-soumboulah-bonus.png';
 
 // Composant: affiche l'historique des paiements d'un élève pour une formation donnée
 interface PaymentHistoryListProps {
@@ -9,8 +11,10 @@ interface PaymentHistoryListProps {
 
 type PaymentRecord = {
   id?: string;
+  amount?: number | null;
   days_added?: number | null;
   payment_date?: string | null;
+  payment_method?: string | null;
   status?: string | null;
   created_at?: string | null;
   is_request?: boolean | null;
@@ -42,6 +46,36 @@ const statusLabel = (status?: string | null) => {
   }
 };
 
+const getPaymentAmountMeta = (item: PaymentRecord) => {
+  const amount = item.amount;
+
+  if (amount === null || amount === undefined) {
+    return { label: '—', iconSrc: null as string | null, iconAlt: '' };
+  }
+
+  if (item.payment_method === 'soumboulah_cash') {
+    return {
+      label: `${amount.toLocaleString('fr-FR')} SC`,
+      iconSrc: coinSC,
+      iconAlt: 'Soumboulah Cash',
+    };
+  }
+
+  if (item.payment_method === 'soumboulah_bonus') {
+    return {
+      label: `${amount.toLocaleString('fr-FR')} SB`,
+      iconSrc: coinSB,
+      iconAlt: 'Soumboulah Bonus',
+    };
+  }
+
+  return {
+    label: `${amount.toLocaleString('fr-FR')} FCFA`,
+    iconSrc: null as string | null,
+    iconAlt: '',
+  };
+};
+
 const PaymentHistoryList: React.FC<PaymentHistoryListProps> = ({ formationId, className = '' }) => {
   const { data, isLoading, error } = useStudentPaymentHistory(formationId);
 
@@ -70,27 +104,39 @@ const PaymentHistoryList: React.FC<PaymentHistoryListProps> = ({ formationId, cl
   return (
     <div className={`space-y-3 ${className}`}>
       <ul className="divide-y divide-border">
-        {data.map((item: PaymentRecord, idx: number) => (
-          <li key={item.id || idx} className="py-2 flex items-center justify-between">
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium">
-                {item.is_request ? 'Demande de paiement' : 'Paiement crédité'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatDate(item.payment_date || item.created_at)}
-              </p>
-            </div>
-            <div className="text-right space-y-0.5">
-              <p className="text-sm font-semibold text-green-600">
-                {(item as any).amount ? `${(item as any).amount.toLocaleString('fr-FR')} FCFA` : '—'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {item.days_added ? `+${item.days_added} jour${item.days_added > 1 ? 's' : ''}` : ''}
-              </p>
-              <p className="text-xs text-muted-foreground">{statusLabel(item.status)}</p>
-            </div>
-          </li>
-        ))}
+        {data.map((item: PaymentRecord, idx: number) => {
+          const amountMeta = getPaymentAmountMeta(item);
+
+          return (
+            <li key={item.id || idx} className="py-2 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">
+                  {item.is_request ? 'Demande de paiement' : 'Paiement crédité'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(item.payment_date || item.created_at)}
+                </p>
+              </div>
+              <div className="text-right space-y-0.5">
+                <p className="inline-flex items-center justify-end gap-1.5 text-sm font-semibold text-green-600">
+                  {amountMeta.iconSrc && (
+                    <img
+                      src={amountMeta.iconSrc}
+                      alt={amountMeta.iconAlt}
+                      className="h-5 w-5 object-contain"
+                      loading="lazy"
+                    />
+                  )}
+                  <span>{amountMeta.label}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {item.days_added ? `+${item.days_added} jour${item.days_added > 1 ? 's' : ''}` : ''}
+                </p>
+                <p className="text-xs text-muted-foreground">{statusLabel(item.status)}</p>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
