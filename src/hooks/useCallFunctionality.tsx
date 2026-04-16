@@ -138,6 +138,36 @@ export const useCallFunctionality = (formationId: string): CallFunctionality => 
       setCurrentCall(callSession);
       setIsCallActive(true);
 
+      // 📞 Envoyer une notification push FCM pour réveiller l'app du destinataire (même fermée/verrouillée)
+      if (receiverId) {
+        try {
+          const callerName = (user.user_metadata as any)?.full_name 
+            || (user.user_metadata as any)?.first_name 
+            || 'Quelqu\'un';
+          
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              userIds: [receiverId],
+              title: `Appel ${callType === 'voice' ? 'audio' : 'vidéo'} entrant`,
+              message: `${callerName} vous appelle...`,
+              type: 'incoming_call',
+              data: {
+                callId: callSession.id,
+                callType,
+                callerId: user.id,
+                callerName,
+                formationId,
+                lessonId,
+                clickAction: `/formations/${formationId}/lessons/${lessonId}`,
+              },
+            },
+          });
+          console.log('📲 Notification d\'appel FCM envoyée au destinataire');
+        } catch (pushError) {
+          console.error('⚠️ Erreur envoi push (l\'appel reste actif via Realtime):', pushError);
+        }
+      }
+
       toast.success(`Appel ${callType === 'voice' ? 'audio' : 'vidéo'} lancé`);
       toast.info('En attente qu\'un professeur réponde...');
 
