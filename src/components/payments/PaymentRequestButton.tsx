@@ -418,7 +418,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                     </div>
 
                     <p className="text-xs text-gray-500 text-center">
-                      Le montant sera débité de votre portefeuille et soumis à validation admin.
+                      Le montant sera débité et vos jours seront ajoutés immédiatement.
                     </p>
 
                     <AlertDialogFooter className="flex gap-3">
@@ -503,7 +503,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                     </div>
 
                     <p className="text-xs text-gray-500 text-center">
-                      Le montant sera débité de votre portefeuille et soumis à validation admin.
+                      Le montant sera débité et vos jours seront ajoutés immédiatement.
                     </p>
 
                     <AlertDialogFooter className="flex gap-3">
