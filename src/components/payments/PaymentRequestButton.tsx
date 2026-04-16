@@ -229,7 +229,11 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
         .eq('formation_id', formationId)
         .maybeSingle();
 
-      const currentDays = existingProgress?.total_days_remaining || 0;
+      // Calculer les jours réellement restants (en tenant compte de l'expiration)
+      const currentDays = calculateRemainingDays(
+        existingProgress?.total_days_remaining,
+        existingProgress ? (existingProgress as any).last_payment_date : null
+      );
       const currentHours = existingProgress?.hours_remaining || 0;
       let newHours = currentHours + hours;
       let newDays = currentDays + days;
