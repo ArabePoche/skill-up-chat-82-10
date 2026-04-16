@@ -108,7 +108,8 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: authData, error: authError } = await userClient.auth.getUser();
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: authData, error: authError } = await userClient.auth.getUser(token);
     const user = authData.user;
 
     if (authError || !user) {

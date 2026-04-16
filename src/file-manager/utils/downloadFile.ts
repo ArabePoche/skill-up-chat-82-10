@@ -61,12 +61,30 @@ export const downloadFile = async (
     return;
   }
 
-  // Web: téléchargement classique
-  const link = document.createElement('a');
-  link.href = fileUrl;
-  link.download = fileName;
-  link.target = '_blank';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // Web: téléchargement via fetch pour forcer le téléchargement (éviter ouverture nouvel onglet)
+  try {
+    toast.info('Téléchargement en cours...');
+    const response = await fetch(fileUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
+  } catch (error) {
+    console.error('❌ Erreur téléchargement web via fetch, utilisation du fallback:', error);
+    // Fallback classique si fetch bloque (CORS)
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 };

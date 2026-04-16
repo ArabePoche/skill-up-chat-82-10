@@ -13,7 +13,7 @@ import type { TemplateDefinition, TemplateLayoutProps, SectionDefinition } from 
 import {
   AboutSection, StatsSection, CyclesSection,
   GallerySection, LocationSection, ContactSection, SocialEditSection,
-  CoverImageUpload, ActivitiesSection,
+  CoverImageUpload, ActivitiesSection, LogoImageUpload,
 } from '../../components/SharedSections';
 
 const getSchoolTypeLabel = (type: string) => {
@@ -23,31 +23,70 @@ const getSchoolTypeLabel = (type: string) => {
   return map[type] || type;
 };
 
-/** Navigation par ancres pour le template Pro */
-const ProNav: React.FC<{ primaryColor: string }> = ({ primaryColor }) => {
+/** En-tête bien coloré pour le template Pro (Header fixe) */
+const ProHeader: React.FC<{ 
+  school: any, 
+  primaryColor: string, 
+  secondaryColor: string,
+  editMode: boolean,
+  isOwner: boolean,
+  currentLogoUrl?: string | null,
+  onDraftChange?: (field: string, value: any) => void
+}> = ({ school, primaryColor, secondaryColor, editMode, isOwner, currentLogoUrl, onDraftChange }) => {
   const links = [
-    { href: '#about', label: 'À propos' },
-    { href: '#programs', label: 'Programmes' },
-    { href: '#activities', label: 'Activités' },
-    { href: '#gallery', label: 'Galerie' },
+    { href: '#top', label: 'Accueil' },
+    { href: '#join', label: 'Inscription' },
+    { href: '#cycles', label: 'Pédagogie' },
+    { href: '#activities', label: 'Actualités' },
+    { href: '#annonces', label: 'Annonces' },
     { href: '#contact', label: 'Contact' },
   ];
 
+  const displayLogo = currentLogoUrl || school.logo_url;
+
   return (
-    <nav className="sticky top-0 z-20 backdrop-blur-xl bg-background/80 border-b border-border">
-      <div className="max-w-5xl mx-auto px-4 flex items-center gap-1 overflow-x-auto py-2">
-        {links.map((link) => (
-          <a
-            key={link.href}
-            href={link.href}
-            className="px-4 py-2 text-sm font-medium rounded-full transition-colors whitespace-nowrap hover:bg-primary/10"
-            style={{ color: primaryColor }}
-          >
-            {link.label}
-          </a>
-        ))}
+    <header 
+      className="sticky top-0 z-50 shadow-xl border-b border-white/10"
+      style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+    >
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        {/* À gauche : Logo et nom */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            {displayLogo ? (
+              <img src={displayLogo} alt={school.name} className="w-12 h-12 rounded-full border-2 border-white/20 bg-white object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-full border-2 border-white/20 bg-white/20 flex items-center justify-center">
+                <SchoolIcon className="w-5 h-5 text-white" />
+              </div>
+            )}
+            
+            {editMode && isOwner && (
+              <LogoImageUpload
+                currentUrl={displayLogo}
+                onUpload={(url) => onDraftChange?.('logo_url', url)}
+                onRemove={() => onDraftChange?.('logo_url', '')}
+              />
+            )}
+          </div>
+          <span className="text-white font-bold text-lg hidden sm:block truncate max-w-[200px] lg:max-w-md">
+            {school.name}
+          </span>
+        </div>
+        {/* À droite : Menus fixes */}
+        <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {links.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="px-3 py-1.5 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-full transition-colors whitespace-nowrap"
+            >
+              {link.label}
+            </a>
+          ))}
+        </nav>
       </div>
-    </nav>
+    </header>
   );
 };
 
@@ -63,10 +102,21 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
   const coverUrl = data.draft?.site_cover_url ?? school.site_cover_url;
 
   return (
-    <div className="min-h-screen pb-24 bg-background">
-      {/* Hero immersif pleine largeur */}
-      <div
-        className="relative w-full min-h-[420px] lg:min-h-[520px] flex flex-col justify-end overflow-hidden"
+    <div id="top" className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+      <ProHeader 
+        school={school} 
+        primaryColor={primaryColor} 
+        secondaryColor={secondaryColor}
+        editMode={editMode}
+        isOwner={isOwner}
+        currentLogoUrl={data.draft?.logo_url ?? school.logo_url}
+        onDraftChange={data.onDraftChange}
+      />
+
+      <main className="flex-1">
+        {/* Hero immersif pleine largeur */}
+        <div
+          className="relative w-full min-h-[420px] lg:min-h-[520px] flex flex-col justify-end overflow-hidden shadow-2xl"
         style={{
           background: coverUrl
             ? undefined
@@ -124,119 +174,138 @@ const ProLayout: React.FC<TemplateLayoutProps> = ({ data, children, toolbar, foo
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
           >
-            <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-              {/* Logo */}
-              {school.logo_url && (
-                <div className="w-28 h-28 lg:w-36 lg:h-36 rounded-3xl bg-white/10 backdrop-blur-md shadow-2xl flex items-center justify-center overflow-hidden shrink-0 border-2 border-white/20 ring-4 ring-white/5">
-                  <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
-                </div>
-              )}
-
+            <div className="flex flex-col lg:flex-row lg:items-end gap-6 text-center lg:text-left">
               <div className="text-white flex-1">
-                <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight drop-shadow-lg">
+                <h1 className="text-4xl lg:text-6xl md:text-5xl font-extrabold tracking-tight drop-shadow-2xl">
                   {school.name}
                 </h1>
-                <p className="mt-2 text-white/70 text-base lg:text-lg max-w-xl">
+                <p className="mt-4 text-white/90 text-lg lg:text-xl max-w-2xl drop-shadow-md mx-auto lg:mx-0">
                   {school.description
-                    ? school.description.substring(0, 120) + (school.description.length > 120 ? '…' : '')
+                    ? school.description.substring(0, 150) + (school.description.length > 150 ? '…' : '')
                     : t('school.noDescription', { defaultValue: 'Découvrez notre établissement' })}
                 </p>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-white/15 backdrop-blur-sm border border-white/20">
-                    {getSchoolTypeLabel(school.school_type)}
-                  </span>
-                  {school.city && (
-                    <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-white/15 backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
-                      <MapPin size={11} />{school.city}
-                    </span>
-                  )}
-                  {school.country && (
-                    <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-white/15 backdrop-blur-sm border border-white/20">
-                      {school.country}
-                    </span>
-                  )}
-                </div>
-
-                {/* Stats inline dans le hero */}
-                {stats && (stats.students > 0 || stats.teachers > 0 || stats.classes > 0) && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3, duration: 0.5 }}
-                    className="flex gap-6 mt-6"
-                  >
-                    {stats.students > 0 && (
-                      <div>
-                        <div className="text-3xl font-extrabold text-white">{stats.students}</div>
-                        <div className="text-xs text-white/50 uppercase tracking-wider">Élèves</div>
-                      </div>
-                    )}
-                    {stats.teachers > 0 && (
-                      <div>
-                        <div className="text-3xl font-extrabold text-white">{stats.teachers}</div>
-                        <div className="text-xs text-white/50 uppercase tracking-wider">Profs</div>
-                      </div>
-                    )}
-                    {stats.classes > 0 && (
-                      <div>
-                        <div className="text-3xl font-extrabold text-white">{stats.classes}</div>
-                        <div className="text-xs text-white/50 uppercase tracking-wider">Classes</div>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
               </div>
             </div>
-
-            {/* CTAs */}
-            {user && (
-              <div className="flex flex-wrap gap-3 mt-8">
-                <Button
-                  onClick={() => {}}
-                  data-action="join"
-                  className="gap-2 px-6 py-3 text-sm font-bold rounded-full shadow-lg"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <UserPlus size={16} />
-                  {t('school.joinSchool', { defaultValue: 'Rejoindre cette école' })}
-                </Button>
-                {isPersonnel && (
-                  <Button
-                    onClick={() => navigate(`/school?id=${school.id}`)}
-                    variant="outline"
-                    className="gap-2 px-6 py-3 text-sm font-bold rounded-full border-white/30 text-white bg-black/30 hover:bg-black/50"
-                  >
-                    <SchoolIcon size={16} />
-                    {t('school.accessSchoolOS', { defaultValue: 'Accéder à School-OS' })}
-                  </Button>
-                )}
-              </div>
-            )}
           </motion.div>
         </div>
 
         {/* Flèche scroll */}
         <motion.div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden md:block"
           animate={{ y: [0, 8, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <ChevronDown className="text-white/40" size={24} />
+          <ChevronDown className="text-white/60 drop-shadow-md" size={32} />
         </motion.div>
       </div>
 
-      {/* Navigation sticky */}
-      <ProNav primaryColor={primaryColor} />
+      {/* Barre d'Informations et d'Actions (Statistiques, CTAs, etc. en bas du cover) */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-20 -mt-16 sm:-mt-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6"
+        >
+          {/* Informations et Statistiques */}
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+              <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                {getSchoolTypeLabel(school.school_type)}
+              </span>
+              {school.city && (
+                <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                  <MapPin size={14} />{school.city}
+                </span>
+              )}
+              {school.country && (
+                <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {school.country}
+                </span>
+              )}
+            </div>
+
+            {stats && (stats.students > 0 || stats.teachers > 0 || stats.classes > 0) && (
+              <div className="flex flex-wrap justify-center md:justify-start gap-6 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {stats.students > 0 && (
+                  <div className="text-center md:text-left">
+                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white" style={{ color: primaryColor }}>{stats.students}</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Élèves</div>
+                  </div>
+                )}
+                {stats.teachers > 0 && (
+                  <div className="text-center md:text-left">
+                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white" style={{ color: primaryColor }}>{stats.teachers}</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Profs</div>
+                  </div>
+                )}
+                {stats.classes > 0 && (
+                  <div className="text-center md:text-left">
+                    <div className="text-2xl font-extrabold text-slate-900 dark:text-white" style={{ color: primaryColor }}>{stats.classes}</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Classes</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Boutons d'Action (CTAs) */}
+          {user && (
+            <div className="flex flex-col sm:flex-row gap-3 md:border-l md:border-slate-100 dark:md:border-slate-800 md:pl-6 shrink-0">
+              <Button
+                onClick={() => {}}
+                data-action="join"
+                id="join"
+                className="gap-2 px-6 py-6 sm:py-4 text-sm font-bold rounded-2xl shadow-lg transition hover:scale-105 text-white"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <UserPlus size={18} />
+                {t('school.joinSchool', { defaultValue: 'Rejoindre cette école' })}
+              </Button>
+              {isPersonnel && (
+                <Button
+                  onClick={() => navigate(`/school?id=${school.id}`)}
+                  variant="outline"
+                  className="gap-2 px-6 py-6 sm:py-4 text-sm font-bold rounded-2xl border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-50 text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white"
+                >
+                  <SchoolIcon size={18} />
+                  {t('school.accessSchoolOS', { defaultValue: 'Accéder à School-OS' })}
+                </Button>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </div>
 
       {/* Contenu principal */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        {children}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-12 relative z-10">
+        <div className="bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-xl border border-white/20 dark:border-white/5 space-y-16">
+          {children}
+        </div>
       </div>
+      </main>
 
-      {/* Footer */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        {footer}
-      </div>
+      {/* Footer premium et bien coloré */}
+      <footer 
+        className="mt-8 text-white relative overflow-hidden"
+        style={{
+          background: `linear-gradient(to top right, ${secondaryColor}, #0f172a)`
+        }}
+      >
+        <div className="absolute inset-0 opacity-10 bg-[url('https://transparenttextures.com/patterns/cubes.png')]" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 relative z-10">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            {school.logo_url && (
+              <img src={school.logo_url} alt={school.name} className="w-16 h-16 rounded-full border-4 border-white/20 bg-white" />
+            )}
+            <h3 className="text-2xl font-bold">{school.name}</h3>
+            <p className="text-white/70 max-w-md">{school.description}</p>
+          </div>
+          <div className="mt-8 border-t border-white/10 pt-8" id="contact">
+            {footer}
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

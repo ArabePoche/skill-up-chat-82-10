@@ -315,11 +315,12 @@ export type Database = {
         Row: {
           call_type: string
           caller_id: string
+          conversation_id: string | null
           created_at: string
           ended_at: string | null
-          formation_id: string
+          formation_id: string | null
           id: string
-          lesson_id: string
+          lesson_id: string | null
           receiver_id: string | null
           started_at: string | null
           status: string
@@ -328,11 +329,12 @@ export type Database = {
         Insert: {
           call_type: string
           caller_id: string
+          conversation_id?: string | null
           created_at?: string
           ended_at?: string | null
-          formation_id: string
+          formation_id?: string | null
           id?: string
-          lesson_id: string
+          lesson_id?: string | null
           receiver_id?: string | null
           started_at?: string | null
           status?: string
@@ -341,11 +343,12 @@ export type Database = {
         Update: {
           call_type?: string
           caller_id?: string
+          conversation_id?: string | null
           created_at?: string
           ended_at?: string | null
-          formation_id?: string
+          formation_id?: string | null
           id?: string
-          lesson_id?: string
+          lesson_id?: string | null
           receiver_id?: string | null
           started_at?: string | null
           status?: string

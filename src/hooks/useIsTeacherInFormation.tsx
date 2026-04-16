@@ -35,7 +35,7 @@ export const useIsTeacherInFormation = (formationId: string | undefined) => {
         `)
         .eq('user_id', user.id)
         .eq('teacher_formations.formation_id', formationId)
-        .single();
+        .maybeSingle();
 
       const isTeacher = !!teacher;
       console.log('User is teacher in this formation:', isTeacher);

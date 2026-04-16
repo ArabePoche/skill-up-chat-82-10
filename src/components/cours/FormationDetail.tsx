@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, Users, Clock, Star, ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import PrivateLevelsList from './PrivateLevelsList';
@@ -13,9 +13,9 @@ import PaymentHistoryList from '@/components/payments/PaymentHistoryList';
 import { useStudentPaymentProgress } from '@/hooks/useStudentPaymentProgress';
 import { GroupChatInterface } from '@/components/group-chat/GroupChatInterface';
 import { useTranslation } from 'react-i18next';
-import { OfflineDownloadButton } from '@/offline';
 import PublicMessageBanner from '@/components/formation-public-messages/PublicMessageBanner';
 import PublicMessagePlayerOverlay from '@/components/formation-public-messages/PublicMessagePlayerOverlay';
+import { useOfflineFormation } from '@/offline';
 import {
   type FormationPublicMessage,
   useFormationPublicMessages,
@@ -77,6 +77,8 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
   const [openedPrivateLevelId, setOpenedPrivateLevelId] = useState<string | null>(null);
   const [previewMessage, setPreviewMessage] = useState<FormationPublicMessage | null>(null);
   const [activeUrgentMessage, setActiveUrgentMessage] = useState<FormationPublicMessage | null>(null);
+  const hasStartedOfflineDownloadRef = useRef(false);
+  const { isOnline, isOfflineAvailable, downloadForOffline } = useOfflineFormation(String(formation.id));
 
   // Gérer l'ancrage vers la section pricing
   useEffect(() => {
@@ -109,6 +111,19 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
       });
     }
   }, [pendingUrgentMessage]);
+
+  useEffect(() => {
+    if (userRole?.role === 'teacher' || !isOnline || hasStartedOfflineDownloadRef.current || isOfflineAvailable) {
+      return;
+    }
+
+    hasStartedOfflineDownloadRef.current = true;
+
+    downloadForOffline().catch((error) => {
+      console.error('Auto offline download failed:', error);
+      hasStartedOfflineDownloadRef.current = false;
+    });
+  }, [downloadForOffline, isOfflineAvailable, isOnline, userRole?.role]);
 
   if (userRole?.role === 'teacher') {
     return (
@@ -188,13 +203,6 @@ const FormationDetail: React.FC<FormationDetailProps> = ({
             </div>
           </div>
           
-          {/* Bouton téléchargement offline */}
-          <div className="ml-2 [&_button]:bg-white [&_button]:text-[#25d366] [&_button]:border-white [&_button]:hover:bg-white/90">
-            <OfflineDownloadButton 
-              formationId={String(formation.id)} 
-              formationTitle={formation.title}
-            />
-          </div>
         </div>
       </div>
 

@@ -10,6 +10,33 @@ import { calculateRemainingDays } from '@/utils/paymentCalculations';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
 
+const getDefaultPaymentProgress = () => ({
+  total_days_remaining: 0,
+  last_payment_date: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+});
+
+const isRecoverableSupabaseFetchError = (error: {
+  message?: string;
+  details?: string;
+  code?: string;
+  status?: number;
+} | null) => {
+  if (!error) return false;
+
+  const message = (error.message || '').toLowerCase();
+  const details = (error.details || '').toLowerCase();
+
+  return (
+    error.status === 401 ||
+    message.includes('failed to fetch') ||
+    details.includes('failed to fetch') ||
+    message.includes('network') ||
+    details.includes('network')
+  );
+};
+
 /**
  * Hook pour récupérer la progression de paiement d'un étudiant
  * pour une formation donnée
@@ -29,12 +56,7 @@ export const useStudentPaymentProgress = (formationId: string) => {
         const cached = await offlineStore.getCachedQuery(
           `["payment-progress-offline","${user.id}","${formationId}"]`
         );
-        return cached || {
-          total_days_remaining: 0,
-          last_payment_date: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+        return cached || getDefaultPaymentProgress();
       }
 
       const { data, error } = await supabase
@@ -51,17 +73,17 @@ export const useStudentPaymentProgress = (formationId: string) => {
           `["payment-progress-offline","${user.id}","${formationId}"]`
         );
         if (cached) return cached;
+
+        if (isRecoverableSupabaseFetchError(error)) {
+          return getDefaultPaymentProgress();
+        }
+
         throw error;
       }
 
       // Si aucun enregistrement trouvé, retourner des valeurs par défaut
       if (!data) {
-        return {
-          total_days_remaining: 0,
-          last_payment_date: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+        return getDefaultPaymentProgress();
       }
 
       // Calculer les jours restants en temps réel
@@ -126,6 +148,11 @@ export const useStudentPaymentHistory = (formationId: string) => {
           `["payment-history-offline","${user.id}","${formationId}"]`
         );
         if (cached) return cached;
+
+        if (isRecoverableSupabaseFetchError(error)) {
+          return [];
+        }
+
         throw error;
       }
 

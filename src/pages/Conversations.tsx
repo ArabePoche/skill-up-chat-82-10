@@ -14,6 +14,10 @@ import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
 import { sendPushNotification } from '@/utils/notificationHelpers';
 import { useConversationTyping } from '@/hooks/conversations/useConversationTyping';
+import CallButton from '@/call-system/components/CallButton';
+import AgoraCallUI from '@/call-system/components/AgoraCallUI';
+import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
+import { usePrivateConversationCall } from '@/hooks/conversations/usePrivateConversationCall';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
@@ -231,6 +235,25 @@ const Conversations = () => {
   // Fusionner les messages online et offline
   const messages = isOnline ? onlineMessages : offlineMessages;
 
+  const otherUserName = otherUserProfile 
+    ? `${otherUserProfile.first_name || ''} ${otherUserProfile.last_name || ''}`.trim() || otherUserProfile.username || 'Utilisateur'
+    : 'Utilisateur';
+
+  const {
+    activeCall,
+    incomingCall,
+    isBusy: isCallBusy,
+    outgoingCall,
+    acceptCall,
+    endCall,
+    rejectCall,
+    startCall,
+  } = usePrivateConversationCall({
+    otherUserId,
+    otherUserName,
+    isOnline,
+  });
+
   // Envoyer un message
   const sendMessageMutation = useMutation({
     mutationFn: async ({ content, file, fileUrl }: { content: string; file?: File; fileUrl?: string }) => {
@@ -372,10 +395,6 @@ const Conversations = () => {
     }
   }, [messages]);
 
-  const otherUserName = otherUserProfile 
-    ? `${otherUserProfile.first_name || ''} ${otherUserProfile.last_name || ''}`.trim() || otherUserProfile.username || 'Utilisateur'
-    : 'Utilisateur';
-
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0 flex flex-col">
       {/* Header */}
@@ -396,13 +415,33 @@ const Conversations = () => {
           </div>
           <div>
             <h2 className="font-semibold">{otherUserName}</h2>
-            {isOtherTyping && (
+            {activeCall ? (
+              <p className="text-xs text-white/80 italic">appel en cours...</p>
+            ) : outgoingCall ? (
+              <p className="text-xs text-white/80 italic animate-pulse">
+                appel {outgoingCall.callType === 'video' ? 'video' : 'audio'} en attente...
+              </p>
+            ) : isOtherTyping ? (
               <p className="text-xs text-white/80 italic animate-pulse">
                 {otherActivityType === 'recording' ? 'est en train d\'enregistrer un vocal...' : 'est en train d\'écrire...'}
               </p>
-            )}
+            ) : null}
           </div>
         </button>
+        <div className="flex items-center gap-2">
+          <CallButton
+            type="audio"
+            onCall={() => startCall('audio')}
+            disabled={!isOnline || isCallBusy}
+            className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+          />
+          <CallButton
+            type="video"
+            onCall={() => startCall('video')}
+            disabled={!isOnline || isCallBusy}
+            className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+          />
+        </div>
       </div>
 
       {/* Messages */}
@@ -469,6 +508,31 @@ const Conversations = () => {
           disabled={sendMessageMutation.isPending}
         />
       </div>
+
+      {incomingCall && (
+        <TeacherCallModal
+          isOpen={true}
+          onAccept={async () => {
+            await acceptCall();
+          }}
+          onReject={async () => {
+            await rejectCall();
+          }}
+          studentName={otherUserName}
+          studentAvatar={otherUserProfile?.avatar_url}
+          callType={incomingCall.callType}
+        />
+      )}
+
+      {activeCall && (
+        <AgoraCallUI
+          callId={activeCall.id}
+          channelName={activeCall.channelName}
+          callType={activeCall.callType}
+          remoteUserName={activeCall.remoteUserName}
+          onEndCall={endCall}
+        />
+      )}
     </div>
   );
 };

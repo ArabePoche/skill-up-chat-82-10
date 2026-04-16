@@ -35,6 +35,7 @@ type SiteDraft = {
   site_linkedin_url: string;
   site_youtube_url: string;
   site_cover_url: string;
+  logo_url?: string;
 };
 
 const emptyDraft = (): SiteDraft => ({
@@ -50,6 +51,7 @@ const emptyDraft = (): SiteDraft => ({
   site_linkedin_url: '',
   site_youtube_url: '',
   site_cover_url: '',
+  logo_url: '',
 });
 
 const draftFromSchool = (s: School): SiteDraft => ({
@@ -65,6 +67,7 @@ const draftFromSchool = (s: School): SiteDraft => ({
   site_linkedin_url: s.site_linkedin_url ?? '',
   site_youtube_url: s.site_youtube_url ?? '',
   site_cover_url: s.site_cover_url ?? '',
+  logo_url: s.logo_url ?? '',
 });
 
 const SchoolSitePage: React.FC = () => {
@@ -144,8 +147,7 @@ const SchoolSitePage: React.FC = () => {
         id: school.id,
         site_cycles_programs: draft.site_cycles_programs.trim() || null,
         site_gallery_urls: urls,
-        site_cover_url: draft.site_cover_url.trim() || null,
-        address: draft.address.trim() || null,
+        site_cover_url: draft.site_cover_url.trim() || null,          logo_url: draft.logo_url?.trim() || null,        address: draft.address.trim() || null,
         city: draft.city.trim() || null,
         country: draft.country.trim() || null,
         site_facebook_url: draft.site_facebook_url.trim() || null,

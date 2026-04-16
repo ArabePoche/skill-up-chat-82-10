@@ -66,6 +66,7 @@ export const useSchoolSiteUpload = () => {
 
   const uploadCover = (file: File) => uploadFile(file, 'cover');
   const uploadGalleryImage = (file: File) => uploadFile(file, 'gallery');
+  const uploadLogo = (file: File) => uploadFile(file, 'logo');
 
-  return { uploadCover, uploadGalleryImage, isUploading };
+  return { uploadCover, uploadGalleryImage, uploadLogo, isUploading };
 };

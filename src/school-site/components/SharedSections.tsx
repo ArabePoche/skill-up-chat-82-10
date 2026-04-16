@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import type { SectionProps } from '../types';
 import { useSchoolSiteUpload } from '../hooks/useSchoolSiteUpload';
+import { useSchoolCycles } from '@/school/hooks/useSchoolCycles';
 
 /** Section À propos */
 export const AboutSection: React.FC<SectionProps> = ({ data, primaryColor }) => {
@@ -94,35 +95,57 @@ export const StatsSection: React.FC<SectionProps> = ({ data, primaryColor }) => 
 export const CyclesSection: React.FC<SectionProps> = ({ data, primaryColor, draft, onDraftChange }) => {
   const { t } = useTranslation();
   const { school, editMode, isOwner } = data;
+  const { data: cycles, isLoading } = useSchoolCycles(school.id);
   const cyclesText = editMode ? (draft?.site_cycles_programs ?? '') : (school.site_cycles_programs ?? '');
-  const showEmpty = !cyclesText.trim();
+  const showEmpty = !cyclesText.trim() && (!cycles || cycles.length === 0);
 
   return (
     <>
-      <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+      <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
         <Layers size={18} style={{ color: primaryColor }} />
         {t('school.cyclesAndPrograms', { defaultValue: 'Cycles et programmes' })}
       </h2>
+
+      {/* Cycles dynamiques */}
+      {!isLoading && cycles && cycles.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+          {cycles.map(cycle => (
+            <div key={cycle.id} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex items-start gap-4 hover:shadow-md transition">
+              <div className="p-3 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}15` }}>
+                <GraduationCap size={24} style={{ color: primaryColor }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 truncate">{cycle.name}</h3>
+                {cycle.label && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{cycle.label}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {editMode && isOwner ? (
-        <div className="space-y-2">
-          <Label>{t('school.cyclesAndProgramsEdit', { defaultValue: 'Texte présenté aux visiteurs' })}</Label>
+        <div className="space-y-4 bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+          <Label className="text-sm font-semibold">{t('school.cyclesAndProgramsEdit', { defaultValue: 'Texte présenté aux visiteurs (description complémentaire)' })}</Label>
           <Textarea
-            rows={8}
+            rows={5}
             value={draft?.site_cycles_programs ?? ''}
             onChange={(e) => onDraftChange?.('site_cycles_programs', e.target.value)}
-            placeholder={t('school.cyclesPlaceholder', { defaultValue: 'Ex. : Maternelle, Primaire, Collège…' })}
-            className="resize-y min-h-[120px]"
+            placeholder={t('school.cyclesPlaceholder', { defaultValue: 'Ex. : Notre pédagogie...' })}
+            className="resize-y min-h-[100px] bg-white dark:bg-slate-950"
           />
         </div>
       ) : showEmpty ? (
-        <p className="text-sm text-muted-foreground italic">
-          {t('school.cyclesEmpty', { defaultValue: 'Aucune information sur les cycles et programmes pour le moment.' })}
-        </p>
-      ) : (
-        <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-          {school.site_cycles_programs}
+        <div className="py-8 text-center bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+          <Layers className="mx-auto h-8 w-8 text-slate-400 mb-3" />
+          <p className="text-sm text-slate-500 font-medium">
+            {t('school.cyclesEmpty', { defaultValue: 'Aucune information sur les cycles et programmes pour le moment.' })}
+          </p>
         </div>
-      )}
+      ) : cyclesText.trim() ? (
+        <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-50/50 dark:bg-slate-900/20 p-6 rounded-xl">
+          {cyclesText}
+        </div>
+      ) : null}
     </>
   );
 };
@@ -611,6 +634,59 @@ export const CoverImageUpload: React.FC<{
           onClick={onRemove}
         >
           <X size={14} />
+        </Button>
+      )}
+    </div>
+  );
+};
+export const LogoImageUpload: React.FC<{
+  currentUrl?: string | null;
+  onUpload: (url: string) => void;
+  onRemove: () => void;
+}> = ({ currentUrl, onUpload, onRemove }) => {
+  const { uploadLogo, isUploading } = useSchoolSiteUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadLogo(file);
+    if (url) onUpload(url);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  return (
+    <div className="absolute -bottom-2 -right-2 flex items-center gap-1 z-10">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+      <Button
+        type="button"
+        size="icon"
+        className="h-6 w-6 rounded-full bg-white text-slate-800 shadow-md border hover:bg-slate-100"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading}
+        title={currentUrl ? 'Changer le logo' : 'Ajouter un logo'}
+      >
+        {isUploading ? (
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-800" />
+        ) : (
+          <Camera size={12} />
+        )}
+      </Button>
+      {currentUrl && (
+        <Button
+          type="button"
+          size="icon"
+          className="h-6 w-6 rounded-full bg-red-100 text-red-600 shadow-md border border-red-200 hover:bg-red-200"
+          onClick={onRemove}
+          title="Supprimer le logo"
+        >
+          <X size={12} />
         </Button>
       )}
     </div>

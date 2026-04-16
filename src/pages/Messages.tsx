@@ -1,16 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, MoreVertical, Bell, UserPlus, Users, BookOpen, CreditCard, Check, CheckCheck } from 'lucide-react';
+import { Search, MoreVertical, Bell, UserPlus, Check, CheckCheck } from 'lucide-react';
 import { useConversationsList } from '@/hooks/messages/useConversationsList';
 import { useNotificationCategories } from '@/components/notifications/hooks/useNotificationCategories';
-import { useCategoryNotifications } from '@/components/notifications/hooks/useCategoryNotifications';
-import { useNotificationActions } from '@/components/notifications/hooks/useNotificationActions';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import NotificationItem from '@/components/notifications/NotificationItem';
 import StoriesSection from '@/stories/components/StoriesSection';
 import { useAuth } from '@/hooks/useAuth';
 import { formatMessageTime } from '@/utils/dateUtils';
@@ -18,25 +14,24 @@ import { ContactsDiscoveryDialog } from '@/contacts-discovery/components/Contact
 import NotificationCategoryItem from '@/components/notifications/NotificationCategoryItem';
 import { useTranslation } from 'react-i18next';
 import { useI18nReady } from '@/hooks/useI18nReady';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 const Messages = () => {
   const { t } = useTranslation();
   const i18nReady = useI18nReady();
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('conversations');
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [openCategories, setOpenCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Charger les conversations uniquement quand l'onglet est actif
   const { 
     data: conversations = [], 
     isLoading: conversationsLoading, 
     error: conversationsError 
-  } = useConversationsList(activeTab === 'conversations');
+  } = useConversationsList(true);
 
-  // Charger uniquement les catégories de notifications (compteurs)
   const { data: categories = [], isLoading: categoriesLoading } = useNotificationCategories();
   
   const isAdmin = profile?.role === 'admin';
@@ -69,7 +64,7 @@ const Messages = () => {
     return null;
   }
 
-  if ((activeTab === 'conversations' && conversationsLoading) || (activeTab === 'notifications' && categoriesLoading)) {
+  if (conversationsLoading) {
     return (
       <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
         <div className="flex justify-center items-center py-12">
@@ -91,174 +86,182 @@ const Messages = () => {
 
   return (
     <div className="min-h-screen bg-white pb-16 md:pt-16 md:pb-0">
-      {/* Header */}
       <div className="bg-edu-whatsapp-green text-white p-4 sticky top-0 md:top-16">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">{t('messages.title')}</h1>
-          <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <MoreVertical size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsNotificationsOpen(true)}
+              className="relative p-2 hover:bg-white/10 rounded-full transition-colors"
+              aria-label={t('profile.notifications')}
+            >
+              <Bell size={20} />
+              {unreadNotifications > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              aria-label={t('common.more', { defaultValue: 'Plus' })}
+            >
+              <MoreVertical size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Stories Section */}
       <StoriesSection />
 
-      {/* Tabs */}
       <div className="bg-gray-50">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-gray-50">
-            <TabsTrigger value="conversations" className="flex items-center space-x-2">
-              <span>{t('messages.conversations')}</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center space-x-2">
-              <Bell size={16} />
-              <span>{t('profile.notifications')}</span>
+        <div className="p-4 bg-gray-50">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder={t('messages.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-edu-primary focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        <div className="divide-y divide-gray-100 bg-white">
+          {filteredConversations.length > 0 ? (
+            filteredConversations.map((conversation) => (
+              <div
+                key={conversation.id}
+                className="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => handleConversationClick(conversation)}
+              >
+                <div className="relative mr-3">
+                  <div className="w-12 h-12 bg-edu-primary rounded-full flex items-center justify-center overflow-hidden">
+                    {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
+                      <img 
+                        src={conversation.avatar} 
+                        alt={conversation.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white font-bold text-xl">{conversation.avatar}</span>
+                    )}
+                  </div>
+                  {conversation.online && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-medium text-gray-900 truncate">{conversation.name}</h3>
+                    <span className="text-xs text-gray-500 flex-shrink-0">
+                      {formatMessageTime(conversation.created_at || new Date())}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {conversation.lastMsgIsOwn && (
+                      conversation.lastMsgIsRead ? (
+                        <CheckCheck size={16} className="text-blue-500 flex-shrink-0" />
+                      ) : conversation.lastMsgIsDelivered ? (
+                        <CheckCheck size={16} className="text-gray-400 flex-shrink-0" />
+                      ) : (
+                        <Check size={16} className="text-gray-400 flex-shrink-0" />
+                      )
+                    )}
+                    <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
+                  </div>
+                </div>
+                
+                {conversation.unread > 0 && (
+                  <div className="ml-2 bg-edu-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {conversation.unread}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-gray-500 mb-2">{t('messages.noConversations')}</div>
+              <p className="text-sm text-gray-400">{t('messages.noConversationsHelp')}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0">
+          <SheetHeader className="border-b px-4 py-4">
+            <SheetTitle className="flex items-center gap-2 pr-8">
+              <Bell size={18} />
+              {t('profile.notifications')}
               {unreadNotifications > 0 && (
-                <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center p-0 text-xs">
+                <Badge variant="destructive" className="ml-1">
                   {unreadNotifications > 99 ? '99+' : unreadNotifications}
                 </Badge>
               )}
-            </TabsTrigger>
-          </TabsList>
+            </SheetTitle>
+          </SheetHeader>
 
-          <TabsContent value="conversations" className="mt-0">
-            {/* Search */}
-            <div className="p-4 bg-gray-50">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder={t('messages.searchPlaceholder')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-edu-primary focus:border-transparent"
-                />
+          <div className="h-[calc(100vh-80px)] overflow-y-auto bg-gray-50 p-4">
+            {!user ? (
+              <div className="text-center py-12">
+                <Bell size={48} className="mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">{t('messages.loginToSeeNotifications')}</p>
               </div>
-            </div>
+            ) : categoriesLoading ? (
+              <div className="text-center py-12 text-gray-500">
+                {t('messages.loading')}
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="bg-white rounded-lg p-8 border text-center">
+                <Bell size={48} className="mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600 font-medium mb-2">{t('messages.noNotifications')}</p>
+                <p className="text-gray-500 text-sm">
+                  {t('messages.noNotificationsHelp')}
+                </p>
+              </div>
+            ) : (
+              <Accordion
+                type="multiple"
+                value={openCategories}
+                onValueChange={setOpenCategories}
+                className="space-y-4"
+              >
+                {categories.map((categoryData) => {
+                  const { category, totalCount, unreadCount } = categoryData;
 
-            {/* Conversations List */}
-            <div className="divide-y divide-gray-100">
-              {filteredConversations.length > 0 ? (
-                filteredConversations.map((conversation) => (
-                  <div
-                    key={conversation.id}
-                    className="flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => handleConversationClick(conversation)}
-                  >
-                    <div className="relative mr-3">
-                      <div className="w-12 h-12 bg-edu-primary rounded-full flex items-center justify-center overflow-hidden">
-                        {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
-                          <img 
-                            src={conversation.avatar} 
-                            alt={conversation.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-white font-bold text-xl">{conversation.avatar}</span>
-                        )}
-                      </div>
-                      {conversation.online && (
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium text-gray-900 truncate">{conversation.name}</h3>
-                        <span className="text-xs text-gray-500 flex-shrink-0">
-                          {formatMessageTime(conversation.created_at || new Date())}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {conversation.lastMsgIsOwn && (
-                          conversation.lastMsgIsRead ? (
-                            <CheckCheck size={16} className="text-blue-500 flex-shrink-0" />
-                          ) : conversation.lastMsgIsDelivered ? (
-                            <CheckCheck size={16} className="text-gray-400 flex-shrink-0" />
-                          ) : (
-                            <Check size={16} className="text-gray-400 flex-shrink-0" />
-                          )
-                        )}
-                        <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
-                      </div>
-                    </div>
-                    
-                    {conversation.unread > 0 && (
-                      <div className="ml-2 bg-edu-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {conversation.unread}
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="text-gray-500 mb-2">{t('messages.noConversations')}</div>
-                  <p className="text-sm text-gray-400">{t('messages.noConversationsHelp')}</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+                  if (['enrollment_requests', 'plan_changes', 'payment_requests'].includes(category) && !isAdmin) {
+                    return null;
+                  }
 
-          <TabsContent value="notifications" className="mt-0">
-            <div className="p-4">
-              {!user ? (
-                <div className="text-center py-12">
-                  <Bell size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600">{t('messages.loginToSeeNotifications')}</p>
-                </div>
-              ) : categories.length === 0 ? (
-                <div className="bg-white rounded-lg p-8 border text-center">
-                  <Bell size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600 font-medium mb-2">{t('messages.noNotifications')}</p>
-                  <p className="text-gray-500 text-sm">
-                    {t('messages.noNotificationsHelp')}
-                  </p>
-                </div>
-              ) : (
-                <Accordion 
-                  type="multiple" 
-                  value={openCategories}
-                  onValueChange={setOpenCategories}
-                  className="space-y-4"
-                >
-                  {categories.map((categoryData) => {
-                    const { category, totalCount, unreadCount } = categoryData;
-                    
-                    // Ne montrer les catégories admin qu'aux admins
-                    if (['enrollment_requests', 'plan_changes', 'payment_requests'].includes(category) && !isAdmin) {
-                      return null;
-                    }
+                  return (
+                    <NotificationCategoryItem
+                      key={category}
+                      category={category}
+                      totalCount={totalCount}
+                      unreadCount={unreadCount}
+                      isOpen={openCategories.includes(category)}
+                    />
+                  );
+                })}
+              </Accordion>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
-                    return (
-                      <NotificationCategoryItem
-                        key={category}
-                        category={category}
-                        totalCount={totalCount}
-                        unreadCount={unreadCount}
-                        isOpen={openCategories.includes(category)}
-                      />
-                    );
-                  })}
-                </Accordion>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+      <Button
+        onClick={() => setIsDiscoveryOpen(true)}
+        className="fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full bg-edu-whatsapp-green hover:bg-edu-whatsapp-green/90 shadow-lg z-50 p-0 flex items-center justify-center"
+        aria-label={t('messages.startDiscussion')}
+      >
+        <UserPlus size={24} className="text-white" />
+      </Button>
 
-      {/* Bouton flottant pour démarrer une discussion - visible uniquement dans l'onglet Conversations */}
-      {activeTab === 'conversations' && (
-        <Button
-          onClick={() => setIsDiscoveryOpen(true)}
-          className="fixed bottom-20 md:bottom-6 right-6 h-14 w-14 rounded-full bg-edu-whatsapp-green hover:bg-edu-whatsapp-green/90 shadow-lg z-50 p-0 flex items-center justify-center"
-          aria-label={t('messages.startDiscussion')}
-        >
-          <UserPlus size={24} className="text-white" />
-        </Button>
-      )}
-
-      {/* Dialog de découverte de contacts */}
       <ContactsDiscoveryDialog
         open={isDiscoveryOpen}
         onOpenChange={setIsDiscoveryOpen}

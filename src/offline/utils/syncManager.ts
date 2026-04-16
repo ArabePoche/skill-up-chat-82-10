@@ -80,18 +80,11 @@ class SyncManager {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
 
-        // On utilise la clé publique (anon) pour éviter l'erreur 401
-        // Cela permet de faire un "vrai" ping autorisé
-        const SUPABASE_KEY = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppYXNhZmRiZnFxaGhkYXpveWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTQ5MTAsImV4cCI6MjA2NTQ5MDkxMH0.TXPwCkGAZRrn83pTsZHr2QFZwX03nBWdNPJN0s_jLKQ';
-        
-        const pingResponse = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/rest/v1/', {
-          method: 'HEAD',
-          headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
-          },
+        // L'endpoint santé répond sans déclencher les 401 parasites de /rest/v1.
+        await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/auth/v1/health', {
+          method: 'GET',
           cache: 'no-store',
-          signal: controller.signal
+          signal: controller.signal,
         });
 
         clearTimeout(timeout);
@@ -653,9 +646,13 @@ class SyncManager {
           )
         `)
         .eq('id', formationId)
-        .single();
+        .maybeSingle();
 
       if (formationError) throw formationError;
+      if (!formation) {
+        console.warn(`Formation ${formationId} introuvable pour la synchronisation.`);
+        return;
+      }
 
       // Mettre à jour le cache offline avec la structure complète
       await offlineStore.saveFormation(formation);

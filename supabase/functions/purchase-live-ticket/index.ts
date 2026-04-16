@@ -45,7 +45,8 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: { user }, error: authError } = await userClient.auth.getUser(token);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ success: false, message: "Non authentifié" }),

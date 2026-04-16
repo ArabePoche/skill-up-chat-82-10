@@ -177,14 +177,39 @@ const VideosTab: React.FC<VideosTabProps> = ({ userId }) => {
 
   if (!videos || videos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-          <Video size={32} className="text-muted-foreground" />
+      <div className="flex flex-col h-full">
+        {isOwner && (
+          <div className="px-4 pt-4 pb-2">
+            <Button
+              onClick={() => {
+                if (!(profile as any)?.is_verified) {
+                  setShowVerificationDialog(true);
+                  return;
+                }
+                navigate('/upload-video');
+              }}
+              className="w-full bg-edu-primary hover:bg-edu-primary/90 text-white"
+            >
+              <Plus size={20} className="mr-2" />
+              Créer une vidéo
+            </Button>
+          </div>
+        )}
+        <div className="flex flex-col items-center justify-center py-20 text-center flex-1">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Video size={32} className="text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Aucune vidéo</h3>
+          <p className="text-sm text-muted-foreground">
+            Vos vidéos créées apparaîtront ici
+          </p>
         </div>
-        <h3 className="text-lg font-semibold mb-2">Aucune vidéo</h3>
-        <p className="text-sm text-muted-foreground">
-          Vos vidéos créées apparaîtront ici
-        </p>
+
+        {/* Dialog Verification Required */}
+        <VerificationRequiredDialog 
+          open={showVerificationDialog} 
+          onOpenChange={setShowVerificationDialog} 
+        />
       </div>
     );
   }

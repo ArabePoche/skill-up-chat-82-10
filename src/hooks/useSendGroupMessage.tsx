@@ -41,7 +41,7 @@ export const useSendGroupMessage = () => {
         .from('teachers')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!teacherData) {
         throw new Error('Teacher not found');

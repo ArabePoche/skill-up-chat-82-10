@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { CreateFolderDialog } from './CreateFolderDialog';
 import FileIcon from '@/components/ui/FileIcon';
 import { ImageModal } from '@/components/ui/image-modal';
+import { downloadFile } from '@/file-manager/utils/downloadFile';
 
 const isImageFile = (type: string) => type.startsWith('image/');
 
@@ -83,7 +84,7 @@ export const FolderWindow: React.FC<FolderWindowProps> = ({
   };
 
   const handleDownload = (file: FolderFile) => {
-    window.open(file.url, '_blank');
+    downloadFile(file.url, file.name, file.type);
   };
 
   const handleCreateSubfolder = (name: string, color: string, isPublic: boolean) => {

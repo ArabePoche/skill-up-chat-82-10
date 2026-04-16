@@ -39,8 +39,10 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [scAmount, setScAmount] = useState<number>(0);
-  const [sbAmount, setSbAmount] = useState<number>(0);
+  const [scWeeks, setScWeeks] = useState(0);
+  const [scMonths, setScMonths] = useState(0);
+  const [sbWeeks, setSbWeeks] = useState(0);
+  const [sbMonths, setSbMonths] = useState(0);
 
   const { subscription } = useUserSubscription(formationId);
   const { pricingOptions } = useFormationPricing(formationId);
@@ -51,8 +53,14 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   // 1 SC = scToCfaRate FCFA. Donc FCFA / scToCfaRate = montant en SC
   const hasScRate = scToCfaRate > 0;
   const scRate = hasScRate ? scToCfaRate : 0;
+  const weeklyPriceFcfa = activePlan && (activePlan.price_monthly || 0) > 0
+    ? Math.ceil(((activePlan.price_monthly || 0) * 7) / 30)
+    : 0;
+  const priceWeeklySC = weeklyPriceFcfa > 0 && hasScRate ? Math.ceil(weeklyPriceFcfa / scRate) : 0;
   const priceMonthlySC = activePlan && hasScRate ? Math.ceil((activePlan.price_monthly || 0) / scRate) : 0;
   const priceYearlySC = activePlan && hasScRate ? Math.ceil((activePlan.price_yearly || 0) / scRate) : 0;
+  const scAmount = (scWeeks * priceWeeklySC) + (scMonths * priceMonthlySC);
+  const sbAmount = (sbWeeks * priceWeeklySC) + (sbMonths * priceMonthlySC);
 
   // Récupérer les méthodes de paiement acceptées par cette formation
   const { data: formation } = useQuery({
@@ -123,18 +131,6 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
     }
   };
 
-  // Calcul des jours et heures : montant journalier = frais mensuels / 30
-  const calculateDaysAndHours = (amountFCFA: number) => {
-    const monthlyFee = activePlan?.price_monthly || 0;
-    const dailyRate = monthlyFee > 0 ? monthlyFee / 30 : 0;
-    if (dailyRate <= 0) return { days: 0, hours: 0 };
-    const totalDays = amountFCFA / dailyRate;
-    const wholeDays = Math.floor(totalDays);
-    const fractionalDay = totalDays - wholeDays;
-    const hours = Math.round(fractionalDay * 24);
-    return { days: wholeDays, hours };
-  };
-
   // Paiement via portefeuille (SC ou SB) — prise en compte immédiate
   const handleWalletPayment = async (
     currency: 'soumboulah_cash' | 'soumboulah_bonus',
@@ -201,9 +197,11 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       toast.success(`Abonnement effectué, ${addedLabel} ajouté${days > 1 ? 's' : ''}`);
       setShowConfirmDialog(false);
       if (currency === 'soumboulah_cash') {
-        setScAmount(0);
+        setScWeeks(0);
+        setScMonths(0);
       } else {
-        setSbAmount(0);
+        setSbWeeks(0);
+        setSbMonths(0);
       }
     } catch (error) {
       console.error('Erreur paiement portefeuille:', error);
@@ -216,15 +214,109 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
   const cashBalance = wallet?.soumboulah_cash || 0;
   const bonusBalance = wallet?.soumboulah_bonus || 0;
 
-    const baseScQuickAmounts = [priceMonthlySC, priceYearlySC, cashBalance].filter(
-      (a, i, arr) => a && a > 0 && a <= cashBalance && arr.indexOf(a) === i
-    ).sort((a, b) => a - b);
-    const scQuickAmounts = baseScQuickAmounts.length > 0 ? baseScQuickAmounts : [cashBalance].filter(a => a > 0);
+  const canUsePackages = hasScRate && priceWeeklySC > 0 && priceMonthlySC > 0;
 
-    const baseSbQuickAmounts = [priceMonthlySC, priceYearlySC, bonusBalance].filter(
-      (a, i, arr) => a && a > 0 && a <= bonusBalance && arr.indexOf(a) === i
-    ).sort((a, b) => a - b);
-    const sbQuickAmounts = baseSbQuickAmounts.length > 0 ? baseSbQuickAmounts : [bonusBalance].filter(a => a > 0);
+  const updatePackageCount = (
+    currentValue: number,
+    pricePerUnit: number,
+    balance: number,
+    setValue: React.Dispatch<React.SetStateAction<number>>,
+    delta: number,
+    pairedUnits: number,
+    pairedUnitPrice: number
+  ) => {
+    const nextValue = Math.max(0, currentValue + delta);
+    const totalAmount = (nextValue * pricePerUnit) + (pairedUnits * pairedUnitPrice);
+
+    if (delta > 0 && totalAmount > balance) {
+      return;
+    }
+
+    setValue(nextValue);
+  };
+
+  const renderPackageSelector = (
+    tone: 'emerald' | 'purple',
+    balance: number,
+    weeks: number,
+    months: number,
+    setWeeks: React.Dispatch<React.SetStateAction<number>>,
+    setMonths: React.Dispatch<React.SetStateAction<number>>,
+    amount: number,
+    currencyLabel: string
+  ) => (
+    <>
+      <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+        <p className={`text-sm font-medium ${tone === 'emerald' ? 'text-emerald-800' : 'text-purple-800'}`}>
+          Choisissez vos forfaits
+        </p>
+
+        <div className="grid gap-3">
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Forfait 1 semaine</p>
+              <p className="text-xs text-gray-500">7 jours pour {priceWeeklySC.toLocaleString()} {currencyLabel}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => updatePackageCount(weeks, priceWeeklySC, balance, setWeeks, -1, months, priceMonthlySC)}
+              >
+                -
+              </Button>
+              <span className="w-8 text-center text-sm font-semibold">{weeks}</span>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => updatePackageCount(weeks, priceWeeklySC, balance, setWeeks, 1, months, priceMonthlySC)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Forfait 1 mois</p>
+              <p className="text-xs text-gray-500">30 jours pour {priceMonthlySC.toLocaleString()} {currencyLabel}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => updatePackageCount(months, priceMonthlySC, balance, setMonths, -1, weeks, priceWeeklySC)}
+              >
+                -
+              </Button>
+              <span className="w-8 text-center text-sm font-semibold">{months}</span>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => updatePackageCount(months, priceMonthlySC, balance, setMonths, 1, weeks, priceWeeklySC)}
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm">
+        <p className="font-medium text-slate-900">Résumé</p>
+        <p className="text-slate-600">{weeks} semaine(s) + {months} mois</p>
+        <p className="text-slate-700">Total à payer: <span className="font-bold">{amount.toLocaleString()} {currencyLabel}</span></p>
+      </div>
+
+      <p className="text-xs text-gray-500 text-center">
+        Les forfaits peuvent être cumulés. Le montant total sera débité et la durée ajoutée immédiatement.
+      </p>
+    </>
+  );
 
   // Calcul du nombre d'onglets pour le grid
   const tabCount = 1 + (acceptsSC ? 1 : 0) + (acceptsSB ? 1 : 0);
@@ -249,7 +341,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       </Button>
 
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent className="max-w-md">
+        <AlertDialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-semibold text-center">
               💳 Paiement de la formation
@@ -260,17 +352,17 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
           </AlertDialogHeader>
 
           <Tabs defaultValue="mobile_money" className="w-full">
-            <TabsList className={`grid w-full ${tabGridClass}`}>
-              <TabsTrigger value="mobile_money" className="text-xs sm:text-sm">
+            <TabsList className={`grid w-full ${tabGridClass} h-auto gap-1`}>
+              <TabsTrigger value="mobile_money" className="px-2 py-2 text-[11px] leading-tight whitespace-normal sm:text-sm">
                 <Smartphone className="h-3 w-3 mr-1" /> Mobile Money
               </TabsTrigger>
               {acceptsSC && (
-                <TabsTrigger value="soumboulah_cash" className="text-xs sm:text-sm">
+                <TabsTrigger value="soumboulah_cash" className="px-2 py-2 text-[11px] leading-tight whitespace-normal sm:text-sm">
                   <Coins className="h-3 w-3 mr-1" /> S. Cash ({cashBalance})
                 </TabsTrigger>
               )}
               {acceptsSB && (
-                <TabsTrigger value="soumboulah_bonus" className="text-xs sm:text-sm">
+                <TabsTrigger value="soumboulah_bonus" className="px-2 py-2 text-[11px] leading-tight whitespace-normal sm:text-sm">
                   <Coins className="h-3 w-3 mr-1" /> S. Bonus ({bonusBalance})
                 </TabsTrigger>
               )}
@@ -319,6 +411,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
                   <div className="mb-3 pb-3 border-b border-emerald-200/60">
                     <p className="text-sm font-semibold text-emerald-900 mb-2">Tarifs d'abonnement ({activePlanName})</p>
+                    <p className="text-xs text-emerald-800">Hebdomadaire: {weeklyPriceFcfa.toLocaleString()} FCFA ≈ <span className="font-bold">{priceWeeklySC.toLocaleString()} S.</span></p>
                     <p className="text-xs text-emerald-800">Mensuel: {(activePlan?.price_monthly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceMonthlySC.toLocaleString()} S.</span></p>
                     <p className="text-xs text-emerald-800">Annuel: {(activePlan?.price_yearly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceYearlySC.toLocaleString()} S.</span></p>
                     {!hasScRate && <p className="mt-2 text-xs text-amber-700">Taux admin non chargé : conversion affichée à 0.</p>}
@@ -329,43 +422,20 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
 
                 {cashBalance > 0 ? (
                   <>
-                    <p className="text-xs text-center text-emerald-700">
-                      Si votre solde est insuffisant, vous pouvez envoyer votre solde actuel pour obtenir les jours correspondants.
-                    </p>
-                    {scQuickAmounts.length > 0 && (
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {scQuickAmounts.map((amt) => (
-                          <button
-                            key={amt}
-                            onClick={() => setScAmount(amt)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                              scAmount === amt 
-                                ? 'bg-emerald-500 text-white border-emerald-500' 
-                                : 'bg-white text-emerald-700 border-emerald-300 hover:border-emerald-500'
-                            }`}
-                          >
-                            {amt} S.
-                          </button>
-                        ))}
-                      </div>
+                    {canUsePackages ? renderPackageSelector(
+                      'emerald',
+                      cashBalance,
+                      scWeeks,
+                      scMonths,
+                      setScWeeks,
+                      setScMonths,
+                      scAmount,
+                      'S.'
+                    ) : (
+                      <p className="text-xs text-center text-amber-700">
+                        Les forfaits ne sont pas encore disponibles car le tarif mensuel ou le taux de conversion n'est pas chargé.
+                      </p>
                     )}
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={cashBalance}
-                        value={scAmount || ''}
-                        onChange={(e) => setScAmount(Math.min(Number(e.target.value), cashBalance))}
-                        placeholder="Montant personnalisé"
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      <span className="text-sm text-gray-500 font-medium">S.</span>
-                    </div>
-
-                    <p className="text-xs text-gray-500 text-center">
-                      Le montant sera débité et vos jours seront ajoutés immédiatement.
-                    </p>
 
                     <AlertDialogFooter className="flex gap-3">
                       <AlertDialogCancel 
@@ -375,7 +445,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                       </AlertDialogCancel>
                       <Button
                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-6"
-                        disabled={isSubmitting || scAmount <= 0 || !hasScRate}
+                        disabled={isSubmitting || scAmount <= 0 || !canUsePackages}
                         onClick={() => handleWalletPayment('soumboulah_cash', scAmount, 'S. Cash')}
                       >
                         {isSubmitting ? (
@@ -404,6 +474,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
                   <div className="mb-3 pb-3 border-b border-purple-200/60">
                     <p className="text-sm font-semibold text-purple-900 mb-2">Tarifs d'abonnement ({activePlanName})</p>
+                    <p className="text-xs text-purple-800">Hebdomadaire: {weeklyPriceFcfa.toLocaleString()} FCFA ≈ <span className="font-bold">{priceWeeklySC.toLocaleString()} S.</span></p>
                     <p className="text-xs text-purple-800">Mensuel: {(activePlan?.price_monthly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceMonthlySC.toLocaleString()} S.</span></p>
                     <p className="text-xs text-purple-800">Annuel: {(activePlan?.price_yearly || 0).toLocaleString()} FCFA ≈ <span className="font-bold">{priceYearlySC.toLocaleString()} S.</span></p>
                     {!hasScRate && <p className="mt-2 text-xs text-amber-700">Taux admin non chargé : conversion affichée à 0.</p>}
@@ -414,43 +485,20 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
 
                 {bonusBalance > 0 ? (
                   <>
-                    <p className="text-xs text-center text-purple-700">
-                      Si votre solde est insuffisant, vous pouvez envoyer votre solde actuel pour obtenir les jours correspondants.
-                    </p>
-                    {sbQuickAmounts.length > 0 && (
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {sbQuickAmounts.map((amt) => (
-                          <button
-                            key={amt}
-                            onClick={() => setSbAmount(amt)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                              sbAmount === amt 
-                                ? 'bg-purple-500 text-white border-purple-500' 
-                                : 'bg-white text-purple-700 border-purple-300 hover:border-purple-500'
-                            }`}
-                          >
-                            {amt} SB
-                          </button>
-                        ))}
-                      </div>
+                    {canUsePackages ? renderPackageSelector(
+                      'purple',
+                      bonusBalance,
+                      sbWeeks,
+                      sbMonths,
+                      setSbWeeks,
+                      setSbMonths,
+                      sbAmount,
+                      'SB'
+                    ) : (
+                      <p className="text-xs text-center text-amber-700">
+                        Les forfaits ne sont pas encore disponibles car le tarif mensuel ou le taux de conversion n'est pas chargé.
+                      </p>
                     )}
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={bonusBalance}
-                        value={sbAmount || ''}
-                        onChange={(e) => setSbAmount(Math.min(Number(e.target.value), bonusBalance))}
-                        placeholder="Montant personnalisé"
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <span className="text-sm text-gray-500 font-medium">SB</span>
-                    </div>
-
-                    <p className="text-xs text-gray-500 text-center">
-                      Le montant sera débité et vos jours seront ajoutés immédiatement.
-                    </p>
 
                     <AlertDialogFooter className="flex gap-3">
                       <AlertDialogCancel 
@@ -460,7 +508,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
                       </AlertDialogCancel>
                       <Button
                         className="bg-purple-500 hover:bg-purple-600 text-white px-6"
-                        disabled={isSubmitting || sbAmount <= 0}
+                        disabled={isSubmitting || sbAmount <= 0 || !canUsePackages}
                         onClick={() => handleWalletPayment('soumboulah_bonus', sbAmount, 'SB')}
                       >
                         {isSubmitting ? (

@@ -11,6 +11,7 @@ const templateLoaders: Record<string, TemplateLoader> = {
   default: () => import('./templates/default/index'),
   modern: () => import('./templates/modern/index'),
   pro: () => import('./templates/pro/index'),
+  futuristic: () => import('./templates/futuristic/index'),
 };
 
 /** Charge la définition d'un template par sa clé */

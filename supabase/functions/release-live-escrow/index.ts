@@ -38,7 +38,8 @@ serve(async (req) => {
       const userClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });
-      const { data: { user } } = await userClient.auth.getUser();
+      const token = authHeader.replace(/^Bearer\s+/i, "");
+      const { data: { user } } = await userClient.auth.getUser(token);
       if (user) {
         const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
         const { data: profile } = await admin

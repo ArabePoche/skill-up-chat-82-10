@@ -25,6 +25,10 @@ export const useTeacherFormations = (userId: string | undefined) => {
         return [];
       }
 
+      if (!profile?.is_teacher) {
+        return [];
+      }
+
       
 
       
@@ -34,7 +38,7 @@ export const useTeacherFormations = (userId: string | undefined) => {
         .from('teachers')
         .select('id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (teacherError) {
         console.error('❌ Error fetching teacher record:', teacherError);

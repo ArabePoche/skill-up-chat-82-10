@@ -28,10 +28,10 @@ export const useTeacherStudentMessages = (
         `)
         .eq('user_id', user.id)
         .eq('teacher_formations.formation_id', formationId)
-        .single();
+        .maybeSingle();
 
       if (!teacherCheck) {
-        console.error('User is not a teacher for this formation');
+        console.warn('User is not a teacher for this formation');
         return [];
       }
 

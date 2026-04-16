@@ -491,7 +491,8 @@ async function authenticateUser(req: Request, supabaseUrl: string, anonKey: stri
     global: { headers: { Authorization: authHeader } },
   });
 
-  const { data: { user }, error } = await userClient.auth.getUser();
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  const { data: { user }, error } = await userClient.auth.getUser(token);
   if (error || !user) {
     return { user: null, error: jsonResponse({ success: false, message: "Non authentifié" }, 401) };
   }

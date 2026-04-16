@@ -240,6 +240,7 @@ export const useOfflineFormation = (formationId: string | undefined) => {
   return {
     formation,
     lessons,
+    isOnline,
     isOfflineAvailable,
     isLoading,
     downloadForOffline,

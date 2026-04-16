@@ -54,7 +54,7 @@ export const useSendTeacherStudentMessage = () => {
         `)
         .eq('user_id', user.id)
         .eq('teacher_formations.formation_id', formationId)
-        .single();
+        .maybeSingle();
 
       if (!teacherCheck) {
         throw new Error('User is not a teacher for this formation');
