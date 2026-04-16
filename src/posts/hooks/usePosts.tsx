@@ -102,7 +102,7 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
     queryKey: ['posts', filter, userId],
     placeholderData: (previousData) => previousData,
     initialPageParam: 0,
-    queryFn: async ({ pageParam = 0 }): Promise<PostsPage> => {
+    queryFn: async ({ pageParam }: { pageParam: number }): Promise<PostsPage> => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       // Si on affiche les posts d'un utilisateur spécifique, on charge par pages.
@@ -215,12 +215,12 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
         nextPage: posts.length === FRIEND_POSTS_PAGE_SIZE + OTHER_POSTS_PAGE_SIZE ? pageParam + 1 : undefined
       };
     },
-    getNextPageParam: (lastPage) => lastPage.nextPage,
+    getNextPageParam: (lastPage: PostsPage) => lastPage.nextPage,
   });
 
   return {
     ...query,
-    data: query.data?.pages.flatMap((page) => page.posts) ?? []
+    data: query.data?.pages.flatMap((page: PostsPage) => page.posts) ?? []
   };
 };
 
