@@ -122,7 +122,16 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
     }
   };
 
-  // Paiement via portefeuille (SC ou SB)
+  // Calcul des jours et heures à partir d'un montant en FCFA (1000 FCFA = 1 jour)
+  const calculateDaysAndHours = (amountFCFA: number) => {
+    const totalDays = amountFCFA / 1000;
+    const wholeDays = Math.floor(totalDays);
+    const fractionalDay = totalDays - wholeDays;
+    const hours = Math.round(fractionalDay * 24);
+    return { days: wholeDays, hours };
+  };
+
+  // Paiement via portefeuille (SC ou SB) — prise en compte immédiate
   const handleWalletPayment = async (
     currency: 'soumboulah_cash' | 'soumboulah_bonus',
     amount: number,
@@ -145,6 +154,10 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       const walletDebit = currency === 'soumboulah_cash'
         ? { soumboulah_cash: newBalance, updated_at: new Date().toISOString() }
         : { soumboulah_bonus: newBalance, updated_at: new Date().toISOString() };
+
+      // Convertir le montant SC/SB en FCFA pour calculer les jours
+      const amountFCFA = amount * scRate;
+      const { days, hours } = calculateDaysAndHours(amountFCFA);
 
       // 1. Débiter le wallet
       const { error: walletError } = await supabase
@@ -171,7 +184,8 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
           reference_type: 'formation',
         });
 
-      // 3. Créer le paiement dans student_payment (status pending pour validation admin)
+      // 3. Créer le paiement dans student_payment — STATUS PROCESSED immédiatement
+      const today = new Date().toISOString().split('T')[0];
       const { error: paymentError } = await supabase
         .from('student_payment')
         .insert({
@@ -179,11 +193,14 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
           formation_id: formationId,
           amount,
           payment_method: currency,
-          is_request: true,
-          status: 'pending',
+          is_request: false, // Pas une demande, c'est un paiement direct
+          status: 'processed',
+          payment_date: today,
+          days_added: days,
+          hours_added: hours,
           requested_at: new Date().toISOString(),
           created_by: user.id,
-          comment: `Paiement via ${label}: ${amount}`,
+          comment: `Paiement automatique via ${label}: ${amount} (≈ ${amountFCFA.toLocaleString()} FCFA)`,
         });
 
       if (paymentError) {
@@ -200,12 +217,45 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
         return;
       }
 
+      // 4. Mettre à jour student_payment_progress immédiatement
+      const { data: existingProgress } = await supabase
+        .from('student_payment_progress')
+        .select('total_days_remaining, hours_remaining')
+        .eq('user_id', user.id)
+        .eq('formation_id', formationId)
+        .maybeSingle();
+
+      const currentDays = existingProgress?.total_days_remaining || 0;
+      const currentHours = existingProgress?.hours_remaining || 0;
+      let newHours = currentHours + hours;
+      let newDays = currentDays + days;
+      // Convertir les heures excédentaires en jours
+      if (newHours >= 24) {
+        newDays += Math.floor(newHours / 24);
+        newHours = newHours % 24;
+      }
+
+      const { error: progressError } = await supabase
+        .from('student_payment_progress')
+        .upsert({
+          user_id: user.id,
+          formation_id: formationId,
+          total_days_remaining: newDays,
+          hours_remaining: newHours,
+          last_payment_date: today,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,formation_id' });
+
+      if (progressError) {
+        console.error('Erreur mise à jour progress:', progressError);
+      }
+
       // Rafraîchir les données
       queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
       queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['student-payment-progress'] });
 
-      toast.success(`${amount} ${label} débités avec succès ! Votre paiement sera validé par un administrateur.`);
+      toast.success(`✅ ${days} jour${days > 1 ? 's' : ''}${hours > 0 ? ` et ${hours}h` : ''} ajoutés immédiatement !`);
       setShowConfirmDialog(false);
       if (currency === 'soumboulah_cash') {
         setScAmount(0);
