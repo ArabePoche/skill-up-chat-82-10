@@ -254,11 +254,15 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       }
 
       // Rafraîchir les données
-      queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
-      queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['student-payment-progress'] });
+      await queryClient.invalidateQueries({ queryKey: ['user-wallet'] });
+      await queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+      await queryClient.invalidateQueries({ queryKey: ['student-payment-progress'] });
+      await queryClient.invalidateQueries({ queryKey: ['student-payment-history'] });
 
-      toast.success(`✅ ${days} jour${days > 1 ? 's' : ''}${hours > 0 ? ` et ${hours}h` : ''} ajoutés immédiatement !`);
+      const daysLabel = days > 0 ? `${days} jour${days > 1 ? 's' : ''}` : '';
+      const hoursLabel = hours > 0 ? `${hours}h` : '';
+      const addedLabel = [daysLabel, hoursLabel].filter(Boolean).join(' et ');
+      toast.success(`Abonnement effectué, ${addedLabel} ajouté${days > 1 ? 's' : ''}`);
       setShowConfirmDialog(false);
       if (currency === 'soumboulah_cash') {
         setScAmount(0);
