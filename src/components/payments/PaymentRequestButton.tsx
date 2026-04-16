@@ -224,7 +224,7 @@ const PaymentRequestButton: React.FC<PaymentRequestButtonProps> = ({
       // 4. Mettre à jour student_payment_progress immédiatement
       const { data: existingProgress } = await supabase
         .from('student_payment_progress')
-        .select('total_days_remaining, hours_remaining')
+        .select('total_days_remaining, hours_remaining, last_payment_date')
         .eq('user_id', user.id)
         .eq('formation_id', formationId)
         .maybeSingle();
