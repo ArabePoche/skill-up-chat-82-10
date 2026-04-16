@@ -18,6 +18,7 @@ interface TeacherCallModalProps {
   callType: 'audio' | 'video';
   formationTitle?: string;
   lessonTitle?: string;
+  direction?: 'incoming' | 'outgoing';
 }
 
 const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
@@ -28,12 +29,14 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
   studentAvatar,
   callType,
   formationTitle,
-  lessonTitle
+  lessonTitle,
+  direction = 'incoming',
 }) => {
   const [isRinging, setIsRinging] = useState(false);
+  const isIncoming = direction === 'incoming';
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isIncoming) {
       setIsRinging(true);
       NotificationSoundService.startRingtone();
     } else {
@@ -44,7 +47,7 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
     return () => {
       NotificationSoundService.stopRingtone();
     };
-  }, [isOpen]);
+  }, [isIncoming, isOpen]);
 
   const handleAccept = () => {
     setIsRinging(false);
@@ -86,7 +89,7 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
               ) : (
                 <Phone className="w-4 h-4" />
               )}
-              Appel {callType === 'video' ? 'vidéo' : 'audio'} entrant
+              Appel {callType === 'video' ? 'vidéo' : 'audio'} {isIncoming ? 'entrant' : 'en attente'}
             </p>
             {formationTitle && (
               <p className="text-xs text-gray-500">
@@ -111,16 +114,18 @@ const TeacherCallModal: React.FC<TeacherCallModalProps> = ({
               <PhoneOff className="w-6 h-6" />
             </Button>
 
-            <Button
-              onClick={handleAccept}
-              className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600"
-            >
-              <Phone className="w-6 h-6" />
-            </Button>
+            {isIncoming && (
+              <Button
+                onClick={handleAccept}
+                className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600"
+              >
+                <Phone className="w-6 h-6" />
+              </Button>
+            )}
           </div>
 
           <p className="text-xs text-gray-400 text-center">
-            {isRinging ? '🔔 Sonnerie...' : ''}
+            {isIncoming ? (isRinging ? 'Sonnerie...' : '') : 'En attente de reponse...'}
           </p>
         </div>
       </DialogContent>

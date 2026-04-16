@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { sendPushNotification } from '@/utils/notificationHelpers';
+import { createCallLogContent } from '@/utils/conversationCallLog';
 
 type PrivateCallType = 'audio' | 'video';
 
@@ -28,6 +29,10 @@ export interface ActivePrivateCall {
   channelName: string;
   remoteUserName: string;
 }
+
+const getCallLabel = (callType: PrivateCallType) => {
+  return callType === 'video' ? 'vidéo' : 'audio';
+};
 
 const normalizeCallType = (callType: string): PrivateCallType => {
   return callType === 'video' ? 'video' : 'audio';
@@ -75,6 +80,31 @@ export const usePrivateConversationCall = ({
     setActiveCall(null);
     activeSessionRef.current = null;
   }, []);
+
+  const insertCallLog = useCallback(async (
+    label: string,
+    senderId: string,
+    receiverId: string,
+  ) => {
+    if (!conversationId || !senderId || !receiverId) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('conversation_messages')
+      .insert({
+        story_id: null,
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content: createCallLogContent(label),
+        is_story_reply: false,
+        replied_to_message_id: null,
+      });
+
+    if (error) {
+      throw error;
+    }
+  }, [conversationId]);
 
   const openAcceptedCall = useCallback((session: PrivateCallSession) => {
     const nextActiveCall = {
@@ -131,6 +161,9 @@ export const usePrivateConversationCall = ({
 
     if (session.status === 'ended') {
       clearPendingState(session.id);
+      if (event === 'UPDATE' && session.caller_id !== user.id && activeSessionRef.current !== session.id) {
+        toast.info('L\'appel a ete annule');
+      }
       if (activeSessionRef.current === session.id) {
         toast.info('Appel termine');
         setActiveCall(null);
@@ -259,6 +292,12 @@ export const usePrivateConversationCall = ({
         callType: normalizeCallType(data.call_type),
       });
 
+      await insertCallLog(
+        `Appel ${getCallLabel(type)} sortant`,
+        user.id,
+        otherUserId,
+      );
+
       toast.success(`Appel ${type === 'video' ? 'video' : 'audio'} lance`);
       toast.info(`En attente de la reponse de ${otherUserName}`);
 
@@ -267,7 +306,7 @@ export const usePrivateConversationCall = ({
         title: user.user_metadata?.first_name || user.email?.split('@')[0] || 'Nouvel appel',
         message: `Appel ${type === 'video' ? 'video' : 'audio'} entrant`,
         type: 'private_chat',
-        clickAction: '/messages',
+        clickAction: `/conversations/${user.id}`,
         data: {
           senderId: user.id,
           conversationId,
@@ -307,6 +346,12 @@ export const usePrivateConversationCall = ({
 
       if (error) throw error;
 
+      await insertCallLog(
+        `Appel ${normalizeCallType(data.call_type) === 'video' ? 'vidéo' : 'audio'} accepté`,
+        user.id,
+        data.caller_id,
+      );
+
       openAcceptedCall(data as PrivateCallSession);
       return true;
     } catch (error) {
@@ -322,6 +367,7 @@ export const usePrivateConversationCall = ({
     }
 
     try {
+      const currentCallType = incomingCall.callType;
       const { error } = await supabase
         .from('call_sessions')
         .update({
@@ -334,6 +380,12 @@ export const usePrivateConversationCall = ({
 
       if (error) throw error;
 
+      await insertCallLog(
+        `Appel ${getCallLabel(currentCallType)} refusé`,
+        user.id,
+        otherUserId,
+      );
+
       setIncomingCall(null);
       return true;
     } catch (error) {
@@ -342,6 +394,38 @@ export const usePrivateConversationCall = ({
       return false;
     }
   }, [incomingCall, user?.id]);
+
+  const cancelOutgoingCall = useCallback(async () => {
+    if (!outgoingCall || !user?.id || !otherUserId) {
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('call_sessions')
+        .update({
+          status: 'ended',
+          ended_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', outgoingCall.id);
+
+      if (error) throw error;
+
+      await insertCallLog(
+        `Appel ${getCallLabel(outgoingCall.callType)} annulé`,
+        user.id,
+        otherUserId,
+      );
+
+      setOutgoingCall(null);
+      return true;
+    } catch (error) {
+      console.error('Error cancelling private call:', error);
+      toast.error('Impossible d\'annuler l\'appel');
+      return false;
+    }
+  }, [insertCallLog, otherUserId, outgoingCall, user?.id]);
 
   const endCall = useCallback(async () => {
     const sessionId = activeSessionRef.current;
@@ -361,6 +445,14 @@ export const usePrivateConversationCall = ({
         .eq('id', sessionId);
 
       if (error) throw error;
+
+      if (user?.id && otherUserId && activeCall) {
+        await insertCallLog(
+          `Appel ${getCallLabel(activeCall.callType)} terminé`,
+          user.id,
+          otherUserId,
+        );
+      }
     } catch (error) {
       console.error('Error ending private call:', error);
     } finally {
@@ -368,7 +460,7 @@ export const usePrivateConversationCall = ({
       activeSessionRef.current = null;
       clearPendingState(sessionId);
     }
-  }, [clearPendingState]);
+  }, [activeCall, clearPendingState, insertCallLog, otherUserId, user?.id]);
 
   return {
     activeCall,
@@ -377,6 +469,7 @@ export const usePrivateConversationCall = ({
     isBusy: !!incomingCall || !!outgoingCall || !!activeCall,
     outgoingCall,
     acceptCall,
+    cancelOutgoingCall,
     endCall,
     rejectCall,
     startCall,

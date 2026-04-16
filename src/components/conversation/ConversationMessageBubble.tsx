@@ -16,6 +16,7 @@ import { useConversationMessageReactions, useToggleConversationReaction } from '
 import { useDeleteConversationMessage, useEditConversationMessage } from '@/hooks/conversations/useConversationOperations';
 import { LinkifiedText } from '@/utils/linkify';
 import { formatMessageTime } from '@/utils/dateUtils';
+import { parseCallLogContent } from '@/utils/conversationCallLog';
 
 interface ConversationMedia {
   id: string;
@@ -50,6 +51,18 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
 }) => {
   const { user } = useAuth();
   const isOwnMessage = message.sender_id === user?.id;
+  const callLogLabel = parseCallLogContent(message.content);
+
+  if (callLogLabel) {
+    return (
+      <div className="flex justify-center">
+        <div className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs text-gray-600 shadow-sm">
+          <span className="font-medium text-gray-700">{callLogLabel}</span>
+          <span className="ml-2 text-gray-400">{formatMessageTime(message.created_at)}</span>
+        </div>
+      </div>
+    );
+  }
   
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

@@ -245,6 +245,7 @@ const Conversations = () => {
     isBusy: isCallBusy,
     outgoingCall,
     acceptCall,
+    cancelOutgoingCall,
     endCall,
     rejectCall,
     startCall,
@@ -521,6 +522,20 @@ const Conversations = () => {
           studentName={otherUserName}
           studentAvatar={otherUserProfile?.avatar_url}
           callType={incomingCall.callType}
+        />
+      )}
+
+      {outgoingCall && (
+        <TeacherCallModal
+          isOpen={true}
+          onAccept={async () => {}}
+          onReject={async () => {
+            await cancelOutgoingCall();
+          }}
+          studentName={otherUserName}
+          studentAvatar={otherUserProfile?.avatar_url}
+          callType={outgoingCall.callType}
+          direction="outgoing"
         />
       )}
 
