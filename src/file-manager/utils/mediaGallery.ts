@@ -224,6 +224,22 @@ const getDefaultExtension = (mediaType: MediaType): string => {
 /**
  * Sauvegarde un fichier temporairement pour le transfert vers la galerie.
  */
+/**
+ * Convertit un slice de Blob en base64 (sans préfixe data:).
+ */
+const blobChunkToBase64 = (chunk: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64Data = result.split(',')[1] || result;
+      resolve(base64Data);
+    };
+    reader.onerror = () => reject(new Error('Erreur lecture chunk base64'));
+    reader.readAsDataURL(chunk);
+  });
+};
+
 const saveTempFile = async (
   blob: Blob,
   fileName: string
@@ -237,18 +253,53 @@ const saveTempFile = async (
     // Ignorer si le fichier n'existe pas
   }
 
-  debugLog(`💾 Écriture fichier temporaire (${(blob.size / 1024 / 1024).toFixed(1)} MB)`);
+  const sizeMb = blob.size / 1024 / 1024;
+  debugLog(`💾 Écriture fichier temporaire (${sizeMb.toFixed(1)} MB)`);
 
-  const base64 = await blobToBase64(blob);
-  await new Promise(resolve => setTimeout(resolve, 10));
+  // Pour les gros fichiers (vidéos watermarkées), on écrit en streaming
+  // par chunks via append pour éviter un OOM lors de la conversion base64.
+  // La taille de chunk doit être un multiple de 3 octets pour que les segments
+  // base64 se concatènent proprement (pas de padding intermédiaire).
+  const CHUNK_SIZE = 512 * 1024 * 3; // ~1.5 MB de données binaires par chunk
+  let offset = 0;
+  let firstChunk = true;
+  let result: { uri: string } | null = null;
 
-  const result = await Filesystem.writeFile({
-    path: fileName,
-    data: base64,
-    directory: Directory.Cache,
-  });
+  while (offset < blob.size) {
+    const end = Math.min(offset + CHUNK_SIZE, blob.size);
+    const chunk = blob.slice(offset, end);
+    const base64 = await blobChunkToBase64(chunk);
 
-  debugLog('✅ Fichier temporaire écrit');
+    if (firstChunk) {
+      result = await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Cache,
+      });
+      firstChunk = false;
+    } else {
+      await Filesystem.appendFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Cache,
+      });
+    }
+
+    offset = end;
+    // Laisse respirer la JS thread (et le GC)
+    await new Promise((r) => setTimeout(r, 0));
+  }
+
+  if (!result) {
+    // Cas blob vide: créer un fichier vide
+    result = await Filesystem.writeFile({
+      path: fileName,
+      data: '',
+      directory: Directory.Cache,
+    });
+  }
+
+  debugLog('✅ Fichier temporaire écrit (streaming)');
   return result.uri;
 };
 

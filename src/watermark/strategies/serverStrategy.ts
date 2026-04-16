@@ -75,10 +75,23 @@ async function getServerJobStatus(jobId: string) {
   return response;
 }
 
+type CapacitorWindow = Window & {
+  Capacitor?: { isNativePlatform?: () => boolean };
+};
+
+function isNative(): boolean {
+  const w = window as CapacitorWindow;
+  return typeof w.Capacitor?.isNativePlatform === 'function' && w.Capacitor.isNativePlatform();
+}
+
 async function downloadRenderedVideo(status: JobStatusResponse): Promise<Blob> {
   const mimeType = status.outputMimeType || 'video/mp4';
 
-  if (status.outputBucket && status.outputPath) {
+  // Sur plateforme native (Android/iOS), on privilégie le fetch direct via l'URL
+  // signée : le SDK supabase.storage.download peut être instable sur les gros
+  // fichiers vidéo à cause de son buffering interne. Le fetch natif WebView gère
+  // mieux les vidéos volumineuses.
+  if (!isNative() && status.outputBucket && status.outputPath) {
     const { data, error } = await supabase.storage
       .from(status.outputBucket)
       .download(status.outputPath);
