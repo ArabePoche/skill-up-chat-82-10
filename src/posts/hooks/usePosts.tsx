@@ -215,12 +215,12 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
         nextPage: posts.length === FRIEND_POSTS_PAGE_SIZE + OTHER_POSTS_PAGE_SIZE ? pageParam + 1 : undefined
       };
     },
-    getNextPageParam: (lastPage) => lastPage.nextPage,
+    getNextPageParam: (lastPage: PostsPage) => lastPage.nextPage,
   });
 
   return {
     ...query,
-    data: query.data?.pages.flatMap((page) => page.posts) ?? []
+    data: query.data?.pages.flatMap((page: PostsPage) => page.posts) ?? []
   };
 };
 
