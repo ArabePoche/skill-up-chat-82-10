@@ -102,7 +102,7 @@ export const usePosts = (filter: 'all' | 'recruitment' | 'info' | 'annonce' | 'f
     queryKey: ['posts', filter, userId],
     placeholderData: (previousData) => previousData,
     initialPageParam: 0,
-    queryFn: async ({ pageParam = 0 }): Promise<PostsPage> => {
+    queryFn: async ({ pageParam }: { pageParam: number }): Promise<PostsPage> => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       // Si on affiche les posts d'un utilisateur spécifique, on charge par pages.
