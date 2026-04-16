@@ -415,6 +415,9 @@ export const usePrivateConversationCall = ({
         type: 'incoming_call',
         clickAction: `/conversations/${user.id}`,
         data: {
+          // clickAction dupliqué dans data: l'edge function lit payload.data.clickAction
+          // pour construire le deep link Android (cf. send-push-notification/index.ts L175)
+          clickAction: `/conversations/${user.id}`,
           senderId: user.id,
           conversationId,
           isPrivateCall: true,
