@@ -1,11 +1,11 @@
 // Carte de traitement des demandes de paiement pour les admins
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -37,21 +37,55 @@ export const PaymentProcessingCard: React.FC<PaymentProcessingCardProps> = ({
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
-  const [calculatedDays, setCalculatedDays] = useState(0);
-  const [calculatedHours, setCalculatedHours] = useState(0);
   const queryClient = useQueryClient();
 
-  // Calcul automatique des jours et heures selon le montant (30 000 F = 30 jours)
-  const calculateDaysAndHours = (amountValue: string) => {
-    const numAmount = parseFloat(amountValue) || 0;
-    const totalDays = numAmount / 1000; // 1000 F = 1 jour
+  // Récupérer le plan tarifaire de la formation pour calculer le prix journalier
+  const { data: pricingOptions } = useQuery({
+    queryKey: ['formation-pricing', paymentRequest.formation_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('formation_pricing_options')
+        .select('plan_type, price_monthly, is_active')
+        .eq('formation_id', paymentRequest.formation_id)
+        .eq('is_active', true);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Récupérer l'abonnement de l'élève pour connaître son plan
+  const { data: subscription } = useQuery({
+    queryKey: ['student-subscription', paymentRequest.user_id, paymentRequest.formation_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('enrollment_requests')
+        .select('plan_type')
+        .eq('user_id', paymentRequest.user_id)
+        .eq('formation_id', paymentRequest.formation_id)
+        .eq('status', 'approved')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Calcul du prix journalier : frais mensuels / 30
+  const pricePerDay = useMemo(() => {
+    if (!pricingOptions?.length) return 0;
+    const planType = subscription?.plan_type || 'standard';
+    const plan = pricingOptions.find(p => p.plan_type === planType) || pricingOptions[0];
+    return (plan?.price_monthly || 0) / 30;
+  }, [pricingOptions, subscription]);
+
+  const { calculatedDays, calculatedHours } = useMemo(() => {
+    const numAmount = parseFloat(amount) || 0;
+    if (!numAmount || pricePerDay <= 0) return { calculatedDays: 0, calculatedHours: 0 };
+    const totalDays = numAmount / pricePerDay;
     const wholeDays = Math.floor(totalDays);
     const fractionalDay = totalDays - wholeDays;
     const hoursToAdd = Math.round(fractionalDay * 24);
-    
-    setCalculatedDays(wholeDays);
-    setCalculatedHours(hoursToAdd);
-  };
+    return { calculatedDays: wholeDays, calculatedHours: hoursToAdd };
+  }, [amount, pricePerDay]);
 
   const processPaymentMutation = useMutation({
     mutationFn: async () => {
