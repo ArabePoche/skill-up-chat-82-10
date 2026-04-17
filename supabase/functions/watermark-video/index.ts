@@ -77,32 +77,48 @@ function buildImageKitAuth(privateKey: string): string {
 }
 
 /**
+ * Sanitize text for use inside an ImageKit transformation string.
+ * Commas and colons are transformation separators and must not appear in
+ * text content. Spaces are also stripped for URL safety.
+ */
+function sanitizeWatermarkText(text: string, maxLength = 50): string {
+  return text
+    .replace(/[,: ]+/g, "_")
+    .replace(/[^a-zA-Z0-9_@.\-]/g, "")
+    .slice(0, maxLength);
+}
+
+/**
  * Build the ImageKit transformation string that:
  *  - limits the video to max 1280 px wide
- *  - overlays the logo image (fetched from logoUrl) 40×40 px at bottom-right if provided
- *  - draws the platform text (bottom-right)
- *  - draws @author above it
+ *  - draws the platform text at the bottom-right with a visible dark background
+ *  - draws @author one line above it
+ *
+ * Note: the logo image overlay is intentionally omitted because it requires the
+ * logo URL to be publicly reachable by ImageKit. If the URL is a private
+ * Supabase storage URL, ImageKit will fail to fetch it and can abort the entire
+ * transformation chain (including the text layers), making the watermark
+ * completely invisible. Text-only overlays are reliable without this constraint.
  */
 function buildImageKitTransformation(
   authorName: string,
   watermarkText: string,
-  logoUrl: string | null,
+  _logoUrl: string | null,
 ): string {
   const parts: string[] = ["w-1280,c-at_max"];
 
-  if (logoUrl) {
-    // ImageKit accepts a base64url-encoded external URL as overlay image source.
-    const logoBase64 = btoa(logoUrl).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-    parts.push(`l-image,i-${logoBase64},w-40,h-40,lfo-bottom_right,lx-20,ly-115,l-end`);
-  }
-
   // Platform name text – bottom-right corner.
-  const text = encodeURIComponent(watermarkText);
-  parts.push(`l-text,i-${text},fs-26,co-white,lfo-bottom_right,lx-20,ly-20,l-end`);
+  // co-FFFFFF  : white text (hex format – named colours like "white" are not
+  //              reliably supported across all ImageKit plan tiers).
+  // bg-00000099: semi-transparent black background (≈60 % opacity) so the
+  //              watermark is legible on both dark and light video frames.
+  // pa-8       : padding inside the background box for readability.
+  const text = sanitizeWatermarkText(watermarkText);
+  parts.push(`l-text,i-${text},fs-26,co-FFFFFF,bg-00000099,pa-8,lfo-bottom_right,lx-20,ly-20,l-end`);
 
-  // Author handle – one line above the platform text.
-  const author = encodeURIComponent(`@${authorName}`);
-  parts.push(`l-text,i-${author},fs-20,co-white,lfo-bottom_right,lx-20,ly-60,l-end`);
+  // Author handle – positioned one text-block above the platform text.
+  const author = sanitizeWatermarkText(`@${authorName}`);
+  parts.push(`l-text,i-${author},fs-20,co-FFFFFF,bg-00000099,pa-6,lfo-bottom_right,lx-20,ly-65,l-end`);
 
   return parts.join(":");
 }
