@@ -11,6 +11,7 @@ interface Formation {
   price: number;
   rating: number;
   students_count: number;
+  reviews_count?: number;
   profiles?: {
     first_name?: string;
     last_name?: string;

@@ -76,7 +76,8 @@ const FormationSection: React.FC<FormationSectionProps> = ({
                   `${formation.profiles.first_name || ''} ${formation.profiles.last_name || ''}`.trim() || 
                   formation.profiles.username || 'Auteur inconnu' : 'Auteur inconnu',
                 students: formation.students_count || 0,
-                rating: formation.rating || 0
+                rating: formation.rating || 0,
+                reviews_count: formation.reviews_count || 0
               }}
               isTeacherSection={isTeacherSection}
               onClick={onFormationClick}

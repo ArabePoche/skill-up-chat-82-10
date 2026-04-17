@@ -150,6 +150,7 @@ const CoursIndex = () => {
                 : 'Auteur inconnu',
               students: formation.students_count || 0,
               rating: formation.rating || 0,
+              reviews_count: formation.reviews_count || 0,
             }}
             isTeacherSection={false}
             onClick={handleFormationClick}

@@ -11,6 +11,7 @@ export interface StructuredCallLog {
   callType: CallLogType;
   initiatedByUserId: string;
   durationSeconds?: number;
+  sessionId?: string;
 }
 
 export interface LegacyCallLog {
@@ -56,6 +57,7 @@ export const parseCallLogContent = (content?: string | null): ParsedCallLog | nu
         callType: parsedValue.callType,
         initiatedByUserId: parsedValue.initiatedByUserId,
         durationSeconds: typeof parsedValue.durationSeconds === 'number' ? parsedValue.durationSeconds : undefined,
+        sessionId: typeof parsedValue.sessionId === 'string' ? parsedValue.sessionId : undefined,
       };
     }
   } catch {

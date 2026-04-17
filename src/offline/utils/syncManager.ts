@@ -8,6 +8,12 @@ import { offlineStore } from './offlineStore';
 import { localMessageStore } from '@/message-cache/utils/localMessageStore';
 import { toast } from 'sonner';
 
+const CONNECTIVITY_PROBE_URLS = [
+  'https://www.gstatic.com/generate_204',
+  'https://connectivitycheck.gstatic.com/generate_204',
+  'https://jiasafdbfqqhhdazoybu.supabase.co/auth/v1/settings',
+];
+
 type SyncCallback = (isOnline: boolean) => void;
 type SyncEventCallback = (event: SyncEvent) => void;
 
@@ -36,10 +42,35 @@ class SyncManager {
     this.init();
   }
 
+  private async probeSupabaseReachability(timeoutMs: number = 5000): Promise<boolean> {
+    for (const url of CONNECTIVITY_PROBE_URLS) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+        await fetch(url, {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeout);
+        return true;
+      } catch {
+        continue;
+      }
+    }
+
+    return false;
+  }
+
   private init() {
     // Écouter les changements de connexion
     window.addEventListener('online', () => this.handleOnline());
-    window.addEventListener('offline', () => this.handleOffline());
+    window.addEventListener('offline', () => {
+      void this.handleOffline();
+    });
 
     // Vérifier périodiquement la connexion (toutes les 60 secondes au lieu de 15)
     this.checkConnectionTimer = setInterval(() => this.checkConnection(), 60000);
@@ -56,7 +87,16 @@ class SyncManager {
     this.syncAll();
   }
 
-  private handleOffline() {
+  private async handleOffline() {
+    const stillReachable = await this.probeSupabaseReachability(3000);
+
+    if (stillReachable) {
+      console.warn('⚠️ Offline event ignoré: connectivité confirmée');
+      this.isOnline = true;
+      this.notifyCallbacks(true);
+      return;
+    }
+
     console.log('📵 Connection lost');
     this.isOnline = false;
     this.notifyCallbacks(false);
@@ -72,26 +112,28 @@ class SyncManager {
     // Se fier uniquement à navigator.onLine pour détecter l'absence totale d'internet
     // Les timeouts et lenteurs réseau ne doivent PAS déclencher le mode hors ligne
     if (!navigator.onLine) {
-      this.isOnline = false;
+      const stillReachable = await this.probeSupabaseReachability(3000);
+
+      if (stillReachable) {
+        console.warn('⚠️ navigator.onLine=false mais réseau joignable, on reste en ligne');
+        this.isOnline = true;
+        this.reconnectAttempts = 0;
+      } else {
+        this.isOnline = false;
+      }
+
       this.isCheckingConnection = false;
     } else {
       // navigator.onLine = true → on fait un ping léger pour confirmer
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        const reachable = await this.probeSupabaseReachability(15000);
 
-        // L'endpoint santé répond sans déclencher les 401 parasites de /rest/v1.
-        await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/auth/v1/health', {
-          method: 'GET',
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeout);
-
-        // Toute réponse HTTP = le réseau fonctionne
-        this.isOnline = true;
-        this.reconnectAttempts = 0;
+        if (reachable) {
+          this.isOnline = true;
+          this.reconnectAttempts = 0;
+        } else {
+          console.warn('⚠️ Aucune sonde de connectivité n’a répondu, on conserve l’état en ligne');
+        }
       } catch (err: unknown) {
         const errName = err instanceof Error ? err.name : '';
         const errMsg = err instanceof Error ? err.message.toLowerCase() : '';

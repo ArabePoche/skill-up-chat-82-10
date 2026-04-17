@@ -6,6 +6,35 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const CONNECTIVITY_PROBE_URLS = [
+  'https://www.gstatic.com/generate_204',
+  'https://connectivitycheck.gstatic.com/generate_204',
+  'https://jiasafdbfqqhhdazoybu.supabase.co/auth/v1/settings',
+];
+
+const probeSupabaseReachability = async (timeoutMs: number = 8000): Promise<boolean> => {
+  for (const url of CONNECTIVITY_PROBE_URLS) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      await fetch(url, {
+        method: 'GET',
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+      return true;
+    } catch {
+      continue;
+    }
+  }
+
+  return false;
+};
+
 export interface SupabaseStatus {
   isAvailable: boolean;
   isChecking: boolean;
@@ -25,21 +54,28 @@ export const useSupabaseStatus = (): SupabaseStatus => {
     setError(null);
 
     try {
-      // Ping léger HEAD pour vérifier uniquement la connectivité réseau
-      // Ne pas utiliser de requête DB qui peut échouer pour des raisons non-réseau
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      if (!navigator.onLine) {
+        const stillReachable = await probeSupabaseReachability(3000);
 
-      const response = await fetch('https://jiasafdbfqqhhdazoybu.supabase.co/auth/v1/health', {
-        method: 'GET',
-        cache: 'no-store',
-        signal: controller.signal,
-      });
+        if (!stillReachable) {
+          console.warn('📵 Supabase unreachable: navigateur et sonde indiquent hors ligne');
+          setError('Pas de connexion internet');
+          setIsAvailable(false);
+          return false;
+        }
 
-      clearTimeout(timeout);
+        console.warn('⚠️ navigator.onLine=false mais la sonde confirme la connectivité');
+      }
 
-      // Toute réponse HTTP (même 401, 402, 403, 500) = le serveur répond = réseau OK
-      console.log('✅ Supabase is reachable (status:', response.status, ')');
+      const reachable = await probeSupabaseReachability(8000);
+
+      if (!reachable) {
+        console.warn('⚠️ Aucune sonde de connectivité n’a répondu, on conserve l’état en ligne');
+        setIsAvailable(true);
+        return true;
+      }
+
+      console.log('✅ Supabase is reachable');
       setIsAvailable(true);
       return true;
 
@@ -48,16 +84,27 @@ export const useSupabaseStatus = (): SupabaseStatus => {
       const errMsg = (err?.message || '').toLowerCase();
 
       // Seules les erreurs réseau réelles déclenchent le mode offline
-      const isNetworkError = errName === 'AbortError' ||
-        errName === 'TypeError' ||
+      const isNetworkError = errName === 'TypeError' ||
         errMsg.includes('network') ||
         errMsg.includes('failed to fetch');
 
       if (isNetworkError) {
-        console.warn('📵 Supabase unreachable (network error):', errMsg || errName);
-        setError('Pas de connexion réseau');
-        setIsAvailable(false);
-        return false;
+        if (!navigator.onLine) {
+          console.warn('📵 Supabase unreachable (network error):', errMsg || errName);
+          setError('Pas de connexion réseau');
+          setIsAvailable(false);
+          return false;
+        }
+
+        console.warn('⚠️ Erreur réseau isolée ignorée, on reste en ligne:', errMsg || errName);
+        setIsAvailable(true);
+        return true;
+      }
+
+      if (errName === 'AbortError') {
+        console.warn('⏱️ Timeout de vérification, on reste en ligne');
+        setIsAvailable(true);
+        return true;
       }
 
       // Erreur inattendue mais pas réseau → on reste en ligne
@@ -84,9 +131,8 @@ export const useSupabaseStatus = (): SupabaseStatus => {
     };
 
     const handleOffline = () => {
-      console.log('📴 Network is offline');
-      setIsAvailable(false);
-      setError('Pas de connexion internet');
+      console.log('📴 Offline event reçu, vérification en cours...');
+      void checkSupabaseStatus();
     };
 
     window.addEventListener('online', handleOnline);

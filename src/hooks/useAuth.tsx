@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
   const [cachedProfile, setCachedProfile] = useState<Profile | null>(null);
+  const isManualSignOutRef = useRef(false);
 
   // Fonction pour charger la session depuis le cache
   const loadCachedSession = useCallback(async () => {
@@ -200,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (session) {
+        isManualSignOutRef.current = false;
         setSession(session);
         setUser(session.user);
         setIsOfflineMode(false);
@@ -209,14 +211,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cacheSession(session.user, session);
         }, 0);
       } else if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setUser(null);
-        setIsOfflineMode(false);
-        setCachedProfile(null);
-        // Nettoyer le cache (déféré)
-        setTimeout(() => {
-          authStore.clearAll();
-        }, 0);
+        if (isManualSignOutRef.current) {
+          isManualSignOutRef.current = false;
+          setSession(null);
+          setUser(null);
+          setIsOfflineMode(false);
+          setCachedProfile(null);
+          setTimeout(() => {
+            authStore.clearAll();
+          }, 0);
+        } else {
+          console.warn('⚠️ SIGNED_OUT inattendu détecté, conservation du cache auth');
+          setSupabaseError('Session distante interrompue - mode hors ligne');
+          setIsOfflineMode(true);
+
+          setTimeout(() => {
+            loadCachedSession().catch((error) => {
+              console.error('Error restoring cached session after unexpected SIGNED_OUT:', error);
+            });
+          }, 0);
+        }
       }
 
       setLoading(false);
@@ -308,6 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
+      isManualSignOutRef.current = true;
 
       // Nettoyer le cache offline
       await authStore.clearAll();
@@ -353,6 +368,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.location.reload();
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
+      isManualSignOutRef.current = false;
 
       // Force le nettoyage même en cas d'erreur
       setUser(null);

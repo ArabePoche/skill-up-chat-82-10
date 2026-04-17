@@ -5,6 +5,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Loader2, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAgoraCall } from '../hooks/useAgoraCall';
 
 interface AgoraCallUIProps {
@@ -12,6 +13,8 @@ interface AgoraCallUIProps {
   channelName: string;
   callType: 'audio' | 'video';
   remoteUserName: string;
+  remoteUserAvatar?: string;
+  localUserAvatar?: string;
   onEndCall: () => void;
   onRemoteEndCall?: () => void;
 }
@@ -21,6 +24,8 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
   channelName,
   callType,
   remoteUserName,
+  remoteUserAvatar,
+  localUserAvatar,
   onEndCall,
   onRemoteEndCall,
 }) => {
@@ -86,6 +91,20 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const initials = remoteUserName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || '?';
+
+  const localInitials = 'Vous'
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       {/* Header */}
@@ -122,12 +141,25 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
             <div
               ref={localVideoContainerRef}
               className="absolute top-4 right-4 w-32 h-24 sm:w-48 sm:h-36 rounded-lg overflow-hidden border-2 border-white/20 bg-black shadow-lg"
-            />
+            >
+              {!state.isVideoEnabled && (
+                <div className="flex h-full w-full items-center justify-center bg-zinc-950/90">
+                  <Avatar className="h-16 w-16 border border-white/20">
+                    <AvatarImage src={localUserAvatar} alt="Vous" />
+                    <AvatarFallback className="bg-white/10 text-white">{localInitials}</AvatarFallback>
+                  </Avatar>
+                </div>
+              )}
+            </div>
 
             {/* Message si personne n'est encore connecté */}
             {state.isJoined && state.remoteUsers.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center text-white/60">
+                <div className="text-center text-white/70">
+                  <Avatar className="mx-auto mb-4 h-24 w-24 border border-white/20">
+                    <AvatarImage src={remoteUserAvatar} alt={remoteUserName} />
+                    <AvatarFallback className="bg-white/10 text-xl text-white">{initials}</AvatarFallback>
+                  </Avatar>
                   <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                   <p>En attente du correspondant...</p>
                 </div>
@@ -138,9 +170,10 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
           /* Appel audio uniquement */
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-white">
-              <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center mb-6 mx-auto backdrop-blur-sm">
-                <Phone className="w-14 h-14 text-white/80" />
-              </div>
+              <Avatar className="mx-auto mb-6 h-32 w-32 border border-white/20">
+                <AvatarImage src={remoteUserAvatar} alt={remoteUserName} />
+                <AvatarFallback className="bg-white/10 text-3xl text-white">{initials}</AvatarFallback>
+              </Avatar>
               <h3 className="text-xl font-semibold mb-1">{remoteUserName}</h3>
               <p className="text-white/50">
                 {state.isJoined
@@ -149,6 +182,13 @@ const AgoraCallUI: React.FC<AgoraCallUIProps> = ({
                     : 'En attente du correspondant...'
                   : 'Connexion...'}
               </p>
+              <div className="mt-5 flex items-center justify-center gap-2 text-xs text-white/60">
+                <Avatar className="h-7 w-7 border border-white/15">
+                  <AvatarImage src={localUserAvatar} alt="Vous" />
+                  <AvatarFallback className="bg-white/10 text-white">{localInitials}</AvatarFallback>
+                </Avatar>
+                <span>Vous</span>
+              </div>
             </div>
           </div>
         )}

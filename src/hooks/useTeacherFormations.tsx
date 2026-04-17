@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { enrichFormationsWithMetrics } from '@/utils/formationMetrics';
 
 export const useTeacherFormations = (userId: string | undefined) => {
   return useQuery({
@@ -10,28 +11,6 @@ export const useTeacherFormations = (userId: string | undefined) => {
         console.log('❌ No userId provided for teacher formations');
         return [];
       }
-
-      
-      
-      // D'abord vérifier si l'utilisateur est professeur dans son profil
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('is_teacher')
-        .eq('id', userId)
-        .single();
-
-      if (profileError) {
-        console.error('❌ Error fetching user profile:', profileError);
-        return [];
-      }
-
-      if (!profile?.is_teacher) {
-        return [];
-      }
-
-      
-
-      
 
       // Récupérer le teacher ID
       const { data: teacherData, error: teacherError } = await supabase
@@ -99,8 +78,7 @@ export const useTeacherFormations = (userId: string | undefined) => {
           students_count: tf.formations.students_count || 0
         }));
 
-      
-      return formattedFormations;
+      return enrichFormationsWithMetrics(formattedFormations);
     },
     enabled: !!userId,
     retry: (failureCount, error) => {

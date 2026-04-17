@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check, CheckCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,6 +19,8 @@ import AgoraCallUI from '@/call-system/components/AgoraCallUI';
 import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
 import { usePrivateConversationCall } from '@/hooks/conversations/usePrivateConversationCall';
 import { getCallLogPresentation, parseCallLogContent } from '@/utils/conversationCallLog';
+import { useConversationsList } from '@/hooks/messages/useConversationsList';
+import { formatMessageTime } from '@/utils/dateUtils';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
@@ -32,6 +34,7 @@ const Conversations = () => {
   const { getOfflineConversationWith } = useOfflineConversations(user?.id);
   const [offlineMessages, setOfflineMessages] = useState<any[]>([]);
   const { isOtherTyping, otherActivityType, emitTyping, emitStopTyping } = useConversationTyping(otherUserId);
+  const { data: conversations = [], isLoading: isConversationsLoading } = useConversationsList(true);
 
   // Récupérer le profil de l'utilisateur courant (pour les notifications)
   const { data: currentUserProfile } = useQuery({
@@ -39,7 +42,7 @@ const Conversations = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, username')
+        .select('first_name, last_name, username, avatar_url')
         .eq('id', user!.id)
         .single();
       if (error) throw error;
@@ -242,7 +245,7 @@ const Conversations = () => {
       const callLog = parseCallLogContent(message?.content);
 
       if (!callLog) {
-        return null;
+        continue;
       }
 
       const presentation = getCallLogPresentation(callLog, user?.id);
@@ -259,6 +262,8 @@ const Conversations = () => {
   const otherUserName = otherUserProfile 
     ? `${otherUserProfile.first_name || ''} ${otherUserProfile.last_name || ''}`.trim() || otherUserProfile.username || 'Utilisateur'
     : 'Utilisateur';
+
+  const selectedConversationId = useMemo(() => `user-${otherUserId}`, [otherUserId]);
 
   const {
     activeCall,
@@ -366,16 +371,25 @@ const Conversations = () => {
 
       // Envoyer une notification push au destinataire (fire & forget)
       if (otherUserId && user?.id) {
-        const senderName = currentUserProfile
-          ? `${currentUserProfile.first_name || ''} ${currentUserProfile.last_name || ''}`.trim() || currentUserProfile.username || 'Quelqu\'un'
-          : 'Quelqu\'un';
+        const senderName = (`${currentUserProfile?.first_name || user.user_metadata?.first_name || ''} ${currentUserProfile?.last_name || user.user_metadata?.last_name || ''}`.trim())
+          || currentUserProfile?.username
+          || user.user_metadata?.username
+          || user.email?.split('@')[0]
+          || 'Quelqu\'un';
+        const senderAvatar = currentUserProfile?.avatar_url || user.user_metadata?.avatar_url || null;
+
         sendPushNotification({
           userIds: [otherUserId],
           title: senderName,
           message: variables.content.substring(0, 100),
           type: 'private_chat',
           clickAction: '/messages',
-          data: { senderId: user.id },
+          data: {
+            senderId: user.id,
+            senderName,
+            senderAvatar,
+            imageUrl: senderAvatar,
+          },
         }).catch(() => { /* silently ignore */ });
       }
     },
@@ -419,121 +433,192 @@ const Conversations = () => {
   }, [messages]);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 md:pt-16 md:pb-0 flex flex-col">
-      {/* Header */}
-      <div className="bg-edu-whatsapp-green text-white p-4 flex items-center space-x-4 sticky top-0 md:top-16 z-10">
-        <button onClick={() => navigate('/messages')} className="p-2 hover:bg-white/10 rounded-full">
-          <ArrowLeft size={24} />
-        </button>
-        <button 
-          onClick={() => navigate(`/profile/${otherUserId}`)}
-          className="flex items-center space-x-3 flex-1 text-left hover:bg-white/10 rounded-lg p-2 -m-2 transition"
-        >
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            {otherUserProfile?.avatar_url ? (
-              <img src={otherUserProfile.avatar_url} alt={otherUserName} className="w-10 h-10 rounded-full" />
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.26),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.22),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(96,165,250,0.24),_transparent_30%),linear-gradient(180deg,#fff7fb_0%,#f6f1ff_46%,#edf6ff_100%)] pb-16 md:pt-16 md:pb-0 lg:overflow-hidden">
+      <div className="flex min-h-screen flex-col lg:h-[calc(100vh-4rem)] lg:min-h-0 lg:flex-row lg:gap-5 lg:p-5">
+        <aside className="hidden lg:flex lg:w-[360px] lg:flex-col lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/60 lg:bg-white/55 lg:backdrop-blur-2xl lg:shadow-[0_24px_60px_rgba(124,58,237,0.10)]">
+          <div className="border-b border-white/50 bg-[linear-gradient(135deg,rgba(255,255,255,0.68),rgba(255,255,255,0.22)),radial-gradient(circle_at_top_left,rgba(251,113,133,0.18),transparent_52%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.18),transparent_48%)] px-5 py-5 text-slate-900">
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900">Discussions</h1>
+            <p className="mt-1 text-sm text-slate-600">Retrouvez toutes vos conversations privées.</p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {isConversationsLoading ? (
+              <div className="px-5 py-6 text-sm text-slate-500">Chargement des discussions...</div>
+            ) : conversations.length === 0 ? (
+              <div className="px-5 py-6 text-sm text-slate-500">Aucune discussion disponible.</div>
             ) : (
-              <span className="text-lg font-semibold">{otherUserName[0]?.toUpperCase()}</span>
+              conversations.map((conversation: any) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => navigate(`/conversations/${conversation.otherUserId}`)}
+                  className={`flex w-full items-center gap-3 border-b border-white/40 px-4 py-3 text-left transition duration-200 hover:bg-white/35 ${
+                    conversation.id === selectedConversationId ? 'bg-[linear-gradient(135deg,rgba(99,102,241,0.78),rgba(168,85,247,0.68),rgba(59,130,246,0.62))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_30px_rgba(139,92,246,0.16)]' : 'bg-transparent text-slate-900'
+                  }`}
+                >
+                  <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-semibold text-white ${
+                    conversation.id === selectedConversationId ? 'bg-white/30 ring-1 ring-white/40' : 'bg-[linear-gradient(135deg,#f472b6,#a855f7,#60a5fa)]'
+                  }`}>
+                    {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
+                      <img
+                        src={conversation.avatar}
+                        alt={conversation.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span>{conversation.avatar}</span>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <h2 className={`truncate text-sm font-semibold ${conversation.id === selectedConversationId ? 'text-white' : 'text-slate-900'}`}>{conversation.name}</h2>
+                      <span className={`flex-shrink-0 text-xs ${conversation.id === selectedConversationId ? 'text-violet-100' : 'text-slate-400'}`}>
+                        {formatMessageTime(conversation.created_at || new Date())}
+                      </span>
+                    </div>
+                    <div className={`flex items-center gap-1 text-sm ${conversation.id === selectedConversationId ? 'text-white/85' : 'text-slate-600'}`}>
+                      {conversation.lastMsgIsOwn && (
+                        conversation.lastMsgIsRead ? (
+                          <CheckCheck size={14} className={`flex-shrink-0 ${conversation.id === selectedConversationId ? 'text-cyan-100' : 'text-sky-500'}`} />
+                        ) : conversation.lastMsgIsDelivered ? (
+                          <CheckCheck size={14} className={`flex-shrink-0 ${conversation.id === selectedConversationId ? 'text-white/75' : 'text-slate-400'}`} />
+                        ) : (
+                          <Check size={14} className={`flex-shrink-0 ${conversation.id === selectedConversationId ? 'text-white/75' : 'text-slate-400'}`} />
+                        )
+                      )}
+                      <p className="truncate">{conversation.lastMessage}</p>
+                    </div>
+                  </div>
+
+                  {conversation.unread > 0 && (
+                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ec4899,#8b5cf6,#3b82f6)] text-xs text-white shadow-sm">
+                      {conversation.unread}
+                    </div>
+                  )}
+                </button>
+              ))
             )}
           </div>
-          <div>
-            <h2 className="font-semibold">{otherUserName}</h2>
-            {activeCall ? (
-              <p className="text-xs text-white/80 italic">appel en cours...</p>
-            ) : outgoingCall ? (
-              <p className="text-xs text-white/80 italic animate-pulse">
-                appel {outgoingCall.callType === 'video' ? 'video' : 'audio'} en attente...
-              </p>
-            ) : missedCallNotice ? (
-              <p className="text-xs text-red-100 italic">
-                {missedCallNotice}
-              </p>
-            ) : isOtherTyping ? (
-              <p className="text-xs text-white/80 italic animate-pulse">
-                {otherActivityType === 'recording' ? 'est en train d\'enregistrer un vocal...' : 'est en train d\'écrire...'}
-              </p>
-            ) : null}
-          </div>
-        </button>
-        <div className="flex items-center gap-2">
-          <CallButton
-            type="audio"
-            onCall={() => startCall('audio')}
-            disabled={!isOnline || isCallBusy}
-            className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-          />
-          <CallButton
-            type="video"
-            onCall={() => startCall('video')}
-            disabled={!isOnline || isCallBusy}
-            className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-          />
-        </div>
-      </div>
+        </aside>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {isLoading ? (
-          <div className="text-center text-gray-500">
-            {isOnline ? 'Chargement...' : 'Chargement depuis le cache...'}
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-12">
-            <p>Aucun message pour le moment</p>
-            <p className="text-sm mt-2">
-              {isOnline 
-                ? 'Envoyez un message pour démarrer la conversation'
-                : 'Les messages seront chargés quand vous serez en ligne'}
-            </p>
-          </div>
-        ) : (
-          Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
-            <div key={date} className="space-y-3">
-              <DateSeparator date={date} />
-              {dateMessages.map((msg: any) => (
-                <ConversationMessageBubble 
-                  key={msg.id}
-                  message={msg} 
-                  onReply={(message) => setReplyingTo(message)}
-                />
-              ))}
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input - Réutilisation de ChatInputBar */}
-      <div className="bg-white border-t border-gray-200 p-4">
-        {replyingTo && (
-          <div className="bg-gray-100 p-2 rounded mb-2 flex justify-between items-center">
-            <div className="text-sm">
-              <span className="font-semibold text-[#25d366]">Répondre à:</span>
-              <p className="text-gray-600 truncate">{replyingTo.content}</p>
-            </div>
-            <button 
-              onClick={() => setReplyingTo(null)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
+        <div className="flex min-h-screen flex-1 flex-col bg-white/58 lg:min-h-0 lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/60 lg:shadow-[0_24px_60px_rgba(124,58,237,0.10)] lg:backdrop-blur-2xl">
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-center space-x-4 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.34),transparent_34%),radial-gradient(circle_at_top_right,rgba(167,139,250,0.32),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.30),rgba(255,255,255,0.10)),linear-gradient(135deg,#fb7185,#a855f7,#60a5fa)] p-4 text-white md:top-16 lg:top-0 lg:rounded-t-[28px]">
+            <button onClick={() => navigate('/messages')} className="rounded-full p-2 transition hover:bg-white/10 lg:hidden">
+              <ArrowLeft size={24} />
             </button>
+            <button 
+              onClick={() => navigate(`/profile/${otherUserId}`)}
+              className="-m-2 flex flex-1 items-center space-x-3 rounded-xl p-2 text-left transition hover:bg-white/10"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
+                {otherUserProfile?.avatar_url ? (
+                  <img src={otherUserProfile.avatar_url} alt={otherUserName} className="w-10 h-10 rounded-full" />
+                ) : (
+                  <span className="text-lg font-semibold">{otherUserName[0]?.toUpperCase()}</span>
+                )}
+              </div>
+              <div>
+                <h2 className="font-semibold tracking-tight">{otherUserName}</h2>
+                {activeCall ? (
+                  <p className="text-xs italic text-white/85">appel en cours...</p>
+                ) : outgoingCall ? (
+                  <p className="animate-pulse text-xs italic text-white/85">
+                    appel {outgoingCall.callType === 'video' ? 'video' : 'audio'} en attente...
+                  </p>
+                ) : missedCallNotice ? (
+                  <p className="text-xs italic text-amber-100">
+                    {missedCallNotice}
+                  </p>
+                ) : isOtherTyping ? (
+                  <p className="animate-pulse text-xs italic text-cyan-100">
+                    {otherActivityType === 'recording' ? 'est en train d\'enregistrer un vocal...' : 'est en train d\'écrire...'}
+                  </p>
+                ) : null}
+              </div>
+            </button>
+            <div className="flex items-center gap-2">
+              <CallButton
+                type="audio"
+                onCall={() => startCall('audio')}
+                disabled={!isOnline || isCallBusy}
+                className="border-white/20 bg-white/12 text-white shadow-sm hover:bg-white/22 hover:text-white"
+              />
+              <CallButton
+                type="video"
+                onCall={() => startCall('video')}
+                disabled={!isOnline || isCallBusy}
+                className="border-white/20 bg-white/12 text-white shadow-sm hover:bg-white/22 hover:text-white"
+              />
+            </div>
           </div>
-        )}
-        <ChatInputBar
-          onSendMessage={(content, messageType, file) => {
-            if (content.trim() || file) {
-              emitStopTyping();
-              const fileUrl = file && (file as any).uploadUrl;
-              sendMessageMutation.mutate({ 
-                content, 
-                file, 
-                fileUrl 
-              });
-            }
-          }}
-          onTyping={emitTyping}
-          disabled={sendMessageMutation.isPending}
-        />
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.18),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.16),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(96,165,250,0.18),_transparent_28%),linear-gradient(180deg,#fff9fc_0%,#f7f2ff_52%,#eef7ff_100%)] p-4 space-y-3">
+            {isLoading ? (
+              <div className="text-center text-slate-500">
+                {isOnline ? 'Chargement...' : 'Chargement depuis le cache...'}
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="py-12 text-center text-slate-500">
+                <p>Aucun message pour le moment</p>
+                <p className="mt-2 text-sm">
+                  {isOnline 
+                    ? 'Envoyez un message pour démarrer la conversation'
+                    : 'Les messages seront chargés quand vous serez en ligne'}
+                </p>
+              </div>
+            ) : (
+              Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
+                <div key={date} className="space-y-3">
+                  <DateSeparator date={date} />
+                  {dateMessages.map((msg: any) => (
+                    <ConversationMessageBubble 
+                      key={msg.id}
+                      message={msg} 
+                      onReply={(message) => setReplyingTo(message)}
+                    />
+                  ))}
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input - Réutilisation de ChatInputBar */}
+          <div className="border-t border-white/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.56))] p-4 lg:rounded-b-[28px]">
+            {replyingTo && (
+              <div className="mb-2 flex items-center justify-between rounded-2xl border border-white/60 bg-white/55 px-3 py-2 backdrop-blur-sm">
+                <div className="text-sm">
+                  <span className="font-semibold text-violet-700">Répondre à:</span>
+                  <p className="truncate text-slate-600">{replyingTo.content}</p>
+                </div>
+                <button 
+                  onClick={() => setReplyingTo(null)}
+                  className="text-slate-500 transition hover:text-slate-800"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <ChatInputBar
+              onSendMessage={(content, messageType, file) => {
+                if (content.trim() || file) {
+                  emitStopTyping();
+                  const fileUrl = file && (file as any).uploadUrl;
+                  sendMessageMutation.mutate({ 
+                    content, 
+                    file, 
+                    fileUrl 
+                  });
+                }
+              }}
+              onTyping={emitTyping}
+              disabled={sendMessageMutation.isPending}
+            />
+          </div>
+        </div>
       </div>
 
       {incomingCall && (
@@ -572,6 +657,8 @@ const Conversations = () => {
           channelName={activeCall.channelName}
           callType={activeCall.callType}
           remoteUserName={activeCall.remoteUserName}
+          remoteUserAvatar={otherUserProfile?.avatar_url || undefined}
+          localUserAvatar={currentUserProfile?.avatar_url || user?.user_metadata?.avatar_url || undefined}
           onEndCall={endCall}
           onRemoteEndCall={closeActiveCallLocally}
         />

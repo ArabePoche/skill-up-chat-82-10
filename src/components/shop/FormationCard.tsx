@@ -13,6 +13,7 @@ interface Formation {
   price: number;
   rating: number;
   students_count: number;
+  reviews_count?: number;
   profiles?: {
     first_name?: string;
     last_name?: string;
@@ -91,8 +92,10 @@ const FormationCard: React.FC<FormationCardProps> = ({
             ))}
           </div>
           <span className="text-sm font-medium">{formation.rating || 0}</span>
-          <span className="text-sm text-gray-500">({formation.students_count || 0})</span>
+          <span className="text-sm text-gray-500">({formation.reviews_count || 0})</span>
         </div>
+
+        <p className="text-xs text-gray-500 mb-3">{formation.students_count || 0} inscrits</p>
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
