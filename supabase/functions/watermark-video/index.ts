@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const WATERMARK_EXPORT_BUCKET = "watermark-exports";
+const WATERMARK_EXPORT_BUCKET = "videos-watermark-temp";
 const OUTPUT_MIME_TYPE = "video/mp4";
 const MAX_SOURCE_SIZE_BYTES = 250 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 10 * 60;
@@ -81,7 +81,10 @@ function escapeForFfmpeg(value: string): string {
     .replace(/\]/g, "\\]");
 }
 
-function buildWatermarkFilter(authorName: string, watermarkText: string) {
+/**
+ * Builds the simple video filter (no logo) with platform name + @username bottom-right.
+ */
+function buildVfFilter(authorName: string, watermarkText: string): string {
   const text = escapeForFfmpeg(watermarkText);
   const author = escapeForFfmpeg(authorName);
   return [
@@ -89,6 +92,25 @@ function buildWatermarkFilter(authorName: string, watermarkText: string) {
     `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${text}':fontsize=26:fontcolor=white@0.85:x=w-tw-20:y=h-th-20:box=1:boxcolor=black@0.4:boxborderw=8`,
     `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='@${author}':fontsize=20:fontcolor=white@0.7:x=w-tw-20:y=h-th-60:box=1:boxcolor=black@0.4:boxborderw=8`,
   ].join(",");
+}
+
+/**
+ * Builds a filter_complex graph that overlays a logo image (input [1:v]) and
+ * draws platform name + @username bottom-right.
+ * Logo is 40×40 px, placed directly above the text block.
+ */
+function buildFilterComplex(authorName: string, watermarkText: string): string {
+  const text = escapeForFfmpeg(watermarkText);
+  const author = escapeForFfmpeg(authorName);
+  return (
+    "[1:v]scale=40:40[logo];" +
+    "[0:v]scale='min(1280,iw)':-2[scaled];" +
+    "[scaled][logo]overlay=W-w-20:H-h-115[withlogo];" +
+    "[withlogo]" +
+    `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${text}':fontsize=26:fontcolor=white@0.85:x=w-tw-20:y=h-th-20:box=1:boxcolor=black@0.4:boxborderw=8,` +
+    `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='@${author}':fontsize=20:fontcolor=white@0.7:x=w-tw-20:y=h-th-60:box=1:boxcolor=black@0.4:boxborderw=8` +
+    "[vout]"
+  );
 }
 
 function getAllowedHosts() {
@@ -157,6 +179,57 @@ async function cleanTemp(...paths: Array<string | null | undefined>) {
     } catch {
       // Ignore cleanup errors.
     }
+  }
+}
+
+/**
+ * Resolves the platform logo URL: first from the PLATFORM_LOGO_URL env var,
+ * then falls back to the `platform_logo_url` key in the `platform_settings` table.
+ */
+async function resolvePlatformLogoUrl(admin: ReturnType<typeof createClient>): Promise<string | null> {
+  const envUrl = Deno.env.get("PLATFORM_LOGO_URL");
+  if (envUrl) return envUrl;
+
+  try {
+    const { data } = await admin
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "platform_logo_url")
+      .maybeSingle();
+    return data?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Downloads the platform logo to a temp file. Returns the temp path, or null
+ * if no logo URL is configured or the download fails (falls back to text-only).
+ */
+async function downloadLogoToTempFile(uid: string, admin: ReturnType<typeof createClient>): Promise<string | null> {
+  const logoUrl = await resolvePlatformLogoUrl(admin);
+  if (!logoUrl) return null;
+
+  try {
+    new URL(logoUrl); // Validate URL format
+  } catch {
+    console.warn("[watermark-video] logo URL is not valid, skipping logo");
+    return null;
+  }
+
+  const logoPath = `/tmp/vw-logo-${uid}.png`;
+  try {
+    const response = await fetch(logoUrl);
+    if (!response.ok) {
+      console.warn(`[watermark-video] Logo download failed (${response.status}), skipping logo`);
+      return null;
+    }
+    const data = await response.arrayBuffer();
+    await Deno.writeFile(logoPath, new Uint8Array(data));
+    return logoPath;
+  } catch (err) {
+    console.warn("[watermark-video] Logo download error, skipping logo", err);
+    return null;
   }
 }
 
@@ -334,31 +407,38 @@ async function markJobFailed(
   }
 }
 
-async function runFfmpeg(inputPath: string, outputPath: string, authorName: string, watermarkText: string) {
-  const filter = buildWatermarkFilter(authorName, watermarkText);
+async function runFfmpeg(
+  inputPath: string,
+  outputPath: string,
+  authorName: string,
+  watermarkText: string,
+  logoPath: string | null,
+) {
+  const args: string[] = ["-y"];
+
+  if (logoPath) {
+    // Two inputs: source video + logo image
+    args.push("-i", inputPath, "-i", logoPath);
+    args.push("-filter_complex", buildFilterComplex(authorName, watermarkText));
+    args.push("-map", "[vout]", "-map", "0:a?");
+  } else {
+    args.push("-i", inputPath);
+    args.push("-vf", buildVfFilter(authorName, watermarkText));
+    args.push("-map", "0:v", "-map", "0:a?");
+  }
+
+  args.push(
+    "-c:v", "libx264",
+    "-preset", "veryfast",
+    "-crf", "18",
+    "-pix_fmt", "yuv420p",
+    "-c:a", "copy",
+    "-movflags", "+faststart",
+    outputPath,
+  );
+
   const command = new Deno.Command("ffmpeg", {
-    args: [
-      "-y",
-      "-i",
-      inputPath,
-      "-vf",
-      filter,
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "24",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "128k",
-      "-movflags",
-      "+faststart",
-      outputPath,
-    ],
+    args,
     stdout: "piped",
     stderr: "piped",
   });
@@ -374,6 +454,7 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
   const admin = createClient(supabaseUrl, serviceKey);
   let inputPath: string | null = null;
   let outputPath: string | null = null;
+  let logoPath: string | null = null;
 
   try {
     const { data: job, error: fetchError } = await admin
@@ -402,6 +483,9 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
 
     await downloadSourceToTempFile(job.source_url, inputPath);
 
+    // Download platform logo (best-effort, non-blocking on failure)
+    logoPath = await downloadLogoToTempFile(uid, admin);
+
     const sourceProbe = await probeMedia(inputPath);
     const sourceValidation = validateSourceProbe(sourceProbe);
 
@@ -416,7 +500,7 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       },
     });
 
-    await runFfmpeg(inputPath, outputPath, job.author_name, job.watermark_text);
+    await runFfmpeg(inputPath, outputPath, job.author_name, job.watermark_text, logoPath);
 
     const outputProbe = await probeMedia(outputPath);
     const outputValidation = validateOutputProbe(
@@ -439,7 +523,8 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     });
 
     const outputData = await Deno.readFile(outputPath);
-    const storagePath = `${job.requested_by}/${jobId}/${sanitizeFileName(job.file_name)}`;
+    // Store inside the user folder so bucket policies (first segment = user id) are satisfied
+    const storagePath = `${job.requested_by}/videos/watermarked/${sanitizeFileName(job.file_name)}`;
 
     await withRetry("upload-output", async () => {
       const { error } = await admin.storage
@@ -480,7 +565,7 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     console.error("[watermark-video] job failed", { jobId, message, error });
     await markJobFailed(admin, jobId, message);
   } finally {
-    await cleanTemp(inputPath, outputPath);
+    await cleanTemp(inputPath, outputPath, logoPath);
   }
 }
 
