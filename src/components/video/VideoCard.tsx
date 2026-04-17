@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Share, Bookmark, Play, Pause, Plus, ShoppingBag, List, Eye, Gift } from 'lucide-react';
+import { Heart, MessageCircle, Share, Play, Pause, Plus, ShoppingBag, List, Eye, Gift } from 'lucide-react';
 import ExpandableDescription from './ExpandableDescription';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -42,6 +42,7 @@ interface Video {
   thumbnail_url: string;
   likes_count: number;
   comments_count: number;
+  shares_count?: number;
   views_count?: number;
   author_id: string;
   video_type?: string;
@@ -81,7 +82,6 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [showGift, setShowGift] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [showSeries, setShowSeries] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMediaError, setHasMediaError] = useState(false);
   const [showLikeBurst, setShowLikeBurst] = useState(false);
@@ -254,13 +254,6 @@ const VideoCard: React.FC<VideoCardProps> = ({
     });
   };
 
-  const handleSave = () => {
-    handleAuthRequiredAction(() => {
-      setIsSaved(!isSaved);
-      toast.success(isSaved ? t('video.removedFromFavorites') : t('video.savedToFavorites'));
-    });
-  };
-
   const handleFormationRedirect = () => {
     if (video.formation_id) {
       navigate(`/formation/${video.formation_id}`);
@@ -392,7 +385,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
         isLiked={isLiked}
         likesCount={likesCount}
         commentsCount={commentsCount}
-        isSaved={isSaved}
+        sharesCount={video.shares_count ?? 0}
         showLikeBurst={showLikeBurst}
         seriesData={seriesData}
         onFollow={handleFollow}
@@ -401,7 +394,6 @@ const VideoCard: React.FC<VideoCardProps> = ({
         onCommentClick={() => setShowComments(true)}
         onShareClick={() => setShowShare(true)}
         onGiftClick={() => setShowGift(true)}
-        onSave={handleSave}
         onSeriesClick={() => setShowSeries(true)}
         onFormationRedirect={handleFormationRedirect}
         formatCount={formatCount}

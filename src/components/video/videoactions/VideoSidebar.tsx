@@ -4,7 +4,6 @@ import TiktokVideoLikeButton from './TiktokVideoLikeButton';
 import TiktokVideoCommentButton from './TiktokVideoCommentButton';
 import TiktokVideoShareButton from './TiktokVideoShareButton';
 import TiktokVideoGiftButton from './TiktokVideoGiftButton';
-import TiktokVideoSaveButton from './TiktokVideoSaveButton';
 import TiktokVideoSeriesButton from './TiktokVideoSeriesButton';
 import TiktokVideoFormationButton from './TiktokVideoFormationButton';
 
@@ -28,7 +27,7 @@ interface VideoSidebarProps {
   isLiked: boolean;
   likesCount: number;
   commentsCount: number;
-  isSaved: boolean;
+  sharesCount: number;
   showLikeBurst: boolean;
   seriesData?: any;
   onFollow: () => void;
@@ -37,7 +36,6 @@ interface VideoSidebarProps {
   onCommentClick: () => void;
   onShareClick: () => void;
   onGiftClick: () => void;
-  onSave: () => void;
   onSeriesClick: () => void;
   onFormationRedirect: () => void;
   formatCount: (count: number) => string;
@@ -52,7 +50,7 @@ const VideoSidebar: React.FC<VideoSidebarProps> = ({
   isLiked,
   likesCount,
   commentsCount,
-  isSaved,
+  sharesCount,
   showLikeBurst,
   seriesData,
   onFollow,
@@ -61,7 +59,6 @@ const VideoSidebar: React.FC<VideoSidebarProps> = ({
   onCommentClick,
   onShareClick,
   onGiftClick,
-  onSave,
   onSeriesClick,
   onFormationRedirect,
   formatCount,
@@ -92,13 +89,15 @@ const VideoSidebar: React.FC<VideoSidebarProps> = ({
         formatCount={formatCount}
       />
 
-      <TiktokVideoShareButton onShareClick={onShareClick} />
+      <TiktokVideoShareButton
+        onShareClick={onShareClick}
+        sharesCount={sharesCount}
+        formatCount={formatCount}
+      />
 
       {user && user.id !== video.author_id && (
         <TiktokVideoGiftButton onGiftClick={onGiftClick} />
       )}
-
-      <TiktokVideoSaveButton isSaved={isSaved} onSave={onSave} />
 
       {seriesData && (
         <TiktokVideoSeriesButton onSeriesClick={onSeriesClick} />

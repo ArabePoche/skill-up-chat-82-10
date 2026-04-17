@@ -18,7 +18,7 @@ import CallButton from '@/call-system/components/CallButton';
 import AgoraCallUI from '@/call-system/components/AgoraCallUI';
 import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
 import { usePrivateConversationCall } from '@/hooks/conversations/usePrivateConversationCall';
-import { parseCallLogContent } from '@/utils/conversationCallLog';
+import { getCallLogPresentation, parseCallLogContent } from '@/utils/conversationCallLog';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
@@ -239,22 +239,22 @@ const Conversations = () => {
   const missedCallNotice = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
       const message = messages[index];
-      const callLogLabel = parseCallLogContent(message?.content);
+      const callLog = parseCallLogContent(message?.content);
 
-      if (!callLogLabel) {
+      if (!callLog) {
         return null;
       }
 
-      const normalizedLabel = callLogLabel.toLowerCase();
-      if (normalizedLabel.includes('manqué') || normalizedLabel.includes('sans réponse')) {
-        return callLogLabel;
+      const presentation = getCallLogPresentation(callLog, user?.id);
+      if (presentation.isMissed) {
+        return presentation.title;
       }
 
       return null;
     }
 
     return null;
-  }, [messages]);
+  }, [messages, user?.id]);
 
   const otherUserName = otherUserProfile 
     ? `${otherUserProfile.first_name || ''} ${otherUserProfile.last_name || ''}`.trim() || otherUserProfile.username || 'Utilisateur'

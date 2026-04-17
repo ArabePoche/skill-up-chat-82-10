@@ -6,7 +6,7 @@ import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { supabase } from '@/integrations/supabase/client';
-import { createCallLogContent } from '@/utils/conversationCallLog';
+import { createCallLogContent, StructuredCallLog } from '@/utils/conversationCallLog';
 
 type PrivateCallType = 'audio' | 'video';
 
@@ -29,10 +29,6 @@ interface CallerProfile {
 
 const normalizeCallType = (callType: string): PrivateCallType => {
   return callType === 'video' ? 'video' : 'audio';
-};
-
-const getCallLabel = (callType: PrivateCallType) => {
-  return callType === 'video' ? 'vidéo' : 'audio';
 };
 
 const buildCallerName = (profile: CallerProfile | null, fallbackUserId?: string) => {
@@ -179,14 +175,14 @@ const PrivateIncomingCallProvider: React.FC = () => {
     return location.pathname === `/conversations/${incomingCall.caller_id}`;
   }, [incomingCall?.caller_id, location.pathname]);
 
-  const insertCallLog = useCallback(async (label: string, senderId: string, receiverId: string) => {
+  const insertCallLog = useCallback(async (payload: StructuredCallLog, senderId: string, receiverId: string) => {
     const { error } = await supabase
       .from('conversation_messages')
       .insert({
         story_id: null,
         sender_id: senderId,
         receiver_id: receiverId,
-        content: createCallLogContent(label),
+        content: createCallLogContent(payload),
         is_story_reply: false,
         replied_to_message_id: null,
       });
@@ -218,12 +214,6 @@ const PrivateIncomingCallProvider: React.FC = () => {
         throw error;
       }
 
-      await insertCallLog(
-        `Appel ${normalizeCallType(data.call_type) === 'video' ? 'vidéo' : 'audio'} accepté`,
-        user.id,
-        data.caller_id,
-      );
-
       clearCallState();
       navigate(`/conversations/${data.caller_id}`);
     } catch (error) {
@@ -252,11 +242,12 @@ const PrivateIncomingCallProvider: React.FC = () => {
         throw error;
       }
 
-      await insertCallLog(
-        `Appel ${getCallLabel(currentCallType)} refusé`,
-        user.id,
-        incomingCall.caller_id,
-      );
+      await insertCallLog({
+        version: 2,
+        outcome: 'rejected',
+        callType: currentCallType,
+        initiatedByUserId: incomingCall.caller_id,
+      }, incomingCall.caller_id, user.id);
 
       clearCallState();
     } catch (error) {

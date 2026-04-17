@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { sendPushNotification } from '@/utils/notificationHelpers';
-import { createCallLogContent } from '@/utils/conversationCallLog';
+import { createCallLogContent, StructuredCallLog } from '@/utils/conversationCallLog';
 
 type PrivateCallType = 'audio' | 'video';
 
@@ -16,6 +16,8 @@ interface PrivateCallSession {
   call_type: string;
   conversation_id: string | null;
   created_at: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
   status: string;
 }
 
@@ -32,11 +34,9 @@ export interface ActivePrivateCall {
   callType: PrivateCallType;
   channelName: string;
   remoteUserName: string;
+  initiatedByUserId: string;
+  startedAt: string | null;
 }
-
-const getCallLabel = (callType: PrivateCallType) => {
-  return callType === 'video' ? 'vidéo' : 'audio';
-};
 
 const PENDING_CALL_TIMEOUT_MS = 30_000;
 
@@ -94,7 +94,7 @@ export const usePrivateConversationCall = ({
   }, []);
 
   const insertCallLog = useCallback(async (
-    label: string,
+    payload: StructuredCallLog,
     senderId: string,
     receiverId: string,
   ) => {
@@ -108,7 +108,7 @@ export const usePrivateConversationCall = ({
         story_id: null,
         sender_id: senderId,
         receiver_id: receiverId,
-        content: createCallLogContent(label),
+        content: createCallLogContent(payload),
         is_story_reply: false,
         replied_to_message_id: null,
       });
@@ -124,6 +124,8 @@ export const usePrivateConversationCall = ({
       callType: normalizeCallType(session.call_type),
       channelName: `call_${session.id}`,
       remoteUserName: otherUserName,
+      initiatedByUserId: session.caller_id,
+      startedAt: session.started_at ?? null,
     } satisfies ActivePrivateCall;
 
     activeSessionRef.current = session.id;
@@ -206,7 +208,7 @@ export const usePrivateConversationCall = ({
     try {
       const { data, error } = await supabase
         .from('call_sessions')
-        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, status')
+        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, started_at, ended_at, status')
         .eq('conversation_id', conversationId)
         .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false })
@@ -309,13 +311,12 @@ export const usePrivateConversationCall = ({
       timedOutSessionIdsRef.current.add(pendingCall.id);
 
       const isCaller = pendingCall.callerId === user?.id;
-      await insertCallLog(
-        isCaller
-          ? `Appel ${getCallLabel(pendingCall.callType)} sans réponse`
-          : `Appel ${getCallLabel(pendingCall.callType)} manqué`,
-        pendingCall.callerId,
-        receiverId,
-      );
+      await insertCallLog({
+        version: 2,
+        outcome: 'missed',
+        callType: pendingCall.callType,
+        initiatedByUserId: pendingCall.callerId,
+      }, pendingCall.callerId, receiverId);
 
       if (isCaller) {
         toast.info(`${otherUserName} n'a pas répondu`);
@@ -399,12 +400,6 @@ export const usePrivateConversationCall = ({
         createdAt: data.created_at,
       });
 
-      await insertCallLog(
-        `Appel ${getCallLabel(type)} sortant`,
-        user.id,
-        otherUserId,
-      );
-
       toast.success(`Appel ${type === 'video' ? 'video' : 'audio'} lance`);
       toast.info(`En attente de la reponse de ${otherUserName}`);
 
@@ -451,16 +446,10 @@ export const usePrivateConversationCall = ({
           updated_at: new Date().toISOString(),
         })
         .eq('id', incomingCall.id)
-        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, status')
+        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, started_at, ended_at, status')
         .single();
 
       if (error) throw error;
-
-      await insertCallLog(
-        `Appel ${normalizeCallType(data.call_type) === 'video' ? 'vidéo' : 'audio'} accepté`,
-        user.id,
-        data.caller_id,
-      );
 
       openAcceptedCall(data as PrivateCallSession);
       return true;
@@ -490,11 +479,14 @@ export const usePrivateConversationCall = ({
 
       if (error) throw error;
 
-      await insertCallLog(
-        `Appel ${getCallLabel(currentCallType)} refusé`,
-        user.id,
-        otherUserId,
-      );
+      if (otherUserId) {
+        await insertCallLog({
+          version: 2,
+          outcome: 'rejected',
+          callType: currentCallType,
+          initiatedByUserId: incomingCall.callerId,
+        }, incomingCall.callerId, user.id);
+      }
 
       setIncomingCall(null);
       return true;
@@ -522,11 +514,12 @@ export const usePrivateConversationCall = ({
 
       if (error) throw error;
 
-      await insertCallLog(
-        `Appel ${getCallLabel(outgoingCall.callType)} annulé`,
-        user.id,
-        otherUserId,
-      );
+      await insertCallLog({
+        version: 2,
+        outcome: 'cancelled',
+        callType: outgoingCall.callType,
+        initiatedByUserId: user.id,
+      }, user.id, otherUserId);
 
       setOutgoingCall(null);
       return true;
@@ -557,11 +550,18 @@ export const usePrivateConversationCall = ({
       if (error) throw error;
 
       if (user?.id && otherUserId && activeCall) {
-        await insertCallLog(
-          `Appel ${getCallLabel(activeCall.callType)} terminé`,
-          user.id,
-          otherUserId,
-        );
+        const startedAtMs = activeCall.startedAt ? new Date(activeCall.startedAt).getTime() : NaN;
+        const durationSeconds = Number.isFinite(startedAtMs)
+          ? Math.max(0, Math.round((Date.now() - startedAtMs) / 1000))
+          : undefined;
+
+        await insertCallLog({
+          version: 2,
+          outcome: 'completed',
+          callType: activeCall.callType,
+          initiatedByUserId: activeCall.initiatedByUserId,
+          durationSeconds,
+        }, activeCall.initiatedByUserId, activeCall.initiatedByUserId === user.id ? otherUserId : user.id);
       }
     } catch (error) {
       console.error('Error ending private call:', error);

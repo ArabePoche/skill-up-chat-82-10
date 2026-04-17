@@ -2,7 +2,7 @@
 // Rôle: afficher un message avec toutes ses actions possibles
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Reply, Edit2, Trash2, Smile, Check, CheckCheck } from 'lucide-react';
+import { Reply, Edit2, Trash2, Smile, Check, CheckCheck, PhoneIncoming, PhoneOutgoing, PhoneMissed } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -16,7 +16,7 @@ import { useConversationMessageReactions, useToggleConversationReaction } from '
 import { useDeleteConversationMessage, useEditConversationMessage } from '@/hooks/conversations/useConversationOperations';
 import { LinkifiedText } from '@/utils/linkify';
 import { formatMessageTime } from '@/utils/dateUtils';
-import { parseCallLogContent } from '@/utils/conversationCallLog';
+import { getCallLogPresentation, parseCallLogContent } from '@/utils/conversationCallLog';
 
 interface ConversationMedia {
   id: string;
@@ -51,14 +51,36 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
 }) => {
   const { user } = useAuth();
   const isOwnMessage = message.sender_id === user?.id;
-  const callLogLabel = parseCallLogContent(message.content);
+  const callLog = parseCallLogContent(message.content);
 
-  if (callLogLabel) {
+  if (callLog) {
+    const presentation = getCallLogPresentation(callLog, user?.id);
+    const callTime = formatMessageTime(message.created_at);
+    const Icon = presentation.icon === 'incoming'
+      ? PhoneIncoming
+      : presentation.icon === 'outgoing'
+        ? PhoneOutgoing
+        : PhoneMissed;
+
     return (
       <div className="flex justify-center">
-        <div className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs text-gray-600 shadow-sm">
-          <span className="font-medium text-gray-700">{callLogLabel}</span>
-          <span className="ml-2 text-gray-400">{formatMessageTime(message.created_at)}</span>
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2 text-xs text-slate-700 shadow-sm">
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full ${presentation.isMissed ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
+            <Icon size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="font-medium text-slate-800">{presentation.title}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+              {presentation.subtitle && (
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">
+                  {presentation.subtitle}
+                </span>
+              )}
+              <span className="rounded-full bg-white px-2 py-0.5 font-medium text-slate-700 ring-1 ring-slate-200">
+                {callTime}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     );
