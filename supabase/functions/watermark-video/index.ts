@@ -94,20 +94,22 @@ function buildCloudinaryEager(
   const parts: string[] = ["w_1280,c_limit"];
 
   if (logoUrl) {
-    // l_fetch accepts a base64-encoded URL for remote image overlays
+    // l_fetch accepts a base64url-encoded URL (base64 with +→-, /→_, padding stripped)
+    // as required by Cloudinary's remote fetch layer syntax.
     const logoBase64 = btoa(logoUrl).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
     parts.push(`l_fetch:${logoBase64},w_40,h_40,g_south_east,x_20,y_115,fl_layer_apply`);
   }
 
-  // Platform name text – bottom-right with box background
+  // Platform name text – bottom-right with semi-transparent box background.
+  // Cloudinary opacity uses 0-100 range, so @40 = 40% (equivalent to ffmpeg's black@0.4).
   const text = encodeCloudinaryText(watermarkText);
   parts.push(
     `l_text:Arial_Bold_26:${text},co_white,g_south_east,x_20,y_20,bo_8px_solid_black@40,fl_layer_apply`,
   );
 
-  // Author handle – one line above the platform text
+  // Author handle – one line above the platform text, with matching box background.
   const author = encodeCloudinaryText(`@${authorName}`);
-  parts.push(`l_text:Arial_20:${author},co_white,g_south_east,x_20,y_60,fl_layer_apply`);
+  parts.push(`l_text:Arial_20:${author},co_white,g_south_east,x_20,y_60,bo_8px_solid_black@40,fl_layer_apply`);
 
   parts.push("f_mp4");
 
@@ -534,9 +536,9 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     console.error("[watermark-video] job failed", { jobId, message, error });
     await markJobFailed(admin, jobId, message);
   } finally {
-    // Best-effort Cloudinary cleanup.
+    // Best-effort Cloudinary cleanup (variables are guaranteed defined at this point).
     if (cloudinaryUploaded) {
-      await deleteCloudinaryVideo(cloudinaryPublicId, cloudName!, apiKey!, apiSecret!);
+      await deleteCloudinaryVideo(cloudinaryPublicId, cloudName, apiKey, apiSecret);
     }
   }
 }
