@@ -183,18 +183,37 @@ async function cleanTemp(...paths: Array<string | null | undefined>) {
 }
 
 /**
- * Downloads the platform logo from the PLATFORM_LOGO_URL environment variable
- * to a temp file. Returns the temp path, or null if no logo URL is configured
- * or the download fails (watermark will fall back to text-only).
+ * Resolves the platform logo URL: first from the PLATFORM_LOGO_URL env var,
+ * then falls back to the `platform_logo_url` key in the `platform_settings` table.
  */
-async function downloadLogoToTempFile(uid: string): Promise<string | null> {
-  const logoUrl = Deno.env.get("PLATFORM_LOGO_URL");
+async function resolvePlatformLogoUrl(admin: ReturnType<typeof createClient>): Promise<string | null> {
+  const envUrl = Deno.env.get("PLATFORM_LOGO_URL");
+  if (envUrl) return envUrl;
+
+  try {
+    const { data } = await admin
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "platform_logo_url")
+      .maybeSingle();
+    return data?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Downloads the platform logo to a temp file. Returns the temp path, or null
+ * if no logo URL is configured or the download fails (falls back to text-only).
+ */
+async function downloadLogoToTempFile(uid: string, admin: ReturnType<typeof createClient>): Promise<string | null> {
+  const logoUrl = await resolvePlatformLogoUrl(admin);
   if (!logoUrl) return null;
 
   try {
     new URL(logoUrl); // Validate URL format
   } catch {
-    console.warn("[watermark-video] PLATFORM_LOGO_URL is not a valid URL, skipping logo");
+    console.warn("[watermark-video] logo URL is not valid, skipping logo");
     return null;
   }
 
@@ -465,7 +484,7 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     await downloadSourceToTempFile(job.source_url, inputPath);
 
     // Download platform logo (best-effort, non-blocking on failure)
-    logoPath = await downloadLogoToTempFile(uid);
+    logoPath = await downloadLogoToTempFile(uid, admin);
 
     const sourceProbe = await probeMedia(inputPath);
     const sourceValidation = validateSourceProbe(sourceProbe);
