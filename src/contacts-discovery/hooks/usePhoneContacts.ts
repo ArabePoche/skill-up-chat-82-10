@@ -65,32 +65,62 @@ export const usePhoneContacts = () => {
           console.log('🔐 Permission contacts:', permission);
           
           if (permission.contacts === 'granted' || permission.contacts === 'prompt') {
-            // TENTATIVE SANS PROJECTION POUR MAXIMISER COMPATIBILITÉ
-            // Certains téléphones bloquent si on demande une projection précise
+            // Projection complète pour maximiser la récupération depuis tous les comptes
+            // (Google, SIM, téléphone, WhatsApp, etc.)
             const result = await Contacts.getContacts({
-               // @ts-ignore
                projection: {
                   name: true,
-                  phones: true
+                  phones: true,
+                  emails: false,
+                  organization: false,
+                  image: false,
                }
             });
             
             const rawContacts = result.contacts || [];
             console.log('📇 Contacts bruts récupérés:', rawContacts.length);
-            
+            // Log le 1er contact pour debug structure réelle retournée par le device
+            if (rawContacts.length > 0) {
+              console.log('📇 Exemple contact[0]:', JSON.stringify(rawContacts[0]));
+            }
+
+            // Helper: extraire un nom lisible depuis les multiples formats possibles
+            const extractName = (contact: any): string => {
+              if (!contact) return 'Sans nom';
+              const n = contact.name;
+              if (n && typeof n === 'object') {
+                const display = n.display;
+                if (display && typeof display === 'string' && display.trim()) return display.trim();
+                const parts = [n.given, n.middle, n.family].filter((p: any) => p && typeof p === 'string');
+                if (parts.length > 0) return parts.join(' ').trim();
+              }
+              if (typeof contact.displayName === 'string' && contact.displayName.trim()) return contact.displayName.trim();
+              if (typeof contact.givenName === 'string' && contact.givenName.trim()) return contact.givenName.trim();
+              return 'Sans nom';
+            };
+
+            // Helper: extraire les numéros depuis différents formats (string ou {number})
+            const extractPhones = (contact: any): string[] => {
+              const phones = contact?.phones;
+              if (!phones || !Array.isArray(phones)) return [];
+              return phones
+                .map((p: any) => {
+                  let raw = '';
+                  if (typeof p === 'string') raw = p;
+                  else if (p && typeof p === 'object') raw = p.number || p.value || '';
+                  return typeof raw === 'string' ? raw.replace(/[^0-9+]/g, '') : '';
+                })
+                .filter((num: string) => num.length >= 4); // au moins 4 chiffres pour être valide
+            };
+
             const formattedContacts: PhoneContact[] = rawContacts
-              .filter((contact: any) => {
-                 // Vérifier si le contact a au moins un numéro
-                 return contact.phones && Array.isArray(contact.phones) && contact.phones.length > 0;
-              })
               .map((contact: any) => ({
-                // Essayer tous les champs de nom possibles selon les versions d'Android/iOS
-                name: contact.name?.display || contact.displayName || contact.givenName || contact.name || 'Sans nom',
-                // Nettoyage strict : ne garder que chiffres et +
-                phoneNumbers: contact.phones
-                  .map((p: any) => typeof p === 'string' ? p.replace(/[^0-9+]/g, '') : p.number?.replace(/[^0-9+]/g, '') || '')
-                  .filter((num: string) => num.length > 0)
-              }));
+                name: extractName(contact),
+                phoneNumbers: extractPhones(contact),
+              }))
+              .filter((c: PhoneContact) => c.phoneNumbers.length > 0);
+
+            console.log(`📊 Stats: ${rawContacts.length} bruts → ${formattedContacts.length} avec numéro valide`);
             
             console.log('✅ Contacts formatés valides:', formattedContacts.length);
 
