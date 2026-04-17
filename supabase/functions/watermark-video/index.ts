@@ -38,18 +38,16 @@ type WatermarkJobRow = {
   failed_at: string | null;
 };
 
-type CloudinaryUploadResult = {
-  public_id: string;
-  secure_url: string;
-  duration?: number;
-  width?: number;
+type ImageKitUploadResult = {
+  fileId: string;
+  name: string;
+  url: string;
+  filePath: string;
   height?: number;
-  format?: string;
-  bytes?: number;
-  audio?: { codec?: string };
-  video?: { codec?: string };
-  eager?: Array<{ secure_url: string; bytes?: number }>;
-  error?: { message: string };
+  width?: number;
+  size?: number;
+  fileType?: string;
+  message?: string;
 };
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -71,145 +69,86 @@ function sanitizeFileName(fileName: string): string {
 }
 
 /**
- * Encode a text value for use in a Cloudinary transformation URL.
- * Commas and forward-slashes are Cloudinary delimiters and must be percent-encoded.
+ * Build Basic Authorization header for ImageKit API calls.
+ * ImageKit uses HTTP Basic auth with the private key as username and empty password.
  */
-function encodeCloudinaryText(text: string): string {
-  return encodeURIComponent(text);
+function buildImageKitAuth(privateKey: string): string {
+  return "Basic " + btoa(privateKey + ":");
 }
 
 /**
- * Build the Cloudinary eager-transformation string that:
- *  - scales the video to max 1280 px wide
+ * Build the ImageKit transformation string that:
+ *  - limits the video to max 1280 px wide
  *  - overlays the logo image (fetched from logoUrl) 40×40 px at bottom-right if provided
  *  - draws the platform text (bottom-right)
  *  - draws @author above it
- *  - outputs mp4
  */
-function buildCloudinaryEager(
+function buildImageKitTransformation(
   authorName: string,
   watermarkText: string,
   logoUrl: string | null,
 ): string {
-  const parts: string[] = ["w_1280,c_limit"];
+  const parts: string[] = ["w-1280,c-at_max"];
 
   if (logoUrl) {
-    // l_fetch accepts a base64url-encoded URL (base64 with +→-, /→_, padding stripped)
-    // as required by Cloudinary's remote fetch layer syntax.
+    // ImageKit accepts a base64url-encoded external URL as overlay image source.
     const logoBase64 = btoa(logoUrl).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-    parts.push(`l_fetch:${logoBase64},w_40,h_40,g_south_east,x_20,y_115,fl_layer_apply`);
+    parts.push(`l-image,i-${logoBase64},w-40,h-40,lfo-bottom_right,lx-20,ly-115,l-end`);
   }
 
-  // Platform name text – bottom-right with semi-transparent box background.
-  // Cloudinary opacity uses 0-100 range, so @40 = 40% (equivalent to ffmpeg's black@0.4).
-  const text = encodeCloudinaryText(watermarkText);
-  parts.push(
-    `l_text:Arial_Bold_26:${text},co_white,g_south_east,x_20,y_20,bo_8px_solid_black@40,fl_layer_apply`,
-  );
+  // Platform name text – bottom-right corner.
+  const text = encodeURIComponent(watermarkText);
+  parts.push(`l-text,i-${text},fs-26,co-white,lfo-bottom_right,lx-20,ly-20,l-end`);
 
-  // Author handle – one line above the platform text, with matching box background.
-  const author = encodeCloudinaryText(`@${authorName}`);
-  parts.push(`l_text:Arial_20:${author},co_white,g_south_east,x_20,y_60,bo_8px_solid_black@40,fl_layer_apply`);
+  // Author handle – one line above the platform text.
+  const author = encodeURIComponent(`@${authorName}`);
+  parts.push(`l-text,i-${author},fs-20,co-white,lfo-bottom_right,lx-20,ly-60,l-end`);
 
-  parts.push("f_mp4");
-
-  return parts.join("/");
+  return parts.join(":");
 }
 
 /**
- * Compute a Cloudinary API signature.
- * Params are sorted alphabetically, concatenated as key=value pairs, then the API secret is
- * appended before hashing with SHA-1.
+ * Upload a video to ImageKit by URL (ImageKit fetches it).
+ * Returns the upload result including the file URL for transformation delivery.
  */
-async function computeCloudinarySignature(
-  params: Record<string, string>,
-  apiSecret: string,
-): Promise<string> {
-  const sortedStr = Object.keys(params)
-    .sort()
-    .map((key) => `${key}=${params[key]}`)
-    .join("&");
-
-  const signStr = `${sortedStr}${apiSecret}`;
-  const data = new TextEncoder().encode(signStr);
-  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-/**
- * Upload a video to Cloudinary by URL (Cloudinary fetches it) and apply an eager
- * watermark transformation synchronously.  Returns the upload result including the
- * processed eager URL.
- */
-async function uploadToCloudinary(
+async function uploadToImageKit(
   sourceUrl: string,
-  publicId: string,
-  cloudName: string,
-  apiKey: string,
-  apiSecret: string,
-  eagerTransformation: string,
-): Promise<CloudinaryUploadResult> {
-  const timestamp = String(Math.floor(Date.now() / 1000));
-
-  const paramsToSign: Record<string, string> = {
-    eager: eagerTransformation,
-    eager_async: "false",
-    public_id: publicId,
-    timestamp,
-  };
-
-  const signature = await computeCloudinarySignature(paramsToSign, apiSecret);
-
+  fileName: string,
+  privateKey: string,
+): Promise<ImageKitUploadResult> {
   const formData = new FormData();
   formData.append("file", sourceUrl);
-  formData.append("public_id", publicId);
-  formData.append("timestamp", timestamp);
-  formData.append("api_key", apiKey);
-  formData.append("signature", signature);
-  formData.append("eager", eagerTransformation);
-  formData.append("eager_async", "false");
+  formData.append("fileName", fileName);
+  formData.append("folder", "/watermark-temp");
+  formData.append("useUniqueFileName", "true");
 
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
-    { method: "POST", body: formData },
-  );
+  const response = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
+    method: "POST",
+    headers: { Authorization: buildImageKitAuth(privateKey) },
+    body: formData,
+  });
 
-  const result = await response.json() as CloudinaryUploadResult;
+  const result = await response.json() as ImageKitUploadResult;
 
-  if (!response.ok || result.error) {
-    throw new Error(`Cloudinary upload: ${result.error?.message ?? response.statusText}`);
+  if (!response.ok) {
+    throw new Error(`ImageKit upload: ${result.message ?? response.statusText}`);
   }
 
   return result;
 }
 
 /**
- * Delete a previously uploaded video from Cloudinary (best-effort, errors are swallowed).
+ * Delete a previously uploaded file from ImageKit (best-effort, errors are swallowed).
  */
-async function deleteCloudinaryVideo(
-  publicId: string,
-  cloudName: string,
-  apiKey: string,
-  apiSecret: string,
+async function deleteImageKitFile(
+  fileId: string,
+  privateKey: string,
 ): Promise<void> {
   try {
-    const timestamp = String(Math.floor(Date.now() / 1000));
-    const paramsToSign: Record<string, string> = { public_id: publicId, timestamp };
-    const signature = await computeCloudinarySignature(paramsToSign, apiSecret);
-
-    const formData = new FormData();
-    formData.append("public_id", publicId);
-    formData.append("timestamp", timestamp);
-    formData.append("api_key", apiKey);
-    formData.append("signature", signature);
-    formData.append("resource_type", "video");
-
-    await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/video/destroy`,
-      { method: "POST", body: formData },
-    );
+    await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
+      method: "DELETE",
+      headers: { Authorization: buildImageKitAuth(privateKey) },
+    });
   } catch {
     // Best-effort cleanup – do not let errors propagate.
   }
@@ -322,18 +261,11 @@ async function validateSourceHttp(url: string): Promise<void> {
 }
 
 /**
- * Validate the metadata returned by Cloudinary after upload.
- * Replaces the ffprobe-based validateSourceProbe check.
+ * Validate that the ImageKit upload succeeded and returned a usable file URL.
  */
-function validateCloudinaryMeta(meta: CloudinaryUploadResult): void {
-  const duration = meta.duration ?? 0;
-
-  if (!duration || !Number.isFinite(duration)) {
-    throw new Error("La durée de la vidéo source est invalide");
-  }
-
-  if (duration > MAX_DURATION_SECONDS) {
-    throw new Error("La durée de la vidéo dépasse la limite autorisée");
+function validateImageKitMeta(meta: ImageKitUploadResult): void {
+  if (!meta.url || !meta.fileId) {
+    throw new Error("ImageKit n'a pas retourné les métadonnées attendues après l'upload");
   }
 }
 
@@ -402,22 +334,20 @@ async function markJobFailed(
 async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobId: string) {
   const admin = createClient(supabaseUrl, serviceKey);
 
-  const cloudName = Deno.env.get("CLOUDINARY_CLOUD_NAME");
-  const apiKey = Deno.env.get("CLOUDINARY_API_KEY");
-  const apiSecret = Deno.env.get("CLOUDINARY_API_SECRET");
+  const privateKey = Deno.env.get("IMAGEKIT_PRIVATE_KEY");
 
-  if (!cloudName || !apiKey || !apiSecret) {
+  if (!privateKey) {
     await markJobFailed(
       admin,
       jobId,
-      "Configuration Cloudinary manquante. Veuillez définir CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY et CLOUDINARY_API_SECRET.",
+      "Configuration ImageKit manquante. Veuillez définir IMAGEKIT_PRIVATE_KEY.",
     );
     return;
   }
 
-  // Use the job ID as Cloudinary public_id to guarantee uniqueness and easy cleanup.
-  const cloudinaryPublicId = `vw-${jobId}`;
-  let cloudinaryUploaded = false;
+  // Use the job ID as ImageKit file name to guarantee uniqueness and easy cleanup.
+  const imagekitFileName = `vw-${jobId}.mp4`;
+  let imagekitFileId: string | null = null;
 
   try {
     const { data: job, error: fetchError } = await admin
@@ -451,32 +381,28 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       progress: 25,
     });
 
-    // Build the Cloudinary eager transformation for the watermark.
-    const eagerTransformation = buildCloudinaryEager(job.author_name, job.watermark_text, logoUrl);
+    // Build the ImageKit transformation string for the watermark.
+    const transformation = buildImageKitTransformation(job.author_name, job.watermark_text, logoUrl);
 
-    // Upload source video to Cloudinary (they fetch from URL) and apply the watermark eagerly.
-    const cloudMeta = await withRetry(
-      "cloudinary-upload",
-      () => uploadToCloudinary(job.source_url, cloudinaryPublicId, cloudName, apiKey, apiSecret, eagerTransformation),
+    // Upload source video to ImageKit (they fetch from URL).
+    const imagekitMeta = await withRetry(
+      "imagekit-upload",
+      () => uploadToImageKit(job.source_url, imagekitFileName, privateKey),
     );
-    cloudinaryUploaded = true;
+    imagekitFileId = imagekitMeta.fileId;
 
-    // Validate duration from Cloudinary metadata.
-    validateCloudinaryMeta(cloudMeta);
+    // Validate that the upload returned a usable URL.
+    validateImageKitMeta(imagekitMeta);
 
-    const eagerUrl = cloudMeta.eager?.[0]?.secure_url;
-    if (!eagerUrl) {
-      throw new Error("Cloudinary n'a pas retourné l'URL de la vidéo watermarkée");
-    }
+    // Build the transformation delivery URL to download the watermarked video.
+    const watermarkedUrl = `${imagekitMeta.url}?tr=${transformation}`;
 
     await updateJob(admin, jobId, {
       stage: "Application du watermark",
       progress: 60,
       metadata: {
-        sourceDurationSeconds: cloudMeta.duration ?? null,
-        sourceHasAudio: Boolean(cloudMeta.audio),
-        sourceWidth: cloudMeta.width ?? null,
-        sourceHeight: cloudMeta.height ?? null,
+        sourceWidth: imagekitMeta.width ?? null,
+        sourceHeight: imagekitMeta.height ?? null,
       },
     });
 
@@ -485,9 +411,9 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       progress: 85,
     });
 
-    // Download the watermarked video from Cloudinary and upload to Supabase Storage.
+    // Download the watermarked video from ImageKit and upload to Supabase Storage.
     const outputResponse = await withRetry("download-watermarked", async () => {
-      const res = await fetch(eagerUrl);
+      const res = await fetch(watermarkedUrl);
       if (!res.ok) {
         throw new Error(`Téléchargement watermark impossible (${res.status})`);
       }
@@ -522,10 +448,8 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       completed_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + JOB_RETENTION_HOURS * 60 * 60 * 1000).toISOString(),
       metadata: {
-        sourceDurationSeconds: cloudMeta.duration ?? null,
-        sourceHasAudio: Boolean(cloudMeta.audio),
-        sourceWidth: cloudMeta.width ?? null,
-        sourceHeight: cloudMeta.height ?? null,
+        sourceWidth: imagekitMeta.width ?? null,
+        sourceHeight: imagekitMeta.height ?? null,
         outputSizeBytes: outputData.byteLength,
       },
     });
@@ -536,9 +460,9 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     console.error("[watermark-video] job failed", { jobId, message, error });
     await markJobFailed(admin, jobId, message);
   } finally {
-    // Best-effort Cloudinary cleanup (variables are guaranteed defined at this point).
-    if (cloudinaryUploaded) {
-      await deleteCloudinaryVideo(cloudinaryPublicId, cloudName, apiKey, apiSecret);
+    // Best-effort ImageKit cleanup.
+    if (imagekitFileId && privateKey) {
+      await deleteImageKitFile(imagekitFileId, privateKey);
     }
   }
 }
