@@ -300,7 +300,19 @@ const saveTempFile = async (
   }
 
   debugLog('✅ Fichier temporaire écrit (streaming)');
-  return result.uri;
+
+  // Sur Android, le plugin Media accepte mieux un chemin absolu issu de getUri
+  // que l'URI brute renvoyée par writeFile (selon la version d'Android / Scoped
+  // Storage). On résout donc l'URI canonique avant de la retourner.
+  try {
+    const { uri } = await Filesystem.getUri({
+      path: fileName,
+      directory: Directory.Cache,
+    });
+    return uri || result.uri;
+  } catch {
+    return result.uri;
+  }
 };
 
 /**
