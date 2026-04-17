@@ -38,19 +38,18 @@ type WatermarkJobRow = {
   failed_at: string | null;
 };
 
-type MediaProbe = {
-  format?: {
-    duration?: string;
-    size?: string;
-    format_name?: string;
-  };
-  streams?: Array<{
-    codec_type?: string;
-    codec_name?: string;
-    width?: number;
-    height?: number;
-    duration?: string;
-  }>;
+type CloudinaryUploadResult = {
+  public_id: string;
+  secure_url: string;
+  duration?: number;
+  width?: number;
+  height?: number;
+  format?: string;
+  bytes?: number;
+  audio?: { codec?: string };
+  video?: { codec?: string };
+  eager?: Array<{ secure_url: string; bytes?: number }>;
+  error?: { message: string };
 };
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -71,46 +70,147 @@ function sanitizeFileName(fileName: string): string {
   return `${safeBase}.mp4`;
 }
 
-function escapeForFfmpeg(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'")
-    .replace(/:/g, "\\:")
-    .replace(/,/g, "\\,")
-    .replace(/\[/g, "\\[")
-    .replace(/\]/g, "\\]");
+/**
+ * Encode a text value for use in a Cloudinary transformation URL.
+ * Commas and forward-slashes are Cloudinary delimiters and must be percent-encoded.
+ */
+function encodeCloudinaryText(text: string): string {
+  return encodeURIComponent(text);
 }
 
 /**
- * Builds the simple video filter (no logo) with platform name + @username bottom-right.
+ * Build the Cloudinary eager-transformation string that:
+ *  - scales the video to max 1280 px wide
+ *  - overlays the logo image (fetched from logoUrl) 40×40 px at bottom-right if provided
+ *  - draws the platform text (bottom-right)
+ *  - draws @author above it
+ *  - outputs mp4
  */
-function buildVfFilter(authorName: string, watermarkText: string): string {
-  const text = escapeForFfmpeg(watermarkText);
-  const author = escapeForFfmpeg(authorName);
-  return [
-    "scale='min(1280,iw)':-2",
-    `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${text}':fontsize=26:fontcolor=white@0.85:x=w-tw-20:y=h-th-20:box=1:boxcolor=black@0.4:boxborderw=8`,
-    `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='@${author}':fontsize=20:fontcolor=white@0.7:x=w-tw-20:y=h-th-60:box=1:boxcolor=black@0.4:boxborderw=8`,
-  ].join(",");
-}
+function buildCloudinaryEager(
+  authorName: string,
+  watermarkText: string,
+  logoUrl: string | null,
+): string {
+  const parts: string[] = ["w_1280,c_limit"];
 
-/**
- * Builds a filter_complex graph that overlays a logo image (input [1:v]) and
- * draws platform name + @username bottom-right.
- * Logo is 40×40 px, placed directly above the text block.
- */
-function buildFilterComplex(authorName: string, watermarkText: string): string {
-  const text = escapeForFfmpeg(watermarkText);
-  const author = escapeForFfmpeg(authorName);
-  return (
-    "[1:v]scale=40:40[logo];" +
-    "[0:v]scale='min(1280,iw)':-2[scaled];" +
-    "[scaled][logo]overlay=W-w-20:H-h-115[withlogo];" +
-    "[withlogo]" +
-    `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${text}':fontsize=26:fontcolor=white@0.85:x=w-tw-20:y=h-th-20:box=1:boxcolor=black@0.4:boxborderw=8,` +
-    `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='@${author}':fontsize=20:fontcolor=white@0.7:x=w-tw-20:y=h-th-60:box=1:boxcolor=black@0.4:boxborderw=8` +
-    "[vout]"
+  if (logoUrl) {
+    // l_fetch accepts a base64-encoded URL for remote image overlays
+    const logoBase64 = btoa(logoUrl).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+    parts.push(`l_fetch:${logoBase64},w_40,h_40,g_south_east,x_20,y_115,fl_layer_apply`);
+  }
+
+  // Platform name text – bottom-right with box background
+  const text = encodeCloudinaryText(watermarkText);
+  parts.push(
+    `l_text:Arial_Bold_26:${text},co_white,g_south_east,x_20,y_20,bo_8px_solid_black@40,fl_layer_apply`,
   );
+
+  // Author handle – one line above the platform text
+  const author = encodeCloudinaryText(`@${authorName}`);
+  parts.push(`l_text:Arial_20:${author},co_white,g_south_east,x_20,y_60,fl_layer_apply`);
+
+  parts.push("f_mp4");
+
+  return parts.join("/");
+}
+
+/**
+ * Compute a Cloudinary API signature.
+ * Params are sorted alphabetically, concatenated as key=value pairs, then the API secret is
+ * appended before hashing with SHA-1.
+ */
+async function computeCloudinarySignature(
+  params: Record<string, string>,
+  apiSecret: string,
+): Promise<string> {
+  const sortedStr = Object.keys(params)
+    .sort()
+    .map((key) => `${key}=${params[key]}`)
+    .join("&");
+
+  const signStr = `${sortedStr}${apiSecret}`;
+  const data = new TextEncoder().encode(signStr);
+  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Upload a video to Cloudinary by URL (Cloudinary fetches it) and apply an eager
+ * watermark transformation synchronously.  Returns the upload result including the
+ * processed eager URL.
+ */
+async function uploadToCloudinary(
+  sourceUrl: string,
+  publicId: string,
+  cloudName: string,
+  apiKey: string,
+  apiSecret: string,
+  eagerTransformation: string,
+): Promise<CloudinaryUploadResult> {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+
+  const paramsToSign: Record<string, string> = {
+    eager: eagerTransformation,
+    eager_async: "false",
+    public_id: publicId,
+    timestamp,
+  };
+
+  const signature = await computeCloudinarySignature(paramsToSign, apiSecret);
+
+  const formData = new FormData();
+  formData.append("file", sourceUrl);
+  formData.append("public_id", publicId);
+  formData.append("timestamp", timestamp);
+  formData.append("api_key", apiKey);
+  formData.append("signature", signature);
+  formData.append("eager", eagerTransformation);
+  formData.append("eager_async", "false");
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
+    { method: "POST", body: formData },
+  );
+
+  const result = await response.json() as CloudinaryUploadResult;
+
+  if (!response.ok || result.error) {
+    throw new Error(`Cloudinary upload: ${result.error?.message ?? response.statusText}`);
+  }
+
+  return result;
+}
+
+/**
+ * Delete a previously uploaded video from Cloudinary (best-effort, errors are swallowed).
+ */
+async function deleteCloudinaryVideo(
+  publicId: string,
+  cloudName: string,
+  apiKey: string,
+  apiSecret: string,
+): Promise<void> {
+  try {
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const paramsToSign: Record<string, string> = { public_id: publicId, timestamp };
+    const signature = await computeCloudinarySignature(paramsToSign, apiSecret);
+
+    const formData = new FormData();
+    formData.append("public_id", publicId);
+    formData.append("timestamp", timestamp);
+    formData.append("api_key", apiKey);
+    formData.append("signature", signature);
+    formData.append("resource_type", "video");
+
+    await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/video/destroy`,
+      { method: "POST", body: formData },
+    );
+  } catch {
+    // Best-effort cleanup – do not let errors propagate.
+  }
 }
 
 function getAllowedHosts() {
@@ -171,17 +271,6 @@ function validateSourceUrl(videoUrl: string): URL {
   return parsed;
 }
 
-async function cleanTemp(...paths: Array<string | null | undefined>) {
-  for (const path of paths) {
-    if (!path) continue;
-    try {
-      await Deno.remove(path);
-    } catch {
-      // Ignore cleanup errors.
-    }
-  }
-}
-
 /**
  * Resolves the platform logo URL: first from the PLATFORM_LOGO_URL env var,
  * then falls back to the `platform_logo_url` key in the `platform_settings` table.
@@ -203,33 +292,46 @@ async function resolvePlatformLogoUrl(admin: ReturnType<typeof createClient>): P
 }
 
 /**
- * Downloads the platform logo to a temp file. Returns the temp path, or null
- * if no logo URL is configured or the download fails (falls back to text-only).
+ * Validate the video source via an HTTP HEAD request.
+ * Checks content-type (must be video/*) and content-length (must be within MAX_SOURCE_SIZE_BYTES).
+ * Does not spawn any subprocess.
  */
-async function downloadLogoToTempFile(uid: string, admin: ReturnType<typeof createClient>): Promise<string | null> {
-  const logoUrl = await resolvePlatformLogoUrl(admin);
-  if (!logoUrl) return null;
-
+async function validateSourceHttp(url: string): Promise<void> {
+  let response: Response;
   try {
-    new URL(logoUrl); // Validate URL format
+    response = await fetch(url, { method: "HEAD" });
   } catch {
-    console.warn("[watermark-video] logo URL is not valid, skipping logo");
-    return null;
+    throw new Error("La source vidéo est inaccessible");
   }
 
-  const logoPath = `/tmp/vw-logo-${uid}.png`;
-  try {
-    const response = await fetch(logoUrl);
-    if (!response.ok) {
-      console.warn(`[watermark-video] Logo download failed (${response.status}), skipping logo`);
-      return null;
-    }
-    const data = await response.arrayBuffer();
-    await Deno.writeFile(logoPath, new Uint8Array(data));
-    return logoPath;
-  } catch (err) {
-    console.warn("[watermark-video] Logo download error, skipping logo", err);
-    return null;
+  if (!response.ok) {
+    throw new Error(`Source vidéo inaccessible (${response.status})`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType && !contentType.toLowerCase().startsWith("video/")) {
+    throw new Error("Le fichier source doit être une vidéo");
+  }
+
+  const contentLength = Number(response.headers.get("content-length") || "0");
+  if (contentLength > 0 && contentLength > MAX_SOURCE_SIZE_BYTES) {
+    throw new Error("La vidéo source dépasse la taille maximale autorisée");
+  }
+}
+
+/**
+ * Validate the metadata returned by Cloudinary after upload.
+ * Replaces the ffprobe-based validateSourceProbe check.
+ */
+function validateCloudinaryMeta(meta: CloudinaryUploadResult): void {
+  const duration = meta.duration ?? 0;
+
+  if (!duration || !Number.isFinite(duration)) {
+    throw new Error("La durée de la vidéo source est invalide");
+  }
+
+  if (duration > MAX_DURATION_SECONDS) {
+    throw new Error("La durée de la vidéo dépasse la limite autorisée");
   }
 }
 
@@ -254,118 +356,6 @@ async function withRetry<T>(label: string, operation: () => Promise<T>, attempts
   }
 
   throw lastError instanceof Error ? lastError : new Error(`${label} failed`);
-}
-
-async function downloadSourceToTempFile(url: string, filePath: string) {
-  await withRetry("download-source", async () => {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Téléchargement source impossible (${response.status})`);
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType && !contentType.toLowerCase().startsWith("video/")) {
-      throw new Error("Le fichier source doit être une vidéo");
-    }
-
-    const declaredSize = Number(response.headers.get("content-length") || "0");
-    if (declaredSize > MAX_SOURCE_SIZE_BYTES) {
-      throw new Error("La vidéo source dépasse la taille maximale autorisée");
-    }
-
-    const file = await Deno.open(filePath, { create: true, write: true, truncate: true });
-
-    try {
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("Le flux vidéo source est indisponible");
-      }
-
-      let loaded = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        loaded += value.byteLength;
-        if (loaded > MAX_SOURCE_SIZE_BYTES) {
-          throw new Error("La vidéo source dépasse la taille maximale autorisée");
-        }
-        await file.write(value);
-      }
-    } finally {
-      file.close();
-    }
-  });
-}
-
-async function probeMedia(filePath: string): Promise<MediaProbe> {
-  const probe = await new Deno.Command("ffprobe", {
-    args: [
-      "-v",
-      "error",
-      "-print_format",
-      "json",
-      "-show_format",
-      "-show_streams",
-      filePath,
-    ],
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
-
-  if (!probe.success) {
-    const stderr = new TextDecoder().decode(probe.stderr);
-    throw new Error(`ffprobe failed: ${stderr || "unknown error"}`);
-  }
-
-  const raw = new TextDecoder().decode(probe.stdout);
-  return JSON.parse(raw) as MediaProbe;
-}
-
-function validateSourceProbe(probe: MediaProbe) {
-  const duration = Number(probe.format?.duration || "0");
-  const videoStream = probe.streams?.find((stream) => stream.codec_type === "video");
-
-  if (!videoStream) {
-    throw new Error("La source ne contient pas de piste vidéo valide");
-  }
-
-  if (!duration || !Number.isFinite(duration)) {
-    throw new Error("La durée de la vidéo source est invalide");
-  }
-
-  if (duration > MAX_DURATION_SECONDS) {
-    throw new Error("La durée de la vidéo dépasse la limite autorisée");
-  }
-
-  return {
-    duration,
-    hasAudio: Boolean(probe.streams?.some((stream) => stream.codec_type === "audio")),
-    width: Number(videoStream.width || 0),
-    height: Number(videoStream.height || 0),
-  };
-}
-
-function validateOutputProbe(probe: MediaProbe, sourceDuration: number, sourceHasAudio: boolean) {
-  const duration = Number(probe.format?.duration || "0");
-  const hasVideo = Boolean(probe.streams?.some((stream) => stream.codec_type === "video"));
-  const hasAudio = Boolean(probe.streams?.some((stream) => stream.codec_type === "audio"));
-
-  if (!hasVideo) {
-    throw new Error("Le rendu final ne contient pas de piste vidéo");
-  }
-
-  if (sourceHasAudio && !hasAudio) {
-    throw new Error("Le rendu final a perdu la piste audio");
-  }
-
-  if (!duration || Math.abs(duration - sourceDuration) > 2) {
-    throw new Error("Le rendu final ne respecte pas la durée attendue");
-  }
-
-  return {
-    duration,
-    hasAudio,
-  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -407,54 +397,25 @@ async function markJobFailed(
   }
 }
 
-async function runFfmpeg(
-  inputPath: string,
-  outputPath: string,
-  authorName: string,
-  watermarkText: string,
-  logoPath: string | null,
-) {
-  const args: string[] = ["-y"];
-
-  if (logoPath) {
-    // Two inputs: source video + logo image
-    args.push("-i", inputPath, "-i", logoPath);
-    args.push("-filter_complex", buildFilterComplex(authorName, watermarkText));
-    args.push("-map", "[vout]", "-map", "0:a?");
-  } else {
-    args.push("-i", inputPath);
-    args.push("-vf", buildVfFilter(authorName, watermarkText));
-    args.push("-map", "0:v", "-map", "0:a?");
-  }
-
-  args.push(
-    "-c:v", "libx264",
-    "-preset", "veryfast",
-    "-crf", "18",
-    "-pix_fmt", "yuv420p",
-    "-c:a", "copy",
-    "-movflags", "+faststart",
-    outputPath,
-  );
-
-  const command = new Deno.Command("ffmpeg", {
-    args,
-    stdout: "piped",
-    stderr: "piped",
-  });
-
-  const output = await command.output();
-  if (!output.success) {
-    const stderr = new TextDecoder().decode(output.stderr);
-    throw new Error(`FFmpeg a échoué: ${stderr || "unknown error"}`);
-  }
-}
-
 async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobId: string) {
   const admin = createClient(supabaseUrl, serviceKey);
-  let inputPath: string | null = null;
-  let outputPath: string | null = null;
-  let logoPath: string | null = null;
+
+  const cloudName = Deno.env.get("CLOUDINARY_CLOUD_NAME");
+  const apiKey = Deno.env.get("CLOUDINARY_API_KEY");
+  const apiSecret = Deno.env.get("CLOUDINARY_API_SECRET");
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    await markJobFailed(
+      admin,
+      jobId,
+      "Configuration Cloudinary manquante. Veuillez définir CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY et CLOUDINARY_API_SECRET.",
+    );
+    return;
+  }
+
+  // Use the job ID as Cloudinary public_id to guarantee uniqueness and easy cleanup.
+  const cloudinaryPublicId = `vw-${jobId}`;
+  let cloudinaryUploaded = false;
 
   try {
     const { data: job, error: fetchError } = await admin
@@ -467,10 +428,6 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       throw new Error(fetchError?.message || "Job introuvable");
     }
 
-    const uid = crypto.randomUUID();
-    inputPath = `/tmp/vw-input-${uid}.mp4`;
-    outputPath = `/tmp/vw-output-${uid}.mp4`;
-
     await updateJob(admin, jobId, {
       status: "processing",
       stage: "Validation de la source",
@@ -481,49 +438,63 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       failed_at: null,
     });
 
-    await downloadSourceToTempFile(job.source_url, inputPath);
+    // Lightweight HTTP-based validation (no subprocess).
+    await validateSourceHttp(job.source_url);
 
-    // Download platform logo (best-effort, non-blocking on failure)
-    logoPath = await downloadLogoToTempFile(uid, admin);
+    // Resolve the platform logo URL (best-effort, falls back to text-only).
+    const logoUrl = await resolvePlatformLogoUrl(admin);
 
-    const sourceProbe = await probeMedia(inputPath);
-    const sourceValidation = validateSourceProbe(sourceProbe);
+    await updateJob(admin, jobId, {
+      stage: "Transfert vers le service de traitement",
+      progress: 25,
+    });
+
+    // Build the Cloudinary eager transformation for the watermark.
+    const eagerTransformation = buildCloudinaryEager(job.author_name, job.watermark_text, logoUrl);
+
+    // Upload source video to Cloudinary (they fetch from URL) and apply the watermark eagerly.
+    const cloudMeta = await withRetry(
+      "cloudinary-upload",
+      () => uploadToCloudinary(job.source_url, cloudinaryPublicId, cloudName, apiKey, apiSecret, eagerTransformation),
+    );
+    cloudinaryUploaded = true;
+
+    // Validate duration from Cloudinary metadata.
+    validateCloudinaryMeta(cloudMeta);
+
+    const eagerUrl = cloudMeta.eager?.[0]?.secure_url;
+    if (!eagerUrl) {
+      throw new Error("Cloudinary n'a pas retourné l'URL de la vidéo watermarkée");
+    }
 
     await updateJob(admin, jobId, {
       stage: "Application du watermark",
-      progress: 45,
+      progress: 60,
       metadata: {
-        sourceDurationSeconds: sourceValidation.duration,
-        sourceHasAudio: sourceValidation.hasAudio,
-        sourceWidth: sourceValidation.width,
-        sourceHeight: sourceValidation.height,
+        sourceDurationSeconds: cloudMeta.duration ?? null,
+        sourceHasAudio: Boolean(cloudMeta.audio),
+        sourceWidth: cloudMeta.width ?? null,
+        sourceHeight: cloudMeta.height ?? null,
       },
     });
-
-    await runFfmpeg(inputPath, outputPath, job.author_name, job.watermark_text, logoPath);
-
-    const outputProbe = await probeMedia(outputPath);
-    const outputValidation = validateOutputProbe(
-      outputProbe,
-      sourceValidation.duration,
-      sourceValidation.hasAudio,
-    );
 
     await updateJob(admin, jobId, {
       stage: "Upload de l'export sécurisé",
       progress: 85,
-      metadata: {
-        sourceDurationSeconds: sourceValidation.duration,
-        sourceHasAudio: sourceValidation.hasAudio,
-        sourceWidth: sourceValidation.width,
-        sourceHeight: sourceValidation.height,
-        outputDurationSeconds: outputValidation.duration,
-        outputHasAudio: outputValidation.hasAudio,
-      },
     });
 
-    const outputData = await Deno.readFile(outputPath);
-    // Store inside the user folder so bucket policies (first segment = user id) are satisfied
+    // Download the watermarked video from Cloudinary and upload to Supabase Storage.
+    const outputResponse = await withRetry("download-watermarked", async () => {
+      const res = await fetch(eagerUrl);
+      if (!res.ok) {
+        throw new Error(`Téléchargement watermark impossible (${res.status})`);
+      }
+      return res;
+    });
+
+    const outputData = await outputResponse.arrayBuffer();
+
+    // Store inside the user folder so bucket policies (first segment = user id) are satisfied.
     const storagePath = `${job.requested_by}/videos/watermarked/${sanitizeFileName(job.file_name)}`;
 
     await withRetry("upload-output", async () => {
@@ -549,12 +520,10 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       completed_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + JOB_RETENTION_HOURS * 60 * 60 * 1000).toISOString(),
       metadata: {
-        sourceDurationSeconds: sourceValidation.duration,
-        sourceHasAudio: sourceValidation.hasAudio,
-        sourceWidth: sourceValidation.width,
-        sourceHeight: sourceValidation.height,
-        outputDurationSeconds: outputValidation.duration,
-        outputHasAudio: outputValidation.hasAudio,
+        sourceDurationSeconds: cloudMeta.duration ?? null,
+        sourceHasAudio: Boolean(cloudMeta.audio),
+        sourceWidth: cloudMeta.width ?? null,
+        sourceHeight: cloudMeta.height ?? null,
         outputSizeBytes: outputData.byteLength,
       },
     });
@@ -565,7 +534,10 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     console.error("[watermark-video] job failed", { jobId, message, error });
     await markJobFailed(admin, jobId, message);
   } finally {
-    await cleanTemp(inputPath, outputPath, logoPath);
+    // Best-effort Cloudinary cleanup.
+    if (cloudinaryUploaded) {
+      await deleteCloudinaryVideo(cloudinaryPublicId, cloudName!, apiKey!, apiSecret!);
+    }
   }
 }
 
