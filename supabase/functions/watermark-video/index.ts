@@ -295,14 +295,17 @@ function validateOutputProbe(probe: MediaProbe, sourceDuration: number, sourceHa
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AdminClient = any;
+
 async function updateJob(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   jobId: string,
   patch: Partial<WatermarkJobRow> & { metadata?: Record<string, unknown> },
 ) {
   const { error } = await admin
     .from("video_watermark_jobs")
-    .update(patch)
+    .update(patch as Record<string, unknown>)
     .eq("id", jobId);
 
   if (error) {
@@ -311,7 +314,7 @@ async function updateJob(
 }
 
 async function markJobFailed(
-  admin: ReturnType<typeof createClient>,
+  admin: AdminClient,
   jobId: string,
   errorMessage: string,
 ) {
@@ -323,7 +326,7 @@ async function markJobFailed(
       progress: 100,
       error_message: errorMessage,
       failed_at: new Date().toISOString(),
-    })
+    } as Record<string, unknown>)
     .eq("id", jobId);
 
   if (error) {

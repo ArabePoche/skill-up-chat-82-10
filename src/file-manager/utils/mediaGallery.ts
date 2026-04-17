@@ -349,22 +349,6 @@ export const saveImageToGallery = async (
 
   try {
     const platform = Capacitor.getPlatform();
-    
-    // Sauvegarde également dans File Manager (Download/REZO/Images)
-    if (platform === 'android') {
-      try {
-        const base64 = await blobToBase64(blob);
-        await Filesystem.writeFile({
-          path: `Download/REZO/Images/${fileName}`,
-          data: base64,
-          directory: Directory.ExternalStorage,
-          recursive: true,
-        });
-        debugLog('✅ Image copiée dans Download/REZO/Images');
-      } catch (fsError) {
-        logWarning('⚠️ Erreur copie dans Download/REZO/Images', fsError);
-      }
-    }
 
     const albumId = await ensureAlbumExists();
 
@@ -402,6 +386,10 @@ export const saveImageToGallery = async (
     };
   } catch (error: any) {
     logError('❌ Erreur sauvegarde galerie image', error);
+    // Nettoyage best-effort du temp en cas d'échec pour éviter d'occuper le cache
+    try {
+      await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache });
+    } catch (_) { /* noop */ }
     return {
       success: false,
       error: error.message || 'Erreur inconnue',
@@ -465,6 +453,10 @@ export const saveVideoToGallery = async (
     };
   } catch (error: any) {
     logError('❌ Erreur sauvegarde galerie vidéo', error);
+    // Nettoyer le fichier temporaire pour ne pas saturer le cache après un échec
+    try {
+      await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache });
+    } catch (_) { /* noop */ }
     return {
       success: false,
       error: error.message || 'Erreur inconnue',
