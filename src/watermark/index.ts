@@ -20,7 +20,7 @@ export async function downloadVideoWithWatermark(options: WatermarkOptions): Pro
   const resultBlob = await processOnServer(options);
 
   if (!resultBlob) {
-    throw new Error("Aucun export watermark n\u2019a été généré");
+    throw new Error("Aucun export watermark n'a été généré");
   }
 
   const mimeType = 'video/mp4';
