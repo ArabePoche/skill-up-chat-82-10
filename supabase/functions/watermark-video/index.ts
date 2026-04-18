@@ -119,33 +119,29 @@ function buildImageKitMediaPathInput(filePath: string): string {
   return encodeImageKitLayerValue(imageKitPath);
 }
 
+function encodeImageKitSignatureInput(value: string): string {
+  return [...value].some((char) => char.charCodeAt(0) > 127) ? encodeURI(value) : value;
+}
+
 /**
- * Signs an ImageKit delivery URL using HMAC-SHA-256.
- * Required when the ImageKit account has "Restrict unsigned URLs" enabled.
- *
- * The signature is computed over (pathname + existing_query_string + expiry).
- * This covers the case where the transformation URL already carries query parameters.
- * `ik-t` (expiry) and `ik-s` (signature hex) are appended as additional query parameters.
- *
- * Throws if `privateKey` is empty – callers are expected to guard against that.
+ * Signs an ImageKit delivery URL using the same algorithm as the official SDK.
+ * ImageKit expects a SHA-1 HMAC over the delivery URL stripped from its endpoint,
+ * then concatenated with the expiry timestamp.
  */
 async function signImageKitUrl(url: string, privateKey: string, ttlSeconds = DOWNLOAD_URL_TTL_SECONDS): Promise<string> {
   const parsedUrl = new URL(url);
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
-
-  // ImageKit signed URL format: `path:expiry` or `path:expiry:query_string` (colons as separators).
-  // The query string (if any) must NOT include the leading `?`.
-  // See: https://docs.imagekit.io/security/url-endpoints/signed-urls
-  const rawSearch = parsedUrl.search ? parsedUrl.search.slice(1) : ""; // strip leading "?"
-  const message = rawSearch
-    ? `${parsedUrl.pathname}:${expiresAt}:${rawSearch}`
-    : `${parsedUrl.pathname}:${expiresAt}`;
+  const pathSegments = parsedUrl.pathname.split("/").filter(Boolean);
+  const relativePath = pathSegments.length > 1
+    ? pathSegments.slice(1).join("/")
+    : (pathSegments[0] ?? "");
+  const message = encodeImageKitSignatureInput(`${relativePath}${parsedUrl.search}${expiresAt}`);
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(privateKey),
-    { name: "HMAC", hash: "SHA-256" },
+    { name: "HMAC", hash: "SHA-1" },
     false,
     ["sign"],
   );
