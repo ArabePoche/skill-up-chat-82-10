@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { NotificationTriggers } from '@/utils/notificationHelpers';
 import { reverseHabbahGain } from '@/services/habbahService';
 import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 
@@ -120,13 +119,6 @@ export const useVideoLikes = (
             is_read: false,
             is_for_all_admins: false
           });
-
-          // Envoyer aussi la push notification
-          try {
-            await NotificationTriggers.onVideoLiked(videoId, user.id, likerName);
-          } catch (notifError) {
-            console.error('Erreur push notification:', notifError);
-          }
         }
       }
 

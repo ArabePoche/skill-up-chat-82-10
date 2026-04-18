@@ -6,7 +6,7 @@ import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { supabase } from '@/integrations/supabase/client';
-import { createCallLogContent, StructuredCallLog } from '@/utils/conversationCallLog';
+import { createCallLogContent, parseCallLogContent, StructuredCallLog } from '@/utils/conversationCallLog';
 
 type PrivateCallType = 'audio' | 'video';
 
@@ -17,6 +17,8 @@ interface PrivateIncomingSession {
   call_type: string;
   conversation_id: string | null;
   created_at: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
   status: string;
 }
 
@@ -84,7 +86,7 @@ const PrivateIncomingCallProvider: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('call_sessions')
-        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, status')
+        .select('id, caller_id, receiver_id, call_type, conversation_id, created_at, started_at, ended_at, status')
         .eq('receiver_id', user.id)
         .not('conversation_id', 'is', null)
         .eq('status', 'pending')
@@ -151,6 +153,28 @@ const PrivateIncomingCallProvider: React.FC = () => {
             return;
           }
 
+          const endedAtMs = session.ended_at ? new Date(session.ended_at).getTime() : NaN;
+          const createdAtMs = session.created_at ? new Date(session.created_at).getTime() : NaN;
+          const elapsedMs = Number.isFinite(endedAtMs) && Number.isFinite(createdAtMs)
+            ? Math.max(0, endedAtMs - createdAtMs)
+            : undefined;
+
+          if (session.status === 'ended' && !session.started_at && session.receiver_id) {
+            const fallbackOutcome = elapsedMs !== undefined && elapsedMs >= 29_000
+              ? 'missed'
+              : 'cancelled';
+
+            void insertCallLog({
+              version: 2,
+              outcome: fallbackOutcome,
+              callType: normalizeCallType(session.call_type),
+              initiatedByUserId: session.caller_id,
+              sessionId: session.id,
+            }, session.caller_id, session.receiver_id).catch((error) => {
+              console.error('Error inserting fallback global private call log:', error);
+            });
+          }
+
           setIncomingCall((current) => (current?.id === session.id ? null : current));
           if (incomingCall?.id === session.id) {
             setCallerProfile(null);
@@ -176,6 +200,28 @@ const PrivateIncomingCallProvider: React.FC = () => {
   }, [incomingCall?.caller_id, location.pathname]);
 
   const insertCallLog = useCallback(async (payload: StructuredCallLog, senderId: string, receiverId: string) => {
+    if (payload.sessionId) {
+      const { data: existingLogs, error: existingLogsError } = await supabase
+        .from('conversation_messages')
+        .select('content')
+        .or(`and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (existingLogsError) {
+        throw existingLogsError;
+      }
+
+      const alreadyLogged = (existingLogs || []).some((message) => {
+        const parsedLog = parseCallLogContent(message.content);
+        return parsedLog?.version === 2 && parsedLog.sessionId === payload.sessionId;
+      });
+
+      if (alreadyLogged) {
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('conversation_messages')
       .insert({
@@ -247,6 +293,7 @@ const PrivateIncomingCallProvider: React.FC = () => {
         outcome: 'rejected',
         callType: currentCallType,
         initiatedByUserId: incomingCall.caller_id,
+        sessionId: incomingCall.id,
       }, incomingCall.caller_id, user.id);
 
       clearCallState();

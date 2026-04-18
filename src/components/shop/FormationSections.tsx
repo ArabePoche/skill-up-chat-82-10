@@ -18,6 +18,7 @@ interface Formation {
   price: number;
   rating: number;
   students_count: number;
+  reviews_count?: number;
   is_active: boolean;
   author_id?: string;
   profiles?: {

@@ -4,6 +4,7 @@ import { offlineStore } from '@/offline/utils/offlineStore';
 import { syncManager } from '@/offline/utils/syncManager';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { useState, useEffect } from 'react';
+import { enrichFormationsWithMetrics } from '@/utils/formationMetrics';
 
 export const useFormations = () => {
   return useQuery({
@@ -28,8 +29,11 @@ export const useFormations = () => {
         throw error;
       }
 
-      console.log('Formations fetched:', data);
-      return data || [];
+      const formations = data || [];
+      const enrichedFormations = await enrichFormationsWithMetrics(formations);
+
+      console.log('Formations fetched:', enrichedFormations);
+      return enrichedFormations;
     },
   });
 };
@@ -233,11 +237,13 @@ export const useUserEnrollments = (userId: string | undefined) => {
           throw formationsError;
         }
 
-        console.log('Formations details fetched:', formations);
+        const enrichedFormations = await enrichFormationsWithMetrics(formations || []);
+
+        console.log('Formations details fetched:', enrichedFormations);
 
         // Combiner les données d'inscription avec les formations
         const enrichedEnrollments = enrollmentRequests.map(enrollment => {
-          const formation = formations?.find(f => f.id === enrollment.formation_id);
+          const formation = enrichedFormations.find(f => f.id === enrollment.formation_id);
           return {
             ...enrollment,
             formations: formation

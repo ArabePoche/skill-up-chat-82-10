@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { authStore } from '@/offline/utils/authStore';
 import { WatermarkOptions, WATERMARK_CONSTANTS } from '../types';
 
 type CreateJobResponse = {
@@ -32,8 +33,47 @@ async function wait(delayMs: number) {
   await new Promise((resolve) => window.setTimeout(resolve, delayMs));
 }
 
+async function getWatermarkAuthHeaders() {
+  let {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    throw new Error(`Session utilisateur introuvable: ${error.message}`);
+  }
+
+  if (!session?.access_token) {
+    const cached = await authStore.getCachedSession();
+    const cachedSession = cached?.session;
+
+    if (cachedSession?.access_token && cachedSession?.refresh_token) {
+      const { data, error: restoreError } = await supabase.auth.setSession({
+        access_token: cachedSession.access_token,
+        refresh_token: cachedSession.refresh_token,
+      });
+
+      if (restoreError) {
+        throw new Error(`Session utilisateur introuvable: ${restoreError.message}`);
+      }
+
+      session = data.session;
+    }
+  }
+
+  if (!session?.access_token) {
+    throw new Error('Connexion requise pour télécharger une vidéo avec watermark');
+  }
+
+  return {
+    Authorization: `Bearer ${session.access_token}`,
+  };
+}
+
 async function createServerJob(options: WatermarkOptions) {
+  const headers = await getWatermarkAuthHeaders();
   const { data, error } = await supabase.functions.invoke('watermark-video', {
+    headers,
     body: {
       action: 'create',
       videoUrl: options.videoUrl,
@@ -56,7 +96,9 @@ async function createServerJob(options: WatermarkOptions) {
 }
 
 async function getServerJobStatus(jobId: string) {
+  const headers = await getWatermarkAuthHeaders();
   const { data, error } = await supabase.functions.invoke('watermark-video', {
+    headers,
     body: {
       action: 'status',
       jobId,

@@ -11,6 +11,7 @@ interface Formation {
   progress?: number;
   students: number;
   rating: number;
+  reviews_count?: number;
   isTeacher?: boolean;
   thumbnail_url?: string;
 }
@@ -63,6 +64,9 @@ const FormationCard: React.FC<FormationCardProps> = ({ formation, isTeacherSecti
         <div className="flex items-center space-x-1">
           <Star size={14} className="text-yellow-400 fill-current" />
           <span className="text-xs sm:text-sm">{formation.rating}</span>
+          {(formation.reviews_count || 0) > 0 && (
+            <span className="text-xs text-gray-400">({formation.reviews_count})</span>
+          )}
         </div>
       </div>
 

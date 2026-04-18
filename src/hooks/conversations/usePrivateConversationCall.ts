@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { sendPushNotification } from '@/utils/notificationHelpers';
-import { createCallLogContent, StructuredCallLog } from '@/utils/conversationCallLog';
+import { createCallLogContent, parseCallLogContent, StructuredCallLog } from '@/utils/conversationCallLog';
 
 type PrivateCallType = 'audio' | 'video';
 
@@ -102,6 +102,28 @@ export const usePrivateConversationCall = ({
       return;
     }
 
+    if (payload.sessionId) {
+      const { data: existingLogs, error: existingLogsError } = await supabase
+        .from('conversation_messages')
+        .select('content')
+        .or(`and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (existingLogsError) {
+        throw existingLogsError;
+      }
+
+      const alreadyLogged = (existingLogs || []).some((message) => {
+        const parsedLog = parseCallLogContent(message.content);
+        return parsedLog?.version === 2 && parsedLog.sessionId === payload.sessionId;
+      });
+
+      if (alreadyLogged) {
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('conversation_messages')
       .insert({
@@ -181,6 +203,29 @@ export const usePrivateConversationCall = ({
 
     if (session.status === 'ended') {
       clearPendingState(session.id);
+
+      const endedAtMs = session.ended_at ? new Date(session.ended_at).getTime() : NaN;
+      const createdAtMs = session.created_at ? new Date(session.created_at).getTime() : NaN;
+      const elapsedMs = Number.isFinite(endedAtMs) && Number.isFinite(createdAtMs)
+        ? Math.max(0, endedAtMs - createdAtMs)
+        : undefined;
+
+      if (!session.started_at && session.receiver_id) {
+        const fallbackOutcome = elapsedMs !== undefined && elapsedMs >= PENDING_CALL_TIMEOUT_MS - 1000
+          ? 'missed'
+          : 'cancelled';
+
+        void insertCallLog({
+          version: 2,
+          outcome: fallbackOutcome,
+          callType: normalizeCallType(session.call_type),
+          initiatedByUserId: session.caller_id,
+          sessionId: session.id,
+        }, session.caller_id, session.receiver_id).catch((error) => {
+          console.error('Error inserting fallback private call log:', error);
+        });
+      }
+
       if (timedOutSessionIdsRef.current.has(session.id)) {
         timedOutSessionIdsRef.current.delete(session.id);
         if (activeSessionRef.current === session.id) {
@@ -316,6 +361,7 @@ export const usePrivateConversationCall = ({
         outcome: 'missed',
         callType: pendingCall.callType,
         initiatedByUserId: pendingCall.callerId,
+        sessionId: pendingCall.id,
       }, pendingCall.callerId, receiverId);
 
       if (isCaller) {
@@ -485,6 +531,7 @@ export const usePrivateConversationCall = ({
           outcome: 'rejected',
           callType: currentCallType,
           initiatedByUserId: incomingCall.callerId,
+          sessionId: incomingCall.id,
         }, incomingCall.callerId, user.id);
       }
 
@@ -519,6 +566,7 @@ export const usePrivateConversationCall = ({
         outcome: 'cancelled',
         callType: outgoingCall.callType,
         initiatedByUserId: user.id,
+        sessionId: outgoingCall.id,
       }, user.id, otherUserId);
 
       setOutgoingCall(null);
@@ -538,19 +586,22 @@ export const usePrivateConversationCall = ({
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('call_sessions')
         .update({
           status: 'ended',
           ended_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', sessionId);
+        .eq('id', sessionId)
+        .select('id, caller_id, receiver_id, call_type, started_at')
+        .single();
 
       if (error) throw error;
 
       if (user?.id && otherUserId && activeCall) {
-        const startedAtMs = activeCall.startedAt ? new Date(activeCall.startedAt).getTime() : NaN;
+        const persistedStartedAt = data?.started_at ?? activeCall.startedAt;
+        const startedAtMs = persistedStartedAt ? new Date(persistedStartedAt).getTime() : NaN;
         const durationSeconds = Number.isFinite(startedAtMs)
           ? Math.max(0, Math.round((Date.now() - startedAtMs) / 1000))
           : undefined;
@@ -561,6 +612,7 @@ export const usePrivateConversationCall = ({
           callType: activeCall.callType,
           initiatedByUserId: activeCall.initiatedByUserId,
           durationSeconds,
+          sessionId,
         }, activeCall.initiatedByUserId, activeCall.initiatedByUserId === user.id ? otherUserId : user.id);
       }
     } catch (error) {

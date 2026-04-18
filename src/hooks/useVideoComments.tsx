@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useEffect } from 'react';
-import { NotificationTriggers } from '@/utils/notificationHelpers';
 import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 import { recordHabbahGain, reverseHabbahGain } from '@/services/habbahService';
 
@@ -155,13 +154,6 @@ export const useVideoComments = (videoId: string) => {
           is_read: false,
           is_for_all_admins: false
         });
-
-        // Envoyer aussi la push notification
-        try {
-          await NotificationTriggers.onVideoCommented(videoId, user.id, commenterName);
-        } catch (notifError) {
-          console.error('Erreur push notification:', notifError);
-        }
       }
 
       // Met à jour le champ comments_count (pour tous les commentaires, y compris les réponses)
