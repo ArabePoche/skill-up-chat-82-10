@@ -324,7 +324,11 @@ function validateSourceUrl(videoUrl: string): URL {
  * Resolves the platform logo URL: first from the PLATFORM_LOGO_URL env var,
  * then falls back to the `platform_logo_url` key in the `platform_settings` table.
  */
-async function resolvePlatformLogoUrl(admin: ReturnType<typeof createClient>): Promise<string | null> {
+type PlatformSettingRow = {
+  value: string;
+};
+
+async function resolvePlatformLogoUrl(admin: AdminClient): Promise<string | null> {
   const envUrl = Deno.env.get("PLATFORM_LOGO_URL");
   if (envUrl) return envUrl;
 
@@ -333,7 +337,7 @@ async function resolvePlatformLogoUrl(admin: ReturnType<typeof createClient>): P
       .from("platform_settings")
       .select("value")
       .eq("key", "platform_logo_url")
-      .maybeSingle();
+      .maybeSingle<PlatformSettingRow>();
     return data?.value ?? null;
   } catch {
     return null;
@@ -420,11 +424,17 @@ async function downloadWatermarkedVideo(watermarkedUrl: string): Promise<Respons
 
     lastStatus = res.status;
 
-    if (res.status !== 404) {
-      throw new Error(`Téléchargement watermark impossible (${res.status})`);
+    if (res.status === 403 || res.status === 404) {
+      const responseText = await res.text().catch(() => "");
+      console.warn("[watermark-video] transformed asset not ready yet", {
+        status: res.status,
+        body: responseText.slice(0, 180),
+      });
+      await sleep(WATERMARK_DOWNLOAD_POLL_INTERVAL_MS);
+      continue;
     }
 
-    await sleep(WATERMARK_DOWNLOAD_POLL_INTERVAL_MS);
+    throw new Error(`Téléchargement watermark impossible (${res.status})`);
   }
 
   throw new Error(
