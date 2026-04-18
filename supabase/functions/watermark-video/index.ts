@@ -137,9 +137,10 @@ function buildImageKitTransformUrl(baseUrl: string, transformation: string): str
 /**
  * Build the ImageKit transformation string that:
  *  - limits the video to max 1280 px wide
- *  - overlays the logo image (fetched from logoUrl) 40×40 px at bottom-right if provided
- *  - draws the platform text (bottom-right)
- *  - draws @author above it
+ *  - if a logo ImageKit path is provided: animates the logo from top-left to
+ *    top-right (left phase = WATERMARK_LEFT_PHASE_SECONDS)
+ *  - otherwise falls back to a text overlay at the bottom with the platform
+ *    name and author handle (white text, semi-transparent dark background)
  */
 function buildImageKitTransformation(
   authorName: string,
