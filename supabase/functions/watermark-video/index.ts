@@ -133,10 +133,13 @@ async function signImageKitUrl(url: string, privateKey: string, ttlSeconds = DOW
   const parsedUrl = new URL(url);
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
 
-  // Include any pre-existing query params in the signed message so the signature
-  // remains valid after the full URL (path + search) is reconstructed.
-  const pathWithQuery = parsedUrl.pathname + (parsedUrl.search ? parsedUrl.search : "");
-  const message = pathWithQuery + expiresAt;
+  // ImageKit signed URL format: `path:expiry` or `path:expiry:query_string` (colons as separators).
+  // The query string (if any) must NOT include the leading `?`.
+  // See: https://docs.imagekit.io/security/url-endpoints/signed-urls
+  const rawSearch = parsedUrl.search ? parsedUrl.search.slice(1) : ""; // strip leading "?"
+  const message = rawSearch
+    ? `${parsedUrl.pathname}:${expiresAt}:${rawSearch}`
+    : `${parsedUrl.pathname}:${expiresAt}`;
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
