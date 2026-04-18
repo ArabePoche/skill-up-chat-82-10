@@ -122,12 +122,21 @@ function buildImageKitMediaPathInput(filePath: string): string {
 /**
  * Signs an ImageKit delivery URL using HMAC-SHA-256.
  * Required when the ImageKit account has "Restrict unsigned URLs" enabled.
- * The signature covers the URL pathname + expiry timestamp.
+ *
+ * The signature is computed over (pathname + existing_query_string + expiry).
+ * This covers the case where the transformation URL already carries query parameters.
+ * `ik-t` (expiry) and `ik-s` (signature hex) are appended as additional query parameters.
+ *
+ * Throws if `privateKey` is empty – callers are expected to guard against that.
  */
 async function signImageKitUrl(url: string, privateKey: string, ttlSeconds = DOWNLOAD_URL_TTL_SECONDS): Promise<string> {
   const parsedUrl = new URL(url);
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
-  const message = parsedUrl.pathname + expiresAt;
+
+  // Include any pre-existing query params in the signed message so the signature
+  // remains valid after the full URL (path + search) is reconstructed.
+  const pathWithQuery = parsedUrl.pathname + (parsedUrl.search ? parsedUrl.search : "");
+  const message = pathWithQuery + expiresAt;
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
