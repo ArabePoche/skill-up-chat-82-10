@@ -337,8 +337,8 @@ async function resolvePlatformLogoUrl(admin: AdminClient): Promise<string | null
       .from("platform_settings")
       .select("value")
       .eq("key", "platform_logo_url")
-      .maybeSingle<PlatformSettingRow>();
-    return data?.value ?? null;
+      .maybeSingle();
+    return ((data as PlatformSettingRow | null)?.value) ?? null;
   } catch {
     return null;
   }
