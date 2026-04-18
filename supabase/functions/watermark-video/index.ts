@@ -119,6 +119,47 @@ function buildImageKitMediaPathInput(filePath: string): string {
   return encodeImageKitLayerValue(imageKitPath);
 }
 
+/**
+ * Signs an ImageKit delivery URL using HMAC-SHA-256.
+ * Required when the ImageKit account has "Restrict unsigned URLs" enabled.
+ *
+ * The signature is computed over (pathname + existing_query_string + expiry).
+ * This covers the case where the transformation URL already carries query parameters.
+ * `ik-t` (expiry) and `ik-s` (signature hex) are appended as additional query parameters.
+ *
+ * Throws if `privateKey` is empty – callers are expected to guard against that.
+ */
+async function signImageKitUrl(url: string, privateKey: string, ttlSeconds = DOWNLOAD_URL_TTL_SECONDS): Promise<string> {
+  const parsedUrl = new URL(url);
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+
+  // ImageKit signed URL format: `path:expiry` or `path:expiry:query_string` (colons as separators).
+  // The query string (if any) must NOT include the leading `?`.
+  // See: https://docs.imagekit.io/security/url-endpoints/signed-urls
+  const rawSearch = parsedUrl.search ? parsedUrl.search.slice(1) : ""; // strip leading "?"
+  const message = rawSearch
+    ? `${parsedUrl.pathname}:${expiresAt}:${rawSearch}`
+    : `${parsedUrl.pathname}:${expiresAt}`;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(privateKey),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  const signature = Array.from(new Uint8Array(signatureBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  parsedUrl.searchParams.set("ik-t", expiresAt.toString());
+  parsedUrl.searchParams.set("ik-s", signature);
+
+  return parsedUrl.toString();
+}
+
 function buildImageKitTransformUrl(baseUrl: string, transformation: string): string {
   const parsedUrl = new URL(baseUrl);
   const search = parsedUrl.search || "";
@@ -522,8 +563,10 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     });
 
     // Download the watermarked video from ImageKit and upload to Supabase Storage.
+    // Sign the delivery URL so accounts with "Restrict unsigned URLs" don't get 403.
     await sleep(INITIAL_WATERMARK_RENDER_DELAY_MS);
-    const outputResponse = await downloadWatermarkedVideo(watermarkedUrl);
+    const signedWatermarkedUrl = await signImageKitUrl(watermarkedUrl, privateKey);
+    const outputResponse = await downloadWatermarkedVideo(signedWatermarkedUrl);
 
     const outputData = await outputResponse.arrayBuffer();
 
