@@ -11,11 +11,13 @@ import ImageEditor from './ImageEditor';
 interface EnhancedCameraCaptureProps {
   onCapture: (file: File, annotated?: boolean) => void;
   disabled?: boolean;
+  className?: string;
 }
 
 const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({ 
   onCapture, 
-  disabled = false 
+  disabled = false,
+  className
 }) => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureMode, setCaptureMode] = useState<'photo' | 'video'>('photo');
@@ -456,7 +458,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
       disabled={disabled}
       variant="actionPurple"
       size="sm"
-      className="gap-1.5"
+      className={className || "gap-1.5"}
       title="Prendre une photo ou filmer jusqu'à une minute"
     >
       <Camera size={16} />

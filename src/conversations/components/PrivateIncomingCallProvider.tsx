@@ -50,6 +50,10 @@ const PrivateIncomingCallProvider: React.FC = () => {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [incomingCall, setIncomingCall] = useState<PrivateIncomingSession | null>(null);
   const [callerProfile, setCallerProfile] = useState<CallerProfile | null>(null);
+  const forceModalFromLaunch = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    return searchParams.get('incomingCall') === '1';
+  }, [location.search]);
 
   const clearCallState = useCallback(() => {
     setIncomingCall(null);
@@ -196,8 +200,8 @@ const PrivateIncomingCallProvider: React.FC = () => {
       return false;
     }
 
-    return location.pathname === `/conversations/${incomingCall.caller_id}`;
-  }, [incomingCall?.caller_id, location.pathname]);
+    return !forceModalFromLaunch && location.pathname === `/conversations/${incomingCall.caller_id}`;
+  }, [forceModalFromLaunch, incomingCall?.caller_id, location.pathname]);
 
   const insertCallLog = useCallback(async (payload: StructuredCallLog, senderId: string, receiverId: string) => {
     if (payload.sessionId) {
@@ -261,7 +265,7 @@ const PrivateIncomingCallProvider: React.FC = () => {
       }
 
       clearCallState();
-      navigate(`/conversations/${data.caller_id}`);
+      navigate(`/conversations/${data.caller_id}`, { replace: true });
     } catch (error) {
       console.error('Error accepting global private call:', error);
     }

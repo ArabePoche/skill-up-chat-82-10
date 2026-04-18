@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 interface ChatInputBarProps {
   onSendMessage: (content: string, messageType?: string, file?: File, repliedToMessageId?: string) => void;
   disabled?: boolean;
+  fixedToViewport?: boolean;
   lessonId?: string;
   formationId?: string;
   contactName?: string;
@@ -31,6 +32,7 @@ interface ChatInputBarProps {
 const ChatInputBar: React.FC<ChatInputBarProps> = ({ 
   onSendMessage, 
   disabled = false,
+  fixedToViewport = true,
   lessonId = '',
   formationId = '',
   contactName = 'Contact',
@@ -427,7 +429,13 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   return (
     <>
-        <div className="bg-[#f0f0f0] border-t border-gray-200 p-[0.5rem] sm:p-[0.75rem] fixed bottom-0 left-0 right-0 z-50">
+        <div 
+          className={`w-full transition-all duration-200 ${
+            fixedToViewport 
+              ? 'fixed bottom-0 left-0 right-0 z-50 bg-[#f0f0f0] border-t border-gray-200 p-[0.5rem] sm:p-[0.75rem] shadow-[-2px_0_15px_rgba(0,0,0,0.05)]' 
+              : 'relative bg-transparent'
+          }`}
+        >
           {/* Zone de réponse */}
           {replyingTo && (
             <div className="bg-white rounded-lg p-[0.75rem] mb-[0.5rem] border-l-4 border-[#25d366] shadow-sm">
@@ -455,14 +463,14 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               </div>
             </div>
           )}
-          <div className="flex items-end space-x-[0.5rem] sm:space-x-[0.75rem] max-w-full overflow-visible">
+          <div className="flex items-end gap-2 max-w-full overflow-visible">
             
             <button 
               onClick={() => checkAuthAndExecute(() => fileInputRef.current?.click())}
               disabled={isUploading || isRecording || hasVoiceDraft}
-              className="p-[0.5rem] text-gray-500 hover:text-[#25d366] transition-colors rounded-full hover:bg-gray-200 disabled:opacity-50"
+              className="p-2.5 text-slate-400 hover:text-violet-600 transition-colors rounded-full hover:bg-violet-50 disabled:opacity-50 shrink-0"
             >
-              <Paperclip className="w-[1.125rem] h-[1.125rem]" />
+              <Paperclip className="w-5 h-5" />
             </button>
             
             <input
@@ -473,18 +481,18 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               onChange={handleFileSelect}
             />
             
-            <div className="flex-1 min-w-0 flex items-end space-x-[0.25rem] sm:space-x-[0.5rem] bg-white rounded-3xl px-[0.75rem] sm:px-[1rem] py-[0.5rem] shadow-sm min-h-[2.5rem] sm:min-h-[3rem]">
-              <div className="relative">
+            <div className="flex-1 min-w-0 flex items-end gap-2 bg-white/90 backdrop-blur-md rounded-3xl px-3 py-1.5 sm:px-4 sm:py-2 border border-white/60 shadow-sm focus-within:shadow-md focus-within:border-violet-200 focus-within:bg-white transition-all duration-300 min-h-[44px] sm:min-h-[48px]">
+              <div className="relative pb-0.5">
                 <button
                   onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
                   disabled={isRecording || hasVoiceDraft}
-                  className="p-[0.25rem] text-gray-500 hover:text-[#25d366] transition-colors disabled:opacity-50"
+                  className="p-1.5 text-slate-400 hover:text-violet-600 transition-colors disabled:opacity-50 shrink-0 rounded-full hover:bg-violet-50"
                 >
-                  <Smile className="w-[1rem] h-[1rem] sm:w-[1.125rem] sm:h-[1.125rem]" />
+                  <Smile className="w-5 h-5" />
                 </button>
                 
                 {isEmojiPickerOpen && (
-                  <div className="absolute bottom-12 left-0 z-50">
+                  <div className="absolute bottom-full left-0 mb-3 z-50">
                     <EmojiPicker
                       onEmojiSelect={handleEmojiSelect}
                       isOpen={isEmojiPickerOpen}
@@ -535,9 +543,9 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   onBlur={() => {
                     stopTyping();
                   }}
-                  placeholder="Tapez votre message..."
-                  className="flex-1 bg-transparent outline-none resize-none max-h-[64px] sm:max-h-[80px] py-[4px] sm:py-[8px] min-w-0 leading-normal"
-                  style={{ fontSize: '14px', minHeight: '18px', height: 'auto' }}
+                  placeholder="Écrivez un message..."
+                  className="flex-1 bg-transparent outline-none resize-none max-h-[120px] py-2 min-w-0 leading-relaxed text-slate-800 placeholder-slate-400"
+                  style={{ minHeight: '40px', height: 'auto' }}
                   rows={1}
                 />
               )}
@@ -545,13 +553,18 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
               <EnhancedCameraCapture
                 onCapture={handleCameraCapture}
                 disabled={isRecording || hasVoiceDraft}
+                className="mb-0.5 shrink-0 text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors p-1.5 rounded-full"
               />
             </div>
 
             <Button
               onClick={handlePrimaryAction}
               disabled={isUploading}
-              className="bg-[#25d366] hover:bg-[#20c75a] p-[8px] sm:p-[12px] rounded-full shadow-lg min-w-[40px] h-[40px] sm:min-w-[48px] sm:h-[48px]"
+              className={`shrink-0 rounded-full shadow-md flex items-center justify-center transition-all duration-300 active:scale-95 ${
+                hasTextMessage || hasVoiceDraft
+                  ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-600/30 w-11 h-11'
+                  : 'bg-gradient-to-tr from-rose-500 to-fuchsia-500 hover:opacity-90 text-white shadow-fuchsia-500/30 w-11 h-11'
+              }`}
               size="icon"
               title={hasTextMessage ? 'Envoyer le message' : isRecording ? 'Arrêter l’enregistrement' : hasVoiceDraft ? 'Envoyer le vocal' : 'Enregistrer un vocal'}
             >

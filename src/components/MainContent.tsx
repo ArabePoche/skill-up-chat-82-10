@@ -28,7 +28,7 @@ const MainContent: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto">
+    <div className="h-full min-h-0 w-full overflow-y-auto lg:overflow-hidden flex flex-col">
       {renderContent()}
     </div>
   );

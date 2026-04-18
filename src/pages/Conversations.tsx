@@ -1,32 +1,29 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, CheckCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import ChatInputBar from '@/components/chat/ChatInputBar';
-import ConversationMessageBubble from '@/components/conversation/ConversationMessageBubble';
-import DateSeparator from '@/components/chat/DateSeparator';
-import { groupMessagesByDate } from '@/utils/dateUtils';
 import { useOfflineConversations } from '@/offline/hooks/useOfflineConversations';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
 import { sendPushNotification } from '@/utils/notificationHelpers';
 import { useConversationTyping } from '@/hooks/conversations/useConversationTyping';
-import CallButton from '@/call-system/components/CallButton';
 import AgoraCallUI from '@/call-system/components/AgoraCallUI';
 import TeacherCallModal from '@/components/live-classroom/TeacherCallModal';
 import { usePrivateConversationCall } from '@/hooks/conversations/usePrivateConversationCall';
 import { getCallLogPresentation, parseCallLogContent } from '@/utils/conversationCallLog';
 import { useConversationsList } from '@/hooks/messages/useConversationsList';
-import { formatMessageTime } from '@/utils/dateUtils';
+import ConversationsDesktopSidebar from '@/conversations/components/desktop/ConversationsDesktopSidebar';
+import ConversationDiscussionPanel from '@/conversations/components/desktop/ConversationDiscussionPanel';
+import ConversationsDesktopStoriesBar from '../conversations/components/desktop/ConversationsDesktopStoriesBar';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialScrolled = useRef(false);
   const queryClient = useQueryClient();
@@ -263,6 +260,16 @@ const Conversations = () => {
     ? `${otherUserProfile.first_name || ''} ${otherUserProfile.last_name || ''}`.trim() || otherUserProfile.username || 'Utilisateur'
     : 'Utilisateur';
 
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+
+    const query = searchQuery.toLowerCase().trim();
+    return conversations.filter((conversation: any) =>
+      conversation.name?.toLowerCase().includes(query)
+      || conversation.lastMessage?.toLowerCase().includes(query),
+    );
+  }, [conversations, searchQuery]);
+
   const selectedConversationId = useMemo(() => `user-${otherUserId}`, [otherUserId]);
 
   const {
@@ -433,191 +440,95 @@ const Conversations = () => {
   }, [messages]);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.26),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.22),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(96,165,250,0.24),_transparent_30%),linear-gradient(180deg,#fff7fb_0%,#f6f1ff_46%,#edf6ff_100%)] pb-16 md:pt-16 md:pb-0 lg:overflow-hidden">
-      <div className="flex min-h-screen flex-col lg:h-[calc(100vh-4rem)] lg:min-h-0 lg:flex-row lg:gap-5 lg:p-5">
-        <aside className="hidden lg:flex lg:w-[360px] lg:flex-col lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/60 lg:bg-white/55 lg:backdrop-blur-2xl lg:shadow-[0_24px_60px_rgba(124,58,237,0.10)]">
-          <div className="border-b border-white/50 bg-[linear-gradient(135deg,rgba(255,255,255,0.68),rgba(255,255,255,0.22)),radial-gradient(circle_at_top_left,rgba(251,113,133,0.18),transparent_52%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.18),transparent_48%)] px-5 py-5 text-slate-900">
-            <h1 className="text-lg font-semibold tracking-tight text-slate-900">Discussions</h1>
-            <p className="mt-1 text-sm text-slate-600">Retrouvez toutes vos conversations privées.</p>
-          </div>
+    <div className="flex flex-col h-[100dvh] bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.26),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.22),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(96,165,250,0.24),_transparent_30%),linear-gradient(180deg,#fff7fb_0%,#f6f1ff_46%,#edf6ff_100%)] pb-0 md:pt-16 lg:h-screen lg:max-h-screen lg:min-h-0 lg:flex lg:flex-col lg:pt-0 lg:overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 lg:h-full lg:overflow-hidden lg:px-5 lg:pt-0 lg:pb-0">
+        <div className="hidden lg:block lg:shrink-0">
+          <ConversationsDesktopStoriesBar />
+        </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {isConversationsLoading ? (
-              <div className="px-5 py-6 text-sm text-slate-500">Chargement des discussions...</div>
-            ) : conversations.length === 0 ? (
-              <div className="px-5 py-6 text-sm text-slate-500">Aucune discussion disponible.</div>
-            ) : (
-              conversations.map((conversation: any) => (
-                <button
-                  key={conversation.id}
-                  type="button"
-                  onClick={() => navigate(`/conversations/${conversation.otherUserId}`)}
-                  className={`flex w-full items-center gap-3 border-b border-white/40 px-4 py-3 text-left transition duration-200 hover:bg-white/35 ${
-                    conversation.id === selectedConversationId ? 'bg-[linear-gradient(135deg,rgba(99,102,241,0.78),rgba(168,85,247,0.68),rgba(59,130,246,0.62))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_30px_rgba(139,92,246,0.16)]' : 'bg-transparent text-slate-900'
-                  }`}
-                >
-                  <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-semibold text-white ${
-                    conversation.id === selectedConversationId ? 'bg-white/30 ring-1 ring-white/40' : 'bg-[linear-gradient(135deg,#f472b6,#a855f7,#60a5fa)]'
-                  }`}>
-                    {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
-                      <img
-                        src={conversation.avatar}
-                        alt={conversation.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span>{conversation.avatar}</span>
-                    )}
-                  </div>
+        <div className="hidden lg:flex lg:min-h-0 lg:flex-1 lg:gap-5 lg:pt-4">
+          <ConversationsDesktopSidebar
+            conversations={filteredConversations}
+            isLoading={isConversationsLoading}
+            searchQuery={searchQuery}
+            selectedConversationId={selectedConversationId}
+            onSearchChange={setSearchQuery}
+            onSelectConversation={(targetOtherUserId) => navigate(`/conversations/${targetOtherUserId}`)}
+          />
 
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <h2 className={`truncate text-sm font-semibold ${conversation.id === selectedConversationId ? 'text-white' : 'text-slate-900'}`}>{conversation.name}</h2>
-                      <span className={`flex-shrink-0 text-xs ${conversation.id === selectedConversationId ? 'text-violet-100' : 'text-slate-400'}`}>
-                        {formatMessageTime(conversation.created_at || new Date())}
-                      </span>
-                    </div>
-                    <div className={`flex items-center gap-1 text-sm ${conversation.id === selectedConversationId ? 'text-white/85' : 'text-slate-600'}`}>
-                      {conversation.lastMsgIsOwn && (
-                        conversation.lastMsgIsRead ? (
-                          <CheckCheck size={14} className={`flex-shrink-0 ${conversation.id === selectedConversationId ? 'text-cyan-100' : 'text-sky-500'}`} />
-                        ) : conversation.lastMsgIsDelivered ? (
-                          <CheckCheck size={14} className={`flex-shrink-0 ${conversation.id === selectedConversationId ? 'text-white/75' : 'text-slate-400'}`} />
-                        ) : (
-                          <Check size={14} className={`flex-shrink-0 ${conversation.id === selectedConversationId ? 'text-white/75' : 'text-slate-400'}`} />
-                        )
-                      )}
-                      <p className="truncate">{conversation.lastMessage}</p>
-                    </div>
-                  </div>
+          <ConversationDiscussionPanel
+            otherUserId={otherUserId}
+            otherUserName={otherUserName}
+            otherUserAvatarUrl={otherUserProfile?.avatar_url}
+            activeCall={activeCall}
+            outgoingCall={outgoingCall}
+            missedCallNotice={missedCallNotice}
+            isOtherTyping={isOtherTyping}
+            otherActivityType={otherActivityType}
+            isOnline={isOnline}
+            isCallBusy={isCallBusy}
+            isLoading={isLoading}
+            messages={messages}
+            replyingTo={replyingTo}
+            messagesEndRef={messagesEndRef}
+            onBack={() => navigate('/messages')}
+            onOpenProfile={() => navigate(`/profile/${otherUserId}`)}
+            onStartAudioCall={() => startCall('audio')}
+            onStartVideoCall={() => startCall('video')}
+            onReply={setReplyingTo}
+            onClearReply={() => setReplyingTo(null)}
+            onSendMessage={(content, _messageType, file) => {
+              if (content.trim() || file) {
+                emitStopTyping();
+                const fileUrl = file && (file as any).uploadUrl;
+                sendMessageMutation.mutate({
+                  content,
+                  file,
+                  fileUrl,
+                });
+              }
+            }}
+            onTyping={emitTyping}
+            disabled={sendMessageMutation.isPending}
+          />
+        </div>
 
-                  {conversation.unread > 0 && (
-                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ec4899,#8b5cf6,#3b82f6)] text-xs text-white shadow-sm">
-                      {conversation.unread}
-                    </div>
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        </aside>
-
-        <div className="flex min-h-screen flex-1 flex-col bg-white/58 lg:min-h-0 lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/60 lg:shadow-[0_24px_60px_rgba(124,58,237,0.10)] lg:backdrop-blur-2xl">
-          {/* Header */}
-          <div className="sticky top-0 z-10 flex items-center space-x-4 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.34),transparent_34%),radial-gradient(circle_at_top_right,rgba(167,139,250,0.32),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.30),rgba(255,255,255,0.10)),linear-gradient(135deg,#fb7185,#a855f7,#60a5fa)] p-4 text-white md:top-16 lg:top-0 lg:rounded-t-[28px]">
-            <button onClick={() => navigate('/messages')} className="rounded-full p-2 transition hover:bg-white/10 lg:hidden">
-              <ArrowLeft size={24} />
-            </button>
-            <button 
-              onClick={() => navigate(`/profile/${otherUserId}`)}
-              className="-m-2 flex flex-1 items-center space-x-3 rounded-xl p-2 text-left transition hover:bg-white/10"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                {otherUserProfile?.avatar_url ? (
-                  <img src={otherUserProfile.avatar_url} alt={otherUserName} className="w-10 h-10 rounded-full" />
-                ) : (
-                  <span className="text-lg font-semibold">{otherUserName[0]?.toUpperCase()}</span>
-                )}
-              </div>
-              <div>
-                <h2 className="font-semibold tracking-tight">{otherUserName}</h2>
-                {activeCall ? (
-                  <p className="text-xs italic text-white/85">appel en cours...</p>
-                ) : outgoingCall ? (
-                  <p className="animate-pulse text-xs italic text-white/85">
-                    appel {outgoingCall.callType === 'video' ? 'video' : 'audio'} en attente...
-                  </p>
-                ) : missedCallNotice ? (
-                  <p className="text-xs italic text-amber-100">
-                    {missedCallNotice}
-                  </p>
-                ) : isOtherTyping ? (
-                  <p className="animate-pulse text-xs italic text-cyan-100">
-                    {otherActivityType === 'recording' ? 'est en train d\'enregistrer un vocal...' : 'est en train d\'écrire...'}
-                  </p>
-                ) : null}
-              </div>
-            </button>
-            <div className="flex items-center gap-2">
-              <CallButton
-                type="audio"
-                onCall={() => startCall('audio')}
-                disabled={!isOnline || isCallBusy}
-                className="border-white/20 bg-white/12 text-white shadow-sm hover:bg-white/22 hover:text-white"
-              />
-              <CallButton
-                type="video"
-                onCall={() => startCall('video')}
-                disabled={!isOnline || isCallBusy}
-                className="border-white/20 bg-white/12 text-white shadow-sm hover:bg-white/22 hover:text-white"
-              />
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.18),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.16),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(96,165,250,0.18),_transparent_28%),linear-gradient(180deg,#fff9fc_0%,#f7f2ff_52%,#eef7ff_100%)] p-4 space-y-3">
-            {isLoading ? (
-              <div className="text-center text-slate-500">
-                {isOnline ? 'Chargement...' : 'Chargement depuis le cache...'}
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="py-12 text-center text-slate-500">
-                <p>Aucun message pour le moment</p>
-                <p className="mt-2 text-sm">
-                  {isOnline 
-                    ? 'Envoyez un message pour démarrer la conversation'
-                    : 'Les messages seront chargés quand vous serez en ligne'}
-                </p>
-              </div>
-            ) : (
-              Object.entries(groupMessagesByDate(messages)).map(([date, dateMessages]) => (
-                <div key={date} className="space-y-3">
-                  <DateSeparator date={date} />
-                  {dateMessages.map((msg: any) => (
-                    <ConversationMessageBubble 
-                      key={msg.id}
-                      message={msg} 
-                      onReply={(message) => setReplyingTo(message)}
-                    />
-                  ))}
-                </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input - Réutilisation de ChatInputBar */}
-          <div className="border-t border-white/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.56))] p-4 lg:rounded-b-[28px]">
-            {replyingTo && (
-              <div className="mb-2 flex items-center justify-between rounded-2xl border border-white/60 bg-white/55 px-3 py-2 backdrop-blur-sm">
-                <div className="text-sm">
-                  <span className="font-semibold text-violet-700">Répondre à:</span>
-                  <p className="truncate text-slate-600">{replyingTo.content}</p>
-                </div>
-                <button 
-                  onClick={() => setReplyingTo(null)}
-                  className="text-slate-500 transition hover:text-slate-800"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-            <ChatInputBar
-              onSendMessage={(content, messageType, file) => {
-                if (content.trim() || file) {
-                  emitStopTyping();
-                  const fileUrl = file && (file as any).uploadUrl;
-                  sendMessageMutation.mutate({ 
-                    content, 
-                    file, 
-                    fileUrl 
-                  });
-                }
-              }}
-              onTyping={emitTyping}
-              disabled={sendMessageMutation.isPending}
-            />
-          </div>
+        <div className="flex flex-1 flex-col lg:hidden min-h-0">
+          <ConversationDiscussionPanel
+            otherUserId={otherUserId}
+            otherUserName={otherUserName}
+            otherUserAvatarUrl={otherUserProfile?.avatar_url}
+            activeCall={activeCall}
+            outgoingCall={outgoingCall}
+            missedCallNotice={missedCallNotice}
+            isOtherTyping={isOtherTyping}
+            otherActivityType={otherActivityType}
+            isOnline={isOnline}
+            isCallBusy={isCallBusy}
+            isLoading={isLoading}
+            messages={messages}
+            replyingTo={replyingTo}
+            messagesEndRef={messagesEndRef}
+            onBack={() => navigate('/messages')}
+            onOpenProfile={() => navigate(`/profile/${otherUserId}`)}
+            onStartAudioCall={() => startCall('audio')}
+            onStartVideoCall={() => startCall('video')}
+            onReply={setReplyingTo}
+            onClearReply={() => setReplyingTo(null)}
+            onSendMessage={(content, _messageType, file) => {
+              if (content.trim() || file) {
+                emitStopTyping();
+                const fileUrl = file && (file as any).uploadUrl;
+                sendMessageMutation.mutate({
+                  content,
+                  file,
+                  fileUrl,
+                });
+              }
+            }}
+            onTyping={emitTyping}
+            disabled={sendMessageMutation.isPending}
+          />
         </div>
       </div>
 

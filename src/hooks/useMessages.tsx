@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getCallLogPresentation, parseCallLogContent } from '@/utils/conversationCallLog';
 
 const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';
 
@@ -86,8 +87,15 @@ export const useConversations = () => {
               ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'Utilisateur'
               : 'Utilisateur';
 
-            let lastMessage = lastMsg.content.substring(0, 50);
-            if (lastMsg.content.length > 50) lastMessage += '...';
+            let lastMessage = '';
+            const callLog = parseCallLogContent(lastMsg.content);
+            if (callLog) {
+              const presentation = getCallLogPresentation(callLog, user.id);
+              lastMessage = presentation.title;
+            } else {
+              lastMessage = lastMsg.content.substring(0, 50);
+              if (lastMsg.content.length > 50) lastMessage += '...';
+            }
 
             const createdAt = new Date(lastMsg.created_at);
             const timeLabel = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

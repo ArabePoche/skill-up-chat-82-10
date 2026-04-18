@@ -8,6 +8,7 @@ import { useCreateStory, useUpdateStory } from '@/stories/hooks/useStories';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import AudioRecorder from '@/components/chat/AudioRecorder';
+import { createPortal } from 'react-dom';
 
 interface CreateStoryModalProps {
   isOpen: boolean;
@@ -121,8 +122,8 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose, ed
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">{editStory ? 'Modifier le statut' : 'Créer un statut'}</h2>
@@ -281,7 +282,8 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({ isOpen, onClose, ed
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

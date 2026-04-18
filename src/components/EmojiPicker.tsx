@@ -6,6 +6,7 @@ interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
   isOpen: boolean;
   onToggle: () => void;
+  className?: string;
 }
 
 type CategoryKey =
@@ -93,7 +94,7 @@ const emojiCategories: Record<CategoryKey, CategoryConfig> = {
   },
 };
 
-const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onToggle }) => {
+const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onToggle, className }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('smileys');
   const pickerRef = useRef<HTMLDivElement>(null);
   const categoryEntries = Object.entries(emojiCategories) as Array<[CategoryKey, CategoryConfig]>;
@@ -137,55 +138,66 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
       ref={pickerRef}
       role="dialog"
       aria-label="Sélecteur d'emojis"
-      className="w-full sm:w-[350px] z-50 flex flex-col bg-[#F0F2F5] dark:bg-[#111B21] rounded-lg shadow-xl overflow-hidden border border-gray-200 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-100"
+      className={`w-[85vw] max-w-[340px] sm:w-[350px] z-50 flex flex-col bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200 ${className !== undefined ? className : 'absolute bottom-full left-0 mb-3'}`}
     >
-      {/* Category Icons Row (Top Bar) */}
-      <div className="flex items-center w-full px-2 py-1.5 bg-[#F0F2F5] dark:bg-[#111B21] border-b border-gray-200 dark:border-[#222E35]">
-        {categoryEntries.map(([key, category]) => {
-          const IconComponent = category.icon;
-          const isActive = activeCategory === key;
+      {/* Search Output & Header */}
+      <div className="px-4 pt-3 pb-2 border-b border-gray-100">
+        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+          {activeCategoryConfig.label}
+        </div>
+        
+        {/* Category Icons Row (Top Bar) */}
+        <div className="flex items-center justify-between w-full">
+          {categoryEntries.map(([key, category]) => {
+            const IconComponent = category.icon;
+            const isActive = activeCategory === key;
 
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveCategory(key)}
-              className={`flex-1 flex justify-center py-2 relative transition-colors ${
-                isActive ? 'text-[#008069] dark:text-[#00A884]' : 'text-[#54656F] dark:text-[#AEBAC1] hover:bg-black/5 dark:hover:bg-white/5 rounded-md'
-              }`}
-              title={category.label}
-              aria-pressed={isActive}
-            >
-              <IconComponent size={20} strokeWidth={isActive ? 2.5 : 2} className="" />
-              {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#008069] dark:bg-[#00A884]" />
-              )}
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveCategory(key);
+                }}
+                className={`p-1.5 transition-all duration-200 rounded-xl relative ${
+                  isActive 
+                    ? `bg-violet-100 text-violet-600 scale-110 shadow-sm` 
+                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                }`}
+                title={category.label}
+                aria-pressed={isActive}
+              >
+                <IconComponent size={18} strokeWidth={isActive ? 2.5 : 2} />
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Emoji Scroll Area */}
-      <div className="flex-1 max-h-[300px] h-[300px] bg-white dark:bg-[#0B141A] overflow-y-auto px-2 py-3 custom-scrollbar">
-        <h4 className="text-[14px] font-medium text-[#54656F] dark:text-[#8696A0] mb-3 px-2">
-          {activeCategoryConfig.label}
-        </h4>
-        
-        <div className="grid grid-cols-8 gap-1">
-          {activeCategoryConfig.emojis.map((emoji, index) => (
-             <button
-              key={`${activeCategory}-${emoji}-${index}`}
-              type="button"
-              onClick={() => handleEmojiSelect(emoji)}
-              className={isTextEntry(emoji)
-                ? `col-span-4 flex min-h-10 items-center justify-center px-2 py-2 text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100 transition rounded-md border ${activeCategoryConfig.softAccent} hover:brightness-95 dark:bg-[#202C33] dark:border-[#2A3942] dark:text-white`
-                : 'flex h-10 w-9 sm:w-10 items-center justify-center text-[22px] text-gray-900 dark:text-white transition hover:bg-[#F5F6F6] dark:hover:bg-[#202C33] rounded-md focus:outline-none focus:bg-[#EBEBEB] dark:focus:bg-[#2A3942]'}
-              title={emoji.trim()}
-              dir={/[\u0600-\u06FF]/.test(emoji) ? 'rtl' : undefined}
-            >
-              {emoji.trim()}
-            </button>
-          ))}
+      <div className="flex-1 max-h-[280px] h-[280px] overflow-y-auto px-3 py-3 custom-scrollbar scroll-smooth">
+        <div className="grid grid-cols-7 sm:grid-cols-8 gap-y-3 gap-x-1 justify-items-center">
+          {activeCategoryConfig.emojis.map((emoji, index) => {
+            const isText = isTextEntry(emoji);
+            return (
+               <button
+                key={`${activeCategory}-${emoji}-${index}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEmojiSelect(emoji);
+                }}
+                className={isText
+                  ? `col-span-4 flex min-h-[36px] w-full items-center justify-center px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 rounded-xl border border-transparent hover:border-violet-100 hover:bg-violet-50 hover:text-violet-700 hover:shadow-sm active:scale-95 ${emoji.length > 5 ? 'text-[11px]' : ''}`
+                  : 'flex h-9 w-9 items-center justify-center text-[22px] transition-all duration-200 rounded-xl hover:bg-slate-100 hover:scale-125 focus:outline-none focus:bg-violet-50 focus:scale-125 active:scale-95'}
+                title={emoji.trim()}
+                dir={/[\u0600-\u06FF]/.test(emoji) ? 'rtl' : undefined}
+              >
+                {emoji.trim()}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

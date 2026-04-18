@@ -173,7 +173,7 @@ const StoriesSection = () => {
 
   if (isLoading) {
     return (
-      <div className="flex space-x-3 p-4 overflow-x-auto">
+      <div className="flex space-x-3 overflow-x-auto px-4 pt-3 pb-2">
         {[...Array(5)].map((_, i) => (
           <div key={i} className="flex-shrink-0">
             <div className="w-14 h-14 bg-gray-200 rounded-full animate-pulse mb-2"></div>
@@ -195,7 +195,7 @@ const StoriesSection = () => {
 
   return (
     <>
-      <div className="flex space-x-3 p-4 overflow-x-auto bg-white border-b">
+      <div className="flex space-x-3 overflow-x-auto border-b bg-white px-4 pt-3 pb-2">
         {/* Mon statut - Style WhatsApp */}
         <div className="flex-shrink-0 text-center">
           <div

@@ -8,6 +8,7 @@ import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.app.KeyguardManager;
 import android.view.WindowManager;
 
 import androidx.annotation.Nullable;
@@ -84,6 +85,11 @@ public class MainActivity extends BridgeActivity {
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                             | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
                             | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+            KeyguardManager keyguardManager = getSystemService(KeyguardManager.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && keyguardManager != null && keyguardManager.isKeyguardLocked()) {
+                keyguardManager.requestDismissKeyguard(this, null);
+            }
         } else {
             getWindow().clearFlags(
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED

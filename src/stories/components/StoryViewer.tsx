@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { ApplicationModal } from '@/applications/components/ApplicationModal';
 import { useCheckExistingApplication } from '@/applications/hooks/useApplications';
+import { createPortal } from 'react-dom';
 
 interface StoryViewerProps {
   stories: any[];
@@ -229,8 +230,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     </div>
   );
 
-  return (
-    <div className="fixed inset-0 bg-black z-[100] flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[10020] flex flex-col bg-black">
       {/* Progress bars */}
       <div className="absolute top-4 left-4 right-4 flex space-x-1 z-20">
         {stories.map((_, index) => (
@@ -565,7 +566,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
           positions={(story as any).recruitment_ads?.positions || []}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 
