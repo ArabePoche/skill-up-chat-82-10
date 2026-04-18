@@ -9,14 +9,10 @@ const corsHeaders = {
 const WATERMARK_EXPORT_BUCKET = "videos-watermark-temp";
 const OUTPUT_MIME_TYPE = "video/mp4";
 const MAX_SOURCE_SIZE_BYTES = 250 * 1024 * 1024;
-const DEFAULT_IMAGEKIT_MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 10 * 60;
 const DOWNLOAD_URL_TTL_SECONDS = 60 * 10;
 const JOB_RETENTION_HOURS = 24;
-const INITIAL_WATERMARK_RENDER_DELAY_MS = 5_000;
-const WATERMARK_DOWNLOAD_MAX_WAIT_MS = 90_000;
-const WATERMARK_DOWNLOAD_POLL_INTERVAL_MS = 5_000;
-const WATERMARK_LEFT_PHASE_SECONDS = 5;
+const WATERMARK_MARGIN_PX = 24;
 
 type WatermarkJobStatus = "queued" | "processing" | "completed" | "failed" | "expired";
 
@@ -43,16 +39,34 @@ type WatermarkJobRow = {
   failed_at: string | null;
 };
 
-type ImageKitUploadResult = {
-  fileId: string;
-  name: string;
-  url: string;
-  filePath: string;
-  height?: number;
+type PlatformSettingRow = {
+  value: string;
+};
+
+type ProbeStream = {
+  codec_type?: string;
   width?: number;
-  size?: number;
-  fileType?: string;
-  message?: string;
+  height?: number;
+  avg_frame_rate?: string;
+  r_frame_rate?: string;
+  codec_name?: string;
+};
+
+type ProbeFormat = {
+  duration?: string;
+};
+
+type ProbeResult = {
+  streams?: ProbeStream[];
+  format?: ProbeFormat;
+};
+
+type MediaMetadata = {
+  width: number;
+  height: number;
+  durationSeconds: number | null;
+  frameRate: string | null;
+  hasAudio: boolean;
 };
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -73,152 +87,29 @@ function sanitizeFileName(fileName: string): string {
   return `${safeBase}.mp4`;
 }
 
-/**
- * Build Basic Authorization header for ImageKit API calls.
- * ImageKit uses HTTP Basic auth with the private key as username and empty password.
- */
-function buildImageKitAuth(privateKey: string): string {
-  return "Basic " + btoa(privateKey + ":");
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
-function normalizeSecret(secret: string | undefined | null): string {
-  if (!secret) return "";
-
-  return secret
-    .trim()
-    .replace(/^['"]+|['"]+$/g, "")
-    .replace(/\s+/g, "")
-    .trim();
+function escapeDrawtextValue(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/:/g, "\\:")
+    .replace(/'/g, "\\\\'")
+    .replace(/,/g, "\\,")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]")
+    .replace(/%/g, "\\%");
 }
 
-function getProcessingLimitBytes(): number {
-  const configured = Number(Deno.env.get("IMAGEKIT_MAX_VIDEO_SIZE_BYTES") || "0");
-  if (Number.isFinite(configured) && configured > 0) {
-    return Math.min(configured, MAX_SOURCE_SIZE_BYTES);
-  }
-
-  return Math.min(DEFAULT_IMAGEKIT_MAX_VIDEO_SIZE_BYTES, MAX_SOURCE_SIZE_BYTES);
+function normalizeHandle(authorName: string): string {
+  const normalized = authorName.trim().replace(/^@+/, "") || "REZO";
+  return `@${normalized}`;
 }
 
-function formatSizeLimitMb(bytes: number): string {
-  return `${Math.floor(bytes / (1024 * 1024))}`;
-}
-
-function encodeImageKitLayerValue(value: string): string {
-  return `ie-${encodeURIComponent(btoa(value))}`;
-}
-
-function buildImageKitMediaPathInput(filePath: string): string {
-  const normalizedPath = filePath.replace(/^\/+/, "");
-  const imageKitPath = normalizedPath.replace(/\//g, "@@");
-
-  if (/^[a-zA-Z0-9@._-]+$/.test(imageKitPath)) {
-    return `i-${imageKitPath}`;
-  }
-
-  return encodeImageKitLayerValue(imageKitPath);
-}
-
-function buildImageKitTransformUrl(baseUrl: string, transformation: string): string {
-  const parsedUrl = new URL(baseUrl);
-  const search = parsedUrl.search || "";
-  const pathSegments = parsedUrl.pathname.split("/").filter(Boolean);
-
-  if (pathSegments.length === 0) {
-    return `${parsedUrl.origin}/tr:${transformation}${parsedUrl.pathname}${search}`;
-  }
-
-  const [endpoint, ...assetPathParts] = pathSegments;
-  const assetPath = assetPathParts.join("/");
-
-  return `${parsedUrl.origin}/${endpoint}/tr:${transformation}/${assetPath}${search}`;
-}
-
-/**
- * Build the ImageKit transformation string that:
- *  - limits the video to max 1280 px wide
- *  - if a logo ImageKit path is provided: animates the logo from top-left to
- *    top-right (left phase = WATERMARK_LEFT_PHASE_SECONDS)
- *  - otherwise falls back to a text overlay at the bottom with the platform
- *    name and author handle (white text, semi-transparent dark background)
- */
-function buildImageKitTransformation(
-  authorName: string,
-  watermarkText: string,
-  logoLayerInput: string | null,
-): string {
-  const sanitizedAuthor = `@${authorName.trim() || "REZO"}`;
-  const sanitizedWatermark = watermarkText.trim() || "REZO";
-  const watermarkLabel = `${sanitizedWatermark} ${sanitizedAuthor}`.trim();
-
-  if (logoLayerInput) {
-    return [
-      "w-1280,c-at_max",
-      `l-image,${logoLayerInput},w-96,lx-24,ly-24,lso-0,ldu-${WATERMARK_LEFT_PHASE_SECONDS},l-end`,
-      `l-image,${logoLayerInput},w-96,lx-bw_sub_iw_sub_24,ly-24,lso-${WATERMARK_LEFT_PHASE_SECONDS},l-end`,
-    ].join(":");
-  }
-
-  return [
-    "w-1280,c-at_max",
-    `l-text,${encodeImageKitLayerValue(watermarkLabel)},w-900,fs-28,co-FFFFFF,bg-00000060,pa-18,lfo-bottom,l-end`,
-  ].join(":");
-}
-
-/**
- * Upload a video to ImageKit by URL (ImageKit fetches it).
- * Returns the upload result including the file URL for transformation delivery.
- */
-async function uploadToImageKit(
-  sourceUrl: string,
-  fileName: string,
-  privateKey: string,
-): Promise<ImageKitUploadResult> {
-  const formData = new FormData();
-  formData.append("file", sourceUrl);
-  formData.append("fileName", fileName);
-  formData.append("folder", "/watermark-temp");
-  formData.append("useUniqueFileName", "true");
-
-  const response = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
-    method: "POST",
-    headers: { Authorization: buildImageKitAuth(privateKey) },
-    body: formData,
-  });
-
-  const result = await response.json() as ImageKitUploadResult;
-
-  if (!response.ok) {
-    const rawMessage = result.message ?? response.statusText;
-    const normalizedMessage = rawMessage.toLowerCase();
-
-    if (response.status === 401 || normalizedMessage.includes('cannot be authenticated')) {
-      throw new Error(
-        'ImageKit upload: authentification refusée. Vérifiez la valeur du secret IMAGEKIT_PRIVATE_KEY dans Supabase.'
-      );
-    }
-
-    throw new Error(`ImageKit upload: ${rawMessage}`);
-  }
-
-  return result;
-}
-
-/**
- * Delete a previously uploaded file from ImageKit (best-effort, errors are swallowed).
- */
-async function deleteImageKitFile(
-  fileId: string,
-  privateKey: string,
-): Promise<void> {
-  try {
-    await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
-      method: "DELETE",
-      headers: { Authorization: buildImageKitAuth(privateKey) },
-    });
-  } catch {
-    // Best-effort cleanup – do not let errors propagate.
-  }
+function getWatermarkLabel(platformName: string, authorName: string): string {
+  const platform = platformName.trim() || "REZO";
+  return `${platform} ${normalizeHandle(authorName)}`.trim();
 }
 
 function getAllowedHosts() {
@@ -246,17 +137,16 @@ function getAllowedHosts() {
 function isHostAllowed(hostname: string): boolean {
   const normalizedHost = hostname.toLowerCase();
   const { exactHosts, wildcardHosts } = getAllowedHosts();
+
   if (exactHosts.size === 0 && wildcardHosts.length === 0) {
     return true;
   }
+
   if (exactHosts.has(normalizedHost)) {
     return true;
   }
 
-  return wildcardHosts.some((host) => {
-    const suffix = host.slice(1).toLowerCase();
-    return normalizedHost.endsWith(suffix);
-  });
+  return wildcardHosts.some((host) => normalizedHost.endsWith(host.slice(1).toLowerCase()));
 }
 
 function validateSourceUrl(videoUrl: string): URL {
@@ -279,41 +169,16 @@ function validateSourceUrl(videoUrl: string): URL {
   return parsed;
 }
 
-/**
- * Resolves the platform logo URL: first from the PLATFORM_LOGO_URL env var,
- * then falls back to the `platform_logo_url` key in the `platform_settings` table.
- */
-async function resolvePlatformLogoUrl(admin: ReturnType<typeof createClient>): Promise<string | null> {
-  const envUrl = Deno.env.get("PLATFORM_LOGO_URL");
-  if (envUrl) return envUrl;
-
-  try {
-    const { data } = await admin
-      .from("platform_settings")
-      .select("value")
-      .eq("key", "platform_logo_url")
-      .maybeSingle();
-    return data?.value ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Validate the video source via an HTTP HEAD request.
- * Checks content-type (must be video/*) and content-length (must be within MAX_SOURCE_SIZE_BYTES).
- * Does not spawn any subprocess.
- */
 async function validateSourceHttp(url: string): Promise<void> {
-  const processingLimitBytes = getProcessingLimitBytes();
   let response: Response;
+
   try {
     response = await fetch(url, { method: "HEAD" });
   } catch {
     throw new Error("La source vidéo est inaccessible");
   }
 
-  if (!response.ok) {
+  if (!response.ok && response.status !== 405) {
     throw new Error(`Source vidéo inaccessible (${response.status})`);
   }
 
@@ -323,19 +188,25 @@ async function validateSourceHttp(url: string): Promise<void> {
   }
 
   const contentLength = Number(response.headers.get("content-length") || "0");
-  if (contentLength > 0 && contentLength > processingLimitBytes) {
-    throw new Error(
-      `La vidéo source dépasse la taille maximale prise en charge pour le watermark (${formatSizeLimitMb(processingLimitBytes)} Mo max)`
-    );
+  if (contentLength > 0 && contentLength > MAX_SOURCE_SIZE_BYTES) {
+    throw new Error(`La vidéo source dépasse ${Math.floor(MAX_SOURCE_SIZE_BYTES / (1024 * 1024))} Mo`);
   }
 }
 
-/**
- * Validate that the ImageKit upload succeeded and returned a usable file URL.
- */
-function validateImageKitMeta(meta: ImageKitUploadResult): void {
-  if (!meta.url || !meta.fileId) {
-    throw new Error("ImageKit n'a pas retourné les métadonnées attendues après l'upload");
+async function resolvePlatformLogoUrl(admin: AdminClient): Promise<string | null> {
+  const envUrl = Deno.env.get("PLATFORM_LOGO_URL");
+  if (envUrl) return envUrl;
+
+  try {
+    const { data } = await admin
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "platform_logo_url")
+      .maybeSingle();
+
+    return ((data as PlatformSettingRow | null)?.value) ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -362,37 +233,150 @@ async function withRetry<T>(label: string, operation: () => Promise<T>, attempts
   throw lastError instanceof Error ? lastError : new Error(`${label} failed`);
 }
 
-async function downloadWatermarkedVideo(watermarkedUrl: string): Promise<Response> {
-  const startedAt = Date.now();
-  let lastStatus: number | null = null;
+async function runCommand(command: string, args: string[], label: string) {
+  const result = await new Deno.Command(command, {
+    args,
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
 
-  while (Date.now() - startedAt < WATERMARK_DOWNLOAD_MAX_WAIT_MS) {
-    const res = await fetch(watermarkedUrl, {
-      headers: {
-        "cache-control": "no-cache",
-      },
-    });
+  const stdout = new TextDecoder().decode(result.stdout);
+  const stderr = new TextDecoder().decode(result.stderr);
 
-    if (res.ok) {
-      return res;
-    }
-
-    lastStatus = res.status;
-
-    if (res.status !== 404) {
-      throw new Error(`Téléchargement watermark impossible (${res.status})`);
-    }
-
-    await sleep(WATERMARK_DOWNLOAD_POLL_INTERVAL_MS);
+  if (result.code !== 0) {
+    throw new Error(`${label}: ${stderr || stdout || `code ${result.code}`}`);
   }
 
-  throw new Error(
-    `Téléchargement watermark impossible (${lastStatus === 404 ? "404-temp" : lastStatus ?? "timeout"})`
+  return { stdout, stderr };
+}
+
+async function probeMedia(filePath: string): Promise<MediaMetadata> {
+  const { stdout } = await runCommand(
+    "ffprobe",
+    [
+      "-v",
+      "error",
+      "-print_format",
+      "json",
+      "-show_streams",
+      "-show_format",
+      filePath,
+    ],
+    "ffprobe",
   );
+
+  const probe = JSON.parse(stdout) as ProbeResult;
+  const streams = probe.streams || [];
+  const videoStream = streams.find((stream) => stream.codec_type === "video");
+
+  if (!videoStream?.width || !videoStream?.height) {
+    throw new Error("Impossible de lire les métadonnées de la vidéo source");
+  }
+
+  const duration = Number(probe.format?.duration || "0");
+  return {
+    width: videoStream.width,
+    height: videoStream.height,
+    durationSeconds: Number.isFinite(duration) && duration > 0 ? duration : null,
+    frameRate: videoStream.avg_frame_rate || videoStream.r_frame_rate || null,
+    hasAudio: streams.some((stream) => stream.codec_type === "audio"),
+  };
+}
+
+async function downloadFile(url: string, destinationPath: string, errorPrefix: string): Promise<void> {
+  const response = await fetch(url, {
+    headers: {
+      "cache-control": "no-cache",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`${errorPrefix} (${response.status})`);
+  }
+
+  const contentLength = Number(response.headers.get("content-length") || "0");
+  if (contentLength > 0 && contentLength > MAX_SOURCE_SIZE_BYTES) {
+    throw new Error(`La vidéo source dépasse ${Math.floor(MAX_SOURCE_SIZE_BYTES / (1024 * 1024))} Mo`);
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength > MAX_SOURCE_SIZE_BYTES) {
+    throw new Error(`La vidéo source dépasse ${Math.floor(MAX_SOURCE_SIZE_BYTES / (1024 * 1024))} Mo`);
+  }
+
+  await Deno.writeFile(destinationPath, bytes);
+}
+
+function buildFilterComplex(
+  media: MediaMetadata,
+  watermarkLabel: string,
+  logoSize: { width: number; height: number } | null,
+): string {
+  const fontSize = clamp(Math.round(media.width * 0.024), 20, 36);
+  const boxBorder = clamp(Math.round(fontSize * 0.5), 12, 20);
+  const escapedLabel = escapeDrawtextValue(watermarkLabel);
+  const drawtext = `drawtext=text='${escapedLabel}':fontcolor=white:fontsize=${fontSize}:box=1:boxcolor=black@0.45:boxborderw=${boxBorder}:shadowcolor=black@0.35:shadowx=2:shadowy=2:x=w-tw-${WATERMARK_MARGIN_PX}:y=h-th-${logoSize ? logoSize.height + WATERMARK_MARGIN_PX + 12 : WATERMARK_MARGIN_PX}`;
+
+  if (!logoSize) {
+    return `[0:v]${drawtext}[vout]`;
+  }
+
+  return [
+    `[1:v]scale=${logoSize.width}:${logoSize.height}[wm_logo]`,
+    `[0:v][wm_logo]overlay=x=W-w-${WATERMARK_MARGIN_PX}:y=H-h-${WATERMARK_MARGIN_PX}[wm_base]`,
+    `[wm_base]${drawtext}[vout]`,
+  ].join(";");
+}
+
+async function renderWatermarkVideo(options: {
+  inputPath: string;
+  outputPath: string;
+  logoPath: string | null;
+  media: MediaMetadata;
+  logoSize: { width: number; height: number } | null;
+  platformName: string;
+  authorName: string;
+}): Promise<void> {
+  const { inputPath, outputPath, logoPath, media, logoSize, platformName, authorName } = options;
+  const filterComplex = buildFilterComplex(media, getWatermarkLabel(platformName, authorName), logoSize);
+
+  const args = [
+    "-y",
+    "-i",
+    inputPath,
+  ];
+
+  if (logoPath && logoSize) {
+    args.push("-i", logoPath);
+  }
+
+  args.push(
+    "-filter_complex",
+    filterComplex,
+    "-map",
+    "[vout]",
+    "-map",
+    "0:a?",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "18",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    "-c:a",
+    "copy",
+    outputPath,
+  );
+
+  await runCommand("ffmpeg", args, "ffmpeg watermark");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AdminClient = any;
+ type AdminClient = any;
 
 async function updateJob(
   admin: AdminClient,
@@ -409,11 +393,7 @@ async function updateJob(
   }
 }
 
-async function markJobFailed(
-  admin: AdminClient,
-  jobId: string,
-  errorMessage: string,
-) {
+async function markJobFailed(admin: AdminClient, jobId: string, errorMessage: string) {
   const { error } = await admin
     .from("video_watermark_jobs")
     .update({
@@ -432,28 +412,19 @@ async function markJobFailed(
 
 async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobId: string) {
   const admin = createClient(supabaseUrl, serviceKey);
-
-  const privateKey = normalizeSecret(Deno.env.get("IMAGEKIT_PRIVATE_KEY"));
-
-  if (!privateKey) {
-    await markJobFailed(
-      admin,
-      jobId,
-      "Configuration ImageKit manquante. Veuillez définir IMAGEKIT_PRIVATE_KEY.",
-    );
-    return;
-  }
-
-  // Use the job ID as ImageKit file name to guarantee uniqueness and easy cleanup.
-  const imagekitFileName = `vw-${jobId}.mp4`;
-  const imagekitFileIds: string[] = [];
+  const tempDir = await Deno.makeTempDir({ prefix: "watermark-" });
+  const inputPath = `${tempDir}/source.mp4`;
+  const outputPath = `${tempDir}/watermarked.mp4`;
+  const logoPath = `${tempDir}/logo`;
 
   try {
-    const { data: job, error: fetchError } = await admin
+    const { data, error: fetchError } = await admin
       .from("video_watermark_jobs")
       .select("*")
       .eq("id", jobId)
-      .maybeSingle<WatermarkJobRow>();
+      .maybeSingle();
+
+    const job = data as WatermarkJobRow | null;
 
     if (fetchError || !job) {
       throw new Error(fetchError?.message || "Job introuvable");
@@ -469,65 +440,82 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       failed_at: null,
     });
 
-    // Lightweight HTTP-based validation (no subprocess).
     await validateSourceHttp(job.source_url);
 
-    // Resolve the platform logo URL (best-effort, falls back to text-only).
-    const logoUrl = await resolvePlatformLogoUrl(admin);
-    let logoLayerInput: string | null = null;
-
-    if (logoUrl) {
-      const logoMeta = await withRetry(
-        "imagekit-upload-logo",
-        () => uploadToImageKit(logoUrl, `vw-logo-${jobId}.png`, privateKey),
-      );
-
-      imagekitFileIds.push(logoMeta.fileId);
-      logoLayerInput = buildImageKitMediaPathInput(logoMeta.filePath);
-    }
-
     await updateJob(admin, jobId, {
-      stage: "Transfert vers le service de traitement",
+      stage: "Téléchargement de la vidéo source",
       progress: 25,
     });
 
-    // Build the ImageKit transformation string for the watermark.
-    const transformation = buildImageKitTransformation(job.author_name, job.watermark_text, logoLayerInput);
-
-    // Upload source video to ImageKit (they fetch from URL).
-    const imagekitMeta = await withRetry(
-      "imagekit-upload",
-      () => uploadToImageKit(job.source_url, imagekitFileName, privateKey),
+    await withRetry(
+      "download-source",
+      () => downloadFile(job.source_url, inputPath, "Téléchargement de la vidéo source impossible"),
+      2,
     );
-    imagekitFileIds.push(imagekitMeta.fileId);
 
-    // Validate that the upload returned a usable URL.
-    validateImageKitMeta(imagekitMeta);
+    const media = await probeMedia(inputPath);
+    if (media.durationSeconds && media.durationSeconds > MAX_DURATION_SECONDS) {
+      throw new Error(`La vidéo source dépasse ${Math.floor(MAX_DURATION_SECONDS / 60)} minutes`);
+    }
 
-    // Build the transformation delivery URL to download the watermarked video.
-    const watermarkedUrl = buildImageKitTransformUrl(imagekitMeta.url, transformation);
+    let resolvedLogoPath: string | null = null;
+    let logoSize: { width: number; height: number } | null = null;
+    const logoUrl = await resolvePlatformLogoUrl(admin);
+
+    if (logoUrl) {
+      try {
+        await updateJob(admin, jobId, {
+          stage: "Préparation du logo plateforme",
+          progress: 40,
+        });
+
+        await withRetry(
+          "download-logo",
+          () => downloadFile(logoUrl, logoPath, "Téléchargement du logo impossible"),
+          2,
+        );
+
+        const logoMeta = await probeMedia(logoPath);
+        const targetWidth = clamp(Math.round(media.width * 0.1), 56, 120);
+        const targetHeight = clamp(
+          Math.round((logoMeta.height / logoMeta.width) * targetWidth),
+          28,
+          120,
+        );
+
+        resolvedLogoPath = logoPath;
+        logoSize = { width: targetWidth, height: targetHeight };
+      } catch (logoError) {
+        console.warn("[watermark-video] logo skipped", logoError);
+      }
+    }
 
     await updateJob(admin, jobId, {
-      stage: "Application du watermark",
-      progress: 60,
+      stage: "Incrustation du watermark FFmpeg",
+      progress: 65,
       metadata: {
-        sourceWidth: imagekitMeta.width ?? null,
-        sourceHeight: imagekitMeta.height ?? null,
+        sourceWidth: media.width,
+        sourceHeight: media.height,
+        sourceFrameRate: media.frameRate,
       },
+    });
+
+    await renderWatermarkVideo({
+      inputPath,
+      outputPath,
+      logoPath: resolvedLogoPath,
+      media,
+      logoSize,
+      platformName: job.watermark_text,
+      authorName: job.author_name,
     });
 
     await updateJob(admin, jobId, {
       stage: "Upload de l'export sécurisé",
-      progress: 85,
+      progress: 90,
     });
 
-    // Download the watermarked video from ImageKit and upload to Supabase Storage.
-    await sleep(INITIAL_WATERMARK_RENDER_DELAY_MS);
-    const outputResponse = await downloadWatermarkedVideo(watermarkedUrl);
-
-    const outputData = await outputResponse.arrayBuffer();
-
-    // Store inside the user folder so bucket policies (first segment = user id) are satisfied.
+    const outputData = await Deno.readFile(outputPath);
     const storagePath = `${job.requested_by}/videos/watermarked/${sanitizeFileName(job.file_name)}`;
 
     await withRetry("upload-output", async () => {
@@ -553,8 +541,9 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
       completed_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + JOB_RETENTION_HOURS * 60 * 60 * 1000).toISOString(),
       metadata: {
-        sourceWidth: imagekitMeta.width ?? null,
-        sourceHeight: imagekitMeta.height ?? null,
+        sourceWidth: media.width,
+        sourceHeight: media.height,
+        sourceFrameRate: media.frameRate,
         outputSizeBytes: outputData.byteLength,
       },
     });
@@ -565,12 +554,7 @@ async function processWatermarkJob(supabaseUrl: string, serviceKey: string, jobI
     console.error("[watermark-video] job failed", { jobId, message, error });
     await markJobFailed(admin, jobId, message);
   } finally {
-    // Best-effort ImageKit cleanup.
-    if (privateKey) {
-      for (const imagekitFileId of imagekitFileIds) {
-        await deleteImageKitFile(imagekitFileId, privateKey);
-      }
-    }
+    await Deno.remove(tempDir, { recursive: true }).catch(() => undefined);
   }
 }
 
@@ -585,7 +569,11 @@ async function authenticateUser(req: Request, supabaseUrl: string, anonKey: stri
   });
 
   const token = authHeader.replace(/^Bearer\s+/i, "");
-  const { data: { user }, error } = await userClient.auth.getUser(token);
+  const {
+    data: { user },
+    error,
+  } = await userClient.auth.getUser(token);
+
   if (error || !user) {
     return { user: null, error: jsonResponse({ success: false, message: "Non authentifié" }, 401) };
   }
@@ -622,12 +610,14 @@ serve(async (req) => {
         return jsonResponse({ success: false, message: "jobId requis" }, 400);
       }
 
-      const { data: job, error } = await admin
+      const { data, error } = await admin
         .from("video_watermark_jobs")
         .select("*")
         .eq("id", jobId)
         .eq("requested_by", auth.user.id)
-        .maybeSingle<WatermarkJobRow>();
+        .maybeSingle();
+
+      const job = data as WatermarkJobRow | null;
 
       if (error || !job) {
         return jsonResponse({ success: false, message: "Job introuvable" }, 404);
@@ -685,7 +675,7 @@ serve(async (req) => {
 
     const validatedUrl = validateSourceUrl(videoUrl);
 
-    const { data: job, error } = await admin
+    const { data, error } = await admin
       .from("video_watermark_jobs")
       .insert({
         requested_by: auth.user.id,
@@ -701,13 +691,18 @@ serve(async (req) => {
         progress: 0,
       })
       .select("*")
-      .maybeSingle<WatermarkJobRow>();
+      .maybeSingle();
+
+    const job = data as WatermarkJobRow | null;
 
     if (error || !job) {
-      return jsonResponse({
-        success: false,
-        message: error?.message || "Impossible de créer le job de watermark",
-      }, 500);
+      return jsonResponse(
+        {
+          success: false,
+          message: error?.message || "Impossible de créer le job de watermark",
+        },
+        500,
+      );
     }
 
     const runtime = (globalThis as typeof globalThis & {
@@ -721,20 +716,26 @@ serve(async (req) => {
       void backgroundWork;
     }
 
-    return jsonResponse({
-      success: true,
-      jobId: job.id,
-      status: job.status,
-      stage: job.stage,
-      progress: job.progress,
-      fileName,
-      outputMimeType: OUTPUT_MIME_TYPE,
-    }, 202);
+    return jsonResponse(
+      {
+        success: true,
+        jobId: job.id,
+        status: job.status,
+        stage: job.stage,
+        progress: job.progress,
+        fileName,
+        outputMimeType: OUTPUT_MIME_TYPE,
+      },
+      202,
+    );
   } catch (error) {
     console.error("[watermark-video] error", error);
-    return jsonResponse({
-      success: false,
-      message: error instanceof Error ? error.message : "Erreur interne",
-    }, 500);
+    return jsonResponse(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Erreur interne",
+      },
+      500,
+    );
   }
 });
