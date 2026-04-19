@@ -98,7 +98,7 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
   optimizeDeps: {
-    exclude: ["fabric"],
+    exclude: ["fabric", "@imgly/background-removal", "onnxruntime-web"],
     include: ["@tanstack/react-query", "@tanstack/react-query-persist-client"],
   },
 }));
