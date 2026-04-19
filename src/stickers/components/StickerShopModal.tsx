@@ -67,7 +67,14 @@ const StickerShopModal: React.FC<StickerShopModalProps> = ({ open, onClose, onPa
                 {owned ? (
                   <span className="text-green-500 font-semibold text-xs">Ajouté</span>
                 ) : (
-                  <Button size="sm" loading={unlockStickerPack.isPending && unlockStickerPack.variables === pack.id} onClick={() => handleAddPack(pack.id)}>
+                  <Button
+                    size="sm"
+                    disabled={unlockStickerPack.isPending && unlockStickerPack.variables === pack.id}
+                    onClick={() => handleAddPack(pack.id)}
+                  >
+                    {unlockStickerPack.isPending && unlockStickerPack.variables === pack.id && (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    )}
                     {pack.price === 0 ? 'Ajouter' : `Acheter (${pack.price}€)`}
                   </Button>
                 )}
