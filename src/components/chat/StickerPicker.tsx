@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { PackagePlus, ShoppingBag } from 'lucide-react';
 import StickerShopModal from '@/stickers/components/StickerShopModal';
 import { useUserUnlockedPacks } from '@/hooks/useStickerSystem';
+import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
 
 interface StickerPickerProps {
   onStickerSelect: (sticker: string) => void;
@@ -20,6 +21,7 @@ interface StickerPickerProps {
 interface Sticker {
   id: string;
   url: string;
+  path: string | null;
 }
 
 interface StickerPack {
@@ -34,6 +36,21 @@ const StickerPicker: React.FC<StickerPickerProps> = ({ onStickerSelect, isOpen, 
   const navigate = useNavigate();
   const { data: unlockedPacks = [] } = useUserUnlockedPacks();
   const [shopOpen, setShopOpen] = useState(false);
+
+  // Collect all file_paths from unlocked packs to generate fresh signed URLs
+  const allFilePaths = useMemo(() => {
+    const paths: string[] = [];
+    (unlockedPacks as any[]).forEach((entry) => {
+      const pack = entry?.sticker_packs;
+      (pack?.stickers || []).forEach((s: any) => {
+        if (s?.file_path) paths.push(s.file_path);
+      });
+    });
+    return paths;
+  }, [unlockedPacks]);
+
+  const { data: signedUrlMap = {} } = useSignedStickerUrls(allFilePaths);
+
   const stickerPacks = useMemo<StickerPack[]>(() => {
     const gradientPalette = [
       'from-amber-400 to-orange-500',
@@ -44,14 +61,20 @@ const StickerPicker: React.FC<StickerPickerProps> = ({ onStickerSelect, isOpen, 
       'from-rose-400 to-red-500',
     ];
 
-    return unlockedPacks
+    return (unlockedPacks as any[])
       .map((entry: any, index: number) => {
         const pack = entry?.sticker_packs;
         if (!pack?.id) return null;
 
-        const stickers = (pack.stickers || [])
-          .filter((s: any) => s?.id && s?.file_url)
-          .map((s: any) => ({ id: s.id, url: s.file_url }));
+        const stickers: Sticker[] = (pack.stickers || [])
+          .filter((s: any) => s?.id && (s?.file_url || s?.file_path))
+          .map((s: any) => ({
+            id: s.id,
+            // Prefer fresh signed URL from file_path, fall back to stored file_url
+            url: (s.file_path && signedUrlMap[s.file_path]) || s.file_url || '',
+            path: s.file_path ?? null,
+          }))
+          .filter((s: Sticker) => !!s.url);
 
         return {
           id: pack.id,
@@ -62,13 +85,15 @@ const StickerPicker: React.FC<StickerPickerProps> = ({ onStickerSelect, isOpen, 
         } satisfies StickerPack;
       })
       .filter((pack): pack is StickerPack => Boolean(pack) && pack.stickers.length > 0);
-  }, [unlockedPacks]);
+  }, [unlockedPacks, signedUrlMap]);
+
   const [activePack, setActivePack] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const currentPack = useMemo(() => {
     if (!stickerPacks.length) return null;
     return stickerPacks.find((p) => p.id === activePack) || stickerPacks[0];
   }, [activePack, stickerPacks]);
+
   useEffect(() => {
     if (!stickerPacks.length) {
       setActivePack(null);
@@ -158,13 +183,11 @@ const StickerPicker: React.FC<StickerPickerProps> = ({ onStickerSelect, isOpen, 
             <PackagePlus size={18} />
           </button>
           {/* Modale boutique stickers */}
-          <StickerShopModal 
-            open={shopOpen} 
-            onClose={() => setShopOpen(false)} 
+          <StickerShopModal
+            open={shopOpen}
+            onClose={() => setShopOpen(false)}
             onPackAdded={() => {
-              // Forcer le refetch des packs débloqués après ajout
               if (typeof window !== 'undefined' && window.location) {
-                // Hack simple : recharger la page (à remplacer par un vrai refetch si possible)
                 window.location.reload();
               }
             }}

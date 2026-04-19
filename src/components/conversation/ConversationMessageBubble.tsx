@@ -18,6 +18,32 @@ import {
 import { AdaptiveMessageMenu, type MenuOption } from '@/components/chat/AdaptiveMessageMenu';
 import { useLongPress } from '@/hooks/useLongPress';
 import ReplyReference from '@/components/chat/ReplyReference';
+import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
+
+/** Extract file_path from a Supabase signed sticker URL */
+function extractStickerFilePath(url: string): string | null {
+  try {
+    const match = url.match(/\/storage\/v1\/object\/sign\/stickers-private\/([^?]+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Renders a sticker image, re-signing expired Supabase URLs automatically */
+const StickerImage: React.FC<{ url: string }> = ({ url }) => {
+  const filePath = extractStickerFilePath(url);
+  const { data: signedMap = {} } = useSignedStickerUrls(filePath ? [filePath] : []);
+  const resolvedUrl = (filePath && signedMap[filePath]) || url;
+  return (
+    <img
+      src={resolvedUrl}
+      alt="Sticker"
+      className="w-full h-full object-contain pointer-events-none"
+      loading="lazy"
+    />
+  );
+};
 
 interface ConversationMedia {
   id: string;
@@ -298,7 +324,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
 
             {isImageSticker && imageStickerUrl && (
               <div className="w-[140px] sm:w-[180px] drop-shadow-lg aspect-square mb-2 animate-in zoom-in-75">
-                <img src={imageStickerUrl} alt="Sticker" className="w-full h-full object-contain pointer-events-none" loading="lazy" />
+                <StickerImage url={imageStickerUrl} />
               </div>
             )}
 

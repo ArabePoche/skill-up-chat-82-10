@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
   useSubmitPackForReview,
   StickerPackData,
 } from '@/hooks/useStickerSystem';
+import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
 
 const StickerStudio = () => {
   const { profile, loading } = useAuth();
@@ -23,6 +24,14 @@ const StickerStudio = () => {
   // Queries
   const { data: packs, isLoading: loadingPacks } = useCreatorStickerPacks();
   const { data: activeStickers, isLoading: loadingStickers } = useStickersForPack(activePackId);
+
+  // Collect file_paths to re-sign sticker URLs (bucket became private)
+  const activeStickerPaths = useMemo(
+    () => (activeStickers || []).map((s: any) => s.file_path).filter(Boolean) as string[],
+    [activeStickers],
+  );
+  const { data: stickerSignedMap = {} } = useSignedStickerUrls(activeStickerPaths);
+
   const savePack = useSaveStickerPack();
   const uploadSticker = useUploadStickerImage();
   const uploadPackIcon = useUploadStickerPackIcon();
@@ -366,7 +375,7 @@ const StickerStudio = () => {
                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
                        {activeStickers?.map((sticker) => (
                          <div key={sticker.id} className="aspect-square bg-slate-50 rounded-xl border border-slate-100 p-2 relative group hover:border-violet-200 transition-colors shadow-sm">
-                           <img src={sticker.file_url} className="w-full h-full object-contain drop-shadow-sm" alt="Sticker" loading="lazy" />
+                           <img src={(sticker.file_path && stickerSignedMap[sticker.file_path]) || sticker.file_url} className="w-full h-full object-contain drop-shadow-sm" alt="Sticker" loading="lazy" />
                            {sticker.is_animated && (
                              <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-widest backdrop-blur-sm">
                                GIF
