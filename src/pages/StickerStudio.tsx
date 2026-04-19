@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImagePlus, PackagePlus, ArrowLeft, Trash2, Save, UploadCloud, CheckCircle2, Loader2 } from 'lucide-react';
+import { ImagePlus, PackagePlus, ArrowLeft, Trash2, Save, UploadCloud, CheckCircle2, Loader2, Send, Clock3, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   useCreatorStickerPacks,
@@ -11,6 +11,7 @@ import {
   useStickersForPack,
   useUploadStickerImage,
   useUploadStickerPackIcon,
+  useSubmitPackForReview,
   StickerPackData,
 } from '@/hooks/useStickerSystem';
 
