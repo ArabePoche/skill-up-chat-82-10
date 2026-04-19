@@ -8853,6 +8853,85 @@ export type Database = {
           },
         ]
       }
+      sticker_packs: {
+        Row: {
+          created_at: string | null
+          creator_id: string | null
+          description: string | null
+          icon_url: string | null
+          id: string
+          is_published: boolean | null
+          name: string
+          price: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          is_published?: boolean | null
+          name: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string | null
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          is_published?: boolean | null
+          name?: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sticker_packs_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stickers: {
+        Row: {
+          created_at: string | null
+          file_url: string
+          id: string
+          is_animated: boolean | null
+          pack_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_url: string
+          id?: string
+          is_animated?: boolean | null
+          pack_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          file_url?: string
+          id?: string
+          is_animated?: boolean | null
+          pack_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stickers_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "sticker_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_transfers: {
         Row: {
           created_at: string
@@ -10490,6 +10569,35 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sticker_packs: {
+        Row: {
+          id: string
+          pack_id: string
+          unlocked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          pack_id: string
+          unlocked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          pack_id?: string
+          unlocked_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sticker_packs_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "sticker_packs"
             referencedColumns: ["id"]
           },
         ]
