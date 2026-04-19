@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 
 /* ─── Suppression de fond via @imgly/background-removal ─── */
 async function removeBg(file: File): Promise<File> {
-  const { default: removeBackground } = await import('@imgly/background-removal');
+  const { removeBackground } = await import('@imgly/background-removal');
   const blob = await removeBackground(file, {
     model: 'small',
     output: { format: 'image/png', quality: 0.9 },
