@@ -8853,38 +8853,157 @@ export type Database = {
           },
         ]
       }
+      sticker_commission_settings: {
+        Row: {
+          creator_share_percent: number
+          id: string
+          platform_share_percent: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          creator_share_percent?: number
+          id?: string
+          platform_share_percent?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          creator_share_percent?: number
+          id?: string
+          platform_share_percent?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      sticker_pack_purchases: {
+        Row: {
+          amount_paid_sb: number
+          amount_paid_sc: number
+          buyer_id: string
+          created_at: string
+          creator_id: string | null
+          creator_share_sb: number
+          creator_share_sc: number
+          id: string
+          is_free: boolean
+          pack_id: string
+          platform_share_sb: number
+          platform_share_sc: number
+          price_sb: number
+          price_sc: number
+          transaction_ref: string | null
+        }
+        Insert: {
+          amount_paid_sb?: number
+          amount_paid_sc?: number
+          buyer_id: string
+          created_at?: string
+          creator_id?: string | null
+          creator_share_sb?: number
+          creator_share_sc?: number
+          id?: string
+          is_free?: boolean
+          pack_id: string
+          platform_share_sb?: number
+          platform_share_sc?: number
+          price_sb?: number
+          price_sc?: number
+          transaction_ref?: string | null
+        }
+        Update: {
+          amount_paid_sb?: number
+          amount_paid_sc?: number
+          buyer_id?: string
+          created_at?: string
+          creator_id?: string | null
+          creator_share_sb?: number
+          creator_share_sc?: number
+          id?: string
+          is_free?: boolean
+          pack_id?: string
+          platform_share_sb?: number
+          platform_share_sc?: number
+          price_sb?: number
+          price_sc?: number
+          transaction_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sticker_pack_purchases_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "sticker_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sticker_packs: {
         Row: {
           created_at: string | null
           creator_id: string | null
           description: string | null
+          icon_path: string | null
           icon_url: string | null
           id: string
           is_published: boolean | null
           name: string
           price: number | null
+          price_sb: number
+          price_sc: number
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["sticker_pack_status"]
+          submitted_at: string | null
+          total_revenue_sb: number
+          total_revenue_sc: number
+          total_sales: number
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           creator_id?: string | null
           description?: string | null
+          icon_path?: string | null
           icon_url?: string | null
           id?: string
           is_published?: boolean | null
           name: string
           price?: number | null
+          price_sb?: number
+          price_sc?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["sticker_pack_status"]
+          submitted_at?: string | null
+          total_revenue_sb?: number
+          total_revenue_sc?: number
+          total_sales?: number
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           creator_id?: string | null
           description?: string | null
+          icon_path?: string | null
           icon_url?: string | null
           id?: string
           is_published?: boolean | null
           name?: string
           price?: number | null
+          price_sb?: number
+          price_sc?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["sticker_pack_status"]
+          submitted_at?: string | null
+          total_revenue_sb?: number
+          total_revenue_sc?: number
+          total_sales?: number
           updated_at?: string | null
         }
         Relationships: [
@@ -8900,26 +9019,32 @@ export type Database = {
       stickers: {
         Row: {
           created_at: string | null
+          file_path: string | null
           file_url: string
           id: string
           is_animated: boolean | null
           pack_id: string
+          preview_visible: boolean
           sort_order: number | null
         }
         Insert: {
           created_at?: string | null
+          file_path?: string | null
           file_url: string
           id?: string
           is_animated?: boolean | null
           pack_id: string
+          preview_visible?: boolean
           sort_order?: number | null
         }
         Update: {
           created_at?: string | null
+          file_path?: string | null
           file_url?: string
           id?: string
           is_animated?: boolean | null
           pack_id?: string
+          preview_visible?: boolean
           sort_order?: number | null
         }
         Relationships: [
@@ -11784,6 +11909,10 @@ export type Database = {
         Args: { p_school_id: string; p_template_id: string }
         Returns: Json
       }
+      purchase_sticker_pack: {
+        Args: { _pack_id: string; _use_sb_amount?: number }
+        Returns: Json
+      }
       recalculate_student_amount_due: {
         Args: {
           student_row: Database["public"]["Tables"]["students_school"]["Row"]
@@ -11835,6 +11964,10 @@ export type Database = {
         }
         Returns: Json
       }
+      review_sticker_pack: {
+        Args: { _decision: string; _pack_id: string; _reason?: string }
+        Returns: Json
+      }
       search_public_cvs: {
         Args: {
           search_education?: string
@@ -11877,6 +12010,10 @@ export type Database = {
           p_sender_id: string
         }
         Returns: undefined
+      }
+      submit_sticker_pack_for_review: {
+        Args: { _pack_id: string }
+        Returns: Json
       }
       transfer_habbah: {
         Args: {
@@ -11926,6 +12063,10 @@ export type Database = {
         Returns: undefined
       }
       update_user_streak_daily_minutes: { Args: never; Returns: undefined }
+      user_owns_sticker_pack: {
+        Args: { _pack_id: string; _user_id: string }
+        Returns: boolean
+      }
       validate_exercise_submission:
         | {
             Args: {
@@ -11987,6 +12128,7 @@ export type Database = {
         | "can_manage_schedule"
         | "can_manage_grades"
       status: "not_started" | "in_progress" | "awaiting_review" | "completed"
+      sticker_pack_status: "draft" | "pending_review" | "approved" | "rejected"
       user_role: "user" | "admin"
       video_type: "lesson" | "promo" | "classic"
     }
@@ -12137,6 +12279,7 @@ export const Constants = {
         "can_manage_grades",
       ],
       status: ["not_started", "in_progress", "awaiting_review", "completed"],
+      sticker_pack_status: ["draft", "pending_review", "approved", "rejected"],
       user_role: ["user", "admin"],
       video_type: ["lesson", "promo", "classic"],
     },
