@@ -29,7 +29,10 @@ async function removeBg(file: File): Promise<File> {
     publicPath: 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/',
     model: 'small',
     output: { format: 'image/png', quality: 0.9 },
-  });
+    debug: false,
+    proxyToWorker: false,
+    fetchArgs: { cache: 'force-cache' },
+  } as any);
   return new File([blob], file.name.replace(/\.[^.]+$/, '.png'), { type: 'image/png' });
 }
 
@@ -131,8 +134,14 @@ const StickerStudio = () => {
         let processed = file;
         // Pas de suppression de fond sur les GIFs animés
         if (file.type !== 'image/gif') {
-          toast.info(`Suppression du fond… (${i + 1}/${files.length})`);
-          processed = await removeBg(file);
+          try {
+            toast.info(`Suppression du fond… (${i + 1}/${files.length})`);
+            processed = await removeBg(file);
+          } catch (bgErr: any) {
+            console.warn('Suppression fond échouée, upload original:', bgErr?.message ?? bgErr);
+            toast.warning(`Fond non supprimé pour ${file.name} — upload de l'original.`);
+            processed = file;
+          }
         }
         await new Promise<void>((resolve, reject) => {
           uploadSticker.mutate(
@@ -141,8 +150,8 @@ const StickerStudio = () => {
           );
         });
       } catch (err: any) {
-        console.error('Erreur traitement sticker:', err);
-        toast.error(`Erreur sur ${file.name}: ${err?.message ?? 'inconnue'}`);
+        console.error('Erreur upload sticker:', err);
+        toast.error(`Échec upload ${file.name}: ${err?.message ?? 'erreur inconnue'}`);
       }
       setBgProgress({ done: i + 1, total: files.length });
     }
