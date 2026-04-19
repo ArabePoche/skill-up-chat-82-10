@@ -104,6 +104,8 @@ const StickerStudio = () => {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !activePackId || activePackId === 'new') return;
+    const packStatus = (editForm as any).status;
+    if (packStatus && !['draft', 'rejected'].includes(packStatus)) return;
     const files = Array.from(e.target.files);
     
     files.forEach(file => {
@@ -343,24 +345,39 @@ const StickerStudio = () => {
                {/* Zone d'envoi et grille des stickers */}
                {activePackId !== 'new' ? (
                  <div className="p-6 flex-1 bg-white">
+                   {/* Bannière si le pack est verrouillé (pending_review ou approved) */}
+                   {((editForm as any).status === 'pending_review' || (editForm as any).status === 'approved') && (
+                     <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                       <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                       <span>
+                         {(editForm as any).status === 'approved'
+                           ? 'Ce pack est approuvé et public. Pour le modifier, vous devez contacter un administrateur.'
+                           : 'Ce pack est en attente de validation. Vous ne pouvez pas ajouter de stickers tant qu\'il est en cours de révision.'}
+                       </span>
+                     </div>
+                   )}
+
                    <div className="flex items-center justify-between mb-4">
                      <h3 className="font-semibold text-slate-800">Contenu du pack ({activeStickers?.length || 0})</h3>
                      
-                     <div className="relative">
-                       <Input
-                         type="file"
-                         ref={fileInputRef}
-                         multiple
-                         accept="image/png, image/jpeg, image/gif, image/webp"
-                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                         onChange={handleFileUpload}
-                         disabled={uploadSticker.isPending}
-                       />
-                       <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
-                         <UploadCloud className="h-4 w-4 text-violet-600" />
-                         {uploadSticker.isPending ? 'Envoi en cours...' : 'Ajouter des stickers'}
-                       </Button>
-                     </div>
+                     {/* Upload button — masqué si le pack n'est pas éditable */}
+                     {(['draft', 'rejected', undefined, null].includes((editForm as any).status ?? null)) && (
+                       <div className="relative">
+                         <Input
+                           type="file"
+                           ref={fileInputRef}
+                           multiple
+                           accept="image/png, image/jpeg, image/gif, image/webp"
+                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                           onChange={handleFileUpload}
+                           disabled={uploadSticker.isPending}
+                         />
+                         <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
+                           <UploadCloud className="h-4 w-4 text-violet-600" />
+                           {uploadSticker.isPending ? 'Envoi en cours...' : 'Ajouter des stickers'}
+                         </Button>
+                       </div>
+                     )}
                    </div>
 
                    {loadingStickers ? (
