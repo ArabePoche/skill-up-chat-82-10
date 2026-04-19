@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { ShieldCheck, Heart, ShoppingBag, Building2, TrendingUp, ShieldAlert, FileSearch, ShieldBan, Shield, ScrollText, BadgeAlert, Megaphone, Video, Bell, Coins, Users, GraduationCap, Package, BarChart3, UserCheck, CheckCircle, CreditCard, BookOpen, UsersRound, UserPlus } from 'lucide-react';
+import { ShieldCheck, Heart, ShoppingBag, Building2, TrendingUp, ShieldAlert, FileSearch, ShieldBan, Shield, ScrollText, BadgeAlert, Megaphone, Video, Bell, Coins, Users, GraduationCap, Package, BarChart3, UserCheck, CheckCircle, CreditCard, BookOpen, UsersRound, UserPlus, Sticker } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -69,6 +69,7 @@ const menuGroups = [
       { title: 'Notifications Push', value: 'push-notifications', icon: Bell },
       { title: 'Annonces Recrutement', value: 'recruitment-ads', icon: Megaphone },
       { title: 'Aide Solidaire', value: 'solidarity', icon: Heart },
+      { title: 'Stickers', value: 'stickers-management', icon: Sticker },
     ]
   }
 ];

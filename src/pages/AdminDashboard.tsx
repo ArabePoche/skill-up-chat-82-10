@@ -29,6 +29,7 @@ import SchoolSubscriptionsManagement from '@/components/admin/subscriptions/Scho
 import SchoolsManagement from '@/components/admin/schools/SchoolsManagement';
 import SchoolRevenueDashboard from '@/components/admin/schools/SchoolRevenueDashboard';
 import SchoolSiteTemplatesManagement from '@/components/admin/schools/SchoolSiteTemplatesManagement';
+import StickersManagement from '@/components/admin/StickersManagement';
 
 const AdminDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -120,6 +121,8 @@ const AdminDashboard = () => {
         return <SchoolRevenueDashboard />;
       case 'school-site-templates':
         return <SchoolSiteTemplatesManagement />;
+      case 'stickers-management':
+        return <StickersManagement />;
       default:
         return <DashboardStats />;
     }
