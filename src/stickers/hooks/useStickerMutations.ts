@@ -181,7 +181,37 @@ export const useReviewStickerPack = () => {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['sticker-moderation-queue'] });
       queryClient.invalidateQueries({ queryKey: ['store-sticker-packs'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-stickers-moderation'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-all-sticker-packs'] });
       toast.success(vars.decision === 'approve' ? 'Pack approuvé ✅' : 'Pack rejeté');
+    },
+    onError: (error: any) => toast.error(error?.message || 'Erreur de modération'),
+  });
+};
+
+/** Approuver / rejeter un sticker individuel (admin). */
+export const useReviewSticker = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      stickerId,
+      decision,
+    }: {
+      stickerId: string;
+      decision: 'approve' | 'reject';
+    }) => {
+      const { data, error } = await db.rpc('review_sticker', {
+        _sticker_id: stickerId,
+        _decision: decision,
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Échec de la modération');
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['pending-stickers-moderation'] });
+      queryClient.invalidateQueries({ queryKey: ['pack-stickers'] });
+      toast.success(vars.decision === 'approve' ? 'Sticker approuvé ✅' : 'Sticker rejeté');
     },
     onError: (error: any) => toast.error(error?.message || 'Erreur de modération'),
   });

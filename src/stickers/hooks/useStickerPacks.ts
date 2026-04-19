@@ -93,7 +93,7 @@ export const useUserUnlockedPacks = () => {
   });
 };
 
-/** File d'attente de modération (admin uniquement, RLS bloque sinon). */
+/** File d'attente de modération des packs (admin uniquement, RLS bloque sinon). */
 export const useStickerModerationQueue = () => {
   return useQuery({
     queryKey: ['sticker-moderation-queue'],
@@ -103,10 +103,32 @@ export const useStickerModerationQueue = () => {
         .select(`
           *,
           profiles:creator_id (first_name, last_name, username, avatar_url),
-          stickers ( id, file_url, file_path, preview_visible )
+          stickers ( id, file_url, file_path, preview_visible, status )
         `)
         .eq('status', 'pending_review')
         .order('submitted_at', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+};
+
+/** Stickers individuels en attente de validation (dans des packs approuvés). */
+export const usePendingStickersModeration = () => {
+  return useQuery({
+    queryKey: ['pending-stickers-moderation'],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('stickers')
+        .select(`
+          id, file_url, file_path, is_animated, status, created_at,
+          sticker_packs!inner ( id, name, icon_url, status, creator_id,
+            profiles:creator_id ( first_name, last_name, username )
+          )
+        `)
+        .eq('status', 'pending_review')
+        .eq('sticker_packs.status', 'approved')
+        .order('created_at', { ascending: true });
       if (error) throw error;
       return data ?? [];
     },

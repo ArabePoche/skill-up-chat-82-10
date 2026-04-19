@@ -29,6 +29,8 @@ export interface StickerPackData {
   updated_at: string;
 }
 
+export type StickerStatus = 'pending_review' | 'approved' | 'rejected';
+
 export interface StickerData {
   id: string;
   pack_id: string;
@@ -37,6 +39,7 @@ export interface StickerData {
   is_animated: boolean;
   preview_visible: boolean;
   sort_order: number;
+  status: StickerStatus;
   created_at: string;
 }
 

@@ -67,7 +67,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({ onStickerSelect, isOpen, 
         if (!pack?.id) return null;
 
         const stickers: Sticker[] = (pack.stickers || [])
-          .filter((s: any) => s?.id && (s?.file_url || s?.file_path))
+          .filter((s: any) => s?.id && (s?.file_url || s?.file_path) && (!s.status || s.status === 'approved'))
           .map((s: any) => ({
             id: s.id,
             // Prefer fresh signed URL from file_path, fall back to stored file_url

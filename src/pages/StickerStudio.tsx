@@ -104,15 +104,10 @@ const StickerStudio = () => {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !activePackId || activePackId === 'new') return;
-    const packStatus = (editForm as any).status;
-    if (packStatus && !['draft', 'rejected'].includes(packStatus)) return;
     const files = Array.from(e.target.files);
-    
     files.forEach(file => {
       uploadSticker.mutate({ file, packId: activePackId });
     });
-    
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -345,39 +340,41 @@ const StickerStudio = () => {
                {/* Zone d'envoi et grille des stickers */}
                {activePackId !== 'new' ? (
                  <div className="p-6 flex-1 bg-white">
-                   {/* Bannière si le pack est verrouillé (pending_review ou approved) */}
-                   {((editForm as any).status === 'pending_review' || (editForm as any).status === 'approved') && (
+                   {/* Info : pack en attente de validation initiale */}
+                   {(editForm as any).status === 'pending_review' && (
                      <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                        <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                       <span>
-                         {(editForm as any).status === 'approved'
-                           ? 'Ce pack est approuvé et public. Pour le modifier, vous devez contacter un administrateur.'
-                           : 'Ce pack est en attente de validation. Vous ne pouvez pas ajouter de stickers tant qu\'il est en cours de révision.'}
-                       </span>
+                       <span>Ce pack attend sa <strong>validation initiale</strong>. Les stickers ajoutés maintenant seront mis en attente individuelle de validation.</span>
+                     </div>
+                   )}
+
+                   {/* Info : pack approuvé, stickers supplémentaires en attente individuelle */}
+                   {(editForm as any).status === 'approved' && (
+                     <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+                       <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-blue-600" />
+                       <span>Pack public. Vous pouvez ajouter de nouveaux stickers — ils seront <strong>mis en attente</strong> et validés individuellement par un admin avant d'être visibles.</span>
                      </div>
                    )}
 
                    <div className="flex items-center justify-between mb-4">
                      <h3 className="font-semibold text-slate-800">Contenu du pack ({activeStickers?.length || 0})</h3>
                      
-                     {/* Upload button — masqué si le pack n'est pas éditable */}
-                     {(['draft', 'rejected', undefined, null].includes((editForm as any).status ?? null)) && (
-                       <div className="relative">
-                         <Input
-                           type="file"
-                           ref={fileInputRef}
-                           multiple
-                           accept="image/png, image/jpeg, image/gif, image/webp"
-                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                           onChange={handleFileUpload}
-                           disabled={uploadSticker.isPending}
-                         />
-                         <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
-                           <UploadCloud className="h-4 w-4 text-violet-600" />
-                           {uploadSticker.isPending ? 'Envoi en cours...' : 'Ajouter des stickers'}
-                         </Button>
-                       </div>
-                     )}
+                     {/* Upload button — toujours visible pour les packs sauvegardés */}
+                     <div className="relative">
+                       <Input
+                         type="file"
+                         ref={fileInputRef}
+                         multiple
+                         accept="image/png, image/jpeg, image/gif, image/webp"
+                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                         onChange={handleFileUpload}
+                         disabled={uploadSticker.isPending}
+                       />
+                       <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
+                         <UploadCloud className="h-4 w-4 text-violet-600" />
+                         {uploadSticker.isPending ? 'Envoi en cours...' : 'Ajouter des stickers'}
+                       </Button>
+                     </div>
                    </div>
 
                    {loadingStickers ? (
@@ -390,19 +387,37 @@ const StickerStudio = () => {
                      </div>
                    ) : (
                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                       {activeStickers?.map((sticker) => (
-                         <div key={sticker.id} className="aspect-square bg-slate-50 rounded-xl border border-slate-100 p-2 relative group hover:border-violet-200 transition-colors shadow-sm">
-                           <img src={(sticker.file_path && stickerSignedMap[sticker.file_path]) || sticker.file_url} className="w-full h-full object-contain drop-shadow-sm" alt="Sticker" loading="lazy" />
-                           {sticker.is_animated && (
-                             <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-widest backdrop-blur-sm">
-                               GIF
-                             </span>
-                           )}
-                           <button className="absolute top-1 right-1 bg-red-100 text-red-600 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200 shadow-sm" title="Supprimer">
-                             <Trash2 className="h-3 w-3" />
-                           </button>
-                         </div>
-                       ))}
+                       {activeStickers?.map((sticker) => {
+                         const stickerStatus = (sticker as any).status;
+                         return (
+                           <div key={sticker.id} className={`aspect-square bg-slate-50 rounded-xl border p-2 relative group transition-colors shadow-sm ${
+                             stickerStatus === 'pending_review' ? 'border-amber-200 bg-amber-50/40' :
+                             stickerStatus === 'rejected' ? 'border-rose-200 bg-rose-50/40' :
+                             'border-slate-100 hover:border-violet-200'
+                           }`}>
+                             <img src={(sticker.file_path && stickerSignedMap[sticker.file_path]) || sticker.file_url} className="w-full h-full object-contain drop-shadow-sm" alt="Sticker" loading="lazy" />
+                             {/* Status badge */}
+                             {stickerStatus === 'pending_review' && (
+                               <span className="absolute bottom-1 left-1 bg-amber-500 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase leading-none">
+                                 Attente
+                               </span>
+                             )}
+                             {stickerStatus === 'rejected' && (
+                               <span className="absolute bottom-1 left-1 bg-rose-500 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase leading-none">
+                                 Rejeté
+                               </span>
+                             )}
+                             {sticker.is_animated && (
+                               <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-widest backdrop-blur-sm">
+                                 GIF
+                               </span>
+                             )}
+                             <button className="absolute top-1 right-1 bg-red-100 text-red-600 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200 shadow-sm" title="Supprimer">
+                               <Trash2 className="h-3 w-3" />
+                             </button>
+                           </div>
+                         );
+                       })}
                      </div>
                    )}
                  </div>
