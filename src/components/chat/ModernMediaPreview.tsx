@@ -145,7 +145,7 @@ const [showFullscreen, setShowFullscreen] = useState(false);
   const content = (
     <>
       {isImage && (
-        <div className="relative group w-full h-full flex">
+        <div className="relative group w-fit">
           <div
             onClick={() => {
               if (lessonId && formationId && isTeacher) {
@@ -154,15 +154,20 @@ const [showFullscreen, setShowFullscreen] = useState(false);
                 handleFullscreen();
               }
             }}
-            className="cursor-pointer flex-1 flex"
+            className="cursor-pointer"
           >
             <OfflineImage
               src={fileUrl}
               alt={fileName}
-              className={`h-auto w-full object-cover block ${className || 'rounded-lg'}`}
+              className={`h-auto w-auto max-w-[min(70vw,20rem)] sm:max-w-sm max-h-64 object-cover ${className || 'rounded-lg'}`}
               autoDownload={isOwnMessage}
             />
           </div>
+          {timeLabel && (
+            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+              {timeLabel}
+            </div>
+          )}
           {/* Bouton d'annotation visible pour les profs */}
           {isTeacher && lessonId && formationId && (
             <div className="absolute top-2 right-2 z-10">

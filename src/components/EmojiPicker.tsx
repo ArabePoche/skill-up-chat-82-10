@@ -1,9 +1,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Coffee, Flag, Heart, Music, Smile, Star, Sun, Car, X } from 'lucide-react';
+import { Coffee, Flag, Heart, Music, Smile, Star, Sun, Car, X, Sticker } from 'lucide-react';
+import StickerPicker from './chat/StickerPicker';
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
+  onStickerSelect?: (sticker: string) => void;
   isOpen: boolean;
   onToggle: () => void;
   className?: string;
@@ -94,8 +96,9 @@ const emojiCategories: Record<CategoryKey, CategoryConfig> = {
   },
 };
 
-const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onToggle, className }) => {
+const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, onStickerSelect, isOpen, onToggle, className }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('smileys');
+  const [activeTab, setActiveTab] = useState<'emoji' | 'sticker'>('emoji');
   const pickerRef = useRef<HTMLDivElement>(null);
   const categoryEntries = Object.entries(emojiCategories) as Array<[CategoryKey, CategoryConfig]>;
   const activeCategoryConfig = emojiCategories[activeCategory];
@@ -137,10 +140,49 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
     <div
       ref={pickerRef}
       role="dialog"
-      aria-label="Sélecteur d'emojis"
-      className={`w-[85vw] max-w-[340px] sm:w-[350px] z-50 flex flex-col bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200 ${className !== undefined ? className : 'absolute bottom-full left-0 mb-3'}`}
+      aria-label="Sélecteur d'emojis et stickers"
+      className={`w-[85vw] max-w-[340px] sm:w-[350px] z-50 flex flex-col bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200 overflow-hidden ${className !== undefined ? className : 'absolute bottom-full left-0 mb-3'}`}
     >
-      {/* Search Output & Header */}
+      {/* Tab switcher: Emojis vs Stickers */}
+      <div className="flex border-b border-gray-100">
+        <button
+          type="button"
+          onClick={() => setActiveTab('emoji')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition-colors ${
+            activeTab === 'emoji'
+              ? 'text-violet-600 border-b-2 border-violet-500 bg-violet-50/50'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Smile size={15} />
+          Emojis
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('sticker')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-semibold transition-colors ${
+            activeTab === 'sticker'
+              ? 'text-violet-600 border-b-2 border-violet-500 bg-violet-50/50'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          🎭 Stickers
+        </button>
+      </div>
+
+      {activeTab === 'sticker' ? (
+        /* === STICKER TAB === */
+        <StickerPicker
+          isOpen={true}
+          onToggle={onToggle}
+          onStickerSelect={(sticker) => {
+            onStickerSelect?.(sticker);
+          }}
+          className="relative rounded-none shadow-none border-0 w-full max-w-none"
+        />
+      ) : (
+        /* === EMOJI TAB === */
+        <>
       <div className="px-4 pt-3 pb-2 border-b border-gray-100">
         <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
           {activeCategoryConfig.label}
@@ -200,6 +242,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onTogg
           })}
         </div>
       </div>
+      </>)}
     </div>
   );
 };

@@ -136,6 +136,18 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
     setIsEmojiPickerOpen(false);
   };
 
+  const handleStickerSelect = (stickerUrl: string) => {
+    // Les stickers emojis images sont envoyés avec un préfixe spécifique
+    let repliedToMessageId = undefined;
+    if (replyingTo) {
+      repliedToMessageId = replyingTo.id;
+      onCancelReply?.();
+    }
+    const prefixedSticker = `STICKER:${stickerUrl}`;
+    onSendMessage(prefixedSticker, 'sticker', undefined, repliedToMessageId);
+    setIsEmojiPickerOpen(false);
+  };
+
   const getSupportedMimeType = () => {
     const formats = [
       { mimeType: 'audio/mp4', extension: 'mp4' },
@@ -495,6 +507,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   <div className="absolute bottom-full left-0 mb-3 z-50">
                     <EmojiPicker
                       onEmojiSelect={handleEmojiSelect}
+                      onStickerSelect={handleStickerSelect}
                       isOpen={isEmojiPickerOpen}
                       onToggle={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
                     />

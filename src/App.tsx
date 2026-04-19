@@ -55,6 +55,8 @@ import { OfflineGate, ConversationSyncProvider } from '@/offline';
 import { OfflineAuthBanner } from '@/offline/components/OfflineAuthBanner';
 import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt';
 import PrivateIncomingCallProvider from '@/conversations/components/PrivateIncomingCallProvider';
+import { ConversationForwardDialogProvider } from '@/conversations/ConversationForwardDialogProvider';
+import StickerStudio from '@/pages/StickerStudio';
 
 
 // Cache-first : affichage instantané depuis IndexedDB, revalidation en arrière-plan
@@ -131,6 +133,10 @@ const AppWithRouter: React.FC = () => {
         {/* Routes pour conversations */}
         <Route path="/conversations/:otherUserId" element={<Conversations />} />
         
+        {/* Stickers */}
+        <Route path="/stickers" element={<Navigate to="/stickers/studio" replace />} />
+        <Route path="/stickers/studio" element={<StickerStudio />} />
+        
         {/* Route pour upload vidéo */}
         <Route path="/upload-video" element={<UploadVideo />} />
         <Route path="/live/:id" element={<UserLive />} />
@@ -173,7 +179,9 @@ const AppWithHabbah: React.FC = () => {
   const { gains, removeGain } = useHabbahGainNotifier();
   return (
     <>
-      <AppWithRouter />
+      <ConversationForwardDialogProvider>
+        <AppWithRouter />
+      </ConversationForwardDialogProvider>
       <Toaster />
       <HabbahGainAnimation gains={gains} onComplete={removeGain} />
     </>

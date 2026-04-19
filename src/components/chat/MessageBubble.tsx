@@ -26,6 +26,9 @@ import { useMessageReactions, useToggleReaction } from '@/hooks/useMessageReacti
 import { useEditLessonMessage, useDeleteLessonMessage } from '@/hooks/useLessonOperations.messages';
 import { LinkifiedText } from '@/utils/linkify';
 import { formatMessageTime } from '@/utils/dateUtils';
+import { AdaptiveMessageMenu } from './AdaptiveMessageMenu';
+import { useMessageMenuOptions } from './messageMenuOptions';
+import { useLongPress } from '@/hooks/useLongPress';
 
 interface Message {
   id: string;
@@ -77,6 +80,7 @@ interface MessageBubbleProps {
   message: Message;
   isTeacher: boolean;
   onReply?: (message: Message) => void; // callback pour définir la réponse dans l'input
+  onForward?: (message: Message) => void; // callback pour transfert
   onScrollToMessage?: (messageId: string) => void; // Nouvelle prop pour le scroll
   highlightedMessageId?: string | null;
   // Props pour le chat groupe - envoi d'exercice
@@ -89,6 +93,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   message, 
   isTeacher, 
   onReply, 
+  onForward,
   onScrollToMessage, 
   highlightedMessageId,
   formationId,
@@ -110,9 +115,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const effectiveLevelId = isGroupChatContext ? (message.level_id ?? levelId) : levelId;
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const bubbleRef = useRef<HTMLDivElement>(null);
+
+  const longPressProps = useLongPress({
+    duration: 500,
+    onLongPress: () => {
+      setIsMenuOpen(true);
+    }
+  });
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsMenuOpen(true);
+  };
+
 
   const { data: reactions = {} } = useMessageReactions(message.id);
   const toggleReaction = useToggleReaction();
@@ -143,15 +162,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     return Object.entries(reactions).map(([emoji, info]) => ({ emoji, ...info }));
   }, [reactions]);
 
-  const handleReply = () => onReply?.(message);
-  const handleEdit = () => {
-    setIsEditing(true);
-    setEditContent(message.content);
-  };
-  const handleDelete = () => {
-    if (!window.confirm('Supprimer ce message ?')) return;
-    deleteMessage.mutate({ messageId: message.id });
-  };
+  const { options: menuOptions, handleEdit } = useMessageMenuOptions({
+    message,
+    isOwnMessage,
+    onReply,
+    onForward,
+    setShowEmojiPicker,
+    setIsEditing,
+    setEditContent,
+    deleteMessage,
+  });
+
   const handleSaveEdit = () => {
     if (!editContent.trim()) return;
     editMessage.mutate({ messageId: message.id, content: editContent }, {
@@ -221,8 +242,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
+      <div 
+        {...longPressProps}
+        onContextMenu={handleContextMenu}
+      >
           <div
             ref={bubbleRef}
             data-message-id={message.id}
@@ -404,29 +427,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             )}
           </div>
-        </ContextMenuTrigger>
+      </div>
 
-        {/* Menu contextuel */}
-        <ContextMenuContent>
-          <ContextMenuItem onSelect={handleReply}>
-            <Reply className="mr-2 h-4 w-4" /> Répondre
-          </ContextMenuItem>
-          <ContextMenuItem onSelect={() => setShowEmojiPicker(true)}>
-            <Smile className="mr-2 h-4 w-4" /> Réactions…
-          </ContextMenuItem>
-          {isOwnMessage && !message.is_system_message && (
-            <>
-              <ContextMenuSeparator />
-              <ContextMenuItem onSelect={handleEdit}>
-                <Edit2 className="mr-2 h-4 w-4" /> Modifier
-              </ContextMenuItem>
-              <ContextMenuItem onSelect={handleDelete}>
-                <Trash2 className="mr-2 h-4 w-4 text-red-600" /> Supprimer
-              </ContextMenuItem>
-            </>
-          )}
-        </ContextMenuContent>
-      </ContextMenu>
+        {/* Menu contextuel remplacé par le nouveau */}
+        <AdaptiveMessageMenu
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          bubbleRef={bubbleRef}
+          isOwnMessage={isOwnMessage}
+          options={menuOptions}
+        />
     </div>
   );
 };

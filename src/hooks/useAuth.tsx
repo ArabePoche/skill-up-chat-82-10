@@ -17,6 +17,7 @@ interface Profile {
   role?: string;
   email?: string;
   is_shop_owner?: boolean;
+  is_verified?: boolean;
 }
 
 interface AuthContextType {

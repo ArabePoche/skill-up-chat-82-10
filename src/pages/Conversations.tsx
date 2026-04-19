@@ -17,17 +17,20 @@ import { useConversationsList } from '@/hooks/messages/useConversationsList';
 import ConversationsDesktopSidebar from '@/conversations/components/desktop/ConversationsDesktopSidebar';
 import ConversationDiscussionPanel from '@/conversations/components/desktop/ConversationDiscussionPanel';
 import ConversationsDesktopStoriesBar from '../conversations/components/desktop/ConversationsDesktopStoriesBar';
+import { useConversationForwardDialog } from '@/conversations/ConversationForwardDialogProvider';
 
 const Conversations = () => {
   const { otherUserId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialScrolled = useRef(false);
   const queryClient = useQueryClient();
   const { isOnline } = useOfflineSync();
+  const { openConversationForward } = useConversationForwardDialog();
   const { getOfflineConversationWith } = useOfflineConversations(user?.id);
   const [offlineMessages, setOfflineMessages] = useState<any[]>([]);
   const { isOtherTyping, otherActivityType, emitTyping, emitStopTyping } = useConversationTyping(otherUserId);
@@ -103,6 +106,21 @@ const Conversations = () => {
           created_at,
           is_story_reply,
           replied_to_message_id,
+          replied_to_message:replied_to_message_id(
+            id,
+            content,
+            sender_id,
+            profiles:sender_id(
+              first_name,
+              last_name,
+              username
+            ),
+            conversation_media(
+              id,
+              file_type,
+              file_name
+            )
+          ),
           is_read,
           is_delivered,
           profiles:sender_id (
@@ -291,7 +309,7 @@ const Conversations = () => {
 
   // Envoyer un message
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content, file, fileUrl }: { content: string; file?: File; fileUrl?: string }) => {
+    mutationFn: async ({ content, file, fileUrl, repliedToMessageId }: { content: string; file?: File; fileUrl?: string; repliedToMessageId?: string }) => {
       if (!user?.id) throw new Error('Non authentifié');
       
       // En mode offline, sauvegarder localement
@@ -303,7 +321,7 @@ const Conversations = () => {
           receiver_id: otherUserId,
           created_at: new Date().toISOString(),
           is_story_reply: false,
-          replied_to_message_id: replyingTo?.id || null,
+          replied_to_message_id: repliedToMessageId || replyingTo?.id || null,
           is_pending: true,
           profiles: {
             first_name: user.user_metadata?.first_name || 'Vous',
@@ -329,7 +347,7 @@ const Conversations = () => {
               receiver_id: otherUserId,
               content,
               is_story_reply: false,
-              replied_to_message_id: replyingTo?.id || null,
+              replied_to_message_id: repliedToMessageId || replyingTo?.id || null,
             }
           }
         });
@@ -350,7 +368,7 @@ const Conversations = () => {
           receiver_id: otherUserId,
           content,
           is_story_reply: false,
-          replied_to_message_id: replyingTo?.id || null,
+          replied_to_message_id: repliedToMessageId || replyingTo?.id || null,
         })
         .select('id')
         .single();
@@ -439,6 +457,15 @@ const Conversations = () => {
     }
   }, [messages]);
 
+  const handleScrollToMessage = (messageId: string) => {
+    const element = document.getElementById(`message-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMessageId(messageId);
+      setTimeout(() => setHighlightedMessageId(null), 2000);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.26),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.22),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(96,165,250,0.24),_transparent_30%),linear-gradient(180deg,#fff7fb_0%,#f6f1ff_46%,#edf6ff_100%)] pb-0 md:pt-16 lg:h-screen lg:max-h-screen lg:min-h-0 lg:flex lg:flex-col lg:pt-0 lg:overflow-hidden">
       <div className="flex flex-col flex-1 min-h-0 lg:h-full lg:overflow-hidden lg:px-5 lg:pt-0 lg:pb-0">
@@ -476,8 +503,15 @@ const Conversations = () => {
             onStartAudioCall={() => startCall('audio')}
             onStartVideoCall={() => startCall('video')}
             onReply={setReplyingTo}
+            onForward={(message) =>
+              openConversationForward(message, {
+                extraExcludedUserIds: otherUserId ? [otherUserId] : [],
+              })
+            }
             onClearReply={() => setReplyingTo(null)}
-            onSendMessage={(content, _messageType, file) => {
+            onScrollToMessage={handleScrollToMessage}
+            highlightedMessageId={highlightedMessageId}
+            onSendMessage={(content, _messageType, file, repliedToMessageId) => {
               if (content.trim() || file) {
                 emitStopTyping();
                 const fileUrl = file && (file as any).uploadUrl;
@@ -485,6 +519,7 @@ const Conversations = () => {
                   content,
                   file,
                   fileUrl,
+                  repliedToMessageId,
                 });
               }
             }}
@@ -514,8 +549,15 @@ const Conversations = () => {
             onStartAudioCall={() => startCall('audio')}
             onStartVideoCall={() => startCall('video')}
             onReply={setReplyingTo}
+            onForward={(message) =>
+              openConversationForward(message, {
+                extraExcludedUserIds: otherUserId ? [otherUserId] : [],
+              })
+            }
             onClearReply={() => setReplyingTo(null)}
-            onSendMessage={(content, _messageType, file) => {
+            onScrollToMessage={handleScrollToMessage}
+            highlightedMessageId={highlightedMessageId}
+            onSendMessage={(content, _messageType, file, repliedToMessageId) => {
               if (content.trim() || file) {
                 emitStopTyping();
                 const fileUrl = file && (file as any).uploadUrl;
@@ -523,6 +565,7 @@ const Conversations = () => {
                   content,
                   file,
                   fileUrl,
+                  repliedToMessageId,
                 });
               }
             }}
@@ -574,6 +617,7 @@ const Conversations = () => {
           onRemoteEndCall={closeActiveCallLocally}
         />
       )}
+
     </div>
   );
 };

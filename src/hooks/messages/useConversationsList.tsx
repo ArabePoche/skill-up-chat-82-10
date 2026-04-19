@@ -3,6 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
 import { getCallLogPresentation, parseCallLogContent } from '@/utils/conversationCallLog';
+import {
+  getForwardedMessagePreview,
+  stripForwardedMessageMarker,
+} from '@/utils/forwardedConversationMessage';
 
 const SYSTEM_USER_ID = '4c32c988-3b19-4eca-87cb-0e0595fd7fbb';
 
@@ -119,14 +123,16 @@ export const useConversationsList = (enabled: boolean = false) => {
               : 'Utilisateur';
 
             let lastMessage = '';
-            const callLog = parseCallLogContent(lastMsg.content);
+            const normalizedContent = stripForwardedMessageMarker(lastMsg.content);
+            const callLog = parseCallLogContent(normalizedContent);
             if (callLog) {
               const presentation = getCallLogPresentation(callLog, user.id);
               // Si le log comprend une icône/présentation, on simplifie pour la liste
               lastMessage = presentation.title;
             } else {
-              lastMessage = lastMsg.content.substring(0, 50);
-              if (lastMsg.content.length > 50) lastMessage += '...';
+              const previewContent = getForwardedMessagePreview(lastMsg.content);
+              lastMessage = previewContent.substring(0, 50);
+              if (previewContent.length > 50) lastMessage += '...';
             }
 
             const createdAt = new Date(lastMsg.created_at);

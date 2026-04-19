@@ -6,6 +6,7 @@ import ConversationMessageBubble from '@/components/conversation/ConversationMes
 import DateSeparator from '@/components/chat/DateSeparator';
 import CallButton from '@/call-system/components/CallButton';
 import { groupMessagesByDate } from '@/utils/dateUtils';
+import { getForwardedMessagePreview } from '@/utils/forwardedConversationMessage';
 
 interface ConversationDiscussionPanelProps {
   otherUserId?: string;
@@ -27,9 +28,12 @@ interface ConversationDiscussionPanelProps {
   onStartAudioCall: () => Promise<boolean>;
   onStartVideoCall: () => Promise<boolean>;
   onReply: (message: any) => void;
+  onForward: (message: any) => void;
   onClearReply: () => void;
-  onSendMessage: (content: string, messageType: string, file?: File) => void;
+  onSendMessage: (content: string, messageType: string, file?: File, repliedToMessageId?: string) => void;
   onTyping: () => void;
+  onScrollToMessage?: (messageId: string) => void;
+  highlightedMessageId?: string | null;
   disabled: boolean;
 }
 
@@ -53,9 +57,12 @@ const ConversationDiscussionPanel = ({
   onStartAudioCall,
   onStartVideoCall,
   onReply,
+  onForward,
   onClearReply,
   onSendMessage,
   onTyping,
+  onScrollToMessage,
+  highlightedMessageId,
   disabled,
 }: ConversationDiscussionPanelProps) => {
   return (
@@ -134,6 +141,9 @@ const ConversationDiscussionPanel = ({
                   key={message.id}
                   message={message}
                   onReply={onReply}
+                  onForward={onForward}
+                  onScrollToMessage={onScrollToMessage}
+                  highlightedMessageId={highlightedMessageId}
                 />
               ))}
             </div>
@@ -143,26 +153,33 @@ const ConversationDiscussionPanel = ({
       </div>
 
       <div className="mt-auto shrink-0 border-t border-white/40 bg-white/70 backdrop-blur-xl p-3 pb-[env(safe-area-inset-bottom,12px)] lg:p-4 lg:rounded-b-[28px]">
-        {replyingTo && (
-          <div className="mb-2 flex items-center justify-between rounded-2xl border border-white/60 bg-white/55 px-3 py-2 backdrop-blur-sm">
-            <div className="text-sm">
-              <span className="font-semibold text-violet-700">Repondre a:</span>
-              <p className="truncate text-slate-600">{replyingTo.content}</p>
-            </div>
-            <button
-              onClick={onClearReply}
-              className="text-slate-500 transition hover:text-slate-800"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         <ChatInputBar
           onSendMessage={onSendMessage}
           onTyping={onTyping}
           disabled={disabled}
           fixedToViewport={false}
+          replyingTo={replyingTo ? (() => {
+            let previewContent = replyingTo.content;
+            const media = (replyingTo.conversation_media || replyingTo.lesson_media)?.[0];
+            
+            if (media && !previewContent) {
+              const type = media.file_type || '';
+              if (type.startsWith('image/')) previewContent = '📷 Photo';
+              else if (type.startsWith('video/')) previewContent = '🎥 Vidéo';
+              else if (type.startsWith('audio/')) previewContent = '🎤 Message vocal';
+              else previewContent = '📄 Fichier joint';
+            }
+            
+            return {
+              id: replyingTo.id,
+              content: previewContent || 'Message',
+              sender_name: replyingTo.profiles?.first_name 
+                ? `${replyingTo.profiles.first_name} ${replyingTo.profiles.last_name || ''}`.trim() 
+                : replyingTo.profiles?.username || 'Utilisateur'
+            };
+          })() : null}
+          onCancelReply={onClearReply}
+          onScrollToMessage={onScrollToMessage}
         />
       </div>
     </div>

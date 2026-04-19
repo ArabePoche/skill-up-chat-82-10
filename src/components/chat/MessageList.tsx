@@ -81,6 +81,8 @@ interface MessageListProps {
   evaluations?: any[];
   typingUsers?: any[];
   onReply?: (message: Message) => void;
+  /** Transfert vers une conversation privée (Messages) */
+  onForward?: (message: Message) => void;
   highlightedMessageId?: string | null;
   onScrollToMessage?: (messageId: string) => void;
   onOpenVideo?: (lesson: any) => void;
@@ -98,6 +100,7 @@ const MessageList: React.FC<MessageListProps> = ({
   onValidateExercise,
   evaluations = [],
   onReply,
+  onForward,
   highlightedMessageId,
   onScrollToMessage,
   onOpenVideo,
@@ -340,6 +343,7 @@ const MessageList: React.FC<MessageListProps> = ({
               message={message}
               isTeacher={isTeacher}
               onReply={onReply}
+              onForward={onForward}
               onScrollToMessage={onScrollToMessage}
               formationId={formationId}
               levelId={lessonId}

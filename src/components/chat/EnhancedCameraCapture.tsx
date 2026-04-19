@@ -3,7 +3,8 @@
  * Compatible mobile et desktop
  */
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Camera, Video, X, Check, Upload, Edit3, Square, RefreshCw } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Camera, Video, X, Check, Edit3, Square, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import ImageEditor from './ImageEditor';
@@ -30,7 +31,6 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
@@ -203,21 +203,6 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
     mediaRecorder.stop();
   };
 
-  const handleGalleryUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const previewUrl = URL.createObjectURL(file);
-      setCapturedImage(file.type.startsWith('image/') ? previewUrl : null);
-      setCapturedVideo(file.type.startsWith('video/') ? previewUrl : null);
-      setIsCapturing(true);
-    }
-    event.target.value = '';
-  };
-
   const confirmCapture = () => {
     if (capturedVideo) {
       fetch(capturedVideo)
@@ -313,8 +298,8 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
   }
 
   if (isCapturing) {
-    return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    const captureUI = (
+      <div className="fixed inset-0 bg-black z-[9999] flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {/* Zone de prévisualisation — occupe tout l'espace */}
         <div className="flex-1 relative overflow-hidden">
           {!capturedVideo && (
@@ -381,13 +366,7 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
                   Vidéo
                 </button>
               </div>
-              <Button
-                onClick={handleGalleryUpload}
-                size="icon"
-                className="bg-white/15 text-white hover:bg-white/25 rounded-full h-12 w-12"
-              >
-                <Upload size={20} />
-              </Button>
+              <div className="h-12 w-12" />
               {captureMode === 'photo' ? (
                 <button
                   onClick={capturePhoto}
@@ -440,16 +419,10 @@ const EnhancedCameraCapture: React.FC<EnhancedCameraCaptureProps> = ({
             </>
           )}
         </div>
-        
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
       </div>
     );
+
+    return createPortal(captureUI, document.body);
   }
 
   return (

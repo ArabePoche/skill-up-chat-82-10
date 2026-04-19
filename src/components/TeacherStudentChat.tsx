@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import MessageItem from './chat/MessageItem';
 import TypingIndicator from './chat/TypingIndicator';
 import TeacherChatHeader from './teacher/TeacherChatHeader';
@@ -20,6 +20,8 @@ import { useMarkMessagesAsRead } from '@/hooks/useMarkMessagesAsRead';
 import { useAuth } from '@/hooks/useAuth';
 import { useDirectCallModal } from '@/hooks/useDirectCallModal';
 import TeacherCallModal from './live-classroom/TeacherCallModal';
+import { useConversationForwardDialog } from '@/conversations/ConversationForwardDialogProvider';
+import { lessonMessageToForwardable } from '@/utils/lessonMessageToForwardable';
 
 interface Student {
   id: string;
@@ -66,6 +68,24 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
     sender_name: string;
   } | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
+  const { openConversationForward } = useConversationForwardDialog();
+
+  const handleForwardFormationMessage = useCallback(
+    (msg: Record<string, unknown>) => {
+      if ((msg as { is_system_message?: boolean }).is_system_message) return;
+      openConversationForward(
+        lessonMessageToForwardable({
+          id: String((msg as { id: string }).id),
+          content: (msg as { content?: string }).content,
+          file_url: (msg as { file_url?: string }).file_url,
+          file_type: (msg as { file_type?: string }).file_type,
+          file_name: (msg as { file_name?: string }).file_name,
+        }),
+      );
+    },
+    [openConversationForward],
+  );
   
   // Hooks pour la gestion des messages
   const { data: messages = [], isLoading } = useTeacherStudentMessages(
@@ -230,6 +250,7 @@ const TeacherStudentChat: React.FC<TeacherStudentChatProps> = ({
                       isTeacher={true}
                       onValidateExercise={(messageId, isValid) => handleValidateExercise(messageId, isValid)}
                       onReply={handleReplyToMessage}
+                      onForward={user?.id ? handleForwardFormationMessage : undefined}
                       onScrollToMessage={handleScrollToMessage}
                       highlightedMessageId={highlightedMessageId}
                     />

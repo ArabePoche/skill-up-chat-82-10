@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 
 import { ArrowLeft, Phone, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +37,8 @@ import {
   useLessonLevelId,
   useMarkFormationPublicMessageViewed,
 } from '@/hooks/formation-public-messages/useFormationPublicMessages';
+import { useConversationForwardDialog } from '@/conversations/ConversationForwardDialogProvider';
+import { lessonMessageToForwardable } from '@/utils/lessonMessageToForwardable';
 
 
 interface ChatInterfaceProps {
@@ -67,6 +69,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
   const [activeUrgentMessage, setActiveUrgentMessage] = useState<FormationPublicMessage | null>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+
+  const { openConversationForward } = useConversationForwardDialog();
+
+  const handleForwardFormationMessage = useCallback(
+    (msg: Record<string, unknown>) => {
+      if ((msg as { is_system_message?: boolean }).is_system_message) return;
+      openConversationForward(
+        lessonMessageToForwardable({
+          id: String((msg as { id: string }).id),
+          content: (msg as { content?: string }).content,
+          file_url: (msg as { file_url?: string }).file_url,
+          file_type: (msg as { file_type?: string }).file_type,
+          file_name: (msg as { file_name?: string }).file_name,
+        }),
+      );
+    },
+    [openConversationForward],
+  );
   
   const { data: messages = [], isLoading } = useStudentMessages(
     lesson.id.toString(), 
@@ -428,6 +448,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
           onValidateExercise={() => {}}
           evaluations={evaluations}
           onReply={handleReply}
+          onForward={user?.id ? handleForwardFormationMessage : undefined}
           highlightedMessageId={highlightedMessageId}
           onScrollToMessage={handleScrollToMessage}
         />
@@ -463,7 +484,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ lesson, formation, onBack
         onClose={closePublicMessageOverlay}
         onCompleted={(messageId) => markPublicMessageViewed.mutateAsync(messageId)}
       />
-
     </div>
   );
 };

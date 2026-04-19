@@ -345,6 +345,94 @@ export interface SaveToGalleryResult {
   savedToGallery: boolean;
 }
 
+type RezoFolderName = 'Images' | 'Videos' | 'Audio' | 'Documents';
+
+const getDeviceDirectory = (): Directory => {
+  return Capacitor.getPlatform() === 'android' ? Directory.ExternalStorage : Directory.Documents;
+};
+
+const getRezoFolderPath = (folderName: RezoFolderName): string => {
+  return Capacitor.getPlatform() === 'android'
+    ? `Download/REZO/${folderName}`
+    : `REZO/${folderName}`;
+};
+
+const writeBlobToDevicePath = async (
+  blob: Blob,
+  directory: Directory,
+  filePath: string
+): Promise<string> => {
+  try {
+    await Filesystem.deleteFile({
+      path: filePath,
+      directory,
+    });
+  } catch {
+    // Ignorer si le fichier n'existe pas encore.
+  }
+
+  const CHUNK_SIZE = 512 * 1024 * 3;
+  let offset = 0;
+  let firstChunk = true;
+  let result: { uri: string } | null = null;
+
+  while (offset < blob.size) {
+    const end = Math.min(offset + CHUNK_SIZE, blob.size);
+    const chunk = blob.slice(offset, end);
+    const base64 = await blobChunkToBase64(chunk);
+
+    if (firstChunk) {
+      result = await Filesystem.writeFile({
+        path: filePath,
+        data: base64,
+        directory,
+        recursive: true,
+      });
+      firstChunk = false;
+    } else {
+      await Filesystem.appendFile({
+        path: filePath,
+        data: base64,
+        directory,
+      });
+    }
+
+    offset = end;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  if (!result) {
+    result = await Filesystem.writeFile({
+      path: filePath,
+      data: '',
+      directory,
+      recursive: true,
+    });
+  }
+
+  try {
+    const { uri } = await Filesystem.getUri({
+      path: filePath,
+      directory,
+    });
+    return uri || result.uri;
+  } catch {
+    return result.uri;
+  }
+};
+
+const saveBlobToRezoFolder = async (
+  blob: Blob,
+  fileName: string,
+  folderName: RezoFolderName
+): Promise<string> => {
+  const directory = getDeviceDirectory();
+  const targetPath = `${getRezoFolderPath(folderName)}/${fileName}`;
+
+  debugLog(`💾 Copie dans ${targetPath}`);
+  return writeBlobToDevicePath(blob, directory, targetPath);
+};
+
 /**
  * Sauvegarde une image dans la galerie Android/iOS.
  */
@@ -352,22 +440,27 @@ export const saveImageToGallery = async (
   blob: Blob,
   fileName: string
 ): Promise<SaveToGalleryResult> => {
-  const Media = await getMediaPlugin();
-
-  if (!Media) {
-    debugLog('📱 Plateforme web - pas de sauvegarde galerie');
-    return { success: true, savedToGallery: false };
-  }
-
   try {
-    const platform = Capacitor.getPlatform();
+    const deviceFilePath = await saveBlobToRezoFolder(blob, fileName, 'Images');
+    debugLog('✅ Image copiée dans REZO/Images');
+
+    const Media = await getMediaPlugin();
+
+    if (!Media) {
+      debugLog('📱 Plugin galerie indisponible - image conservée dans REZO uniquement');
+      return {
+        success: true,
+        filePath: deviceFilePath,
+        savedToGallery: false,
+      };
+    }
 
     const albumId = await ensureAlbumExists();
 
     if (!albumId) {
       return {
-        success: false,
-        error: 'Album de destination inaccessible',
+        success: true,
+        filePath: deviceFilePath,
         savedToGallery: false,
       };
     }
@@ -393,7 +486,7 @@ export const saveImageToGallery = async (
 
     return {
       success: true,
-      filePath: result.filePath,
+      filePath: deviceFilePath,
       savedToGallery: true,
     };
   } catch (error: any) {
@@ -419,21 +512,28 @@ export const saveVideoToGallery = async (
   blob: Blob,
   fileName: string
 ): Promise<SaveToGalleryResult> => {
-  const Media = await getMediaPlugin();
-
-  if (!Media) {
-    debugLog('📱 Plateforme web - pas de sauvegarde galerie');
-    return { success: true, savedToGallery: false };
-  }
-
   try {
     const platform = Capacitor.getPlatform();
+    const deviceFilePath = await saveBlobToRezoFolder(blob, fileName, 'Videos');
+    debugLog('✅ Vidéo copiée dans REZO/Videos');
+
+    const Media = await getMediaPlugin();
+
+    if (!Media) {
+      debugLog('📱 Plugin galerie indisponible - vidéo conservée dans REZO uniquement');
+      return {
+        success: true,
+        filePath: deviceFilePath,
+        savedToGallery: false,
+      };
+    }
+
     const albumId = await ensureAlbumExists();
 
     if (!albumId) {
       return {
-        success: false,
-        error: 'Album de destination inaccessible',
+        success: true,
+        filePath: deviceFilePath,
         savedToGallery: false,
       };
     }
@@ -460,7 +560,7 @@ export const saveVideoToGallery = async (
 
     return {
       success: true,
-      filePath: result.filePath,
+      filePath: deviceFilePath,
       savedToGallery: true,
     };
   } catch (error: any) {
@@ -490,23 +590,13 @@ export const saveAudioToDevice = async (
   }
 
   try {
-    const base64 = await blobToBase64(blob);
-    const platform = Capacitor.getPlatform();
-    const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
-    const basePath = platform === 'android' ? 'Download/REZO/Audio' : 'REZO/Audio';
-
-    const result = await Filesystem.writeFile({
-      path: `${basePath}/${fileName}`,
-      data: base64,
-      directory,
-      recursive: true,
-    });
+    const resultUri = await saveBlobToRezoFolder(blob, fileName, 'Audio');
 
     debugLog('✅ Audio sauvegardé');
 
     return {
       success: true,
-      filePath: result.uri,
+      filePath: resultUri,
       savedToGallery: false,
     };
   } catch (error: any) {
@@ -531,23 +621,13 @@ export const saveDocumentToDevice = async (
   }
 
   try {
-    const base64 = await blobToBase64(blob);
-    const platform = Capacitor.getPlatform();
-    const directory = platform === 'android' ? Directory.ExternalStorage : Directory.Documents;
-    const basePath = platform === 'android' ? 'Download/REZO/Documents' : 'REZO/Documents';
-
-    const result = await Filesystem.writeFile({
-      path: `${basePath}/${fileName}`,
-      data: base64,
-      directory,
-      recursive: true,
-    });
+    const resultUri = await saveBlobToRezoFolder(blob, fileName, 'Documents');
 
     debugLog('✅ Document sauvegardé');
 
     return {
       success: true,
-      filePath: result.uri,
+      filePath: resultUri,
       savedToGallery: false,
     };
   } catch (error: any) {

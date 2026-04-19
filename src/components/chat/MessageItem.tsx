@@ -35,11 +35,12 @@ interface MessageItemProps {
   isTeacher: boolean;
   onValidateExercise?: (messageId: string, isValid: boolean) => void;
   onReply?: (message: Message) => void;
+  onForward?: (message: Message) => void;
   onScrollToMessage?: (messageId: string) => void;
   highlightedMessageId?: string | null;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, isTeacher, onReply, onScrollToMessage, highlightedMessageId }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message, isTeacher, onReply, onForward, onScrollToMessage, highlightedMessageId }) => {
   if (message.message_type === 'system') {
     return (
       <div className="text-center">
@@ -50,7 +51,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isTeacher, onReply, 
     );
   }
 
-  return <MessageBubble message={message} isTeacher={isTeacher} onReply={onReply} onScrollToMessage={onScrollToMessage} highlightedMessageId={highlightedMessageId} />;
+  return <MessageBubble message={message} isTeacher={isTeacher} onReply={onReply} onForward={onForward} onScrollToMessage={onScrollToMessage} highlightedMessageId={highlightedMessageId} />;
 };
 
 export default MessageItem;

@@ -1,7 +1,7 @@
 /**
  * Chat de groupe pour les professeurs - Vue niveau avec tous les étudiants
  */
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import MessageItem from '../chat/MessageItem';
 import TypingIndicator from '../chat/TypingIndicator';
 import ChatInputBar from '../chat/ChatInputBar';
@@ -17,6 +17,8 @@ import { useTypingListener } from '@/hooks/useTypingListener';
 import { useAuth } from '@/hooks/useAuth';
 import { useChatMode } from '@/hooks/chat/useChatMode';
 import { GroupInfoDrawer } from '@/components/group-chat/GroupInfoDrawer';
+import { useConversationForwardDialog } from '@/conversations/ConversationForwardDialogProvider';
+import { lessonMessageToForwardable } from '@/utils/lessonMessageToForwardable';
 
 interface Level {
   id: string;
@@ -50,6 +52,24 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
     sender_name: string;
   } | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
+  const { openConversationForward } = useConversationForwardDialog();
+
+  const handleForwardFormationMessage = useCallback(
+    (msg: Record<string, unknown>) => {
+      if ((msg as { is_system_message?: boolean }).is_system_message) return;
+      openConversationForward(
+        lessonMessageToForwardable({
+          id: String((msg as { id: string }).id),
+          content: (msg as { content?: string }).content,
+          file_url: (msg as { file_url?: string }).file_url,
+          file_type: (msg as { file_type?: string }).file_type,
+          file_name: (msg as { file_name?: string }).file_name,
+        }),
+      );
+    },
+    [openConversationForward],
+  );
 
   // Récupérer le promotionId pour afficher les membres
   const { promotionId } = useChatMode(formation.id);
@@ -200,6 +220,7 @@ const TeacherGroupChat: React.FC<TeacherGroupChatProps> = ({
                           isTeacher={true}
                           onValidateExercise={() => {}} // Pas de validation d'exercice en groupe
                           onReply={handleReplyToMessage}
+                          onForward={user?.id ? handleForwardFormationMessage : undefined}
                           onScrollToMessage={handleScrollToMessage}
                           highlightedMessageId={highlightedMessageId}
                         />
