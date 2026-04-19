@@ -21,6 +21,7 @@ import {
 } from '@/hooks/useStickerSystem';
 import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
 import { toast } from 'sonner';
+import StickerEditorModal from '@/stickers/components/StickerEditorModal';
 
 /* ─── Suppression de fond via @imgly/background-removal ─── */
 async function removeBg(file: File): Promise<File> {
@@ -59,8 +60,11 @@ const StickerStudio = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const [iconDropActive, setIconDropActive] = useState(false);
-  const [removingBg, setRemovingBg] = useState(false);
-  const [bgProgress, setBgProgress] = useState<{ done: number; total: number } | null>(null);
+
+  /* ── éditeur de sticker ── */
+  const [fileQueue, setFileQueue] = useState<File[]>([]);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
 
   const processPackIconFile = useCallback(
     (file: File) => {
@@ -120,47 +124,65 @@ const StickerStudio = () => {
     });
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  /* Ouvre l'éditeur pour chaque fichier sélectionné */
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !activePackId || activePackId === 'new') return;
     const files = Array.from(e.target.files);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (files.length === 0) return;
 
-    setRemovingBg(true);
-    setBgProgress({ done: 0, total: files.length });
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      try {
-        let processed = file;
-        // Pas de suppression de fond sur les GIFs animés
-        if (file.type !== 'image/gif') {
-          try {
-            toast.info(`Suppression du fond… (${i + 1}/${files.length})`);
-            processed = await removeBg(file);
-          } catch (bgErr: any) {
-            console.warn('Suppression fond échouée, upload original:', bgErr?.message ?? bgErr);
-            toast.warning(`Fond non supprimé pour ${file.name} — upload de l'original.`);
-            processed = file;
-          }
-        }
-        await new Promise<void>((resolve, reject) => {
-          uploadSticker.mutate(
-            { file: processed, packId: activePackId },
-            { onSuccess: () => resolve(), onError: reject },
-          );
-        });
-      } catch (err: any) {
-        console.error('Erreur upload sticker:', err);
-        toast.error(`Échec upload ${file.name}: ${err?.message ?? 'erreur inconnue'}`);
-      }
-      setBgProgress({ done: i + 1, total: files.length });
-    }
-
-    setRemovingBg(false);
-    setBgProgress(null);
+    setFileQueue(files.slice(1));
+    setEditingFile(files[0]);
+    setUploadProgress({ done: 0, total: files.length });
   };
 
-  const isUploading = removingBg || uploadSticker.isPending;
+  /* Quand l'utilisateur confirme un sticker dans l'éditeur */
+  const handleEditorConfirm = useCallback((processedFile: File) => {
+    if (!activePackId || activePackId === 'new') return;
+    const total = uploadProgress?.total ?? 1;
+    const done = (uploadProgress?.done ?? 0) + 1;
+
+    uploadSticker.mutate(
+      { file: processedFile, packId: activePackId },
+      {
+        onSuccess: () => {
+          setUploadProgress({ done, total });
+          if (fileQueue.length > 0) {
+            setEditingFile(fileQueue[0]);
+            setFileQueue((q) => q.slice(1));
+          } else {
+            setEditingFile(null);
+            setUploadProgress(null);
+            toast.success(`${total} sticker${total > 1 ? 's' : ''} ajouté${total > 1 ? 's' : ''} !`);
+          }
+        },
+        onError: (err: any) => {
+          toast.error(`Échec upload: ${err?.message ?? 'erreur'}`);
+          setUploadProgress({ done, total });
+          if (fileQueue.length > 0) {
+            setEditingFile(fileQueue[0]);
+            setFileQueue((q) => q.slice(1));
+          } else {
+            setEditingFile(null);
+            setUploadProgress(null);
+          }
+        },
+      },
+    );
+  }, [activePackId, fileQueue, uploadProgress, uploadSticker]);
+
+  /* Annuler = sauter ce fichier, passer au suivant */
+  const handleEditorCancel = useCallback(() => {
+    if (fileQueue.length > 0) {
+      setEditingFile(fileQueue[0]);
+      setFileQueue((q) => q.slice(1));
+    } else {
+      setEditingFile(null);
+      setUploadProgress(null);
+    }
+  }, [fileQueue]);
+
+  const isUploading = uploadSticker.isPending || editingFile !== null;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
@@ -426,10 +448,10 @@ const StickerStudio = () => {
                     </div>
                   )}
 
-                  {/* Bandeau info suppression fond */}
+                  {/* Bandeau info éditeur */}
                   <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-violet-50 border border-violet-200 px-4 py-3 text-sm text-violet-800">
                     <Sparkles className="h-4 w-4 mt-0.5 shrink-0 text-violet-500" />
-                    <span>Le fond des images est <strong>automatiquement supprimé</strong> à l'upload pour créer de vrais stickers transparents.</span>
+                    <span>Un <strong>éditeur</strong> s'ouvre pour chaque image — supprimez le fond, dessinez ou ajoutez du texte avant d'ajouter au pack.</span>
                   </div>
 
                   <div className="flex items-center justify-between mb-4">
@@ -445,12 +467,12 @@ const StickerStudio = () => {
                         disabled={isUploading}
                       />
                       <Button variant="outline" size="sm" className="gap-2 pointer-events-none" disabled={isUploading}>
-                        {isUploading ? (
+                        {uploadSticker.isPending ? (
                           <>
                             <Loader2 className="h-4 w-4 text-violet-600 animate-spin" />
-                            {bgProgress
-                              ? `Traitement ${bgProgress.done}/${bgProgress.total}…`
-                              : 'Envoi en cours…'}
+                            {uploadProgress
+                              ? `Upload ${uploadProgress.done + 1}/${uploadProgress.total}…`
+                              : 'Upload en cours…'}
                           </>
                         ) : (
                           <>
@@ -525,6 +547,16 @@ const StickerStudio = () => {
           )}
         </div>
       </main>
+
+      {/* ── Éditeur de sticker ── */}
+      {editingFile && (
+        <StickerEditorModal
+          file={editingFile}
+          removeBg={removeBg}
+          onConfirm={handleEditorConfirm}
+          onCancel={handleEditorCancel}
+        />
+      )}
     </div>
   );
 };
