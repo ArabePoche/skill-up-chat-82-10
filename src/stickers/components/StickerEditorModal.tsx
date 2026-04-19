@@ -30,8 +30,12 @@ const COLORS = [
   '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4',
 ];
 
+const MAX_CANVAS_WIDTH = 520;
+const MAX_CANVAS_HEIGHT = 380;
+
 const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, removeBg }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
   const fabricRef = useRef<any>(null);
 
   const [tool, setTool] = useState<Tool>('select');
@@ -55,8 +59,8 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       const { Canvas, Image: FabricImage, PencilBrush } = await import('fabric');
 
       canvas = new Canvas(canvasRef.current!, {
-        width: 512,
-        height: 512,
+        width: MAX_CANVAS_WIDTH,
+        height: MAX_CANVAS_HEIGHT,
         backgroundColor: 'transparent',
         preserveObjectStacking: true,
         enableRetinaScaling: false,
@@ -75,21 +79,51 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
 
       /* charge l'image */
       const loadImage = (f: File) =>
-        new Promise<void>((resolve) => {
+        new Promise<void>((resolve, reject) => {
           const url = URL.createObjectURL(f);
-          FabricImage.fromURL(url, { crossOrigin: 'anonymous' }).then((img: any) => {
-            const scale = Math.min(512 / img.width!, 512 / img.height!);
-            img.set({ left: 256, top: 256, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale, selectable: false, evented: false, name: '__bg__' });
+          FabricImage.fromURL(url, { crossOrigin: 'anonymous' }, {}).then((img: any) => {
+            const width = img.width || MAX_CANVAS_WIDTH;
+            const height = img.height || MAX_CANVAS_HEIGHT;
+            const scale = Math.min(MAX_CANVAS_WIDTH / width, MAX_CANVAS_HEIGHT / height, 1);
+            const canvasWidth = Math.max(1, Math.round(width * scale));
+            const canvasHeight = Math.max(1, Math.round(height * scale));
+
+            canvas.setDimensions({
+              width: canvasWidth,
+              height: canvasHeight,
+            });
+
+            img.set({
+              left: 0,
+              top: 0,
+              originX: 'left',
+              originY: 'top',
+              scaleX: scale,
+              scaleY: scale,
+              selectable: false,
+              evented: false,
+              erasable: true,
+              name: '__bg__',
+            });
             canvas.add(img);
             canvas.sendObjectToBack(img);
+            canvas.renderAll();
             saveState();
             URL.revokeObjectURL(url);
             resolve();
+          }).catch((error: unknown) => {
+            URL.revokeObjectURL(url);
+            reject(error);
           });
         });
 
-      await loadImage(file);
-      setOriginalFile(file);
+      try {
+        await loadImage(file);
+        setOriginalFile(file);
+      } catch (error) {
+        toast.error("Impossible d'afficher l'image dans l'éditeur.");
+        console.error('StickerEditorModal image load failed', error);
+      }
     })();
 
     return () => {
@@ -106,11 +140,19 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
 
     if (tool === 'draw' || tool === 'eraser') {
       canvas.isDrawingMode = true;
+      canvas.selection = false;
       if (PencilBrush) {
         const brush = new PencilBrush(canvas);
-        brush.color = tool === 'eraser' ? 'rgba(0,0,0,0)' : color;
+        brush.color = tool === 'eraser' ? '#000000' : color;
         brush.width = tool === 'eraser' ? brushSize * 3 : brushSize;
-        if (tool === 'eraser') brush.globalCompositeOperation = 'destination-out';
+        if (tool === 'eraser') {
+          const originalCreatePath = brush.createPath.bind(brush);
+          brush.createPath = (pathData: string) => {
+            const path = originalCreatePath(pathData);
+            path.globalCompositeOperation = 'destination-out';
+            return path;
+          };
+        }
         canvas.freeDrawingBrush = brush;
       }
     } else {
@@ -137,11 +179,15 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
         stroke: color === '#ffffff' ? '#000' : undefined,
         strokeWidth: color === '#ffffff' ? 0.5 : 0,
         editable: true,
+        hiddenTextareaContainer: dialogContentRef.current,
       });
       canvas.add(text);
       canvas.setActiveObject(text);
-      text.enterEditing();
-      text.selectAll();
+      canvas.renderAll();
+      requestAnimationFrame(() => {
+        text.enterEditing(opt.e);
+        text.selectAll();
+      });
     };
 
     canvas.on('mouse:down', handleClick);
@@ -157,11 +203,19 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       /* remettre original */
       setBgRemoved(false);
       const { Image: FabricImage } = await import('fabric');
-      canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
       const url = URL.createObjectURL(originalFile);
-      FabricImage.fromURL(url, { crossOrigin: 'anonymous' }).then((img: any) => {
-        const scale = Math.min(512 / img.width!, 512 / img.height!);
-        img.set({ left: 256, top: 256, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale, selectable: false, evented: false, name: '__bg__' });
+      FabricImage.fromURL(url, { crossOrigin: 'anonymous' }, {}).then((img: any) => {
+        const width = img.width || MAX_CANVAS_WIDTH;
+        const height = img.height || MAX_CANVAS_HEIGHT;
+        const scale = Math.min(MAX_CANVAS_WIDTH / width, MAX_CANVAS_HEIGHT / height, 1);
+        const canvasWidth = Math.max(1, Math.round(width * scale));
+        const canvasHeight = Math.max(1, Math.round(height * scale));
+        canvas.setDimensions({
+          width: canvasWidth,
+          height: canvasHeight,
+        });
+        img.set({ left: 0, top: 0, originX: 'left', originY: 'top', scaleX: scale, scaleY: scale, selectable: false, evented: false, erasable: true, name: '__bg__' });
+        canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
         canvas.add(img);
         canvas.sendObjectToBack(img);
         canvas.renderAll();
@@ -180,11 +234,19 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       }
 
       const { Image: FabricImage } = await import('fabric');
-      canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
       const url = URL.createObjectURL(processed);
-      FabricImage.fromURL(url, { crossOrigin: 'anonymous' }).then((img: any) => {
-        const scale = Math.min(512 / img.width!, 512 / img.height!);
-        img.set({ left: 256, top: 256, originX: 'center', originY: 'center', scaleX: scale, scaleY: scale, selectable: false, evented: false, name: '__bg__' });
+      FabricImage.fromURL(url, { crossOrigin: 'anonymous' }, {}).then((img: any) => {
+        const width = img.width || MAX_CANVAS_WIDTH;
+        const height = img.height || MAX_CANVAS_HEIGHT;
+        const scale = Math.min(MAX_CANVAS_WIDTH / width, MAX_CANVAS_HEIGHT / height, 1);
+        const canvasWidth = Math.max(1, Math.round(width * scale));
+        const canvasHeight = Math.max(1, Math.round(height * scale));
+        canvas.setDimensions({
+          width: canvasWidth,
+          height: canvasHeight,
+        });
+        img.set({ left: 0, top: 0, originX: 'left', originY: 'top', scaleX: scale, scaleY: scale, selectable: false, evented: false, erasable: true, name: '__bg__' });
+        canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
         canvas.add(img);
         canvas.sendObjectToBack(img);
         canvas.renderAll();
@@ -244,7 +306,7 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="max-w-[600px] p-0 gap-0 overflow-hidden rounded-2xl">
+        <DialogContent ref={dialogContentRef} className="max-w-[600px] p-0 gap-0 overflow-hidden rounded-2xl">
         <DialogHeader className="px-5 pt-5 pb-3 border-b bg-slate-50">
           <DialogTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-violet-500" />
@@ -345,7 +407,7 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
           >
             <canvas
               ref={canvasRef}
-              style={{ maxWidth: '100%', maxHeight: 380, touchAction: 'none' }}
+              style={{ display: 'block', touchAction: 'none' }}
             />
             {removingBg && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm gap-3">

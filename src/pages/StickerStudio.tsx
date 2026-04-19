@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import VerificationRequiredDialog from '@/verification/components/VerificationRequiredDialog';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
 import { toast } from 'sonner';
 import StickerEditorModal from '@/stickers/components/StickerEditorModal';
 
-/* ─── Suppression de fond via @imgly/background-removal ─── */
+/* â”€â”€â”€ Suppression de fond via @imgly/background-removal â”€â”€â”€ */
 async function removeBg(file: File): Promise<File> {
   const { removeBackground } = await import('@imgly/background-removal');
   const blob = await removeBackground(file, {
@@ -61,7 +61,7 @@ const StickerStudio = () => {
   const iconInputRef = useRef<HTMLInputElement>(null);
   const [iconDropActive, setIconDropActive] = useState(false);
 
-  /* ── éditeur de sticker ── */
+  /* â”€â”€ Ã©diteur de sticker â”€â”€ */
   const [fileQueue, setFileQueue] = useState<File[]>([]);
   const [editingFile, setEditingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
@@ -87,21 +87,6 @@ const StickerStudio = () => {
     [activePackId, savePack, uploadPackIcon],
   );
 
-  if (loading || loadingPacks)
-    return <div className="p-8 text-center flex h-screen items-center justify-center">Chargement du studio...</div>;
-
-  if (!profile?.is_verified) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <VerificationRequiredDialog
-          open
-          onOpenChange={(open) => { if (!open) navigate(-1); }}
-          featureName="Sticker Studio (Créateur)"
-        />
-      </div>
-    );
-  }
-
   const handleCreateNewPack = () => {
     setActivePackId('new');
     setEditForm({ name: 'Nouveau Pack', description: '', price_sc: 0, price_sb: 0, is_published: false });
@@ -124,7 +109,7 @@ const StickerStudio = () => {
     });
   };
 
-  /* Ouvre l'éditeur pour chaque fichier sélectionné */
+  /* Ouvre l'Ã©diteur pour chaque fichier sÃ©lectionnÃ© */
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !activePackId || activePackId === 'new') return;
     const files = Array.from(e.target.files);
@@ -136,7 +121,7 @@ const StickerStudio = () => {
     setUploadProgress({ done: 0, total: files.length });
   };
 
-  /* Quand l'utilisateur confirme un sticker dans l'éditeur */
+  /* Quand l'utilisateur confirme un sticker dans l'Ã©diteur */
   const handleEditorConfirm = useCallback((processedFile: File) => {
     if (!activePackId || activePackId === 'new') return;
     const total = uploadProgress?.total ?? 1;
@@ -153,11 +138,11 @@ const StickerStudio = () => {
           } else {
             setEditingFile(null);
             setUploadProgress(null);
-            toast.success(`${total} sticker${total > 1 ? 's' : ''} ajouté${total > 1 ? 's' : ''} !`);
+            toast.success(`${total} sticker${total > 1 ? 's' : ''} ajoutÃ©${total > 1 ? 's' : ''} !`);
           }
         },
         onError: (err: any) => {
-          toast.error(`Échec upload: ${err?.message ?? 'erreur'}`);
+          toast.error(`Ã‰chec upload: ${err?.message ?? 'erreur'}`);
           setUploadProgress({ done, total });
           if (fileQueue.length > 0) {
             setEditingFile(fileQueue[0]);
@@ -184,6 +169,23 @@ const StickerStudio = () => {
 
   const isUploading = uploadSticker.isPending || editingFile !== null;
 
+  if (loading || loadingPacks)
+    return <div className="p-8 text-center flex h-screen items-center justify-center">Chargement du studio...</div>;
+
+  if (!profile?.is_verified) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <VerificationRequiredDialog
+          open
+          onOpenChange={(open) => { if (!open) navigate(-1); }}
+          featureName="Sticker Studio (CrÃ©ateur)"
+        />
+      </div>
+    );
+  }
+
+
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
       <header className="bg-white border-b px-4 py-3 sticky top-0 z-10 flex items-center gap-3 shadow-sm">
@@ -192,7 +194,7 @@ const StickerStudio = () => {
         </Button>
         <div>
           <h1 className="font-bold sm:text-lg text-slate-800 leading-tight">Studio de Stickers</h1>
-          <p className="text-xs text-slate-500">Espace Créateur Certifié</p>
+          <p className="text-xs text-slate-500">Espace CrÃ©ateur CertifiÃ©</p>
         </div>
       </header>
 
@@ -202,7 +204,7 @@ const StickerStudio = () => {
         <div className="w-full md:w-1/3 flex flex-col gap-4">
           <div className="flex items-center justify-between bg-white p-4 rounded-2xl border shadow-sm">
             <div>
-              <h2 className="font-semibold text-slate-800">Mes Créations</h2>
+              <h2 className="font-semibold text-slate-800">Mes CrÃ©ations</h2>
               <p className="text-xs text-slate-500">{packs?.length || 0} pack(s)</p>
             </div>
             <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-sm" onClick={handleCreateNewPack}>
@@ -224,7 +226,7 @@ const StickerStudio = () => {
                   <PackagePlus className="h-5 w-5 text-violet-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-violet-900 truncate">Création en cours...</p>
+                  <p className="font-medium text-sm text-violet-900 truncate">CrÃ©ation en cours...</p>
                 </div>
               </div>
             )}
@@ -263,17 +265,17 @@ const StickerStudio = () => {
           </div>
         </div>
 
-        {/* Colonne droite : Détail du pack */}
+        {/* Colonne droite : DÃ©tail du pack */}
         <div className="w-full md:w-2/3 flex flex-col gap-4">
           {!activePackId ? (
             <div className="bg-slate-100/50 rounded-3xl border-2 border-dashed border-slate-200 h-[60vh] flex items-center justify-center text-slate-400 p-8 text-center flex-col gap-3">
               <ImagePlus className="h-14 w-14 text-slate-300" />
-              <p className="text-sm font-medium">Sélectionnez ou créez un pack pour commencer à l'éditer.</p>
+              <p className="text-sm font-medium">SÃ©lectionnez ou crÃ©ez un pack pour commencer Ã  l'Ã©diter.</p>
             </div>
           ) : (
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full min-h-[60vh]">
 
-              {/* Paramètres du pack */}
+              {/* ParamÃ¨tres du pack */}
               <div className="p-6 border-b bg-slate-50/50 space-y-4">
 
                 {/* Nom */}
@@ -294,7 +296,7 @@ const StickerStudio = () => {
                     value={(editForm as any).description || ''}
                     onChange={e => setEditForm({ ...editForm, description: e.target.value })}
                     className="bg-white resize-none text-sm"
-                    placeholder="Décrivez votre pack de stickers..."
+                    placeholder="DÃ©crivez votre pack de stickers..."
                     rows={2}
                   />
                 </div>
@@ -313,7 +315,7 @@ const StickerStudio = () => {
                       className="bg-white"
                       placeholder="0 = Gratuit"
                     />
-                    <p className="text-[10px] text-slate-400">Soumboulah Cash — 0 = Gratuit</p>
+                    <p className="text-[10px] text-slate-400">Soumboulah Cash â€” 0 = Gratuit</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1">
@@ -331,7 +333,7 @@ const StickerStudio = () => {
                   </div>
                 </div>
 
-                {/* Icône + Bouton Enregistrer */}
+                {/* IcÃ´ne + Bouton Enregistrer */}
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
                   <div
                     role="button"
@@ -370,7 +372,7 @@ const StickerStudio = () => {
                       <ImagePlus className="h-7 w-7 text-slate-300" />
                     )}
                     <p className="text-xs font-medium text-slate-500">
-                      {editForm.icon_url ? "Remplacer l'icône" : "Icône du pack"}
+                      {editForm.icon_url ? "Remplacer l'icÃ´ne" : "IcÃ´ne du pack"}
                     </p>
                   </div>
 
@@ -380,7 +382,7 @@ const StickerStudio = () => {
                     className="shrink-0 bg-slate-800 hover:bg-slate-900 rounded-xl px-6 self-stretch sm:self-auto"
                   >
                     {savePack.isPending ? <PackagePlus className="h-4 w-4 mr-2 animate-pulse" /> : <Save className="h-4 w-4 mr-2" />}
-                    {activePackId === 'new' ? 'Créer le pack' : 'Enregistrer'}
+                    {activePackId === 'new' ? 'CrÃ©er le pack' : 'Enregistrer'}
                   </Button>
                 </div>
 
@@ -390,7 +392,7 @@ const StickerStudio = () => {
                     <div className="flex items-center gap-2 text-xs">
                       {(editForm as any).status === 'approved' && (
                         <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
-                          <CheckCircle2 className="h-3 w-3" /> Approuvé — public
+                          <CheckCircle2 className="h-3 w-3" /> ApprouvÃ© â€” public
                         </span>
                       )}
                       {(editForm as any).status === 'pending_review' && (
@@ -401,7 +403,7 @@ const StickerStudio = () => {
                       {(editForm as any).status === 'rejected' && (
                         <div className="flex items-center gap-2">
                           <span className="flex items-center gap-1 bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full font-medium">
-                            <AlertCircle className="h-3 w-3" /> Rejeté
+                            <AlertCircle className="h-3 w-3" /> RejetÃ©
                           </span>
                           {(editForm as any).rejection_reason && (
                             <span className="text-rose-700 text-[11px]">{(editForm as any).rejection_reason}</span>
@@ -425,7 +427,7 @@ const StickerStudio = () => {
                         {submitForReview.isPending
                           ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                           : <Send className="h-4 w-4 mr-1.5" />}
-                        Soumettre à validation
+                        Soumettre Ã  validation
                       </Button>
                     )}
                   </div>
@@ -438,20 +440,20 @@ const StickerStudio = () => {
                   {(editForm as any).status === 'pending_review' && (
                     <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                       <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                      <span>Pack en <strong>attente de validation</strong>. Les stickers ajoutés seront en attente individuelle.</span>
+                      <span>Pack en <strong>attente de validation</strong>. Les stickers ajoutÃ©s seront en attente individuelle.</span>
                     </div>
                   )}
                   {(editForm as any).status === 'approved' && (
                     <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
                       <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-blue-600" />
-                      <span>Pack public. Les nouveaux stickers ajoutés seront <strong>validés individuellement</strong> avant d'être visibles.</span>
+                      <span>Pack public. Les nouveaux stickers ajoutÃ©s seront <strong>validÃ©s individuellement</strong> avant d'Ãªtre visibles.</span>
                     </div>
                   )}
 
-                  {/* Bandeau info éditeur */}
+                  {/* Bandeau info Ã©diteur */}
                   <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-violet-50 border border-violet-200 px-4 py-3 text-sm text-violet-800">
                     <Sparkles className="h-4 w-4 mt-0.5 shrink-0 text-violet-500" />
-                    <span>Un <strong>éditeur</strong> s'ouvre pour chaque image — supprimez le fond, dessinez ou ajoutez du texte avant d'ajouter au pack.</span>
+                    <span>Un <strong>Ã©diteur</strong> s'ouvre pour chaque image â€” supprimez le fond, dessinez ou ajoutez du texte avant d'ajouter au pack.</span>
                   </div>
 
                   <div className="flex items-center justify-between mb-4">
@@ -471,8 +473,8 @@ const StickerStudio = () => {
                           <>
                             <Loader2 className="h-4 w-4 text-violet-600 animate-spin" />
                             {uploadProgress
-                              ? `Upload ${uploadProgress.done + 1}/${uploadProgress.total}…`
-                              : 'Upload en cours…'}
+                              ? `Upload ${uploadProgress.done + 1}/${uploadProgress.total}â€¦`
+                              : 'Upload en coursâ€¦'}
                           </>
                         ) : (
                           <>
@@ -490,7 +492,7 @@ const StickerStudio = () => {
                     <div className="flex flex-col items-center justify-center p-12 text-slate-400 bg-slate-50 border border-slate-100 rounded-xl border-dashed">
                       <ImagePlus className="h-10 w-10 mb-3 text-slate-300" />
                       <p className="text-sm">Aucun sticker pour l'instant.</p>
-                      <p className="text-xs mt-1 text-center">PNG, JPG ou WebP — le fond sera automatiquement supprimé.</p>
+                      <p className="text-xs mt-1 text-center">PNG, JPG ou WebP â€” le fond sera automatiquement supprimÃ©.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
@@ -518,7 +520,7 @@ const StickerStudio = () => {
                             )}
                             {stickerStatus === 'rejected' && (
                               <span className="absolute bottom-1 left-1 bg-rose-500 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase leading-none">
-                                Rejeté
+                                RejetÃ©
                               </span>
                             )}
                             {sticker.is_animated && (
@@ -548,7 +550,7 @@ const StickerStudio = () => {
         </div>
       </main>
 
-      {/* ── Éditeur de sticker ── */}
+      {/* â”€â”€ Ã‰diteur de sticker â”€â”€ */}
       {editingFile && (
         <StickerEditorModal
           file={editingFile}
