@@ -26,6 +26,7 @@ const StickerStudio = () => {
   const savePack = useSaveStickerPack();
   const uploadSticker = useUploadStickerImage();
   const uploadPackIcon = useUploadStickerPackIcon();
+  const submitForReview = useSubmitPackForReview();
 
   // State pour le pack en cours d'édition
   const [editForm, setEditForm] = useState<Partial<StickerPackData>>({});
@@ -279,24 +280,55 @@ const StickerStudio = () => {
                    </div>
                  </div>
                  
-                 {activePackId !== 'new' && (
-                    <div className="flex items-center gap-3 mt-5 pt-4 border-t">
-                      <label className="text-sm font-medium text-slate-700 flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={editForm.is_published || false}
-                          onChange={e => {
-                            setEditForm({...editForm, is_published: e.target.checked});
-                            // Auto-save la publication
-                            savePack.mutate({...editForm, is_published: e.target.checked});
-                          }}
-                          className="w-4 h-4 rounded text-violet-600 focus:ring-violet-500"
-                        />
-                        Publier ce pack publiquement sur la Boutique
-                      </label>
-                      {editForm.is_published && <span className="flex items-center text-[11px] bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full font-medium"><CheckCircle2 className="h-3 w-3 mr-1" /> En ligne</span>}
+                  {activePackId !== 'new' && (
+                    <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t flex-wrap">
+                      <div className="flex items-center gap-2 text-xs">
+                        {(editForm as any).status === 'approved' && (
+                          <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
+                            <CheckCircle2 className="h-3 w-3" /> Approuvé — public
+                          </span>
+                        )}
+                        {(editForm as any).status === 'pending_review' && (
+                          <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-medium">
+                            <Clock3 className="h-3 w-3" /> En attente de validation
+                          </span>
+                        )}
+                        {(editForm as any).status === 'rejected' && (
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full font-medium">
+                              <AlertCircle className="h-3 w-3" /> Rejeté
+                            </span>
+                            {(editForm as any).rejection_reason && (
+                              <span className="text-rose-700 text-[11px]">
+                                {(editForm as any).rejection_reason}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {(!(editForm as any).status || (editForm as any).status === 'draft') && (
+                          <span className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-medium">
+                            Brouillon
+                          </span>
+                        )}
+                      </div>
+
+                      {(['draft', 'rejected'].includes((editForm as any).status ?? 'draft')) && (
+                        <Button
+                          size="sm"
+                          disabled={submitForReview.isPending || !activeStickers?.length}
+                          onClick={() => activePackId && submitForReview.mutate(activePackId)}
+                          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl"
+                        >
+                          {submitForReview.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-1.5" />
+                          )}
+                          Soumettre à validation
+                        </Button>
+                      )}
                     </div>
-                 )}
+                  )}
                </div>
 
                {/* Zone d'envoi et grille des stickers */}
