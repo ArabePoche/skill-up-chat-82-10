@@ -2,7 +2,7 @@
 import React from 'react';
 import MessageBubble from './MessageBubble';
 
-interface Message {
+export interface Message {
   id: string;
   content: string;
   sender_id: string;

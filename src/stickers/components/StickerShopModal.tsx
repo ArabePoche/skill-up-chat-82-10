@@ -51,7 +51,10 @@ const StickerShopModal: React.FC<StickerShopModalProps> = ({ open, onClose, onPa
           setPendingPackId(null);
           onPackAdded?.(packId);
         },
-        onError: () => setPendingPackId(null),
+        onError: (err: any) => {
+          setPendingPackId(null);
+          // Le toast d'erreur est déjà affiché par le hook, on laisse la modale ouverte
+        },
       },
     );
   };

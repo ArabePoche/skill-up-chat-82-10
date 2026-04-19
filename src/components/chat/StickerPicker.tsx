@@ -158,7 +158,17 @@ const StickerPicker: React.FC<StickerPickerProps> = ({ onStickerSelect, isOpen, 
             <PackagePlus size={18} />
           </button>
           {/* Modale boutique stickers */}
-          <StickerShopModal open={shopOpen} onClose={() => setShopOpen(false)} />
+          <StickerShopModal 
+            open={shopOpen} 
+            onClose={() => setShopOpen(false)} 
+            onPackAdded={() => {
+              // Forcer le refetch des packs débloqués après ajout
+              if (typeof window !== 'undefined' && window.location) {
+                // Hack simple : recharger la page (à remplacer par un vrai refetch si possible)
+                window.location.reload();
+              }
+            }}
+          />
         </div>
       </div>
 

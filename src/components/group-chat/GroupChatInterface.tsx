@@ -38,6 +38,7 @@ import { LessonVideoPlayerWithTimer } from '../video/LessonVideoPlayerWithTimer'
 import { Button } from '../ui/button';
 import { GroupInfoDrawer } from './GroupInfoDrawer';
 import { GroupChatFilters, GroupFilterType } from './GroupChatFilters';
+import { Message } from '../chat/MessageItem';
 import { toast } from 'sonner';
 import PublicMessageBanner from '@/components/formation-public-messages/PublicMessageBanner';
 import PublicMessagePlayerOverlay from '@/components/formation-public-messages/PublicMessagePlayerOverlay';
@@ -101,15 +102,15 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
   const { openConversationForward } = useConversationForwardDialog();
 
   const handleForwardFormationMessage = useCallback(
-    (msg: Record<string, unknown>) => {
-      if ((msg as { is_system_message?: boolean }).is_system_message) return;
+    (msg: Message) => {
+      if (msg.message_type === 'system') return;
       openConversationForward(
         lessonMessageToForwardable({
-          id: String((msg as { id: string }).id),
-          content: (msg as { content?: string }).content,
-          file_url: (msg as { file_url?: string }).file_url,
-          file_type: (msg as { file_type?: string }).file_type,
-          file_name: (msg as { file_name?: string }).file_name,
+          id: String(msg.id),
+          content: msg.content,
+          file_url: msg.file_url,
+          file_type: msg.file_type,
+          file_name: msg.file_name,
         }),
       );
     },
