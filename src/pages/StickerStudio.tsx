@@ -26,7 +26,7 @@ import { toast } from 'sonner';
 async function removeBg(file: File): Promise<File> {
   const { removeBackground } = await import('@imgly/background-removal');
   const blob = await removeBackground(file, {
-    publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/',
+    publicPath: 'https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/',
     model: 'small',
     output: { format: 'image/png', quality: 0.9 },
   });
