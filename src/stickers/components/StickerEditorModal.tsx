@@ -132,6 +132,9 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
   }, [file]);
 
   /* ── sync outil → canvas ── */
+  const toolRef = useRef<Tool>('select');
+  toolRef.current = tool;
+
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
@@ -143,16 +146,8 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       canvas.selection = false;
       if (PencilBrush) {
         const brush = new PencilBrush(canvas);
-        brush.color = tool === 'eraser' ? '#000000' : color;
+        brush.color = tool === 'eraser' ? 'rgba(0,0,0,1)' : color;
         brush.width = tool === 'eraser' ? brushSize * 3 : brushSize;
-        if (tool === 'eraser') {
-          const originalCreatePath = brush.createPath.bind(brush);
-          brush.createPath = (pathData: string) => {
-            const path = originalCreatePath(pathData);
-            path.globalCompositeOperation = 'destination-out';
-            return path;
-          };
-        }
         canvas.freeDrawingBrush = brush;
       }
     } else {
@@ -160,6 +155,26 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       canvas.selection = tool === 'select';
     }
   }, [tool, color, brushSize]);
+
+  /* ── Gomme : applique destination-out après création du path ── */
+  useEffect(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const handlePathCreated = (e: any) => {
+      if (toolRef.current === 'eraser' && e.path) {
+        e.path.set({
+          globalCompositeOperation: 'destination-out',
+          stroke: 'rgba(0,0,0,1)',
+          fill: 'rgba(0,0,0,0)',
+        });
+        canvas.renderAll();
+      }
+    };
+
+    canvas.on('path:created', handlePathCreated);
+    return () => { canvas.off('path:created', handlePathCreated); };
+  }, []);
 
   /* ── ajout texte au clic ── */
   useEffect(() => {
