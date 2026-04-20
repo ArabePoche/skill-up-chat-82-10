@@ -97,11 +97,11 @@ const emojiCategories: Record<CategoryKey, CategoryConfig> = {
 };
 
 const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, onStickerSelect, isOpen, onToggle, className }) => {
-  const [activeCategory, setActiveCategory] = useState<CategoryKey>('smileys');
+
+  // Nouvelle logique : tous les groupes d'émojis affichés à la suite, scroll unique
   const [activeTab, setActiveTab] = useState<'emoji' | 'sticker'>('emoji');
   const pickerRef = useRef<HTMLDivElement>(null);
   const categoryEntries = Object.entries(emojiCategories) as Array<[CategoryKey, CategoryConfig]>;
-  const activeCategoryConfig = emojiCategories[activeCategory];
 
   const isTextEntry = (value: string) => value.length > 3 || /[\u0600-\u06FF]/.test(value);
 
@@ -111,18 +111,15 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, onStickerSelec
         onToggle();
       }
     };
-
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onToggle();
       }
     };
-
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
@@ -166,12 +163,11 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, onStickerSelec
               : 'text-slate-400 hover:text-slate-600'
           }`}
         >
-          🎭 Stickers
+          3ad Stickers
         </button>
       </div>
 
       {activeTab === 'sticker' ? (
-        /* === STICKER TAB === */
         <StickerPicker
           isOpen={true}
           onToggle={onToggle}
@@ -181,70 +177,51 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, onStickerSelec
           className="relative rounded-none shadow-none border-0 w-full max-w-none"
         />
       ) : (
-        /* === EMOJI TAB === */
-        <>
-      <div className="px-4 pt-3 pb-2 border-b border-gray-100">
-        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-          {activeCategoryConfig.label}
-        </div>
-        
-        {/* Category Icons Row (Top Bar) */}
-        <div className="flex items-center justify-between w-full">
+        // Affichage de tous les groupes d'émojis dans une seule zone scrollable
+        <div className="flex-1 max-h-[280px] h-[280px] overflow-y-auto px-1 py-2 custom-scrollbar scroll-smooth">
           {categoryEntries.map(([key, category]) => {
             const IconComponent = category.icon;
-            const isActive = activeCategory === key;
-
             return (
-              <button
-                key={key}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveCategory(key);
-                }}
-                className={`p-1.5 transition-all duration-200 rounded-xl relative ${
-                  isActive 
-                    ? `bg-violet-100 text-violet-600 scale-110 shadow-sm` 
-                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-                }`}
-                title={category.label}
-                aria-pressed={isActive}
-              >
-                <IconComponent size={18} strokeWidth={isActive ? 2.5 : 2} />
-              </button>
+              <section key={key} className="mb-2">
+                {/* En-tête du groupe */}
+                <div className={`sticky top-0 z-10 flex items-center gap-2 px-3 py-1.5 bg-white/95 backdrop-blur-sm border-b border-gray-50 ${category.softAccent}`} style={{borderRadius: 10}}>
+                  <IconComponent size={16} className={category.accent} />
+                  <span className="text-[11px] font-bold uppercase tracking-widest truncate">
+                    {category.label}
+                  </span>
+                  <span className="ml-auto text-[10px] text-slate-400 shrink-0">
+                    {category.emojis.length}
+                  </span>
+                </div>
+                {/* Grille d'émojis du groupe */}
+                <div className="grid grid-cols-7 sm:grid-cols-8 gap-y-3 gap-x-1 justify-items-center px-1 py-2">
+                  {category.emojis.map((emoji, index) => {
+                    const isText = isTextEntry(emoji);
+                    return (
+                      <button
+                        key={`${key}-${emoji}-${index}`}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEmojiSelect(emoji);
+                        }}
+                        className={isText
+                          ? `col-span-4 flex min-h-[36px] w-full items-center justify-center px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 rounded-xl border border-transparent hover:border-violet-100 hover:bg-violet-50 hover:text-violet-700 hover:shadow-sm active:scale-95 ${emoji.length > 5 ? 'text-[11px]' : ''}`
+                          : 'flex h-9 w-9 items-center justify-center text-[22px] transition-all duration-200 rounded-xl hover:bg-slate-100 hover:scale-125 focus:outline-none focus:bg-violet-50 focus:scale-125 active:scale-95'}
+                        title={emoji.trim()}
+                        dir={/[\u0600-\u06FF]/.test(emoji) ? 'rtl' : undefined}
+                      >
+                        {emoji.trim()}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             );
           })}
         </div>
-      </div>
-
-      {/* Emoji Scroll Area */}
-      <div className="flex-1 max-h-[280px] h-[280px] overflow-y-auto px-3 py-3 custom-scrollbar scroll-smooth">
-        <div className="grid grid-cols-7 sm:grid-cols-8 gap-y-3 gap-x-1 justify-items-center">
-          {activeCategoryConfig.emojis.map((emoji, index) => {
-            const isText = isTextEntry(emoji);
-            return (
-               <button
-                key={`${activeCategory}-${emoji}-${index}`}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEmojiSelect(emoji);
-                }}
-                className={isText
-                  ? `col-span-4 flex min-h-[36px] w-full items-center justify-center px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 rounded-xl border border-transparent hover:border-violet-100 hover:bg-violet-50 hover:text-violet-700 hover:shadow-sm active:scale-95 ${emoji.length > 5 ? 'text-[11px]' : ''}`
-                  : 'flex h-9 w-9 items-center justify-center text-[22px] transition-all duration-200 rounded-xl hover:bg-slate-100 hover:scale-125 focus:outline-none focus:bg-violet-50 focus:scale-125 active:scale-95'}
-                title={emoji.trim()}
-                dir={/[\u0600-\u06FF]/.test(emoji) ? 'rtl' : undefined}
-              >
-                {emoji.trim()}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      </>)}
+      )}
     </div>
   );
-};
-
+}
 export default EmojiPicker;
