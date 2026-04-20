@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import StickerPreviewModal from '@/stickers/components/StickerPreviewModal';
 import { Download, Maximize2, X, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -50,6 +51,9 @@ const [showFullscreen, setShowFullscreen] = useState(false);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
 
   const isImage = fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
+  // Heuristique simple : si le nom contient "sticker" ou le type est image/webp/png/gif, on considère que c'est un sticker
+  const isSticker = (fileType?.includes('webp') || fileType?.includes('png') || fileType?.includes('gif') || fileName.toLowerCase().includes('sticker'));
+  const [showStickerModal, setShowStickerModal] = useState(false);
   // ⚠️ IMPORTANT: Vérifier audio AVANT vidéo car .webm et .ogg peuvent être les deux
   // Si fileType commence par audio/, c'est un audio même si l'extension est ambiguë
   const isAudio = fileType?.startsWith('audio/') || /\.(mp3|wav|m4a|aac|flac)$/i.test(fileName);
@@ -148,7 +152,9 @@ const [showFullscreen, setShowFullscreen] = useState(false);
         <div className="relative group w-fit">
           <div
             onClick={() => {
-              if (lessonId && formationId && isTeacher) {
+              if (isSticker) {
+                setShowStickerModal(true);
+              } else if (lessonId && formationId && isTeacher) {
                 handleAnnotate();
               } else {
                 handleFullscreen();
@@ -199,6 +205,16 @@ const [showFullscreen, setShowFullscreen] = useState(false);
                 <Maximize2 size={16} />
               </Button>
             </div>
+          )}
+          {/* Modal de prévisualisation sticker */}
+          {isSticker && (
+            <StickerPreviewModal
+              open={showStickerModal}
+              onClose={() => setShowStickerModal(false)}
+              stickerId={messageId || fileName}
+              stickerUrl={fileUrl}
+              onEdit={undefined} // TODO: brancher l'éditeur si besoin
+            />
           )}
         </div>
       )}
