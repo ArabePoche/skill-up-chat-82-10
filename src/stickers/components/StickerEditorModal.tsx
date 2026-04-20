@@ -30,166 +30,154 @@ const COLORS = [
   '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4',
 ];
 
-const MAX_CANVAS_WIDTH = 520;
-const MAX_CANVAS_HEIGHT = 380;
+const MAX_W = 520;
+const MAX_H = 380;
+
+/* ── helpers purs (hors composant) ── */
+const fileToDataUrl = (f: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const r = e.target?.result;
+      if (typeof r === 'string') resolve(r);
+      else reject(new Error('FileReader: résultat inattendu'));
+    };
+    reader.onerror = () => reject(new Error('FileReader error'));
+    reader.readAsDataURL(f);
+  });
+
+/* ────────────────────────────────────────────────────────── */
 
 const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, removeBg }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef      = useRef<HTMLCanvasElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
-  const fabricRef = useRef<any>(null);
+  const fabricRef      = useRef<any>(null);        // canvas Fabric.js
+  const PencilBrushRef = useRef<any>(null);        // constructeur PencilBrush
+  const toolRef        = useRef<Tool>('select');   // outil courant (sans re-render)
 
-  const [tool, setTool] = useState<Tool>('select');
-  const [color, setColor] = useState('#000000');
-  const [brushSize, setBrushSize] = useState(6);
-  const [bgRemoved, setBgRemoved] = useState(false);
+  const [tool,       setTool]       = useState<Tool>('select');
+  const [color,      setColor]      = useState('#000000');
+  const [brushSize,  setBrushSize]  = useState(6);
+  const [bgRemoved,  setBgRemoved]  = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
-  const [noBgFile, setNoBgFile] = useState<File | null>(null);
+  const [noBgFile,   setNoBgFile]   = useState<File | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const historyRef = useRef<string[]>([]);
-  const blockSave = useRef(false);
 
-  /* ── Helper : lit un File comme data URL via FileReader ── */
-  const fileToDataUrl = (f: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result;
-        if (typeof result === 'string') resolve(result);
-        else reject(new Error('FileReader did not return a string'));
-      };
-      reader.onerror = () => reject(new Error('FileReader error'));
-      reader.readAsDataURL(f);
+  const historyRef  = useRef<string[]>([]);
+  const blockSave   = useRef(false);
+
+  /* ── Charge un dataUrl dans le canvas et renvoie le FabricImage ── */
+  const placeImage = useCallback(async (dataUrl: string, FabricImage: any, canvas: any) => {
+    const fabImg: any = await FabricImage.fromURL(dataUrl);
+    const nw: number = fabImg.width  || MAX_W;
+    const nh: number = fabImg.height || MAX_H;
+    const scale = Math.min(MAX_W / nw, MAX_H / nh, 1);
+    const cw = Math.max(1, Math.round(nw * scale));
+    const ch = Math.max(1, Math.round(nh * scale));
+
+    canvas.setWidth(cw);
+    canvas.setHeight(ch);
+
+    fabImg.set({
+      left: 0, top: 0,
+      originX: 'left', originY: 'top',
+      scaleX: scale, scaleY: scale,
+      selectable: false, evented: false,
+      name: '__bg__',
     });
 
-  /* ── Helper : crée un HTMLImageElement chargé à partir d'un dataUrl ── */
-  const dataUrlToHtmlImage = (dataUrl: string): Promise<HTMLImageElement> =>
-    new Promise((resolve, reject) => {
-      const img = new window.Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Image element failed to load'));
-      img.src = dataUrl;
-    });
+    canvas.add(fabImg);
+    canvas.sendObjectToBack(fabImg);
+    canvas.renderAll();
+    return fabImg;
+  }, []);
 
   /* ── init fabric canvas ── */
   useEffect(() => {
     if (!file || !canvasRef.current) return;
 
     let canvas: any;
+    let disposed = false;
 
     (async () => {
       const { Canvas, Image: FabricImage, PencilBrush } = await import('fabric');
+      if (disposed) return;
+
+      PencilBrushRef.current = PencilBrush;
 
       canvas = new Canvas(canvasRef.current!, {
-        width: MAX_CANVAS_WIDTH,
-        height: MAX_CANVAS_HEIGHT,
+        width: MAX_W,
+        height: MAX_H,
         preserveObjectStacking: true,
         enableRetinaScaling: false,
       });
       fabricRef.current = canvas;
-      canvas.__PencilBrush = PencilBrush;
 
-      /* sauvegarde historique */
+      /* ── historique ── */
       const saveState = () => {
         if (blockSave.current) return;
         historyRef.current.push(canvas.toJSON());
       };
-      canvas.on('object:added', saveState);
+      canvas.on('object:added',    saveState);
       canvas.on('object:modified', saveState);
-      canvas.on('object:removed', saveState);
+      canvas.on('object:removed',  saveState);
 
-      /* Charge un File dans le canvas Fabric */
-      const loadFileOnCanvas = async (f: File) => {
-        const dataUrl = await fileToDataUrl(f);
-        const htmlImg = await dataUrlToHtmlImage(dataUrl);
+      /* ── gomme : destination-out APRÈS création du path ── */
+      canvas.on('path:created', (e: any) => {
+        if (toolRef.current === 'eraser' && e.path) {
+          e.path.set({
+            globalCompositeOperation: 'destination-out',
+            stroke: 'rgba(0,0,0,1)',
+            fill:   'rgba(0,0,0,0)',
+          });
+          canvas.renderAll();
+        }
+      });
 
-        const nw = htmlImg.naturalWidth || MAX_CANVAS_WIDTH;
-        const nh = htmlImg.naturalHeight || MAX_CANVAS_HEIGHT;
-        const scale = Math.min(MAX_CANVAS_WIDTH / nw, MAX_CANVAS_HEIGHT / nh, 1);
-        const cw = Math.max(1, Math.round(nw * scale));
-        const ch = Math.max(1, Math.round(nh * scale));
-
-        canvas.setWidth(cw);
-        canvas.setHeight(ch);
-
-        const fabImg = new FabricImage(htmlImg, {
-          left: 0,
-          top: 0,
-          originX: 'left',
-          originY: 'top',
-          scaleX: scale,
-          scaleY: scale,
-          selectable: false,
-          evented: false,
-          name: '__bg__',
-        });
-
-        canvas.add(fabImg);
-        canvas.sendObjectToBack(fabImg);
-        canvas.requestRenderAll();
-        saveState();
-      };
-
+      /* ── charge l'image initiale ── */
       try {
-        await loadFileOnCanvas(file);
+        const dataUrl = await fileToDataUrl(file);
+        if (disposed) return;
+        await placeImage(dataUrl, FabricImage, canvas);
         setOriginalFile(file);
-      } catch (error) {
+      } catch (err) {
+        console.error('StickerEditorModal: chargement image échoué', err);
         toast.error("Impossible d'afficher l'image dans l'éditeur.");
-        console.error('StickerEditorModal image load failed', error);
       }
     })();
 
     return () => {
+      disposed = true;
       try { canvas?.dispose(); } catch (_) {}
+      fabricRef.current = null;
     };
-  }, [file]);
+  }, [file, placeImage]);
 
-  /* ── sync outil → canvas ── */
-  const toolRef = useRef<Tool>('select');
-  toolRef.current = tool;
-
+  /* ── sync outil/couleur/taille → canvas ── */
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
 
-    const { PencilBrush } = canvas.__PencilBrush ? { PencilBrush: canvas.__PencilBrush } : { PencilBrush: null };
+    toolRef.current = tool;
 
     if (tool === 'draw' || tool === 'eraser') {
       canvas.isDrawingMode = true;
       canvas.selection = false;
-      if (PencilBrush) {
-        const brush = new PencilBrush(canvas);
-        brush.color = tool === 'eraser' ? 'rgba(0,0,0,1)' : color;
+      if (PencilBrushRef.current) {
+        const brush = new PencilBrushRef.current(canvas);
+        brush.color = 'rgba(0,0,0,1)';
         brush.width = tool === 'eraser' ? brushSize * 3 : brushSize;
+        if (tool === 'draw') brush.color = color;
         canvas.freeDrawingBrush = brush;
       }
     } else {
       canvas.isDrawingMode = false;
-      canvas.selection = tool === 'select';
+      canvas.selection = (tool === 'select');
     }
   }, [tool, color, brushSize]);
 
-  /* ── Gomme : applique destination-out après création du path ── */
-  useEffect(() => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-
-    const handlePathCreated = (e: any) => {
-      if (toolRef.current === 'eraser' && e.path) {
-        e.path.set({
-          globalCompositeOperation: 'destination-out',
-          stroke: 'rgba(0,0,0,1)',
-          fill: 'rgba(0,0,0,0)',
-        });
-        canvas.renderAll();
-      }
-    };
-
-    canvas.on('path:created', handlePathCreated);
-    return () => { canvas.off('path:created', handlePathCreated); };
-  }, []);
-
-  /* ── ajout texte au clic ── */
+  /* ── texte : ajout au clic ── */
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas || tool !== 'text') return;
@@ -198,12 +186,9 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       const { IText } = await import('fabric');
       const pointer = canvas.getPointer(opt.e);
       const text = new IText('Votre texte', {
-        left: pointer.x,
-        top: pointer.y,
-        fontSize: 28,
-        fill: color,
-        fontFamily: 'Arial',
-        fontWeight: 'bold',
+        left: pointer.x, top: pointer.y,
+        fontSize: 28, fill: color,
+        fontFamily: 'Arial', fontWeight: 'bold',
         stroke: color === '#ffffff' ? '#000' : undefined,
         strokeWidth: color === '#ffffff' ? 0.5 : 0,
         editable: true,
@@ -212,10 +197,7 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       canvas.add(text);
       canvas.setActiveObject(text);
       canvas.renderAll();
-      requestAnimationFrame(() => {
-        text.enterEditing(opt.e);
-        text.selectAll();
-      });
+      requestAnimationFrame(() => { text.enterEditing(opt.e); text.selectAll(); });
     };
 
     canvas.on('mouse:down', handleClick);
@@ -227,35 +209,21 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
     const canvas = fabricRef.current;
     if (!canvas || !originalFile) return;
 
-    /* Helper local : remplace l'image __bg__ dans le canvas */
     const swapBgImage = async (f: File) => {
       const { Image: FabricImage } = await import('fabric');
       const dataUrl = await fileToDataUrl(f);
-      const htmlImg = await dataUrlToHtmlImage(dataUrl);
-      const nw = htmlImg.naturalWidth || MAX_CANVAS_WIDTH;
-      const nh = htmlImg.naturalHeight || MAX_CANVAS_HEIGHT;
-      const scale = Math.min(MAX_CANVAS_WIDTH / nw, MAX_CANVAS_HEIGHT / nh, 1);
-      canvas.setWidth(Math.max(1, Math.round(nw * scale)));
-      canvas.setHeight(Math.max(1, Math.round(nh * scale)));
-      const fabImg = new FabricImage(htmlImg, {
-        left: 0, top: 0, originX: 'left', originY: 'top',
-        scaleX: scale, scaleY: scale,
-        selectable: false, evented: false, name: '__bg__',
-      });
-      canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
-      canvas.add(fabImg);
-      canvas.sendObjectToBack(fabImg);
-      canvas.requestRenderAll();
+      canvas.getObjects()
+        .filter((o: any) => o.name === '__bg__')
+        .forEach((o: any) => canvas.remove(o));
+      await placeImage(dataUrl, FabricImage, canvas);
     };
 
     if (bgRemoved) {
-      /* remettre original */
       setBgRemoved(false);
       await swapBgImage(originalFile);
       return;
     }
 
-    /* supprimer le fond */
     setRemovingBg(true);
     try {
       let processed = noBgFile;
@@ -270,9 +238,9 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
     } finally {
       setRemovingBg(false);
     }
-  }, [bgRemoved, originalFile, noBgFile, removeBg]);
+  }, [bgRemoved, originalFile, noBgFile, removeBg, placeImage]);
 
-  /* ── annuler dernière action ── */
+  /* ── annuler ── */
   const handleUndo = useCallback(async () => {
     const canvas = fabricRef.current;
     if (!canvas || historyRef.current.length <= 1) return;
@@ -280,15 +248,18 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
     const prev = historyRef.current[historyRef.current.length - 1];
     if (!prev) return;
     blockSave.current = true;
-    await new Promise<void>((res) => canvas.loadFromJSON(prev, () => { canvas.renderAll(); res(); }));
+    await canvas.loadFromJSON(prev);
+    canvas.renderAll();
     blockSave.current = false;
   }, []);
 
-  /* ── tout effacer (dessins seulement) ── */
+  /* ── effacer dessins ── */
   const handleClear = useCallback(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    canvas.getObjects().filter((o: any) => o.name !== '__bg__').forEach((o: any) => canvas.remove(o));
+    canvas.getObjects()
+      .filter((o: any) => o.name !== '__bg__')
+      .forEach((o: any) => canvas.remove(o));
     canvas.renderAll();
   }, []);
 
@@ -298,14 +269,16 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
     if (!canvas) return;
     setIsExporting(true);
     try {
-      /* désélectionner pour ne pas exporter le cadre de sélection */
       canvas.discardActiveObject();
       canvas.renderAll();
-
       const dataUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
-      const res = await fetch(dataUrl);
+      const res  = await fetch(dataUrl);
       const blob = await res.blob();
-      const outFile = new File([blob], (file?.name ?? 'sticker').replace(/\.[^.]+$/, '.png'), { type: 'image/png' });
+      const outFile = new File(
+        [blob],
+        (file?.name ?? 'sticker').replace(/\.[^.]+$/, '.png'),
+        { type: 'image/png' },
+      );
       onConfirm(outFile);
     } catch (err: any) {
       toast.error('Export échoué: ' + (err?.message ?? ''));
@@ -318,7 +291,7 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
-        <DialogContent ref={dialogContentRef} className="max-w-[600px] p-0 gap-0 overflow-hidden rounded-2xl">
+      <DialogContent ref={dialogContentRef} className="max-w-[600px] p-0 gap-0 overflow-hidden rounded-2xl">
         <DialogHeader className="px-5 pt-5 pb-3 border-b bg-slate-50">
           <DialogTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-violet-500" />
@@ -331,7 +304,6 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
           <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b flex-wrap">
             <TooltipProvider delayDuration={300}>
 
-              {/* outils */}
               {([
                 { id: 'select', icon: MousePointer2, label: 'Sélectionner' },
                 { id: 'draw',   icon: Pen,           label: 'Dessin libre' },
@@ -355,7 +327,6 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
 
               <div className="w-px h-6 bg-slate-200 mx-1" />
 
-              {/* palette de couleurs */}
               {COLORS.map((c) => (
                 <button
                   key={c}
@@ -366,10 +337,9 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
                 />
               ))}
 
-              {/* couleur custom */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <label className="w-6 h-6 rounded-full border-2 border-dashed border-slate-300 cursor-pointer flex items-center justify-center hover:border-violet-400 overflow-hidden" title="Couleur personnalisée">
+                  <label className="w-6 h-6 rounded-full border-2 border-dashed border-slate-300 cursor-pointer flex items-center justify-center hover:border-violet-400 overflow-hidden">
                     <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="opacity-0 absolute w-0 h-0" />
                     <div className="w-full h-full rounded-full" style={{ backgroundColor: color }} />
                   </label>
@@ -379,20 +349,13 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
 
               <div className="w-px h-6 bg-slate-200 mx-1" />
 
-              {/* taille pinceau */}
               <div className="flex items-center gap-2 w-24">
                 <span className="text-xs text-slate-500 shrink-0">Taille</span>
-                <Slider
-                  min={1} max={40} step={1}
-                  value={[brushSize]}
-                  onValueChange={([v]) => setBrushSize(v)}
-                  className="flex-1"
-                />
+                <Slider min={1} max={40} step={1} value={[brushSize]} onValueChange={([v]) => setBrushSize(v)} className="flex-1" />
               </div>
 
               <div className="w-px h-6 bg-slate-200 mx-1" />
 
-              {/* undo / clear */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleUndo}>
@@ -417,10 +380,7 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
             className="flex items-center justify-center bg-[image:repeating-conic-gradient(#e5e7eb_0%_25%,white_0%_50%)] bg-[length:16px_16px] relative"
             style={{ height: 380 }}
           >
-            <canvas
-              ref={canvasRef}
-              style={{ display: 'block', touchAction: 'none' }}
-            />
+            <canvas ref={canvasRef} style={{ display: 'block', touchAction: 'none' }} />
             {removingBg && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm gap-3">
                 <Loader2 className="h-8 w-8 text-white animate-spin" />
@@ -431,7 +391,6 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
 
           {/* ── footer ── */}
           <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-t">
-            {/* toggle fond */}
             <button
               onClick={handleToggleBg}
               disabled={removingBg}
@@ -441,13 +400,7 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
                   : 'bg-white border-slate-200 text-slate-600 hover:border-violet-300'
               }`}
             >
-              {removingBg ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : bgRemoved ? (
-                <Sparkles className="h-4 w-4" />
-              ) : (
-                <ImageOff className="h-4 w-4" />
-              )}
+              {removingBg ? <Loader2 className="h-4 w-4 animate-spin" /> : bgRemoved ? <Sparkles className="h-4 w-4" /> : <ImageOff className="h-4 w-4" />}
               {bgRemoved ? 'Fond supprimé ✓' : 'Supprimer le fond'}
             </button>
 
@@ -455,7 +408,12 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
               <Button variant="outline" size="sm" className="rounded-xl" onClick={onCancel} disabled={isExporting}>
                 <X className="h-4 w-4 mr-1" /> Annuler
               </Button>
-              <Button size="sm" className="rounded-xl bg-violet-600 hover:bg-violet-700 text-white" onClick={handleConfirm} disabled={isExporting || removingBg}>
+              <Button
+                size="sm"
+                className="rounded-xl bg-violet-600 hover:bg-violet-700 text-white"
+                onClick={handleConfirm}
+                disabled={isExporting || removingBg}
+              >
                 {isExporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
                 Ajouter au pack
               </Button>
