@@ -68,14 +68,16 @@ export const useStoreStickerPacks = () => {
   });
 };
 
-/** Packs débloqués/achetés par l'utilisateur (avec stickers inlinés pour le picker). */
+/** Packs débloqués/achetés par l'utilisateur ET packs personnels créés par lui-même. */
 export const useUserUnlockedPacks = () => {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['user-unlocked-packs', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await db
+
+      /* 1. Packs achetés / débloqués */
+      const { data: purchased, error: purchasedErr } = await db
         .from('user_sticker_packs')
         .select(`
           pack_id,
@@ -86,8 +88,36 @@ export const useUserUnlockedPacks = () => {
           )
         `)
         .eq('user_id', user.id);
-      if (error) throw error;
-      return data ?? [];
+      if (purchasedErr) throw purchasedErr;
+
+      const purchasedIds = new Set(
+        (purchased ?? []).map((r: any) => r.pack_id).filter(Boolean),
+      );
+
+      /* 2. Packs personnels créés par l'utilisateur (tous statuts sauf rejected)
+            qui ne sont pas déjà dans la liste achetés */
+      const { data: ownPacks, error: ownErr } = await db
+        .from('sticker_packs')
+        .select(`
+          id, name, description, icon_url, price, price_sc, price_sb, status, created_at,
+          stickers ( id, file_url, file_path, is_animated, preview_visible )
+        `)
+        .eq('creator_id', user.id)
+        .neq('status', 'rejected')
+        .order('created_at', { ascending: false });
+      if (ownErr) throw ownErr;
+
+      /* Formate les packs perso dans la même shape que user_sticker_packs */
+      const personalRows = (ownPacks ?? [])
+        .filter((p: any) => !purchasedIds.has(p.id) && (p.stickers?.length ?? 0) > 0)
+        .map((p: any) => ({
+          pack_id: p.id,
+          unlocked_at: p.created_at,
+          sticker_packs: p,
+          _is_personal: true,
+        }));
+
+      return [...(purchased ?? []), ...personalRows];
     },
     enabled: !!user,
   });
