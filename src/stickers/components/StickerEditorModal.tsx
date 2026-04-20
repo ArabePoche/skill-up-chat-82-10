@@ -49,6 +49,28 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
   const historyRef = useRef<string[]>([]);
   const blockSave = useRef(false);
 
+  /* ── Helper : lit un File comme data URL via FileReader ── */
+  const fileToDataUrl = (f: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result;
+        if (typeof result === 'string') resolve(result);
+        else reject(new Error('FileReader did not return a string'));
+      };
+      reader.onerror = () => reject(new Error('FileReader error'));
+      reader.readAsDataURL(f);
+    });
+
+  /* ── Helper : crée un HTMLImageElement chargé à partir d'un dataUrl ── */
+  const dataUrlToHtmlImage = (dataUrl: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Image element failed to load'));
+      img.src = dataUrl;
+    });
+
   /* ── init fabric canvas ── */
   useEffect(() => {
     if (!file || !canvasRef.current) return;
@@ -61,7 +83,6 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       canvas = new Canvas(canvasRef.current!, {
         width: MAX_CANVAS_WIDTH,
         height: MAX_CANVAS_HEIGHT,
-        backgroundColor: 'transparent',
         preserveObjectStacking: true,
         enableRetinaScaling: false,
       });
@@ -77,48 +98,40 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
       canvas.on('object:modified', saveState);
       canvas.on('object:removed', saveState);
 
-      /* charge l'image */
-      const loadImage = (f: File) =>
-        new Promise<void>((resolve, reject) => {
-          const url = URL.createObjectURL(f);
-          FabricImage.fromURL(url, { crossOrigin: 'anonymous' }, {}).then((img: any) => {
-            const width = img.width || MAX_CANVAS_WIDTH;
-            const height = img.height || MAX_CANVAS_HEIGHT;
-            const scale = Math.min(MAX_CANVAS_WIDTH / width, MAX_CANVAS_HEIGHT / height, 1);
-            const canvasWidth = Math.max(1, Math.round(width * scale));
-            const canvasHeight = Math.max(1, Math.round(height * scale));
+      /* Charge un File dans le canvas Fabric */
+      const loadFileOnCanvas = async (f: File) => {
+        const dataUrl = await fileToDataUrl(f);
+        const htmlImg = await dataUrlToHtmlImage(dataUrl);
 
-            canvas.setDimensions({
-              width: canvasWidth,
-              height: canvasHeight,
-            });
+        const nw = htmlImg.naturalWidth || MAX_CANVAS_WIDTH;
+        const nh = htmlImg.naturalHeight || MAX_CANVAS_HEIGHT;
+        const scale = Math.min(MAX_CANVAS_WIDTH / nw, MAX_CANVAS_HEIGHT / nh, 1);
+        const cw = Math.max(1, Math.round(nw * scale));
+        const ch = Math.max(1, Math.round(nh * scale));
 
-            img.set({
-              left: 0,
-              top: 0,
-              originX: 'left',
-              originY: 'top',
-              scaleX: scale,
-              scaleY: scale,
-              selectable: false,
-              evented: false,
-              erasable: true,
-              name: '__bg__',
-            });
-            canvas.add(img);
-            canvas.sendObjectToBack(img);
-            canvas.renderAll();
-            saveState();
-            URL.revokeObjectURL(url);
-            resolve();
-          }).catch((error: unknown) => {
-            URL.revokeObjectURL(url);
-            reject(error);
-          });
+        canvas.setWidth(cw);
+        canvas.setHeight(ch);
+
+        const fabImg = new FabricImage(htmlImg, {
+          left: 0,
+          top: 0,
+          originX: 'left',
+          originY: 'top',
+          scaleX: scale,
+          scaleY: scale,
+          selectable: false,
+          evented: false,
+          name: '__bg__',
         });
 
+        canvas.add(fabImg);
+        canvas.sendObjectToBack(fabImg);
+        canvas.requestRenderAll();
+        saveState();
+      };
+
       try {
-        await loadImage(file);
+        await loadFileOnCanvas(file);
         setOriginalFile(file);
       } catch (error) {
         toast.error("Impossible d'afficher l'image dans l'éditeur.");
@@ -214,28 +227,31 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
     const canvas = fabricRef.current;
     if (!canvas || !originalFile) return;
 
+    /* Helper local : remplace l'image __bg__ dans le canvas */
+    const swapBgImage = async (f: File) => {
+      const { Image: FabricImage } = await import('fabric');
+      const dataUrl = await fileToDataUrl(f);
+      const htmlImg = await dataUrlToHtmlImage(dataUrl);
+      const nw = htmlImg.naturalWidth || MAX_CANVAS_WIDTH;
+      const nh = htmlImg.naturalHeight || MAX_CANVAS_HEIGHT;
+      const scale = Math.min(MAX_CANVAS_WIDTH / nw, MAX_CANVAS_HEIGHT / nh, 1);
+      canvas.setWidth(Math.max(1, Math.round(nw * scale)));
+      canvas.setHeight(Math.max(1, Math.round(nh * scale)));
+      const fabImg = new FabricImage(htmlImg, {
+        left: 0, top: 0, originX: 'left', originY: 'top',
+        scaleX: scale, scaleY: scale,
+        selectable: false, evented: false, name: '__bg__',
+      });
+      canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
+      canvas.add(fabImg);
+      canvas.sendObjectToBack(fabImg);
+      canvas.requestRenderAll();
+    };
+
     if (bgRemoved) {
       /* remettre original */
       setBgRemoved(false);
-      const { Image: FabricImage } = await import('fabric');
-      const url = URL.createObjectURL(originalFile);
-      FabricImage.fromURL(url, { crossOrigin: 'anonymous' }, {}).then((img: any) => {
-        const width = img.width || MAX_CANVAS_WIDTH;
-        const height = img.height || MAX_CANVAS_HEIGHT;
-        const scale = Math.min(MAX_CANVAS_WIDTH / width, MAX_CANVAS_HEIGHT / height, 1);
-        const canvasWidth = Math.max(1, Math.round(width * scale));
-        const canvasHeight = Math.max(1, Math.round(height * scale));
-        canvas.setDimensions({
-          width: canvasWidth,
-          height: canvasHeight,
-        });
-        img.set({ left: 0, top: 0, originX: 'left', originY: 'top', scaleX: scale, scaleY: scale, selectable: false, evented: false, erasable: true, name: '__bg__' });
-        canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
-        canvas.add(img);
-        canvas.sendObjectToBack(img);
-        canvas.renderAll();
-        URL.revokeObjectURL(url);
-      });
+      await swapBgImage(originalFile);
       return;
     }
 
@@ -247,26 +263,7 @@ const StickerEditorModal: React.FC<Props> = ({ file, onConfirm, onCancel, remove
         processed = await removeBg(originalFile);
         setNoBgFile(processed);
       }
-
-      const { Image: FabricImage } = await import('fabric');
-      const url = URL.createObjectURL(processed);
-      FabricImage.fromURL(url, { crossOrigin: 'anonymous' }, {}).then((img: any) => {
-        const width = img.width || MAX_CANVAS_WIDTH;
-        const height = img.height || MAX_CANVAS_HEIGHT;
-        const scale = Math.min(MAX_CANVAS_WIDTH / width, MAX_CANVAS_HEIGHT / height, 1);
-        const canvasWidth = Math.max(1, Math.round(width * scale));
-        const canvasHeight = Math.max(1, Math.round(height * scale));
-        canvas.setDimensions({
-          width: canvasWidth,
-          height: canvasHeight,
-        });
-        img.set({ left: 0, top: 0, originX: 'left', originY: 'top', scaleX: scale, scaleY: scale, selectable: false, evented: false, erasable: true, name: '__bg__' });
-        canvas.getObjects().filter((o: any) => o.name === '__bg__').forEach((o: any) => canvas.remove(o));
-        canvas.add(img);
-        canvas.sendObjectToBack(img);
-        canvas.renderAll();
-        URL.revokeObjectURL(url);
-      });
+      await swapBgImage(processed);
       setBgRemoved(true);
     } catch (err: any) {
       toast.error('Suppression de fond échouée: ' + (err?.message ?? 'erreur'));
