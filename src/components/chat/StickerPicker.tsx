@@ -9,6 +9,7 @@
 import React, {
   useRef, useEffect, useMemo, useState, useCallback,
 } from 'react';
+import { getFavoriteStickerIds } from '@/stickers/utils/favoriteStickers';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { PackagePlus, ShoppingBag } from 'lucide-react';
@@ -112,14 +113,22 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
 
   const { data: signedUrlMap = {} } = useSignedStickerUrls(allFilePaths);
 
-  /* ── Construit la liste de packs ── */
+  // Force re-render sur changement de favoris (écoute storage + state local)
+  const [favoriteVersion, setFavoriteVersion] = useState(0);
+  useEffect(() => {
+    const sync = () => setFavoriteVersion((v) => v + 1);
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+
   const stickerPacks = useMemo<StickerPack[]>(() => {
+    const favoriteIds = getFavoriteStickerIds();
     return (unlockedPacks as any[])
       .map((entry: any, index: number) => {
         const pack = entry?.sticker_packs;
         if (!pack?.id) return null;
 
-        const stickers: Sticker[] = (pack.stickers || [])
+        let stickers: Sticker[] = (pack.stickers || [])
           .filter((s: any) => s?.id && (s?.file_url || s?.file_path)
             && (!s.status || s.status === 'approved'))
           .map((s: any) => ({
@@ -128,6 +137,12 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
             path: s.file_path ?? null,
           }))
           .filter((s: Sticker) => !!s.url);
+
+        // Trie favoris d'abord
+        stickers = [
+          ...stickers.filter((s) => favoriteIds.includes(s.id)),
+          ...stickers.filter((s) => !favoriteIds.includes(s.id)),
+        ];
 
         /* icône du pack : URL signée si besoin, sinon URL directe */
         const rawIcon: string | null = pack.icon_url ?? null;
@@ -144,7 +159,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
         } satisfies StickerPack;
       })
       .filter((p): p is StickerPack => Boolean(p) && p.stickers.length > 0);
-  }, [unlockedPacks, signedUrlMap]);
+  }, [unlockedPacks, signedUrlMap, favoriteVersion]);
 
   /* Init du pack actif */
   useEffect(() => {

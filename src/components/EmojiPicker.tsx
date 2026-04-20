@@ -36,7 +36,7 @@ const emojiCategories: Record<CategoryKey, CategoryConfig> = {
     label: 'Sourires',
     accent: 'text-amber-500',
     softAccent: 'bg-amber-50 border-amber-200 text-amber-700',
-    emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '🤔', '🤗', '🤫', '🫢', '🤕'],
+    emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '�', '😙', '😚', '😋', '😛', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '🤔', '🤗', '🤫', '🫢', '🤕'],
   },
   emotions: {
     icon: Heart,

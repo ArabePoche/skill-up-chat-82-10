@@ -19,6 +19,7 @@ import { AdaptiveMessageMenu, type MenuOption } from '@/components/chat/Adaptive
 import { useLongPress } from '@/hooks/useLongPress';
 import ReplyReference from '@/components/chat/ReplyReference';
 import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
+import StickerPreviewModal from '@/stickers/components/StickerPreviewModal';
 
 /** Extract file_path from a Supabase signed sticker URL */
 function extractStickerFilePath(url: string): string | null {
@@ -96,6 +97,7 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
   const textContent = normalizedContent.trim();
   const isImageSticker = textContent.startsWith('STICKER:');
   const imageStickerUrl = isImageSticker ? textContent.replace('STICKER:', '') : null;
+  const [showStickerModal, setShowStickerModal] = useState(false);
 
   const isEmojiOnly = /^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\u200d|[\s])+$/u.test(textContent) && Array.from(textContent).length <= 5;
   const arabicStickers = ['جزاك الله خيرا', 'بارك الله فيك', 'تبارك الله', 'أستغفر الله', 'لا إله إلا الله', 'الله أكبر', 'رمضان كريم', 'عيد مبارك', 'الحمد لله', 'إن شاء الله', 'ما شاء الله', 'سبحان الله', '﷽', 'آمين'];
@@ -323,9 +325,21 @@ export const ConversationMessageBubble: React.FC<ConversationMessageBubbleProps>
             )}
 
             {isImageSticker && imageStickerUrl && (
-              <div className="w-[140px] sm:w-[180px] drop-shadow-lg aspect-square mb-2 animate-in zoom-in-75">
-                <StickerImage url={imageStickerUrl} />
-              </div>
+              <>
+                <div
+                  className="w-[140px] sm:w-[180px] drop-shadow-lg aspect-square mb-2 animate-in zoom-in-75 cursor-pointer"
+                  onClick={() => setShowStickerModal(true)}
+                  title="Agrandir le sticker"
+                >
+                  <StickerImage url={imageStickerUrl} />
+                </div>
+                <StickerPreviewModal
+                  open={showStickerModal}
+                  onClose={() => setShowStickerModal(false)}
+                  stickerId={extractStickerFilePath(imageStickerUrl) ?? imageStickerUrl}
+                  stickerUrl={(extractStickerFilePath(imageStickerUrl) && useSignedStickerUrls([extractStickerFilePath(imageStickerUrl)]).data?.[extractStickerFilePath(imageStickerUrl)!]) || imageStickerUrl}
+                />
+              </>
             )}
 
             {message.conversation_media && message.conversation_media.length > 0 && (

@@ -1,6 +1,6 @@
 // StickerPreviewModal — Modal de prévisualisation d'un sticker avec favoris et édition
 import React, { useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Edit3, X, Bookmark } from 'lucide-react';
 import { useStickerFavorites } from '../hooks/useStickerFavorites';
@@ -40,6 +40,9 @@ const StickerPreviewModal: React.FC<StickerPreviewModalProps> = ({
     <>
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-xs flex flex-col items-center gap-4 p-6">
+          <DialogTitle>
+            <span className="sr-only">Prévisualisation du sticker</span>
+          </DialogTitle>
           <button
             className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
             onClick={onClose}

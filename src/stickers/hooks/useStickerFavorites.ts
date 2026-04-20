@@ -7,7 +7,8 @@ const STORAGE_KEY = 'favorite_stickers';
 function getFavorites(): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -18,23 +19,28 @@ function setFavorites(ids: string[]) {
 }
 
 export function useStickerFavorites(stickerId: string) {
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [favorites, setFavoritesState] = useState<string[]>(() => getFavorites());
+  const isFavorite = favorites.includes(stickerId);
 
+  // Sync favorites from localStorage on mount and when storage changes (multi-tab)
   useEffect(() => {
-    const favs = getFavorites();
-    setIsFavorite(favs.includes(stickerId));
-  }, [stickerId]);
+    const sync = () => setFavoritesState(getFavorites());
+    window.addEventListener('storage', sync);
+    sync();
+    return () => window.removeEventListener('storage', sync);
+  }, []);
 
   const toggleFavorite = useCallback(() => {
-    const favs = getFavorites();
-    let updated: string[];
-    if (favs.includes(stickerId)) {
-      updated = favs.filter((id) => id !== stickerId);
-    } else {
-      updated = [...favs, stickerId];
-    }
-    setFavorites(updated);
-    setIsFavorite(updated.includes(stickerId));
+    setFavoritesState((prev) => {
+      let updated: string[];
+      if (prev.includes(stickerId)) {
+        updated = prev.filter((id) => id !== stickerId);
+      } else {
+        updated = [...prev, stickerId];
+      }
+      setFavorites(updated);
+      return updated;
+    });
   }, [stickerId]);
 
   return { isFavorite, toggleFavorite };
