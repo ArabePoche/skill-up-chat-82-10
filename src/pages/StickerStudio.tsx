@@ -58,9 +58,13 @@ const addPersonalId = (userId: string, packId: string) => {
 
 /* ─────────────────────────────────────────── */
 
+
+import { useLocation } from 'react-router-dom';
+
 const StickerStudio = () => {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activePackId, setActivePackId] = useState<string | null>(null);
 
   const { data: packs, isLoading: loadingPacks } = useCreatorStickerPacks();
@@ -94,6 +98,19 @@ const StickerStudio = () => {
     if (!user || !activePackId || activePackId === 'new') return isPersonalMode;
     return getPersonalIds(user.id).has(activePackId) || isPersonalMode;
   }, [user, activePackId, isPersonalMode]);
+
+  // Ajout : ouverture directe de l'éditeur si single=1 dans l'URL
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('single') === '1' && user) {
+      // Ouvre l'éditeur de sticker individuel
+      setIsPersonalMode(true);
+      setActivePackId(null); // Pas de pack actif
+      setTimeout(() => {
+        setEditingFile(new File([], 'nouveau-sticker.png', { type: 'image/png' }));
+      }, 200);
+    }
+  }, [location.search, user]);
 
   const processPackIconFile = useCallback(
     (file: File) => {

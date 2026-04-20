@@ -270,19 +270,20 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
             <ShoppingBag size={18} />
           </button>
 
-          {/* Studio */}
+          {/* Créer un sticker individuel */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onToggle();
-              // Ouvre le studio en mode personnel via un paramètre d'URL
-              navigate('/stickers/studio?personal=1');
+              // Ouvre le studio en mode personnel pour créer un sticker individuel
+              navigate('/stickers/studio?personal=1&single=1');
             }}
-            title="Créer un sticker personnel (visible uniquement par vous)"
-            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-violet-700 hover:bg-violet-50 transition-all duration-200 border border-violet-100"
+            title="Créer un sticker individuel (visible uniquement par vous)"
+            className="flex-shrink-0 flex items-center gap-2 w-auto h-10 px-3 justify-center rounded-xl text-violet-700 hover:bg-violet-50 transition-all duration-200 border border-violet-100 font-semibold"
           >
             <PackagePlus size={18} />
+            <span className="hidden sm:inline">Créer un sticker</span>
           </button>
 
           <StickerShopModal
