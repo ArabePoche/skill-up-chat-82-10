@@ -273,9 +273,14 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
           {/* Studio */}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggle(); navigate('/stickers/studio'); }}
-            title="Créer un pack"
-            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 transition-all duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+              // Ouvre le studio en mode personnel via un paramètre d'URL
+              navigate('/stickers/studio?personal=1');
+            }}
+            title="Créer un sticker personnel (visible uniquement par vous)"
+            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-violet-700 hover:bg-violet-50 transition-all duration-200 border border-violet-100"
           >
             <PackagePlus size={18} />
           </button>
