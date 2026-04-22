@@ -329,7 +329,7 @@ const Messages = () => {
         open={isDiscoveryOpen}
         onOpenChange={setIsDiscoveryOpen}
       />
-    </>
+    </div>
   );
 };
 
