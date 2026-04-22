@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Search, MoreVertical, Bell, UserPlus, Check, CheckCheck } from 'lucide-react';
+import { Search, MoreVertical, Bell, UserPlus, Check, CheckCheck, Users, Search as SearchIcon, Settings } from 'lucide-react';
 import { useConversationsList } from '@/hooks/messages/useConversationsList';
 import { useNotificationCategories } from '@/components/notifications/hooks/useNotificationCategories';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,14 @@ import { useTranslation } from 'react-i18next';
 import { useI18nReady } from '@/hooks/useI18nReady';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import ConversationsDesktopStoriesBar from '../conversations/components/desktop/ConversationsDesktopStoriesBar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import CreateGroupDialog from '@/components/groups/CreateGroupDialog';
+import SearchGroupsDialog from '@/components/groups/SearchGroupsDialog';
 
 const Messages = () => {
   const { t } = useTranslation();
@@ -26,6 +34,8 @@ const Messages = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [openCategories, setOpenCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [isSearchGroupsOpen, setIsSearchGroupsOpen] = useState(false);
 
   const { 
     data: conversations = [], 
@@ -111,13 +121,31 @@ const Messages = () => {
                     </span>
                   )}
                 </button>
-                <button
-                  type="button"
-                  className="rounded-full p-2 transition-colors hover:bg-white/12"
-                  aria-label={t('common.more', { defaultValue: 'Plus' })}
-                >
-                  <MoreVertical size={20} />
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="rounded-full p-2 transition-colors hover:bg-white/12"
+                      aria-label={t('common.more', { defaultValue: 'Plus' })}
+                    >
+                      <MoreVertical size={20} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setIsCreateGroupOpen(true)}>
+                      <Users className="w-4 h-4 mr-2" />
+                      Créer un groupe
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsSearchGroupsOpen(true)}>
+                      <SearchIcon className="w-4 h-4 mr-2" />
+                      Rechercher un groupe
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Paramètres (bientôt)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -279,19 +307,29 @@ const Messages = () => {
         </SheetContent>
       </Sheet>
 
-      <Button
-        onClick={() => setIsDiscoveryOpen(true)}
-        className="fixed bottom-20 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,#fb7185,#a855f7,#60a5fa)] p-0 text-white shadow-[0_18px_30px_rgba(168,85,247,0.28)] hover:brightness-105 md:bottom-6"
-        aria-label={t('messages.startDiscussion')}
-      >
-        <UserPlus size={24} className="text-white" />
-      </Button>
+      {/* Dialogs pour les groupes */}
+      <CreateGroupDialog
+        open={isCreateGroupOpen}
+        onClose={() => setIsCreateGroupOpen(false)}
+        onGroupCreated={(groupId) => {
+          setIsCreateGroupOpen(false);
+          navigate(`/groups/${groupId}`);
+        }}
+      />
+      <SearchGroupsDialog
+        open={isSearchGroupsOpen}
+        onClose={() => setIsSearchGroupsOpen(false)}
+        onGroupJoined={(groupId) => {
+          setIsSearchGroupsOpen(false);
+          navigate(`/groups/${groupId}`);
+        }}
+      />
 
       <ContactsDiscoveryDialog
         open={isDiscoveryOpen}
         onOpenChange={setIsDiscoveryOpen}
       />
-    </div>
+    </>
   );
 };
 
