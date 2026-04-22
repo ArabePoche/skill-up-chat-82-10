@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 interface Group {
     id: string;
@@ -47,19 +48,15 @@ const SearchGroupsDialog: React.FC<SearchGroupsDialogProps> = ({ open, onClose, 
     const searchGroups = async (query: string) => {
         setLoading(true);
         try {
-            const response = await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-groups?search=${encodeURIComponent(query)}&limit=20`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${user?.session?.access_token}`,
-                    },
-                }
-            );
+            const { data, error } = await supabase.functions.invoke('search-groups', {
+                body: {
+                    search: query,
+                    limit: 20,
+                },
+            });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Erreur lors de la recherche');
+            if (error) {
+                throw new Error(error.message || 'Erreur lors de la recherche');
             }
 
             setGroups(data.groups || []);
@@ -77,19 +74,14 @@ const SearchGroupsDialog: React.FC<SearchGroupsDialogProps> = ({ open, onClose, 
     const handleJoin = async (groupId: string) => {
         setJoining(groupId);
         try {
-            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/join-group`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${user?.session?.access_token}`,
-                    'Content-Type': 'application/json',
+            const { data, error } = await supabase.functions.invoke('join-group', {
+                body: {
+                    group_id: groupId,
                 },
-                body: JSON.stringify({ group_id: groupId }),
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Erreur lors de la jonction');
+            if (error) {
+                throw new Error(error.message || 'Erreur lors de la jonction');
             }
 
             toast.success(data.message || 'Demande envoyée avec succès');
@@ -99,7 +91,7 @@ const SearchGroupsDialog: React.FC<SearchGroupsDialogProps> = ({ open, onClose, 
                 g.id === groupId ? { ...g, is_member: true } : g
             ));
 
-            if (response.ok && data.message.includes('rejoint')) {
+            if (data.message.includes('rejoint')) {
                 onGroupJoined?.(groupId);
             }
         } catch (error: any) {

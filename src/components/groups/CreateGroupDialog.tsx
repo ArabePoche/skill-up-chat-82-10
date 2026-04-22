@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 interface CreateGroupDialogProps {
     open: boolean;
@@ -52,13 +53,8 @@ const CreateGroupDialog: React.FC<CreateGroupDialogProps> = ({ open, onClose, on
 
         setLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-group`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${user?.session?.access_token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+            const { data, error } = await supabase.functions.invoke('create-group', {
+                body: {
                     name: name.trim(),
                     description: description.trim() || undefined,
                     group_type: groupType,
@@ -66,20 +62,27 @@ const CreateGroupDialog: React.FC<CreateGroupDialogProps> = ({ open, onClose, on
                     join_approval_required: joinApprovalRequired,
                     audience_type: audienceType,
                     show_history_to_new_members: showHistory,
-                }),
+                },
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Erreur lors de la création du groupe');
+            if (error) {
+                throw new Error(error.message || 'Erreur lors de la création du groupe');
             }
 
-            toast.success('Groupe créé avec succès !');
+            toast.success('Groupe créé avec succès');
             onGroupCreated?.(data.group.id);
-            handleClose();
-        } catch (error: any) {
-            toast.error(error.message || 'Erreur lors de la création du groupe');
+            onClose();
+            // Reset form
+            setName('');
+            setDescription('');
+            setGroupType('MIXTE');
+            setAudienceType('ALL');
+            setShowHistory(false);
+            setIsVisibleInSearch(true);
+            setJoinApprovalRequired(false);
+        } catch (error) {
+            console.error('Error creating group:', error);
+            toast.error(error instanceof Error ? error.message : 'Erreur lors de la création du groupe');
         } finally {
             setLoading(false);
         }
