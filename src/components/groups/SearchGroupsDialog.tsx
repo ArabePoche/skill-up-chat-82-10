@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Group {
     id: string;
@@ -48,15 +48,27 @@ const SearchGroupsDialog: React.FC<SearchGroupsDialogProps> = ({ open, onClose, 
     const searchGroups = async (query: string) => {
         setLoading(true);
         try {
-            const { data, error } = await supabase.functions.invoke('search-groups', {
-                body: {
-                    search: query,
-                    limit: 20,
-                },
-            });
+            // Obtenir une session fraîche
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session?.access_token) {
+                toast.error('Vous devez être connecté pour rechercher des groupes');
+                return;
+            }
 
-            if (error) {
-                throw new Error(error.message || 'Erreur lors de la recherche');
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-groups?search=${encodeURIComponent(query)}&limit=20`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                    },
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erreur lors de la recherche');
             }
 
             setGroups(data.groups || []);
@@ -74,14 +86,27 @@ const SearchGroupsDialog: React.FC<SearchGroupsDialogProps> = ({ open, onClose, 
     const handleJoin = async (groupId: string) => {
         setJoining(groupId);
         try {
-            const { data, error } = await supabase.functions.invoke('join-group', {
-                body: {
-                    group_id: groupId,
+            // Obtenir une session fraîche
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session?.access_token) {
+                toast.error('Vous devez être connecté pour rejoindre un groupe');
+                return;
+            }
+
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/join-group`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({ group_id: groupId }),
             });
 
-            if (error) {
-                throw new Error(error.message || 'Erreur lors de la jonction');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erreur lors de la jonction');
             }
 
             toast.success(data.message || 'Demande envoyée avec succès');

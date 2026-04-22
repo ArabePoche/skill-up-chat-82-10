@@ -57,6 +57,7 @@ import { PushNotificationPrompt } from '@/components/notifications/PushNotificat
 import PrivateIncomingCallProvider from '@/conversations/components/PrivateIncomingCallProvider';
 import { ConversationForwardDialogProvider } from '@/conversations/ConversationForwardDialogProvider';
 import StickerStudio from '@/pages/StickerStudio';
+import DiscussionGroupChat from '@/pages/DiscussionGroupChat';
 
 
 // Cache-first : affichage instantané depuis IndexedDB, revalidation en arrière-plan
@@ -132,6 +133,9 @@ const AppWithRouter: React.FC = () => {
         
         {/* Routes pour conversations */}
         <Route path="/conversations/:otherUserId" element={<Conversations />} />
+        
+        {/* Routes pour les groupes de discussion */}
+        <Route path="/groups/:groupId" element={<DiscussionGroupChat />} />
         
         {/* Stickers */}
         <Route path="/stickers" element={<Navigate to="/stickers/studio" replace />} />

@@ -83,7 +83,28 @@ CREATE TABLE IF NOT EXISTS discussion_join_requests (
     UNIQUE(discussion_id, user_id)
 );
 
--- Index pour les requêtes fréquentes
+-- Index pour les requêtes fréquentes (supprimer d'abord s'ils existent)
+DROP INDEX IF EXISTS idx_discussion_groups_created_by;
+DROP INDEX IF EXISTS idx_discussion_groups_group_type;
+DROP INDEX IF EXISTS idx_discussion_groups_audience_type;
+DROP INDEX IF EXISTS idx_discussion_groups_visible;
+DROP INDEX IF EXISTS idx_discussion_groups_search;
+DROP INDEX IF EXISTS idx_discussion_groups_member_count;
+
+DROP INDEX IF EXISTS idx_discussion_members_discussion_id;
+DROP INDEX IF EXISTS idx_discussion_members_user_id;
+DROP INDEX IF EXISTS idx_discussion_members_role;
+DROP INDEX IF EXISTS idx_discussion_members_active;
+
+DROP INDEX IF EXISTS idx_discussion_messages_discussion_id;
+DROP INDEX IF EXISTS idx_discussion_messages_sender_id;
+DROP INDEX IF EXISTS idx_discussion_messages_created_at;
+DROP INDEX IF EXISTS idx_discussion_messages_reply_to;
+
+DROP INDEX IF EXISTS idx_discussion_join_requests_discussion_id;
+DROP INDEX IF EXISTS idx_discussion_join_requests_user_id;
+DROP INDEX IF EXISTS idx_discussion_join_requests_status;
+
 CREATE INDEX idx_discussion_groups_created_by ON discussion_groups(created_by);
 CREATE INDEX idx_discussion_groups_group_type ON discussion_groups(group_type);
 CREATE INDEX idx_discussion_groups_audience_type ON discussion_groups(audience_type);
@@ -114,16 +135,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_discussion_groups_updated_at ON discussion_groups;
 CREATE TRIGGER trg_discussion_groups_updated_at
     BEFORE UPDATE ON discussion_groups
     FOR EACH ROW
     EXECUTE FUNCTION update_discussion_updated_at();
 
+DROP TRIGGER IF EXISTS trg_discussion_members_updated_at ON discussion_members;
 CREATE TRIGGER trg_discussion_members_updated_at
     BEFORE UPDATE ON discussion_members
     FOR EACH ROW
     EXECUTE FUNCTION update_discussion_updated_at();
 
+DROP TRIGGER IF EXISTS trg_discussion_messages_updated_at ON discussion_messages;
 CREATE TRIGGER trg_discussion_messages_updated_at
     BEFORE UPDATE ON discussion_messages
     FOR EACH ROW
@@ -137,29 +161,30 @@ BEGIN
         UPDATE discussion_groups 
         SET member_count = member_count + 1,
             updated_at = NOW()
-        WHERE id = NEW.discussion_id;
+        WHERE discussion_groups.id = NEW.discussion_id;
     ELSIF TG_OP = 'UPDATE' THEN
         IF OLD.is_active = true AND NEW.is_active = false THEN
             UPDATE discussion_groups 
             SET member_count = member_count - 1,
                 updated_at = NOW()
-            WHERE id = NEW.discussion_id;
+            WHERE discussion_groups.id = NEW.discussion_id;
         ELSIF OLD.is_active = false AND NEW.is_active = true THEN
             UPDATE discussion_groups 
             SET member_count = member_count + 1,
                 updated_at = NOW()
-            WHERE id = NEW.discussion_id;
+            WHERE discussion_groups.id = NEW.discussion_id;
         END IF;
     ELSIF TG_OP = 'DELETE' AND OLD.is_active = true THEN
         UPDATE discussion_groups 
         SET member_count = member_count - 1,
             updated_at = NOW()
-        WHERE id = OLD.discussion_id;
+        WHERE discussion_groups.id = OLD.discussion_id;
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_update_discussion_member_count ON discussion_members;
 CREATE TRIGGER trg_update_discussion_member_count
     AFTER INSERT OR UPDATE OR DELETE ON discussion_members
     FOR EACH ROW
@@ -174,19 +199,20 @@ BEGIN
         SET message_count = message_count + 1,
             last_message_at = NEW.created_at,
             updated_at = NOW()
-        WHERE id = NEW.discussion_id;
+        WHERE discussion_groups.id = NEW.discussion_id;
     ELSIF TG_OP = 'UPDATE' THEN
         IF OLD.is_deleted = false AND NEW.is_deleted = true THEN
             UPDATE discussion_groups 
             SET message_count = message_count - 1,
                 updated_at = NOW()
-            WHERE id = NEW.discussion_id;
+            WHERE discussion_groups.id = NEW.discussion_id;
         END IF;
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_update_discussion_message_stats ON discussion_messages;
 CREATE TRIGGER trg_update_discussion_message_stats
     AFTER INSERT OR UPDATE ON discussion_messages
     FOR EACH ROW
@@ -226,6 +252,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Fonction pour créer une discussion
+DROP FUNCTION IF EXISTS create_discussion(text, text, text, text, boolean, boolean, text, boolean, uuid);
 CREATE OR REPLACE FUNCTION create_discussion(
     p_name TEXT,
     p_description TEXT,
@@ -237,7 +264,24 @@ CREATE OR REPLACE FUNCTION create_discussion(
     p_show_history_to_new_members BOOLEAN,
     p_created_by UUID
 )
-RETURNS UUID AS $$
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    description TEXT,
+    avatar_url TEXT,
+    group_type TEXT,
+    is_visible_in_search BOOLEAN,
+    join_approval_required BOOLEAN,
+    audience_type TEXT,
+    show_history_to_new_members BOOLEAN,
+    created_by UUID,
+    member_count INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
+)
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
     v_discussion_id UUID;
 BEGIN
@@ -267,7 +311,24 @@ BEGIN
     INSERT INTO discussion_members (discussion_id, user_id, role)
     VALUES (v_discussion_id, p_created_by, 'ADMIN');
     
-    RETURN v_discussion_id;
+    -- Retourner le groupe créé
+    RETURN QUERY
+    SELECT 
+        discussion_groups.id,
+        discussion_groups.name,
+        discussion_groups.description,
+        discussion_groups.avatar_url,
+        discussion_groups.group_type,
+        discussion_groups.is_visible_in_search,
+        discussion_groups.join_approval_required,
+        discussion_groups.audience_type,
+        discussion_groups.show_history_to_new_members,
+        discussion_groups.created_by,
+        discussion_groups.member_count,
+        discussion_groups.created_at,
+        discussion_groups.updated_at
+    FROM discussion_groups
+    WHERE discussion_groups.id = v_discussion_id;
 END;
 $$ LANGUAGE plpgsql;
 

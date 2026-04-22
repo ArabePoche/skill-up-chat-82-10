@@ -22,7 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CreateGroupDialogProps {
     open: boolean;
@@ -53,8 +53,21 @@ const CreateGroupDialog: React.FC<CreateGroupDialogProps> = ({ open, onClose, on
 
         setLoading(true);
         try {
-            const { data, error } = await supabase.functions.invoke('create-group', {
-                body: {
+            // Obtenir une session fraîche
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session?.access_token) {
+                toast.error('Vous devez être connecté pour créer un groupe');
+                return;
+            }
+
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-group`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
                     name: name.trim(),
                     description: description.trim() || undefined,
                     group_type: groupType,
@@ -62,12 +75,15 @@ const CreateGroupDialog: React.FC<CreateGroupDialogProps> = ({ open, onClose, on
                     join_approval_required: joinApprovalRequired,
                     audience_type: audienceType,
                     show_history_to_new_members: showHistory,
-                },
+                }),
             });
 
-            if (error) {
-                throw new Error(error.message || 'Erreur lors de la création du groupe');
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Erreur lors de la création du groupe');
             }
+
+            const data = await response.json();
 
             toast.success('Groupe créé avec succès');
             onGroupCreated?.(data.group.id);

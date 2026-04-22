@@ -8,7 +8,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { 
       status: 200,
@@ -17,19 +16,29 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
         },
       }
     )
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      console.error('Auth error:', userError)
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError?.message }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -53,7 +62,6 @@ serve(async (req) => {
       show_history_to_new_members = false,
     } = await req.json()
 
-    // Validation
     if (!name || name.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'Name is required' }), {
         status: 400,
@@ -75,39 +83,54 @@ serve(async (req) => {
       })
     }
 
-    // Créer le groupe en utilisant la fonction SQL
-    const { data: groupId, error: createError } = await supabaseClient.rpc('create_discussion', {
-      p_name: name.trim(),
-      p_description: description?.trim() || null,
-      p_avatar_url: avatar_url || null,
-      p_group_type: group_type,
-      p_is_visible_in_search: is_visible_in_search,
-      p_join_approval_required: join_approval_required,
-      p_audience_type: audience_type,
-      p_show_history_to_new_members: show_history_to_new_members,
-      p_created_by: user.id,
-    })
+    // SOLUTION ULTRA SIMPLE : Insertion directe sans select
+    // 1. Créer le groupe
+    const { data: insertedGroups, error: insertError } = await supabaseClient
+      .from('discussion_groups')
+      .insert({
+        name: name.trim(),
+        description: description?.trim() || null,
+        avatar_url: avatar_url || null,
+        group_type: group_type,
+        is_visible_in_search: is_visible_in_search,
+        join_approval_required: join_approval_required,
+        audience_type: audience_type,
+        show_history_to_new_members: show_history_to_new_members,
+        created_by: user.id,
+        member_count: 1,
+      })
+      .select()
 
-    if (createError) {
-      console.error('Error creating group:', createError)
-      return new Response(JSON.stringify({ error: createError.message }), {
+    if (insertError) {
+      console.error('Error inserting group:', insertError)
+      return new Response(JSON.stringify({ error: insertError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Récupérer le groupe créé
-    const { data: group, error: fetchError } = await supabaseClient
-      .from('discussion_groups')
-      .select('*')
-      .eq('id', groupId)
-      .single()
-
-    if (fetchError) {
-      return new Response(JSON.stringify({ error: fetchError.message }), {
+    if (!insertedGroups || insertedGroups.length === 0) {
+      return new Response(JSON.stringify({ error: 'Failed to create group' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    const group = insertedGroups[0]
+
+    // 2. Ajouter le créateur comme admin
+    const { error: memberError } = await supabaseClient
+      .from('discussion_members')
+      .insert({
+        discussion_id: group.id,
+        user_id: user.id,
+        role: 'ADMIN',
+        is_active: true,
+      })
+
+    if (memberError) {
+      console.error('Error adding member:', memberError)
+      // On ne retourne pas d'erreur ici
     }
 
     return new Response(JSON.stringify({ group }), {

@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import CreateGroupDialog from '@/components/groups/CreateGroupDialog';
 import SearchGroupsDialog from '@/components/groups/SearchGroupsDialog';
+import { useDiscussionGroups } from '@/hooks/groups/useDiscussionGroups';
 
 const Messages = () => {
   const { t } = useTranslation();
@@ -43,6 +44,11 @@ const Messages = () => {
     error: conversationsError 
   } = useConversationsList(true);
 
+  const { 
+    data: groups = [], 
+    isLoading: groupsLoading 
+  } = useDiscussionGroups(true);
+
   const { data: categories = [], isLoading: categoriesLoading } = useNotificationCategories();
   
   const isAdmin = profile?.role === 'admin';
@@ -50,22 +56,30 @@ const Messages = () => {
   // Compter les notifications non lues (somme de toutes les catégories)
   const unreadNotifications = categories.reduce((sum, cat) => sum + cat.unreadCount, 0);
 
-  // Filtrer les conversations selon la recherche
-  const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
+  // Combiner conversations et groupes
+  const allItems = useMemo(() => {
+    return [...conversations, ...groups];
+  }, [conversations, groups]);
+
+  // Filtrer selon la recherche
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return allItems;
     
     const query = searchQuery.toLowerCase().trim();
-    return conversations.filter(conv => 
-      conv.name?.toLowerCase().includes(query) || 
-      conv.lastMessage?.toLowerCase().includes(query)
+    return allItems.filter(item => 
+      item.name?.toLowerCase().includes(query) || 
+      item.lastMessage?.toLowerCase().includes(query) ||
+      item.description?.toLowerCase().includes(query)
     );
-  }, [conversations, searchQuery]);
+  }, [allItems, searchQuery]);
 
   // Pas de groupement par date, afficher directement les conversations
 
   const handleConversationClick = (conversation: any) => {
     if (conversation.type === 'direct_message') {
       navigate(`/conversations/${conversation.otherUserId}`);
+    } else if (conversation.type === 'group') {
+      navigate(`/groups/${conversation.groupId}`);
     } else if (conversation.type === 'formation_teacher' || conversation.type === 'formation_student') {
       navigate(`/cours/formation/${conversation.formationId}`);
     }
@@ -167,54 +181,54 @@ const Messages = () => {
                 </div>
 
                 <div className="divide-y divide-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.30),rgba(255,255,255,0.16))]">
-                  {filteredConversations.length > 0 ? (
-                    filteredConversations.map((conversation) => (
+                  {filteredItems.length > 0 ? (
+                    filteredItems.map((item) => (
                       <div
-                        key={conversation.id}
+                        key={item.id}
                         className="flex cursor-pointer items-center p-4 transition-colors hover:bg-white/32"
-                        onClick={() => handleConversationClick(conversation)}
+                        onClick={() => handleConversationClick(item)}
                       >
                         <div className="relative mr-3">
                           <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#f472b6,#a855f7,#60a5fa)] text-white shadow-sm">
-                            {typeof conversation.avatar === 'string' && (conversation.avatar.startsWith('http') || conversation.avatar.startsWith('data:') || conversation.avatar.startsWith('blob:')) ? (
+                            {typeof item.avatar === 'string' && (item.avatar.startsWith('http') || item.avatar.startsWith('data:') || item.avatar.startsWith('blob:')) ? (
                               <img 
-                                src={conversation.avatar} 
-                                alt={conversation.name}
+                                src={item.avatar} 
+                                alt={item.name}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <span className="text-white font-bold text-xl">{conversation.avatar}</span>
+                              <span className="text-white font-bold text-xl">{item.avatar}</span>
                             )}
                           </div>
-                          {conversation.online && (
+                          {item.online && (
                             <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-400"></div>
                           )}
                         </div>
                         
                         <div className="min-w-0 flex-1">
                           <div className="mb-1 flex items-center justify-between">
-                            <h3 className="truncate font-medium text-slate-900">{conversation.name}</h3>
+                            <h3 className="truncate font-medium text-slate-900">{item.name}</h3>
                             <span className="flex-shrink-0 text-xs text-slate-500">
-                              {formatMessageTime(conversation.created_at || new Date())}
+                              {formatMessageTime(item.created_at || new Date())}
                             </span>
                           </div>
                           <div className="flex items-center gap-1">
-                            {conversation.lastMsgIsOwn && (
-                              conversation.lastMsgIsRead ? (
+                            {item.lastMsgIsOwn && (
+                              item.lastMsgIsRead ? (
                                 <CheckCheck size={16} className="flex-shrink-0 text-sky-500" />
-                              ) : conversation.lastMsgIsDelivered ? (
+                              ) : item.lastMsgIsDelivered ? (
                                 <CheckCheck size={16} className="flex-shrink-0 text-slate-400" />
                               ) : (
                                 <Check size={16} className="flex-shrink-0 text-slate-400" />
                               )
                             )}
-                            <p className="truncate text-sm text-slate-600">{conversation.lastMessage}</p>
+                            <p className="truncate text-sm text-slate-600">{item.lastMessage || item.description || ''}</p>
                           </div>
                         </div>
                         
-                        {conversation.unread > 0 && (
+                        {item.unread > 0 && (
                           <div className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ec4899,#8b5cf6,#3b82f6)] text-xs text-white shadow-sm">
-                            {conversation.unread}
+                            {item.unread}
                           </div>
                         )}
                       </div>
@@ -313,7 +327,7 @@ const Messages = () => {
         onClose={() => setIsCreateGroupOpen(false)}
         onGroupCreated={(groupId) => {
           setIsCreateGroupOpen(false);
-          navigate(`/groups/${groupId}`);
+          navigate('/messages');
         }}
       />
       <SearchGroupsDialog
@@ -321,7 +335,7 @@ const Messages = () => {
         onClose={() => setIsSearchGroupsOpen(false)}
         onGroupJoined={(groupId) => {
           setIsSearchGroupsOpen(false);
-          navigate(`/groups/${groupId}`);
+          navigate('/messages');
         }}
       />
 
