@@ -26,9 +26,9 @@ CREATE INDEX idx_product_batches_batch_number ON product_batches(batch_number);
 CREATE UNIQUE INDEX idx_product_batches_unique_batch ON product_batches(shop_id, product_id, batch_number);
 
 -- Commentaires
-COMMENT ON TABLE product_batches IS 'Lots de produits avec dates d\'expiration pour gestion FEFO';
+COMMENT ON TABLE product_batches IS 'Lots de produits avec dates d''expiration pour gestion FEFO';
 COMMENT ON COLUMN product_batches.batch_number IS 'Numéro de lot (généré automatiquement si non renseigné)';
-COMMENT ON COLUMN product_batches.expiry_date IS 'Date d\'expiration du lot';
+COMMENT ON COLUMN product_batches.expiry_date IS 'Date d''expiration du lot';
 COMMENT ON COLUMN product_batches.sector_data IS 'Données spécifiques au secteur (date de péremption, dosage, etc.)';
 
 -- Fonction pour générer un numéro de lot automatiquement
