@@ -111,7 +111,10 @@ export const useApplyStudentDecision = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      
+      // Invalider aussi les stats de paiement pour mettre à jour les montants
+      queryClient.invalidateQueries({ queryKey: ['monthly-payment-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-payment-tracking'] });
+
       let message = '';
       switch (result.decision_type) {
         case 'promotion':

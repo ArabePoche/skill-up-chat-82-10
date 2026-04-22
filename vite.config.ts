@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ['favicon.ico', 'icons/icon-192.webp', 'icons/icon-512.webp', 'offline.html'],
       workbox: {
         globPatterns: mode === 'production' ? ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'] : [],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: '/offline.html',
         navigateFallbackDenylist: [/^\/api/],
