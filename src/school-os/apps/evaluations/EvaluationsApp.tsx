@@ -46,9 +46,9 @@ export const EvaluationsApp: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-4">
             <TabsTrigger value="evaluations" className="gap-2">
               <ClipboardList className="h-4 w-4" />
               {t('schoolOS.apps.evaluations')}

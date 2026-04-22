@@ -67,7 +67,7 @@ const ConversationDiscussionPanel = ({
 }: ConversationDiscussionPanelProps) => {
   return (
     <div className="flex flex-1 flex-col min-h-0 bg-white/58 lg:h-full lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/60 lg:shadow-[0_24px_60px_rgba(124,58,237,0.10)] lg:backdrop-blur-2xl">
-      <div className="sticky top-0 z-10 flex items-center space-x-4 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.34),transparent_34%),radial-gradient(circle_at_top_right,rgba(167,139,250,0.32),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.30),rgba(255,255,255,0.10)),linear-gradient(135deg,#fb7185,#a855f7,#60a5fa)] p-4 text-white md:top-16 lg:top-0 lg:rounded-t-[28px]">
+      <div className="sticky top-0 z-10 flex items-center space-x-4 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.34),transparent_34%),radial-gradient(circle_at_top_right,rgba(167,139,250,0.32),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.30),rgba(255,255,255,0.10)),linear-gradient(135deg,#fb7185,#a855f7,#60a5fa)] p-4 text-white">
         <button onClick={onBack} className="rounded-full p-2 transition hover:bg-white/10 lg:hidden">
           <ArrowLeft size={24} />
         </button>
@@ -152,7 +152,7 @@ const ConversationDiscussionPanel = ({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="mt-auto shrink-0 border-t border-white/40 bg-white/70 backdrop-blur-xl p-3 pb-[env(safe-area-inset-bottom,12px)] lg:p-4 lg:rounded-b-[28px]">
+      <div className="mt-auto shrink-0 border-t border-white/40 bg-white/70 backdrop-blur-xl p-3 pb-2 lg:p-4 lg:rounded-b-[28px]">
         <ChatInputBar
           onSendMessage={onSendMessage}
           onTyping={onTyping}

@@ -292,7 +292,7 @@ export const GradesApp: React.FC = () => {
         </TabsList>
 
         {/* Onglet Saisie des Notes */}
-        <TabsContent value="grades" className="flex-1 overflow-hidden m-0 flex flex-col">
+        <TabsContent value="grades" className="flex-1 overflow-hidden m-0 flex flex-col data-[state=inactive]:hidden">
           {/* Sous-onglets pour Évaluations et Compositions */}
           <Tabs value={gradeSubTab} onValueChange={(v) => setGradeSubTab(v as 'evaluations' | 'compositions')} className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="grid w-full grid-cols-2 mb-1 flex-shrink-0">
@@ -307,7 +307,7 @@ export const GradesApp: React.FC = () => {
             </TabsList>
 
             {/* Sous-onglet Évaluations */}
-            <TabsContent value="evaluations" className="flex-1 overflow-hidden m-0 flex flex-col">
+            <TabsContent value="evaluations" className="flex-1 overflow-hidden m-0 flex flex-col data-[state=inactive]:hidden">
               {/* Filtres */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 flex-shrink-0">
                 <div>
@@ -477,7 +477,7 @@ export const GradesApp: React.FC = () => {
             </TabsContent>
 
             {/* Sous-onglet Compositions */}
-            <TabsContent value="compositions" className="flex-1 overflow-hidden m-0 mt-0 flex flex-col">
+            <TabsContent value="compositions" className="flex-1 overflow-hidden m-0 mt-0 flex flex-col data-[state=inactive]:hidden">
               <CompositionsGradeEntry
                 availableClasses={availableClasses}
                 isTeacher={isTeacher}

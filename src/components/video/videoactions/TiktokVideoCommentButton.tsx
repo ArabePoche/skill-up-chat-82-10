@@ -19,11 +19,11 @@ const TiktokVideoCommentButton: React.FC<TiktokVideoCommentButtonProps> = ({
         variant="ghost"
         size="icon"
         onClick={onCommentClick}
-        className="w-12 h-12 rounded-full text-white transition-all hover:scale-110 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+        className="w-auto h-auto p-1 rounded-none text-white transition-all hover:scale-110"
       >
-        <MessageCircle size={28} fill="currentColor" />
+        <MessageCircle size={32} className="fill-white stroke-white" />
       </Button>
-      <span className="text-white text-xs mt-0.5 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+      <span className="text-white text-xs mt-0.5 font-medium">
         {formatCount(commentsCount)}
       </span>
     </div>

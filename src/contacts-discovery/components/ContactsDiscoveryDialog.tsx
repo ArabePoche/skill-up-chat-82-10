@@ -61,6 +61,8 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSynced, setHasSynced] = useState(false);
   const [allPhoneContacts, setAllPhoneContacts] = useState<{ name: string; phoneNumbers: string[] }[]>([]);
+  const [manualContact, setManualContact] = useState({ name: '', phone: '' });
+  const [showManualInput, setShowManualInput] = useState(false);
 
   const { requestContacts, isLoading: isLoadingContacts } = usePhoneContacts();
   const { matchingUsers, isLoading: isLoadingMatches, findMatchingUsers } = useMatchingUsers();
@@ -96,6 +98,36 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
       }
     }
     setHasSynced(true);
+  };
+
+  const handleAddManualContact = async () => {
+    if (!manualContact.name || !manualContact.phone) {
+      toast({
+        title: "Champs manquants",
+        description: "Veuillez remplir le nom et le numéro de téléphone",
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const newContact = {
+      name: manualContact.name,
+      phoneNumbers: [manualContact.phone],
+    };
+
+    setAllPhoneContacts(prev => [...prev, newContact]);
+    
+    // Rechercher les correspondances pour ce contact
+    await findMatchingUsers([manualContact.phone]);
+    
+    setManualContact({ name: '', phone: '' });
+    setShowManualInput(false);
+    setHasSynced(true);
+
+    toast({
+      title: "Contact ajouté",
+      description: `${manualContact.name} a été ajouté à la liste`,
+    });
   };
 
   const handleInvite = (contact: { name: string; phoneNumbers: string[] }) => {
@@ -214,13 +246,22 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
 
         {/* Titre section */}
         {hasSynced && !isLoading && displayContacts.length > 0 && (
-          <div className="shrink-0 px-4 py-2">
+          <div className="shrink-0 px-4 py-2 flex items-center justify-between">
             <h3 className="text-lg font-bold">
               {registeredCount > 0
                 ? `Discute avec tes amis sur `
                 : `Invite-les à te rejoindre sur `}
               <span className="text-amber-400">SkillUp</span>
             </h3>
+            <Button
+              onClick={() => setShowManualInput(!showManualInput)}
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Ajouter
+            </Button>
           </div>
         )}
 
@@ -238,10 +279,68 @@ export const ContactsDiscoveryDialog = ({ open, onOpenChange }: ContactsDiscover
                   Trouve tes amis déjà inscrits et invite les autres
                 </p>
               </div>
-              <Button onClick={handleSync} className="gap-2 rounded-full h-12 px-6">
-                <UserPlus className="h-4 w-4" />
-                Synchroniser
-              </Button>
+              <div className="flex gap-2">
+                {isNative && (
+                  <Button onClick={handleSync} className="gap-2 rounded-full h-12 px-6">
+                    <UserPlus className="h-4 w-4" />
+                    Synchroniser
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => setShowManualInput(true)} 
+                  variant={isNative ? "outline" : "default"}
+                  className="gap-2 rounded-full h-12 px-6"
+                >
+                  <Mail className="h-4 w-4" />
+                  Ajouter manuellement
+                </Button>
+              </div>
+              {!isNative && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  L'accès aux contacts n'est disponible que sur mobile
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Formulaire de saisie manuelle */}
+          {showManualInput && (
+            <div className="space-y-4 py-6 px-4 bg-muted/50 rounded-2xl mb-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Nom du contact</label>
+                <Input
+                  placeholder="Ex: Jean Dupont"
+                  value={manualContact.name}
+                  onChange={(e) => setManualContact(prev => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Numéro de téléphone</label>
+                <Input
+                  placeholder="Ex: 06 12 34 56 78"
+                  value={manualContact.phone}
+                  onChange={(e) => setManualContact(prev => ({ ...prev, phone: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleAddManualContact} 
+                  className="flex-1 gap-2 rounded-full h-12"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Ajouter
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowManualInput(false);
+                    setManualContact({ name: '', phone: '' });
+                  }}
+                  variant="outline"
+                  className="rounded-full h-12 px-6"
+                >
+                  Annuler
+                </Button>
+              </div>
             </div>
           )}
 

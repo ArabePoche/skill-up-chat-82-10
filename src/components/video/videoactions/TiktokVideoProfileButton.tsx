@@ -29,11 +29,11 @@ const TiktokVideoProfileButton: React.FC<TiktokVideoProfileButtonProps> = ({
   return (
     <div className="relative flex flex-col items-center">
       <div 
-        className={`relative rounded-full cursor-pointer hover:opacity-90 transition-opacity ${activeLiveStream ? 'p-0.5 bg-gradient-to-tr from-pink-500 via-red-500 to-orange-500 animate-pulse' : ''}`}
+        className={`relative cursor-pointer hover:opacity-90 transition-opacity ${activeLiveStream ? 'p-0.5 bg-gradient-to-tr from-pink-500 via-red-500 to-orange-500 animate-pulse rounded-full' : ''}`}
         onClick={onProfileClick}
       >
         <Avatar 
-          className={`w-12 h-12 border-[1.5px] border-white ${activeLiveStream ? 'border-2 border-black/80' : ''}`}
+          className={`w-10 h-10 border border-white ${activeLiveStream ? 'border-2 border-black/80' : 'rounded-full'}`}
         >
           <AvatarImage src={authorProfile?.avatar_url} />
           <AvatarFallback className="bg-gray-600 text-white text-sm">
@@ -57,9 +57,9 @@ const TiktokVideoProfileButton: React.FC<TiktokVideoProfileButtonProps> = ({
           }}
           disabled={isFollowLoading}
           size="sm"
-          className="absolute -bottom-2 z-10 w-5 h-5 p-0 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600 border border-white"
+          className="absolute -bottom-1 z-10 w-4 h-4 p-0 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-600 border border-white"
         >
-          <Plus size={12} />
+          <Plus size={10} />
         </Button>
       )}
     </div>

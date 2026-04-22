@@ -25,6 +25,7 @@ export interface CartSaleInput {
   shopId: string;
   items: PosCartItem[];
   customerName?: string;
+  customerId?: string; // ID du client pour lier les achats
   paymentMethod: string;
   notes?: string;
   agentId?: string; // ID de l'agent qui effectue la vente
@@ -75,6 +76,7 @@ export const useCreateCartSale = () => {
             unit_price: item.product.price,
             total_amount: item.product.price * item.quantity,
             cost_price: item.product.cost_price || 0,
+            customer_id: sale.customerId || null, // Lier le client par ID
             customer_name: sale.customerName || null,
             payment_method: sale.paymentMethod || 'cash',
             notes: sale.notes || null,
@@ -86,22 +88,67 @@ export const useCreateCartSale = () => {
 
         if (saleErr) throw saleErr;
 
-        // Mettre à jour le stock sur le serveur
-        const { data: product, error: fetchErr } = await supabase
-          .from('physical_shop_products')
-          .select('stock_quantity')
-          .eq('id', item.product.id)
-          .single();
+        // Mettre à jour le stock sur le serveur en déduisant des lots selon FEFO
+        // Récupérer les lots disponibles (non expirés) triés par date d'expiration
+        const { data: batches, error: batchesErr } = await supabase
+          .from('product_batches')
+          .select('*')
+          .eq('product_id', item.product.id)
+          .gte('expiry_date', new Date().toISOString().split('T')[0])
+          .order('expiry_date', { ascending: true });
 
-        if (fetchErr) throw fetchErr;
+        if (batchesErr) throw batchesErr;
 
-        const newStock = (product.stock_quantity || 0) - item.quantity;
-        const { error: updateErr } = await supabase
+        if (!batches || batches.length === 0) {
+          throw new Error(`Aucun lot disponible pour le produit ${item.product.name}`);
+        }
+
+        let remainingQuantity = item.quantity;
+        const updatedBatchIds: string[] = [];
+
+        // Déduire selon FEFO (First Expired First Out)
+        for (const batch of batches) {
+          if (remainingQuantity <= 0) break;
+
+          const deductQuantity = Math.min(remainingQuantity, batch.quantity);
+          const newBatchQuantity = batch.quantity - deductQuantity;
+
+          // Mettre à jour ou supprimer le lot
+          if (newBatchQuantity > 0) {
+            const { error: updateBatchErr } = await supabase
+              .from('product_batches')
+              .update({ quantity: newBatchQuantity })
+              .eq('id', batch.id);
+            if (updateBatchErr) throw updateBatchErr;
+            updatedBatchIds.push(batch.id);
+          } else {
+            const { error: deleteBatchErr } = await supabase
+              .from('product_batches')
+              .delete()
+              .eq('id', batch.id);
+            if (deleteBatchErr) throw deleteBatchErr;
+          }
+
+          remainingQuantity -= deductQuantity;
+        }
+
+        if (remainingQuantity > 0) {
+          throw new Error(`Stock insuffisant pour le produit ${item.product.name} (manque: ${remainingQuantity})`);
+        }
+
+        // Recalculer le stock total du produit
+        const { data: allBatches } = await supabase
+          .from('product_batches')
+          .select('quantity')
+          .eq('product_id', item.product.id);
+
+        const newStock = allBatches?.reduce((sum: number, b: any) => sum + b.quantity, 0) || 0;
+        const { error: updateProductErr } = await supabase
           .from('physical_shop_products')
           .update({ stock_quantity: newStock })
           .eq('id', item.product.id);
 
-        if (updateErr) throw updateErr;
+        if (updateProductErr) throw updateProductErr;
 
         results.push(data);
       }

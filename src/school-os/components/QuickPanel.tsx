@@ -36,8 +36,8 @@ export const QuickPanel: React.FC<QuickPanelProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] flex items-end md:items-center justify-center p-4">
-      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] flex items-end md:items-center justify-center p-4 pointer-events-none">
+      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col pointer-events-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
           <h2 className="text-xl font-bold">{t('schoolOS.common.applications', 'Applications')}</h2>

@@ -15,11 +15,11 @@ const TiktokVideoSeriesButton: React.FC<TiktokVideoSeriesButtonProps> = ({ onSer
         variant="ghost"
         size="icon"
         onClick={onSeriesClick}
-        className="w-12 h-12 rounded-full bg-primary/80 backdrop-blur-sm text-white hover:bg-primary"
+        className="w-auto h-auto p-1 rounded-none text-white hover:bg-white/10"
       >
-        <List size={24} />
+        <List size={32} className="fill-white stroke-white" />
       </Button>
-      <span className="text-white text-xs mt-1 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+      <span className="text-white text-xs mt-0.5 font-medium">
         {t('video.series')}
       </span>
     </div>

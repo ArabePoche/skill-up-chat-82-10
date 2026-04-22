@@ -22,6 +22,24 @@ export const SchoolYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   // Récupérer l'école depuis l'URL ou l'école de l'utilisateur
   const { data: userSchool } = useUserSchool(user?.id);
+  
+  // Essayer de récupérer l'école depuis le cache hors ligne si nécessaire
+  const [cachedSchool, setCachedSchool] = useState<School | null>(null);
+  
+  useEffect(() => {
+    // Si hors ligne et pas d'école disponible, essayer le cache
+    if (!userSchool && !schoolIdFromUrl) {
+      const cached = localStorage.getItem('cached_school');
+      if (cached) {
+        try {
+          setCachedSchool(JSON.parse(cached));
+        } catch (e) {
+          console.error('Error parsing cached school:', e);
+        }
+      }
+    }
+  }, [userSchool, schoolIdFromUrl]);
+
   const { data: schoolFromUrl } = useQuery({
     queryKey: ['school', schoolIdFromUrl],
     queryFn: async () => {
@@ -36,12 +54,25 @@ export const SchoolYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.error('Error fetching school:', error);
         return null;
       }
+      
+      // Mettre en cache l'école pour usage hors ligne
+      if (data) {
+        localStorage.setItem('cached_school', JSON.stringify(data));
+      }
+      
       return data as School;
     },
     enabled: !!schoolIdFromUrl,
   });
 
-  const school = schoolFromUrl || userSchool;
+  // Mettre en cache l'école de l'utilisateur quand elle est disponible
+  useEffect(() => {
+    if (userSchool) {
+      localStorage.setItem('cached_school', JSON.stringify(userSchool));
+    }
+  }, [userSchool]);
+
+  const school = schoolFromUrl || userSchool || cachedSchool;
   const { data: schoolYears = [], isLoading } = useSchoolYears(school?.id);
   const [activeSchoolYear, setActiveSchoolYear] = useState<SchoolYear | null>(null);
 

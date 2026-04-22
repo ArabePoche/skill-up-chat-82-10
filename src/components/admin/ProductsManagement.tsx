@@ -3,10 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Edit, Trash2, Plus, ScanBarcode } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +13,8 @@ import { useFileUpload } from '@/hooks/useFileUpload';
 import { useUserRole } from '@/hooks/useAuth';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { CameraBarcodeScanner } from '@/components/shop/boutique/CameraBarcodeScanner';
+import DynamicProductForm from '@/components/products/DynamicProductForm';
+import { ProductFormData } from '@/types/product-form';
 
 const ProductsManagement = () => {
   const queryClient = useQueryClient();
@@ -277,6 +276,32 @@ const ProductsManagement = () => {
     }
   };
 
+  const handleDynamicFormSubmit = (data: ProductFormData & { images?: File[] }) => {
+    // Récupérer le product_type depuis les données du type sélectionné
+    const selectedProductType = productTypes?.find(type => type.id === data.product_type_id);
+    const productType: 'formation' | 'article' | 'service' = 
+      selectedProductType?.name === 'formation' ? 'formation' :
+      selectedProductType?.name === 'service' ? 'service' : 'article';
+
+    createProductMutation.mutate({
+      title: data.title,
+      description: data.description,
+      price: data.price,
+      product_category_id: data.product_category_id,
+      product_type_id: data.product_type_id,
+      is_active: data.is_active,
+      product_type: productType,
+      characteristics: data.characteristics,
+      stock: data.stock,
+      condition: data.condition,
+      size: data.size,
+      color: data.color,
+      barcode: data.barcode,
+      delivery_available: data.delivery_available,
+      images: data.images || productImages,
+    });
+  };
+
   if (isLoading || isLoadingRole) {
     return <div className="text-center py-8">Chargement des produits...</div>;
   }
@@ -302,170 +327,17 @@ const ProductsManagement = () => {
                 Nouveau produit
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>Créer un nouveau produit</DialogTitle>
             </DialogHeader>
-            <form onSubmit={(e) => handleSubmit(e)} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-              <div>
-                <label className="block text-sm font-medium mb-1">Nom</label>
-                <Input name="title" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <Textarea name="description" required />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Prix (€)</label>
-                  <Input name="price" type="number" min="0" step="0.01" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Stock</label>
-                  <Input name="stock" type="number" min="0" defaultValue="0" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Code-barres</label>
-                <div className="flex gap-2">
-                  <Input
-                    name="barcode"
-                    value={barcodeValue}
-                    onChange={(e) => setBarcodeValue(e.target.value)}
-                    placeholder="Scannez avec la douchette ou saisissez le code"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCameraScannerOpen(true)}
-                  >
-                    <ScanBarcode size={16} className="mr-2" />
-                    Scanner
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Catégorie</label>
-                <Select 
-                  value={selectedCategory} 
-                  onValueChange={(value) => {
-                    setSelectedCategory(value);
-                    setSelectedType(''); // Reset type quand catégorie change
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une catégorie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoriesLoading ? (
-                      <SelectItem value="loading" disabled>Chargement...</SelectItem>
-                    ) : categories && categories.length > 0 ? (
-                      categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="empty" disabled>Aucune catégorie disponible</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Type de produit</label>
-                <Select 
-                  value={selectedType} 
-                  onValueChange={setSelectedType}
-                  disabled={!selectedCategory}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      !selectedCategory 
-                        ? "Sélectionnez d'abord une catégorie" 
-                        : "Sélectionner un type"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {typesLoading ? (
-                      <SelectItem value="loading" disabled>Chargement...</SelectItem>
-                    ) : productTypes && productTypes.length > 0 ? (
-                      productTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.label || type.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="empty" disabled>Aucun type disponible pour cette catégorie</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Taille</label>
-                  <Input name="size" placeholder="Ex: M, L, XL" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Couleur</label>
-                  <Input name="color" placeholder="Ex: Bleu, Rouge" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">État</label>
-                <Select name="condition" defaultValue="new">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">Neuf</SelectItem>
-                    <SelectItem value="used">Seconde main</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Caractéristiques</label>
-                <Textarea 
-                  name="characteristics" 
-                  placeholder="Décrivez les caractéristiques du produit..."
-                  rows={3}
-                />
-              </div>
-
-              <ProductImageUpload
-                images={productImages}
-                onImagesChange={setProductImages}
-                maxImages={5}
-              />
-
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center space-x-2">
-                  <input type="checkbox" name="delivery_available" id="delivery_available" />
-                  <label htmlFor="delivery_available" className="text-sm font-medium">
-                    Livraison disponible
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input type="checkbox" name="is_active" id="is_active" defaultChecked />
-                  <label htmlFor="is_active" className="text-sm font-medium">
-                    Produit actif
-                  </label>
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isUploading}
-              >
-                {isUploading ? 'Upload en cours...' : 'Créer le produit'}
-              </Button>
-            </form>
+            <DynamicProductForm
+              onSubmit={handleDynamicFormSubmit}
+              onCancel={() => setIsCreateDialogOpen(false)}
+              categories={categories || []}
+              productTypes={productTypes || []}
+              isLoading={isUploading}
+            />
           </DialogContent>
         </Dialog>
         )}

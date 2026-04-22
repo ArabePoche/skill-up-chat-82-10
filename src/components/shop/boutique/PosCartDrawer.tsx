@@ -53,6 +53,7 @@ interface PosCartDrawerProps {
     onClearCart: () => void;
     onConfirmSale: (data: {
         customerName?: string;
+        customerId?: string;
         paymentMethod: string;
         notes?: string;
         receiptId?: string;

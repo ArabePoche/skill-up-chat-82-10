@@ -70,10 +70,15 @@ export const useUserShops = () => {
 
       return (data || []).map(shop => {
         const products = shop.products || [];
+
+        // Calculer le stock total en utilisant les fonctions SQL qui gèrent les lots
         const totalStockUnits = products.reduce((sum, p) => sum + (p.stock_quantity || 0), 0);
-        const totalStockValue = products.reduce((sum, p) => sum + ((p.stock_quantity || 0) * (p.price || 0)), 0);
-        const lowStockProducts = products.filter(p => (p.stock_quantity || 0) > 0 && (p.stock_quantity || 0) <= 5).length;
-        const outOfStockProducts = products.filter(p => (p.stock_quantity || 0) === 0).length;
+
+        const totalStockValue = products.reduce((sum, p) => sum + ((p.stock_quantity || 0) * p.cost_price), 0);
+
+        const lowStockCount = products.filter(p => p.stock_quantity > 0 && p.stock_quantity <= 5).length;
+
+        const outOfStockCount = products.filter(p => p.stock_quantity <= 0).length;
 
         return {
           id: shop.id,
@@ -83,8 +88,8 @@ export const useUserShops = () => {
           products_count: products.length,
           total_stock_value: totalStockValue,
           total_stock_units: totalStockUnits,
-          low_stock_products: lowStockProducts,
-          out_of_stock_products: outOfStockProducts,
+          low_stock_products: lowStockCount,
+          out_of_stock_products: outOfStockCount,
           created_at: shop.created_at,
         };
       });

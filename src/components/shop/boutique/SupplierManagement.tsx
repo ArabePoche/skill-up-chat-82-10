@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useSuppliers, useSupplierOrders, type Supplier, type SupplierOrder } from '@/hooks/shop/useSuppliers';
 import { useBoutiqueProducts, type BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
+import ReceiveOrderDialog from './ReceiveOrderDialog';
 
 interface SupplierManagementProps {
   shopId: string;
@@ -43,6 +44,7 @@ const SupplierManagement: React.FC<SupplierManagementProps> = ({ shopId }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<SupplierOrder | null>(null);
+  const [showReceiveDialog, setShowReceiveDialog] = useState(false);
 
   // Supplier form
   const [formName, setFormName] = useState('');
@@ -149,14 +151,21 @@ const SupplierManagement: React.FC<SupplierManagementProps> = ({ shopId }) => {
 
   const handleReceiveOrder = async (order: SupplierOrder) => {
     if (!order.items) return;
+    setShowReceiveDialog(true);
+  };
+
+  const handleConfirmReceive = async (receivedItems: Array<{ itemId: string; receivedQuantity: number; productId: string; sectorData: any }>) => {
+    if (!selectedOrder) return;
     await receiveOrder.mutateAsync({
-      orderId: order.id,
-      receivedItems: order.items.map(i => ({
-        itemId: i.id,
-        receivedQuantity: i.quantity,
-        productId: i.product_id,
+      orderId: selectedOrder.id,
+      receivedItems: receivedItems.map(i => ({
+        itemId: i.itemId,
+        receivedQuantity: i.receivedQuantity,
+        productId: i.productId,
+        sectorData: i.sectorData,
       })),
     });
+    setShowReceiveDialog(false);
     setSelectedOrder(null);
   };
 
@@ -495,12 +504,21 @@ const SupplierManagement: React.FC<SupplierManagementProps> = ({ shopId }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSupplier} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => deletingId && deleteSupplier.mutateAsync(deletingId).then(() => setDeletingId(null))}>
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ─── Dialog: Réception de commande avec infos secteur ─── */}
+      <ReceiveOrderDialog
+        order={selectedOrder}
+        products={products || []}
+        open={showReceiveDialog}
+        onClose={() => setShowReceiveDialog(false)}
+        onConfirm={handleConfirmReceive}
+      />
     </div>
   );
 };

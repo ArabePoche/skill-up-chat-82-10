@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     Dialog,
     DialogContent,
@@ -77,9 +78,13 @@ import {
 import { useCreateCartSale } from '@/hooks/shop/useBoutiqueSales';
 import { usePosCart } from '@/hooks/shop/usePosCart';
 import BoutiqueProductCard from './BoutiqueProductCard';
+import SectorProductCard from './SectorProductCard';
 import TransferDialog, { TransferDialogProps } from './TransferDialog';
 import ReturnDialog, { ReturnDialogProps } from './ReturnDialog';
 import { CameraBarcodeScanner } from './CameraBarcodeScanner';
+import { getAvailableSectors, getSectorConfig } from '@/config/product-sectors';
+import DynamicField from '@/components/products/DynamicField';
+import { toast } from 'sonner';
 // Composant Autocomplete simple et robuste pour éviter les problèmes de focus dans les Dialogs
 const SimpleAutocomplete = ({
     value,
@@ -213,6 +218,10 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
     const [formBarcode, setFormBarcode] = useState('');
     const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
     const [filterCategory, setFilterCategory] = useState('all');
+    
+    // State pour le secteur sélectionné et les champs dynamiques
+    const [selectedSector, setSelectedSector] = useState<string>('default');
+    const [dynamicFormData, setDynamicFormData] = useState<Record<string, any>>({});
 
     // State pour savoir d'ou vient la demande de scan (pos ou formulaire produit)
     const [scanTarget, setScanTarget] = useState<'pos' | 'form'>('pos');
@@ -279,15 +288,25 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
         setFormPrice('');
         setFormCostPrice('');
         setFormStock('');
-        setFormImageUrl('');
         setFormCategory('');
         setFormLocation('');
         setFormBarcode('');
+        setFormImageUrl(null);
+        setSelectedSector('default');
+        setDynamicFormData({});
         setShowProductForm(true);
     };
 
     /** Ouvrir le formulaire pour modifier un produit */
     const openEditProductForm = (product: BoutiqueProduct) => {
+        // Vérifier si le produit est expiré
+        const sectorData = product.sector_data || {};
+        const expiryDate = sectorData.expiry_date || sectorData.expiration_date;
+        if (expiryDate && new Date(expiryDate) < new Date()) {
+            toast.error('Impossible de modifier un produit expiré');
+            return;
+        }
+
         setEditingProduct(product);
         setFormName(product.name);
         setFormDescription(product.description || '');
@@ -315,6 +334,9 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
             category: formCategory.trim() || undefined,
             location: formLocation.trim() || undefined,
             barcode: formBarcode.trim() || undefined,
+            // Ajouter les données dynamiques du secteur
+            sector: selectedSector,
+            sector_data: dynamicFormData,
         };
 
         try {
@@ -710,6 +732,7 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                                         shopId: shop.id,
                                         items: posCart.items,
                                         customerName: data.customerName,
+                                        customerId: data.customerId, // Passer l'ID du client pour lier les achats
                                         paymentMethod: data.paymentMethod,
                                         notes: data.notes,
                                         agentId: activeAgent?.agentId,
@@ -745,6 +768,49 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
+                        {/* Sélecteur de secteur */}
+                        <div>
+                            <Label htmlFor="product-sector">Secteur d'activité</Label>
+                            <Select value={selectedSector} onValueChange={(value) => {
+                                setSelectedSector(value);
+                                setDynamicFormData({});
+                            }}>
+                                <SelectTrigger id="product-sector">
+                                    <SelectValue placeholder="Sélectionner un secteur" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {getAvailableSectors().map((sector) => (
+                                        <SelectItem key={sector.id} value={sector.id}>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{sector.name}</span>
+                                                <span className="text-xs text-gray-500">{sector.description}</span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Champs dynamiques selon le secteur */}
+                        {selectedSector !== 'default' && (
+                            <div className="space-y-3 pt-2 border-t">
+                                <h3 className="text-sm font-semibold text-gray-700">
+                                    Caractéristiques {getSectorConfig(selectedSector).name.toLowerCase()}
+                                </h3>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {getSectorConfig(selectedSector).fields.map((field) => (
+                                        <DynamicField
+                                            key={field.name}
+                                            config={field}
+                                            value={dynamicFormData[field.name]}
+                                            onChange={(name, value) => setDynamicFormData(prev => ({ ...prev, [name]: value }))}
+                                            formData={dynamicFormData}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <Label htmlFor="product-name">Nom du produit *</Label>
                             <Input
@@ -880,6 +946,20 @@ const BoutiqueManagement: React.FC<BoutiqueManagementProps> = ({
                                 onChange={(e) => setFormStock(e.target.value)}
                                 placeholder="0"
                             />
+                            {editingProduct && (() => {
+                                const sectorData = editingProduct.sector_data || {};
+                                const expiryDate = sectorData.expiry_date || sectorData.expiration_date;
+                                if (expiryDate && new Date(expiryDate) < new Date()) {
+                                    return (
+                                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                                            <p className="text-xs text-red-700 font-medium">
+                                                ⚠️ Produit expiré - Stock à rendre : {editingProduct.stock_quantity} unités
+                                            </p>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
                         </div>
                         <div>
                             <Label>Image du produit</Label>

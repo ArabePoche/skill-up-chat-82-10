@@ -9,13 +9,13 @@
 import React, {
   useRef, useEffect, useMemo, useState, useCallback,
 } from 'react';
-import { getFavoriteStickerIds } from '@/stickers/utils/favoriteStickers';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { PackagePlus, ShoppingBag } from 'lucide-react';
+import { PackagePlus, ShoppingBag, Search, Star, Heart } from 'lucide-react';
 import StickerShopModal from '@/stickers/components/StickerShopModal';
 import { useUserUnlockedPacks } from '@/hooks/useStickerSystem';
 import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
+import { useFavorites } from '@/hooks/useFavorites';
 
 /* ── Types ── */
 interface StickerPickerProps {
@@ -87,6 +87,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
   const { data: unlockedPacks = [] } = useUserUnlockedPacks();
   const [shopOpen, setShopOpen]      = useState(false);
   const [activePack, setActivePack]  = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   /* refs */
   const pickerRef     = useRef<HTMLDivElement>(null);
@@ -113,16 +114,8 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
 
   const { data: signedUrlMap = {} } = useSignedStickerUrls(allFilePaths);
 
-  // Force re-render sur changement de favoris (écoute storage + state local)
-  const [favoriteVersion, setFavoriteVersion] = useState(0);
-  useEffect(() => {
-    const sync = () => setFavoriteVersion((v) => v + 1);
-    window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
-  }, []);
 
   const stickerPacks = useMemo<StickerPack[]>(() => {
-    const favoriteIds = getFavoriteStickerIds();
     return (unlockedPacks as any[])
       .map((entry: any, index: number) => {
         const pack = entry?.sticker_packs;
@@ -138,13 +131,6 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
           }))
           .filter((s: Sticker) => !!s.url);
 
-        // Trie favoris d'abord
-        stickers = [
-          ...stickers.filter((s) => favoriteIds.includes(s.id)),
-          ...stickers.filter((s) => !favoriteIds.includes(s.id)),
-        ];
-
-        /* icône du pack : URL signée si besoin, sinon URL directe */
         const rawIcon: string | null = pack.icon_url ?? null;
         const iconUrl = rawIcon
           ? (signedUrlMap[rawIcon] ?? rawIcon)
@@ -159,15 +145,57 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
         } satisfies StickerPack;
       })
       .filter((p): p is StickerPack => Boolean(p) && p.stickers.length > 0);
-  }, [unlockedPacks, signedUrlMap, favoriteVersion]);
+  }, [unlockedPacks, signedUrlMap]);
+
+  // Utiliser le nouveau système de favoris
+  const { getFavoriteStickers, isFavorited, toggleFavorite } = useFavorites();
+  const favoriteStickers = getFavoriteStickers();
+
+  // Filtrer les stickers selon la recherche
+  const filteredStickerPacks = useMemo(() => {
+    if (!searchQuery.trim()) return stickerPacks;
+    
+    return stickerPacks.map(pack => {
+      const filteredStickers = pack.stickers.filter(sticker => 
+        pack.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sticker.id.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return { ...pack, stickers: filteredStickers };
+    }).filter(pack => pack.stickers.length > 0);
+  }, [stickerPacks, searchQuery, favoriteStickers]);
+  
+  // Pack des favoris basé sur le nouveau système
+  const favoritesPack = useMemo(() => {
+    if (favoriteStickers.length === 0) return null;
+    
+    const allFavorites = stickerPacks.flatMap(pack => 
+      pack.stickers.filter(sticker => 
+        favoriteStickers.some(fav => fav.item_id === sticker.id)
+      )
+    );
+    
+    if (allFavorites.length === 0) return null;
+    
+    return {
+      id: 'favorites',
+      name: 'Favoris',
+      iconUrl: null,
+      color: 'from-rose-400 to-pink-500',
+      stickers: allFavorites,
+    } satisfies StickerPack;
+  }, [stickerPacks, favoriteStickers]);
+
+  const displayPacks = favoritesPack 
+    ? [favoritesPack, ...filteredStickerPacks]
+    : filteredStickerPacks;
 
   /* Init du pack actif */
   useEffect(() => {
-    if (!stickerPacks.length) { setActivePack(null); return; }
-    if (!activePack || !stickerPacks.some((p) => p.id === activePack)) {
-      setActivePack(stickerPacks[0].id);
+    if (!displayPacks.length) { setActivePack(null); return; }
+    if (!activePack || !displayPacks.some((p) => p.id === activePack)) {
+      setActivePack(displayPacks[0].id);
     }
-  }, [stickerPacks]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [displayPacks]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Ferme sur clic extérieur / Échap ── */
   useEffect(() => {
@@ -188,7 +216,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
   /* ── IntersectionObserver : met en surbrillance le pack visible ── */
   useEffect(() => {
     observerRef.current?.disconnect();
-    if (!scrollAreaRef.current || !stickerPacks.length) return;
+    if (!scrollAreaRef.current || !displayPacks.length) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -212,7 +240,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
 
     sectionRefs.current.forEach((el) => observerRef.current!.observe(el));
     return () => observerRef.current?.disconnect();
-  }, [stickerPacks]);
+  }, [displayPacks]);
 
   /* ── Clic sur une icône → scroll vers la section ── */
   const scrollToSection = useCallback((packId: string) => {
@@ -250,19 +278,34 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
       role="dialog"
       aria-label="Sélecteur de stickers"
       className={`
-        w-[85vw] max-w-[340px] sm:w-[360px] z-50 flex flex-col
-        bg-white/96 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100
+        w-[90vw] max-w-[380px] sm:w-[380px] z-50 flex flex-col
+        bg-white/98 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/50
         overflow-hidden animate-in fade-in zoom-in-95 duration-200
         ${className ?? 'absolute bottom-full left-0 mb-3'}
       `}
     >
-      {/* ── 1. Barre d'icônes des packs (sticky) ── */}
-      <div className="border-b border-gray-100 bg-white/95 backdrop-blur-sm">
+      {/* ── 1. Barre d'outils et recherche ── */}
+      <div className="border-b border-gray-100/80 bg-white/90 backdrop-blur-sm">
+        {/* Barre de recherche et filtres */}
+        <div className="px-3 py-2 border-b border-gray-100/60">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Rechercher un sticker..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 text-sm bg-white/80 border border-gray-200/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400/50 focus:border-violet-400/60 transition-all duration-200 placeholder-slate-400"
+            />
+          </div>
+        </div>
+
+        {/* Barre d'icônes des packs */}
         <div
           ref={iconBarRef}
           className="flex items-center gap-1 px-2 py-2 overflow-x-auto scrollbar-hide"
         >
-          {stickerPacks.map((pack) => (
+          {displayPacks.map((pack) => (
             <div key={pack.id} data-pack-btn={pack.id}>
               <PackIcon
                 pack={pack}
@@ -280,7 +323,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
             type="button"
             onClick={(e) => { e.stopPropagation(); setShopOpen(true); }}
             title="Boutique stickers"
-            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-pink-600 hover:bg-pink-50 transition-all duration-200 border border-pink-100"
+            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-pink-600 hover:bg-pink-50 transition-all duration-200 border border-pink-100 hover:scale-105"
           >
             <ShoppingBag size={18} />
           </button>
@@ -295,10 +338,10 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
               navigate('/stickers/studio?personal=1&single=1');
             }}
             title="Créer un sticker individuel (visible uniquement par vous)"
-            className="flex-shrink-0 flex items-center gap-2 w-auto h-10 px-3 justify-center rounded-xl text-violet-700 hover:bg-violet-50 transition-all duration-200 border border-violet-100 font-semibold"
+            className="flex-shrink-0 flex items-center gap-2 w-auto h-10 px-3 justify-center rounded-xl text-violet-700 hover:bg-violet-50 transition-all duration-200 border border-violet-100 font-semibold hover:scale-105"
           >
             <PackagePlus size={18} />
-            <span className="hidden sm:inline">Créer un sticker</span>
+            <span className="hidden sm:inline">Créer</span>
           </button>
 
           <StickerShopModal
@@ -312,17 +355,27 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
       {/* ── 2. Zone scrollable unifiée ── */}
       <div
         ref={scrollAreaRef}
-        className="flex-1 overflow-y-auto overscroll-contain"
-        style={{ maxHeight: 320, height: 320 }}
+        className="flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-white/40 to-white/20"
+        style={{ maxHeight: 340, height: 340 }}
       >
-        {!stickerPacks.length ? (
+        {!displayPacks.length ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 px-4 py-8">
-            <span className="text-3xl mb-2">🎨</span>
-            <p className="text-sm font-medium">Aucun pack débloqué</p>
-            <p className="text-xs mt-1 text-slate-400">Débloquez un pack pour commencer.</p>
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+              {searchQuery ? (
+                <Search size={24} className="text-slate-400" />
+              ) : (
+                <span className="text-2xl">🎨</span>
+              )}
+            </div>
+            <p className="text-sm font-medium">
+              {searchQuery ? 'Aucun sticker trouvé' : 'Aucun pack débloqué'}
+            </p>
+            <p className="text-xs mt-1 text-slate-400">
+              {searchQuery ? 'Essayez une autre recherche' : 'Débloquez un pack pour commencer.'}
+            </p>
           </div>
         ) : (
-          stickerPacks.map((pack) => (
+          displayPacks.map((pack) => (
             <section
               key={pack.id}
               data-pack-id={pack.id}
@@ -332,40 +385,64 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
               }}
             >
               {/* En-tête de section */}
-              <div className={`sticky top-0 z-10 flex items-center gap-2 px-3 py-1.5 bg-white/95 backdrop-blur-sm border-b border-gray-50`}>
-                <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${pack.color} shrink-0`} />
-                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 truncate">
+              <div className={`sticky top-0 z-10 flex items-center gap-3 px-4 py-2.5 bg-white/90 backdrop-blur-md border border-gray-100/60 shadow-sm`}>
+                <div className={`w-3 h-3 rounded-full bg-gradient-to-br ${pack.color} shrink-0 shadow-sm`} />
+                <span className="text-[12px] font-bold uppercase tracking-wider text-slate-600 truncate">
                   {pack.name}
                 </span>
-                <span className="ml-auto text-[10px] text-slate-400 shrink-0">
+                {pack.id === 'favorites' && (
+                  <Star size={12} className="text-rose-500 fill-current" />
+                )}
+                <span className="ml-auto text-[10px] text-slate-400 shrink-0 font-medium bg-slate-100 px-2 py-0.5 rounded-full">
                   {pack.stickers.length}
                 </span>
               </div>
 
               {/* Grille de stickers */}
-              <div className="grid grid-cols-4 gap-1.5 px-2.5 py-2.5">
-                {pack.stickers.map((sticker) => (
-                  <motion.button
-                    key={sticker.id}
-                    type="button"
-                    whileHover={{ scale: 1.15 }}
-                    whileTap={{ scale: 0.88 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStickerSelect(sticker.url);
-                      onToggle();
-                    }}
-                    className="flex h-[58px] w-full items-center justify-center rounded-xl hover:bg-slate-100 transition-colors duration-100 p-1"
-                    title="Envoyer ce sticker"
-                  >
-                    <img
-                      src={sticker.url}
-                      alt="Sticker"
-                      className="w-full h-full object-contain"
-                      loading="lazy"
-                    />
-                  </motion.button>
-                ))}
+              <div className="grid grid-cols-4 gap-2 px-3 py-3">
+                {pack.stickers.map((sticker) => {
+                  const isFav = isFavorited('sticker', sticker.id);
+                  return (
+                    <motion.button
+                      key={sticker.id}
+                      type="button"
+                      whileHover={{ scale: 1.12 }}
+                      whileTap={{ scale: 0.92 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStickerSelect(sticker.url);
+                        onToggle();
+                      }}
+                      className="flex h-[62px] w-full items-center justify-center rounded-2xl hover:bg-gradient-to-br hover:from-slate-50 hover:to-slate-100 transition-all duration-200 p-1.5 border border-gray-100/40 hover:border-gray-200/60 hover:shadow-lg hover:shadow-slate-100/30 group relative"
+                      title="Envoyer ce sticker"
+                    >
+                      <img
+                        src={sticker.url}
+                        alt="Sticker"
+                        className="w-full h-full object-contain"
+                        loading="lazy"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite('sticker', sticker.id, {
+                            url: sticker.url,
+                            packId: sticker.path,
+                          });
+                        }}
+                        className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+                          isFav 
+                            ? 'bg-rose-500 text-white hover:bg-rose-600' 
+                            : 'bg-white/80 text-slate-600 hover:bg-white hover:text-rose-500 border border-slate-200'
+                        }`}
+                        title={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                      >
+                        <Heart size={12} className={isFav ? 'fill-current' : ''} />
+                      </button>
+                    </motion.button>
+                  );
+                })}
               </div>
             </section>
           ))
@@ -374,8 +451,8 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
 
       {/* ── 3. Barre de couleur du pack actif ── */}
       <div
-        className={`h-1 w-full bg-gradient-to-r transition-all duration-300 ${
-          stickerPacks.find((p) => p.id === activePack)?.color ?? 'from-slate-200 to-slate-300'
+        className={`h-1.5 w-full bg-gradient-to-r transition-all duration-300 shadow-sm ${
+          displayPacks.find((p) => p.id === activePack)?.color ?? 'from-slate-200 to-slate-300'
         }`}
       />
     </div>

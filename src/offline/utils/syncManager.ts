@@ -31,12 +31,25 @@ class SyncManager {
   private syncEventCallbacks: Set<SyncEventCallback> = new Set();
   private syncQueue: Array<() => Promise<void>> = [];
   private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
-  private reconnectDelay: number = 5000;
+  private maxReconnectAttempts: number = 10;
+  private baseReconnectDelay: number = 1000;
 
   private hasRunStartupSync: boolean = false;
   private checkConnectionTimer: ReturnType<typeof setInterval> | null = null;
   private isCheckingConnection: boolean = false;
+  private syncStats: {
+    totalSyncs: number;
+    successfulSyncs: number;
+    failedSyncs: number;
+    lastSyncTime: number | null;
+    consecutiveFailures: number;
+  } = {
+    totalSyncs: 0,
+    successfulSyncs: 0,
+    failedSyncs: 0,
+    lastSyncTime: null,
+    consecutiveFailures: 0,
+  };
 
   constructor() {
     this.init();
@@ -82,6 +95,7 @@ class SyncManager {
   private handleOnline() {
     console.log('🌐 Connection restored');
     this.reconnectAttempts = 0;
+    this.syncStats.consecutiveFailures = 0;
     this.isOnline = true;
     this.notifyCallbacks(true);
     this.syncAll();
@@ -179,12 +193,26 @@ class SyncManager {
   }
 
   /**
+   * Calcule le délai avec backoff exponentiel
+   */
+  private calculateBackoff(attempt: number): number {
+    const maxDelay = 30000; // 30 secondes max
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, attempt),
+      maxDelay
+    );
+    // Ajouter du jitter pour éviter l'effet "thundering herd"
+    return delay + Math.random() * 1000;
+  }
+
+  /**
    * Synchronise toutes les données offline avec le serveur
    */
   async syncAll(): Promise<void> {
     if (!this.isOnline || this.syncInProgress) return;
 
     this.syncInProgress = true;
+    this.syncStats.totalSyncs++;
     console.log('🔄 Starting sync...');
     this.notifySyncEvent({ type: 'start' });
 
@@ -196,11 +224,21 @@ class SyncManager {
       if (total > 0) {
         console.log(`📤 Syncing ${total} pending mutations...`);
 
+        // Trier par retryCount pour prioriser les nouvelles mutations
+        pendingMutations.sort((a, b) => a.retryCount - b.retryCount);
+
         for (let i = 0; i < pendingMutations.length; i++) {
           const mutation = pendingMutations[i];
           this.notifySyncEvent({ type: 'progress', current: i + 1, total });
 
           try {
+            // Si trop de retries, appliquer backoff
+            if (mutation.retryCount > 0) {
+              const backoffDelay = this.calculateBackoff(mutation.retryCount);
+              console.log(`⏱️ Backoff delay for mutation ${mutation.id}: ${backoffDelay}ms`);
+              await new Promise(resolve => setTimeout(resolve, backoffDelay));
+            }
+
             const success = await this.syncMutation(mutation);
 
             if (success) {
@@ -209,19 +247,22 @@ class SyncManager {
             } else {
               await offlineStore.incrementMutationRetry(mutation.id);
 
-              if (mutation.retryCount >= 5) {
+              // Abandonner après 10 retries (avec backoff)
+              if (mutation.retryCount >= 10) {
                 await offlineStore.removePendingMutation(mutation.id);
-                console.warn(`❌ Mutation ${mutation.id} abandoned after 5 retries`);
+                console.warn(`❌ Mutation ${mutation.id} abandoned after ${mutation.retryCount} retries`);
+                this.logSyncFailure(mutation, 'max_retries_exceeded');
               }
             }
           } catch (error) {
             console.error(`Error syncing mutation ${mutation.id}:`, error);
             await offlineStore.incrementMutationRetry(mutation.id);
+            this.logSyncFailure(mutation, error);
           }
         }
       }
 
-      // 2. Synchroniser les formations offline
+      // 2. Synchroniser les formations offline (delta sync)
       const offlineFormations = await offlineStore.getAllFormations();
 
       for (const formation of offlineFormations) {
@@ -233,6 +274,9 @@ class SyncManager {
 
       console.log('✅ Sync completed');
       this.notifySyncEvent({ type: 'complete', message: 'Synchronisation terminée' });
+      this.syncStats.successfulSyncs++;
+      this.syncStats.consecutiveFailures = 0;
+      this.syncStats.lastSyncTime = Date.now();
 
       // Notifier du succès si des mutations ont été sync
       if (total > 0) {
@@ -240,10 +284,43 @@ class SyncManager {
       }
     } catch (error) {
       console.error('❌ Sync failed:', error);
+      this.syncStats.failedSyncs++;
+      this.syncStats.consecutiveFailures++;
       this.notifySyncEvent({ type: 'error', message: 'Erreur de synchronisation' });
     } finally {
       this.syncInProgress = false;
     }
+  }
+
+  /**
+   * Log les échecs de synchronisation pour monitoring
+   */
+  private logSyncFailure(mutation: any, error: any): void {
+    const failureLog = {
+      mutationId: mutation.id,
+      mutationType: mutation.type,
+      retryCount: mutation.retryCount,
+      timestamp: Date.now(),
+      error: error instanceof Error ? error.message : String(error),
+    };
+    
+    // Stocker dans localStorage pour analyse ultérieure
+    try {
+      const failures = JSON.parse(localStorage.getItem('sync_failures') || '[]');
+      failures.push(failureLog);
+      // Garder seulement les 100 derniers échecs
+      if (failures.length > 100) failures.shift();
+      localStorage.setItem('sync_failures', JSON.stringify(failures));
+    } catch (e) {
+      console.error('Failed to log sync failure:', e);
+    }
+  }
+
+  /**
+   * Obtenir les statistiques de synchronisation
+   */
+  getSyncStats() {
+    return { ...this.syncStats };
   }
 
   /**
@@ -553,7 +630,7 @@ class SyncManager {
 
   private async syncCreateBoutiqueSaleMutation(payload: any): Promise<boolean> {
     try {
-      const { shopId, items, customerName, paymentMethod, notes, agentId } = payload;
+      const { shopId, items, customerName, customerId, paymentMethod, notes, agentId } = payload;
 
       for (const item of items) {
         // Enregistrer la vente
@@ -566,6 +643,7 @@ class SyncManager {
             unit_price: item.product?.price || item.price,
             total_amount: (item.product?.price || item.price) * item.quantity,
             cost_price: item.product?.cost_price || item.cost_price || 0,
+            customer_id: customerId || null, // Lier le client par ID
             customer_name: customerName,
             payment_method: paymentMethod,
             notes: notes,

@@ -241,11 +241,32 @@ const Conversations = () => {
     const loadOfflineMessages = async () => {
       if (!isOnline && user?.id && otherUserId) {
         console.log('📵 Loading offline messages...');
-        const cached = await getOfflineConversationWith(otherUserId);
-        if (cached && cached.length > 0) {
-          console.log(`📦 Found ${cached.length} cached messages`);
-          setOfflineMessages(cached);
+        try {
+          const cached = await getOfflineConversationWith(otherUserId);
+          if (cached && cached.length > 0) {
+            console.log(`📦 Found ${cached.length} cached messages`);
+            setOfflineMessages(cached);
+          } else {
+            console.log('⚠️ No cached messages found, trying alternative cache key...');
+            // Essayer aussi avec la clé inversée
+            const participants = [user.id, otherUserId].sort();
+            const conversationKey = participants.join('_');
+            const alternativeCached = await offlineStore.getCachedQuery(`conversation:${conversationKey}`);
+            if (alternativeCached && alternativeCached.length > 0) {
+              console.log(`📦 Found ${alternativeCached.length} cached messages (alternative key)`);
+              setOfflineMessages(alternativeCached);
+            } else {
+              console.log('⚠️ No cached messages found with alternative key');
+              setOfflineMessages([]);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error loading offline messages:', error);
+          setOfflineMessages([]);
         }
+      } else if (isOnline) {
+        // Réinitialiser les messages offline quand on revient en ligne
+        setOfflineMessages([]);
       }
     };
     loadOfflineMessages();
@@ -390,9 +411,34 @@ const Conversations = () => {
         if (mediaError) throw mediaError;
       }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: async (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
       setReplyingTo(null);
+
+      // Sauvegarder les messages dans le cache offline après l'envoi
+      if (user?.id && otherUserId) {
+        try {
+          const { data: allMessages } = await supabase
+            .from('conversation_messages')
+            .select('*')
+            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
+            .order('created_at', { ascending: false })
+            .limit(500);
+          
+          if (allMessages && allMessages.length > 0) {
+            const participants = [user.id, otherUserId].sort();
+            const conversationKey = participants.join('_');
+            await offlineStore.cacheQuery(
+              `conversation:${conversationKey}`,
+              allMessages,
+              1000 * 60 * 60 * 24 * 7 // 7 jours
+            );
+            console.log('✅ Messages sauvegardés dans le cache offline après envoi');
+          }
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde messages offline après envoi:', error);
+        }
+      }
 
       // Envoyer une notification push au destinataire (fire & forget)
       if (otherUserId && user?.id) {
@@ -473,7 +519,7 @@ const Conversations = () => {
           <ConversationsDesktopStoriesBar />
         </div>
 
-        <div className="hidden lg:flex lg:min-h-0 lg:flex-1 lg:gap-5 lg:pt-4">
+        <div className="hidden lg:flex lg:min-h-0 lg:flex-1 lg:gap-5">
           <ConversationsDesktopSidebar
             conversations={filteredConversations}
             isLoading={isConversationsLoading}

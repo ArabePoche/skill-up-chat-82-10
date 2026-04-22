@@ -25,6 +25,8 @@ export interface BoutiqueProduct {
     barcode?: string | null;
     category?: string | null;
     location?: string | null;
+    sector?: string | null;
+    sector_data?: Record<string, any> | null;
     created_at: string;
     updated_at: string;
 }
@@ -119,6 +121,9 @@ export const useCreateBoutiqueProduct = () => {
             image_url?: string;
             category?: string;
             location?: string;
+            barcode?: string;
+            sector?: string;
+            sector_data?: Record<string, any>;
         }) => {
             const { data, error } = await supabase
                 .from('physical_shop_products')
@@ -133,6 +138,9 @@ export const useCreateBoutiqueProduct = () => {
                     marketplace_quantity: 0,
                     category: product.category,
                     location: product.location,
+                    barcode: product.barcode,
+                    sector: product.sector,
+                    sector_data: product.sector_data,
                 } as any)
                 .select()
                 .single();
@@ -190,6 +198,9 @@ export const useUpdateBoutiqueProduct = () => {
             image_url?: string;
             category?: string;
             location?: string;
+            barcode?: string;
+            sector?: string;
+            sector_data?: Record<string, any>;
         }) => {
             const { id, shop_id, ...updates } = product;
 

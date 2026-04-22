@@ -243,9 +243,9 @@ export const useSupplierOrders = (shopId?: string) => {
     onError: () => toast.error('Erreur lors de la création de la commande'),
   });
 
-  // Réceptionner une commande (marquer comme reçue + mettre à jour le stock)
+  // Réceptionner une commande (marquer comme reçue + créer des lots)
   const receiveOrder = useMutation({
-    mutationFn: async ({ orderId, receivedItems }: { orderId: string; receivedItems: Array<{ itemId: string; receivedQuantity: number; productId?: string | null }> }) => {
+    mutationFn: async ({ orderId, receivedItems }: { orderId: string; receivedItems: Array<{ itemId: string; receivedQuantity: number; productId: string; sectorData?: any }> }) => {
       // Mettre à jour le statut de la commande
       const { error: orderErr } = await supabase
         .from('supplier_orders' as any)
@@ -261,9 +261,9 @@ export const useSupplierOrders = (shopId?: string) => {
           .eq('id', item.itemId);
         if (error) throw error;
 
-        // Mettre à jour le stock du produit si lié à un produit boutique
+        // Créer un lot pour chaque produit reçu
         if (item.productId && item.receivedQuantity > 0) {
-          // Récupérer le stock actuel
+          // Récupérer le stock actuel du produit
           const { data: product } = await supabase
             .from('physical_shop_products')
             .select('stock_quantity')
@@ -271,10 +271,47 @@ export const useSupplierOrders = (shopId?: string) => {
             .single();
 
           if (product) {
-            const newStock = (product.stock_quantity || 0) + item.receivedQuantity;
+            // Générer un numéro de lot automatiquement
+            const { data: batchNumber } = await supabase.rpc('generate_batch_number', {
+              p_shop_id: shopId,
+              p_product_id: item.productId,
+            });
+
+            // Extraire la date d'expiration des sector_data
+            const expiryDate = item.sectorData?.expiry_date || item.sectorData?.expiration_date || null;
+
+            // Créer le lot
+            const { error: batchErr } = await supabase
+              .from('product_batches')
+              .insert({
+                shop_id: shopId,
+                product_id: item.productId,
+                batch_number: batchNumber || `LOT-${Date.now()}`,
+                quantity: item.receivedQuantity,
+                expiry_date: expiryDate,
+                sector_data: item.sectorData || {},
+                supplier_order_id: orderId,
+              });
+
+            if (batchErr) {
+              console.error('Erreur création lot:', batchErr);
+              throw batchErr;
+            }
+
+            // Mettre à jour le stock du produit (stock total = somme de tous les lots)
+            const { data: batches } = await supabase
+              .from('product_batches')
+              .select('quantity')
+              .eq('product_id', item.productId);
+
+            const newStock = batches?.reduce((sum: number, b: any) => sum + b.quantity, 0) || item.receivedQuantity;
+
             const { error: stockErr } = await supabase
               .from('physical_shop_products')
-              .update({ stock_quantity: newStock, updated_at: new Date().toISOString() })
+              .update({ 
+                stock_quantity: newStock,
+                updated_at: new Date().toISOString() 
+              })
               .eq('id', item.productId);
             if (stockErr) console.error('Erreur mise à jour stock:', stockErr);
 
@@ -287,7 +324,7 @@ export const useSupplierOrders = (shopId?: string) => {
                 quantity: item.receivedQuantity,
                 previous_stock: product.stock_quantity || 0,
                 new_stock: newStock,
-                reason: `Réception commande fournisseur #${orderId.slice(0, 8)}`,
+                reason: `Réception commande fournisseur #${orderId.slice(0, 8)} - Lot ${batchNumber}`,
                 reference_id: orderId,
                 created_by: user?.id,
               });

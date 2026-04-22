@@ -31,8 +31,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import JsBarcode from 'jsbarcode';
 import type { BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
 import type { PosCartItem } from '@/hooks/shop/usePosCart';
-import { useShopCustomers, type ShopCustomer } from '@/hooks/shop/useShopCustomers';
+import { useShopCustomers, useCustomerCredits, useAddCustomerCredit, getCustomerBalance, type ShopCustomer } from '@/hooks/shop/useShopCustomers';
 import BoutiqueProductCard from './BoutiqueProductCard';
+import SectorProductCard from './SectorProductCard';
+import { getSectorConfig } from '@/config/product-sectors';
+import { toast } from 'sonner';
 
 type PosStep = 'browse' | 'checkout';
 type CheckoutType = 'sale' | 'quote';
@@ -51,6 +54,7 @@ interface EmbeddedPosProps {
   onClearCart: () => void;
   onConfirmSale: (data: {
     customerName?: string;
+    customerId?: string;
     paymentMethod: string;
     notes?: string;
     receiptId?: string;
@@ -72,6 +76,23 @@ const formatCurrency = (amount: number) =>
     minimumFractionDigits: 0,
   }).format(amount);
 
+/** Composant pour afficher le solde d'un client */
+const CustomerBalanceDisplay: React.FC<{ customer: ShopCustomer; shopId: string }> = ({ customer, shopId }) => {
+  const { data: credits } = useCustomerCredits(customer.id);
+  const balance = credits ? getCustomerBalance(credits) : 0;
+
+  return (
+    <div className={`mt-2 p-2 rounded-lg border ${balance > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium text-gray-600">Solde actuel :</span>
+        <span className={`font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          {balance > 0 ? 'Doit ' : 'Crédit '}{formatCurrency(Math.abs(balance))}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
   products, shopId, shopName, shopAddress,
   cartItems, totalAmount, totalItems,
@@ -81,14 +102,17 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
   onEditProduct, onDeleteProduct, onTransferProduct, onReturnProduct
 }) => {
   const { data: shopCustomers } = useShopCustomers(shopId);
+  const addCustomerCredit = useAddCustomerCredit();
   const isMobile = useIsMobile();
   const [step, setStep] = useState<PosStep>('browse');
   const [checkoutType, setCheckoutType] = useState<CheckoutType>('sale');
   const [customerName, setCustomerName] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<ShopCustomer | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash'); // Fallback primary payment method
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [splitPayments, setSplitPayments] = useState<{ method: string, amount: number, received?: number }[]>([]);
   const [splitAmountsReceived, setSplitAmountsReceived] = useState<{ [method: string]: string }>({});
+  const [partialPaymentAmount, setPartialPaymentAmount] = useState(''); // Montant payé partiellement
   
   const [notes, setNotes] = useState('');
   const [amountReceived, setAmountReceived] = useState('');
@@ -144,7 +168,9 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
 
   const canFinalize = isSplitMode 
     ? (splitTotal >= totalAmount && totalAmount > 0)
-    : (paymentMethod !== 'cash' || (parseFloat(amountReceived) || 0) >= totalAmount);
+    : paymentMethod === 'partial_credit' 
+      ? (parseFloat(partialPaymentAmount) > 0 && parseFloat(partialPaymentAmount) < totalAmount && selectedCustomer)
+      : (paymentMethod !== 'cash' || (parseFloat(amountReceived) || 0) >= totalAmount);
 
   const handleNumPad = (val: string) => {
     if (val === 'C') setAmountReceived('');
@@ -194,8 +220,38 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
 
   const quickAmounts = [500, 1000, 2000, 5000, 10000];
 
-  const handleFinalize = async () => {
-    const finalPaymentMethod = isSplitMode
+  const handleConfirmCheckout = async () => {
+    if (!shopId || totalItems === 0) return;
+
+    // Validation des produits expirés
+    const expiredProducts = cartItems.filter(item => {
+      const sectorData = item.product.sector_data || {};
+      const expiryDate = sectorData.expiry_date || sectorData.expiration_date;
+      if (expiryDate) {
+        return new Date(expiryDate) < new Date();
+      }
+      return false;
+    });
+
+    if (expiredProducts.length > 0) {
+      toast.error(
+        `Impossible de vendre des produits expirés : ${expiredProducts.map(p => p.product.name).join(', ')}`,
+        {
+          duration: 5000,
+        }
+      );
+      return;
+    }
+
+    // Validation du client pour le paiement en crédit
+    if (paymentMethod === 'credit' && !selectedCustomer) {
+      toast.error('Veuillez sélectionner un client pour le paiement en crédit');
+      return;
+    }
+
+    const finalPaymentMethod = checkoutType === 'quote'
+      ? null
+      : isSplitMode
       ? JSON.stringify(splitPayments.reduce((acc, curr) => { 
           acc[curr.method] = curr.amount;
           return acc;
@@ -203,23 +259,77 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
       : paymentMethod;
 
     const generatedId = `FAC-${format(new Date(), 'yyMMddHHmmss')}`;
+    let saleResult: any = null;
 
     if (checkoutType === 'sale') {
-      await onConfirmSale({
-        customerName: customerName.trim() || undefined,
+      saleResult = await onConfirmSale({
+        customerName: selectedCustomer?.name || customerName.trim() || undefined,
+        customerId: selectedCustomer?.id, // Passer l'ID du client pour lier les achats
         paymentMethod: finalPaymentMethod,
         notes: notes.trim() || undefined,
         receiptId: generatedId,
       });
+      
+      // Si paiement en crédit et client sélectionné, créer la dette
+      if (paymentMethod === 'credit' && selectedCustomer) {
+        await addCustomerCredit.mutateAsync({
+          customer_id: selectedCustomer.id,
+          shop_id: shopId,
+          amount: totalAmount,
+          type: 'credit',
+          description: `Achat en crédit - Ticket ${generatedId}`,
+        });
+      }
+      
+      // Si paiement partiel + crédit, enregistrer le paiement partiel et créer la dette pour le reste
+      if (paymentMethod === 'partial_credit' && selectedCustomer) {
+        const paidAmount = parseFloat(partialPaymentAmount) || 0;
+        const debtAmount = Math.max(0, totalAmount - paidAmount);
+        
+        if (debtAmount > 0) {
+          await addCustomerCredit.mutateAsync({
+            customer_id: selectedCustomer.id,
+            shop_id: shopId,
+            amount: debtAmount,
+            type: 'credit',
+            description: `Reste impayé - Paiement partiel de ${formatCurrency(paidAmount)} - Ticket ${generatedId}`,
+          });
+        }
+      }
     }
+    // Calculer le montant reçu selon le mode de paiement
+    const getAmountReceived = () => {
+      if (isSplitMode) {
+        return splitPayments.reduce((a, b) => a + (b.received || b.amount), 0);
+      }
+      if (paymentMethod === 'partial_credit') {
+        return parseFloat(partialPaymentAmount) || 0;
+      }
+      if (paymentMethod === 'credit') {
+        return 0; // Aucun paiement reçu en mode crédit pur
+      }
+      return parseFloat(amountReceived) || totalAmount;
+    };
+
+    // Calculer la monnaie rendue
+    const getChange = () => {
+      if (isSplitMode) {
+        return Math.max(0, splitPayments.reduce((a, b) => a + (b.received || b.amount), 0) - totalAmount);
+      }
+      if (paymentMethod === 'partial_credit') {
+        return 0; // Pas de monnaie en paiement partiel
+      }
+      return change;
+    };
+
     setReceiptData({
       id: generatedId,
       items: [...cartItems],
       total: totalAmount,
       customer: customerName.trim() || 'Client anonyme',
       payment: finalPaymentMethod,
-      amountReceived: isSplitMode ? splitPayments.reduce((a, b) => a + (b.received || b.amount), 0) : (parseFloat(amountReceived) || totalAmount),
-      change: isSplitMode ? Math.max(0, splitPayments.reduce((a, b) => a + (b.received || b.amount), 0) - totalAmount) : change,
+      amountReceived: getAmountReceived(),
+      change: getChange(),
       date: new Date(),
       type: checkoutType,
     });
@@ -232,6 +342,7 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
     setCustomerName('');
     setPaymentMethod('cash');
     setIsSplitMode(false);
+    setPartialPaymentAmount('');
     clearSplits();
     setNotes('');
     setAmountReceived('');
@@ -290,32 +401,78 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
               <div className="p-2 space-y-1">
                 {cartItems.map(item => {
                   const maxStock = item.product.stock_quantity - item.product.marketplace_quantity;
+                  const sector = item.product.sector || 'default';
+                  const sectorConfig = getSectorConfig(sector);
+                  const sectorData = item.product.sector_data || {};
+                  
+                  // Informations spécifiques à afficher dans le panier
+                  const getSectorSpecificInfo = () => {
+                    if (!sectorData || Object.keys(sectorData).length === 0) return null;
+                    
+                    const expiryDate = sectorData.expiry_date || sectorData.expiration_date;
+                    
+                    switch (sector) {
+                      case 'pharmaceutical':
+                        if (sectorData.dosage) return `Dosage: ${sectorData.dosage}`;
+                        if (expiryDate) {
+                          const expiry = new Date(expiryDate);
+                          return `Exp: ${expiry.toLocaleDateString('fr-FR')}`;
+                        }
+                        break;
+                      case 'clothing':
+                        if (sectorData.size && sectorData.color) return `${sectorData.size} - ${sectorData.color}`;
+                        if (sectorData.size) return sectorData.size;
+                        break;
+                      case 'food':
+                        if (expiryDate) {
+                          const expiry = new Date(expiryDate);
+                          return `Exp: ${expiry.toLocaleDateString('fr-FR')}`;
+                        }
+                        break;
+                      case 'electronics':
+                        if (sectorData.brand && sectorData.model) return `${sectorData.brand} ${sectorData.model}`;
+                        if (sectorData.brand) return sectorData.brand;
+                        break;
+                    }
+                    return null;
+                  };
+                  
+                  const sectorInfo = getSectorSpecificInfo();
+                  
                   return (
-                    <div key={item.product.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 group border border-transparent hover:border-gray-100 transition-colors">
-                      <div className="w-10 h-10 rounded-md bg-gray-100 shrink-0 overflow-hidden">
-                        {item.product.image_url ? (
-                          <img src={item.product.image_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package size={14} className="text-gray-300" />
+                    <div key={item.product.id} className="flex flex-col gap-1 p-2 rounded-lg hover:bg-gray-50 group border border-transparent hover:border-gray-100 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-md bg-gray-100 shrink-0 overflow-hidden">
+                          {item.product.image_url ? (
+                            <img src={item.product.image_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package size={14} className="text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <p className="text-xs font-medium truncate">{item.product.name}</p>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{sectorConfig.name}</span>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{item.product.name}</p>
-                        <p className="text-[10px] text-gray-400">{formatCurrency(item.product.price)}</p>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white border rounded-md shadow-sm">
-                        <button onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                          className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-red-500">
-                          <Minus size={10} />
-                        </button>
-                        <span className="text-xs font-bold w-5 text-center">{item.quantity}</span>
-                        <button onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                          disabled={item.quantity >= maxStock}
-                          className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-emerald-600 disabled:opacity-30">
-                          <Plus size={10} />
-                        </button>
+                          <p className="text-[10px] text-gray-400">{formatCurrency(item.product.price)}</p>
+                          {sectorInfo && (
+                            <p className="text-[9px] text-gray-500 truncate">{sectorInfo}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 bg-white border rounded-md shadow-sm">
+                          <button onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+                            className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-red-500">
+                            <Minus size={10} />
+                          </button>
+                          <span className="text-xs font-bold w-5 text-center">{item.quantity}</span>
+                          <button onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                            disabled={item.quantity >= maxStock}
+                            className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-emerald-600 disabled:opacity-30">
+                            <Plus size={10} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -376,22 +533,86 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
                       Paiement multiple (Mixte)
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {[
                       { value: 'cash', label: 'Espèces', icon: <Banknote size={18} /> },
                       { value: 'card', label: 'Carte', icon: <CreditCard size={18} /> },
                       { value: 'mobile', label: 'Mobile', icon: <Smartphone size={18} /> },
+                      { value: 'credit', label: 'Crédit', icon: <UserIcon size={18} /> },
+                      { value: 'partial_credit', label: 'Partiel + Dette', icon: <UserIcon size={18} />, requiresCustomer: true },
                     ].map(m => (
                       <button key={m.value} onClick={() => setPaymentMethod(m.value)}
+                        disabled={(m.value === 'credit' || m.value === 'partial_credit') && !selectedCustomer}
                         className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-all ${paymentMethod === m.value
                             ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500'
                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }`}>
+                          } ${(m.value === 'credit' || m.value === 'partial_credit') && !selectedCustomer ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         {m.icon}
                         <span className="text-[10px] font-medium">{m.label}</span>
                       </button>
                     ))}
                   </div>
+                  {paymentMethod === 'credit' && selectedCustomer && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs text-orange-700">
+                      <p className="font-medium">⚠️ Mode Crédit activé</p>
+                      <p>Cette vente sera ajoutée à la dette de {selectedCustomer.name}</p>
+                    </div>
+                  )}
+                  {paymentMethod === 'partial_credit' && selectedCustomer && (
+                    <div className="space-y-3">
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs text-orange-700">
+                        <p className="font-medium">💳 Paiement Partiel + Dette</p>
+                        <p>Le client paie une partie, le reste devient une dette</p>
+                      </div>
+                      
+                      {/* Saisie du montant payé */}
+                      <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <Label className="text-xs mb-2 block font-medium text-gray-500">Montant payé par le client</Label>
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            value={partialPaymentAmount}
+                            onChange={(e) => setPartialPaymentAmount(e.target.value)}
+                            type="number"
+                            min="0"
+                            max={totalAmount}
+                            className="text-right font-mono text-lg font-bold"
+                            placeholder="0"
+                          />
+                          <div className="bg-white px-3 py-2 rounded-md border text-sm font-bold text-gray-500">FCFA</div>
+                        </div>
+                        
+                        {/* Affichage du reste en dette */}
+                        {partialPaymentAmount && parseFloat(partialPaymentAmount) > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-500">Total à payer:</span>
+                              <span className="font-bold">{formatCurrency(totalAmount)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-500">Montant payé:</span>
+                              <span className="font-bold text-emerald-600">{formatCurrency(parseFloat(partialPaymentAmount) || 0)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs pt-2 border-t">
+                              <span className="text-orange-600 font-medium">Reste en dette:</span>
+                              <span className="font-bold text-red-600">{formatCurrency(Math.max(0, totalAmount - (parseFloat(partialPaymentAmount) || 0)))}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="grid grid-cols-3 gap-1.5 mt-3">
+                          {['1000', '2000', '5000', '10000', '20000', '50000'].map(quickAmount => (
+                            <button 
+                              key={quickAmount} 
+                              onClick={() => setPartialPaymentAmount(quickAmount)}
+                              className="text-[10px] px-2 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-emerald-50 hover:border-emerald-200 font-medium transition-colors"
+                            >
+                              {formatCurrency(parseInt(quickAmount))}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -539,21 +760,35 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
               <div className="space-y-3">
                 <div>
                   <Label className="text-xs font-medium text-gray-500" htmlFor="pos-cust">Client</Label>
-                  <Input id="pos-cust" value={customerName} onChange={e => setCustomerName(e.target.value)}
-                    placeholder="Nom du client (optionnel)" className="mt-1" />
-                  {shopCustomers && shopCustomers.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {shopCustomers.slice(0, 4).map(c => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setCustomerName(c.name)}
-                          className="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
-                        >
-                          {c.name}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="mt-1">
+                    {shopCustomers && shopCustomers.length > 0 ? (
+                      <select
+                        id="pos-cust"
+                        value={selectedCustomer?.id || ''}
+                        onChange={(e) => {
+                          const customer = shopCustomers?.find(c => c.id === e.target.value);
+                          setSelectedCustomer(customer || null);
+                          setCustomerName(customer?.name || '');
+                        }}
+                        className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="">Client anonyme</option>
+                        {shopCustomers.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        id="pos-cust"
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        placeholder="Nom du client (optionnel)"
+                      />
+                    )}
+                  </div>
+                  {/* Afficher le solde si client sélectionné */}
+                  {selectedCustomer && (
+                    <CustomerBalanceDisplay customer={selectedCustomer} shopId={shopId} />
                   )}
                 </div>
                 <div>
@@ -592,7 +827,7 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
           {filteredProducts.length > 0 ? (
             <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 pb-24 lg:pb-0">
               {filteredProducts.map(product => (
-                <BoutiqueProductCard
+                <SectorProductCard
                   key={product.id}
                   product={product}
                   onEdit={onEditProduct}
@@ -613,26 +848,30 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
         </ScrollArea>
       </div>
 
-      {/* Zone droite : Sidebar panier (Desktop) */}
-      <div className="hidden lg:block w-80 xl:w-96 shrink-0 z-10 shadow-xl lg:shadow-none">
-        <CartSidebar />
-      </div>
+      {/* Zone droite : Sidebar panier (Desktop) - caché si panier vide */}
+      {totalAmount > 0 && (
+        <div className="hidden lg:block w-80 xl:w-96 shrink-0 z-10 shadow-xl lg:shadow-none">
+          <CartSidebar />
+        </div>
+      )}
 
-      {/* Mobile : Bouton flottant panier */}
-      <div className="lg:hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50">
-        <Button
-          onClick={() => setMobileCartOpen(true)}
-          className="rounded-full h-14 px-6 shadow-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-3"
-        >
-          <div className="relative">
-            <ShoppingCart size={20} />
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-emerald-600">
-              {totalItems}
-            </span>
-          </div>
-          <span className="font-bold text-lg">{formatCurrency(totalAmount)}</span>
-        </Button>
-      </div>
+      {/* Mobile : Bouton flottant panier - caché si panier vide */}
+      {totalAmount > 0 && (
+        <div className="lg:hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50">
+          <Button
+            onClick={() => setMobileCartOpen(true)}
+            className="rounded-full h-14 px-6 shadow-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-3"
+          >
+            <div className="relative">
+              <ShoppingCart size={20} />
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-emerald-600">
+                {totalItems}
+              </span>
+            </div>
+            <span className="font-bold text-lg">{formatCurrency(totalAmount)}</span>
+          </Button>
+        </div>
+      )}
 
       {/* Mobile : Drawer Panier */}
       {isMobile && (
@@ -692,11 +931,32 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
                 </div>
                 {receiptData.type === 'sale' && (
                   <div className="space-y-1 text-gray-500 text-center">
-                    <p>Payé par : {receiptData.payment === 'cash' ? 'Espèces' : receiptData.payment === 'card' ? 'Carte' : 'Mobile'}</p>
-                    {receiptData.payment === 'cash' && receiptData.amountReceived > receiptData.total && (
+                    {/* Affichage paiement partiel + dette */}
+                    {receiptData.payment === 'partial_credit' ? (
+                      <div className="space-y-2 py-2 border-t border-b border-dashed">
+                        <div className="flex justify-between text-sm">
+                          <span>Payé (Espèces) :</span>
+                          <span className="font-bold text-emerald-600">{formatCurrency(receiptData.amountReceived)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-red-600">
+                          <span>Reste en dette :</span>
+                          <span className="font-bold">{formatCurrency(Math.max(0, receiptData.total - receiptData.amountReceived))}</span>
+                        </div>
+                      </div>
+                    ) : receiptData.payment === 'credit' ? (
+                      <p className="text-orange-600 font-medium">Payé à crédit (dette)</p>
+                    ) : receiptData.payment.startsWith('{') ? (
+                      // Paiement multiple (split)
+                      <p className="text-sm">Paiement multiple (mixte)</p>
+                    ) : (
                       <>
-                        <p>Reçu : {formatCurrency(receiptData.amountReceived)}</p>
-                        <p className="font-bold text-emerald-600">Rendu : {formatCurrency(receiptData.change)}</p>
+                        <p>Payé par : {receiptData.payment === 'cash' ? 'Espèces' : receiptData.payment === 'card' ? 'Carte' : 'Mobile'}</p>
+                        {receiptData.payment === 'cash' && receiptData.amountReceived > receiptData.total && (
+                          <>
+                            <p>Reçu : {formatCurrency(receiptData.amountReceived)}</p>
+                            <p className="font-bold text-emerald-600">Rendu : {formatCurrency(receiptData.change)}</p>
+                          </>
+                        )}
                       </>
                     )}
                   </div>

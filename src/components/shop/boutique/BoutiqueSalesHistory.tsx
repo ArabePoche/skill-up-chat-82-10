@@ -12,7 +12,8 @@ import {
     CreditCard,
     Banknote,
     Package,
-    AlertCircle
+    AlertCircle,
+    ScanBarcode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 interface BoutiqueSalesHistoryProps {
     shopId: string;
@@ -50,6 +52,15 @@ const BoutiqueSalesHistory: React.FC<BoutiqueSalesHistoryProps> = ({ shopId }) =
     const [searchTerm, setSearchTerm] = React.useState('');
     const [saleToReturn, setSaleToReturn] = React.useState<any>(null);
     const [returnQuantity, setReturnQuantity] = React.useState(1);
+    const [isScanning, setIsScanning] = React.useState(false);
+
+    // Utiliser le scanner de code-barres pour scanner les tickets
+    useBarcodeScanner((barcode) => {
+        if (isScanning) {
+            setSearchTerm(barcode);
+            setIsScanning(false);
+        }
+    }, isScanning);
 
     const filteredSales = sales?.filter(sale => {
         const search = searchTerm.trim().toLowerCase();
@@ -107,20 +118,37 @@ const BoutiqueSalesHistory: React.FC<BoutiqueSalesHistoryProps> = ({ shopId }) =
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div className="relative w-full sm:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                        placeholder="Rechercher un produit ou client..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 bg-white border-slate-200 focus:ring-blue-500"
-                    />
+                <div className="flex gap-2 w-full sm:max-w-xs">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                            placeholder="Rechercher un produit ou client..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-9 bg-white border-slate-200 focus:ring-blue-500"
+                        />
+                    </div>
+                    <Button
+                        onClick={() => setIsScanning(!isScanning)}
+                        variant={isScanning ? "default" : "outline"}
+                        className={isScanning ? "bg-blue-600 hover:bg-blue-700" : ""}
+                        title={isScanning ? "Arrêter le scan" : "Scanner le code-barres du ticket"}
+                    >
+                        <ScanBarcode className="w-4 h-4" />
+                    </Button>
                 </div>
                 <div className="flex items-center gap-2 text-slate-500 text-sm">
                     <History className="w-4 h-4" />
                     <span className="font-medium">{filteredSales?.length || 0} ventes affichées</span>
                 </div>
             </div>
+            
+            {isScanning && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                    <ScanBarcode className="w-4 h-4 animate-pulse" />
+                    Scannez le code-barres du ticket...
+                </div>
+            )}
 
             <ScrollArea className="h-[600px] pr-4">
                 <div className="space-y-3">

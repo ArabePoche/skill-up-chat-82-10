@@ -46,6 +46,8 @@ const matchesLevel = (message: { scope: string; level_id: string | null }, level
   return message.level_id === levelId;
 };
 
+const PUBLIC_MESSAGES_PER_PAGE = 10;
+
 export const useFormationPublicMessages = ({
   formationId,
   levelId,
@@ -67,7 +69,8 @@ export const useFormationPublicMessages = ({
         .eq('formation_id', formationId)
         .eq('is_active', true)
         .order('urgent', { ascending: false })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(PUBLIC_MESSAGES_PER_PAGE);
 
       if (error) {
         throw error;
@@ -90,7 +93,12 @@ export const useFormationPublicMessages = ({
         .in('message_id', relevantMessages.map((message) => message.id));
 
       if (viewsError) {
-        throw viewsError;
+        console.error('Error fetching message views:', viewsError);
+        return relevantMessages.map((message) => ({
+          ...message,
+          hasViewed: false,
+          viewedAt: null,
+        }));
       }
 
       const viewedMap = new Map((views ?? []).map((view) => [view.message_id, view.completed_at]));
@@ -101,6 +109,8 @@ export const useFormationPublicMessages = ({
         viewedAt: viewedMap.get(message.id) ?? null,
       }));
     },
+    staleTime: 60000, // 1 minute de cache
+    gcTime: 300000, // 5 minutes de cache
   });
 
   const messages = query.data ?? [];

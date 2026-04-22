@@ -72,79 +72,78 @@ const TeacherChatHeader: React.FC<TeacherChatHeaderProps> = ({
   return (
     // Header du chat enseignant, sticky en haut de l'écran pour rester visible lors du scroll
     <div className="bg-white border-b p-4 shadow-sm sticky top-0 z-30">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="lg:hidden"
-          >
-            <ArrowLeft size={20} />
-          </Button>
-          
-          <div className="flex items-center gap-3">
-            {student.profiles?.avatar_url ? (
-              <img
-                src={student.profiles.avatar_url}
-                alt={studentName}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-sm font-medium text-blue-600">
-                  {studentName.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
-            
-            <div>
-              <h2 className="font-semibold text-gray-900">{studentName}</h2>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>{lesson.title}</span>
-                
-              </div>
-              
-              {typingUsersCount > 0 && (
-                <div className="flex items-center gap-1 text-sm text-blue-600">
-                  <Users size={14} />
-                  <span>{studentName} est en train d'écrire...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Ligne 1 : Titre et infos */}
+      <div className="flex items-center gap-3 mb-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="lg:hidden"
+        >
+          <ArrowLeft size={20} />
+        </Button>
         
-        {/* Boutons d'appels et studio */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-blue-600 hover:bg-blue-50"
-            onClick={onOpenStudio}
-            title="Studio d'enseignement"
-          >
-            <MonitorPlay size={20} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-green-600 hover:bg-green-50"
-            onClick={handleVideoCall}
-            title="Appel vidéo"
-          >
-            <Video size={20} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-green-600 hover:bg-green-50"
-            onClick={handleAudioCall}
-            title="Appel vocal"
-          >
-            <Phone size={20} />
-          </Button>
+        {student.profiles?.avatar_url ? (
+          <img
+            src={student.profiles.avatar_url}
+            alt={studentName}
+            className="w-10 h-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <span className="text-sm font-medium text-blue-600">
+              {studentName.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
+        
+        <div className="flex-1 min-w-0">
+          <h2 className="font-semibold text-gray-900 truncate">{studentName}</h2>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="truncate">{lesson.title}</span>
+          </div>
+          
+          {typingUsersCount > 0 && (
+            <div className="flex items-center gap-1 text-sm text-blue-600">
+              <Users size={14} />
+              <span>{studentName} est en train d'écrire...</span>
+            </div>
+          )}
         </div>
+      </div>
+      
+      {/* Ligne 2 : Boutons d'appels et studio */}
+      <div className="flex items-center justify-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-blue-600 border-blue-200 hover:bg-blue-50 flex items-center gap-2 px-4"
+          onClick={onOpenStudio}
+          title="Studio d'enseignement"
+        >
+          <MonitorPlay size={18} />
+          <span className="hidden sm:inline">Studio</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-green-600 border-green-200 hover:bg-green-50 flex items-center gap-2 px-4"
+          onClick={handleVideoCall}
+          title="Appel vidéo"
+        >
+          <Video size={18} />
+          <span className="hidden sm:inline">Vidéo</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-green-600 border-green-200 hover:bg-green-50 flex items-center gap-2 px-4"
+          onClick={handleAudioCall}
+          title="Appel vocal"
+        >
+          <Phone size={18} />
+          <span className="hidden sm:inline">Audio</span>
+        </Button>
       </div>
     </div>
   );

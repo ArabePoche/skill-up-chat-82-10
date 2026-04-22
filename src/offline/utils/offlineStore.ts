@@ -59,6 +59,9 @@ interface PendingMutation {
   payload: any;
   createdAt: number;
   retryCount: number;
+  priority: 'high' | 'normal' | 'low';
+  serverVersion?: number; // Version du serveur au moment de la création
+  conflictResolved?: boolean;
 }
 
 /**
@@ -265,12 +268,13 @@ class OfflineStore {
   /**
    * Ajoute une mutation en attente (pour sync offline)
    */
-  async addPendingMutation(mutation: Omit<PendingMutation, 'id' | 'createdAt' | 'retryCount'>): Promise<string> {
+  async addPendingMutation(mutation: Omit<PendingMutation, 'id' | 'createdAt' | 'retryCount' | 'priority'> & { priority?: 'high' | 'normal' | 'low' }): Promise<string> {
     const db = await this.ensureDB();
     const id = `mutation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const pending: PendingMutation = {
       id,
       ...mutation,
+      priority: mutation.priority || 'normal',
       createdAt: Date.now(),
       retryCount: 0,
     };
@@ -281,7 +285,7 @@ class OfflineStore {
       const request = store.put(pending);
 
       request.onsuccess = () => {
-        console.log('📝 Pending mutation added:', id);
+        console.log('📝 Pending mutation added:', id, 'priority:', pending.priority);
         resolve(id);
       };
       request.onerror = () => reject(request.error);
@@ -289,7 +293,7 @@ class OfflineStore {
   }
 
   /**
-   * Récupère toutes les mutations en attente
+   * Récupère toutes les mutations en attente triées par priorité
    */
   async getPendingMutations(): Promise<PendingMutation[]> {
     const db = await this.ensureDB();
@@ -300,7 +304,19 @@ class OfflineStore {
       const index = store.index('createdAt');
       const request = index.getAll();
 
-      request.onsuccess = () => resolve(request.result as PendingMutation[]);
+      request.onsuccess = () => {
+        const mutations = request.result as PendingMutation[];
+        // Trier par priorité (high > normal > low), puis par retryCount, puis par createdAt
+        const priorityOrder = { high: 0, normal: 1, low: 2 };
+        mutations.sort((a, b) => {
+          const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+          if (priorityDiff !== 0) return priorityDiff;
+          const retryDiff = a.retryCount - b.retryCount;
+          if (retryDiff !== 0) return retryDiff;
+          return a.createdAt - b.createdAt;
+        });
+        resolve(mutations);
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -565,6 +581,9 @@ class OfflineStore {
   // ==================== FORMATIONS (existing) ====================
 
   async saveFormation(formation: any): Promise<void> {
+    // Vérifier le quota avant d'ajouter
+    await this.checkStorageQuota();
+    
     const db = await this.ensureDB();
     const offlineFormation: OfflineFormation = {
       id: formation.id,
@@ -737,6 +756,89 @@ class OfflineStore {
     if (!navigator.storage || !navigator.storage.estimate) return 0;
     const estimate = await navigator.storage.estimate();
     return estimate.usage || 0;
+  }
+
+  /**
+   * Vérifie l'utilisation du stockage et retourne le pourcentage utilisé
+   */
+  async getStorageUsage(): Promise<{ used: number; quota: number; percentage: number }> {
+    if (!navigator.storage || !navigator.storage.estimate) {
+      return { used: 0, quota: 0, percentage: 0 };
+    }
+    
+    const estimate = await navigator.storage.estimate();
+    const used = estimate.usage || 0;
+    const quota = estimate.quota || 0;
+    const percentage = quota > 0 ? (used / quota) * 100 : 0;
+    
+    return { used, quota, percentage };
+  }
+
+  /**
+   * Vérifie si le stockage est presque plein et nettoie si nécessaire
+   */
+  async checkStorageQuota(): Promise<void> {
+    const { percentage } = await this.getStorageUsage();
+    
+    // Alertes selon l'utilisation
+    if (percentage > 90) {
+      console.warn('⚠️ Storage usage critical:', percentage.toFixed(1) + '%');
+      await this.emergencyCleanup();
+    } else if (percentage > 75) {
+      console.warn('⚠️ Storage usage high:', percentage.toFixed(1) + '%');
+      await this.cleanupOldData(7); // Nettoyer les données de plus de 7 jours
+    }
+  }
+
+  /**
+   * Nettoyage d'urgence quand le stockage est critique
+   */
+  private async emergencyCleanup(): Promise<void> {
+    console.log('🧹 Emergency cleanup triggered');
+    
+    const db = await this.ensureDB();
+    
+    // Supprimer les formations les plus anciennes
+    const formations = await this.getAllFormations();
+    if (formations.length > 3) {
+      // Garder seulement les 3 formations les plus récentes
+      const sortedByDate = formations.sort((a, b) => a.downloadedAt - b.downloadedAt);
+      const toDelete = sortedByDate.slice(0, formations.length - 3);
+      
+      for (const formation of toDelete) {
+        await this.deleteFormation(formation.id);
+        console.log('🗑️ Deleted formation for emergency cleanup:', formation.id);
+      }
+    }
+    
+    // Nettoyer les queries expirées
+    await this.cleanExpiredQueries();
+    
+    // Nettoyer les mutations en attente abandonnées (retryCount > 15)
+    const mutations = await this.getPendingMutations();
+    const abandonedMutations = mutations.filter(m => m.retryCount > 15);
+    
+    for (const mutation of abandonedMutations) {
+      await this.removePendingMutation(mutation.id);
+      console.log('🗑️ Deleted abandoned mutation:', mutation.id);
+    }
+    
+    // Nettoyer le cache Service Worker
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      for (const cacheName of cacheNames) {
+        if (cacheName.includes('images-cache') || cacheName.includes('supabase-api-cache')) {
+          const cache = await caches.open(cacheName);
+          const keys = await cache.keys();
+          // Supprimer la moitié des entrées les plus anciennes
+          const toDelete = keys.slice(0, Math.floor(keys.length / 2));
+          for (const key of toDelete) {
+            await cache.delete(key);
+          }
+          console.log('🗑️ Cleaned cache:', cacheName, 'deleted', toDelete.length, 'entries');
+        }
+      }
+    }
   }
 
   /**

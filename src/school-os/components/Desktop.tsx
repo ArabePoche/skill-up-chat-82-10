@@ -286,7 +286,7 @@ export const Desktop: React.FC = () => {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className="h-screen w-full relative overflow-hidden">
+        <div className="h-screen w-full relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
           {/* Fond d'écran */}
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"

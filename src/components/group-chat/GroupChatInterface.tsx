@@ -31,6 +31,7 @@ import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 // Réutilisation des composants existants de ChatInterface
 import ChatInputBar from '../chat/ChatInputBar';
 import MessageList from '../chat/MessageList';
+import OptimizedMessageList from '../chat/OptimizedMessageList';
 import { SubscriptionUpgradeModal } from '../chat/SubscriptionUpgradeModal';
 import VideoMessageSwitch from '../video/VideoMessageSwitch';
 
@@ -633,7 +634,7 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           </div>
         )}
 
-        <MessageList
+        <OptimizedMessageList
           messages={filteredMessages}
           exercises={exercises}
           formationId={formation.id}
@@ -648,6 +649,13 @@ export const GroupChatInterface: React.FC<GroupChatInterfaceProps> = ({
           onScrollToMessage={handleScrollToMessage}
           onOpenVideo={handleOpenVideo}
           isGroupChat={true}
+          onLoadMore={() => {
+            // Pour l'instant, nous n'avons pas de pagination côté frontend
+            // La pagination est gérée côté backend dans usePromotionMessages
+            console.log('Load more messages triggered');
+          }}
+          hasMore={false}
+          isLoadingMore={false}
         />
       </div>
 

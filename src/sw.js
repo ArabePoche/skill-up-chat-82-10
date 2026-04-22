@@ -101,10 +101,43 @@ registerRoute(
   })
 );
 
-// Les requêtes API Supabase restent en réseau uniquement pour éviter les faux
-// états hors ligne ou les réponses périmées sur les flux dynamiques.
+// Les requêtes API Supabase GET : NetworkFirst avec cache pour read-only
+// Les mutations (POST, PUT, DELETE) restent en NetworkOnly
 registerRoute(
-  ({ url, request }) => url.hostname.includes('supabase.co') && request.destination !== 'image',
+  ({ url, request }) => {
+    if (!url.hostname.includes('supabase.co')) return false;
+    if (request.destination === 'image') return false;
+    
+    // Seulement les requêtes GET read-only
+    if (request.method !== 'GET') return false;
+    
+    // Exclure les endpoints sensibles qui doivent toujours être frais
+    const sensitivePaths = ['/auth/v1/', '/storage/v1/', '/rest/v1/'];
+    return !sensitivePaths.some(path => url.pathname.includes(path));
+  },
+  new NetworkFirst({
+    cacheName: 'supabase-api-cache',
+    networkTimeoutSeconds: 3, // 3 secondes timeout avant de servir du cache
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 5 * 60, // 5 minutes de cache pour les API
+      }),
+    ],
+  })
+);
+
+// Les mutations Supabase (POST, PUT, DELETE) restent en NetworkOnly
+registerRoute(
+  ({ url, request }) => {
+    if (!url.hostname.includes('supabase.co')) return false;
+    if (request.destination === 'image') return false;
+    // Mutations et endpoints sensibles
+    return request.method !== 'GET' || 
+           url.pathname.includes('/auth/v1/') || 
+           url.pathname.includes('/storage/v1/') ||
+           url.pathname.includes('/rest/v1/');
+  },
   new NetworkOnly()
 );
 

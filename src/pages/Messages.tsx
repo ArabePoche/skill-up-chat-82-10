@@ -92,9 +92,9 @@ const Messages = () => {
           <ConversationsDesktopStoriesBar />
         </div>
 
-        <div className="lg:flex lg:min-h-0 lg:flex-1 lg:gap-5 lg:pt-4">
+        <div className="lg:flex lg:min-h-0 lg:flex-1 lg:gap-5">
           <section className="lg:flex lg:h-full lg:min-h-0 lg:w-[390px] lg:min-w-[390px] lg:flex-col lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/60 lg:bg-white/50 lg:shadow-[0_24px_60px_rgba(124,58,237,0.08)] lg:backdrop-blur-2xl">
-          <div className="sticky top-0 z-10 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.34),transparent_34%),radial-gradient(circle_at_top_right,rgba(167,139,250,0.32),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.30),rgba(255,255,255,0.10)),linear-gradient(135deg,#fb7185,#a855f7,#60a5fa)] p-4 text-white backdrop-blur-xl md:top-16 lg:top-0 lg:rounded-t-[28px]">
+          <div className="sticky top-0 z-10 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.34),transparent_34%),radial-gradient(circle_at_top_right,rgba(167,139,250,0.32),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.30),rgba(255,255,255,0.10)),linear-gradient(135deg,#fb7185,#a855f7,#60a5fa)] p-4 text-white backdrop-blur-xl">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold tracking-tight">{t('messages.title')}</h1>
               <div className="flex items-center gap-1">
