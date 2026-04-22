@@ -50,10 +50,10 @@ serve(async (req) => {
       .single()
 
     let query = supabaseClient
-      .from('groups')
+      .from('discussion_groups')
       .select(`
         *,
-        group_members!inner(user_id, role)
+        discussion_members!inner(user_id, role)
       `)
       .eq('group_type', 'PUBLIC')
       .gte('member_count', 1)

@@ -48,7 +48,7 @@ serve(async (req) => {
 
     // Récupérer le groupe
     const { data: group, error: groupError } = await supabaseClient
-      .from('groups')
+      .from('discussion_groups')
       .select('*')
       .eq('id', group_id)
       .single()
@@ -61,8 +61,8 @@ serve(async (req) => {
     }
 
     // Vérifier si l'utilisateur peut rejoindre selon le genre
-    const { data: canJoin } = await supabaseClient.rpc('can_join_group_by_gender', {
-      p_group_id: group_id,
+    const { data: canJoin } = await supabaseClient.rpc('can_join_discussion_by_gender', {
+      p_discussion_id: group_id,
       p_user_id: user.id,
     })
 
@@ -75,9 +75,9 @@ serve(async (req) => {
 
     // Vérifier si déjà membre
     const { data: existingMember } = await supabaseClient
-      .from('group_members')
+      .from('discussion_members')
       .select('*')
-      .eq('group_id', group_id)
+      .eq('discussion_id', group_id)
       .eq('user_id', user.id)
       .single()
 
@@ -90,7 +90,7 @@ serve(async (req) => {
       } else {
         // Réactiver le membre
         const { error: reactivateError } = await supabaseClient
-          .from('group_members')
+          .from('discussion_members')
           .update({ is_active: true, joined_at: new Date().toISOString() })
           .eq('id', existingMember.id)
 
@@ -112,9 +112,9 @@ serve(async (req) => {
     if (group.group_type === 'PRIVATE' || (group.group_type === 'MIXTE' && group.join_approval_required)) {
       // Créer une demande d'adhésion
       const { error: requestError } = await supabaseClient
-        .from('group_join_requests')
+        .from('discussion_join_requests')
         .insert({
-          group_id,
+          discussion_id: group_id,
           user_id: user.id,
           status: 'PENDING',
         })
@@ -134,9 +134,9 @@ serve(async (req) => {
 
     // Ajouter directement comme membre
     const { error: memberError } = await supabaseClient
-      .from('group_members')
+      .from('discussion_members')
       .insert({
-        group_id,
+        discussion_id: group_id,
         user_id: user.id,
         role: 'MEMBER',
       })

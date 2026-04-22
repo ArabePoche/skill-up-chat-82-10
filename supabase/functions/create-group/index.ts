@@ -72,7 +72,7 @@ serve(async (req) => {
     }
 
     // Créer le groupe en utilisant la fonction SQL
-    const { data: groupId, error: createError } = await supabaseClient.rpc('create_group', {
+    const { data: groupId, error: createError } = await supabaseClient.rpc('create_discussion', {
       p_name: name.trim(),
       p_description: description?.trim() || null,
       p_avatar_url: avatar_url || null,
@@ -94,7 +94,7 @@ serve(async (req) => {
 
     // Récupérer le groupe créé
     const { data: group, error: fetchError } = await supabaseClient
-      .from('groups')
+      .from('discussion_groups')
       .select('*')
       .eq('id', groupId)
       .single()

@@ -51,9 +51,9 @@ serve(async (req) => {
 
     // Vérifier si l'utilisateur est membre du groupe
     const { data: membership } = await supabaseClient
-      .from('group_members')
+      .from('discussion_members')
       .select('joined_at, role')
-      .eq('group_id', groupId)
+      .eq('discussion_id', groupId)
       .eq('user_id', user.id)
       .eq('is_active', true)
       .single()
@@ -67,7 +67,7 @@ serve(async (req) => {
 
     // Récupérer les informations du groupe
     const { data: group } = await supabaseClient
-      .from('groups')
+      .from('discussion_groups')
       .select('show_history_to_new_members')
       .eq('id', groupId)
       .single()
@@ -81,12 +81,12 @@ serve(async (req) => {
 
     // Construire la requête pour les messages
     let messagesQuery = supabaseClient
-      .from('group_messages')
+      .from('discussion_messages')
       .select(`
         *,
         sender:profiles(id, first_name, last_name, username, avatar_url)
       `)
-      .eq('group_id', groupId)
+      .eq('discussion_id', groupId)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
