@@ -5,4 +5,5 @@
 
 export { useCachedLessonMessages } from './hooks/useCachedLessonMessages';
 export { useCachedConversationMessages } from './hooks/useCachedConversationMessages';
+export { useCachedDiscussionMessages } from './hooks/useCachedDiscussionMessages';
 export { localMessageStore } from './utils/localMessageStore';

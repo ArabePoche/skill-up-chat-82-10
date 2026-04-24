@@ -6,7 +6,7 @@
 const DB_NAME = 'messages_cache';
 const DB_VERSION = 1;
 const STORE_NAME = 'lesson_messages';
-const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
+const CACHE_DURATION = 1000 * 60 * 60 * 24 * 7; // 7 jours (offline-first)
 
 interface CachedMessages {
   key: string;
@@ -18,6 +18,8 @@ interface CachedMessages {
 
 class LocalMessageStore {
   private db: IDBDatabase | null = null;
+  // Miroir mémoire pour des lectures synchrones après le premier hit IDB
+  private memoryCache: Map<string, any[]> = new Map();
 
   async init(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -60,6 +62,18 @@ class LocalMessageStore {
   }
 
   /**
+   * Lecture synchrone depuis le miroir mémoire (peut être null si jamais chargé)
+   */
+  getMessagesSync(
+    lessonId: string,
+    formationId: string,
+    userId: string,
+  ): any[] | null {
+    const key = this.getCacheKey(lessonId, formationId, userId);
+    return this.memoryCache.get(key) || null;
+  }
+
+  /**
    * Récupère les messages du cache local
    * @param ignoreExpiry - Si true, retourne les messages même s'ils sont expirés (utile pour le mode offline)
    */
@@ -94,6 +108,8 @@ class LocalMessageStore {
             this.deleteMessages(lessonId, formationId, userId);
             resolve(null);
           } else {
+            // Stocker dans le miroir mémoire pour des lectures synchrones ultérieures
+            this.memoryCache.set(key, result.messages);
             console.log('📦 Messages loaded from cache:', result.messages.length, ignoreExpiry ? '(offline mode)' : '');
             resolve(result.messages);
           }
@@ -128,6 +144,9 @@ class LocalMessageStore {
         lessonId,
       };
 
+      // Mettre à jour le miroir mémoire immédiatement
+      this.memoryCache.set(key, messages);
+
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
@@ -156,6 +175,9 @@ class LocalMessageStore {
       const db = await this.ensureDB();
       const key = this.getCacheKey(lessonId, formationId, userId);
 
+      // Vider le miroir mémoire
+      this.memoryCache.delete(key);
+
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
@@ -166,6 +188,45 @@ class LocalMessageStore {
       });
     } catch (error) {
       console.error('Error deleting cached messages:', error);
+    }
+  }
+
+  /**
+   * Pré-charge tout le contenu d'IndexedDB dans le miroir mémoire.
+   * Appelé une seule fois au démarrage. Permet à getMessagesSync de retourner
+   * immédiatement les messages cachés dès le premier rendu.
+   */
+  async warmupMemoryMirror(): Promise<void> {
+    try {
+      const db = await this.ensureDB();
+
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.openCursor();
+
+        let count = 0;
+        request.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest).result;
+          if (cursor) {
+            const data = cursor.value as CachedMessages;
+            const isExpired = Date.now() - data.timestamp > CACHE_DURATION;
+            if (!isExpired) {
+              this.memoryCache.set(data.key, data.messages);
+              count++;
+            }
+            cursor.continue();
+          } else {
+            if (count > 0) {
+              console.log(`🔥 Pre-loaded ${count} cached message threads into memory mirror`);
+            }
+            resolve();
+          }
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Error warming up memory mirror:', error);
     }
   }
 
@@ -212,6 +273,9 @@ class LocalMessageStore {
     try {
       const db = await this.ensureDB();
 
+      // Vider aussi le miroir mémoire
+      this.memoryCache.clear();
+
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
@@ -232,8 +296,11 @@ class LocalMessageStore {
 // Instance singleton
 export const localMessageStore = new LocalMessageStore();
 
-// Initialiser au chargement
-localMessageStore.init().catch(console.error);
+// Initialiser au chargement et pré-charger le miroir mémoire
+localMessageStore
+  .init()
+  .then(() => localMessageStore.warmupMemoryMirror())
+  .catch(console.error);
 
 // Nettoyer les caches expirés toutes les heures
 setInterval(() => {

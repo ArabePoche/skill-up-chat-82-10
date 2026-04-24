@@ -4,9 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useOfflineConversations } from '@/offline/hooks/useOfflineConversations';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { offlineStore } from '@/offline/utils/offlineStore';
+import { useCachedConversationMessages } from '@/message-cache';
 import { sendPushNotification } from '@/utils/notificationHelpers';
 import { useConversationTyping } from '@/hooks/conversations/useConversationTyping';
 import AgoraCallUI from '@/call-system/components/AgoraCallUI';
@@ -31,7 +31,6 @@ const Conversations = () => {
   const queryClient = useQueryClient();
   const { isOnline } = useOfflineSync();
   const { openConversationForward } = useConversationForwardDialog();
-  const { getOfflineConversationWith } = useOfflineConversations(user?.id);
   const [offlineMessages, setOfflineMessages] = useState<any[]>([]);
   const { isOtherTyping, otherActivityType, emitTyping, emitStopTyping } = useConversationTyping(otherUserId);
   const { data: conversations = [], isLoading: isConversationsLoading } = useConversationsList(true);
@@ -84,83 +83,14 @@ const Conversations = () => {
     retry: isOnline ? 3 : 0,
   });
 
-  // Récupérer les messages de cette conversation
-  const { data: onlineMessages = [], isLoading } = useQuery({
-    queryKey: ['conversation-messages', otherUserId],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      // En mode offline, retourner un tableau vide - on utilisera offlineMessages
-      if (!isOnline) {
-        return [];
-      }
-
-      // Récupérer TOUS les messages entre les deux utilisateurs (stories et directs)
-      const { data, error } = await supabase
-        .from('conversation_messages')
-        .select(`
-          id,
-          content,
-          sender_id,
-          receiver_id,
-          created_at,
-          is_story_reply,
-          replied_to_message_id,
-          replied_to_message:replied_to_message_id(
-            id,
-            content,
-            sender_id,
-            profiles:sender_id(
-              first_name,
-              last_name,
-              username
-            ),
-            conversation_media(
-              id,
-              file_type,
-              file_name
-            )
-          ),
-          is_read,
-          is_delivered,
-          profiles:sender_id (
-            first_name,
-            last_name,
-            username,
-            avatar_url
-          ),
-          conversation_media (
-            id,
-            file_url,
-            file_type,
-            file_name,
-            file_size,
-            duration_seconds
-          )
-        `)
-        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      
-      // Sauvegarder les messages dans le cache pour usage offline
-      if (data && data.length > 0) {
-        // Sauvegarder dans le query cache
-        const participants = [user.id, otherUserId].sort();
-        const conversationKey = participants.join('_');
-        await offlineStore.cacheQuery(
-          `conversation:${conversationKey}`,
-          data,
-          1000 * 60 * 60 * 24 * 7 // 7 jours
-        );
-      }
-      
-      return data || [];
-    },
-    enabled: !!user?.id && !!otherUserId && isOnline,
-    staleTime: 10000,
-    retry: isOnline ? 3 : 0,
-  });
+  // Hook offline-first : messages cachés affichés instantanément, sync en parallèle.
+  // Plus de spinner d'attente quand un cache existe — comportement type WhatsApp.
+  const {
+    messages: cachedMessages,
+    isInitialLoading,
+    hasCachedData,
+  } = useCachedConversationMessages(otherUserId);
+  const isLoading = isInitialLoading && !hasCachedData;
 
   // Realtime subscription pour les nouveaux messages de cette conversation
   useEffect(() => {
@@ -236,44 +166,26 @@ const Conversations = () => {
     };
   }, [user?.id, otherUserId, isOnline, queryClient]);
 
-  // Charger les messages offline
+  // Quand on revient en ligne, on vide les messages "pending" locaux : ils ont
+  // été (ou seront) renvoyés par la file d'attente offline et reviendront via
+  // le hook offline-first.
   useEffect(() => {
-    const loadOfflineMessages = async () => {
-      if (!isOnline && user?.id && otherUserId) {
-        console.log('📵 Loading offline messages...');
-        try {
-          const cached = await getOfflineConversationWith(otherUserId);
-          if (cached && cached.length > 0) {
-            console.log(`📦 Found ${cached.length} cached messages`);
-            setOfflineMessages(cached);
-          } else {
-            console.log('⚠️ No cached messages found, trying alternative cache key...');
-            // Essayer aussi avec la clé inversée
-            const participants = [user.id, otherUserId].sort();
-            const conversationKey = participants.join('_');
-            const alternativeCached = await offlineStore.getCachedQuery(`conversation:${conversationKey}`);
-            if (alternativeCached && alternativeCached.length > 0) {
-              console.log(`📦 Found ${alternativeCached.length} cached messages (alternative key)`);
-              setOfflineMessages(alternativeCached);
-            } else {
-              console.log('⚠️ No cached messages found with alternative key');
-              setOfflineMessages([]);
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error loading offline messages:', error);
-          setOfflineMessages([]);
-        }
-      } else if (isOnline) {
-        // Réinitialiser les messages offline quand on revient en ligne
-        setOfflineMessages([]);
-      }
-    };
-    loadOfflineMessages();
-  }, [isOnline, user?.id, otherUserId, getOfflineConversationWith]);
+    if (isOnline && offlineMessages.length > 0) {
+      setOfflineMessages([]);
+    }
+  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fusionner les messages online et offline
-  const messages = isOnline ? onlineMessages : offlineMessages;
+  // Le cache est la source unique d'affichage des messages (déjà rempli depuis
+  // IndexedDB au premier rendu). On y ajoute les messages "pending" envoyés
+  // hors-ligne pour qu'ils apparaissent immédiatement dans la conversation.
+  const messages = useMemo(() => {
+    if (offlineMessages.length === 0) return cachedMessages;
+    const existingIds = new Set(cachedMessages.map((m: any) => m.id));
+    const pendingNotInCache = offlineMessages.filter(
+      (m: any) => !existingIds.has(m.id),
+    );
+    return [...cachedMessages, ...pendingNotInCache];
+  }, [cachedMessages, offlineMessages]);
 
   const missedCallNotice = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -412,33 +324,9 @@ const Conversations = () => {
       }
     },
     onSuccess: async (_data, variables) => {
+      // Le hook offline-first va refetch et persister automatiquement le cache.
       queryClient.invalidateQueries({ queryKey: ['conversation-messages', otherUserId] });
       setReplyingTo(null);
-
-      // Sauvegarder les messages dans le cache offline après l'envoi
-      if (user?.id && otherUserId) {
-        try {
-          const { data: allMessages } = await supabase
-            .from('conversation_messages')
-            .select('*')
-            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
-            .order('created_at', { ascending: false })
-            .limit(500);
-          
-          if (allMessages && allMessages.length > 0) {
-            const participants = [user.id, otherUserId].sort();
-            const conversationKey = participants.join('_');
-            await offlineStore.cacheQuery(
-              `conversation:${conversationKey}`,
-              allMessages,
-              1000 * 60 * 60 * 24 * 7 // 7 jours
-            );
-            console.log('✅ Messages sauvegardés dans le cache offline après envoi');
-          }
-        } catch (error) {
-          console.error('❌ Erreur sauvegarde messages offline après envoi:', error);
-        }
-      }
 
       // Envoyer une notification push au destinataire (fire & forget)
       if (otherUserId && user?.id) {

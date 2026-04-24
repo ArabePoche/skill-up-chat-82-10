@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Users, Settings } from 'lucide-react';
+import { ArrowLeft, Users, Settings, WifiOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import ChatInputBar from '@/components/chat/ChatInputBar';
@@ -8,85 +8,95 @@ import ConversationMessageBubble from '@/components/conversation/ConversationMes
 import DateSeparator from '@/components/chat/DateSeparator';
 import { groupMessagesByDate } from '@/utils/dateUtils';
 import GroupInfoDialog from '@/components/groups/GroupInfoDialog';
+import { useCachedDiscussionMessages } from '@/message-cache';
+import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 
 const DiscussionGroupChat = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
-  const [group, setGroup] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [replyingTo, setReplyingTo] = useState<any>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isOnline, setIsOnline] = useState(true);
-  const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+  const { isOnline } = useOfflineSync();
 
+  const [group, setGroup] = useState<any>(null);
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Hook offline-first : messages cachés affichés instantanément, sync en parallèle
+  const {
+    messages,
+    isInitialLoading,
+    hasCachedData,
+    appendOptimistic,
+    upsertMessage,
+    removeMessage,
+  } = useCachedDiscussionMessages(groupId);
+
+  // Charger les infos du groupe (léger, peut afficher null en attendant)
+  useEffect(() => {
+    if (!groupId) return;
+    let cancelled = false;
+    supabase
+      .from('discussion_groups')
+      .select('*')
+      .eq('id', groupId)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) setGroup(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [groupId]);
+
+  // Abonnement realtime aux nouveaux messages du groupe
   useEffect(() => {
     if (!groupId) return;
 
-    // Charger les infos du groupe
-    const loadGroup = async () => {
-      const { data } = await supabase
-        .from('discussion_groups')
-        .select('*')
-        .eq('id', groupId)
-        .single();
-      setGroup(data);
-    };
-
-    // Charger les messages
-    const loadMessages = async () => {
-      const { data } = await supabase
-        .from('discussion_messages')
-        .select(`
-          *,
-          sender:profiles(id, first_name, last_name, username, avatar_url)
-        `)
-        .eq('discussion_id', groupId)
-        .order('created_at', { ascending: true });
-      setMessages(data || []);
-      setLoading(false);
-    };
-
-    loadGroup();
-    loadMessages();
-
-    // Écouter les nouveaux messages
     const channel = supabase
       .channel(`discussion-messages-${groupId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'discussion_messages',
-        filter: `discussion_id=eq.${groupId}`,
-      }, async (payload) => {
-        // Charger le profil de l'expéditeur
-        const { data: senderProfile } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, username, avatar_url')
-          .eq('id', payload.new.sender_id)
-          .single();
-        
-        setMessages(prev => [...prev, { ...payload.new, sender: senderProfile }]);
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'discussion_messages',
+          filter: `discussion_id=eq.${groupId}`,
+        },
+        async (payload) => {
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, username, avatar_url')
+            .eq('id', payload.new.sender_id)
+            .single();
+
+          upsertMessage({ ...payload.new, sender: senderProfile });
+        },
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [groupId]);
+  }, [groupId, upsertMessage]);
 
+  // Auto-scroll vers le bas à chaque nouveau message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async (content: string, messageType: string = 'TEXT', file?: File, repliedToMessageId?: string) => {
+  const handleSendMessage = async (
+    content: string,
+    messageType: string = 'TEXT',
+    file?: File,
+    repliedToMessageId?: string,
+  ) => {
     if (!content.trim() && !file) return;
     if (!user?.id || !groupId) return;
 
-    // Optimistic update
+    const tempId = `temp-${Date.now()}`;
     const tempMessage = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       discussion_id: groupId,
       sender_id: user.id,
       content: content.trim(),
@@ -101,27 +111,27 @@ const DiscussionGroupChat = () => {
       },
     };
 
-    setMessages(prev => [...prev, tempMessage]);
+    appendOptimistic(tempMessage);
     setReplyingTo(null);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('discussion_messages')
       .insert({
         discussion_id: groupId,
         sender_id: user.id,
         content: content.trim(),
         message_type: messageType.toUpperCase(),
-      });
+      })
+      .select(`*, sender:profiles(id, first_name, last_name, username, avatar_url)`)
+      .single();
 
     if (error) {
       console.error('Error sending message:', error);
-      // Remove optimistic update on error
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
-    } else {
-      // Remove optimistic update and let realtime update handle it
-      setTimeout(() => {
-        setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
-      }, 500);
+      removeMessage(tempId);
+    } else if (data) {
+      // Remplace l'optimiste par la version serveur (avec id réel)
+      removeMessage(tempId);
+      upsertMessage(data);
     }
   };
 
@@ -133,9 +143,10 @@ const DiscussionGroupChat = () => {
     });
   };
 
-  const groupedMessages = groupMessagesByDate(messages.filter(msg => !msg.id.startsWith('temp-')));
+  const groupedMessages = groupMessagesByDate(messages);
 
-  if (loading) {
+  // Spinner uniquement quand on n'a vraiment rien à afficher (premier accès au groupe)
+  if (isInitialLoading && !hasCachedData) {
     return (
       <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,113,133,0.26),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.22),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(96,165,250,0.24),_transparent_30%),linear-gradient(180deg,#fff7fb_0%,#f6f1ff_46%,#edf6ff_100%)] flex items-center justify-center">
         <div className="text-slate-500">Chargement...</div>
@@ -162,7 +173,15 @@ const DiscussionGroupChat = () => {
 
             <div>
               <h2 className="font-semibold tracking-tight">{group?.name || 'Groupe'}</h2>
-              <p className="text-xs text-white/85">{group?.member_count || 0} membres</p>
+              <p className="text-xs text-white/85">
+                {!isOnline ? (
+                  <span className="inline-flex items-center gap-1">
+                    <WifiOff className="h-3 w-3" /> Hors ligne
+                  </span>
+                ) : (
+                  `${group?.member_count || 0} membres`
+                )}
+              </p>
             </div>
           </button>
 
