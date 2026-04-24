@@ -2,6 +2,7 @@
  * Hook pour gérer les dépenses programmées (mensuelles/annuelles)
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -25,7 +26,7 @@ export interface ScheduledExpense {
  * Récupérer les dépenses programmées d'une école
  */
 export const useScheduledExpenses = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['scheduled-expenses', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -46,7 +47,7 @@ export const useScheduledExpenses = (schoolId?: string) => {
  * Récupérer les dépenses programmées dont la date est arrivée (aujourd'hui ou passée)
  */
 export const useDueScheduledExpenses = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['due-scheduled-expenses', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

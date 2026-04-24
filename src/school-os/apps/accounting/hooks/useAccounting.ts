@@ -2,6 +2,7 @@
  * Hooks pour gérer la comptabilité de l'école
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -34,7 +35,7 @@ export interface AccountingStats {
  * Inclut automatiquement les paiements des élèves
  */
 export const useTransactions = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-transactions', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -99,7 +100,7 @@ export const useTransactions = (schoolId?: string) => {
  * Calcule les revenus en incluant les paiements des élèves
  */
 export const useAccountingStats = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['accounting-stats', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

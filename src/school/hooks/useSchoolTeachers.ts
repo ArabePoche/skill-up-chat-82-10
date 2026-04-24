@@ -1,5 +1,6 @@
 // Hook consolidé pour récupérer les enseignants d'une école
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SchoolTeacher {
@@ -21,7 +22,7 @@ export interface SchoolTeacher {
 }
 
 export const useSchoolTeachers = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-teachers', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

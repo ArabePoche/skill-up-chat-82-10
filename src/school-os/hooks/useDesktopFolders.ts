@@ -1,12 +1,15 @@
 /**
- * Hook pour gérer les dossiers du bureau School OS avec persistance Supabase
- * Supporte une hiérarchie illimitée de sous-dossiers
- * Les dossiers publics sont visibles par tous les membres de l'école
+ * Hook pour gérer les dossiers du bureau School OS avec persistance Supabase.
+ * Offline-first : lit le cache local au premier rendu, puis synchronise.
+ * Supporte une hiérarchie illimitée de sous-dossiers.
+ * Les dossiers publics sont visibles par tous les membres de l'école.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { offlineStore } from '@/offline/utils/offlineStore';
+import { hashQueryKey } from '@/offline/utils/queryPersister';
 import { DesktopFolder, FolderFile } from '../types/folder';
 
 const FOLDER_COLORS = [
@@ -20,19 +23,45 @@ const FOLDER_COLORS = [
   '#F97316', // orange
 ];
 
+const foldersCacheKey = (userId: string, schoolId: string | null) =>
+  hashQueryKey(['school-desktop-folders', userId, schoolId ?? null]);
+
 export const useDesktopFolders = () => {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const schoolId = searchParams.get('id');
-  const [folders, setFolders] = useState<DesktopFolder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Lecture synchrone du cache : les dossiers s'affichent dès le premier rendu.
+  const [folders, setFolders] = useState<DesktopFolder[]>(() => {
+    if (!user?.id) return [];
+    const cached = offlineStore.getCachedQuerySync(
+      foldersCacheKey(user.id, schoolId),
+    );
+    return Array.isArray(cached) ? (cached as DesktopFolder[]) : [];
+  });
+  const [isLoading, setIsLoading] = useState(folders.length === 0);
 
   // Charger les dossiers depuis Supabase (propres + publics de l'école)
   useEffect(() => {
+    let cancelled = false;
     const loadFolders = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
+      }
+
+      // Repli IndexedDB si rien en mémoire
+      if (folders.length === 0) {
+        try {
+          const fromIdb = await offlineStore.getCachedQuery(
+            foldersCacheKey(user.id, schoolId),
+          );
+          if (!cancelled && Array.isArray(fromIdb) && fromIdb.length > 0) {
+            setFolders(fromIdb as DesktopFolder[]);
+          }
+        } catch {
+          /* ignore */
+        }
       }
 
       try {
@@ -47,13 +76,13 @@ export const useDesktopFolders = () => {
         // Charger les fichiers pour tous les dossiers
         const folderIds = foldersData?.map(f => f.id) || [];
         let filesData: any[] = [];
-        
+
         if (folderIds.length > 0) {
           const { data, error: filesError } = await supabase
             .from('desktop_folder_files')
             .select('*')
             .in('folder_id', folderIds);
-          
+
           if (!filesError) filesData = data || [];
         }
 
@@ -66,8 +95,8 @@ export const useDesktopFolders = () => {
           isOwner: f.user_id === user.id, // Marquer si l'utilisateur est propriétaire
           parentId: f.parent_id || undefined,
           createdAt: f.created_at,
-          positionX: f.position_x ?? 999, // Position X pour le tri (999 = pas encore positionné)
-          positionY: f.position_y ?? 0, // Position Y pour le tri
+          positionX: f.position_x ?? 999,
+          positionY: f.position_y ?? 0,
           files: filesData
             .filter(file => file.folder_id === f.id)
             .map(file => ({
@@ -80,15 +109,25 @@ export const useDesktopFolders = () => {
             })),
         }));
 
-        setFolders(mappedFolders);
+        if (!cancelled) {
+          setFolders(mappedFolders);
+          // Persistance pour le mode hors-ligne
+          offlineStore
+            .cacheQuery(foldersCacheKey(user.id, schoolId), mappedFolders)
+            .catch(() => {});
+        }
       } catch (e) {
         console.error('Error loading folders:', e);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     loadFolders();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, schoolId]);
 
   const createFolder = useCallback(async (name: string, color?: string, isPublic: boolean = false, parentId?: string) => {

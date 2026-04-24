@@ -1,7 +1,7 @@
 /**
  * Hook pour récupérer les élèves des classes d'un enseignant
  */
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -18,8 +18,9 @@ export interface TeacherStudent {
 export const useTeacherStudents = (schoolId: string | undefined, schoolYearId: string | undefined) => {
   const { user } = useAuth();
 
-  return useQuery({
-    queryKey: ['teacher-students', schoolId, schoolYearId, user?.id],
+  return useOfflineQuery<TeacherStudent[]>({
+    queryKey: ['school-students', 'teacher', schoolId, schoolYearId, user?.id],
+    enabled: !!schoolId && !!schoolYearId && !!user?.id,
     queryFn: async (): Promise<TeacherStudent[]> => {
       if (!schoolId || !schoolYearId || !user?.id) return [];
 
@@ -81,6 +82,5 @@ export const useTeacherStudents = (schoolId: string | undefined, schoolYearId: s
         class_name: s.classes?.name || '',
       })) || [];
     },
-    enabled: !!schoolId && !!schoolYearId && !!user?.id,
   });
 };

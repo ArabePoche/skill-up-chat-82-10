@@ -3,6 +3,7 @@
  * Permet la saisie directe par matière (méthode 2)
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SubjectEvaluation {
@@ -30,7 +31,7 @@ export interface SubjectWithEvaluations {
  * Récupère toutes les évaluations d'une matière pour une classe
  */
 export const useSubjectEvaluations = (classId?: string, subjectId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['subject-evaluations', classId, subjectId],
     queryFn: async (): Promise<SubjectEvaluation[]> => {
       if (!classId || !subjectId) return [];
@@ -114,7 +115,7 @@ export const useSubjectEvaluations = (classId?: string, subjectId?: string) => {
  * Récupère les élèves et leurs notes pour une évaluation et une matière spécifique
  */
 export const useSubjectGrades = (evaluationId?: string, subjectId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['subject-grades', evaluationId, subjectId],
     queryFn: async () => {
       if (!evaluationId || !subjectId) return { students: [], gradesMap: new Map() };

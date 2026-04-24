@@ -5,6 +5,7 @@
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ClassMonthlyStats {
@@ -29,7 +30,7 @@ export interface GlobalMonthlyStats {
  * Utilise prorated_amount_due et billable_months pour un calcul mensuel précis
  */
 export const useMonthlyPaymentStats = (schoolId?: string, schoolYearId?: string) => {
-  const { data: statsData, isLoading } = useQuery({
+  const { data: statsData, isLoading } = useOfflineQuery({
     queryKey: ['monthly-payment-stats', schoolId, schoolYearId],
     queryFn: async () => {
       if (!schoolId || !schoolYearId) return null;

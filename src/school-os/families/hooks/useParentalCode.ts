@@ -1,5 +1,6 @@
 // Hook pour gérer le système de code parental (association parent ↔ élèves)
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -62,7 +63,7 @@ export const useAssociateParentWithCode = () => {
  * Récupérer les associations parent-famille pour l'utilisateur connecté
  */
 export const useMyParentAssociations = () => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['parent-associations', 'mine'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -84,7 +85,7 @@ export const useMyParentAssociations = () => {
  * Récupérer les demandes d'association en attente pour une famille
  */
 export const usePendingAssociationRequests = (familyId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['parent-association-requests', familyId],
     queryFn: async () => {
       if (!familyId) return [];
@@ -107,7 +108,7 @@ export const usePendingAssociationRequests = (familyId?: string) => {
  * Récupérer toutes les demandes en attente pour les familles associées au parent connecté
  */
 export const useMyFamilyPendingRequests = () => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['parent-association-requests', 'my-families'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -173,7 +174,7 @@ export const useHandleAssociationRequest = () => {
  * Récupérer les parents associés à une famille
  */
 export const useFamilyParents = (familyId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['family-parents', familyId],
     queryFn: async () => {
       if (!familyId) return [];
@@ -195,7 +196,7 @@ export const useFamilyParents = (familyId?: string) => {
  * Récupérer les enfants du parent connecté via ses associations
  */
 export const useMyChildren = () => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['my-children'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();

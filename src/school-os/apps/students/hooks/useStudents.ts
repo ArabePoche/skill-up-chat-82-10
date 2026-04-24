@@ -1,5 +1,6 @@
 // Hook pour gérer les requêtes des élèves
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -59,7 +60,7 @@ export interface NewStudent {
 }
 
 export const useStudents = (schoolId?: string) => {
-  return useQuery<any[]>({
+  return useOfflineQuery<any[]>({
     queryKey: ['students', schoolId],
     queryFn: async () => {
       let query = supabase

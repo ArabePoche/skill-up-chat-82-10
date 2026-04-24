@@ -1,5 +1,6 @@
 // Hook pour gérer les paiements des enseignants
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -29,7 +30,7 @@ export interface CreateTeacherPaymentData {
 
 // Récupérer tous les paiements
 export const useTeacherPayments = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['teacher-payments', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

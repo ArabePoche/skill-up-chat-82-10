@@ -42,3 +42,21 @@ A large-scale educational platform built with React/Vite and Supabase. Features 
 - Vite server configured for Replit (host: 0.0.0.0, port: 5000, allowedHosts: true)
 - 274+ Supabase migration files in `supabase/migrations/` document the full DB schema
 - This is a pure frontend SPA — all business logic runs via Supabase RLS, RPCs, and Edge Functions
+
+## Offline-First Architecture
+The app implements an aggressive offline-first pattern across messaging and the school-os module so that screens display cached data instantly (no spinner) and refresh in the background.
+
+### Core infrastructure
+- `src/offline/utils/offlineStore.ts` — IndexedDB-backed cache with **synchronous in-memory mirrors** for queries and profiles. `warmupMemoryMirrors()` runs at module init and pre-loads all cached entries so the very first render of any consumer can read synchronously via `getCachedQuerySync()` / `getProfileSync()`.
+- `src/offline/utils/queryPersister.ts` — declares `PERSISTED_QUERY_PREFIXES` controlling which React Query keys are persisted. Includes both messaging prefixes and the full set of school / school-os prefixes.
+- `src/offline/hooks/useOfflineQuery.ts` — generic drop-in replacement for `useQuery`. It seeds the React Query cache from the sync mirror at first render via `initialData`, falls back to IndexedDB asynchronously, and writes results back to the cache for offline use.
+- `src/message-cache/utils/localMessageStore.ts` + `useCachedConversationMessages.ts` / `useCachedDiscussionMessages.ts` — message-specific offline cache with optimistic mutations and realtime sync.
+
+### Hooks converted to offline-first (school + school-os)
+- Entry path: `useUserSchools`, `useUserSchool`, `useSchoolYears`, `useCurrentSchoolYear`, `useSchoolSearch`, `useSchoolUserRole` (already had localStorage), `useUserExtraPermissions`, `useUserPermissionExclusions`.
+- Desktop: `useWallpaper`, `useDesktopFolders`, `useDesktopAppPositions` (manual sync-mirror seeding for raw `useState` hooks).
+- All school-os app hooks under `src/school-os/apps/*/hooks/` and shared hooks under `src/school/hooks/` and `src/school-os/families/hooks/` were bulk-migrated from `useQuery` to `useOfflineQuery` (50+ hooks).
+- `useTeacherClasses` / `useTeacherStudents` use cache-friendly query keys aligned to the persistence prefixes.
+
+### Convention for new hooks
+Use `useOfflineQuery` from `@/offline/hooks/useOfflineQuery` for any read query whose key starts with a prefix listed in `PERSISTED_QUERY_PREFIXES`. The hook signature is identical to `useQuery` (queryKey, queryFn, enabled, etc.) and additionally exposes `isFromCache`.

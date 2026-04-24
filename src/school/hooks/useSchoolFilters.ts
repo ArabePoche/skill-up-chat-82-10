@@ -3,6 +3,7 @@
  * Récupère les pays et niveaux (cycles) disponibles depuis la base de données
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface FilterOption {
@@ -12,7 +13,7 @@ export interface FilterOption {
 
 export const useSchoolFilters = () => {
   // Récupérer les pays distincts
-  const countriesQuery = useQuery({
+  const countriesQuery = useOfflineQuery({
     queryKey: ['school-countries'],
     queryFn: async (): Promise<FilterOption[]> => {
       const { data, error } = await supabase
@@ -37,7 +38,7 @@ export const useSchoolFilters = () => {
   });
 
   // Récupérer les niveaux (cycles) distincts
-  const levelsQuery = useQuery({
+  const levelsQuery = useOfflineQuery({
     queryKey: ['school-levels'],
     queryFn: async (): Promise<FilterOption[]> => {
       const { data, error } = await supabase

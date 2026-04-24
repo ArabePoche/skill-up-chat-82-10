@@ -2,10 +2,11 @@
  * Hook pour récupérer l'historique des paiements d'une famille
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useFamilyPaymentHistory = (familyId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['family-payment-history', familyId],
     queryFn: async () => {
       if (!familyId) return [];

@@ -2,7 +2,7 @@
  * useSchoolSearch - Hook pour rechercher des écoles avec filtres
  * Permet de chercher par nom, ville et filtrer par type, pays, niveau
  */
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SchoolSearchFilters {
@@ -31,8 +31,9 @@ export interface SchoolResult {
 }
 
 export const useSchoolSearch = (searchQuery: string, filters?: SchoolSearchFilters) => {
-  return useQuery({
+  return useOfflineQuery<SchoolResult[]>({
     queryKey: ['school-search', searchQuery, filters],
+    enabled: searchQuery.trim().length >= 2,
     queryFn: async (): Promise<SchoolResult[]> => {
       if (!searchQuery || searchQuery.trim().length < 2) return [];
 

@@ -1,5 +1,6 @@
  // Hook pour gérer les demandes de transfert d'élèves entre écoles
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
  import { supabase } from '@/integrations/supabase/client';
  import { toast } from 'sonner';
  
@@ -35,7 +36,7 @@
  
  // Récupérer les demandes de transfert entrantes (école cible)
  export const useIncomingTransferRequests = (schoolId?: string) => {
-   return useQuery({
+   return useOfflineQuery({
      queryKey: ['transfer-requests', 'incoming', schoolId],
      queryFn: async () => {
        const { data, error } = await supabase
@@ -53,7 +54,7 @@
  
  // Récupérer les demandes de transfert sortantes (école source)
  export const useOutgoingTransferRequests = (schoolId?: string) => {
-   return useQuery({
+   return useOfflineQuery({
      queryKey: ['transfer-requests', 'outgoing', schoolId],
      queryFn: async () => {
        const { data, error } = await supabase
@@ -71,7 +72,7 @@
  
  // Compter les demandes en attente (pour badge de notification)
  export const usePendingTransferRequestsCount = (schoolId?: string) => {
-   return useQuery({
+   return useOfflineQuery({
      queryKey: ['transfer-requests', 'pending-count', schoolId],
      queryFn: async () => {
        const { count, error } = await supabase

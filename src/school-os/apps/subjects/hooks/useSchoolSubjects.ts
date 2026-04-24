@@ -1,5 +1,6 @@
 // Hook pour gérer les matières d'une école
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Subject, CreateSubjectData, UpdateSubjectData } from '../types';
@@ -8,7 +9,7 @@ import type { Subject, CreateSubjectData, UpdateSubjectData } from '../types';
  * Récupérer toutes les matières d'une école
  */
 export const useSchoolSubjects = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-subjects', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

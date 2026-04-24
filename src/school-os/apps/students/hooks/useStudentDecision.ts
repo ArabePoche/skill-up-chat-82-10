@@ -1,5 +1,6 @@
 // Hook pour gérer les décisions concernant les élèves (promotion, transfert, exclusion)
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,7 +18,7 @@ export interface StudentDecision {
 
 // Hook pour récupérer toutes les écoles disponibles
 export const useAllSchools = () => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['all-schools'],
     queryFn: async () => {
       const { data, error } = await supabase

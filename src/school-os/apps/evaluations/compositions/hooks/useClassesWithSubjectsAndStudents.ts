@@ -2,6 +2,7 @@
  * Hook pour charger les classes avec leurs matières et élèves
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ClassSubject {
@@ -29,7 +30,7 @@ export const useClassesWithSubjectsAndStudents = (
   schoolYearId?: string,
   selectedClassIds?: string[]
 ) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['classes-with-details', schoolId, schoolYearId, selectedClassIds],
     queryFn: async () => {
       if (!schoolId || !selectedClassIds || selectedClassIds.length === 0) {

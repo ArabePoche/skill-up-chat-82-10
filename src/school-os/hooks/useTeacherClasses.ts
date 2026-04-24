@@ -1,7 +1,7 @@
 /**
  * Hook pour récupérer les classes assignées à un enseignant
  */
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -23,8 +23,9 @@ export interface TeacherClass {
 export const useTeacherClasses = (schoolId: string | undefined, schoolYearId: string | undefined) => {
   const { user } = useAuth();
 
-  return useQuery({
-    queryKey: ['teacher-classes', schoolId, schoolYearId, user?.id],
+  return useOfflineQuery<TeacherClass[]>({
+    queryKey: ['school-classes', 'teacher', schoolId, schoolYearId, user?.id],
+    enabled: !!schoolId && !!schoolYearId && !!user?.id,
     queryFn: async (): Promise<TeacherClass[]> => {
       if (!schoolId || !schoolYearId || !user?.id) return [];
 
@@ -85,6 +86,5 @@ export const useTeacherClasses = (schoolId: string | undefined, schoolYearId: st
 
       return Array.from(classesMap.values());
     },
-    enabled: !!schoolId && !!schoolYearId && !!user?.id,
   });
 };

@@ -1,5 +1,6 @@
 // Hook pour gérer les fichiers de supports attachés aux matières d'une classe
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,7 +23,7 @@ export interface UploadClassSubjectFileData {
 
 // Récupérer les fichiers d'une matière dans une classe spécifique
 export const useClassSubjectFiles = (classSubjectId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['class-subject-files', classSubjectId],
     queryFn: async () => {
       if (!classSubjectId) return [];

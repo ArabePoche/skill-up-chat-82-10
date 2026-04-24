@@ -5,6 +5,7 @@
  */
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
@@ -26,7 +27,7 @@ export const useSchoolMessagesGmail = (schoolId?: string) => {
   const [selectedMessage, setSelectedMessage] = useState<SchoolMessage | null>(null);
 
   // --- Fetch labels depuis Supabase ---
-  const { data: dbLabels = [] } = useQuery({
+  const { data: dbLabels = [] } = useOfflineQuery({
     queryKey: ['school-message-labels', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -46,7 +47,7 @@ export const useSchoolMessagesGmail = (schoolId?: string) => {
   });
 
   // --- Fetch messages depuis Supabase ---
-  const { data: dbMessages = [], isLoading: isLoadingMessages } = useQuery({
+  const { data: dbMessages = [], isLoading: isLoadingMessages } = useOfflineQuery({
     queryKey: ['school-messages', schoolId, user?.id, isAdmin],
     queryFn: async () => {
       if (!schoolId || !user?.id) return [];
@@ -152,7 +153,7 @@ export const useSchoolMessagesGmail = (schoolId?: string) => {
   });
 
   // --- Fetch join requests as messages (only for admins) ---
-  const { data: joinRequestMessages = [], isLoading: isLoadingJoinRequests } = useQuery({
+  const { data: joinRequestMessages = [], isLoading: isLoadingJoinRequests } = useOfflineQuery({
     queryKey: ['school-join-requests-as-messages', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

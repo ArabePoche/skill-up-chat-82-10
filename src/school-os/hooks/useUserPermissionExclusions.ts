@@ -2,7 +2,8 @@
  * Hook pour gérer les exclusions de permissions pour un utilisateur spécifique
  * Permet de désactiver des permissions héritées du rôle
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -16,10 +17,11 @@ interface PermissionExclusion {
   created_at: string;
 }
 
-// Récupérer les exclusions de permissions d'un utilisateur
+// Récupérer les exclusions de permissions d'un utilisateur (offline-first)
 export const useUserPermissionExclusions = (schoolId?: string, userId?: string) => {
-  return useQuery({
+  return useOfflineQuery<PermissionExclusion[]>({
     queryKey: ['user-permission-exclusions', schoolId, userId],
+    enabled: !!schoolId && !!userId,
     queryFn: async () => {
       if (!schoolId || !userId) return [];
 
@@ -30,9 +32,8 @@ export const useUserPermissionExclusions = (schoolId?: string, userId?: string) 
         .eq('user_id', userId);
 
       if (error) throw error;
-      return data as PermissionExclusion[];
+      return (data ?? []) as PermissionExclusion[];
     },
-    enabled: !!schoolId && !!userId,
   });
 };
 

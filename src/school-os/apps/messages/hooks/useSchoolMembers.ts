@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { SchoolMember } from '../types';
@@ -20,7 +21,7 @@ export const useSchoolMembers = (schoolId?: string, options?: UseSchoolMembersOp
   const isParent = options?.isParent || false;
   const schoolYearId = options?.schoolYearId;
 
-  const { data: members = [], isLoading } = useQuery({
+  const { data: members = [], isLoading } = useOfflineQuery({
     queryKey: ['school-members', schoolId, isParent, schoolYearId, user?.id],
     queryFn: async (): Promise<SchoolMember[]> => {
       if (!schoolId) return [];

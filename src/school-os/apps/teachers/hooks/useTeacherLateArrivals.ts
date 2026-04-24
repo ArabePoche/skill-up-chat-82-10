@@ -1,5 +1,6 @@
 // Hook pour gérer les retards des enseignants
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -27,7 +28,7 @@ export interface CreateTeacherLateArrivalData {
 
 // Récupérer tous les retards
 export const useTeacherLateArrivals = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['teacher-late-arrivals', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

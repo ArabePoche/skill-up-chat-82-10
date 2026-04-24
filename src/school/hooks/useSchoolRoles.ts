@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -14,7 +15,7 @@ export interface SchoolRole {
 }
 
 export const useSchoolRoles = (schoolId: string | undefined) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-roles', schoolId],
     queryFn: async (): Promise<SchoolRole[]> => {
       if (!schoolId) return [];
@@ -43,7 +44,7 @@ export const useSchoolRoles = (schoolId: string | undefined) => {
  * Utilisé dans le modal de demande d'adhésion
  */
 export const useAssignableRoles = (schoolId: string | undefined) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['assignable-roles', schoolId],
     queryFn: async (): Promise<SchoolRole[]> => {
       if (!schoolId) return [];

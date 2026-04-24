@@ -1,5 +1,6 @@
 // Hook pour gérer les remarques sur les enseignants
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -25,7 +26,7 @@ export interface CreateTeacherRemarkData {
 
 // Récupérer toutes les remarques
 export const useTeacherRemarks = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['teacher-remarks', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

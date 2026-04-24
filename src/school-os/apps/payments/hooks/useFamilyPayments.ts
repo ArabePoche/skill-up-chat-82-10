@@ -2,6 +2,7 @@
  * Hook pour gérer les paiements familiaux et les remises
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -35,7 +36,7 @@ export interface FamilyWithStudents {
  * Récupère toutes les familles avec leurs élèves et leurs informations de paiement
  */
 export const useFamiliesWithPayments = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['families-with-payments', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

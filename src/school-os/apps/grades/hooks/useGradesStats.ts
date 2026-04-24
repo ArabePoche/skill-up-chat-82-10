@@ -3,6 +3,7 @@
  * Calcule les moyennes, progressions et classements
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface StudentAverage {
@@ -37,7 +38,7 @@ export interface SubjectAverage {
 }
 
 export const useGradesStats = (classId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['grades-stats', classId],
     queryFn: async (): Promise<ClassStats | null> => {
       if (!classId) return null;

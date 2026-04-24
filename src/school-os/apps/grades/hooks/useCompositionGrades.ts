@@ -3,6 +3,7 @@
  * Utilise school_composition_notes au lieu de grades
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -42,7 +43,7 @@ export interface CompositionGradeData {
  * Hook pour récupérer les données de notes d'une composition pour une classe
  */
 export const useCompositionGrades = (compositionId?: string, classId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['composition-grades', compositionId, classId],
     queryFn: async (): Promise<CompositionGradeData | null> => {
       if (!compositionId || !classId) return null;

@@ -3,12 +3,13 @@
  * Utilise les tables school_compositions et tables associées
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Composition, CreateCompositionData, CompositionWithRelations } from '../types';
 
 export const useCompositions = (schoolId?: string, schoolYearId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-compositions', schoolId, schoolYearId],
     queryFn: async () => {
       if (!schoolId) return [];

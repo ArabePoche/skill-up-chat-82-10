@@ -3,6 +3,7 @@
  * Utilise la table school_evaluations et ses tables de configuration
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -52,7 +53,7 @@ export interface QuestionnaireData {
 }
 
 export const useEvaluations = (schoolId?: string, schoolYearId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-evaluations', schoolId, schoolYearId],
     queryFn: async () => {
       if (!schoolId) return [];

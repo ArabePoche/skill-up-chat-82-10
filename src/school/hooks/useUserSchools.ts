@@ -1,13 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Hook pour récupérer toutes les écoles d'un utilisateur
- * Retourne les écoles dont il est créateur, membre ou enseignant
+ * Hook pour récupérer toutes les écoles d'un utilisateur (offline-first).
+ * Retourne les écoles dont il est créateur, membre ou enseignant.
  */
 export const useUserSchools = (userId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['user-schools', userId],
+    enabled: !!userId,
     queryFn: async () => {
       if (!userId) return [];
 
@@ -127,7 +128,6 @@ export const useUserSchools = (userId?: string) => {
 
       return Array.from(schoolMap.values());
     },
-    enabled: !!userId,
   });
 };
  

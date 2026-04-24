@@ -1,5 +1,6 @@
 // Hook pour récupérer les enfants d'un parent avec leurs classes
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -18,7 +19,7 @@ export interface ParentChild {
 export const useParentChildren = (schoolId: string | undefined, schoolYearId: string | undefined) => {
   const { user } = useAuth();
 
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['parent-children', schoolId, schoolYearId, user?.id],
     queryFn: async (): Promise<ParentChild[]> => {
       if (!schoolId || !schoolYearId || !user?.id) return [];

@@ -1,27 +1,65 @@
 /**
- * Hook pour gérer les positions des applications sur le bureau
+ * Hook pour gérer les positions des applications sur le bureau (offline-first).
  * Persiste les positions en base de données (table school_desktop_app_positions)
+ * et dans le cache local pour un affichage instantané.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { offlineStore } from '@/offline/utils/offlineStore';
+import { hashQueryKey } from '@/offline/utils/queryPersister';
 
 interface AppPosition {
   app_id: string;
   position_index: number;
 }
 
+const positionsCacheKey = (userId: string, schoolId: string | null) =>
+  hashQueryKey(['school-desktop-app-positions', userId, schoolId ?? null]);
+
+const mapToObject = (m: Map<string, number>): Record<string, number> =>
+  Object.fromEntries(m.entries());
+
+const objectToMap = (o: Record<string, number>): Map<string, number> => {
+  const m = new Map<string, number>();
+  for (const [k, v] of Object.entries(o)) m.set(k, v);
+  return m;
+};
+
 export const useDesktopAppPositions = (schoolId: string | null) => {
   const { user } = useAuth();
-  const [appPositions, setAppPositions] = useState<Map<string, number>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Lecture synchrone : les positions s'appliquent dès le premier rendu.
+  const [appPositions, setAppPositions] = useState<Map<string, number>>(() => {
+    if (!user?.id) return new Map();
+    const cached = offlineStore.getCachedQuerySync(
+      positionsCacheKey(user.id, schoolId),
+    );
+    return cached && typeof cached === 'object' ? objectToMap(cached as Record<string, number>) : new Map();
+  });
+  const [isLoading, setIsLoading] = useState(appPositions.size === 0);
 
   // Charger les positions depuis Supabase
   useEffect(() => {
+    let cancelled = false;
     const loadPositions = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
+      }
+
+      // Repli IndexedDB si rien en mémoire
+      if (appPositions.size === 0) {
+        try {
+          const fromIdb = await offlineStore.getCachedQuery(
+            positionsCacheKey(user.id, schoolId),
+          );
+          if (!cancelled && fromIdb && typeof fromIdb === 'object') {
+            setAppPositions(objectToMap(fromIdb as Record<string, number>));
+          }
+        } catch {
+          /* ignore */
+        }
       }
 
       try {
@@ -44,15 +82,24 @@ export const useDesktopAppPositions = (schoolId: string | null) => {
         (data || []).forEach(item => {
           positionsMap.set(item.app_id, item.position_index);
         });
-        setAppPositions(positionsMap);
+        if (!cancelled) {
+          setAppPositions(positionsMap);
+          offlineStore
+            .cacheQuery(positionsCacheKey(user.id, schoolId), mapToObject(positionsMap))
+            .catch(() => {});
+        }
       } catch (e) {
         console.error('Error loading app positions:', e);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     loadPositions();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, schoolId]);
 
   // Obtenir la position d'une app

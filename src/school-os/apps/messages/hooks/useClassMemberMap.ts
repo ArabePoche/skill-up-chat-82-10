@@ -3,6 +3,7 @@
  * Utilisé par le RecipientGroupPicker pour filtrer par classe
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { SchoolMember } from '../types';
 
@@ -11,7 +12,7 @@ export const useClassMemberMap = (
   schoolYearId?: string,
   allMembers?: SchoolMember[]
 ) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['class-member-map', schoolId, schoolYearId],
     queryFn: async (): Promise<Record<string, SchoolMember[]>> => {
       if (!schoolId || !schoolYearId || !allMembers?.length) return {};

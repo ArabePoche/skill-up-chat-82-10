@@ -1,5 +1,6 @@
 // Hook pour gérer les confirmations de code parental lors de l'approbation des parents
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -7,7 +8,7 @@ import { toast } from 'sonner';
  * Récupérer les confirmations en attente pour le parent connecté
  */
 export const useMyPendingConfirmations = () => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['parent-join-confirmations', 'mine'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -30,7 +31,7 @@ export const useMyPendingConfirmations = () => {
  * Récupérer les élèves liés à un family_id
  */
 export const useStudentsByFamily = (familyId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['family-students', familyId],
     queryFn: async () => {
       if (!familyId) return [];
@@ -51,7 +52,7 @@ export const useStudentsByFamily = (familyId?: string) => {
  * Rechercher des élèves par nom dans une école
  */
 export const useSearchStudents = (schoolId: string, searchTerm: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['search-students', schoolId, searchTerm],
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2) return [];

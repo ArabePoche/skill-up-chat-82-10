@@ -84,6 +84,12 @@ interface OfflineUserProgress {
 class OfflineStore {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+  // Miroir mémoire pour les requêtes cachées : permet une lecture *synchrone*
+  // dès le premier rendu, donc plus aucun spinner si une donnée est déjà connue.
+  private queryMemoryCache: Map<string, any> = new Map();
+  // Miroir mémoire pour les profils utilisateurs (lecture synchrone également).
+  private profileMemoryCache: Map<string, any> = new Map();
+  private warmupPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
     if (this.initPromise) return this.initPromise;
@@ -171,9 +177,14 @@ class OfflineStore {
   // ==================== QUERY CACHE ====================
 
   /**
-   * Sauvegarde le résultat d'une requête dans le cache
+   * Sauvegarde le résultat d'une requête dans le cache (mémoire + IndexedDB).
+   * Le miroir mémoire est mis à jour immédiatement pour permettre des lectures
+   * synchrones ultérieures.
    */
   async cacheQuery(key: string, data: any, ttlMs: number = 1000 * 60 * 60): Promise<void> {
+    // Miroir mémoire mis à jour synchrone
+    this.queryMemoryCache.set(key, data);
+
     const db = await this.ensureDB();
     const cached: CachedQuery = {
       key,
@@ -193,9 +204,22 @@ class OfflineStore {
   }
 
   /**
-   * Récupère une requête depuis le cache
+   * Lecture *synchrone* d'une requête cachée depuis le miroir mémoire.
+   * Renvoie `null` si rien n'est connu — appeler `getCachedQuery` (async)
+   * pour interroger IndexedDB en complément.
+   */
+  getCachedQuerySync(key: string): any | null {
+    return this.queryMemoryCache.get(key) ?? null;
+  }
+
+  /**
+   * Récupère une requête depuis le cache (mémoire d'abord, puis IndexedDB).
+   * Met à jour le miroir mémoire au passage pour les prochaines lectures sync.
    */
   async getCachedQuery(key: string): Promise<any | null> {
+    const inMemory = this.queryMemoryCache.get(key);
+    if (inMemory !== undefined) return inMemory;
+
     const db = await this.ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -205,11 +229,84 @@ class OfflineStore {
 
       request.onsuccess = () => {
         const result = request.result as CachedQuery | undefined;
-        // Retourne les données même si expirées (stale-while-revalidate)
-        resolve(result?.data || null);
+        if (result?.data !== undefined) {
+          this.queryMemoryCache.set(key, result.data);
+          resolve(result.data);
+        } else {
+          resolve(null);
+        }
       };
       request.onerror = () => reject(request.error);
     });
+  }
+
+  /**
+   * Pré-charge tout le cache de requêtes dans le miroir mémoire au démarrage,
+   * pour que les écrans puissent afficher leurs données instantanément au
+   * premier rendu (style WhatsApp / Telegram).
+   */
+  async warmupMemoryMirrors(): Promise<void> {
+    if (this.warmupPromise) return this.warmupPromise;
+    this.warmupPromise = (async () => {
+      try {
+        const db = await this.ensureDB();
+        await new Promise<void>((resolve, reject) => {
+          const transaction = db.transaction(
+            [QUERY_CACHE_STORE, PROFILES_STORE],
+            'readonly',
+          );
+          const queryStore = transaction.objectStore(QUERY_CACHE_STORE);
+          const queryReq = queryStore.openCursor();
+          let queryCount = 0;
+          queryReq.onsuccess = (e) => {
+            const cursor = (e.target as IDBRequest).result;
+            if (cursor) {
+              const cached = cursor.value as CachedQuery;
+              if (cached?.data !== undefined) {
+                this.queryMemoryCache.set(cached.key, cached.data);
+                queryCount++;
+              }
+              cursor.continue();
+            }
+          };
+
+          const profileStore = transaction.objectStore(PROFILES_STORE);
+          const profileReq = profileStore.openCursor();
+          let profileCount = 0;
+          profileReq.onsuccess = (e) => {
+            const cursor = (e.target as IDBRequest).result;
+            if (cursor) {
+              const profile = cursor.value as OfflineProfile;
+              if (profile?.id && profile?.data) {
+                this.profileMemoryCache.set(profile.id, profile.data);
+                profileCount++;
+              }
+              cursor.continue();
+            }
+          };
+
+          transaction.oncomplete = () => {
+            if (queryCount > 0 || profileCount > 0) {
+              console.log(
+                `🔥 Offline mirror warmed up: ${queryCount} queries, ${profileCount} profiles`,
+              );
+            }
+            resolve();
+          };
+          transaction.onerror = () => reject(transaction.error);
+        });
+      } catch (err) {
+        console.error('Error warming up offline memory mirrors:', err);
+      }
+    })();
+    return this.warmupPromise;
+  }
+
+  /**
+   * Lecture *synchrone* d'un profil depuis le miroir mémoire.
+   */
+  getProfileSync(profileId: string): any | null {
+    return this.profileMemoryCache.get(profileId) ?? null;
   }
 
   /**
@@ -852,4 +949,7 @@ class OfflineStore {
 }
 
 export const offlineStore = new OfflineStore();
-offlineStore.init().catch(console.error);
+offlineStore
+  .init()
+  .then(() => offlineStore.warmupMemoryMirrors())
+  .catch(console.error);

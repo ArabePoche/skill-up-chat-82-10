@@ -1,5 +1,6 @@
 // Hook pour gérer les élèves archivés (exclus ou transférés)
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
  
@@ -97,7 +98,7 @@ export interface ArchivedStudent {
 
 // Récupérer les élèves archivés d'une école
 export const useArchivedStudents = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['archived-students', schoolId],
     queryFn: async () => {
       const { data, error } = await (supabase

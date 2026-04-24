@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSearchParams } from 'react-router-dom';
@@ -11,7 +12,7 @@ export const useTeachers = () => {
   const [searchParams] = useSearchParams();
   const schoolId = searchParams.get('id');
 
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['teachers', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

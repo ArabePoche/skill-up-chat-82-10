@@ -1,11 +1,12 @@
 // Hook pour gérer les notes de suivi des enseignants
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { TeacherStudentNote, CreateTeacherNoteData } from '../types';
 
 export const useTeacherNotes = (studentId?: string, teacherId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['teacher-notes', studentId, teacherId],
     queryFn: async () => {
       if (!studentId) return [];

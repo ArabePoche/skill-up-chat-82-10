@@ -1,5 +1,6 @@
 // Hook pour gérer les matières d'une classe
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -30,7 +31,7 @@ export interface CreateClassSubjectData {
 
 // Récupérer les matières d'une classe
 export const useClassSubjects = (classId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['class-subjects', classId],
     queryFn: async () => {
       if (!classId) return [];

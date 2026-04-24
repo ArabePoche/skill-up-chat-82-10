@@ -4,6 +4,7 @@
  * school_bulletin_appreciation_templates, school_bulletin_templates, school_report_card_history
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
@@ -91,7 +92,7 @@ export interface ReportCardHistory {
 // ============ SETTINGS ============
 
 export const useBulletinSettings = (schoolId?: string, schoolYearId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['bulletin-settings', schoolId, schoolYearId],
     queryFn: async () => {
       if (!schoolId || !schoolYearId) return null;
@@ -155,7 +156,7 @@ export const useSaveBulletinSettings = () => {
 // ============ MENTIONS ============
 
 export const useBulletinMentions = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['bulletin-mentions', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -250,7 +251,7 @@ export const useDeleteBulletinMention = () => {
 // ============ APPRECIATION TEMPLATES ============
 
 export const useBulletinAppreciations = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['bulletin-appreciations', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -343,7 +344,7 @@ export const useDeleteBulletinAppreciation = () => {
 // ============ TEMPLATES ============
 
 export const useBulletinTemplates = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['bulletin-templates', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -490,7 +491,7 @@ export const useReportCardHistory = (schoolId?: string, schoolYearId?: string, f
   classId?: string;
   periodId?: string;
 }) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['report-card-history', schoolId, schoolYearId, filters],
     queryFn: async () => {
       if (!schoolId || !schoolYearId) return [];

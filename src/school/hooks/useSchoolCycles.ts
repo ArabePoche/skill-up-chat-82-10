@@ -1,5 +1,6 @@
 // Hook pour la gestion des cycles scolaires
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,7 +18,7 @@ export interface SchoolCycle {
 
 // Hook pour récupérer les cycles d'une école
 export const useSchoolCycles = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-cycles', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -42,7 +43,7 @@ export const useSchoolCycles = (schoolId?: string) => {
 
 // Hook pour récupérer un cycle par son nom
 export const useSchoolCycleByName = (schoolId?: string, cycleName?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-cycle', schoolId, cycleName],
     queryFn: async () => {
       if (!schoolId || !cycleName) return null;

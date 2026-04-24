@@ -1,5 +1,6 @@
 // Hook pour la gestion des classes
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -34,7 +35,7 @@ export interface CreateClassData {
 
 // Hook pour récupérer les classes d'une école
 export const useSchoolClasses = (schoolId?: string, schoolYearId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-classes', schoolId, schoolYearId],
     queryFn: async () => {
       if (!schoolId) return [];

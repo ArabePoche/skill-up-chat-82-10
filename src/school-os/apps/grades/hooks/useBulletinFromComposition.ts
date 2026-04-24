@@ -4,6 +4,7 @@
  * - Notes de classe: optionnelles, proviennent de school_composition_notes.class_note
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CompositionNote {
@@ -46,7 +47,7 @@ export interface CompositionBulletinData {
  * Hook pour récupérer les compositions disponibles pour une classe
  */
 export const useCompositionsForClass = (schoolId?: string, schoolYearId?: string, classId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['compositions-for-class', schoolId, schoolYearId, classId],
     queryFn: async () => {
       if (!schoolId || !schoolYearId) return [];
@@ -96,7 +97,7 @@ export const useCompositionsForClass = (schoolId?: string, schoolYearId?: string
  * Hook pour récupérer les données complètes du bulletin pour une composition et une classe
  */
 export const useBulletinFromComposition = (compositionId?: string, classId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['bulletin-from-composition', compositionId, classId],
     queryFn: async (): Promise<CompositionBulletinData | null> => {
       if (!compositionId || !classId) return null;
@@ -190,7 +191,7 @@ export const useBulletinFromComposition = (compositionId?: string, classId?: str
  * (si la méthode "évaluation" est choisie)
  */
 export const useEvaluationsForClassNotes = (classId?: string, schoolYearId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['evaluations-for-class-notes', classId, schoolYearId],
     queryFn: async () => {
       if (!classId || !schoolYearId) return [];

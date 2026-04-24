@@ -3,6 +3,7 @@
  * avec leurs rôles depuis school_user_roles
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SchoolMemberWithRole {
@@ -38,7 +39,7 @@ export interface SchoolMemberWithRole {
 }
 
 export const useSchoolMembers = (schoolId: string | undefined) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-members', schoolId],
     queryFn: async (): Promise<SchoolMemberWithRole[]> => {
       if (!schoolId) return [];

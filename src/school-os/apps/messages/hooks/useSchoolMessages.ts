@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -11,7 +12,7 @@ export const useSchoolMessages = (schoolId?: string) => {
   const queryClient = useQueryClient();
 
   // Récupérer toutes les demandes d'adhésion pour cette école
-  const { data: joinRequests = [], isLoading } = useQuery({
+  const { data: joinRequests = [], isLoading } = useOfflineQuery({
     queryKey: ['school-join-requests', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];

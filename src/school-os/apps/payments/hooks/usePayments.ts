@@ -1,10 +1,11 @@
 // Hooks pour gérer les paiements scolaires
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const useSchoolStudents = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['school-students-payments', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -63,7 +64,7 @@ export const useSchoolStudents = (schoolId?: string) => {
 };
 
 export const useStudentPayments = (studentId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['student-payments', studentId],
     queryFn: async () => {
       if (!studentId) return [];

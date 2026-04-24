@@ -1,5 +1,6 @@
 // Hook pour gérer les professeurs assignés à une classe
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -21,7 +22,7 @@ export interface ClassTeacher {
 
 // Récupérer les professeurs d'une classe
 export const useClassTeachers = (classId: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['class-teachers', classId],
     queryFn: async () => {
       const { data, error } = await supabase

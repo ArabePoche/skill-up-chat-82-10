@@ -3,6 +3,7 @@
  * Supporte la notation par matière (une note par matière par élève par évaluation)
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -49,7 +50,7 @@ export interface EvaluationGradesData {
 }
 
 export const useEvaluationGrades = (evaluationId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['evaluation-grades', evaluationId],
     queryFn: async (): Promise<EvaluationGradesData> => {
       if (!evaluationId) return { students: [], subjects: [], gradesMap: new Map() };

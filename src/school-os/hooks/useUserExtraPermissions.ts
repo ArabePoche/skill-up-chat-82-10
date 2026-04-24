@@ -3,6 +3,7 @@
  * Ces permissions s'ajoutent aux permissions héritées des rôles
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -16,10 +17,11 @@ interface ExtraPermission {
   created_at: string;
 }
 
-// Récupérer les permissions supplémentaires d'un utilisateur
+// Récupérer les permissions supplémentaires d'un utilisateur (offline-first)
 export const useUserExtraPermissions = (schoolId?: string, userId?: string) => {
-  return useQuery({
+  return useOfflineQuery<ExtraPermission[]>({
     queryKey: ['user-extra-permissions', schoolId, userId],
+    enabled: !!schoolId && !!userId,
     queryFn: async () => {
       if (!schoolId || !userId) return [];
 
@@ -30,9 +32,8 @@ export const useUserExtraPermissions = (schoolId?: string, userId?: string) => {
         .eq('user_id', userId);
 
       if (error) throw error;
-      return data as ExtraPermission[];
+      return (data ?? []) as ExtraPermission[];
     },
-    enabled: !!schoolId && !!userId,
   });
 };
 

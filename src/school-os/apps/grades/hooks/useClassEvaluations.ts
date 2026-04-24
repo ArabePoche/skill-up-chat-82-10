@@ -3,6 +3,7 @@
  * Utilise la table school_evaluations
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ClassEvaluation {
@@ -30,7 +31,7 @@ export interface ClassEvaluation {
 }
 
 export const useClassEvaluations = (classId?: string, subjectId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['class-evaluations', classId, subjectId],
     queryFn: async (): Promise<ClassEvaluation[]> => {
       if (!classId) return [];

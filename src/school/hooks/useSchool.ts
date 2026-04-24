@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -50,76 +51,76 @@ export interface SchoolYear {
   updated_at: string;
 }
 
-// Hook pour récupérer l'école de l'utilisateur
+// Hook pour récupérer l'école de l'utilisateur (offline-first)
 export const useUserSchool = (userId?: string) => {
-  return useQuery({
+  return useOfflineQuery<School | null>({
     queryKey: ['user-school', userId],
+    enabled: !!userId,
     queryFn: async () => {
       if (!userId) return null;
-      
+
       const { data, error } = await supabase
         .from('schools')
         .select('*')
         .eq('owner_id', userId)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching school:', error);
         throw error;
       }
-      
-      return data as School | null;
+
+      return (data as School | null) ?? null;
     },
-    enabled: !!userId,
   });
 };
 
-// Hook pour récupérer les années scolaires d'une école
+// Hook pour récupérer les années scolaires d'une école (offline-first)
 export const useSchoolYears = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery<SchoolYear[]>({
     queryKey: ['school-years', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       if (!schoolId) return [];
-      
+
       const { data, error } = await supabase
         .from('school_years')
         .select('*')
         .eq('school_id', schoolId)
         .order('start_date', { ascending: false });
-      
+
       if (error) {
         console.error('Error fetching school years:', error);
         throw error;
       }
-      
-      return data as SchoolYear[];
+
+      return (data ?? []) as SchoolYear[];
     },
-    enabled: !!schoolId,
   });
 };
 
-// Hook pour récupérer l'année scolaire courante
+// Hook pour récupérer l'année scolaire courante (offline-first)
 export const useCurrentSchoolYear = (schoolId?: string) => {
-  return useQuery({
-    queryKey: ['current-school-year', schoolId],
+  return useOfflineQuery<SchoolYear | null>({
+    queryKey: ['school-current-year', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       if (!schoolId) return null;
-      
+
       const { data, error } = await supabase
         .from('school_years')
         .select('*')
         .eq('school_id', schoolId)
         .eq('is_active', true)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching current school year:', error);
         throw error;
       }
-      
-      return data as SchoolYear | null;
+
+      return (data as SchoolYear | null) ?? null;
     },
-    enabled: !!schoolId,
   });
 };
 

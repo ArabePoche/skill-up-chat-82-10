@@ -1,5 +1,6 @@
 // Hook pour gérer les familles d'élèves
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -28,7 +29,7 @@ export interface CreateFamilyData {
 }
 
 export const useFamilies = (schoolId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['families', schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -160,7 +161,7 @@ export const useLinkStudentToFamily = () => {
 
 // Hook pour récupérer les frères/sœurs d'un élève
 export const useFamilySiblings = (familyId?: string | null, currentStudentId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['family-siblings', familyId, currentStudentId],
     queryFn: async () => {
       if (!familyId) return [];

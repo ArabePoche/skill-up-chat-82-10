@@ -1,5 +1,6 @@
 // Hook pour gérer l'affectation des matières aux classes
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { ClassSubjectAssignment, AssignSubjectToClassData } from '../types';
@@ -8,7 +9,7 @@ import type { ClassSubjectAssignment, AssignSubjectToClassData } from '../types'
  * Récupérer les matières assignées à une classe
  */
 export const useClassSubjectAssignments = (classId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['class-subject-assignments', classId],
     queryFn: async () => {
       if (!classId) return [];

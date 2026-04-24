@@ -3,6 +3,7 @@
  * Utilisé dans la vue parent pour afficher les bulletins par grading period
  */
 import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CompositionPeriod {
@@ -38,7 +39,7 @@ export interface ParentBulletinByPeriod {
  * Récupère les compositions (périodes) de l'année scolaire depuis school_compositions
  */
 export const useCompositionPeriods = (schoolId?: string, schoolYearId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['composition-periods', schoolId, schoolYearId],
     queryFn: async (): Promise<CompositionPeriod[]> => {
       if (!schoolId || !schoolYearId) return [];
@@ -67,7 +68,7 @@ export const useParentBulletins = (
 ) => {
   const { data: periods, isLoading: isLoadingPeriods } = useCompositionPeriods(schoolId, schoolYearId);
 
-  const { data: reportCards, isLoading: isLoadingReports } = useQuery({
+  const { data: reportCards, isLoading: isLoadingReports } = useOfflineQuery({
     queryKey: ['parent-report-cards', schoolId, schoolYearId, studentId],
     queryFn: async (): Promise<ParentReportCard[]> => {
       if (!schoolId || !schoolYearId || !studentId) return [];
