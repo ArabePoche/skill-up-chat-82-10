@@ -56,9 +56,14 @@ const Messages = () => {
   // Compter les notifications non lues (somme de toutes les catégories)
   const unreadNotifications = categories.reduce((sum, cat) => sum + cat.unreadCount, 0);
 
-  // Combiner conversations et groupes
+  // Combiner conversations et groupes, puis trier par date du dernier message
+  // (du plus récent au plus ancien) — comme dans WhatsApp/Telegram.
   const allItems = useMemo(() => {
-    return [...conversations, ...groups];
+    return [...conversations, ...groups].sort((a: any, b: any) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
   }, [conversations, groups]);
 
   // Filtrer selon la recherche
