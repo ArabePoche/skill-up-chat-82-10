@@ -10,6 +10,10 @@ import { groupMessagesByDate } from '@/utils/dateUtils';
 import GroupInfoDialog from '@/components/groups/GroupInfoDialog';
 import { useCachedDiscussionMessages } from '@/message-cache';
 import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
+import {
+  formatDiscussionEvent,
+  isDiscussionEventContent,
+} from '@/utils/discussionEvents';
 
 const DiscussionGroupChat = () => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -201,16 +205,31 @@ const DiscussionGroupChat = () => {
             Object.entries(groupedMessages).map(([date, dateMessages]) => (
               <div key={date} className="space-y-3">
                 <DateSeparator date={date} />
-                {dateMessages.map((msg: any) => (
-                  <ConversationMessageBubble
-                    key={msg.id}
-                    message={msg}
-                    isOwn={msg.sender_id === user?.id}
-                    senderName={msg.sender?.first_name || msg.sender?.username || 'Inconnu'}
-                    senderAvatar={msg.sender?.avatar_url}
-                    onReply={() => handleReply(msg)}
-                  />
-                ))}
+                {dateMessages.map((msg: any) => {
+                  // Messages système : ajout/retrait de membre, renommage, etc.
+                  // → On affiche un petit pill centré au lieu d'une bulle classique.
+                  if (isDiscussionEventContent(msg.content)) {
+                    const label = formatDiscussionEvent(msg.content);
+                    return (
+                      <div key={msg.id} className="flex justify-center">
+                        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200/60 shadow-sm">
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <ConversationMessageBubble
+                      key={msg.id}
+                      message={msg}
+                      isOwn={msg.sender_id === user?.id}
+                      senderName={msg.sender?.first_name || msg.sender?.username || 'Inconnu'}
+                      senderAvatar={msg.sender?.avatar_url}
+                      onReply={() => handleReply(msg)}
+                    />
+                  );
+                })}
               </div>
             ))
           )}
