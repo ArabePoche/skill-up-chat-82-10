@@ -22,6 +22,7 @@ export {
   useUploadStickerImage,
   useSubmitPackForReview,
   useReviewStickerPack,
+  useDeleteStickerPack,
 } from '@/stickers/hooks/useStickerMutations';
 
 export { usePurchaseStickerPack } from '@/stickers/hooks/usePurchaseStickerPack';

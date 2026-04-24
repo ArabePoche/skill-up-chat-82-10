@@ -18,6 +18,7 @@ import {
   useUploadStickerImage,
   useUploadStickerPackIcon,
   useSubmitPackForReview,
+  useDeleteStickerPack,
   StickerPackData,
 } from '@/hooks/useStickerSystem';
 import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
@@ -80,6 +81,7 @@ const StickerStudio = () => {
   const uploadSticker  = useUploadStickerImage();
   const uploadPackIcon = useUploadStickerPackIcon();
   const submitForReview = useSubmitPackForReview();
+  const deletePack      = useDeleteStickerPack();
 
   const [editForm, setEditForm] = useState<Partial<StickerPackData>>({});
   const [isPersonalMode, setIsPersonalMode] = useState(false);
@@ -143,6 +145,20 @@ const StickerStudio = () => {
     setActivePackId(pack.id);
     setEditForm(pack);
     if (user) setIsPersonalMode(getPersonalIds(user.id).has(pack.id));
+  };
+
+  const handleDeletePack = (packId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce pack ? Cette action est irréversible.')) {
+      deletePack.mutate(packId, {
+        onSuccess: () => {
+          if (activePackId === packId) {
+            setActivePackId(null);
+            setEditForm({});
+          }
+        },
+      });
+    }
   };
 
   const handleSaveForm = () => {
@@ -281,45 +297,61 @@ const StickerStudio = () => {
             {packs?.map((pack) => {
               const isPersonal = user ? getPersonalIds(user.id).has(pack.id) : false;
               return (
-                <button
+                <div
                   key={pack.id}
-                  onClick={() => handleSelectPack(pack)}
                   className={`text-left rounded-xl p-3 flex items-center gap-3 transition-all ${
                     activePackId === pack.id
                       ? 'bg-violet-50 border-violet-200 ring-2 ring-violet-500/20 shadow-sm border'
                       : 'bg-white border-slate-100 shadow-sm border hover:border-violet-200 hover:bg-slate-50'
                   }`}
                 >
-                  <div className="w-12 h-12 bg-slate-100 rounded-xl shrink-0 flex items-center justify-center overflow-hidden border">
-                    {pack.icon_url
-                      ? <img src={pack.icon_url} alt="Icon" className="w-full h-full object-cover" />
-                      : <PackagePlus className="h-5 w-5 text-slate-400" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-800 truncate">{pack.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {isPersonal ? (
-                        <>
-                          <Lock className="h-2.5 w-2.5 text-violet-500" />
-                          <p className="text-[11px] text-violet-600 font-medium">Personnel</p>
-                        </>
-                      ) : (
-                        <>
-                          <span className={`w-2 h-2 rounded-full ${
-                            pack.status === 'approved' ? 'bg-emerald-500' :
-                            pack.status === 'pending_review' ? 'bg-amber-400' :
-                            pack.status === 'rejected' ? 'bg-rose-500' : 'bg-slate-300'
-                          }`} />
-                          <p className="text-[11px] text-slate-500 capitalize">
-                            {pack.status === 'approved' ? 'Approuvé' :
-                             pack.status === 'pending_review' ? 'En révision' :
-                             pack.status === 'rejected' ? 'Rejeté' : 'Brouillon'}
-                          </p>
-                        </>
-                      )}
+                  <button
+                    onClick={() => handleSelectPack(pack)}
+                    className="flex items-center gap-3 flex-1 min-w-0"
+                  >
+                    <div className="w-12 h-12 bg-slate-100 rounded-xl shrink-0 flex items-center justify-center overflow-hidden border">
+                      {pack.icon_url
+                        ? <img src={pack.icon_url} alt="Icon" className="w-full h-full object-cover" />
+                        : <PackagePlus className="h-5 w-5 text-slate-400" />}
                     </div>
-                  </div>
-                </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-800 truncate">{pack.name}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {isPersonal ? (
+                          <>
+                            <Lock className="h-2.5 w-2.5 text-violet-500" />
+                            <p className="text-[11px] text-violet-600 font-medium">Personnel</p>
+                          </>
+                        ) : (
+                          <>
+                            <span className={`w-2 h-2 rounded-full ${
+                              pack.status === 'approved' ? 'bg-emerald-500' :
+                              pack.status === 'pending_review' ? 'bg-amber-400' :
+                              pack.status === 'rejected' ? 'bg-rose-500' : 'bg-slate-300'
+                            }`} />
+                            <p className="text-[11px] text-slate-500 capitalize">
+                              {pack.status === 'approved' ? 'Approuvé' :
+                               pack.status === 'pending_review' ? 'En révision' :
+                               pack.status === 'rejected' ? 'Rejeté' : 'Brouillon'}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => handleDeletePack(pack.id, e)}
+                    disabled={deletePack.isPending}
+                    className="shrink-0 p-2 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Supprimer le pack"
+                  >
+                    {deletePack.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               );
             })}
           </div>

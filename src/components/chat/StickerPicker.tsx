@@ -279,13 +279,13 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
       aria-label="Sélecteur de stickers"
       className={`
         w-[90vw] max-w-[380px] sm:w-[380px] z-50 flex flex-col
-        bg-white/98 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/50
+        bg-white rounded-3xl shadow-2xl border border-gray-200
         overflow-hidden animate-in fade-in zoom-in-95 duration-200
         ${className ?? 'absolute bottom-full left-0 mb-3'}
       `}
     >
       {/* ── 1. Barre d'outils et recherche ── */}
-      <div className="border-b border-gray-100/80 bg-white/90 backdrop-blur-sm">
+      <div className="border-b border-gray-100 bg-white">
         {/* Barre de recherche et filtres */}
         <div className="px-3 py-2 border-b border-gray-100/60">
           <div className="relative">
@@ -355,7 +355,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
       {/* ── 2. Zone scrollable unifiée ── */}
       <div
         ref={scrollAreaRef}
-        className="flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-white/40 to-white/20"
+        className="flex-1 overflow-y-auto overscroll-contain bg-white"
         style={{ maxHeight: 340, height: 340 }}
       >
         {!displayPacks.length ? (
@@ -385,7 +385,7 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
               }}
             >
               {/* En-tête de section */}
-              <div className={`sticky top-0 z-10 flex items-center gap-3 px-4 py-2.5 bg-white/90 backdrop-blur-md border border-gray-100/60 shadow-sm`}>
+              <div className={`sticky top-0 z-10 flex items-center gap-3 px-4 py-2.5 bg-white border border-gray-100 shadow-sm`}>
                 <div className={`w-3 h-3 rounded-full bg-gradient-to-br ${pack.color} shrink-0 shadow-sm`} />
                 <span className="text-[12px] font-bold uppercase tracking-wider text-slate-600 truncate">
                   {pack.name}

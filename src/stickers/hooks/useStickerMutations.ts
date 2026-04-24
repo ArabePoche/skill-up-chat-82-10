@@ -216,3 +216,51 @@ export const useReviewSticker = () => {
     onError: (error: any) => toast.error(error?.message || 'Erreur de modération'),
   });
 };
+
+/** Supprimer un pack de stickers (créateur uniquement). */
+export const useDeleteStickerPack = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (packId: string) => {
+      if (!user) throw new Error('Non authentifié');
+      
+      // Vérifier que l'utilisateur est le créateur
+      const { data: pack, error: fetchError } = await db
+        .from('sticker_packs')
+        .select('creator_id')
+        .eq('id', packId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      if (pack.creator_id !== user.id) throw new Error('Vous n\'êtes pas le créateur de ce pack');
+      
+      // Supprimer les stickers du pack
+      const { error: stickersError } = await db
+        .from('stickers')
+        .delete()
+        .eq('pack_id', packId);
+      
+      if (stickersError) throw stickersError;
+      
+      // Supprimer le pack
+      const { error: packError } = await db
+        .from('sticker_packs')
+        .delete()
+        .eq('id', packId);
+      
+      if (packError) throw packError;
+      
+      return packId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['creator-sticker-packs'] });
+      queryClient.invalidateQueries({ queryKey: ['store-sticker-packs'] });
+      toast.success('Pack supprimé');
+    },
+    onError: (error: any) => {
+      console.error(error);
+      toast.error(error?.message || 'Erreur lors de la suppression');
+    },
+  });
+};
