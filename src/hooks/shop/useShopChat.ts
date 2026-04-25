@@ -183,6 +183,29 @@ export const useSendShopMessage = () => {
   const { user } = useAuth();
 
   return useMutation({
+    onMutate: async (variables: {
+      senderShopId: string;
+      receiverShopId: string;
+      content: string;
+      transferId?: string;
+    }) => {
+      // Optimistic : afficher le message immédiatement dans le fil
+      const optimistic = {
+        id: `optimistic-${Date.now()}`,
+        sender_id: user?.id || '',
+        sender_shop_id: variables.senderShopId,
+        receiver_shop_id: variables.receiverShopId,
+        content: variables.content,
+        transfer_id: variables.transferId || null,
+        is_read: false,
+        created_at: new Date().toISOString(),
+        _optimistic: true,
+      };
+      const key = ['shop-messages', variables.senderShopId, variables.receiverShopId];
+      const prev = queryClient.getQueryData<any[]>(key) || [];
+      queryClient.setQueryData(key, [...prev, optimistic]);
+      return { prev, key };
+    },
     mutationFn: async ({
       senderShopId,
       receiverShopId,
@@ -212,12 +235,16 @@ export const useSendShopMessage = () => {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ 
-        queryKey: ['shop-messages', variables.senderShopId, variables.receiverShopId] 
+      queryClient.invalidateQueries({
+        queryKey: ['shop-messages', variables.senderShopId, variables.receiverShopId]
       });
       queryClient.invalidateQueries({ queryKey: ['shop-conversations'] });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context: any) => {
+      // Rollback de l'optimistic update
+      if (context?.key && context?.prev !== undefined) {
+        queryClient.setQueryData(context.key, context.prev);
+      }
       console.error('Erreur envoi message:', error);
       toast.error('Erreur lors de l\'envoi du message');
     },
@@ -250,6 +277,49 @@ export const useMarkMessagesAsRead = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shop-conversations'] });
     },
+  });
+};
+
+/**
+ * Récupérer toutes les boutiques avec qui on peut démarrer une conversation
+ * (toutes les physical_shops sauf celles de l'utilisateur courant).
+ */
+export const useDiscoverShopsForChat = () => {
+  const { user } = useAuth();
+
+  return useOfflineQuery<any[]>({
+    queryKey: ['discover-shops-for-chat', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      // 1) IDs des boutiques propres
+      const { data: ownShops } = await supabase
+        .from('physical_shops')
+        .select('id')
+        .eq('owner_id', user.id);
+
+      // 2) IDs des boutiques où l'utilisateur est agent actif
+      const { data: agentShops } = await (supabase as any)
+        .from('shop_agents')
+        .select('shop_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      const myShopIds = new Set([
+        ...(ownShops || []).map((s: any) => s.id),
+        ...(agentShops || []).map((s: any) => s.shop_id),
+      ]);
+
+      // 3) Récupérer toutes les autres boutiques actives
+      const { data: allShops, error } = await supabase
+        .from('physical_shops')
+        .select('id, name, description, address, owner_id')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      return (allShops || []).filter((s: any) => !myShopIds.has(s.id));
+    },
+    enabled: !!user?.id,
   });
 };
 

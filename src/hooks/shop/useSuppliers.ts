@@ -98,9 +98,30 @@ export const useSuppliers = (shopId?: string) => {
     enabled: !!shopId && !!user,
   });
 
-  // Créer un fournisseur
-  const createSupplier = useMutation({
-    mutationFn: async (input: SupplierInput) => {
+  // Créer un fournisseur (offline-first)
+  const createSupplier = useOfflineMutation<any, SupplierInput>({
+    mutationType: 'generic',
+    invalidateKeys: [['shop-suppliers', shopId]],
+    optimisticUpdate: (input) => {
+      if (!shopId) return null;
+      const optimistic: Supplier = {
+        id: `optimistic-${Date.now()}`,
+        shop_id: shopId,
+        name: input.name,
+        contact_name: input.contact_name || null,
+        phone: input.phone || null,
+        email: input.email || null,
+        address: input.address || null,
+        notes: input.notes || null,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const prev = queryClient.getQueryData<Supplier[]>(['shop-suppliers', shopId]) || [];
+      queryClient.setQueryData(['shop-suppliers', shopId], [...prev, optimistic].sort((a, b) => a.name.localeCompare(b.name)));
+      return optimistic;
+    },
+    mutationFn: async (input) => {
       if (!shopId) throw new Error('Pas de boutique');
       const { data, error } = await supabase
         .from('shop_suppliers' as any)
@@ -110,16 +131,21 @@ export const useSuppliers = (shopId?: string) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['shop-suppliers', shopId] });
-      toast.success('Fournisseur ajouté');
-    },
+    onSuccess: () => toast.success('Fournisseur ajouté'),
     onError: () => toast.error("Erreur lors de l'ajout du fournisseur"),
   });
 
-  // Modifier un fournisseur
-  const updateSupplier = useMutation({
-    mutationFn: async ({ id, ...input }: SupplierInput & { id: string }) => {
+  // Modifier un fournisseur (offline-first)
+  const updateSupplier = useOfflineMutation<any, SupplierInput & { id: string }>({
+    mutationType: 'generic',
+    invalidateKeys: [['shop-suppliers', shopId]],
+    optimisticUpdate: ({ id, ...input }) => {
+      const prev = queryClient.getQueryData<Supplier[]>(['shop-suppliers', shopId]) || [];
+      const next = prev.map(s => s.id === id ? { ...s, ...input, updated_at: new Date().toISOString() } : s);
+      queryClient.setQueryData(['shop-suppliers', shopId], next);
+      return next.find(s => s.id === id);
+    },
+    mutationFn: async ({ id, ...input }) => {
       const { data, error } = await supabase
         .from('shop_suppliers' as any)
         .update({ ...input, updated_at: new Date().toISOString() })
@@ -129,26 +155,28 @@ export const useSuppliers = (shopId?: string) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['shop-suppliers', shopId] });
-      toast.success('Fournisseur mis à jour');
-    },
+    onSuccess: () => toast.success('Fournisseur mis à jour'),
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
-  // Supprimer (soft delete)
-  const deleteSupplier = useMutation({
-    mutationFn: async (id: string) => {
+  // Supprimer un fournisseur (soft delete, offline-first)
+  const deleteSupplier = useOfflineMutation<any, string>({
+    mutationType: 'generic',
+    invalidateKeys: [['shop-suppliers', shopId]],
+    optimisticUpdate: (id) => {
+      const prev = queryClient.getQueryData<Supplier[]>(['shop-suppliers', shopId]) || [];
+      queryClient.setQueryData(['shop-suppliers', shopId], prev.filter(s => s.id !== id));
+      return id;
+    },
+    mutationFn: async (id) => {
       const { error } = await supabase
         .from('shop_suppliers' as any)
         .update({ is_active: false, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['shop-suppliers', shopId] });
-      toast.success('Fournisseur supprimé');
-    },
+    onSuccess: () => toast.success('Fournisseur supprimé'),
     onError: () => toast.error('Erreur lors de la suppression'),
   });
 
@@ -201,8 +229,45 @@ export const useSupplierOrders = (shopId?: string) => {
     enabled: !!shopId && !!user,
   });
 
-  // Créer une commande fournisseur
+  // Créer une commande fournisseur (avec optimistic update)
   const createOrder = useMutation({
+    onMutate: async (input: OrderInput) => {
+      if (!shopId) return;
+      const totalAmount = input.items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+      const tempOrderId = `optimistic-${Date.now()}`;
+      const supplier = queryClient
+        .getQueryData<Supplier[]>(['shop-suppliers', shopId])
+        ?.find(s => s.id === input.supplier_id);
+
+      const optimisticOrder: SupplierOrder = {
+        id: tempOrderId,
+        shop_id: shopId,
+        supplier_id: input.supplier_id,
+        order_number: input.order_number || `CMD-${Date.now().toString(36).toUpperCase()}`,
+        status: 'ordered',
+        total_amount: totalAmount,
+        notes: input.notes || null,
+        ordered_at: new Date().toISOString(),
+        received_at: null,
+        created_by: user?.id || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        supplier: supplier,
+        items: input.items.map((it, idx) => ({
+          id: `${tempOrderId}-item-${idx}`,
+          order_id: tempOrderId,
+          product_id: it.product_id || null,
+          product_name: it.product_name,
+          quantity: it.quantity,
+          unit_price: it.unit_price,
+          received_quantity: 0,
+          created_at: new Date().toISOString(),
+        })),
+      };
+      const prev = queryClient.getQueryData<SupplierOrder[]>(['supplier-orders', shopId]) || [];
+      queryClient.setQueryData(['supplier-orders', shopId], [optimisticOrder, ...prev]);
+      return { prev };
+    },
     mutationFn: async (input: OrderInput) => {
       if (!shopId || !user) throw new Error('Manque contexte');
       const totalAmount = input.items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
@@ -383,19 +448,27 @@ export const useSupplierOrders = (shopId?: string) => {
     onError: () => toast.error('Erreur lors de la réception'),
   });
 
-  // Annuler une commande
-  const cancelOrder = useMutation({
-    mutationFn: async (orderId: string) => {
+  // Annuler une commande (offline-first)
+  const cancelOrder = useOfflineMutation<any, string>({
+    mutationType: 'generic',
+    invalidateKeys: [['supplier-orders', shopId]],
+    optimisticUpdate: (orderId) => {
+      const prev = queryClient.getQueryData<SupplierOrder[]>(['supplier-orders', shopId]) || [];
+      const next = prev.map(o =>
+        o.id === orderId ? { ...o, status: 'cancelled', updated_at: new Date().toISOString() } : o
+      );
+      queryClient.setQueryData(['supplier-orders', shopId], next);
+      return orderId;
+    },
+    mutationFn: async (orderId) => {
       const { error } = await supabase
         .from('supplier_orders' as any)
         .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', orderId);
       if (error) throw error;
+      return orderId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supplier-orders', shopId] });
-      toast.success('Commande annulée');
-    },
+    onSuccess: () => toast.success('Commande annulée'),
     onError: () => toast.error("Erreur lors de l'annulation"),
   });
 

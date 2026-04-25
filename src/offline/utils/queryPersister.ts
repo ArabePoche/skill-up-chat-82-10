@@ -152,6 +152,7 @@ export const PERSISTED_QUERY_PREFIXES = [
   'unread-shop-messages-count',
   'customer-purchases',
   'notifications',
+  'discover-shops-for-chat',
 ] as const;
 
 /**

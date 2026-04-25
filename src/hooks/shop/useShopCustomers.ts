@@ -4,6 +4,7 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
+import { useOfflineMutation } from '@/offline/hooks/useOfflineMutation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -50,11 +51,33 @@ export const useShopCustomers = (shopId?: string) => {
   });
 };
 
-/** Créer un client */
+/** Créer un client (offline-first) */
 export const useCreateShopCustomer = () => {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (customer: { shop_id: string; name: string; phone?: string; email?: string; address?: string; notes?: string }) => {
+  return useOfflineMutation<any, { shop_id: string; name: string; phone?: string; email?: string; address?: string; notes?: string }>({
+    mutationType: 'generic',
+    invalidateKeys: [['shop-customers']],
+    optimisticUpdate: (customer) => {
+      const tempId = `optimistic-${Date.now()}`;
+      const optimistic: ShopCustomer = {
+        id: tempId,
+        shop_id: customer.shop_id,
+        name: customer.name,
+        phone: customer.phone || null,
+        email: customer.email || null,
+        address: customer.address || null,
+        notes: customer.notes || null,
+        total_spent: 0,
+        total_purchases: 0,
+        loyalty_points: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const prev = queryClient.getQueryData<ShopCustomer[]>(['shop-customers', customer.shop_id]) || [];
+      queryClient.setQueryData(['shop-customers', customer.shop_id], [...prev, optimistic]);
+      return optimistic;
+    },
+    mutationFn: async (customer) => {
       const { data, error } = await (supabase as any)
         .from('shop_customers')
         .insert(customer)
@@ -63,19 +86,26 @@ export const useCreateShopCustomer = () => {
       if (error) throw error;
       return data as ShopCustomer;
     },
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['shop-customers', vars.shop_id] });
+    onSuccess: () => {
       toast.success('Client ajouté !');
     },
     onError: () => toast.error('Erreur lors de l\'ajout du client'),
   });
 };
 
-/** Mettre à jour un client */
+/** Mettre à jour un client (offline-first) */
 export const useUpdateShopCustomer = () => {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, shop_id, ...updates }: Partial<ShopCustomer> & { id: string; shop_id: string }) => {
+  return useOfflineMutation<any, Partial<ShopCustomer> & { id: string; shop_id: string }>({
+    mutationType: 'generic',
+    invalidateKeys: [['shop-customers']],
+    optimisticUpdate: ({ id, shop_id, ...updates }) => {
+      const prev = queryClient.getQueryData<ShopCustomer[]>(['shop-customers', shop_id]) || [];
+      const next = prev.map(c => c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c);
+      queryClient.setQueryData(['shop-customers', shop_id], next);
+      return next.find(c => c.id === id);
+    },
+    mutationFn: async ({ id, shop_id, ...updates }) => {
       const { data, error } = await (supabase as any)
         .from('shop_customers')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -85,19 +115,25 @@ export const useUpdateShopCustomer = () => {
       if (error) throw error;
       return data as ShopCustomer;
     },
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['shop-customers', vars.shop_id] });
+    onSuccess: () => {
       toast.success('Client mis à jour !');
     },
     onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 };
 
-/** Supprimer un client */
+/** Supprimer un client (offline-first) */
 export const useDeleteShopCustomer = () => {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, shopId }: { id: string; shopId: string }) => {
+  return useOfflineMutation<any, { id: string; shopId: string }>({
+    mutationType: 'generic',
+    invalidateKeys: [['shop-customers']],
+    optimisticUpdate: ({ id, shopId }) => {
+      const prev = queryClient.getQueryData<ShopCustomer[]>(['shop-customers', shopId]) || [];
+      queryClient.setQueryData(['shop-customers', shopId], prev.filter(c => c.id !== id));
+      return { id, shopId };
+    },
+    mutationFn: async ({ id, shopId }) => {
       const { error } = await (supabase as any)
         .from('shop_customers')
         .delete()
@@ -105,8 +141,7 @@ export const useDeleteShopCustomer = () => {
       if (error) throw error;
       return { id, shopId };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['shop-customers', data.shopId] });
+    onSuccess: () => {
       toast.success('Client supprimé');
     },
     onError: () => toast.error('Erreur lors de la suppression'),
@@ -130,34 +165,37 @@ export const useCustomerCredits = (customerId?: string) => {
   });
 };
 
-/** Ajouter un crédit ou un paiement */
+/** Ajouter un crédit ou un paiement (offline-first) */
 export const useAddCustomerCredit = () => {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (credit: { customer_id: string; shop_id: string; amount: number; type: 'credit' | 'payment'; description?: string; sale_id?: string }) => {
+  return useOfflineMutation<any, { customer_id: string; shop_id: string; amount: number; type: 'credit' | 'payment'; description?: string; sale_id?: string }>({
+    mutationType: 'generic',
+    invalidateKeys: [['customer-credits'], ['shop-customers']],
+    optimisticUpdate: (credit) => {
+      const optimistic: CustomerCredit = {
+        id: `optimistic-${Date.now()}`,
+        customer_id: credit.customer_id,
+        shop_id: credit.shop_id,
+        sale_id: credit.sale_id || null,
+        amount: credit.amount,
+        type: credit.type,
+        description: credit.description || null,
+        created_at: new Date().toISOString(),
+      };
+      const prev = queryClient.getQueryData<CustomerCredit[]>(['customer-credits', credit.customer_id]) || [];
+      queryClient.setQueryData(['customer-credits', credit.customer_id], [optimistic, ...prev]);
+      return optimistic;
+    },
+    mutationFn: async (credit) => {
       const { data, error } = await (supabase as any)
         .from('shop_customer_credits')
         .insert(credit)
         .select()
         .single();
       if (error) throw error;
-
-      // Mettre à jour total_spent si c'est un paiement
-      if (credit.type === 'payment') {
-        await (supabase as any)
-          .from('shop_customers')
-          .update({ 
-            total_spent: (supabase as any).rpc ? undefined : undefined,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', credit.customer_id);
-      }
-
       return data as CustomerCredit;
     },
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['customer-credits', vars.customer_id] });
-      queryClient.invalidateQueries({ queryKey: ['shop-customers', vars.shop_id] });
+    onSuccess: (_data, vars) => {
       toast.success(vars.type === 'credit' ? 'Crédit enregistré' : 'Paiement enregistré');
     },
     onError: () => toast.error('Erreur lors de l\'enregistrement'),
