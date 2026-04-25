@@ -1,6 +1,6 @@
 // Composant pour afficher les notes d'un enfant (vue parent, lecture seule)
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
@@ -22,7 +22,7 @@ interface GradeRow {
 }
 
 export const ParentChildGrades: React.FC<ParentChildGradesProps> = ({ studentId, classId }) => {
-  const { data: grades, isLoading } = useQuery({
+  const { data: grades, isLoading } = useOfflineQuery<GradeRow[]>({
     queryKey: ['parent-child-grades', studentId],
     queryFn: async (): Promise<GradeRow[]> => {
       // Fetch grades with evaluation and subject info

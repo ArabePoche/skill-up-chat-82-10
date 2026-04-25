@@ -2,7 +2,7 @@
  * Hook pour récupérer les statistiques de notes par classe et par élève
  * Calcule les moyennes, progressions et classements
  */
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 

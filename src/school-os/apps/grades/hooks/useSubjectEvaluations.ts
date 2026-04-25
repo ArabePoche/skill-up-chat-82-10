@@ -2,7 +2,7 @@
  * Hook pour récupérer les évaluations par matière
  * Permet la saisie directe par matière (méthode 2)
  */
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 

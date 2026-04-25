@@ -2,7 +2,8 @@
  * Composant de gestion des rôles et permissions de l'école
  */
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -109,7 +110,7 @@ export const RolesSettings: React.FC<RolesSettingsProps> = ({ schoolId }) => {
   const [newRoleDescription, setNewRoleDescription] = useState('');
 
   // Récupérer tous les rôles (système + personnalisés)
-  const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
+  const { data: roles = [], isLoading: isLoadingRoles } = useOfflineQuery<SchoolRole[]>({
     queryKey: ['school-roles-settings', schoolId],
     queryFn: async (): Promise<SchoolRole[]> => {
       const { data, error } = await supabase
@@ -126,7 +127,7 @@ export const RolesSettings: React.FC<RolesSettingsProps> = ({ schoolId }) => {
   });
 
   // Récupérer toutes les permissions disponibles
-  const { data: permissions = [] } = useQuery({
+  const { data: permissions = [] } = useOfflineQuery<Permission[]>({
     queryKey: ['school-permissions'],
     queryFn: async (): Promise<Permission[]> => {
       const { data, error } = await supabase
@@ -141,7 +142,7 @@ export const RolesSettings: React.FC<RolesSettingsProps> = ({ schoolId }) => {
   });
 
   // Récupérer les permissions d'un rôle
-  const { data: rolePermissions = [], isLoading: isLoadingPermissions } = useQuery({
+  const { data: rolePermissions = [], isLoading: isLoadingPermissions } = useOfflineQuery<RolePermission[]>({
     queryKey: ['role-permissions', selectedRole?.id, schoolId],
     queryFn: async (): Promise<RolePermission[]> => {
       if (!selectedRole) return [];

@@ -1,5 +1,5 @@
 // Hook pour récupérer les enfants d'un parent avec leurs classes
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';

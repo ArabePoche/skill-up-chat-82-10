@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, X } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -25,7 +25,7 @@ export const SupervisorsSection: React.FC<SupervisorsSectionProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   // Récupérer tous les membres du staff (teachers, supervisors, personnel)
-  const { data: staff = [] } = useQuery({
+  const { data: staff = [] } = useOfflineQuery<any[]>({
     queryKey: ['school-staff', school?.id],
     queryFn: async () => {
       if (!school?.id) return [];

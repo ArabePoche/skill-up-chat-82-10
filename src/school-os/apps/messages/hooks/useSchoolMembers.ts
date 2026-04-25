@@ -4,7 +4,7 @@
  * Pour les parents : ne montre que les profs des classes de leurs enfants + admin/directeur
  */
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';

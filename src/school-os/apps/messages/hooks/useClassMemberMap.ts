@@ -2,7 +2,7 @@
  * Hook pour construire un mapping classId -> membres (profs et parents) de cette classe
  * Utilisé par le RecipientGroupPicker pour filtrer par classe
  */
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { SchoolMember } from '../types';

@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserPlus, User, Plus, X, CheckCircle, Clock, XCircle, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { toast } from 'sonner';
 
 interface ChildForm {
@@ -44,7 +44,7 @@ export const ParentEnrollmentApp: React.FC = () => {
   ]);
 
   // Récupérer les demandes en cours
-  const { data: pendingRequests } = useQuery({
+  const { data: pendingRequests } = useOfflineQuery({
     queryKey: ['parent-enrollment-requests', school?.id, user?.id],
     queryFn: async () => {
       if (!school?.id || !user?.id) return [];

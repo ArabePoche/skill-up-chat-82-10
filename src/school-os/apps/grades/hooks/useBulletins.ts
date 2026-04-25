@@ -3,7 +3,7 @@
  * Tables: school_bulletin_settings, school_bulletin_mentions, 
  * school_bulletin_appreciation_templates, school_bulletin_templates, school_report_card_history
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutationClient } from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

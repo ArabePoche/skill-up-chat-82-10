@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useReportCardHistory } from '../../hooks/useBulletins';
 import { useSchoolClasses } from '@/school/hooks/useClasses';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 interface BulletinHistoryTabProps {
@@ -32,7 +32,7 @@ export const BulletinHistoryTab: React.FC<BulletinHistoryTabProps> = ({
   const { data: classes = [] } = useSchoolClasses(schoolId, schoolYearId);
 
   // Fetch grading periods for filter
-  const { data: periods = [] } = useQuery({
+  const { data: periods = [] } = useOfflineQuery<any[]>({
     queryKey: ['grading-periods', schoolYearId],
     queryFn: async () => {
       if (!schoolYearId) return [];

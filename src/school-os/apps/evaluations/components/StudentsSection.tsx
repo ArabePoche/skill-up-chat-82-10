@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Check, X, Search, UserX } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -25,7 +25,7 @@ export const StudentsSection: React.FC<StudentsSectionProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Récupérer tous les élèves de la classe
-  const { data: students = [] } = useQuery({
+  const { data: students = [] } = useOfflineQuery<any[]>({
     queryKey: ['class-students', classId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -36,6 +36,7 @@ export const StudentsSection: React.FC<StudentsSectionProps> = ({
       if (error) throw error;
       return data || [];
     },
+    enabled: !!classId,
   });
 
   const totalStudents = students.length;

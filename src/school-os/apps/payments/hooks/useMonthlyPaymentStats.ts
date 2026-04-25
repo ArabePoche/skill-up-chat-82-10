@@ -4,7 +4,7 @@
  * Prend en compte la proratisation par élève (billable_months, prorated_amount_due)
  */
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 

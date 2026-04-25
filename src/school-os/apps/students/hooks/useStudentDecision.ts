@@ -1,5 +1,5 @@
 // Hook pour gérer les décisions concernant les élèves (promotion, transfert, exclusion)
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutationClient } from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

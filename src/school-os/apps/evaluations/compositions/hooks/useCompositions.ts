@@ -2,7 +2,7 @@
  * Hook pour gérer les compositions et examens officiels
  * Utilise les tables school_compositions et tables associées
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutationClient } from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

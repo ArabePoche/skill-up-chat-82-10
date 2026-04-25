@@ -2,7 +2,7 @@
  * Hook pour récupérer les évaluations d'une classe par matière
  * Utilise la table school_evaluations
  */
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 

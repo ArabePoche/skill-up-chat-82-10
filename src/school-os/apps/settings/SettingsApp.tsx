@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserSchool, School } from '@/school/hooks/useSchool';
@@ -25,7 +25,7 @@ export const SettingsApp: React.FC = () => {
 
   // Récupérer l'école depuis l'URL ou l'école de l'utilisateur
   const { data: userSchool } = useUserSchool(user?.id);
-  const { data: schoolFromUrl } = useQuery({
+  const { data: schoolFromUrl } = useOfflineQuery<School | null>({
     queryKey: ['school', schoolIdFromUrl],
     queryFn: async () => {
       if (!schoolIdFromUrl) return null;

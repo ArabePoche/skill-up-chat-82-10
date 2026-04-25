@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp, AlertCircle, ArrowUpDown, Trophy, User, Lock } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
 import { useBulletinTemplates, useBulletinAppreciations, BulletinTemplate, BulletinAppreciationTemplate } from '../../hooks/useBulletins';
@@ -106,7 +106,7 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   );
 
   // Récupérer les notes de l'évaluation source (si méthode "evaluation")
-  const { data: evaluationGrades = [] } = useQuery({
+  const { data: evaluationGrades = [] } = useOfflineQuery<any[]>({
     queryKey: ['evaluation-grades-for-class-notes', classNotesConfig.selectedEvaluationId],
     queryFn: async () => {
       if (!classNotesConfig.selectedEvaluationId) return [];

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Trash2, Upload } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import type { QuestionnaireData } from '../hooks/useEvaluations';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -26,7 +26,7 @@ export const QuestionnaireSection: React.FC<QuestionnaireSectionProps> = ({
   const [isOpen, setIsOpen] = React.useState(false);
 
   // Récupérer les infos des matières
-  const { data: subjectsData = [] } = useQuery({
+  const { data: subjectsData = [] } = useOfflineQuery<any[]>({
     queryKey: ['class-subjects-data', subjects],
     queryFn: async () => {
       const { data, error } = await supabase

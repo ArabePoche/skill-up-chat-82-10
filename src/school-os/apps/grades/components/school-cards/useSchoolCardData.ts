@@ -1,7 +1,7 @@
 /**
  * Hook pour récupérer les données nécessaires à la génération des cartes scolaires
  */
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SchoolCardStudent {
@@ -17,7 +17,7 @@ export interface SchoolCardStudent {
 }
 
 export const useClassStudentsForCards = (classId?: string) => {
-  return useQuery<SchoolCardStudent[]>({
+  return useOfflineQuery<SchoolCardStudent[]>({
     queryKey: ['class-students-cards', classId],
     queryFn: async () => {
       const { data, error } = await supabase

@@ -1,7 +1,7 @@
 /**
  * Hook pour charger les classes avec leurs matières et élèves
  */
-import { useQuery } from '@tanstack/react-query';
+import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 

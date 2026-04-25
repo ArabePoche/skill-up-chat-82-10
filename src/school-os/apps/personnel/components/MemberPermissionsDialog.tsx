@@ -3,7 +3,7 @@
  * Toutes les permissions sont modifiables (ajout, retrait, exclusion du rôle)
  */
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -114,7 +114,7 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
   const roleId = member.school_roles?.id;
 
   // Récupérer toutes les permissions disponibles
-  const { data: allPermissions = [] } = useQuery({
+  const { data: allPermissions = [] } = useOfflineQuery<Permission[]>({
     queryKey: ['school-permissions'],
     queryFn: async (): Promise<Permission[]> => {
       const { data, error } = await supabase
@@ -129,7 +129,7 @@ export const MemberPermissionsDialog: React.FC<MemberPermissionsDialogProps> = (
   });
 
   // Récupérer les permissions héritées du rôle
-  const { data: rolePermissions = [] } = useQuery({
+  const { data: rolePermissions = [] } = useOfflineQuery<string[]>({
     queryKey: ['role-permissions-inherited', roleId, schoolId],
     queryFn: async () => {
       if (!roleId) return [];
