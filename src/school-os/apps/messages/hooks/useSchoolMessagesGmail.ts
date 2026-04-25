@@ -4,7 +4,7 @@
  * Admin voit tout, autres voient uniquement les messages qui les concernent
  */
 import { useState, useCallback, useMemo } from 'react';
-import { useMutationClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';

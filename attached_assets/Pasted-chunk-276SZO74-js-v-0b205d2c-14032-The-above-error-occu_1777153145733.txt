@@ -1,0 +1,49 @@
+chunk-276SZO74.js?v=0b205d2c:14032 The above error occurred in the <ScheduledExpenseConfirmationModal> component:
+
+    at ScheduledExpenseConfirmationModal (http://10.31.221.236:5000/src/school-os/apps/accounting/components/ScheduledExpenseConfirmationModal.tsx:22:53)
+    at div
+    at AccountingView (http://10.31.221.236:5000/src/school-os/apps/accounting/components/AccountingView.tsx:22:34)
+    at div
+    at AccountingApp (http://10.31.221.236:5000/src/school-os/apps/accounting/AccountingApp.tsx:19:19)
+    at Suspense
+    at div
+    at div
+    at Window (http://10.31.221.236:5000/src/school-os/components/Window.tsx:17:26)
+    at div
+    at http://10.31.221.236:5000/node_modules/.vite/deps/chunk-D3CTYCI6.js?v=0b205d2c:52:11
+    at http://10.31.221.236:5000/node_modules/.vite/deps/chunk-D3CTYCI6.js?v=0b205d2c:33:11
+    at http://10.31.221.236:5000/node_modules/.vite/deps/chunk-QCAFA6Y2.js?v=0b205d2c:41:13
+    at http://10.31.221.236:5000/node_modules/.vite/deps/@radix-ui_react-context-menu.js?v=0b205d2c:104:13
+    at Provider (http://10.31.221.236:5000/node_modules/.vite/deps/chunk-QUKTJ62H.js?v=0b205d2c:38:15)
+    at Provider (http://10.31.221.236:5000/node_modules/.vite/deps/chunk-QUKTJ62H.js?v=0b205d2c:38:15)
+    at Provider (http://10.31.221.236:5000/node_modules/.vite/deps/chunk-O4KPNP6H.js?v=0b205d2c:1907:15)
+    at Popper (http://10.31.221.236:5000/node_modules/.vite/deps/chunk-O4KPNP6H.js?v=0b205d2c:1964:11)
+    at Menu (http://10.31.221.236:5000/node_modules/.vite/deps/chunk-JUW26WVM.js?v=0b205d2c:90:11)
+    at Provider (http://10.31.221.236:5000/node_modules/.vite/deps/chunk-QUKTJ62H.js?v=0b205d2c:38:15)
+    at ContextMenu (http://10.31.221.236:5000/node_modules/.vite/deps/@radix-ui_react-context-menu.js?v=0b205d2c:68:11)
+    at Desktop (http://10.31.221.236:5000/src/school-os/components/Desktop.tsx?t=1777150073949:38:19)
+    at SchoolYearProvider (http://10.31.221.236:5000/src/school/context/SchoolYearContext.tsx?t=1777150073830:18:38)
+    at School
+    at RenderedRoute (http://10.31.221.236:5000/node_modules/.vite/deps/react-router-dom.js?v=0b205d2c:5455:26)
+    at Routes (http://10.31.221.236:5000/node_modules/.vite/deps/react-router-dom.js?v=0b205d2c:6188:3)
+    at div
+    at AppWithRouter (http://10.31.221.236:5000/src/App.tsx?t=1777150073949:96:5)
+    at ConversationForwardDialogProvider (http://10.31.221.236:5000/src/conversations/ConversationForwardDialogProvider.tsx:23:53)
+    at AppWithHabbah (http://10.31.221.236:5000/src/App.tsx?t=1777150073949:688:35)
+    at TabScrollProvider (http://10.31.221.236:5000/src/contexts/TabScrollContext.tsx:15:37)
+    at NavigationProvider (http://10.31.221.236:5000/src/contexts/NavigationContext.tsx:13:38)
+    at PresenceProvider (http://10.31.221.236:5000/src/contexts/PresenceContext.tsx:16:36)
+    at ConversationSyncProvider (http://10.31.221.236:5000/src/offline/components/ConversationSyncProvider.tsx:20:48)
+    at AuthProvider (http://10.31.221.236:5000/src/hooks/useAuth.tsx:18:32)
+    at Router (http://10.31.221.236:5000/node_modules/.vite/deps/react-router-dom.js?v=0b205d2c:6131:13)
+    at BrowserRouter (http://10.31.221.236:5000/node_modules/.vite/deps/react-router-dom.js?v=0b205d2c:9149:3)
+    at OfflineGate (http://10.31.221.236:5000/src/offline/components/OfflineGate.tsx:17:31)
+    at QueryClientProvider (http://10.31.221.236:5000/node_modules/.vite/deps/chunk-2HLOZGUN.js?v=0b205d2c:3168:3)
+    at PersistQueryClientProvider (http://10.31.221.236:5000/node_modules/.vite/deps/@tanstack_react-query-persist-client.js?v=0b205d2c:353:3)
+    at App (http://10.31.221.236:5000/src/App.tsx?t=1777150073949:726:65)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-276SZO74.js?v=0b205d2c:19413 Uncaught ReferenceError: useQueryClient is not defined
+    at useConfirmScheduledExpenses (useScheduledExpenses.ts:139:23)
+    at ScheduledExpenseConfirmationModal (ScheduledExpenseConf…tionModal.tsx:33:27)

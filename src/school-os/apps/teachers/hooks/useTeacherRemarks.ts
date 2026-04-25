@@ -1,5 +1,5 @@
 // Hook pour gérer les remarques sur les enseignants
-import { useMutationClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
