@@ -3,7 +3,6 @@
  * - Notes de composition: obligatoires, proviennent de school_composition_notes.composition_note
  * - Notes de classe: optionnelles, proviennent de school_composition_notes.class_note
  */
-import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 

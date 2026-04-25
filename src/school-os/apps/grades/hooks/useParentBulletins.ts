@@ -2,7 +2,6 @@
  * Hook pour récupérer les bulletins d'un enfant par période
  * Utilisé dans la vue parent pour afficher les bulletins par grading period
  */
-import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 

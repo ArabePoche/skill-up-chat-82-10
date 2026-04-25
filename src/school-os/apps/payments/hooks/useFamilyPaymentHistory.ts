@@ -1,7 +1,6 @@
 /**
  * Hook pour récupérer l'historique des paiements d'une famille
  */
-import {  from '@tanstack/react-query';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
