@@ -165,17 +165,38 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
   }, [stickerPacks, searchQuery, favoriteStickers]);
   
   // Pack des favoris basé sur le nouveau système
+  // Inclut TOUS les favoris (packs débloqués + stickers reçus en conversation)
   const favoritesPack = useMemo(() => {
     if (favoriteStickers.length === 0) return null;
-    
-    const allFavorites = stickerPacks.flatMap(pack => 
-      pack.stickers.filter(sticker => 
-        favoriteStickers.some(fav => fav.item_id === sticker.id)
-      )
-    );
-    
+
+    // Index des stickers présents dans les packs débloqués (pour récupérer l'URL signée fraîche)
+    const stickersInPacks = new Map<string, Sticker>();
+    stickerPacks.forEach(pack => {
+      pack.stickers.forEach(sticker => {
+        stickersInPacks.set(sticker.id, sticker);
+      });
+    });
+
+    // Construire la liste des favoris : prioriser le sticker présent dans un pack
+    // (URL signée fraîche), sinon retomber sur item_data.url stocké au moment du favori
+    const allFavorites: Sticker[] = favoriteStickers
+      .map(fav => {
+        const fromPack = stickersInPacks.get(fav.item_id);
+        if (fromPack) return fromPack;
+
+        const url = (fav.item_data as any)?.url;
+        if (!url) return null;
+
+        return {
+          id: fav.item_id,
+          url,
+          path: (fav.item_data as any)?.packId ?? null,
+        } satisfies Sticker;
+      })
+      .filter((s): s is Sticker => s !== null);
+
     if (allFavorites.length === 0) return null;
-    
+
     return {
       id: 'favorites',
       name: 'Favoris',
