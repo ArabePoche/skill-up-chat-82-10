@@ -1,11 +1,14 @@
 /**
  * Hook pour gérer les fournisseurs d'une boutique physique
  * CRUD fournisseurs + commandes fournisseur + historique d'approvisionnement
+ * — Offline-first : listes via useOfflineQuery, réception de commande via useOfflineMutation
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
+import { useOfflineMutation } from '@/offline/hooks/useOfflineMutation';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -78,8 +81,8 @@ export const useSuppliers = (shopId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Liste des fournisseurs
-  const suppliersQuery = useQuery({
+  // Liste des fournisseurs (offline-first)
+  const suppliersQuery = useOfflineQuery<Supplier[]>({
     queryKey: ['shop-suppliers', shopId],
     queryFn: async (): Promise<Supplier[]> => {
       if (!shopId) return [];
@@ -164,7 +167,7 @@ export const useSupplierOrders = (shopId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const ordersQuery = useQuery({
+  const ordersQuery = useOfflineQuery<SupplierOrder[]>({
     queryKey: ['supplier-orders', shopId],
     queryFn: async (): Promise<SupplierOrder[]> => {
       if (!shopId) return [];
@@ -244,8 +247,49 @@ export const useSupplierOrders = (shopId?: string) => {
   });
 
   // Réceptionner une commande (marquer comme reçue + créer des lots)
-  const receiveOrder = useMutation({
-    mutationFn: async ({ orderId, receivedItems }: { orderId: string; receivedItems: Array<{ itemId: string; receivedQuantity: number; productId: string; sectorData?: any }> }) => {
+  // Offline-first : mise en file d'attente si hors-ligne, mise à jour optimiste immédiate
+  const receiveOrder = useOfflineMutation<
+    void,
+    { orderId: string; receivedItems: Array<{ itemId: string; receivedQuantity: number; productId: string; sectorData?: any }> }
+  >({
+    mutationType: 'generic',
+    invalidateKeys: [
+      ['supplier-orders', shopId],
+      ['boutique-products', shopId],
+    ],
+    optimisticUpdate: ({ orderId, receivedItems }) => {
+      // Mise à jour optimiste immédiate du cache : marquer la commande comme "received"
+      const nowIso = new Date().toISOString();
+      const cachedOrders = queryClient.getQueryData<SupplierOrder[]>(['supplier-orders', shopId]);
+      if (cachedOrders) {
+        const updated = cachedOrders.map(o =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: 'received',
+                received_at: nowIso,
+                updated_at: nowIso,
+                items: o.items?.map(it => {
+                  const ri = receivedItems.find(r => r.itemId === it.id);
+                  return ri ? { ...it, received_quantity: ri.receivedQuantity } : it;
+                }),
+              }
+            : o
+        );
+        queryClient.setQueryData(['supplier-orders', shopId], updated);
+      }
+      // Optimistic stock bump pour la liste des produits
+      const cachedProducts = queryClient.getQueryData<any[]>(['boutique-products', shopId]);
+      if (cachedProducts) {
+        const updated = cachedProducts.map(p => {
+          const ri = receivedItems.find(r => r.productId === p.id);
+          if (!ri) return p;
+          return { ...p, stock_quantity: (p.stock_quantity || 0) + ri.receivedQuantity };
+        });
+        queryClient.setQueryData(['boutique-products', shopId], updated);
+      }
+    },
+    mutationFn: async ({ orderId, receivedItems }) => {
       // Mettre à jour le statut de la commande
       const { error: orderErr } = await supabase
         .from('supplier_orders' as any)
@@ -334,8 +378,6 @@ export const useSupplierOrders = (shopId?: string) => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supplier-orders', shopId] });
-      queryClient.invalidateQueries({ queryKey: ['boutique-products', shopId] });
       toast.success('Commande réceptionnée — stocks mis à jour');
     },
     onError: () => toast.error('Erreur lors de la réception'),

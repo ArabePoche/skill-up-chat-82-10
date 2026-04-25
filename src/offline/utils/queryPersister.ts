@@ -124,6 +124,10 @@ export const PERSISTED_QUERY_PREFIXES = [
   'evaluation-grades-for-class-notes',
   'role-permissions',
   'role-permissions-inherited',
+  // Boutique physique — réception de commande offline-first
+  'shop-suppliers',
+  'supplier-orders',
+  'boutique-products',
 ] as const;
 
 /**
