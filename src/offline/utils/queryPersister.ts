@@ -62,6 +62,7 @@ export const PERSISTED_QUERY_PREFIXES = [
   'levels',
   'exercises',
   // École & School-OS — préfixes ajoutés pour le mode hors-ligne
+  'user-school',
   'user-schools',
   'school',
   'school-search',

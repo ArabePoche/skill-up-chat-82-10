@@ -29,8 +29,12 @@ export const useFilteredApps = (schoolId: string | undefined): {
   const { data: roleData, isLoading } = useSchoolUserRole(schoolId);
 
   const filteredApps = useMemo(() => {
-    if (!roleData || isLoading) {
-      return [];
+    // Tant que les permissions ne sont pas connues (chargement, pas de schoolId
+    // ou erreur réseau hors-ligne), on affiche toutes les apps pour ne pas
+    // laisser l'utilisateur devant un bureau vide. Le contrôle d'accès reste
+    // fait à l'intérieur de chaque app au moment d'agir sur les données.
+    if (!roleData) {
+      return schoolApps;
     }
 
     // Si l'utilisateur est owner ou admin, afficher toutes les apps
@@ -46,7 +50,7 @@ export const useFilteredApps = (schoolId: string | undefined): {
       }
       return roleData.permissions.includes(requiredPermission);
     });
-  }, [roleData, isLoading]);
+  }, [roleData]);
 
   return {
     apps: filteredApps,
