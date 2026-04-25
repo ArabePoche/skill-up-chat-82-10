@@ -2,7 +2,8 @@
  * Hook pour gérer les clients de la boutique physique
  * Inclut : CRUD clients, historique d'achats, crédit/dette, fidélité
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -34,7 +35,7 @@ export interface CustomerCredit {
 
 /** Récupérer les clients d'une boutique */
 export const useShopCustomers = (shopId?: string) => {
-  return useQuery({
+  return useOfflineQuery<ShopCustomer[]>({
     queryKey: ['shop-customers', shopId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -114,7 +115,7 @@ export const useDeleteShopCustomer = () => {
 
 /** Récupérer les crédits/dettes d'un client */
 export const useCustomerCredits = (customerId?: string) => {
-  return useQuery({
+  return useOfflineQuery<CustomerCredit[]>({
     queryKey: ['customer-credits', customerId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -165,7 +166,7 @@ export const useAddCustomerCredit = () => {
 
 /** Récupérer l'historique d'achats d'un client */
 export const useCustomerPurchases = (customerId?: string, shopId?: string) => {
-  return useQuery({
+  return useOfflineQuery<any>({
     queryKey: ['customer-purchases', customerId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)

@@ -3,7 +3,8 @@
  * Récupère et gère les notifications de l'utilisateur
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
@@ -13,7 +14,7 @@ export const useNotifications = () => {
   const queryClient = useQueryClient();
 
   // Récupérer les notifications
-  const { data: notifications, isLoading } = useQuery({
+  const { data: notifications, isLoading } = useOfflineQuery<any[]>({
     queryKey: ['notifications', user?.id],
     queryFn: async () => {
       if (!user) return [];

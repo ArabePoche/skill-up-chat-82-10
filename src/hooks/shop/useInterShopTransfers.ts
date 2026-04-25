@@ -1,7 +1,8 @@
 /**
  * Hook pour gérer les transferts de stock entre boutiques
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -38,7 +39,7 @@ export interface InterShopTransfer {
 export const useInterShopTransfers = () => {
   const { user } = useAuth();
 
-  return useQuery({
+  return useOfflineQuery<any[]>({
     queryKey: ['inter-shop-transfers', user?.id],
     queryFn: async (): Promise<InterShopTransfer[]> => {
       if (!user?.id) return [];
@@ -228,7 +229,7 @@ export const useCancelInterShopTransfer = () => {
  * Obtenir les produits disponibles pour transfert depuis une boutique
  */
 export const useAvailableProductsForTransfer = (shopId: string | undefined) => {
-  return useQuery({
+  return useOfflineQuery<any[]>({
     queryKey: ['available-products-transfer', shopId],
     queryFn: async () => {
       if (!shopId) return [];

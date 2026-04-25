@@ -2,7 +2,8 @@
  * Hook pour gérer la boutique physique d'un utilisateur
  * Offline-first : cache IndexedDB + sync Supabase
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { physicalShopStore } from '@/local-storage/stores/BoutiqueStore';
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 export const usePhysicalShop = () => {
     const { user } = useAuth();
 
-    const query = useQuery({
+    const query = useOfflineQuery<any>({
         queryKey: ['physical-shop', user?.id],
         queryFn: async () => {
             console.log('🏪 [usePhysicalShop] Fetching shop for user:', user!.id);
@@ -111,7 +112,7 @@ export const useIsShopOwner = () => {
     const { user } = useAuth();
     const cacheKey = user?.id ? `is-shop-owner-${user.id}` : null;
 
-    return useQuery({
+    return useOfflineQuery<boolean>({
         queryKey: ['is-shop-owner', user?.id],
         queryFn: async () => {
             console.log('🔍 [useIsShopOwner] Checking for user:', user!.id);

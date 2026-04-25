@@ -1,7 +1,8 @@
 /**
  * Hook pour gérer plusieurs boutiques d'un utilisateur
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -34,7 +35,7 @@ export interface ShopWithProducts {
 export const useUserShops = () => {
   const { user } = useAuth();
 
-  return useQuery({
+  return useOfflineQuery<any[]>({
     queryKey: ['user-shops', user?.id],
     queryFn: async (): Promise<ShopWithProducts[]> => {
       if (!user?.id) return [];
@@ -105,7 +106,7 @@ export const useUserShops = () => {
 export const useMultiShopStats = () => {
   const { data: shops } = useUserShops();
 
-  return useQuery({
+  return useOfflineQuery<any>({
     queryKey: ['multi-shop-stats', shops],
     queryFn: (): MultiShopStats => {
       if (!shops || shops.length === 0) {

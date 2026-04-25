@@ -1,7 +1,8 @@
 /**
  * Hook pour gérer le chat inter-boutiques
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -43,7 +44,7 @@ export interface ShopConversation {
 export const useShopConversations = () => {
   const { user } = useAuth();
 
-  return useQuery({
+  return useOfflineQuery<any[]>({
     queryKey: ['shop-conversations', user?.id],
     queryFn: async (): Promise<ShopConversation[]> => {
       if (!user?.id) return [];
@@ -113,7 +114,7 @@ export const useShopConversations = () => {
 export const useShopMessages = (senderShopId: string, receiverShopId: string) => {
   const queryClient = useQueryClient();
 
-  const query = useQuery({
+  const query = useOfflineQuery<any[]>({
     queryKey: ['shop-messages', senderShopId, receiverShopId],
     queryFn: async (): Promise<ShopMessage[]> => {
       if (!senderShopId || !receiverShopId) return [];
@@ -258,7 +259,7 @@ export const useMarkMessagesAsRead = () => {
 export const useUnreadShopMessagesCount = () => {
   const { user } = useAuth();
 
-  return useQuery({
+  return useOfflineQuery<number>({
     queryKey: ['unread-shop-messages-count', user?.id],
     queryFn: async (): Promise<number> => {
       if (!user?.id) return 0;

@@ -3,7 +3,8 @@
  * - Utilisateur demande à rejoindre une boutique (status: pending)
  * - Propriétaire approuve avec un rôle (status: active)
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -25,7 +26,7 @@ export interface AgentRequest {
 export const useMyAgentStatus = (shopId?: string) => {
   const { user } = useAuth();
 
-  return useQuery({
+  return useOfflineQuery<any>({
     queryKey: ['my-agent-status', user?.id, shopId],
     queryFn: async () => {
       if (!user?.id || !shopId) return null;
@@ -56,7 +57,7 @@ export const useMyAgentStatus = (shopId?: string) => {
 export const useIsShopAgent = () => {
   const { user } = useAuth();
 
-  return useQuery({
+  return useOfflineQuery<boolean>({
     queryKey: ['is-shop-agent', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
@@ -146,7 +147,7 @@ export const useRequestAgentAccess = () => {
 
 /** Récupérer les demandes en attente pour une boutique (côté propriétaire) */
 export const usePendingAgentRequests = (shopId?: string) => {
-  return useQuery({
+  return useOfflineQuery<any[]>({
     queryKey: ['pending-agent-requests', shopId],
     queryFn: async () => {
       if (!shopId) return [];

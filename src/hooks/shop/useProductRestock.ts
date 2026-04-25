@@ -3,14 +3,15 @@
  * Permet aux utilisateurs de s'abonner/désabonner aux notifications de restock
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export const useProductRestock = (productId?: string, userId?: string) => {
     const queryClient = useQueryClient();
 
-    const { data: isSubscribed, isLoading } = useQuery({
+    const { data: isSubscribed, isLoading } = useOfflineQuery<boolean>({
         queryKey: ['restock-subscription', productId, userId],
         queryFn: async () => {
             if (!productId || !userId) return false;

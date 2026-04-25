@@ -2,7 +2,8 @@
  * Hook pour récupérer et gérer les commandes reçues par le vendeur
  * Utilisé dans la page boutique pour afficher/confirmer/rejeter les commandes marketplace
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -41,7 +42,7 @@ export const useShopOrders = (shopId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading } = useOfflineQuery<any[]>({
     queryKey: ['shop-orders', user?.id, shopId],
     queryFn: async () => {
       if (!user) return [];

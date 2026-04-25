@@ -1,7 +1,7 @@
 /**
  * Hook pour récupérer les statistiques de ventes du jour
  */
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfDay, endOfDay } from 'date-fns';
 
@@ -22,7 +22,7 @@ export interface TodaySalesStats {
 }
 
 export const useTodaySalesStats = (shopId?: string) => {
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['today-sales-stats', shopId],
     queryFn: async (): Promise<TodaySalesStats> => {
       if (!shopId) throw new Error('Shop ID required');

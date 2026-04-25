@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -51,7 +52,7 @@ export const logShopActivity = async ({
 };
 
 export const useShopActivityLogs = (shopId?: string) => {
-  return useQuery({
+  return useOfflineQuery<any[]>({
     queryKey: ['shop-activity-logs', shopId],
     queryFn: async () => {
       if (!shopId) return [];

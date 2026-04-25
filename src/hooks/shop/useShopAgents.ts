@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logShopActivity } from './useShopActivityLogs';
@@ -19,7 +20,7 @@ export interface ShopAgent {
 }
 
 export const useShopAgents = (shopId?: string) => {
-    return useQuery({
+    return useOfflineQuery<any[]>({
         queryKey: ['shop-agents', shopId],
         queryFn: async () => {
             if (!shopId) return [];

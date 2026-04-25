@@ -2,13 +2,14 @@
  * Hook pour enregistrer les ventes en boutique physique (POS)
  * Supporte la vente multi-produits via panier
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { boutiqueProductStore } from '@/local-storage/stores/BoutiqueStore';
 import { offlineStore } from '@/offline/utils/offlineStore';
 import { toast } from 'sonner';
 import type { PosCartItem } from './usePosCart';
 import { logShopActivity } from './useShopActivityLogs';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 
 export interface SaleInput {
   shop_id: string;
@@ -39,6 +40,58 @@ export const useCreateCartSale = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    onMutate: async (sale: CartSaleInput) => {
+      // Optimistic update : ajouter la vente au cache de l'historique immédiatement
+      const nowIso = new Date().toISOString();
+      const tempReceipt = sale.receiptId || `temp-${Date.now()}`;
+      const optimisticSales = sale.items.map((item, idx) => ({
+        id: `optimistic-${Date.now()}-${idx}`,
+        shop_id: sale.shopId,
+        product_id: item.product.id,
+        quantity: item.quantity,
+        unit_price: item.product.price,
+        total_amount: item.product.price * item.quantity,
+        cost_price: item.product.cost_price || 0,
+        customer_id: sale.customerId || null,
+        customer_name: sale.customerName || null,
+        payment_method: sale.paymentMethod || 'cash',
+        notes: sale.notes || null,
+        agent_id: sale.agentId || null,
+        receipt_id: tempReceipt,
+        sold_at: nowIso,
+        status: 'completed',
+        product: { name: item.product.name, image_url: item.product.image_url },
+        agent: null,
+        _optimistic: true,
+      }));
+      const prevHistory = queryClient.getQueryData<any[]>(['boutique-sales-history', sale.shopId]) || [];
+      queryClient.setQueryData(['boutique-sales-history', sale.shopId], [...optimisticSales, ...prevHistory]);
+
+      // Optimistic stats du jour
+      const totalAmount = sale.items.reduce((s, i) => s + i.product.price * i.quantity, 0);
+      const totalQty = sale.items.reduce((s, i) => s + i.quantity, 0);
+      const prevStats = queryClient.getQueryData<any>(['today-sales-stats', sale.shopId]);
+      if (prevStats) {
+        queryClient.setQueryData(['today-sales-stats', sale.shopId], {
+          ...prevStats,
+          totalRevenue: (prevStats.totalRevenue || 0) + totalAmount,
+          totalSales: (prevStats.totalSales || 0) + totalQty,
+          salesCount: (prevStats.salesCount || 0) + 1,
+        });
+      }
+
+      // Optimistic stock dans la liste produits
+      const prevProducts = queryClient.getQueryData<any[]>(['boutique-products', sale.shopId]);
+      if (prevProducts) {
+        const next = prevProducts.map(p => {
+          const sold = sale.items.find(i => i.product.id === p.id);
+          return sold ? { ...p, stock_quantity: (p.stock_quantity || 0) - sold.quantity } : p;
+        });
+        queryClient.setQueryData(['boutique-products', sale.shopId], next);
+      }
+
+      return { prevHistory, prevStats, prevProducts };
+    },
     mutationFn: async (sale: CartSaleInput) => {
       // 1. Mise à jour locale du stock (optimiste)
       for (const item of sale.items) {
@@ -188,7 +241,7 @@ export const useCreateCartSale = () => {
  * Récupérer l'historique des ventes
  */
 export const useBoutiqueSalesHistory = (shopId?: string) => {
-  return useQuery({
+  return useOfflineQuery<any[]>({
     queryKey: ['boutique-sales-history', shopId],
     queryFn: async () => {
       if (!shopId) return [];
@@ -224,6 +277,29 @@ export const useCancelBoutiqueSale = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    onMutate: async (sale: { id: string; shop_id: string; product_id: string; quantityToReturn: number; originalQuantity: number; originalTotalAmount: number }) => {
+      // Optimistic : marquer la vente comme annulée / réduite dans le cache
+      const prevHistory = queryClient.getQueryData<any[]>(['boutique-sales-history', sale.shop_id]) || [];
+      const isFullCancel = sale.quantityToReturn === sale.originalQuantity;
+      const nextHistory = prevHistory.map(s => {
+        if (s.id !== sale.id) return s;
+        if (isFullCancel) return { ...s, status: 'canceled' };
+        const newQty = sale.originalQuantity - sale.quantityToReturn;
+        const newTotal = (sale.originalTotalAmount / sale.originalQuantity) * newQty;
+        return { ...s, quantity: newQty, total_amount: newTotal };
+      });
+      queryClient.setQueryData(['boutique-sales-history', sale.shop_id], nextHistory);
+
+      // Optimistic stock restoration sur les produits
+      const prevProducts = queryClient.getQueryData<any[]>(['boutique-products', sale.shop_id]);
+      if (prevProducts) {
+        const next = prevProducts.map(p =>
+          p.id === sale.product_id ? { ...p, stock_quantity: (p.stock_quantity || 0) + sale.quantityToReturn } : p
+        );
+        queryClient.setQueryData(['boutique-products', sale.shop_id], next);
+      }
+      return { prevHistory, prevProducts };
+    },
     mutationFn: async (sale: { id: string; shop_id: string; product_id: string; quantityToReturn: number; originalQuantity: number; originalTotalAmount: number }) => {
       // 1. Mise à jour locale du stock (optimiste)
       const existing = await boutiqueProductStore.get(sale.product_id);

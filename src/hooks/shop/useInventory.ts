@@ -1,7 +1,8 @@
 /**
  * Hook pour gérer l'inventaire et les mouvements de stock
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -39,7 +40,7 @@ export interface InventoryStats {
  * Récupère l'historique des mouvements d'inventaire
  */
 export const useInventoryMovements = (shopId: string | undefined, limit = 50) => {
-    return useQuery({
+    return useOfflineQuery<any[]>({
         queryKey: ['inventory-movements', shopId, limit],
         queryFn: async () => {
             if (!shopId) return [];
@@ -65,7 +66,7 @@ export const useInventoryMovements = (shopId: string | undefined, limit = 50) =>
  * Statistiques d'inventaire
  */
 export const useInventoryStats = (shopId: string | undefined) => {
-    return useQuery({
+    return useOfflineQuery<any>({
         queryKey: ['inventory-stats', shopId],
         queryFn: async (): Promise<InventoryStats> => {
             if (!shopId) {
