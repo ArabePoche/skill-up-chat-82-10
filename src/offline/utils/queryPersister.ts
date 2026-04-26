@@ -115,6 +115,10 @@ export const PERSISTED_QUERY_PREFIXES = [
   'school-payment-methods',
   'school-budget',
   'school-discipline',
+  // Page publique du site de l'école (SchoolSitePage)
+  'school-site',
+  'school-stats',
+  'school-template',
   // Préfixes additionnels utilisés par les composants school-os offline-first
   'parent-enrollment-requests',
   'parent-child-grades',

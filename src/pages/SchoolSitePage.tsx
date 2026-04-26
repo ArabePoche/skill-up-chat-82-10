@@ -4,8 +4,8 @@
  */
 import React, { useCallback, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import {
   Building2, ArrowLeft, Pencil, LayoutTemplate, X, Check,
 } from 'lucide-react';
@@ -89,7 +89,7 @@ const SchoolSitePage: React.FC = () => {
     (s) => s.id === schoolId && PERSONNEL_ROLES.includes(s.role)
   );
 
-  const { data: school, isLoading } = useQuery({
+  const { data: school, isLoading } = useOfflineQuery<(School & { school_site_templates?: any }) | null>({
     queryKey: ['school-site', schoolId],
     queryFn: async () => {
       if (!schoolId) return null;
@@ -104,7 +104,7 @@ const SchoolSitePage: React.FC = () => {
     (!!user?.id && !!school?.owner_id && user.id === school.owner_id) ||
     !!userSchools?.find((s) => s.id === schoolId && s.role === 'owner');
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useOfflineQuery<{ students: number; teachers: number; classes: number } | null>({
     queryKey: ['school-stats', schoolId],
     queryFn: async () => {
       if (!schoolId) return null;
