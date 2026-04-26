@@ -3,6 +3,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { useSchoolStudents } from '../hooks/usePayments';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useMonthlyPaymentTracking } from '../hooks/useMonthlyPaymentTracking';
 import { StudentPaymentCard } from './StudentPaymentCard';
 import { AddPaymentDialog } from './AddPaymentDialog';
@@ -27,7 +28,8 @@ interface StudentPaymentListProps {
 
 export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId }) => {
   const { t } = useTranslation();
-  const { data: students = [], isLoading } = useSchoolStudents(schoolId);
+  const { activeSchoolYear } = useSchoolYear();
+  const { data: students = [], isLoading } = useSchoolStudents(schoolId, activeSchoolYear?.id);
   const { trackingData } = useMonthlyPaymentTracking(schoolId);
   const [searchQuery, setSearchQuery] = useState('');
   const [classFilter, setClassFilter] = useState('all');

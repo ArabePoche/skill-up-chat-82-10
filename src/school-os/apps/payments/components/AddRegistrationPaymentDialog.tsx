@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSchoolStudents } from '../hooks/usePayments';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { GraduationCap, AlertCircle } from 'lucide-react';
@@ -39,7 +40,8 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
   const [referenceNumber, setReferenceNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: students } = useSchoolStudents(schoolId);
+  const { activeSchoolYear } = useSchoolYear();
+  const { data: students } = useSchoolStudents(schoolId, activeSchoolYear?.id);
 
   const selectedStudentData = students?.find(s => s.id === studentId);
   const registrationFee = selectedStudentData?.registration_fee || 0;

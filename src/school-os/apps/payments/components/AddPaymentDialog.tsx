@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAddPayment, useSchoolStudents } from '../hooks/usePayments';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useTranslation } from 'react-i18next';
 
 interface AddPaymentDialogProps {
@@ -33,7 +34,8 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
   const [notes, setNotes] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
 
-  const { data: students } = useSchoolStudents(schoolId);
+  const { activeSchoolYear } = useSchoolYear();
+  const { data: students } = useSchoolStudents(schoolId, activeSchoolYear?.id);
   const addPayment = useAddPayment();
 
   // Calculer le montant restant avec remise pour l'élève sélectionné

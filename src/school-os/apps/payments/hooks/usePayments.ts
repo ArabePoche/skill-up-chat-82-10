@@ -4,14 +4,14 @@ import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export const useSchoolStudents = (schoolId?: string) => {
+export const useSchoolStudents = (schoolId?: string, schoolYearId?: string) => {
   return useOfflineQuery({
-    queryKey: ['school-students-payments', schoolId],
+    queryKey: ['school-students-payments', schoolId, schoolYearId],
     queryFn: async () => {
       if (!schoolId) return [];
 
-      // Charger les étudiants
-      const { data: students, error: studentsError } = await supabase
+      // Charger les étudiants (filtrés par année scolaire si fournie)
+      let studentsQuery = supabase
         .from('students_school')
         .select(`
           *,
@@ -21,14 +21,26 @@ export const useSchoolStudents = (schoolId?: string) => {
         .eq('school_id', schoolId)
         .order('last_name', { ascending: true });
 
+      if (schoolYearId) {
+        studentsQuery = studentsQuery.eq('school_year_id', schoolYearId);
+      }
+
+      const { data: students, error: studentsError } = await studentsQuery;
+
       if (studentsError) throw studentsError;
       if (!students) return [];
 
-      // Charger les progrès de paiement séparément
-      const { data: paymentProgress, error: progressError } = await supabase
+      // Charger les progrès de paiement séparément (filtrés par année si fournie)
+      let progressQuery = supabase
         .from('school_student_payment_progress')
         .select('*')
         .eq('school_id', schoolId);
+
+      if (schoolYearId) {
+        progressQuery = progressQuery.eq('school_year_id', schoolYearId);
+      }
+
+      const { data: paymentProgress, error: progressError } = await progressQuery;
 
       if (progressError) throw progressError;
 

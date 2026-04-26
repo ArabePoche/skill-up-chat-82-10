@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowRight, ArrowLeft, Search, Users, X, UsersRound } from 'lucide-react';
 import { useFamilies, useLinkStudentToFamily, Family } from '../hooks/useFamilies';
 import { useStudents } from '@/school-os/apps/students/hooks/useStudents';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -23,8 +24,9 @@ export const FamilyStudentsManager: React.FC<FamilyStudentsManagerProps> = ({ sc
   const [searchLinked, setSearchLinked] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'class'>('name');
 
+  const { activeSchoolYear } = useSchoolYear();
   const { data: families } = useFamilies(schoolId);
-  const { data: students } = useStudents(schoolId);
+  const { data: students } = useStudents(schoolId, activeSchoolYear?.id);
   const linkMutation = useLinkStudentToFamily();
 
   const selectedFamily = families?.find(f => f.id === selectedFamilyId);

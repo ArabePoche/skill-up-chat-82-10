@@ -7,7 +7,7 @@
 import { useMemo } from 'react';
 import { useSchoolStudents } from './usePayments';
 import { useStudentPayments } from './usePayments';
-import { useCurrentSchoolYear } from '@/school/hooks/useSchool';
+import { useSchoolYear } from '@/school/context/SchoolYearContext';
 
 export interface MonthlyPaymentStatus {
   month: string; // Format: "2025-01" pour janvier 2025
@@ -67,8 +67,8 @@ const calculateFirstDueMonth = (enrollmentDate: Date, includeEnrollmentMonth: bo
  * Utilise enrollment_date et first_due_month pour ne générer que les mois réellement exigibles
  */
 export const useMonthlyPaymentTracking = (schoolId?: string) => {
-  const { data: students = [], isLoading } = useSchoolStudents(schoolId);
-  const { data: schoolYear } = useCurrentSchoolYear(schoolId);
+  const { activeSchoolYear: schoolYear } = useSchoolYear();
+  const { data: students = [], isLoading } = useSchoolStudents(schoolId, schoolYear?.id);
 
   const trackingData = useMemo(() => {
     if (!students.length || !schoolYear) return [];

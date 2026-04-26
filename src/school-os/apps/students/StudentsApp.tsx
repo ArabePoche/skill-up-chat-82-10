@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useStudents, useDeleteStudent } from './hooks/useStudents';
 import { StudentCard } from './components/StudentCard';
 import { AddStudentDialog } from './components/AddStudentDialog';
+import { EndOfYearPromotionDialog } from './components/EndOfYearPromotionDialog';
 import { StudentDetailModal } from './components/StudentDetailModal';
 import { EditStudentDialog } from './components/EditStudentDialog';
 import { ArchivedStudentsTab } from './components/ArchivedStudentsTab';
@@ -33,6 +34,7 @@ export const StudentsApp: React.FC = () => {
   const [selectedGender, setSelectedGender] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isPromotionDialogOpen, setIsPromotionDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -69,8 +71,8 @@ export const StudentsApp: React.FC = () => {
   // Récupérer les matières
   const { data: subjects } = useSubjects();
 
-  // Récupérer les élèves selon le rôle
-  const { data: allStudents, isLoading: isLoadingAllStudents } = useStudents(school?.id);
+  // Récupérer les élèves selon le rôle (filtrés par année scolaire active)
+  const { data: allStudents, isLoading: isLoadingAllStudents } = useStudents(school?.id, schoolYear?.id);
   const { data: teacherStudents, isLoading: isLoadingTeacherStudents } = useTeacherStudents(school?.id, schoolYear?.id);
   
   const students = isTeacher ? teacherStudents : allStudents;
@@ -368,10 +370,22 @@ export const StudentsApp: React.FC = () => {
               </div>
             </div>
             {canManageStudents && (
-              <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="w-full sm:w-auto h-8 px-3">
-                <Plus className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t('schoolOS.common.add')}</span>
-              </Button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button
+                  onClick={() => setIsPromotionDialogOpen(true)}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3"
+                  title="Passage de fin d'année"
+                >
+                  <ArrowRightLeft className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Passage</span>
+                </Button>
+                <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="flex-1 sm:flex-none h-8 px-3">
+                  <Plus className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('schoolOS.common.add')}</span>
+                </Button>
+              </div>
             )}
           </div>
 
@@ -512,6 +526,15 @@ export const StudentsApp: React.FC = () => {
               schoolId={school.id}
               schoolYearId={schoolYear.id}
               classes={classes || []}
+            />
+          )}
+
+          {/* Dialog de passage de fin d'année */}
+          {canManageStudents && (
+            <EndOfYearPromotionDialog
+              open={isPromotionDialogOpen}
+              onOpenChange={setIsPromotionDialogOpen}
+              schoolId={school.id}
             />
           )}
 

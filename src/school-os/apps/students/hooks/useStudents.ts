@@ -59,9 +59,9 @@ export interface NewStudent {
   discount_amount?: number;
 }
 
-export const useStudents = (schoolId?: string) => {
+export const useStudents = (schoolId?: string, schoolYearId?: string) => {
   return useOfflineQuery<any[]>({
-    queryKey: ['students', schoolId],
+    queryKey: ['students', schoolId, schoolYearId],
     queryFn: async () => {
       let query = supabase
         .from('students_school')
@@ -70,6 +70,9 @@ export const useStudents = (schoolId?: string) => {
 
       if (schoolId) {
         query = query.eq('school_id', schoolId);
+      }
+      if (schoolYearId) {
+        query = query.eq('school_year_id', schoolYearId);
       }
 
       const { data, error } = await query;

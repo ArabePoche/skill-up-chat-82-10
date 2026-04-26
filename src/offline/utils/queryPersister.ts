@@ -79,6 +79,7 @@ export const PERSISTED_QUERY_PREFIXES = [
   'school-wallpaper',
   'school-classes',
   'school-students',
+  'promotion-students',
   'school-teachers',
   'school-personnel',
   'school-staff',
