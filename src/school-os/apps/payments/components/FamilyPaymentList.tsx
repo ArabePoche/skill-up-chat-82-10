@@ -2,15 +2,15 @@
  * Liste des paiements par famille
  */
 import React, { useState, useMemo } from 'react';
-import { useFamiliesWithPayments } from '../hooks/useFamilyPayments';
+import { useFamiliesWithPayments, type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { FamilyPaymentCard } from './FamilyPaymentCard';
+import { FamilyPaymentDialog } from './FamilyPaymentDialog';
 import { AddFamilyRegistrationPaymentDialog } from './AddFamilyRegistrationPaymentDialog';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, Users, GraduationCap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';

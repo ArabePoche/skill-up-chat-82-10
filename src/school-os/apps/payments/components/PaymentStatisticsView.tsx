@@ -13,8 +13,8 @@ interface PaymentStatisticsViewProps {
 
 export const PaymentStatisticsView: React.FC<PaymentStatisticsViewProps> = ({ schoolId }) => {
   const { t } = useTranslation();
-  const { data: schoolYear, isLoading: schoolYearLoading } = useSchoolYear(schoolId);
-  const { stats, isLoading: statsLoading } = useMonthlyPaymentStats(schoolId, schoolYear?.id);
+  const { activeSchoolYear, isLoading: schoolYearLoading } = useSchoolYear();
+  const { stats, isLoading: statsLoading } = useMonthlyPaymentStats(schoolId, activeSchoolYear?.id);
 
   if (schoolYearLoading || statsLoading) {
     return (
