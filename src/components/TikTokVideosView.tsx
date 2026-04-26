@@ -48,6 +48,14 @@ const TikTokVideosView: React.FC<{
 }> = ({ targetVideoId, scrollContainerRef }) => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // On verrouille la vidéo cible initiale (issue de l'URL partagée) une fois
+  // pour toutes : ainsi, quand l'utilisateur scrolle et que l'URL est mise à
+  // jour avec navigate({ replace: true }), on ne re-déclenche pas un scrollIntoView
+  // ni un réordonnancement de la liste qui bloquerait le scroll.
+  const initialTargetVideoIdRef = useRef<string | undefined>(targetVideoId);
+  const initialTargetVideoId = initialTargetVideoIdRef.current;
+
   const {
     data: videos = [],
     fetchNextPage,
@@ -64,7 +72,7 @@ const TikTokVideosView: React.FC<{
     isError: isTargetVideoError,
     refetch: refetchTargetVideo,
     error: targetVideoError,
-  } = useVideoById(targetVideoId);
+  } = useVideoById(initialTargetVideoId);
 
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const hasInitializedTarget = useRef(false);
@@ -80,16 +88,16 @@ const TikTokVideosView: React.FC<{
   // Hook centralisé pour les lives
   const { liveStreams, isLoadingLives, livesError, retryLoadingLives } = useLiveFeed();
 
-  useEffect(() => {
-    hasInitializedTarget.current = false;
-  }, [targetVideoId]);
+  // Récupérer la vidéo cible UNIQUEMENT pour l'identifiant initial.
+  // (Le hook plus haut utilise `targetVideoId` mais comme on lock l'initial,
+  // on continue de fetch correctement la vidéo cible au démarrage.)
 
   const displayedVideos = useMemo(() => {
-    if (!targetVideoId || !targetVideo) return videos;
-    const isInFlow = videos.some(v => v.id === targetVideoId);
+    if (!initialTargetVideoId || !targetVideo) return videos;
+    const isInFlow = videos.some(v => v.id === initialTargetVideoId);
     if (isInFlow) return videos;
     return [targetVideo, ...videos];
-  }, [targetVideoId, targetVideo, videos]);
+  }, [initialTargetVideoId, targetVideo, videos]);
 
   const toggleGlobalMute = () => setGlobalMuted((prev) => !prev);
 
@@ -100,7 +108,7 @@ const TikTokVideosView: React.FC<{
 
   useEffect(() => {
     if (!location.pathname.startsWith('/video/') && !location.pathname.startsWith('/videos/')) return;
-    if (targetVideoId) {
+    if (initialTargetVideoId) {
       if (isLoadingTargetVideo || !hasInitializedTarget.current) return;
     }
     const currentVideo = displayedVideos[currentVideoIndex];
@@ -108,7 +116,7 @@ const TikTokVideosView: React.FC<{
     const pathPrefix = location.pathname.startsWith('/videos/') ? '/videos' : '/video';
     const expectedPath = `${pathPrefix}/${currentVideo.id}`;
     if (location.pathname !== expectedPath) navigate(expectedPath, { replace: true });
-  }, [currentVideoIndex, displayedVideos, isLoadingTargetVideo, location.pathname, navigate, targetVideoId]);
+  }, [currentVideoIndex, displayedVideos, isLoadingTargetVideo, location.pathname, navigate, initialTargetVideoId]);
 
   const videosLength = displayedVideos?.length ?? 0;
   useEffect(() => {
@@ -143,9 +151,9 @@ const TikTokVideosView: React.FC<{
   }, [currentVideoIndex, displayedVideos, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    if (!targetVideoId || !displayedVideos || displayedVideos.length === 0) return;
+    if (!initialTargetVideoId || !displayedVideos || displayedVideos.length === 0) return;
     if (hasInitializedTarget.current) return;
-    const index = displayedVideos.findIndex((v: any) => v.id === targetVideoId);
+    const index = displayedVideos.findIndex((v: any) => v.id === initialTargetVideoId);
     if (index >= 0) {
       hasInitializedTarget.current = true;
       setCurrentVideoIndex(index);
@@ -154,19 +162,19 @@ const TikTokVideosView: React.FC<{
         if (ref) ref.scrollIntoView({ behavior: 'auto', block: 'start' });
       });
     }
-  }, [targetVideoId, displayedVideos]);
+  }, [initialTargetVideoId, displayedVideos]);
 
   const handleLikeWithConfetti = () => setShowConfetti(true);
   const handleCommentAdded = () => {};
 
   const retryLoading = () => {
     refetchVideos();
-    if (targetVideoId) refetchTargetVideo();
+    if (initialTargetVideoId) refetchTargetVideo();
   };
 
   const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-  const shouldShowInitialSpinner = (isLoadingVideos && videos.length === 0) || (targetVideoId && isLoadingTargetVideo);
-  const shouldShowErrorState = (videos.length === 0 && isVideosError) || (targetVideoId && isTargetVideoError);
+  const shouldShowInitialSpinner = (isLoadingVideos && videos.length === 0) || (initialTargetVideoId && isLoadingTargetVideo);
+  const shouldShowErrorState = (videos.length === 0 && isVideosError) || (initialTargetVideoId && isTargetVideoError);
   const errorMessage = isOffline ? "La connexion semble indisponible. Vérifie Internet puis réessaie." : "Impossible de charger le flux vidéo pour le moment.";
 
   if (shouldShowInitialSpinner) {
@@ -189,7 +197,7 @@ const TikTokVideosView: React.FC<{
     );
   }
 
-  if (targetVideoId && !isLoadingTargetVideo && !targetVideo && displayedVideos.length === 0) {
+  if (initialTargetVideoId && !isLoadingTargetVideo && !targetVideo && displayedVideos.length === 0) {
     return (
       <div className="h-full flex items-center justify-center bg-black px-6 text-white">
         <div className="max-w-sm text-center">

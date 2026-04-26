@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
+import { ogTagsDevPlugin } from "./vite-plugins/og-tags-plugin";
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -10,6 +11,7 @@ export default defineConfig(({ mode }) => ({
     allowedHosts: true,
   },
   plugins: [
+    ogTagsDevPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
