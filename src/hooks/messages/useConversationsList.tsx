@@ -1,7 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { getCallLogPresentation, parseCallLogContent } from '@/utils/conversationCallLog';
 import {
   getForwardedMessagePreview,
@@ -45,7 +46,7 @@ export const useConversationsList = (enabled: boolean = false) => {
     };
   }, [enabled, user?.id, queryClient]);
 
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['conversations-list', user?.id],
     staleTime: 30000,
     refetchInterval: 60000,

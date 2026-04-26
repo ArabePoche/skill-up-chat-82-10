@@ -119,6 +119,10 @@ export const PERSISTED_QUERY_PREFIXES = [
   'school-site',
   'school-stats',
   'school-template',
+  // Page Messages — liste des conversations privées et groupes
+  'conversations-list',
+  'discussion-groups',
+  'unread-counts',
   // Préfixes additionnels utilisés par les composants school-os offline-first
   'parent-enrollment-requests',
   'parent-child-grades',

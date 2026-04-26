@@ -1,7 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import {
   getDiscussionEventPreview,
   isDiscussionEventContent,
@@ -57,7 +58,7 @@ export const useDiscussionGroups = (enabled: boolean = false) => {
     };
   }, [enabled, user?.id, queryClient]);
 
-  return useQuery({
+  return useOfflineQuery({
     queryKey: ['discussion-groups', user?.id],
     staleTime: 30000,
     refetchInterval: 60000,
