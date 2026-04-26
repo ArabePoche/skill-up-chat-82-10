@@ -15,9 +15,9 @@ const TiktokVideoFormationButton: React.FC<TiktokVideoFormationButtonProps> = ({
         variant="ghost"
         size="icon"
         onClick={onFormationRedirect}
-        className="h-12 w-12 p-0 rounded-full text-white transition-all hover:scale-110 hover:bg-white/10"
+        className="h-12 w-12 p-0 rounded-full text-white transition-all hover:scale-110 hover:bg-transparent"
       >
-        <ShoppingBag size={40} strokeWidth={1.8} className="stroke-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)]" />
+        <ShoppingBag size={40} strokeWidth={1.8} className="fill-white stroke-white text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)]" />
       </Button>
       <span className="text-white text-sm mt-1 font-semibold drop-shadow-[0_1px_3px_rgba(0,0,0,0.75)]">
         {t('video.formation')}

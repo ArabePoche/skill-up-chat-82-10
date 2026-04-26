@@ -19,7 +19,7 @@ const TiktokVideoShareButton: React.FC<TiktokVideoShareButtonProps> = ({
         variant="ghost"
         size="icon"
         onClick={onShareClick}
-        className="h-12 w-12 p-0 rounded-full text-white transition-all hover:scale-110 hover:bg-white/10"
+        className="h-12 w-12 p-0 rounded-full text-white transition-all hover:scale-110 hover:bg-transparent"
       >
         <Send size={40} strokeWidth={1.6} className="fill-white stroke-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)]" />
       </Button>

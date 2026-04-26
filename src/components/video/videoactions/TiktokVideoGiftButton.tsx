@@ -13,7 +13,7 @@ const TiktokVideoGiftButton: React.FC<TiktokVideoGiftButtonProps> = ({ onGiftCli
         variant="ghost"
         size="icon"
         onClick={onGiftClick}
-        className="h-12 w-12 p-0 rounded-full text-white transition-all hover:scale-110 hover:bg-white/10"
+        className="h-12 w-12 p-0 rounded-full text-white transition-all hover:scale-110 hover:bg-transparent"
       >
         <Gift size={42} strokeWidth={1.8} className="fill-transparent stroke-pink-500 text-pink-500 drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)]" />
       </Button>

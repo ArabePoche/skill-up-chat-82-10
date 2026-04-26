@@ -62,7 +62,7 @@ const TiktokVideoLikeButton: React.FC<TiktokVideoLikeButtonProps> = ({
         variant="ghost"
         size="icon"
         onClick={onLike}
-        className={`relative z-10 h-12 w-12 p-0 rounded-full border-0 bg-transparent shadow-none transition-all hover:scale-110 active:bg-transparent ${
+        className={`relative z-10 h-12 w-12 p-0 rounded-full border-0 bg-transparent shadow-none transition-all hover:scale-110 hover:bg-transparent active:bg-transparent ${
           isLiked ? '!text-red-500' : 'text-white'
         }`}
       >
