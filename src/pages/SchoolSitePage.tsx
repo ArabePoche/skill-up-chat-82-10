@@ -7,7 +7,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import {
-  Building2, ArrowLeft, Pencil, LayoutTemplate, X, Check,
+  Building2, ArrowLeft, Pencil, LayoutTemplate, X, Check, WifiOff, Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
@@ -219,16 +219,50 @@ const SchoolSitePage: React.FC = () => {
   }
 
   if (!school) {
+    // Si on est hors ligne ET que l'utilisateur fait partie de cette école,
+    // on propose un raccourci direct vers le School OS pour qu'il puisse
+    // continuer à travailler même sans le site web public.
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    const userSchool = userSchools?.find((s) => s.id === schoolId);
+    const canAccessOS = !!userSchool && PERSONNEL_ROLES.includes(userSchool.role);
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6">
-        <Building2 className="h-16 w-16 text-muted-foreground opacity-50" />
-        <p className="text-muted-foreground">
-          {t('school.notFound', { defaultValue: 'École introuvable' })}
-        </p>
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {t('common.back', { defaultValue: 'Retour' })}
-        </Button>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6 text-center">
+        {isOffline ? (
+          <WifiOff className="h-16 w-16 text-amber-500 opacity-80" />
+        ) : (
+          <Building2 className="h-16 w-16 text-muted-foreground opacity-50" />
+        )}
+        <div className="space-y-2 max-w-md">
+          <p className="font-medium text-lg">
+            {isOffline
+              ? t('school.offlineNotCached', { defaultValue: 'Site web indisponible hors ligne' })
+              : t('school.notFound', { defaultValue: 'École introuvable' })}
+          </p>
+          {isOffline && (
+            <p className="text-sm text-muted-foreground">
+              {t('school.offlineNotCachedHelp', {
+                defaultValue:
+                  "Les données du site web n'ont pas encore été mises en cache. Connectez-vous une fois en ligne pour les enregistrer, ou ouvrez directement le School OS ci-dessous.",
+              })}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          {canAccessOS && schoolId && (
+            <Button
+              onClick={() => navigate(`/school?id=${schoolId}`)}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Monitor className="h-4 w-4 mr-2" />
+              {t('school.openSchoolOs', { defaultValue: 'Ouvrir le School OS' })}
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {t('common.back', { defaultValue: 'Retour' })}
+          </Button>
+        </div>
       </div>
     );
   }

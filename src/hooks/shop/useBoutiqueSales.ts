@@ -6,10 +6,45 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { boutiqueProductStore } from '@/local-storage/stores/BoutiqueStore';
 import { offlineStore } from '@/offline/utils/offlineStore';
+import { syncManager } from '@/offline/utils/syncManager';
 import { toast } from 'sonner';
 import type { PosCartItem } from './usePosCart';
 import { logShopActivity } from './useShopActivityLogs';
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
+
+/**
+ * Détection robuste du mode hors-ligne.
+ * navigator.onLine peut renvoyer true alors que Supabase est injoignable.
+ * On combine les deux signaux pour basculer dès que l'un d'eux est offline.
+ */
+const isOfflineMode = (): boolean => {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  try {
+    if (syncManager.getOnlineStatus() === false) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+};
+
+/**
+ * Heuristique: une erreur Supabase est-elle une erreur réseau ?
+ * Si oui, on peut basculer vers la file d'attente hors-ligne.
+ */
+const isNetworkError = (err: any): boolean => {
+  if (!err) return false;
+  const name = err?.name || '';
+  const msg = (err?.message || '').toLowerCase();
+  return (
+    name === 'TypeError' ||
+    name === 'AbortError' ||
+    msg.includes('failed to fetch') ||
+    msg.includes('network') ||
+    msg.includes('fetch') ||
+    msg.includes('timeout') ||
+    msg.includes('load failed')
+  );
+};
 
 export interface SaleInput {
   shop_id: string;
@@ -105,8 +140,8 @@ export const useCreateCartSale = () => {
         }
       }
 
-      // 2. Gestion Offline
-      if (!navigator.onLine) {
+      // 2. Gestion Offline (détection combinée navigator.onLine + sonde Supabase)
+      if (isOfflineMode()) {
         console.log('📵 App status: offline. Queueing sale mutation.');
         await offlineStore.addPendingMutation({
           type: 'create_boutique_sale',
@@ -115,8 +150,9 @@ export const useCreateCartSale = () => {
         return { success: true, offline: true };
       }
 
-      // 3. Mode Online
+      // 3. Mode Online — avec fallback hors-ligne en cas d'erreur réseau
       console.log('🌐 App status: online. Syncing sale with Supabase.');
+      const performOnlineSync = async () => {
       const results = [];
       for (const item of sale.items) {
         // Enregistrer la vente
@@ -216,6 +252,24 @@ export const useCreateCartSale = () => {
       });
 
       return results;
+      };
+
+      try {
+        const onlineResults = await performOnlineSync();
+        return onlineResults;
+      } catch (err: any) {
+        // Si c'est une erreur réseau, basculer en hors-ligne
+        if (isNetworkError(err)) {
+          console.warn('🌐➡️📵 Network error during sale sync, falling back to offline queue:', err?.message);
+          await offlineStore.addPendingMutation({
+            type: 'create_boutique_sale',
+            payload: sale,
+          });
+          return { success: true, offline: true, fallback: true };
+        }
+        // Sinon, vraie erreur métier — on la propage
+        throw err;
+      }
     },
     onSuccess: (data: any, variables) => {
       queryClient.invalidateQueries({ queryKey: ['boutique-products', variables.shopId] });
@@ -311,8 +365,8 @@ export const useCancelBoutiqueSale = () => {
         });
       }
 
-      // 2. Gestion Offline
-      if (!navigator.onLine) {
+      // 2. Gestion Offline (détection combinée navigator.onLine + sonde Supabase)
+      if (isOfflineMode()) {
         console.log('📵 App status: offline. Queueing cancel mutation.');
         await offlineStore.addPendingMutation({
           type: 'cancel_boutique_sale',
@@ -321,8 +375,9 @@ export const useCancelBoutiqueSale = () => {
         return { id: sale.id, offline: true };
       }
 
-      // 3. Mode Online
+      // 3. Mode Online — avec fallback hors-ligne en cas d'erreur réseau
       console.log('🌐 App status: online. Syncing cancel with Supabase.');
+      const performOnlineCancel = async () => {
 
       if (sale.quantityToReturn === sale.originalQuantity) {
         // Annulation complète
@@ -369,6 +424,21 @@ export const useCancelBoutiqueSale = () => {
       });
 
       return { id: sale.id };
+      };
+
+      try {
+        return await performOnlineCancel();
+      } catch (err: any) {
+        if (isNetworkError(err)) {
+          console.warn('🌐➡️📵 Network error during cancel sync, falling back to offline queue:', err?.message);
+          await offlineStore.addPendingMutation({
+            type: 'cancel_boutique_sale',
+            payload: sale,
+          });
+          return { id: sale.id, offline: true, fallback: true };
+        }
+        throw err;
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['boutique-sales-history', variables.shop_id] });
