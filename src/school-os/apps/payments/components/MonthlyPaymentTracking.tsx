@@ -15,12 +15,14 @@ import { MonthlyPaymentCard } from './MonthlyPaymentCard';
 import { MonthlyPaymentStats } from './MonthlyPaymentStats';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTranslation } from 'react-i18next';
 
 interface MonthlyPaymentTrackingProps {
   schoolId?: string;
 }
 
 export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ schoolId }) => {
+  const { t } = useTranslation();
   const { trackingData, isLoading, yearStart, schoolMonths } = useMonthlyPaymentTracking(schoolId);
   const [schoolYearId, setSchoolYearId] = React.useState<string | undefined>();
 
@@ -81,7 +83,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
       <div className="flex items-center justify-center p-8">
         <div className="text-center space-y-2">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Chargement...</p>
+          <p className="text-sm text-muted-foreground">{t('payments.loading')}</p>
         </div>
       </div>
     );
@@ -90,8 +92,8 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
   return (
     <Tabs defaultValue="statistics" className="flex flex-col h-full">
       <TabsList className="grid w-full max-w-md grid-cols-2 mb-3 sm:mb-4 shrink-0">
-        <TabsTrigger value="statistics" className="text-xs sm:text-sm">Statistiques</TabsTrigger>
-        <TabsTrigger value="tracking" className="text-xs sm:text-sm">Suivi des élèves</TabsTrigger>
+        <TabsTrigger value="statistics" className="text-xs sm:text-sm">{t('payments.statisticsTab')}</TabsTrigger>
+        <TabsTrigger value="tracking" className="text-xs sm:text-sm">{t('payments.trackingTab')}</TabsTrigger>
       </TabsList>
 
       {/* Onglet Statistiques détaillées */}
@@ -109,7 +111,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher un élève..."
+                  placeholder={t('payments.searchPlaceholder')}
                   value={filters.searchQuery}
                   onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
                   className="pl-7 h-8 text-xs"
@@ -136,13 +138,13 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
                       onValueChange={(value: any) => setFilters({ ...filters, status: value })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Statut" />
+                        <SelectValue placeholder={t('payments.status')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tous</SelectItem>
-                        <SelectItem value="up_to_date">À jour</SelectItem>
-                        <SelectItem value="partial">Partiel</SelectItem>
-                        <SelectItem value="late">Retard</SelectItem>
+                        <SelectItem value="all">{t('payments.statusAll')}</SelectItem>
+                        <SelectItem value="up_to_date">{t('payments.statusUpToDate')}</SelectItem>
+                        <SelectItem value="partial">{t('payments.statusPartial')}</SelectItem>
+                        <SelectItem value="late">{t('payments.statusLate')}</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -152,10 +154,10 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
                       onValueChange={(value) => setFilters({ ...filters, classId: value === 'all' ? '' : value })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Classe" />
+                        <SelectValue placeholder={t('payments.class')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Toutes les classes</SelectItem>
+                        <SelectItem value="all">{t('payments.allClasses')}</SelectItem>
                         {classOptions.map(cls => (
                           <SelectItem key={cls.id} value={cls.id}>
                             {cls.name}
@@ -170,10 +172,10 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
                       onValueChange={(value) => setFilters({ ...filters, month: value })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Mois" />
+                        <SelectValue placeholder={t('payments.monthly')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tous les mois</SelectItem>
+                        <SelectItem value="all">{t('payments.allMonths')}</SelectItem>
                         {monthOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
@@ -188,7 +190,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
                     onClick={() => setFilters({ status: 'all', classId: '', month: 'all', searchQuery: '' })}
                     className="w-full h-7 text-xs"
                   >
-                    Réinitialiser
+                    {t('payments.resetFilters')}
                   </Button>
                 </CardContent>
               </Card>
@@ -201,7 +203,7 @@ export const MonthlyPaymentTracking: React.FC<MonthlyPaymentTrackingProps> = ({ 
           {filteredData.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Aucun élève ne correspond aux critères de filtrage.
+                {t('payments.noStudentMatchFilter')}
               </CardContent>
             </Card>
           ) : (

@@ -10,12 +10,14 @@ import { StudentPaymentList } from './StudentPaymentList';
 import { PaymentStatisticsView } from './PaymentStatisticsView';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
+import { useTranslation } from 'react-i18next';
 
 interface PaymentsViewProps {
   schoolId?: string;
 }
 
 export const PaymentsView: React.FC<PaymentsViewProps> = ({ schoolId }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('students');
   const { school } = useSchoolYear();
   const { data: roleData } = useSchoolUserRole(school?.id);
@@ -31,19 +33,19 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ schoolId }) => {
           {!isParent && (
             <TabsTrigger value="students" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <User className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Par élève</span>
-              <span className="sm:hidden">Élève</span>
+              <span className="hidden sm:inline">{t('payments.byStudent')}</span>
+              <span className="sm:hidden">{t('payments.student')}</span>
             </TabsTrigger>
           )}
           <TabsTrigger value="families" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Par famille</span>
-            <span className="sm:hidden">Famille</span>
+            <span className="hidden sm:inline">{t('payments.byFamily')}</span>
+            <span className="sm:hidden">{t('payments.family')}</span>
           </TabsTrigger>
           <TabsTrigger value="statistics" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Statistiques</span>
-            <span className="sm:hidden">Stats</span>
+            <span className="hidden sm:inline">{t('payments.statistics')}</span>
+            <span className="sm:hidden">{t('payments.statistics')}</span>
           </TabsTrigger>
         </TabsList>
 

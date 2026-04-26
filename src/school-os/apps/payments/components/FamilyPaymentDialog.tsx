@@ -14,6 +14,7 @@ import { Users, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { distributeFamilyPaymentByMonthlyLoop } from '../utils/familyPaymentDistribution';
+import { useTranslation } from 'react-i18next';
 
 interface FamilyPaymentDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
   selectedFamily,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [familyId, setFamilyId] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -92,7 +94,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
 
     const selected = currentFamily.students.filter(s => selectedStudents[s.id]);
     if (selected.length === 0) {
-      toast.error('Veuillez sélectionner au moins un élève');
+      toast.error(t('payments.selectAtLeastOneStudent'));
       return;
     }
 
@@ -105,7 +107,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
     const totalPaid = parseFloat(totalAmount);
 
     if (Math.abs(totalDistributed - totalPaid) > 0.01) {
-      toast.error('La somme des montants répartis ne correspond pas au montant total');
+      toast.error(t('payments.distributedAmountMismatch'));
       return;
     }
 
@@ -142,25 +144,25 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Paiement familial
+            {t('payments.familyPayment')}
           </DialogTitle>
           <DialogDescription>
-            Enregistrez un paiement pour plusieurs élèves d'une même famille
+            {t('payments.familyPaymentDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!selectedFamily && (
             <div className="space-y-2">
-              <Label htmlFor="family">Famille *</Label>
+              <Label htmlFor="family">{t('payments.family')} *</Label>
               <Select value={familyId} onValueChange={setFamilyId} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une famille" />
+                  <SelectValue placeholder={t('payments.selectFamily')} />
                 </SelectTrigger>
                 <SelectContent>
                   {families?.map((family) => (
                     <SelectItem key={family.family_id} value={family.family_id}>
-                      {family.family_name} ({family.students.length} élève{family.students.length > 1 ? 's' : ''})
+                      {family.family_name} ({family.students.length} {t('payments.student')}{family.students.length > 1 ? 's' : ''})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -172,29 +174,29 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
             <>
               <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">Famille: {currentFamily.family_name}</span>
+                  <span className="font-medium">{t('payments.family')}: {currentFamily.family_name}</span>
                   <span className="text-sm text-muted-foreground">
-                    {currentFamily.students.length} élève{currentFamily.students.length > 1 ? 's' : ''}
+                    {currentFamily.students.length} {t('payments.student')}{currentFamily.students.length > 1 ? 's' : ''}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Total dû</p>
+                    <p className="text-muted-foreground">{t('payments.totalDue')}</p>
                     <p className="font-medium">{currentFamily.total_family_due.toLocaleString('fr-FR')} FCFA</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Total payé</p>
+                    <p className="text-muted-foreground">{t('payments.totalPaid')}</p>
                     <p className="font-medium text-green-600">{currentFamily.total_family_paid.toLocaleString('fr-FR')} FCFA</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Reste</p>
+                    <p className="text-muted-foreground">{t('payments.remaining')}</p>
                     <p className="font-medium text-orange-600">{currentFamily.total_family_remaining.toLocaleString('fr-FR')} FCFA</p>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="amount">Montant total du paiement (FCFA) *</Label>
+                <Label htmlFor="amount">{t('payments.totalPaymentAmount')} (FCFA) *</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -208,7 +210,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
               </div>
 
               <div className="space-y-3">
-                <Label>Élèves concernés *</Label>
+                <Label>{t('payments.affectedStudents')} *</Label>
                 <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3">
                   {currentFamily.students.map((student) => (
                     <div key={student.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
@@ -222,11 +224,11 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
                             <p className="font-medium">{student.first_name} {student.last_name}</p>
                             <p className="text-xs text-muted-foreground">{student.student_code}</p>
                             {student.class_name && (
-                              <p className="text-xs text-muted-foreground">Classe: {student.class_name}</p>
+                              <p className="text-xs text-muted-foreground">{t('payments.class')}: {student.class_name}</p>
                             )}
                           </div>
                           <div className="text-right text-sm">
-                            <p className="text-muted-foreground">Reste</p>
+                            <p className="text-muted-foreground">{t('payments.remaining')}</p>
                             <p className="font-medium text-orange-600">
                               {student.remaining_amount.toLocaleString('fr-FR')} FCFA
                             </p>
@@ -235,7 +237,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
                         {selectedStudents[student.id] && (
                           <div className="mt-2">
                             <Label htmlFor={`amount-${student.id}`} className="text-xs">
-                              Montant pour cet élève
+                              {t('payments.amountForThisStudent')}
                             </Label>
                             <Input
                               id={`amount-${student.id}`}
@@ -261,10 +263,10 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Répartition: {totalDistributed.toLocaleString('fr-FR')} FCFA / {parseFloat(totalAmount).toLocaleString('fr-FR')} FCFA
+                    {t('payments.distribution')}: {totalDistributed.toLocaleString('fr-FR')} FCFA / {parseFloat(totalAmount).toLocaleString('fr-FR')} FCFA
                     {Math.abs(totalDistributed - parseFloat(totalAmount)) > 0.01 && (
                       <span className="text-destructive ml-2">
-                        (Différence: {(parseFloat(totalAmount) - totalDistributed).toLocaleString('fr-FR')} FCFA)
+                        ({t('payments.difference')}: {(parseFloat(totalAmount) - totalDistributed).toLocaleString('fr-FR')} FCFA)
                       </span>
                     )}
                   </AlertDescription>
@@ -273,7 +275,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Mode de paiement *</Label>
+                  <Label htmlFor="paymentMethod">{t('payments.paymentMethodReq')}</Label>
                   <Select value={paymentMethod} onValueChange={setPaymentMethod} required>
                     <SelectTrigger>
                       <SelectValue />
@@ -288,7 +290,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="paymentDate">Date du paiement *</Label>
+                  <Label htmlFor="paymentDate">{t('payments.paymentDateReq')}</Label>
                   <Input
                     id="paymentDate"
                     type="date"
@@ -300,7 +302,7 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="referenceNumber">Numéro de référence</Label>
+                <Label htmlFor="referenceNumber">{t('payments.referenceNumber')}</Label>
                 <Input
                   id="referenceNumber"
                   value={referenceNumber}
@@ -310,12 +312,12 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes">{t('payments.paymentNotes')}</Label>
                 <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Informations supplémentaires..."
+                  placeholder={t('payments.additionalInfo')}
                   rows={3}
                 />
               </div>
@@ -324,10 +326,10 @@ export const FamilyPaymentDialog: React.FC<FamilyPaymentDialogProps> = ({
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t('payments.cancel')}
             </Button>
             <Button type="submit" disabled={addFamilyPayment.isPending || !currentFamily}>
-              {addFamilyPayment.isPending ? 'Enregistrement...' : 'Enregistrer le paiement'}
+              {addFamilyPayment.isPending ? t('payments.saving') : t('payments.savePayment')}
             </Button>
           </div>
         </form>

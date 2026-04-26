@@ -19,12 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslation } from 'react-i18next';
 
 interface StudentPaymentListProps {
   schoolId?: string;
 }
 
 export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId }) => {
+  const { t } = useTranslation();
   const { data: students = [], isLoading } = useSchoolStudents(schoolId);
   const { trackingData } = useMonthlyPaymentTracking(schoolId);
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,15 +78,15 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
 
   const getEmptyStateMessage = () => {
     if (statusFilter === 'up_to_date') {
-      return 'Aucun élève à jour pour ce filtre.';
+      return t('payments.noUpToDateStudent');
     }
     if (statusFilter === 'partial') {
-      return 'Aucun élève en paiement partiel pour ce filtre.';
+      return t('payments.noPartialStudent');
     }
     if (statusFilter === 'late') {
-      return 'Aucun élève en retard pour ce filtre.';
+      return t('payments.noLateStudent');
     }
-    return 'Aucun élève trouvé.';
+    return t('payments.noStudentFound');
   };
 
   if (isLoading) {
@@ -92,7 +94,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
       <div className="flex items-center justify-center p-8">
         <div className="text-center space-y-2">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Chargement...</p>
+          <p className="text-sm text-muted-foreground">{t('payments.loading')}</p>
         </div>
       </div>
     );
@@ -112,7 +114,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
           onClick={() => toggleStatusFilter('up_to_date')}
         >
           <CheckCircle2 className="w-3 h-3" />
-          <span className="text-xs font-medium">{stats.upToDate} à jour</span>
+          <span className="text-xs font-medium">{stats.upToDate} {t('payments.upToDate')}</span>
         </Badge>
         <Badge
           variant="outline"
@@ -124,7 +126,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
           onClick={() => toggleStatusFilter('partial')}
         >
           <Clock className="w-3 h-3" />
-          <span className="text-xs font-medium">{stats.partial} partiels</span>
+          <span className="text-xs font-medium">{stats.partial} {t('payments.partial')}</span>
         </Badge>
         <Badge
           variant="outline"
@@ -136,7 +138,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
           onClick={() => toggleStatusFilter('late')}
         >
           <AlertCircle className="w-3 h-3" />
-          <span className="text-xs font-medium">{stats.late} en retard</span>
+          <span className="text-xs font-medium">{stats.late} {t('payments.latePay')}</span>
         </Badge>
       </div>
 
@@ -147,7 +149,7 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
             <div className="relative flex items-center">
               <Search className="absolute left-4 w-5 h-5 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un élève par nom ou code..."
+                placeholder={t('payments.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-12 pr-4 h-12 text-base rounded-full border-2 focus:border-primary shadow-sm hover:shadow-md transition-shadow"
@@ -157,10 +159,10 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
           <div className="w-full lg:w-64">
             <Select value={classFilter} onValueChange={setClassFilter}>
               <SelectTrigger className="h-12 rounded-full border-2 px-4 shadow-sm">
-                <SelectValue placeholder="Toutes les classes" />
+                <SelectValue placeholder={t('payments.classFilter')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Toutes les classes</SelectItem>
+                <SelectItem value="all">{t('payments.allClasses')}</SelectItem>
                 {classOptions.map(classOption => (
                   <SelectItem key={classOption.id} value={classOption.id}>
                     {classOption.name}
@@ -172,12 +174,12 @@ export const StudentPaymentList: React.FC<StudentPaymentListProps> = ({ schoolId
         </div>
         {(statusFilter !== 'all' || classFilter !== 'all') && (
           <p className="text-sm text-center text-muted-foreground">
-            Filtre actif : {[
+            {t('payments.activeFilter')}: {[
               statusFilter !== 'all'
-                ? (statusFilter === 'up_to_date' ? 'élèves à jour' : statusFilter === 'partial' ? 'élèves partiels' : 'élèves en retard')
+                ? (statusFilter === 'up_to_date' ? t('payments.upToDateStudents') : statusFilter === 'partial' ? t('payments.partialStudents') : t('payments.lateStudents'))
                 : null,
               classFilter !== 'all'
-                ? `classe ${classOptions.find(classOption => classOption.id === classFilter)?.name || ''}`
+                ? `${t('payments.class')} ${classOptions.find(classOption => classOption.id === classFilter)?.name || ''}`
                 : null,
             ].filter(Boolean).join(' • ')}
           </p>

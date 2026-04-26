@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAddPayment, useSchoolStudents } from '../hooks/usePayments';
+import { useTranslation } from 'react-i18next';
 
 interface AddPaymentDialogProps {
   open: boolean;
@@ -23,6 +24,7 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
   selectedStudent,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [studentId, setStudentId] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -79,18 +81,18 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Ajouter un paiement</DialogTitle>
+          <DialogTitle>{t('payments.addPayment')}</DialogTitle>
           <DialogDescription>
-            Enregistrez un nouveau paiement pour un élève
+            {t('payments.addPaymentDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="student">Élève *</Label>
+            <Label htmlFor="student">{t('payments.student')} *</Label>
             <Select value={studentId} onValueChange={setStudentId} required disabled={!!selectedStudent}>
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un élève" />
+                <SelectValue placeholder={t('payments.selectStudent')} />
               </SelectTrigger>
               <SelectContent>
                 {students?.map((student) => (
@@ -106,23 +108,23 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
           {selectedStudentData && (
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Montant dû (avec remise) :</span>
+                <span className="text-muted-foreground">{t('payments.amountDueWithDiscount')} :</span>
                 <span className="font-semibold">{selectedStudentData.total_amount_due.toLocaleString('fr-FR')} FCFA</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Déjà payé :</span>
+                <span className="text-muted-foreground">{t('payments.alreadyPaid')} :</span>
                 <span>{selectedStudentData.total_amount_paid.toLocaleString('fr-FR')} FCFA</span>
               </div>
               <div className="flex justify-between text-sm border-t pt-2">
-                <span className="text-muted-foreground font-medium">Reste à payer :</span>
+                <span className="text-muted-foreground font-medium">{t('payments.remainingToPay')} :</span>
                 <span className="font-bold text-primary">{remainingAmount.toLocaleString('fr-FR')} FCFA</span>
               </div>
               {hasDiscount && (
                 <div className="flex items-center gap-2 text-xs text-green-600 pt-1">
                   <span className="bg-green-100 px-2 py-0.5 rounded">
                     {selectedStudentData.discount_percentage 
-                      ? `Remise : ${selectedStudentData.discount_percentage}%` 
-                      : `Remise : ${selectedStudentData.discount_amount?.toLocaleString('fr-FR')} FCFA`
+                      ? `${t('payments.discount')}: ${selectedStudentData.discount_percentage}%` 
+                      : `${t('payments.discount')}: ${selectedStudentData.discount_amount?.toLocaleString('fr-FR')} FCFA`
                     }
                   </span>
                 </div>
@@ -132,7 +134,7 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Montant (FCFA) *</Label>
+              <Label htmlFor="amount">{t('payments.amount')} (FCFA) *</Label>
               <Input
                 id="amount"
                 type="number"
@@ -145,13 +147,13 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
               />
               {remainingAmount > 0 && parseFloat(amount || '0') > remainingAmount && (
                 <p className="text-xs text-amber-600">
-                  ⚠️ Le montant dépasse le reste à payer
+                  ⚠️ {t('payments.amountExceedsRemaining')}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="payment-date">Date de paiement *</Label>
+              <Label htmlFor="payment-date">{t('payments.paymentDateReq')}</Label>
               <Input
                 id="payment-date"
                 type="date"
@@ -164,42 +166,42 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="payment-method">Méthode de paiement *</Label>
+              <Label htmlFor="payment-method">{t('payments.paymentMethodReq')}</Label>
               <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Espèces</SelectItem>
-                  <SelectItem value="bank_transfer">Virement bancaire</SelectItem>
-                  <SelectItem value="check">Chèque</SelectItem>
-                  <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                  <SelectItem value="card">Carte bancaire</SelectItem>
-                  <SelectItem value="other">Autre</SelectItem>
+                  <SelectItem value="cash">{t('payments.cash')}</SelectItem>
+                  <SelectItem value="bank_transfer">{t('payments.bankTransfer')}</SelectItem>
+                  <SelectItem value="check">{t('payments.check')}</SelectItem>
+                  <SelectItem value="mobile_money">{t('payments.mobile')}</SelectItem>
+                  <SelectItem value="card">{t('payments.card')}</SelectItem>
+                  <SelectItem value="other">{t('payments.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="payment-type">Type de paiement *</Label>
+              <Label htmlFor="payment-type">{t('payments.paymentTypeReq')}</Label>
               <Select value={paymentType} onValueChange={setPaymentType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tuition">Frais de scolarité</SelectItem>
-                  <SelectItem value="registration">Inscription</SelectItem>
-                  <SelectItem value="activity">Activités/Fournitures</SelectItem>
-                  <SelectItem value="transport">Transport</SelectItem>
-                  <SelectItem value="canteen">Cantine</SelectItem>
-                  <SelectItem value="other">Autre</SelectItem>
+                  <SelectItem value="tuition">{t('payments.tuition')}</SelectItem>
+                  <SelectItem value="registration">{t('payments.registration')}</SelectItem>
+                  <SelectItem value="activity">{t('payments.activity')}</SelectItem>
+                  <SelectItem value="transport">{t('payments.transport')}</SelectItem>
+                  <SelectItem value="canteen">{t('payments.canteen')}</SelectItem>
+                  <SelectItem value="other">{t('payments.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reference">Référence / Numéro de transaction</Label>
+            <Label htmlFor="reference">{t('payments.referenceNumber')}</Label>
             <Input
               id="reference"
               value={referenceNumber}
@@ -209,22 +211,22 @@ export const AddPaymentDialog: React.FC<AddPaymentDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{t('payments.paymentNotes')}</Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notes additionnelles sur ce paiement..."
+              placeholder={t('payments.notesPlaceholder')}
               rows={3}
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t('payments.cancel')}
             </Button>
             <Button type="submit" disabled={addPayment.isPending}>
-              {addPayment.isPending ? 'Enregistrement...' : 'Enregistrer'}
+              {addPayment.isPending ? t('payments.saving') : t('payments.save')}
             </Button>
           </div>
         </form>

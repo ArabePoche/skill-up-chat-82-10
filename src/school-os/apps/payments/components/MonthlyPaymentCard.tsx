@@ -12,12 +12,14 @@ import { EditDiscountDialog } from './EditDiscountDialog';
 import { MonthlyStatusBadges } from './MonthlyStatusBadges';
 import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvatar';
 import { FamilyDetailsDialog } from '@/school-os/families/components/FamilyDetailsDialog';
+import { useTranslation } from 'react-i18next';
 
 interface MonthlyPaymentCardProps {
   tracking: StudentMonthlyTracking;
 }
 
 export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking }) => {
+  const { t } = useTranslation();
   const { student, monthlyFee, months, totalMonthsPaid, totalMonthsLate, overallStatus } = tracking;
   const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
   const [isFamilyDialogOpen, setIsFamilyDialogOpen] = useState(false);
@@ -41,21 +43,21 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
         return (
           <Badge className="bg-green-500 hover:bg-green-600">
             <CheckCircle2 className="w-3 h-3 mr-1" />
-            À jour
+            {t('payments.upToDate')}
           </Badge>
         );
       case 'partial':
         return (
           <Badge className="bg-orange-500 hover:bg-orange-600">
             <Clock className="w-3 h-3 mr-1" />
-            Partiellement payé
+            {t('payments.partiallyPaid')}
           </Badge>
         );
       case 'late':
         return (
           <Badge variant="destructive">
             <AlertCircle className="w-3 h-3 mr-1" />
-            En retard
+            {t('payments.late')}
           </Badge>
         );
     }
@@ -97,7 +99,7 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-[10px] sm:text-xs text-muted-foreground">
-                  {student.classes?.name || 'Aucune classe'} • {student.student_code || 'N/A'}
+                  {student.classes?.name || t('payments.noClass')} • {student.student_code || 'N/A'}
                 </p>
                 <Button
                   variant="ghost"
@@ -106,7 +108,7 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
                   className="h-5 sm:h-6 px-1.5 sm:px-2 text-[10px] sm:text-xs"
                 >
                   <Edit className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
-                  Remise
+                  {t('payments.discount')}
                 </Button>
               </div>
             </div>
@@ -114,7 +116,7 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
           <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1 shrink-0">
             {getOverallStatusBadge()}
             <p className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-              {totalMonthsPaid}/{months.length} mois
+              {totalMonthsPaid}/{months.length} {t('payments.months')}
             </p>
           </div>
         </div>
@@ -123,28 +125,28 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
       <CardContent className="space-y-3 sm:space-y-4">
         {/* Frais mensuel */}
         <div className="bg-muted/50 rounded-lg p-2 sm:p-3">
-          <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1">Frais mensuel:</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1">{t('payments.monthlyFee')}:</p>
           <p className="text-base sm:text-lg font-bold">{Math.round(monthlyFee).toLocaleString('fr-FR')} FCFA</p>
         </div>
 
         {/* Statuts mensuels */}
         <div className="space-y-1.5 sm:space-y-2">
-          <p className="text-[10px] sm:text-xs text-muted-foreground">Détail mensuel:</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{t('payments.monthlyDetail')}:</p>
           <MonthlyStatusBadges months={months} />
         </div>
 
         {/* Résumé des paiements */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 border-t">
           <div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Total payé</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('payments.totalPaid')}</p>
             <p className="text-xs sm:text-sm font-semibold break-words">{Math.round(student.total_amount_paid || 0).toLocaleString('fr-FR')} FCFA</p>
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Total dû</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('payments.totalDue')}</p>
             <p className="text-xs sm:text-sm font-semibold break-words">{Math.round(student.total_amount_due || 0).toLocaleString('fr-FR')} FCFA</p>
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Reste</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('payments.remainingLabel')}</p>
             <p className={cn(
               "text-xs sm:text-sm font-semibold break-words",
               student.remaining_amount === 0 ? "text-green-600" : "text-red-600"
@@ -159,9 +161,9 @@ export const MonthlyPaymentCard: React.FC<MonthlyPaymentCardProps> = ({ tracking
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-2 sm:p-3 flex items-start gap-1.5 sm:gap-2">
             <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive mt-0.5 flex-shrink-0" />
             <div className="text-xs sm:text-sm">
-              <p className="font-medium text-destructive">En retard de paiement</p>
+              <p className="font-medium text-destructive">{t('payments.paymentLate')}</p>
               <p className="text-muted-foreground text-[10px] sm:text-xs">
-                {totalMonthsLate} mois impayé{totalMonthsLate > 1 ? 's' : ''}
+                {totalMonthsLate} {t('payments.unpaidMonth', { count: totalMonthsLate })}
               </p>
             </div>
           </div>

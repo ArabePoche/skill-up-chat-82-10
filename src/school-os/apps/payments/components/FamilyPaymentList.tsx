@@ -1,16 +1,17 @@
 /**
- * Liste des paiements par famille (vue existante)
+ * Liste des paiements par famille
  */
-import React, { useMemo, useState } from 'react';
-import { useFamiliesWithPayments, type FamilyWithStudents } from '../hooks/useFamilyPayments';
+import React, { useState, useMemo } from 'react';
+import { useFamiliesWithPayments } from '../hooks/useFamilyPayments';
 import { FamilyPaymentCard } from './FamilyPaymentCard';
-import { FamilyPaymentDialog } from './FamilyPaymentDialog';
 import { AddFamilyRegistrationPaymentDialog } from './AddFamilyRegistrationPaymentDialog';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Search, GraduationCap } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useSchoolYear } from '@/school/context/SchoolYearContext';
 import { useSchoolUserRole } from '@/school-os/hooks/useSchoolUserRole';
 import { useMonthlyPaymentTracking } from '../hooks/useMonthlyPaymentTracking';
@@ -20,6 +21,7 @@ interface FamilyPaymentListProps {
 }
 
 export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }) => {
+  const { t } = useTranslation();
   const { data: families = [], isLoading, refetch } = useFamiliesWithPayments(schoolId);
   const { trackingData } = useMonthlyPaymentTracking(schoolId);
   const { school } = useSchoolYear();
@@ -124,7 +126,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
       <div className="flex items-center justify-center p-8">
         <div className="text-center space-y-2">
           <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Chargement...</p>
+          <p className="text-sm text-muted-foreground">{t('payments.loading')}</p>
         </div>
       </div>
     );
@@ -138,7 +140,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
           <div className="relative flex items-center">
             <Search className="absolute left-4 w-5 h-5 text-muted-foreground" />
             <Input
-              placeholder="Rechercher une famille ou un élève..."
+              placeholder={t('payments.searchFamilyOrStudent')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 pr-4 h-12 text-base rounded-full border-2 focus:border-primary shadow-sm hover:shadow-md transition-shadow"
@@ -154,7 +156,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
               className="rounded-full border-2"
             >
               <GraduationCap className="w-4 h-4 mr-2" />
-              Frais d'inscription familial
+              {t('payments.familyRegistration')}
             </Button>
           </div>
         )}
@@ -166,7 +168,7 @@ export const FamilyPaymentList: React.FC<FamilyPaymentListProps> = ({ schoolId }
           {filteredFamilies.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Aucune famille trouvée.
+                {t('payments.noFamilyFound')}
               </CardContent>
             </Card>
           ) : (

@@ -10,6 +10,7 @@ import { type FamilyWithStudents } from '../hooks/useFamilyPayments';
 import { FamilyPaymentHistoryModal } from './FamilyPaymentHistoryModal';
 import { MonthlyStatusBadges } from './MonthlyStatusBadges';
 import { type MonthlyPaymentStatus } from '../hooks/useMonthlyPaymentTracking';
+import { useTranslation } from 'react-i18next';
 
 interface FamilyPaymentCardProps {
   family: FamilyWithStudents;
@@ -27,6 +28,7 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
   onAddRegistrationPayment,
   hidePaymentActions = false,
 }) => {
+  const { t } = useTranslation();
   const [showHistory, setShowHistory] = useState(false);
 
   // Calculer les totaux des frais d'inscription pour la famille
@@ -37,11 +39,11 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
   // Déterminer l'état global des frais d'inscription de la famille
   const getRegistrationStatus = () => {
     if (totalRegistrationFeePaid === 0) {
-      return { type: 'unpaid', label: 'Non payé', variant: 'destructive' as const };
+      return { type: 'unpaid', label: t('payments.unpaid'), variant: 'destructive' as const };
     } else if (totalRegistrationFeePaid < totalRegistrationFee) {
-      return { type: 'partial', label: 'Partiellement payé', variant: 'secondary' as const };
+      return { type: 'partial', label: t('payments.partiallyPaid'), variant: 'secondary' as const };
     } else {
-      return { type: 'paid', label: 'Payé', variant: 'default' as const };
+      return { type: 'paid', label: t('payments.paid'), variant: 'default' as const };
     }
   };
   
@@ -49,11 +51,11 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
 
   const getPaymentStatus = () => {
     if (family.total_family_remaining === 0 && family.total_family_paid > 0) {
-      return { label: 'Payé', variant: 'default' as const, icon: CheckCircle, color: 'text-green-600' };
+      return { label: t('payments.paid'), variant: 'default' as const, icon: CheckCircle, color: 'text-green-600' };
     } else if (family.total_family_paid > 0 && family.total_family_remaining > 0) {
-      return { label: 'Partiel', variant: 'secondary' as const, icon: Clock, color: 'text-orange-600' };
+      return { label: t('payments.partial'), variant: 'secondary' as const, icon: Clock, color: 'text-orange-600' };
     } else {
-      return { label: 'Non payé', variant: 'destructive' as const, icon: AlertCircle, color: 'text-red-600' };
+      return { label: t('payments.unpaid'), variant: 'destructive' as const, icon: AlertCircle, color: 'text-red-600' };
     }
   };
 
@@ -73,7 +75,7 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
                 {family.family_name}
               </CardTitle>
               <p className="text-[10px] sm:text-xs text-muted-foreground">
-                {family.students.length} élève{family.students.length > 1 ? 's' : ''}
+                {family.students.length} {t('payments.student', { count: family.students.length })}
               </p>
             </div>
           </div>
@@ -89,7 +91,7 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
         {hasAnyRegistrationFee && registrationStatus.type !== 'paid' && (
           <div className="bg-muted/50 rounded-lg p-2 sm:p-3">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] sm:text-xs font-medium">Frais d'inscription (famille)</p>
+              <p className="text-[10px] sm:text-xs font-medium">{t('payments.registrationFeeFamily')}</p>
               <Badge variant={registrationStatus.variant} className="text-[9px] sm:text-[10px]">
                 {registrationStatus.type === 'unpaid' ? (
                   <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
@@ -104,11 +106,11 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
               {registrationStatus.type === 'partial' && (
                 <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-1">
                   <span className="text-green-600 font-medium">
-                    {totalRegistrationFeePaid.toLocaleString('fr-FR')} FCFA payés
+                    {totalRegistrationFeePaid.toLocaleString('fr-FR')} FCFA {t('payments.paid')}
                   </span>
                   {' • '}
                   <span className="text-orange-600 font-medium">
-                    {(totalRegistrationFee - totalRegistrationFeePaid).toLocaleString('fr-FR')} FCFA restants
+                    {(totalRegistrationFee - totalRegistrationFeePaid).toLocaleString('fr-FR')} FCFA {t('payments.remainingLabel')}
                   </span>
                 </div>
               )}
@@ -122,7 +124,7 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
                 className="mt-2 w-full"
               >
                 <GraduationCap className="w-3 h-3 mr-1.5" />
-                <span className="text-xs">Payer frais d'inscription</span>
+                <span className="text-xs">{t('payments.payRegistrationFee')}</span>
               </Button>
             )}
           </div>
@@ -130,17 +132,17 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
 
         {/* Paiements scolaires uniquement */}
         <div className="space-y-1.5 sm:space-y-2">
-          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">Paiements scolaires :</p>
+          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">{t('payments.schoolPayments')}:</p>
           <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-muted-foreground">Montant dû:</span>
+            <span className="text-muted-foreground">{t('payments.amountDue')}:</span>
             <span className="font-medium">{family.total_family_due.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-muted-foreground">Payé:</span>
+            <span className="text-muted-foreground">{t('payments.paid')}:</span>
             <span className="font-medium text-green-600">{family.total_family_paid.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between text-xs sm:text-sm border-t pt-1.5 sm:pt-2">
-            <span className="text-muted-foreground font-medium">Reste:</span>
+            <span className="text-muted-foreground font-medium">{t('payments.remainingLabel')}:</span>
             <span className={`font-bold ${status.color}`}>
               {family.total_family_remaining.toLocaleString('fr-FR')} FCFA
             </span>
@@ -151,10 +153,10 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
           <div className="border-t pt-2 sm:pt-3 space-y-1.5 sm:space-y-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">
-                Mois payés / impayés de la famille
+                {t('payments.monthsPaidUnpaidFamily')}
               </p>
               <span className="text-[9px] sm:text-[10px] text-muted-foreground text-right">
-                Vue globale
+                {t('payments.globalView')}
               </span>
             </div>
             <MonthlyStatusBadges months={monthlyStatuses} />
@@ -162,14 +164,14 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
         ) : null}
 
         <div className="border-t pt-2 sm:pt-3">
-          <p className="text-[10px] sm:text-xs text-muted-foreground mb-1.5 sm:mb-2">Élèves:</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground mb-1.5 sm:mb-2">{t('payments.students')}:</p>
           <div className="space-y-2">
             {family.students.map((student) => (
               <div key={student.id} className="rounded-lg border bg-muted/30 px-2 py-2">
                 <div className="flex justify-between items-start gap-2 text-[10px] sm:text-xs">
                   <span className="text-muted-foreground flex-1 min-w-0">
                     <span className="block truncate">{student.first_name} {student.last_name}</span>
-                    <span className="block text-[9px] sm:text-[10px]">{student.class_name || 'Sans classe'}</span>
+                    <span className="block text-[9px] sm:text-[10px]">{student.class_name || t('payments.noClass')}</span>
                     {(student.discount_percentage || student.discount_amount) && (
                       <Badge variant="outline" className="mt-0.5 text-[9px] py-0 px-1">
                         {student.discount_percentage ? `${student.discount_percentage}%` : `${student.discount_amount?.toLocaleString()} FCFA`}
@@ -191,11 +193,11 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <Button onClick={onAddPayment} className="w-full" size="sm">
               <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-              <span className="text-xs sm:text-sm">Paiement</span>
+              <span className="text-xs sm:text-sm">{t('payments.payment')}</span>
             </Button>
             <Button onClick={() => setShowHistory(true)} variant="outline" className="w-full" size="sm">
               <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-              <span className="text-xs sm:text-sm">Historique</span>
+              <span className="text-xs sm:text-sm">{t('payments.history')}</span>
             </Button>
           </div>
         )}
@@ -203,7 +205,7 @@ export const FamilyPaymentCard: React.FC<FamilyPaymentCardProps> = ({
           <div className="flex justify-end">
             <Button onClick={() => setShowHistory(true)} variant="outline" size="sm">
               <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-              <span className="text-xs sm:text-sm">Historique</span>
+              <span className="text-xs sm:text-sm">{t('payments.history')}</span>
             </Button>
           </div>
         )}

@@ -10,6 +10,7 @@ import { StudentAvatar } from '@/school-os/apps/students/components/StudentAvata
 import { calculateDiscountedAmount } from '../utils/discountCalculations';
 import { MonthlyStatusBadges } from './MonthlyStatusBadges';
 import { MonthlyPaymentStatus } from '../hooks/useMonthlyPaymentTracking';
+import { useTranslation } from 'react-i18next';
 
 interface StudentPaymentCardProps {
   student: any;
@@ -25,6 +26,7 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   onAddPayment,
   onAddRegistrationPayment,
 }) => {
+  const { t } = useTranslation();
   const [isEditDiscountOpen, setIsEditDiscountOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const totalDue = student.total_amount_due || 0;
@@ -51,11 +53,11 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
   // Déterminer l'état du frais d'inscription
   const getRegistrationStatus = () => {
     if (registrationFeePaid === 0) {
-      return { type: 'unpaid', label: 'Non payé', variant: 'destructive' as const };
+      return { type: 'unpaid', label: t('payments.unpaid'), variant: 'destructive' as const };
     } else if (registrationFeePaid < registrationFee) {
-      return { type: 'partial', label: 'Partiellement payé', variant: 'secondary' as const };
+      return { type: 'partial', label: t('payments.partiallyPaid'), variant: 'secondary' as const };
     } else {
-      return { type: 'paid', label: 'Payé', variant: 'default' as const };
+      return { type: 'paid', label: t('payments.paid'), variant: 'default' as const };
     }
   };
   
@@ -63,11 +65,11 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
 
   const getPaymentStatus = () => {
     if (remaining === 0 && totalPaid > 0) {
-      return { label: 'Payé', variant: 'default' as const, icon: CheckCircle, color: 'text-green-600' };
+      return { label: t('payments.paid'), variant: 'default' as const, icon: CheckCircle, color: 'text-green-600' };
     } else if (totalPaid > 0 && remaining > 0) {
-      return { label: 'Partiel', variant: 'secondary' as const, icon: Clock, color: 'text-orange-600' };
+      return { label: t('payments.partial'), variant: 'secondary' as const, icon: Clock, color: 'text-orange-600' };
     } else {
-      return { label: 'Non payé', variant: 'destructive' as const, icon: AlertCircle, color: 'text-red-600' };
+      return { label: t('payments.unpaid'), variant: 'destructive' as const, icon: AlertCircle, color: 'text-red-600' };
     }
   };
 
@@ -121,7 +123,7 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
                   className="h-5 sm:h-6 px-1.5 sm:px-2 text-[10px] sm:text-xs"
                 >
                   <Edit className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
-                  Remise
+                  {t('payments.discount')}
                 </Button>
               </div>
             </div>
@@ -141,16 +143,16 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="text-[10px] sm:text-xs font-medium">Frais d'inscription</p>
+                  <p className="text-[10px] sm:text-xs font-medium">{t('payments.registrationFee')}</p>
                   <p className="text-xs sm:text-sm font-semibold">{registrationFee.toLocaleString('fr-FR')} FCFA</p>
                   {registrationStatus.type === 'partial' && (
                     <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
                       <span className="text-green-600 font-medium">
-                        {registrationFeePaid.toLocaleString('fr-FR')} FCFA payés
+                        {registrationFeePaid.toLocaleString('fr-FR')} FCFA {t('payments.paid')}
                       </span>
                       {' • '}
                       <span className="text-orange-600 font-medium">
-                        {(registrationFee - registrationFeePaid).toLocaleString('fr-FR')} FCFA restants
+                        {(registrationFee - registrationFeePaid).toLocaleString('fr-FR')} FCFA {t('payments.remainingLabel')}
                       </span>
                     </div>
                   )}
@@ -174,7 +176,7 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
                 className="mt-2 w-full"
               >
                 <GraduationCap className="w-3 h-3 mr-1.5" />
-                <span className="text-xs">Payer frais d'inscription</span>
+                <span className="text-xs">{t('payments.payRegistrationFee')}</span>
               </Button>
             )}
           </div>
@@ -182,22 +184,22 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
 
         {/* Frais périodiques */}
         <div className="bg-muted/50 rounded-lg p-2 sm:p-3 space-y-1 sm:space-y-1.5">
-          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1 sm:mb-2">Frais de scolarité (9 mois):</p>
+          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1 sm:mb-2">{t('payments.tuitionFees')}:</p>
           <div className="flex justify-between text-[10px] sm:text-xs">
-            <span className="text-muted-foreground">Mensuel:</span>
+            <span className="text-muted-foreground">{t('payments.monthly')}:</span>
             <span className="font-medium">{Math.round(monthlyFee).toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between text-[10px] sm:text-xs">
-            <span className="text-muted-foreground">Trimestriel:</span>
+            <span className="text-muted-foreground">{t('payments.quarterly')}:</span>
             <span className="font-medium">{Math.round(quarterlyFee).toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between text-[10px] sm:text-xs">
-            <span className="text-muted-foreground">Annuel:</span>
+            <span className="text-muted-foreground">{t('payments.annualType')}:</span>
             <span className="font-medium">{Math.round(effectiveAnnualFee).toLocaleString('fr-FR')} FCFA</span>
           </div>
           {discountApplied > 0 && (
             <div className="flex justify-between text-[10px] sm:text-xs pt-1 border-t mt-1">
-              <span className="text-green-600">Remise accordée:</span>
+              <span className="text-green-600">{t('payments.discountGranted')}:</span>
               <span className="font-medium text-green-600">-{Math.round(discountApplied).toLocaleString('fr-FR')} FCFA</span>
             </div>
           )}
@@ -205,17 +207,17 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
 
         {/* Progression du paiement SCOLAIRE UNIQUEMENT (sans frais d'inscription) */}
         <div className="space-y-1.5 sm:space-y-2">
-          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">Paiements scolaires :</p>
+          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">{t('payments.schoolPayments')}:</p>
           <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-muted-foreground">Montant annuel:</span>
+            <span className="text-muted-foreground">{t('payments.annualAmount')}:</span>
             <span className="font-medium">{totalDue.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-muted-foreground">Montant payé:</span>
+            <span className="text-muted-foreground">{t('payments.totalPaidLabel')}:</span>
             <span className="font-medium text-green-600">{totalPaid.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between text-xs sm:text-sm border-t pt-1.5 sm:pt-2">
-            <span className="text-muted-foreground font-medium">Reste à payer:</span>
+            <span className="text-muted-foreground font-medium">{t('payments.remainingLabel')}:</span>
             <span className={`font-bold ${status.color}`}>
               {remaining.toLocaleString('fr-FR')} FCFA
             </span>
@@ -224,14 +226,14 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
 
         {student.last_payment_date && (
           <p className="text-[10px] sm:text-xs text-muted-foreground">
-            Dernier: {new Date(student.last_payment_date).toLocaleDateString('fr-FR')}
+            {t('payments.lastPayment')}: {new Date(student.last_payment_date).toLocaleDateString('fr-FR')}
           </p>
         )}
 
         {/* Badges mensuels payés/impayés */}
         {monthlyStatuses && monthlyStatuses.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Détail mensuel:</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('payments.monthlyDetail')}:</p>
             <MonthlyStatusBadges months={monthlyStatuses} />
           </div>
         )}
@@ -239,11 +241,11 @@ export const StudentPaymentCard: React.FC<StudentPaymentCardProps> = ({
         <div className="flex gap-2">
           <Button onClick={onAddPayment} className="flex-1" size="sm">
             <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            <span className="text-xs sm:text-sm">Ajouter</span>
+            <span className="text-xs sm:text-sm">{t('payments.addPayment')}</span>
           </Button>
           <Button onClick={() => setIsHistoryOpen(true)} variant="outline" className="flex-1" size="sm">
             <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            <span className="text-xs sm:text-sm">Historique</span>
+            <span className="text-xs sm:text-sm">{t('payments.history')}</span>
           </Button>
         </div>
       </CardContent>

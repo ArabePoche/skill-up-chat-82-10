@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useUpdateStudentDiscount } from '../hooks/usePayments';
 import { Percent } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface EditDiscountDialogProps {
   open: boolean;
@@ -21,6 +22,7 @@ export const EditDiscountDialog: React.FC<EditDiscountDialogProps> = ({
   student,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [discountType, setDiscountType] = useState<'none' | 'percentage' | 'amount'>('none');
   const [discountValue, setDiscountValue] = useState('');
   
@@ -68,16 +70,16 @@ export const EditDiscountDialog: React.FC<EditDiscountDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Percent className="w-5 h-5" />
-            Modifier la remise
+            {t('payments.editDiscount')}
           </DialogTitle>
           <DialogDescription>
-            Modifier la remise accordée à {student?.first_name} {student?.last_name}
+            {t('payments.editDiscountDescription', { firstName: student?.first_name, lastName: student?.last_name })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
-            <Label>Type de remise</Label>
+            <Label>{t('payments.discountType')}</Label>
             <RadioGroup value={discountType} onValueChange={(value: any) => {
               setDiscountType(value);
               if (value === 'none') setDiscountValue('');
@@ -85,19 +87,19 @@ export const EditDiscountDialog: React.FC<EditDiscountDialogProps> = ({
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="none" id="none" />
                 <Label htmlFor="none" className="font-normal cursor-pointer">
-                  Aucune remise
+                  {t('payments.noDiscount')}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="percentage" id="percentage" />
                 <Label htmlFor="percentage" className="font-normal cursor-pointer">
-                  Remise en pourcentage
+                  {t('payments.percentageDiscount')}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="amount" id="amount" />
                 <Label htmlFor="amount" className="font-normal cursor-pointer">
-                  Remise en montant fixe
+                  {t('payments.fixedAmountDiscount')}
                 </Label>
               </div>
             </RadioGroup>
@@ -105,7 +107,7 @@ export const EditDiscountDialog: React.FC<EditDiscountDialogProps> = ({
 
           {discountType === 'percentage' && (
             <div className="space-y-2">
-              <Label htmlFor="percentage-value">Pourcentage de remise *</Label>
+              <Label htmlFor="percentage-value">{t('payments.discountPercentageReq')}</Label>
               <div className="relative">
                 <Input
                   id="percentage-value"
@@ -122,14 +124,14 @@ export const EditDiscountDialog: React.FC<EditDiscountDialogProps> = ({
                 <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               </div>
               <p className="text-xs text-muted-foreground">
-                Entre 0 et 100%
+                {t('payments.between0And100')}
               </p>
             </div>
           )}
 
           {discountType === 'amount' && (
             <div className="space-y-2">
-              <Label htmlFor="amount-value">Montant de la remise (FCFA) *</Label>
+              <Label htmlFor="amount-value">{t('payments.discountAmountReq')} (FCFA) *</Label>
               <Input
                 id="amount-value"
                 type="number"
@@ -145,11 +147,11 @@ export const EditDiscountDialog: React.FC<EditDiscountDialogProps> = ({
 
           {discountType !== 'none' && discountValue && (
             <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-sm font-medium mb-1">Aperçu</p>
+              <p className="text-sm font-medium mb-1">{t('payments.preview')}</p>
               <p className="text-xs text-muted-foreground">
                 {discountType === 'percentage' 
-                  ? `${discountValue}% de remise sur les frais annuels`
-                  : `${parseFloat(discountValue).toLocaleString('fr-FR')} FCFA de remise sur les frais annuels`
+                  ? `${discountValue}% ${t('payments.discountOnAnnualFees')}`
+                  : `${parseFloat(discountValue).toLocaleString('fr-FR')} FCFA ${t('payments.discountOnAnnualFees')}`
                 }
               </p>
             </div>
@@ -161,10 +163,10 @@ export const EditDiscountDialog: React.FC<EditDiscountDialogProps> = ({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Annuler
+              {t('payments.cancel')}
             </Button>
             <Button type="submit" disabled={updateDiscount.isPending}>
-              {updateDiscount.isPending ? 'Enregistrement...' : 'Enregistrer'}
+              {updateDiscount.isPending ? t('payments.saving') : t('payments.save')}
             </Button>
           </div>
         </form>

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useUpdatePayment } from '../hooks/usePayments';
+import { useTranslation } from 'react-i18next';
 
 interface EditPaymentDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
   onOpenChange,
   payment,
 }) => {
+  const { t } = useTranslation();
   const updatePayment = useUpdatePayment();
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -55,42 +57,42 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Modifier le paiement</DialogTitle>
+          <DialogTitle>{t('payments.editPayment')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="amount">Montant (FCFA) *</Label>
+            <Label htmlFor="amount">{t('payments.amount')} (FCFA) *</Label>
             <Input
               id="amount"
               type="number"
               {...register('amount', { required: true, min: 0 })}
             />
             {errors.amount && (
-              <p className="text-sm text-destructive">Le montant est requis</p>
+              <p className="text-sm text-destructive">{t('payments.amountRequired')}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="payment_date">Date de paiement *</Label>
+            <Label htmlFor="payment_date">{t('payments.paymentDateReq')}</Label>
             <Input
               id="payment_date"
               type="date"
               {...register('payment_date', { required: true })}
             />
             {errors.payment_date && (
-              <p className="text-sm text-destructive">La date est requise</p>
+              <p className="text-sm text-destructive">{t('payments.dateRequired')}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="payment_method">Méthode de paiement *</Label>
+            <Label htmlFor="payment_method">{t('payments.paymentMethodReq')}</Label>
             <Select
               value={watch('payment_method')}
               onValueChange={(value) => setValue('payment_method', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une méthode" />
+                <SelectValue placeholder={t('payments.selectMethod')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="cash">Espèces</SelectItem>
@@ -103,7 +105,7 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reference_number">Numéro de référence</Label>
+            <Label htmlFor="reference_number">{t('payments.referenceNumber')}</Label>
             <Input
               id="reference_number"
               {...register('reference_number')}
@@ -112,21 +114,21 @@ export const EditPaymentDialog: React.FC<EditPaymentDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{t('payments.paymentNotes')}</Label>
             <Textarea
               id="notes"
               {...register('notes')}
-              placeholder="Remarques ou notes..."
+              placeholder={t('payments.remarksPlaceholder')}
               rows={3}
             />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t('payments.cancel')}
             </Button>
             <Button type="submit" disabled={updatePayment.isPending}>
-              {updatePayment.isPending ? 'Enregistrement...' : 'Enregistrer'}
+              {updatePayment.isPending ? t('payments.saving') : t('payments.save')}
             </Button>
           </DialogFooter>
         </form>

@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { GraduationCap, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTranslation } from 'react-i18next';
 
 interface AddRegistrationPaymentDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
   selectedStudent,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [studentId, setStudentId] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -59,12 +61,12 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
 
     const paymentAmount = parseFloat(amount);
     if (paymentAmount <= 0) {
-      toast.error('Le montant doit être supérieur à 0');
+      toast.error(t('payments.amountMustBeGreaterThan0'));
       return;
     }
 
     if (paymentAmount > registrationFeeRemaining) {
-      toast.error('Le montant dépasse le reste à payer des frais d\'inscription');
+      toast.error(t('payments.amountExceedsRegistrationFeeRemaining'));
       return;
     }
 
@@ -87,7 +89,7 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
 
       if (paymentError) throw paymentError;
 
-      toast.success('Paiement de frais d\'inscription enregistré avec succès');
+      toast.success(t('payments.registrationPaymentSuccess'));
 
       // Reset form
       setStudentId(selectedStudent?.id || '');
@@ -100,7 +102,7 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
       onOpenChange(false);
     } catch (error) {
       console.error('Erreur lors de l\'enregistrement du paiement:', error);
-      toast.error('Erreur lors de l\'enregistrement du paiement');
+      toast.error(t('payments.paymentRegistrationError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,19 +114,19 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-primary" />
-            Paiement de frais d'inscription
+            {t('payments.registrationFeePayment')}
           </DialogTitle>
           <DialogDescription>
-            Enregistrez un paiement pour les frais d'inscription d'un élève
+            {t('payments.registrationFeePaymentDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="student">Élève *</Label>
+            <Label htmlFor="student">{t('payments.student')} *</Label>
             <Select value={studentId} onValueChange={setStudentId} required disabled={!!selectedStudent}>
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un élève" />
+                <SelectValue placeholder={t('payments.selectStudent')} />
               </SelectTrigger>
               <SelectContent>
                 {students?.map((student) => (
@@ -140,22 +142,22 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 rounded-lg p-4 space-y-2 border border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-2 mb-2">
                 <GraduationCap className="w-4 h-4 text-blue-600" />
-                <span className="font-semibold text-blue-900 dark:text-blue-100">Frais d'inscription</span>
+                <span className="font-semibold text-blue-900 dark:text-blue-100">{t('payments.registrationFee')}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-blue-700 dark:text-blue-300">Frais d'inscription total :</span>
+                <span className="text-blue-700 dark:text-blue-300">{t('payments.totalRegistrationFee')} :</span>
                 <span className="font-semibold text-blue-900 dark:text-blue-100">
                   {registrationFee.toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-blue-700 dark:text-blue-300">Déjà payé :</span>
+                <span className="text-blue-700 dark:text-blue-300">{t('payments.alreadyPaid')} :</span>
                 <span className="text-green-600 dark:text-green-400 font-medium">
                   {registrationFeePaid.toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
               <div className="flex justify-between text-sm border-t border-blue-200 dark:border-blue-800 pt-2">
-                <span className="font-medium text-blue-700 dark:text-blue-300">Reste à payer :</span>
+                <span className="font-medium text-blue-700 dark:text-blue-300">{t('payments.remainingToPay')} :</span>
                 <span className="font-bold text-orange-600 dark:text-orange-400">
                   {registrationFeeRemaining.toLocaleString('fr-FR')} FCFA
                 </span>
@@ -167,14 +169,14 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
             <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
               <AlertCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-700 dark:text-green-300">
-                Les frais d'inscription ont été entièrement payés pour cet élève.
+                {t('payments.registrationFeeFullyPaid')}
               </AlertDescription>
             </Alert>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Montant (FCFA) *</Label>
+              <Label htmlFor="amount">{t('payments.amount')} (FCFA) *</Label>
               <Input
                 id="amount"
                 type="number"
@@ -189,13 +191,13 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
               />
               {registrationFeeRemaining > 0 && parseFloat(amount || '0') > registrationFeeRemaining && (
                 <p className="text-xs text-destructive">
-                  ⚠️ Le montant dépasse le reste à payer
+                  ⚠️ {t('payments.amountExceedsRemaining')}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="payment-date">Date de paiement *</Label>
+              <Label htmlFor="payment-date">{t('payments.paymentDateReq')}</Label>
               <Input
                 id="payment-date"
                 type="date"
@@ -207,7 +209,7 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="payment-method">Méthode de paiement *</Label>
+            <Label htmlFor="payment-method">{t('payments.paymentMethodReq')}</Label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger>
                 <SelectValue />
@@ -224,7 +226,7 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reference">Référence / Numéro de transaction</Label>
+            <Label htmlFor="reference">{t('payments.referenceNumber')}</Label>
             <Input
               id="reference"
               value={referenceNumber}
@@ -234,22 +236,22 @@ export const AddRegistrationPaymentDialog: React.FC<AddRegistrationPaymentDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{t('payments.paymentNotes')}</Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notes additionnelles sur ce paiement..."
+              placeholder={t('payments.notesPlaceholder')}
               rows={3}
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t('payments.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting || registrationFeeRemaining <= 0}>
-              {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+              {isSubmitting ? t('payments.saving') : t('payments.save')}
             </Button>
           </div>
         </form>

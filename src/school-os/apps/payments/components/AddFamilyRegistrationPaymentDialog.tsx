@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Users, GraduationCap, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTranslation } from 'react-i18next';
 
 interface AddFamilyRegistrationPaymentDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
   selectedFamily,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [familyId, setFamilyId] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -117,7 +119,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
 
     const selected = currentFamily.students.filter(s => selectedStudents[s.id]);
     if (selected.length === 0) {
-      toast.error('Veuillez sélectionner au moins un élève');
+      toast.error(t('payments.selectAtLeastOneStudent'));
       return;
     }
 
@@ -130,7 +132,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
     const totalPaid = parseFloat(totalAmount);
 
     if (Math.abs(totalDistributed - totalPaid) > 0.01) {
-      toast.error('La somme des montants répartis ne correspond pas au montant total');
+      toast.error(t('payments.distributedAmountMismatch'));
       return;
     }
 
@@ -156,7 +158,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
 
       if (paymentsError) throw paymentsError;
 
-      toast.success('Paiement familial de frais d\'inscription enregistré avec succès');
+      toast.success(t('payments.familyRegistrationPaymentSuccess'));
 
       // Reset form
       setFamilyId('');
@@ -171,7 +173,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
       onOpenChange(false);
     } catch (error) {
       console.error('Erreur lors de l\'enregistrement du paiement:', error);
-      toast.error('Erreur lors de l\'enregistrement du paiement');
+      toast.error(t('payments.paymentRegistrationError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -193,20 +195,20 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
             <GraduationCap className="w-5 h-5 text-primary" />
-            Paiement familial de frais d'inscription
+            {t('payments.familyRegistrationPayment')}
           </DialogTitle>
           <DialogDescription>
-            Enregistrez un paiement de frais d'inscription pour plusieurs élèves d'une même famille
+            {t('payments.familyRegistrationPaymentDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!selectedFamily && (
             <div className="space-y-2">
-              <Label htmlFor="family">Famille *</Label>
+              <Label htmlFor="family">{t('payments.family')} *</Label>
               <Select value={familyId} onValueChange={setFamilyId} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une famille" />
+                  <SelectValue placeholder={t('payments.selectFamily')} />
                 </SelectTrigger>
                 <SelectContent>
                   {families?.map((family) => (
@@ -233,19 +235,19 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <p className="text-blue-700 dark:text-blue-300">Frais d'inscription total</p>
+                    <p className="text-blue-700 dark:text-blue-300">{t('payments.totalRegistrationFee')}</p>
                     <p className="font-medium text-blue-900 dark:text-blue-100">
                       {totalRegistrationFee.toLocaleString('fr-FR')} FCFA
                     </p>
                   </div>
                   <div>
-                    <p className="text-blue-700 dark:text-blue-300">Déjà payé</p>
+                    <p className="text-blue-700 dark:text-blue-300">{t('payments.alreadyPaid')}</p>
                     <p className="font-medium text-green-600 dark:text-green-400">
                       {totalRegistrationFeePaid.toLocaleString('fr-FR')} FCFA
                     </p>
                   </div>
                   <div>
-                    <p className="text-blue-700 dark:text-blue-300">Reste</p>
+                    <p className="text-blue-700 dark:text-blue-300">{t('payments.remaining')}</p>
                     <p className="font-medium text-orange-600 dark:text-orange-400">
                       {totalRegistrationFeeRemaining.toLocaleString('fr-FR')} FCFA
                     </p>
@@ -257,13 +259,13 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
                 <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
                   <AlertCircle className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-700 dark:text-green-300">
-                    Les frais d'inscription ont été entièrement payés pour tous les élèves de cette famille.
+                    {t('payments.familyRegistrationFeeFullyPaid')}
                   </AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="amount">Montant total du paiement (FCFA) *</Label>
+                <Label htmlFor="amount">{t('payments.totalPaymentAmount')} (FCFA) *</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -279,7 +281,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
               </div>
 
               <div className="space-y-3">
-                <Label>Élèves concernés *</Label>
+                <Label>{t('payments.affectedStudents')} *</Label>
                 <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3">
                   {currentFamily.students.map((student) => {
                     const registrationFee = student.registration_fee || 0;
@@ -299,21 +301,21 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
                               <p className="font-medium">{student.first_name} {student.last_name}</p>
                               <p className="text-xs text-muted-foreground">{student.student_code}</p>
                               {student.class_name && (
-                                <p className="text-xs text-muted-foreground">Classe: {student.class_name}</p>
+                                <p className="text-xs text-muted-foreground">{t('payments.class')}: {student.class_name}</p>
                               )}
                             </div>
                             <div className="text-right text-sm">
-                              <p className="text-muted-foreground">Frais d'inscription</p>
+                              <p className="text-muted-foreground">{t('payments.registrationFee')}</p>
                               <p className="text-xs text-blue-600">{registrationFee.toLocaleString('fr-FR')} FCFA</p>
                               <p className="text-xs text-orange-600">
-                                Reste: {registrationFeeRemaining.toLocaleString('fr-FR')} FCFA
+                                {t('payments.remaining')}: {registrationFeeRemaining.toLocaleString('fr-FR')} FCFA
                               </p>
                             </div>
                           </div>
                           {selectedStudents[student.id] && registrationFeeRemaining > 0 && (
                             <div className="mt-2">
                               <Label htmlFor={`amount-${student.id}`} className="text-xs">
-                                Montant pour cet élève
+                                {t('payments.amountForThisStudent')}
                               </Label>
                               <Input
                                 id={`amount-${student.id}`}
@@ -341,10 +343,10 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Répartition: {totalDistributed.toLocaleString('fr-FR')} FCFA / {parseFloat(totalAmount).toLocaleString('fr-FR')} FCFA
+                    {t('payments.distribution')}: {totalDistributed.toLocaleString('fr-FR')} FCFA / {parseFloat(totalAmount).toLocaleString('fr-FR')} FCFA
                     {Math.abs(totalDistributed - parseFloat(totalAmount)) > 0.01 && (
                       <span className="text-destructive ml-2">
-                        (Différence: {(parseFloat(totalAmount) - totalDistributed).toLocaleString('fr-FR')} FCFA)
+                        ({t('payments.difference')}: {(parseFloat(totalAmount) - totalDistributed).toLocaleString('fr-FR')} FCFA)
                       </span>
                     )}
                   </AlertDescription>
@@ -353,7 +355,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Mode de paiement *</Label>
+                  <Label htmlFor="paymentMethod">{t('payments.paymentMethodReq')}</Label>
                   <Select value={paymentMethod} onValueChange={setPaymentMethod} required>
                     <SelectTrigger>
                       <SelectValue />
@@ -368,7 +370,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="paymentDate">Date du paiement *</Label>
+                  <Label htmlFor="paymentDate">{t('payments.paymentDateReq')}</Label>
                   <Input
                     id="paymentDate"
                     type="date"
@@ -380,7 +382,7 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="referenceNumber">Numéro de référence</Label>
+                <Label htmlFor="referenceNumber">{t('payments.referenceNumber')}</Label>
                 <Input
                   id="referenceNumber"
                   value={referenceNumber}
@@ -390,12 +392,12 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes">{t('payments.paymentNotes')}</Label>
                 <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Informations supplémentaires..."
+                  placeholder={t('payments.additionalInfo')}
                   rows={3}
                 />
               </div>
@@ -404,13 +406,13 @@ export const AddFamilyRegistrationPaymentDialog: React.FC<AddFamilyRegistrationP
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t('payments.cancel')}
             </Button>
             <Button 
               type="submit" 
               disabled={isSubmitting || !currentFamily || totalRegistrationFeeRemaining <= 0}
             >
-              {isSubmitting ? 'Enregistrement...' : 'Enregistrer le paiement'}
+              {isSubmitting ? t('payments.saving') : t('payments.savePayment')}
             </Button>
           </div>
         </form>
