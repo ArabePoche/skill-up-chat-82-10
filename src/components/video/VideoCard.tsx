@@ -29,7 +29,7 @@ import { notifyHabbahGain } from '@/hooks/useHabbahGainNotifier';
 import NativeVideoPlayer from './players/NativeVideoPlayer';
 import YouTubePlayer from './players/YouTubePlayer';
 import VimeoPlayer from './players/VimeoPlayer';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // Actions components
 import VideoSidebar from './videoactions/VideoSidebar';
@@ -85,6 +85,9 @@ const VideoCard: React.FC<VideoCardProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasMediaError, setHasMediaError] = useState(false);
   const [showLikeBurst, setShowLikeBurst] = useState(false);
+  const [floatingHearts, setFloatingHearts] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const heartIdRef = useRef(0);
 //   const [mediaRetryKey, setMediaRetryKey] = useState(0);
 
   // Long press pour ouvrir le modal de téléchargement
@@ -212,9 +215,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
     action();
   };
 
-  const handleLike = (event: React.MouseEvent<HTMLButtonElement>) => {
-    const triggerRect = event.currentTarget.getBoundingClientRect();
-
+  const performLike = useCallback((rewardPosition: { x: number; y: number }) => {
     handleAuthRequiredAction(async () => {
       const wasLiked = isLiked;
       toggleLike();
@@ -229,10 +230,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
           try {
             const reward = await recordHabbahGain(user.id, 'like', video.id);
             if (reward) {
-              notifyHabbahGain(reward.amount, reward.label, {
-                x: triggerRect.left - 96,
-                y: triggerRect.top - 8,
-              });
+              notifyHabbahGain(reward.amount, reward.label, rewardPosition);
             }
           } catch (error) {
             console.error('Error logging habbah video like:', error);
@@ -240,7 +238,54 @@ const VideoCard: React.FC<VideoCardProps> = ({
         }
       }
     });
+  }, [isLiked, toggleLike, onLikeWithConfetti, user?.id, video.id]);
+
+  const handleLike = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const triggerRect = event.currentTarget.getBoundingClientRect();
+    performLike({
+      x: triggerRect.left - 96,
+      y: triggerRect.top - 8,
+    });
   };
+
+  const triggerLikeAtPosition = useCallback((x: number, y: number) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    const heartId = ++heartIdRef.current;
+    setFloatingHearts((prev) => [...prev, { id: heartId, x, y }]);
+    window.setTimeout(() => {
+      setFloatingHearts((prev) => prev.filter((h) => h.id !== heartId));
+    }, 1000);
+    if (!isLiked) {
+      performLike({ x: x - 24, y: y - 64 });
+    }
+  }, [user, navigate, isLiked, performLike]);
+
+  const handleVideoTap = useCallback((event: React.MouseEvent<HTMLDivElement> | React.PointerEvent<HTMLDivElement>) => {
+    if (longPressEvents.isLongPress?.current) {
+      return;
+    }
+    const now = Date.now();
+    const x = event.clientX;
+    const y = event.clientY;
+    const last = lastTapRef.current;
+    const DOUBLE_TAP_DELAY = 300;
+    const DOUBLE_TAP_DISTANCE = 50;
+
+    if (
+      last &&
+      now - last.time < DOUBLE_TAP_DELAY &&
+      Math.abs(x - last.x) < DOUBLE_TAP_DISTANCE &&
+      Math.abs(y - last.y) < DOUBLE_TAP_DISTANCE
+    ) {
+      lastTapRef.current = null;
+      triggerLikeAtPosition(x, y);
+    } else {
+      lastTapRef.current = { time: now, x, y };
+    }
+  }, [longPressEvents.isLongPress, triggerLikeAtPosition]);
 
   const handleFollow = () => {
     handleAuthRequiredAction(() => {
@@ -301,7 +346,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
                 />
                 <div 
                     className="absolute inset-0 z-[1] bg-transparent" 
-                    onClick={() => setIsPlaying(!isPlaying)} 
+                    onClick={(e) => { handleVideoTap(e); setIsPlaying(!isPlaying); }} 
                 />
             </>
         )}
@@ -324,7 +369,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
                 />
                 <div 
                     className="absolute inset-0 z-[1] bg-transparent" 
-                    onClick={() => setIsPlaying(!isPlaying)} 
+                    onClick={(e) => { handleVideoTap(e); setIsPlaying(!isPlaying); }} 
                 />
             </>
         )}
@@ -343,6 +388,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
                 setIsLoading(false);
             }}
             onPlayStateChange={setIsPlaying}
+            onTap={handleVideoTap}
           />
         )}
 
@@ -374,6 +420,23 @@ const VideoCard: React.FC<VideoCardProps> = ({
         )}
       </div>
 
+
+      {/* Coeurs flottants pour le double-tap */}
+      <AnimatePresence>
+        {floatingHearts.map((heart) => (
+          <motion.div
+            key={heart.id}
+            className="fixed pointer-events-none z-50"
+            style={{ left: heart.x - 48, top: heart.y - 48 }}
+            initial={{ scale: 0, opacity: 1, rotate: -15 }}
+            animate={{ scale: [0, 1.4, 1.1], opacity: [1, 1, 0], y: -60, rotate: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: 'easeOut' }}
+          >
+            <Heart size={96} className="text-red-500 drop-shadow-lg" fill="currentColor" />
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* Actions côté droit regroupées dans la Sidebar */}
       <VideoSidebar

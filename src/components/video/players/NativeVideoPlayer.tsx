@@ -9,6 +9,7 @@ interface NativeVideoPlayerProps {
   onLoaded: () => void;
   onError: () => void;
   onPlayStateChange?: (isPlaying: boolean) => void;
+  onTap?: (e: React.MouseEvent<HTMLVideoElement>) => void;
 }
 
 const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
@@ -19,7 +20,8 @@ const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
   isMuted,
   onLoaded,
   onError,
-  onPlayStateChange
+  onPlayStateChange,
+  onTap
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   
@@ -76,7 +78,8 @@ const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
     };
   }, [isActive, shouldPlay, isMuted, onPlayStateChange]);
 
-  const togglePlay = () => {
+  const togglePlay = (e: React.MouseEvent<HTMLVideoElement>) => {
+    onTap?.(e);
     const video = videoRef.current;
     if (!video) return;
 
