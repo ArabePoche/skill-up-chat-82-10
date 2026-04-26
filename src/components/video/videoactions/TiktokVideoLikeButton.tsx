@@ -66,7 +66,7 @@ const TiktokVideoLikeButton: React.FC<TiktokVideoLikeButtonProps> = ({
           isLiked ? '!text-red-500' : 'text-white'
         }`}
       >
-        <Heart size={52} strokeWidth={1.6} className={`!w-[52px] !h-[52px] drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] ${isLiked ? 'fill-red-500 stroke-red-500 text-red-500' : 'fill-white stroke-white text-white'}`} />
+        <Heart size={41} strokeWidth={1.6} className={`!w-[41px] !h-[41px] drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)] ${isLiked ? 'fill-red-500 stroke-red-500 text-red-500' : 'fill-white stroke-white text-white'}`} />
       </Button>
       <span className="text-white text-sm -mt-0.5 font-semibold drop-shadow-[0_1px_3px_rgba(0,0,0,0.75)]">
         {formatCount(likesCount)}

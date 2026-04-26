@@ -20,7 +20,7 @@ const TiktokVideoSaveButton: React.FC<TiktokVideoSaveButtonProps> = ({ isSaved, 
           isSaved ? 'text-yellow-500' : ''
         }`}
       >
-        <Bookmark size={48} className="!w-[48px] !h-[48px] fill-current" />
+        <Bookmark size={41} className="!w-[41px] !h-[41px] fill-current" />
       </Button>
       <span className="text-white text-xs -mt-0.5 font-medium drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
         {isSaved ? t('video.saved') : t('video.save')}
