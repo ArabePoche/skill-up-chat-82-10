@@ -64,7 +64,7 @@ const VideoSidebar: React.FC<VideoSidebarProps> = ({
   formatCount,
 }) => {
   return (
-    <div className="absolute right-3 bottom-20 flex flex-col items-center space-y-4 z-10">
+    <div className="absolute right-3 bottom-20 flex flex-col items-center space-y-5 z-10">
       <TiktokVideoProfileButton
         authorProfile={video.profiles}
         activeLiveStream={activeLiveStream}

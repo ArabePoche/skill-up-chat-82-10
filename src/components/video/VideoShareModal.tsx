@@ -1,123 +1,245 @@
-
-// Importation des dépendances React et des composants UI
-import React from 'react';
-// Importation des composants Dialog pour la modale
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-// Importation du composant Button pour les boutons d'action
+// Modal de partage vidéo - design moderne en bottom sheet
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-// Importation des icônes utilisées pour les boutons de partage
-import { Copy, Facebook, Twitter, MessageCircle, Linkedin } from 'lucide-react';
-// Importation de la librairie de notifications pour afficher un toast lors de la copie du lien
+import { Copy, Facebook, MessageCircle, Linkedin, Mail, Send, Share2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Définition des props attendues par le composant VideoShareModal
 interface VideoShareModalProps {
-  isOpen: boolean; // Contrôle l'ouverture de la modale
-  onClose: () => void; // Fonction de fermeture de la modale
-  url: string; // Lien de la vidéo à partager
-  title: string; // Titre de la vidéo
-  description?: string; // Description optionnelle de la vidéo
+  isOpen: boolean;
+  onClose: () => void;
+  url: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
 }
 
-// Début du composant principal VideoShareModal
+interface SharePlatform {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  bg: string;
+  buildUrl: (url: string, text: string) => string;
+}
+
+const SHARE_PLATFORMS: SharePlatform[] = [
+  {
+    key: 'whatsapp',
+    label: 'WhatsApp',
+    icon: <MessageCircle className="h-6 w-6 text-white" />,
+    bg: 'bg-[#25D366]',
+    buildUrl: (u, t) => `https://wa.me/?text=${encodeURIComponent(`${t} ${u}`)}`,
+  },
+  {
+    key: 'facebook',
+    label: 'Facebook',
+    icon: <Facebook className="h-6 w-6 text-white" />,
+    bg: 'bg-[#1877F2]',
+    buildUrl: (u) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`,
+  },
+  {
+    key: 'twitter',
+    label: 'X (Twitter)',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
+        <path d="M18.244 2H21l-6.51 7.44L22.5 22h-6.79l-5.32-6.96L4.32 22H1.56l6.96-7.96L1.5 2h6.94l4.81 6.36L18.244 2zm-1.19 18h1.84L7.04 4H5.13l11.924 16z" />
+      </svg>
+    ),
+    bg: 'bg-black',
+    buildUrl: (u, t) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(u)}&text=${encodeURIComponent(t)}`,
+  },
+  {
+    key: 'telegram',
+    label: 'Telegram',
+    icon: <Send className="h-6 w-6 text-white" />,
+    bg: 'bg-[#229ED9]',
+    buildUrl: (u, t) => `https://t.me/share/url?url=${encodeURIComponent(u)}&text=${encodeURIComponent(t)}`,
+  },
+  {
+    key: 'linkedin',
+    label: 'LinkedIn',
+    icon: <Linkedin className="h-6 w-6 text-white" />,
+    bg: 'bg-[#0A66C2]',
+    buildUrl: (u) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(u)}`,
+  },
+  {
+    key: 'email',
+    label: 'E-mail',
+    icon: <Mail className="h-6 w-6 text-white" />,
+    bg: 'bg-gradient-to-br from-orange-500 to-red-500',
+    buildUrl: (u, t) => `mailto:?subject=${encodeURIComponent(t)}&body=${encodeURIComponent(`${t}\n\n${u}`)}`,
+  },
+];
+
 const VideoShareModal: React.FC<VideoShareModalProps> = ({
   isOpen,
   onClose,
   url,
   title,
-  description
+  description,
+  thumbnailUrl,
 }) => {
-  // Fonction pour copier le lien dans le presse-papier
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(url); // Copie le lien
-    toast.success('Lien copié !'); // Affiche une notification de succès
-    onClose(); // Ferme la modale
+  const [copied, setCopied] = useState(false);
+  const text = description ? `${title} – ${description}` : title;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success('Lien copié !');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Impossible de copier le lien");
+    }
   };
 
-  // Fonction pour gérer le partage sur différentes plateformes
-  const handleShare = (platform: string) => {
-    const text = `${title} - ${description || ''}`; // Texte à partager
-    let shareUrl = '';
-
-    // Génération de l'URL de partage selon la plateforme
-    switch (platform) {
-      case 'facebook':
-        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-        break;
-      case 'twitter':
-        shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
-        break;
-      case 'whatsapp':
-        shareUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
-        break;
-      case 'linkedin':
-        // Génération du lien de partage LinkedIn
-        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
-        break;
+  const handleNativeShare = async () => {
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({ title, text: description || title, url });
+        onClose();
+      } catch {
+        // Annulé par l'utilisateur — pas d'erreur visible
+      }
     }
-
-    // Ouvre la fenêtre de partage si une URL a été générée
-    if (shareUrl) {
-      window.open(shareUrl, '_blank', 'width=600,height=400');
-    }
-    onClose(); // Ferme la modale après le partage
   };
 
-  // Rendu de la modale de partage vidéo
+  const handleShare = (platform: SharePlatform) => {
+    const shareUrl = platform.buildUrl(url, text);
+    if (platform.key === 'email') {
+      window.location.href = shareUrl;
+    } else {
+      window.open(shareUrl, '_blank', 'noopener,noreferrer,width=640,height=560');
+    }
+    onClose();
+  };
+
+  const hasNativeShare =
+    typeof navigator !== 'undefined' && typeof (navigator as any).share === 'function';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-white">
-        <DialogHeader>
-          <DialogTitle>Partager cette vidéo</DialogTitle>
-        </DialogHeader>
-        {/* Section des boutons d'action de partage */}
-        <div className="flex flex-col space-y-4">
-          {/* Bouton pour copier le lien */}
-          <Button
-            onClick={handleCopyLink}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <Copy className="mr-2 h-4 w-4" />
-            Copier le lien
-          </Button>
-          {/* Bouton pour partager sur Facebook */}
-          <Button
-            onClick={() => handleShare('facebook')}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <Facebook className="mr-2 h-4 w-4" />
-            Partager sur Facebook
-          </Button>
-          {/* Bouton pour partager sur Twitter */}
-          <Button
-            onClick={() => handleShare('twitter')}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <Twitter className="mr-2 h-4 w-4" />
-            Partager sur Twitter
-          </Button>
-          {/* Bouton pour partager sur LinkedIn */}
-          <Button
-            onClick={() => handleShare('linkedin')}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <Linkedin className="mr-2 h-4 w-4" />
-            Partager sur LinkedIn
-          </Button>
-          {/* Bouton pour partager sur WhatsApp */}
-          <Button
-            onClick={() => handleShare('whatsapp')}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            Partager sur WhatsApp
-          </Button>
+      <DialogContent
+        className="
+          p-0 gap-0 border-0 overflow-hidden bg-white
+          rounded-t-3xl rounded-b-none sm:rounded-3xl
+          w-full sm:max-w-md
+          fixed left-0 right-0 bottom-0 top-auto translate-y-0 translate-x-0
+          sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:-translate-x-1/2 sm:-translate-y-1/2
+          max-h-[90vh] data-[state=open]:slide-in-from-bottom
+        "
+      >
+        {/* Drag handle (mobile) */}
+        <div className="flex justify-center pt-2 sm:hidden">
+          <div className="h-1.5 w-12 rounded-full bg-gray-300" />
         </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3">
+          <DialogTitle className="text-lg font-bold text-gray-900">
+            Partager
+          </DialogTitle>
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            className="rounded-full p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Aperçu de la vidéo */}
+        <div className="mx-5 mb-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-3">
+          {thumbnailUrl ? (
+            <img
+              src={thumbnailUrl}
+              alt=""
+              className="h-14 w-14 flex-shrink-0 rounded-xl object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
+              <Share2 className="h-6 w-6 text-white" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
+            {description ? (
+              <p className="truncate text-xs text-gray-500">{description}</p>
+            ) : (
+              <p className="truncate text-xs text-gray-400">Vidéo REZO</p>
+            )}
+          </div>
+        </div>
+
+        {/* Plateformes (horizontale scrollable) */}
+        <div className="px-5">
+          <div className="flex gap-3 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {hasNativeShare && (
+              <button
+                onClick={handleNativeShare}
+                className="flex w-16 flex-shrink-0 flex-col items-center gap-1.5"
+              >
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 shadow-md transition active:scale-95">
+                  <Share2 className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-[11px] font-medium text-gray-700">Partager</span>
+              </button>
+            )}
+            {SHARE_PLATFORMS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => handleShare(p)}
+                className="flex w-16 flex-shrink-0 flex-col items-center gap-1.5"
+              >
+                <div
+                  className={`flex h-14 w-14 items-center justify-center rounded-full ${p.bg} shadow-md transition active:scale-95 hover:scale-105`}
+                >
+                  {p.icon}
+                </div>
+                <span className="text-[11px] font-medium text-gray-700 text-center leading-tight">
+                  {p.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Lien + bouton Copier */}
+        <div className="border-t border-gray-100 px-5 py-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Lien direct
+          </p>
+          <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2">
+            <span className="flex-1 truncate text-sm text-gray-700" title={url}>
+              {url}
+            </span>
+            <Button
+              size="sm"
+              onClick={handleCopyLink}
+              className={`h-9 flex-shrink-0 rounded-xl px-3 font-semibold transition ${
+                copied
+                  ? 'bg-green-500 text-white hover:bg-green-600'
+                  : 'bg-gray-900 text-white hover:bg-gray-800'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="mr-1 h-4 w-4" />
+                  Copié
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1 h-4 w-4" />
+                  Copier
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Safe area iPhone */}
+        <div className="h-[env(safe-area-inset-bottom)] sm:h-0" />
       </DialogContent>
     </Dialog>
   );

@@ -464,6 +464,7 @@ const VideoCard: React.FC<VideoCardProps> = ({
         url={`${window.location.origin}/video/${video.id}`}
         title={video.title}
         description={video.description}
+        thumbnailUrl={video.thumbnail_url}
       />
 
       {/* Modal des épisodes de série */}
