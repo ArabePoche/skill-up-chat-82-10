@@ -16,6 +16,7 @@ import StickerShopModal from '@/stickers/components/StickerShopModal';
 import { useUserUnlockedPacks } from '@/hooks/useStickerSystem';
 import { useSignedStickerUrls } from '@/stickers/hooks/useSignedStickerUrls';
 import { useFavorites } from '@/hooks/useFavorites';
+import { CachedImage } from '@/file-manager/components/CachedImage';
 
 /* ── Types ── */
 interface StickerPickerProps {
@@ -66,11 +67,13 @@ const PackIcon: React.FC<{ pack: StickerPack; active: boolean; onClick: () => vo
     `}
   >
     {pack.iconUrl ? (
-      <img
+      <CachedImage
         src={pack.iconUrl}
+        fileId={`packicon_${pack.id}`}
         alt={pack.name}
         className="w-7 h-7 object-contain rounded-lg"
         loading="lazy"
+        fallback={<span className="text-xl">🎨</span>}
       />
     ) : (
       <span className="text-xl">🎨</span>
@@ -437,8 +440,9 @@ const StickerPicker: React.FC<StickerPickerProps> = ({
                       className="flex h-[62px] w-full items-center justify-center rounded-2xl hover:bg-gradient-to-br hover:from-slate-50 hover:to-slate-100 transition-all duration-200 p-1.5 border border-gray-100/40 hover:border-gray-200/60 hover:shadow-lg hover:shadow-slate-100/30 group relative"
                       title="Envoyer ce sticker"
                     >
-                      <img
+                      <CachedImage
                         src={sticker.url}
+                        fileId={sticker.path || sticker.id}
                         alt="Sticker"
                         className="w-full h-full object-contain"
                         loading="lazy"

@@ -3,6 +3,7 @@ import { Edit, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AvatarUploadModal from './AvatarUploadModal';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { CachedImage } from '@/file-manager/components/CachedImage';
 
 interface ProfileHeaderProps {
   profile: any;
@@ -29,10 +30,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               <div className="w-20 h-20 bg-gradient-to-r from-edu-primary to-edu-secondary rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
                    onClick={() => setShowAvatarModal(true)}>
                 {profile?.avatar_url ? (
-                  <img 
-                    src={profile.avatar_url} 
-                    alt="Avatar" 
+                  <CachedImage
+                    src={profile.avatar_url}
+                    alt="Avatar"
                     className="w-full h-full rounded-full object-cover"
+                    fallback={<span className="text-white text-2xl font-bold">{getInitials()}</span>}
                   />
                 ) : (
                   <span className="text-white text-2xl font-bold">{getInitials()}</span>
