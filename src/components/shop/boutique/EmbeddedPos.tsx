@@ -799,7 +799,7 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
           </ScrollArea>
 
           <div className="p-4 border-t bg-gray-50/30">
-            <Button onClick={handleFinalize}
+            <Button onClick={handleConfirmCheckout}
               disabled={isProcessing || (checkoutType === 'sale' && !canFinalize)}
               className={`w-full h-12 text-base font-bold shadow-md ${checkoutType === 'sale' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'
                 }`}>
