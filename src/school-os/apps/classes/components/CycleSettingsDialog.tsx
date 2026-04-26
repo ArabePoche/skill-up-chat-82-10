@@ -1,6 +1,7 @@
 /**
  * Dialog pour personnaliser les cycles scolaires
  * Permet de modifier le nom, le label et la base de notation de chaque cycle
+ * Permet également de réorganiser l'ordre des cycles via drag & drop
  */
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +23,7 @@ import {
   useUpdateSchoolCycle,
   useCreateSchoolCycle,
   useDeleteSchoolCycle,
+  useUpdateCycleOrder,
   SchoolCycle,
 } from '@/school/hooks/useSchoolCycles';
 import {
@@ -34,6 +36,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CycleSettingsDialogProps {
   open: boolean;
@@ -49,6 +54,110 @@ interface EditableCycle {
   isNew?: boolean;
 }
 
+// Composant SortableCycleCard pour le drag & drop
+interface SortableCycleCardProps {
+  cycle: EditableCycle;
+  index: number;
+  onFieldChange: (id: string, field: keyof EditableCycle, value: string | number) => void;
+  onRemove: (cycle: EditableCycle) => void;
+}
+
+const SortableCycleCard: React.FC<SortableCycleCardProps> = ({
+  cycle,
+  index,
+  onFieldChange,
+  onRemove,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: cycle.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card className="relative">
+        <CardContent className="pt-4">
+          <div className="flex items-start gap-2">
+            <div
+              {...attributes}
+              {...listeners}
+              className="h-5 w-5 text-muted-foreground mt-2 cursor-grab active:cursor-grabbing"
+            >
+              <GripVertical />
+            </div>
+            
+            <div className="flex-1 grid gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Identifiant</Label>
+                  <Input
+                    value={cycle.name}
+                    onChange={(e) =>
+                      onFieldChange(cycle.id, 'name', e.target.value.toLowerCase().replace(/\s+/g, '_'))
+                    }
+                    placeholder="ex: primaire"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nom affiché</Label>
+                  <Input
+                    value={cycle.label}
+                    onChange={(e) =>
+                      onFieldChange(cycle.id, 'label', e.target.value)
+                    }
+                    placeholder="ex: Primaire"
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="space-y-1.5 flex-1">
+                  <Label className="text-xs">Base de notation</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">/</span>
+                    <Input
+                      type="number"
+                      value={cycle.grade_base}
+                      onChange={(e) =>
+                        onFieldChange(cycle.id, 'grade_base', parseInt(e.target.value) || 20)
+                      }
+                      min={1}
+                      max={100}
+                      className="h-9 w-20"
+                    />
+                    <Badge variant="outline" className="text-xs">
+                      Moyennes sur {cycle.grade_base}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={() => onRemove(cycle)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 export const CycleSettingsDialog: React.FC<CycleSettingsDialogProps> = ({
   open,
   onOpenChange,
@@ -59,10 +168,38 @@ export const CycleSettingsDialog: React.FC<CycleSettingsDialogProps> = ({
   const updateCycle = useUpdateSchoolCycle();
   const createCycle = useCreateSchoolCycle();
   const deleteCycle = useDeleteSchoolCycle();
+  const updateCycleOrder = useUpdateCycleOrder();
 
   const [editableCycles, setEditableCycles] = useState<EditableCycle[]>([]);
   const [cycleToDelete, setCycleToDelete] = useState<EditableCycle | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sensors pour le drag & drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handler pour la fin du drag & drop
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = editableCycles.findIndex((c) => c.id === active.id);
+    const newIndex = editableCycles.findIndex((c) => c.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Réorganiser la liste
+    const newCycles = [...editableCycles];
+    const [movedCycle] = newCycles.splice(oldIndex, 1);
+    newCycles.splice(newIndex, 0, movedCycle);
+
+    setEditableCycles(newCycles);
+  };
 
   // Sync with fetched data
   useEffect(() => {
@@ -117,6 +254,18 @@ export const CycleSettingsDialog: React.FC<CycleSettingsDialogProps> = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Sauvegarder l'ordre des cycles
+      const orderUpdates = editableCycles.map((cycle, index) => ({
+        id: cycle.id,
+        order_index: index + 1,
+      }));
+      
+      // Mettre à jour l'ordre pour les cycles existants
+      const existingOrderUpdates = orderUpdates.filter(u => !editableCycles.find(c => c.id === u.id && c.isNew));
+      if (existingOrderUpdates.length > 0) {
+        await updateCycleOrder.mutateAsync({ schoolId, updates: existingOrderUpdates });
+      }
+      
       for (const cycle of editableCycles) {
         if (cycle.isNew) {
           // Create new cycle
@@ -125,7 +274,7 @@ export const CycleSettingsDialog: React.FC<CycleSettingsDialogProps> = ({
             name: cycle.name,
             label: cycle.label,
             grade_base: cycle.grade_base,
-            order_index: editableCycles.indexOf(cycle),
+            order_index: editableCycles.indexOf(cycle) + 1,
             is_active: true,
           });
         } else {
@@ -175,73 +324,28 @@ export const CycleSettingsDialog: React.FC<CycleSettingsDialogProps> = ({
               </div>
             ) : (
               <>
-                {editableCycles.map((cycle, index) => (
-                  <Card key={cycle.id} className="relative">
-                    <CardContent className="pt-4">
-                      <div className="flex items-start gap-2">
-                        <GripVertical className="h-5 w-5 text-muted-foreground mt-2 cursor-grab" />
-                        
-                        <div className="flex-1 grid gap-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Identifiant</Label>
-                              <Input
-                                value={cycle.name}
-                                onChange={(e) =>
-                                  handleFieldChange(cycle.id, 'name', e.target.value.toLowerCase().replace(/\s+/g, '_'))
-                                }
-                                placeholder="ex: primaire"
-                                className="h-9"
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Nom affiché</Label>
-                              <Input
-                                value={cycle.label}
-                                onChange={(e) =>
-                                  handleFieldChange(cycle.id, 'label', e.target.value)
-                                }
-                                placeholder="ex: Primaire"
-                                className="h-9"
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-3">
-                            <div className="space-y-1.5 flex-1">
-                              <Label className="text-xs">Base de notation</Label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">/</span>
-                                <Input
-                                  type="number"
-                                  value={cycle.grade_base}
-                                  onChange={(e) =>
-                                    handleFieldChange(cycle.id, 'grade_base', parseInt(e.target.value) || 20)
-                                  }
-                                  min={1}
-                                  max={100}
-                                  className="h-9 w-20"
-                                />
-                                <Badge variant="outline" className="text-xs">
-                                  Moyennes sur {cycle.grade_base}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveCycle(cycle)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={editableCycles.map(c => c.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-3">
+                      {editableCycles.map((cycle, index) => (
+                        <SortableCycleCard
+                          key={cycle.id}
+                          cycle={cycle}
+                          index={index}
+                          onFieldChange={handleFieldChange}
+                          onRemove={handleRemoveCycle}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
 
                 <Button
                   variant="outline"

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useUserSchool, useSchoolYears, SchoolYear, School } from '../hooks/useSchool';
 import { useAuth } from '@/hooks/useAuth';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SchoolYearContextType {
@@ -40,7 +40,7 @@ export const SchoolYearProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [userSchool, schoolIdFromUrl]);
 
-  const { data: schoolFromUrl } = useQuery({
+  const { data: schoolFromUrl } = useOfflineQuery<School | null>({
     queryKey: ['school', schoolIdFromUrl],
     queryFn: async () => {
       if (!schoolIdFromUrl) return null;

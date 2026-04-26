@@ -21,6 +21,8 @@ import { SchoolSiteTemplatesModal } from '@/school/components/SchoolSiteTemplate
 import { useSchoolTemplate } from '@/school-site/hooks/useSchoolTemplate';
 import SchoolSiteRenderer from '@/school-site/SchoolSiteRenderer';
 import type { SchoolSiteData } from '@/school-site/types';
+import { loadTemplate } from '@/school-site/registry';
+import type { TemplateDefinition } from '@/school-site/types';
 
 type SiteDraft = {
   site_cycles_programs: string;
@@ -125,6 +127,18 @@ const SchoolSitePage: React.FC = () => {
   // Charger le template dynamiquement
   const { data: template, isLoading: templateLoading } = useSchoolTemplate(school?.site_template_id);
 
+  // Template par défaut en cas d'erreur ou hors ligne
+  const { data: defaultTemplate } = useOfflineQuery<TemplateDefinition>({
+    queryKey: ['school-template', 'default'],
+    queryFn: async () => {
+      return loadTemplate('default');
+    },
+    enabled: !template,
+    staleTime: Infinity,
+  });
+
+  const finalTemplate = template || defaultTemplate;
+
   const enterEditMode = useCallback(() => {
     if (!school) return;
     setDraft(draftFromSchool(school));
@@ -219,7 +233,7 @@ const SchoolSitePage: React.FC = () => {
     );
   }
 
-  if (!template) {
+  if (!finalTemplate) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -302,7 +316,7 @@ const SchoolSitePage: React.FC = () => {
   return (
     <>
       <SchoolSiteRenderer
-        template={template}
+        template={finalTemplate}
         data={siteData}
         toolbar={toolbar}
         draft={draft as unknown as Record<string, any>}

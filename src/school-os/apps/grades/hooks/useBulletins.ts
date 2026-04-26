@@ -70,7 +70,8 @@ export interface ReportCardHistory {
   id: string;
   school_id: string;
   school_year_id: string;
-  grading_period_id: string;
+  grading_period_id: string | null;
+  composition_id: string | null;
   class_id: string;
   student_id: string;
   template_id: string | null;
@@ -483,6 +484,7 @@ export interface ReportCardHistoryWithRelations extends ReportCardHistory {
   class?: { id: string; name: string } | null;
   student?: { id: string; first_name: string; last_name: string } | null;
   period?: { id: string; name: string } | null;
+  composition?: { id: string; title: string } | null;
   template?: { id: string; name: string } | null;
   generator?: { id: string; first_name: string; last_name: string } | null;
 }
@@ -490,6 +492,7 @@ export interface ReportCardHistoryWithRelations extends ReportCardHistory {
 export const useReportCardHistory = (schoolId?: string, schoolYearId?: string, filters?: {
   classId?: string;
   periodId?: string;
+  compositionId?: string;
 }) => {
   return useOfflineQuery({
     queryKey: ['report-card-history', schoolId, schoolYearId, filters],
@@ -503,6 +506,7 @@ export const useReportCardHistory = (schoolId?: string, schoolYearId?: string, f
           class:classes(id, name),
           student:students_school(id, first_name, last_name),
           period:grading_periods(id, name),
+          composition:school_compositions(id, title),
           template:school_bulletin_templates(id, name),
           generator:profiles(id, first_name, last_name)
         `)
@@ -516,11 +520,14 @@ export const useReportCardHistory = (schoolId?: string, schoolYearId?: string, f
       if (filters?.periodId) {
         query = query.eq('grading_period_id', filters.periodId);
       }
+      if (filters?.compositionId) {
+        query = query.eq('composition_id', filters.compositionId);
+      }
       
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as ReportCardHistoryWithRelations[];
+      return data as unknown as ReportCardHistoryWithRelations[];
     },
     enabled: !!schoolId && !!schoolYearId,
   });
@@ -533,24 +540,25 @@ export const useSaveReportCard = () => {
     mutationFn: async (data: { 
       school_id: string; 
       school_year_id: string;
-      grading_period_id: string;
+      grading_period_id?: string | null;
+      composition_id?: string | null;
       class_id: string;
       student_id: string;
-      template_id?: string;
-      general_average?: number;
-      rank?: number;
-      mention?: string;
-      conduct_grade?: string;
-      teacher_appreciation?: string;
-      principal_appreciation?: string;
+      template_id?: string | null;
+      general_average?: number | null;
+      rank?: number | null;
+      mention?: string | null;
+      conduct_grade?: string | null;
+      teacher_appreciation?: string | null;
+      principal_appreciation?: string | null;
       absences_count?: number;
       late_count?: number;
-      pdf_url?: string;
-      generated_by?: string;
+      pdf_url?: string | null;
+      generated_by?: string | null;
     }) => {
       const { data: created, error } = await supabase
         .from('school_report_card_history')
-        .upsert(data, { 
+        .upsert(data as any, { 
           onConflict: 'school_year_id,grading_period_id,student_id'
         })
         .select()

@@ -305,9 +305,9 @@ export const useDeleteSchoolYear = () => {
       queryClient.invalidateQueries({ queryKey: ['school-years', data.school_id] });
       toast.success('Année scolaire supprimée');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error deleting school year:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error('Erreur lors de la suppression: ' + (error?.message || 'Impossible de supprimer cette année scolaire'));
     },
   });
 };

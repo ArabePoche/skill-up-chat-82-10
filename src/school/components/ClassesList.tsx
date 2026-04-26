@@ -1,18 +1,20 @@
 // Composant pour afficher la liste des classes
 import React, { useState } from 'react';
-import { Users, Trash2, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
+import { Users, Trash2, GraduationCap, UserCheck, ChevronDown, GripVertical, Edit2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { useSchoolClasses, useDeleteClass } from '../hooks/useClasses';
+import { useSchoolClasses, useDeleteClass, useUpdateClassOrder } from '../hooks/useClasses';
 import { CreateClassModal } from './CreateClassModal';
 import { EditClassModal } from './EditClassModal';
 import { AssignSubjectsToClassDialog } from '@/school-os/apps/subjects/components/AssignSubjectsToClassDialog';
@@ -21,6 +23,9 @@ import { ClassSettingsMenu } from './ClassSettingsMenu';
 import { SchoolCardsSection } from '@/school-os/apps/grades/components/school-cards/SchoolCardsSection';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface ClassesListProps {
   schoolId: string;
@@ -66,19 +71,181 @@ const CYCLE_COLORS: Record<string, string> = {
   université: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
 };
 
+// Composant SortableClassCard pour le drag & drop
+interface SortableClassCardProps {
+  cls: any;
+  currentStudents: number;
+  occupancyRate: number;
+  isFull: boolean;
+  onManageSubjects: () => void;
+  onManageTeachers: () => void;
+  onEditClass: () => void;
+  onDeleteClass: () => void;
+  onGenerateCards: () => void;
+  onEditOrder: () => void;
+}
+
+const SortableClassCard: React.FC<SortableClassCardProps> = ({
+  cls,
+  currentStudents,
+  occupancyRate,
+  isFull,
+  onManageSubjects,
+  onManageTeachers,
+  onEditClass,
+  onDeleteClass,
+  onGenerateCards,
+  onEditOrder,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: cls.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card 
+        className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-muted"
+      >
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start gap-2">
+            <div className="flex items-start gap-2 flex-1">
+              <div
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground mt-1"
+              >
+                <GripVertical className="h-5 w-5" />
+              </div>
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg">{cls.name}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={onEditOrder}
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </Button>
+                  {cls.grade_order != null && cls.grade_order > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      #{cls.grade_order}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Badge 
+                    variant="secondary" 
+                    className="capitalize text-xs"
+                  >
+                    {cls.gender_type}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+            <ClassSettingsMenu
+              onManageSubjects={onManageSubjects}
+              onManageTeachers={onManageTeachers}
+              onEditClass={onEditClass}
+              onDeleteClass={onDeleteClass}
+              onGenerateCards={onGenerateCards}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <span>Effectif</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className={`font-semibold ${isFull ? 'text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>
+                  {currentStudents}
+                </span>
+                <span className="text-muted-foreground">/ {cls.max_students}</span>
+              </div>
+            </div>
+            <Progress 
+              value={occupancyRate} 
+              className="h-2"
+            />
+            <p className="text-xs text-muted-foreground text-right">
+              {occupancyRate.toFixed(0)}% d'occupation
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 export const ClassesList: React.FC<ClassesListProps> = ({
   schoolId,
   schoolYearId,
 }) => {
   const { data: classes, isLoading } = useSchoolClasses(schoolId, schoolYearId);
   const deleteClass = useDeleteClass();
+  const updateClassOrder = useUpdateClassOrder();
   const [assignSubjectsClass, setAssignSubjectsClass] = useState<{ id: string; name: string } | null>(null);
   const [assignTeachersClass, setAssignTeachersClass] = useState<{ id: string; name: string } | null>(null);
   const [editingClass, setEditingClass] = useState<any>(null);
   const [cardsClassId, setCardsClassId] = useState<string | null>(null);
+  const [editingOrderClass, setEditingOrderClass] = useState<{ id: string; name: string; grade_order: number | null } | null>(null);
+  const [manualOrder, setManualOrder] = useState<number>(0);
+
+  // Initialiser manualOrder quand editingOrderClass change
+  React.useEffect(() => {
+    if (editingOrderClass) {
+      setManualOrder(editingOrderClass.grade_order || 0);
+    }
+  }, [editingOrderClass]);
 
   const { data: schoolInfo } = useSchoolInfo(schoolId);
   const { data: yearLabel } = useSchoolYearLabel(schoolYearId);
+
+  // Sensors pour le drag & drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handler pour la fin du drag & drop
+  const handleDragEnd = (event: DragEndEvent, cycle: string) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+
+    const cycleClasses = groupedClasses?.[cycle] || [];
+    const oldIndex = cycleClasses.findIndex((c) => c.id === active.id);
+    const newIndex = cycleClasses.findIndex((c) => c.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Créer une nouvelle liste réordonnée
+    const newCycleClasses = [...cycleClasses];
+    const [movedClass] = newCycleClasses.splice(oldIndex, 1);
+    newCycleClasses.splice(newIndex, 0, movedClass);
+
+    // Mettre à jour le grade_order pour toutes les classes du cycle
+    const updates = newCycleClasses.map((cls, index) => ({
+      id: cls.id,
+      grade_order: index + 1,
+    }));
+
+    updateClassOrder.mutate({ schoolId, updates });
+  };
 
   // Récupérer le nombre réel d'élèves par classe
   const { data: studentCounts } = useQuery({
@@ -129,6 +296,17 @@ export const ClassesList: React.FC<ClassesListProps> = ({
     acc[cls.cycle].push(cls);
     return acc;
   }, {} as Record<string, typeof classes>);
+
+  // Trier les classes par grade_order dans chaque cycle
+  Object.keys(groupedClasses || {}).forEach(cycle => {
+    if (groupedClasses[cycle]) {
+      groupedClasses[cycle].sort((a, b) => {
+        const aOrder = a.grade_order ?? 999;
+        const bOrder = b.grade_order ?? 999;
+        return aOrder - bOrder;
+      });
+    }
+  });
 
   // Calcul des statistiques avec les vrais comptes d'élèves
   const totalStudents = classes?.reduce((sum, cls) => sum + (studentCounts?.[cls.id] || 0), 0) || 0;
@@ -253,66 +431,40 @@ export const ClassesList: React.FC<ClassesListProps> = ({
                   </AccordionTrigger>
                   
                   <AccordionContent className="px-6 pb-6">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-2">
-                      {cycleClasses.map((cls) => {
-                        const currentStudents = studentCounts?.[cls.id] || 0;
-                        const occupancyRate = (currentStudents / cls.max_students) * 100;
-                        const isFull = currentStudents >= cls.max_students;
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => handleDragEnd(event, cycle)}
+                    >
+                      <SortableContext
+                        items={cycleClasses.map(c => c.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-2">
+                          {cycleClasses.map((cls) => {
+                            const currentStudents = studentCounts?.[cls.id] || 0;
+                            const occupancyRate = (currentStudents / cls.max_students) * 100;
+                            const isFull = currentStudents >= cls.max_students;
 
-                        return (
-                          <Card 
-                            key={cls.id} 
-                            className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-muted"
-                          >
-                            <CardHeader className="pb-3">
-                              <div className="flex justify-between items-start">
-                                <div className="space-y-2 flex-1">
-                                  <CardTitle className="text-lg">{cls.name}</CardTitle>
-                                  <div className="flex gap-2">
-                                    <Badge 
-                                      variant="secondary" 
-                                      className="capitalize text-xs"
-                                    >
-                                      {cls.gender_type}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <ClassSettingsMenu
-                                  onManageSubjects={() => setAssignSubjectsClass({ id: cls.id, name: cls.name })}
-                                  onManageTeachers={() => setAssignTeachersClass({ id: cls.id, name: cls.name })}
-                                  onEditClass={() => setEditingClass(cls)}
-                                  onDeleteClass={() => handleDelete(cls.id)}
-                                  onGenerateCards={() => setCardsClassId(cls.id)}
-                                />
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Users className="h-4 w-4" />
-                                    <span>Effectif</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <span className={`font-semibold ${isFull ? 'text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>
-                                      {currentStudents}
-                                    </span>
-                                    <span className="text-muted-foreground">/ {cls.max_students}</span>
-                                  </div>
-                                </div>
-                                <Progress 
-                                  value={occupancyRate} 
-                                  className="h-2"
-                                />
-                                <p className="text-xs text-muted-foreground text-right">
-                                  {occupancyRate.toFixed(0)}% d'occupation
-                                </p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
+                            return (
+                              <SortableClassCard
+                                key={cls.id}
+                                cls={cls}
+                                currentStudents={currentStudents}
+                                occupancyRate={occupancyRate}
+                                isFull={isFull}
+                                onManageSubjects={() => setAssignSubjectsClass({ id: cls.id, name: cls.name })}
+                                onManageTeachers={() => setAssignTeachersClass({ id: cls.id, name: cls.name })}
+                                onEditClass={() => setEditingClass(cls)}
+                                onDeleteClass={() => handleDelete(cls.id)}
+                                onGenerateCards={() => setCardsClassId(cls.id)}
+                                onEditOrder={() => setEditingOrderClass({ id: cls.id, name: cls.name, grade_order: cls.grade_order })}
+                              />
+                            );
+                          })}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   </AccordionContent>
                 </AccordionItem>
               );
@@ -372,6 +524,49 @@ export const ClassesList: React.FC<ClassesListProps> = ({
               schoolLogoUrl={schoolInfo?.logo_url || undefined}
               preSelectedClassId={cardsClassId}
             />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog pour éditer l'ordre manuellement */}
+      {editingOrderClass && (
+        <Dialog open={!!editingOrderClass} onOpenChange={(open) => !open && setEditingOrderClass(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Modifier l'ordre de {editingOrderClass.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="manualOrder">Ordre (grade_order)</Label>
+                <Input
+                  id="manualOrder"
+                  type="number"
+                  min={1}
+                  value={manualOrder}
+                  onChange={(e) => setManualOrder(parseInt(e.target.value) || 0)}
+                  placeholder="Entrez l'ordre (ex: 1, 2, 3...)"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Les classes sont triées par ordre croissant. Un ordre plus petit signifie que la classe apparaît en premier.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingOrderClass(null)}>
+                Annuler
+              </Button>
+              <Button
+                onClick={() => {
+                  updateClassOrder.mutate({
+                    schoolId,
+                    updates: [{ id: editingOrderClass.id, grade_order: manualOrder }],
+                  });
+                  setEditingOrderClass(null);
+                }}
+              >
+                Sauvegarder
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}

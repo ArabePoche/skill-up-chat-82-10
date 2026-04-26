@@ -94,6 +94,7 @@ export const usePromotionStudents = (
           studentCode: s.student_code,
           sourceClassId: s.class_id,
           sourceClassName: s.classes?.name || null,
+          sourceClassCycle: s.classes?.cycle || null,
           annualAverage: agg && agg.count > 0 ? agg.sum / agg.count : null,
           reportCardCount: agg?.count || 0,
         };
@@ -104,7 +105,7 @@ export const usePromotionStudents = (
 };
 
 /**
- * Construit la liste de prévisualisation à partir des élèves, du seuil et du mapping.
+ * Construit la liste de prévisualisation à partir des élèves, du seuil par cycle et du mapping.
  * Pure function utilitaire (pas de hook).
  */
 export const buildPromotionPreview = (
@@ -115,15 +116,17 @@ export const buildPromotionPreview = (
     studentCode: string | null;
     sourceClassId: string | null;
     sourceClassName: string | null;
+    sourceClassCycle: string | null;
     annualAverage: number | null;
     reportCardCount: number;
   }>,
   classMap: ClassPromotionMap,
-  threshold: number,
+  cycleThresholds: Record<string, number>,
   overrides: Record<string, { action?: PromotionAction; targetClassId?: string | null }> = {},
 ): PromotionPreviewRow[] => {
   return rawStudents.map((s) => {
     const mapping = s.sourceClassId ? classMap[s.sourceClassId] : null;
+    const threshold = s.sourceClassCycle ? (cycleThresholds[s.sourceClassCycle] || 10) : 10;
     const passes = s.annualAverage != null && s.annualAverage >= threshold;
 
     let suggestedAction: PromotionAction;

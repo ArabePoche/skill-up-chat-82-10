@@ -18,6 +18,7 @@ export interface Class {
   gender_type: GenderType;
   annual_fee: number;
   registration_fee: number;
+  grade_order?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -123,6 +124,39 @@ export const useUpdateClass = () => {
     onError: (error) => {
       console.error('Error updating class:', error);
       toast.error('Erreur lors de la mise à jour');
+    },
+  });
+};
+
+// Hook pour mettre à jour le grade_order de plusieurs classes
+export const useUpdateClassOrder = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ schoolId, updates }: { schoolId: string; updates: Array<{ id: string; grade_order: number }> }) => {
+      const promises = updates.map(({ id, grade_order }) =>
+        supabase
+          .from('classes' as any)
+          .update({ grade_order })
+          .eq('id', id)
+      );
+      
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw errors[0].error;
+      }
+      return updates;
+    },
+    onSuccess: (_, { schoolId }) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['school-classes', schoolId] 
+      });
+      toast.success('Ordre des classes mis à jour');
+    },
+    onError: (error) => {
+      console.error('Error updating class order:', error);
+      toast.error('Erreur lors de la mise à jour de l\'ordre');
     },
   });
 };

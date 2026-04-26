@@ -49,7 +49,7 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
     return schoolYears.find((y) => y.id !== (activeSchoolYear?.id || ''))?.id || '';
   }, [schoolYears, activeSchoolYear?.id]);
   const [targetYearId, setTargetYearId] = useState<string>(defaultTarget);
-  const [threshold, setThreshold] = useState<number>(10);
+  const [cycleThresholds, setCycleThresholds] = useState<Record<string, number>>({});
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [classMap, setClassMap] = useState<ClassPromotionMap>({});
   const [overrides, setOverrides] = useState<
@@ -60,7 +60,7 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
     if (open) {
       setSourceYearId(activeSchoolYear?.id || '');
       setTargetYearId(defaultTarget);
-      setThreshold(10);
+      setCycleThresholds({});
       setStep(1);
       setClassMap({});
       setOverrides({});
@@ -75,16 +75,74 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
   );
   const applyMutation = useApplyPromotion();
 
-  // Auto-suggérer un mapping (par nom identique = redoublement par défaut)
+  // Récupérer les cycles uniques des classes source
+  const uniqueCycles = useMemo(() => {
+    const cycles = new Set((sourceClasses as any[]).map(c => c.cycle));
+    return Array.from(cycles);
+  }, [sourceClasses]);
+
+  // Initialiser les seuils par défaut quand les cycles changent
+  React.useEffect(() => {
+    setCycleThresholds((prev) => {
+      const next = { ...prev };
+      uniqueCycles.forEach((cycle) => {
+        if (!(cycle in next)) {
+          next[cycle] = 10;
+        }
+      });
+      return next;
+    });
+  }, [uniqueCycles]);
+
+  // Auto-suggérer un mapping automatique et dynamique
   React.useEffect(() => {
     if (sourceClasses.length === 0 || targetClasses.length === 0) return;
     setClassMap((prev) => {
       const next = { ...prev };
       for (const sc of sourceClasses as any[]) {
         if (next[sc.id]) continue;
+        
+        // Trouver la classe avec le même nom pour le redoublement
         const sameName = (targetClasses as any[]).find((tc) => tc.name === sc.name);
+        
+        // Pour le passage, trouver automatiquement une classe cible dans le même cycle
+        let passTargetClassId: string | null = null;
+        
+        // Filtrer les classes cibles dans le même cycle
+        const targetClassesInCycle = (targetClasses as any[])
+          .filter((tc) => tc.cycle === sc.cycle);
+        
+        if (targetClassesInCycle.length > 0) {
+          // Essayer d'abord d'utiliser grade_order si disponible
+          const hasGradeOrder = targetClassesInCycle.some((tc) => tc.grade_order != null && tc.grade_order > 0);
+          
+          if (hasGradeOrder && sc.grade_order != null && sc.grade_order > 0) {
+            // Utiliser grade_order pour trouver la classe suivante
+            const sortedByOrder = [...targetClassesInCycle].sort((a, b) => (a.grade_order || 0) - (b.grade_order || 0));
+            const nextClass = sortedByOrder.find((tc) => (tc.grade_order || 0) > sc.grade_order);
+            if (nextClass) {
+              passTargetClassId = nextClass.id;
+            } else if (sortedByOrder.length > 0) {
+              passTargetClassId = sortedByOrder[sortedByOrder.length - 1].id;
+            }
+          } else {
+            // Fallback : utiliser l'ordre alphabétique et prendre une classe différente
+            const sortedByName = [...targetClassesInCycle].sort((a, b) => a.name.localeCompare(b.name));
+            const sourceIndex = sortedByName.findIndex((tc) => tc.name === sc.name);
+            
+            if (sourceIndex >= 0) {
+              // Prendre la classe suivante dans l'ordre alphabétique
+              const nextIndex = (sourceIndex + 1) % sortedByName.length;
+              passTargetClassId = sortedByName[nextIndex].id;
+            } else {
+              // Si la classe source n'existe pas dans l'année cible, prendre la première
+              passTargetClassId = sortedByName[0].id;
+            }
+          }
+        }
+        
         next[sc.id] = {
-          passTargetClassId: null, // l'admin choisit
+          passTargetClassId,
           failTargetClassId: sameName?.id || null,
         };
       }
@@ -93,8 +151,8 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
   }, [sourceClasses, targetClasses]);
 
   const preview = useMemo(
-    () => buildPromotionPreview(rawStudents as any, classMap, threshold, overrides),
-    [rawStudents, classMap, threshold, overrides],
+    () => buildPromotionPreview(rawStudents as any, classMap, cycleThresholds, overrides),
+    [rawStudents, classMap, cycleThresholds, overrides],
   );
 
   const stats = useMemo(() => {
@@ -126,7 +184,7 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
   };
 
   const canGoStep2 =
-    sourceYearId && targetYearId && sourceYearId !== targetYearId && threshold >= 0;
+    sourceYearId && targetYearId && sourceYearId !== targetYearId && Object.keys(cycleThresholds).length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -210,17 +268,29 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
 
               <div>
                 <Label>Moyenne minimale pour passer (sur 20)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={20}
-                  step={0.1}
-                  value={threshold}
-                  onChange={(e) => setThreshold(parseFloat(e.target.value) || 0)}
-                  className="max-w-xs"
-                />
+                <div className="space-y-3 mt-2">
+                  {uniqueCycles.map((cycle) => (
+                    <div key={cycle} className="flex items-center gap-4">
+                      <span className="w-32 text-sm font-medium">{cycle}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        step={0.1}
+                        value={cycleThresholds[cycle] || 10}
+                        onChange={(e) =>
+                          setCycleThresholds((prev) => ({
+                            ...prev,
+                            [cycle]: parseFloat(e.target.value) || 0,
+                          }))
+                        }
+                        className="max-w-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Les élèves dont la moyenne annuelle est ≥ {threshold} passent dans la classe
+                  Les élèves dont la moyenne annuelle est ≥ au seuil de leur cycle passent dans la classe
                   supérieure ; les autres redoublent.
                 </p>
               </div>
@@ -242,6 +312,14 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
                 Pour chaque classe de {sourceYearLabel}, choisissez la classe de {targetYearLabel}{' '}
                 où ira l'élève qui passe et celle où ira l'élève qui redouble.
               </p>
+              {targetClasses.length === 0 && (
+                <Card className="border-destructive bg-destructive/5">
+                  <CardContent className="pt-4 text-sm text-destructive">
+                    Aucune classe trouvée dans l'année cible ({targetYearLabel}). 
+                    Veuillez d'abord créer les classes pour la nouvelle année scolaire.
+                  </CardContent>
+                </Card>
+              )}
               {sourceClasses.length === 0 && (
                 <Card>
                   <CardContent className="pt-4 text-sm text-muted-foreground">
@@ -375,6 +453,8 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
                   {preview.map((row) => {
                     const targetClassName =
                       (targetClasses as any[]).find((c) => c.id === row.targetClassId)?.name || null;
+                    const studentCycle = (rawStudents as any[]).find(s => s.studentId === row.studentId)?.sourceClassCycle;
+                    const cycleThreshold = studentCycle ? (cycleThresholds[studentCycle] || 10) : 10;
                     return (
                       <div
                         key={row.studentId}
@@ -392,7 +472,7 @@ export const EndOfYearPromotionDialog: React.FC<Props> = ({ open, onOpenChange, 
                           {row.annualAverage != null ? (
                             <Badge
                               variant={
-                                row.annualAverage >= threshold ? 'default' : 'destructive'
+                                row.annualAverage >= cycleThreshold ? 'default' : 'destructive'
                               }
                             >
                               {row.annualAverage.toFixed(2)} / 20

@@ -16,7 +16,7 @@ import { BookOpen, FileText, Download, Printer, Loader2, ChevronDown, ChevronUp,
 import { useOfflineQuery } from '@/offline/hooks/useOfflineQuery';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
-import { useBulletinTemplates, useBulletinAppreciations, BulletinTemplate, BulletinAppreciationTemplate } from '../../hooks/useBulletins';
+import { useBulletinTemplates, useBulletinAppreciations, useSaveReportCard, BulletinTemplate, BulletinAppreciationTemplate } from '../../hooks/useBulletins';
 import { StudentBulletinCard, StudentBulletinData, SubjectGrade } from './StudentBulletinCard';
 import { CompositionSelector } from './CompositionSelector';
 import { ClassNotesSection, ClassNotesConfig } from './ClassNotesSection';
@@ -123,6 +123,9 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
   // Templates et appréciations
   const { data: templates = [] } = useBulletinTemplates(schoolId);
   const { data: appreciationTemplates = [] } = useBulletinAppreciations(schoolId);
+  
+  // Hook pour sauvegarder l'historique des bulletins
+  const saveReportCard = useSaveReportCard();
 
   const visibleTemplates = useMemo(
     () => templates.filter((template) => getTemplateTier(template) === 'free' || canUseProTemplates || canSeeLockedTemplates),
@@ -380,7 +383,31 @@ export const BulletinGenerationTab: React.FC<BulletinGenerationTabProps> = ({
         bulletins: bulletinsData,
       });
 
-      toast.success('PDF exporté avec succès');
+      // Sauvegarder l'historique de chaque bulletin généré
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      for (const bulletin of bulletinsData) {
+        await saveReportCard.mutateAsync({
+          school_id: schoolId,
+          school_year_id: schoolYearId,
+          composition_id: selectedCompositionId,
+          grading_period_id: null, // Les compositions n'ont pas de grading_period_id
+          class_id: selectedClassId,
+          student_id: bulletin.studentId,
+          template_id: selectedTemplate || null,
+          general_average: bulletin.average,
+          rank: bulletin.rank,
+          mention: bulletin.mention,
+          teacher_appreciation: bulletin.appreciation,
+          conduct_grade: null,
+          principal_appreciation: null,
+          absences_count: 0,
+          late_count: 0,
+          generated_by: user?.id,
+        });
+      }
+
+      toast.success('PDF exporté avec succès et historique sauvegardé');
     } catch (error) {
       const details = (error as any)?.message ? String((error as any).message) : String(error);
       console.error('Export PDF error:', error);

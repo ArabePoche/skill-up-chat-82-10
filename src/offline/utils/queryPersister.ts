@@ -78,6 +78,7 @@ export const PERSISTED_QUERY_PREFIXES = [
   'school-desktop-app-positions',
   'school-wallpaper',
   'school-classes',
+  'school-cycles',
   'school-students',
   'promotion-students',
   'school-teachers',

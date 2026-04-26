@@ -25,26 +25,27 @@ export const BulletinHistoryTab: React.FC<BulletinHistoryTabProps> = ({
   schoolYearId 
 }) => {
   const [filterClass, setFilterClass] = useState<string>('all');
-  const [filterPeriod, setFilterPeriod] = useState<string>('all');
+  const [filterComposition, setFilterComposition] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch classes for filter
   const { data: classes = [] } = useSchoolClasses(schoolId, schoolYearId);
 
-  // Fetch grading periods for filter
-  const { data: periods = [] } = useOfflineQuery<any[]>({
-    queryKey: ['grading-periods', schoolYearId],
+  // Fetch compositions for filter
+  const { data: compositions = [] } = useOfflineQuery<any[]>({
+    queryKey: ['compositions', schoolId, schoolYearId],
     queryFn: async () => {
-      if (!schoolYearId) return [];
+      if (!schoolId || !schoolYearId) return [];
       const { data, error } = await supabase
-        .from('grading_periods')
+        .from('school_compositions')
         .select('*')
+        .eq('school_id', schoolId)
         .eq('school_year_id', schoolYearId)
-        .order('start_date', { ascending: true });
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!schoolYearId,
+    enabled: !!schoolId && !!schoolYearId,
   });
 
   // Fetch history with filters
@@ -53,19 +54,19 @@ export const BulletinHistoryTab: React.FC<BulletinHistoryTabProps> = ({
     schoolYearId,
     {
       classId: filterClass !== 'all' ? filterClass : undefined,
-      periodId: filterPeriod !== 'all' ? filterPeriod : undefined,
+      compositionId: filterComposition !== 'all' ? filterComposition : undefined,
     }
   );
 
-  // Group by class and period for display
+  // Group by class and composition for display
   const groupedHistory = history.reduce((acc, record) => {
-    const key = `${record.class_id}-${record.grading_period_id}`;
+    const key = `${record.class_id}-${record.composition_id}`;
     if (!acc[key]) {
       acc[key] = {
         classId: record.class_id,
         className: record.class?.name || 'Classe inconnue',
-        periodId: record.grading_period_id,
-        periodName: record.period?.name || 'Période inconnue',
+        compositionId: record.composition_id,
+        compositionName: record.composition?.title || 'Composition inconnue',
         generatedAt: record.generated_at,
         generatedBy: record.generator 
           ? `${record.generator.first_name} ${record.generator.last_name}`
@@ -78,8 +79,8 @@ export const BulletinHistoryTab: React.FC<BulletinHistoryTabProps> = ({
   }, {} as Record<string, {
     classId: string;
     className: string;
-    periodId: string;
-    periodName: string;
+    compositionId: string | null;
+    compositionName: string;
     generatedAt: string;
     generatedBy: string;
     students: typeof history;
@@ -87,7 +88,8 @@ export const BulletinHistoryTab: React.FC<BulletinHistoryTabProps> = ({
 
   const groupedList = Object.values(groupedHistory).filter(group => {
     if (searchQuery) {
-      return group.className.toLowerCase().includes(searchQuery.toLowerCase());
+      return group.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             group.compositionName.toLowerCase().includes(searchQuery.toLowerCase());
     }
     return true;
   });
@@ -126,14 +128,14 @@ export const BulletinHistoryTab: React.FC<BulletinHistoryTabProps> = ({
             ))}
           </SelectContent>
         </Select>
-        <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+        <Select value={filterComposition} onValueChange={setFilterComposition}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Période" />
+            <SelectValue placeholder="Composition" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Toutes les périodes</SelectItem>
-            {periods.map((period) => (
-              <SelectItem key={period.id} value={period.id}>{period.name}</SelectItem>
+            <SelectItem value="all">Toutes les compositions</SelectItem>
+            {compositions.map((comp) => (
+              <SelectItem key={comp.id} value={comp.id}>{comp.title}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -163,14 +165,14 @@ export const BulletinHistoryTab: React.FC<BulletinHistoryTabProps> = ({
             <div className="space-y-3">
               {groupedList.map((group) => (
                 <div 
-                  key={`${group.classId}-${group.periodId}`}
+                  key={`${group.classId}-${group.compositionId}`}
                   className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-medium">{group.className}</h4>
-                        <Badge variant="outline">{group.periodName}</Badge>
+                        <Badge variant="outline">{group.compositionName}</Badge>
                         <Badge variant="default" className="bg-green-500">
                           {group.students.length} bulletin{group.students.length > 1 ? 's' : ''}
                         </Badge>

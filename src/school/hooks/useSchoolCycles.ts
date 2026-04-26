@@ -126,6 +126,39 @@ export const useCreateSchoolCycle = () => {
   });
 };
 
+// Hook pour mettre à jour l'ordre de plusieurs cycles
+export const useUpdateCycleOrder = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ schoolId, updates }: { schoolId: string; updates: Array<{ id: string; order_index: number }> }) => {
+      const promises = updates.map(({ id, order_index }) =>
+        supabase
+          .from('school_cycles' as any)
+          .update({ order_index })
+          .eq('id', id)
+      );
+      
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw errors[0].error;
+      }
+      return updates;
+    },
+    onSuccess: (_, { schoolId }) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['school-cycles', schoolId] 
+      });
+      toast.success('Ordre des cycles mis à jour');
+    },
+    onError: (error) => {
+      console.error('Error updating cycle order:', error);
+      toast.error('Erreur lors de la mise à jour de l\'ordre');
+    },
+  });
+};
+
 // Hook pour supprimer (désactiver) un cycle
 export const useDeleteSchoolCycle = () => {
   const queryClient = useQueryClient();
@@ -148,7 +181,7 @@ export const useDeleteSchoolCycle = () => {
     },
     onError: (error) => {
       console.error('Error deleting school cycle:', error);
-      toast.error('Erreur lors de la suppression du cycle');
+      toast.error('Erreur lors de la suppression');
     },
   });
 };
