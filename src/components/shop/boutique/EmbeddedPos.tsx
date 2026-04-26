@@ -27,7 +27,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useIsMobile } from '@/hooks/use-mobile';
 import JsBarcode from 'jsbarcode';
 import type { BoutiqueProduct } from '@/hooks/shop/useBoutiqueProducts';
 import type { PosCartItem } from '@/hooks/shop/usePosCart';
@@ -103,7 +102,6 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
 }) => {
   const { data: shopCustomers } = useShopCustomers(shopId);
   const addCustomerCredit = useAddCustomerCredit();
-  const isMobile = useIsMobile();
   const [step, setStep] = useState<PosStep>('browse');
   const [checkoutType, setCheckoutType] = useState<CheckoutType>('sale');
   const [customerName, setCustomerName] = useState('');
@@ -873,17 +871,15 @@ const EmbeddedPos: React.FC<EmbeddedPosProps> = ({
         </div>
       )}
 
-      {/* Mobile : Drawer Panier */}
-      {isMobile && (
-        <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
-          <DialogContent className="h-[85vh] p-0 gap-0 flex flex-col w-full max-w-full rounded-t-2xl !translate-y-0 !top-auto !bottom-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom duration-300">
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mt-3 mb-1 shrink-0" />
-            <div className="flex-1 overflow-hidden relative">
-              <CartSidebar />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* Drawer Panier (mobile + tablette, jusqu'à lg) */}
+      <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
+        <DialogContent className="h-[85vh] p-0 gap-0 flex flex-col w-full max-w-full lg:max-w-2xl rounded-t-2xl !translate-y-0 !top-auto !bottom-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom duration-300">
+          <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+          <div className="flex-1 overflow-hidden relative">
+            <CartSidebar />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Ticket / Devis */}
       <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
