@@ -99,14 +99,28 @@ export const useFollow = (targetUserId?: string, options?: UseFollowOptions) => 
         console.error('Erreur création notification:', notifError);
       }
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      const previous = queryClient.getQueryData(['friendship-status', user?.id, targetUserId]);
+      queryClient.setQueryData(
+        ['friendship-status', user?.id, targetUserId],
+        { status: 'pending_sent', requestId: 'optimistic' },
+      );
+      return { previous };
+    },
+    onError: (error: any, _vars, context) => {
+      console.error('Erreur envoi demande:', error);
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(['friendship-status', user?.id, targetUserId], context.previous);
+      }
+      toast.error('Erreur lors de l\'envoi de la demande');
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ['pending-requests', user?.id] });
       toast.success('Demande d\'amitié envoyée');
     },
-    onError: (error: any) => {
-      console.error('Erreur envoi demande:', error);
-      toast.error('Erreur lors de l\'envoi de la demande');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-requests', user?.id] });
     },
   });
 
@@ -147,14 +161,28 @@ export const useFollow = (targetUserId?: string, options?: UseFollowOptions) => 
 
       if (error) throw error;
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      const previous = queryClient.getQueryData(['friendship-status', user?.id, targetUserId]);
+      queryClient.setQueryData(
+        ['friendship-status', user?.id, targetUserId],
+        { status: 'none', requestId: null },
+      );
+      return { previous };
+    },
+    onError: (error: any, _vars, context) => {
+      console.error('Erreur annulation demande:', error);
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(['friendship-status', user?.id, targetUserId], context.previous);
+      }
+      toast.error('Erreur lors de l\'annulation');
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ['pending-requests', user?.id] });
       toast.success('Demande annulée');
     },
-    onError: (error: any) => {
-      console.error('Erreur annulation demande:', error);
-      toast.error('Erreur lors de l\'annulation');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-requests', user?.id] });
     },
   });
 
@@ -170,15 +198,29 @@ export const useFollow = (targetUserId?: string, options?: UseFollowOptions) => 
 
       if (error) throw error;
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
+      const previous = queryClient.getQueryData(['friendship-status', user?.id, targetUserId]);
+      queryClient.setQueryData(
+        ['friendship-status', user?.id, targetUserId],
+        { status: 'none', requestId: null },
+      );
+      return { previous };
+    },
+    onError: (error: any, _vars, context) => {
+      console.error('Erreur suppression ami:', error);
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(['friendship-status', user?.id, targetUserId], context.previous);
+      }
+      toast.error('Erreur lors de la suppression');
+    },
     onSuccess: () => {
+      toast.success('Ami retiré');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['friendship-status', user?.id, targetUserId] });
       queryClient.invalidateQueries({ queryKey: ['friends-count', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['friends-count', targetUserId] });
-      toast.success('Ami retiré');
-    },
-    onError: (error: any) => {
-      console.error('Erreur suppression ami:', error);
-      toast.error('Erreur lors de la suppression');
     },
   });
 

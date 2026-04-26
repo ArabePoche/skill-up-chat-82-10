@@ -64,8 +64,6 @@ export const useVideoLikes = (
     mutationFn: async () => {
       if (!user?.id) throw new Error('Utilisateur non authentifié');
 
-      const isLiking = !userLike;
-
       if (userLike) {
         // Unlike
         const { error } = await supabase
@@ -125,13 +123,40 @@ export const useVideoLikes = (
       // Optionnel : mise à jour du champ likes_count dans la table videos
       await updateLikesCount(videoId);
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      // Optimistic update: cancel ongoing queries and snapshot previous state
+      await queryClient.cancelQueries({ queryKey: ['video-like', videoId, user?.id] });
+      await queryClient.cancelQueries({ queryKey: ['video-likes-count', videoId] });
+
+      const previousLike = queryClient.getQueryData(['video-like', videoId, user?.id]);
+      const previousCount = queryClient.getQueryData<number>(['video-likes-count', videoId]) ?? likesCount;
+      const wasLiked = !!userLike;
+
+      // Toggle the like state immediately in cache
+      queryClient.setQueryData(
+        ['video-like', videoId, user?.id],
+        wasLiked ? null : { video_id: videoId, user_id: user?.id, optimistic: true },
+      );
+      queryClient.setQueryData(
+        ['video-likes-count', videoId],
+        Math.max(0, previousCount + (wasLiked ? -1 : 1)),
+      );
+
+      return { previousLike, previousCount };
+    },
+    onError: (error, _vars, context) => {
+      console.error('Erreur lors du toggle like :', error);
+      // Rollback on error
+      if (context) {
+        queryClient.setQueryData(['video-like', videoId, user?.id], context.previousLike);
+        queryClient.setQueryData(['video-likes-count', videoId], context.previousCount);
+      }
+    },
+    onSettled: () => {
+      // Reconcile with server in the background once the mutation has finished
       queryClient.invalidateQueries({ queryKey: ['video-like', videoId, user?.id] });
       queryClient.invalidateQueries({ queryKey: ['video-likes-count', videoId] });
       queryClient.invalidateQueries({ queryKey: ['videos'] });
-    },
-    onError: (error) => {
-      console.error('Erreur lors du toggle like :', error);
     },
   });
 

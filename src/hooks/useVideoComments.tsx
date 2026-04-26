@@ -166,13 +166,65 @@ export const useVideoComments = (videoId: string) => {
 
       return data;
     },
-    onSuccess: async () => {
+    onMutate: async ({ content, parentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['video-comments', videoId] });
+      await queryClient.cancelQueries({ queryKey: ['video-comments-count', videoId] });
+
+      const previousComments = queryClient.getQueryData<any[]>(['video-comments', videoId]) ?? [];
+      const previousCount = queryClient.getQueryData<number>(['video-comments-count', videoId]) ?? 0;
+
+      // Try to read the current user's profile from cache for the optimistic display
+      const cachedProfile = user?.id
+        ? queryClient.getQueryData<any>(['profile', user.id]) ?? queryClient.getQueryData<any>(['user-profile', user.id])
+        : null;
+
+      const optimisticComment = {
+        id: `optimistic-${Date.now()}`,
+        video_id: videoId,
+        user_id: user?.id,
+        content,
+        parent_comment_id: parentId || null,
+        created_at: new Date().toISOString(),
+        optimistic: true,
+        profiles: cachedProfile ?? {
+          id: user?.id,
+          username: '',
+          first_name: '',
+          last_name: '',
+          avatar_url: '',
+          is_verified: false,
+        },
+        replies: [],
+      };
+
+      if (!parentId) {
+        queryClient.setQueryData<any[]>(
+          ['video-comments', videoId],
+          [optimisticComment, ...previousComments],
+        );
+      } else {
+        queryClient.setQueryData<any[]>(
+          ['video-comments', videoId],
+          previousComments.map((c) =>
+            c.id === parentId ? { ...c, replies: [...(c.replies ?? []), optimisticComment] } : c,
+          ),
+        );
+      }
+
+      queryClient.setQueryData<number>(['video-comments-count', videoId], previousCount + 1);
+
+      return { previousComments, previousCount };
+    },
+    onError: (error, _vars, context) => {
+      console.error('Erreur ajout commentaire :', error);
+      if (context) {
+        queryClient.setQueryData(['video-comments', videoId], context.previousComments);
+        queryClient.setQueryData(['video-comments-count', videoId], context.previousCount);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
-      queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
-    },
-    onError: (error) => {
-      console.error('Erreur ajout commentaire :', error);
     },
   });
 
@@ -218,13 +270,39 @@ export const useVideoComments = (videoId: string) => {
 
       await updateCommentsCount(videoId);
     },
-    onSuccess: () => {
+    onMutate: async (commentId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['video-comments', videoId] });
+      await queryClient.cancelQueries({ queryKey: ['video-comments-count', videoId] });
+
+      const previousComments = queryClient.getQueryData<any[]>(['video-comments', videoId]) ?? [];
+      const previousCount = queryClient.getQueryData<number>(['video-comments-count', videoId]) ?? 0;
+
+      // Find how many items will be removed (root + its replies)
+      const toRemove = previousComments.find((c) => c.id === commentId);
+      const removedCount = toRemove ? 1 + (toRemove.replies?.length ?? 0) : 1;
+
+      const filtered = previousComments
+        .filter((c) => c.id !== commentId)
+        .map((c) => ({
+          ...c,
+          replies: (c.replies ?? []).filter((r: any) => r.id !== commentId),
+        }));
+
+      queryClient.setQueryData(['video-comments', videoId], filtered);
+      queryClient.setQueryData(['video-comments-count', videoId], Math.max(0, previousCount - removedCount));
+
+      return { previousComments, previousCount };
+    },
+    onError: (error, _vars, context) => {
+      console.error('Erreur suppression commentaire :', error);
+      if (context) {
+        queryClient.setQueryData(['video-comments', videoId], context.previousComments);
+        queryClient.setQueryData(['video-comments-count', videoId], context.previousCount);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['video-comments', videoId] });
       queryClient.invalidateQueries({ queryKey: ['video-comments-count', videoId] });
-      queryClient.refetchQueries({ queryKey: ['video-comments-count', videoId] });
-    },
-    onError: (error) => {
-      console.error('Erreur suppression commentaire :', error);
     },
   });
 
