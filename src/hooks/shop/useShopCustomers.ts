@@ -57,6 +57,11 @@ export const useCreateShopCustomer = () => {
   return useOfflineMutation<any, { shop_id: string; name: string; phone?: string; email?: string; address?: string; notes?: string }>({
     mutationType: 'generic',
     invalidateKeys: [['shop-customers']],
+    offlinePayloadTransformer: (customer) => ({
+      table: 'shop_customers',
+      operation: 'insert',
+      data: customer,
+    }),
     optimisticUpdate: (customer) => {
       const tempId = `optimistic-${Date.now()}`;
       const optimistic: ShopCustomer = {
@@ -99,6 +104,12 @@ export const useUpdateShopCustomer = () => {
   return useOfflineMutation<any, Partial<ShopCustomer> & { id: string; shop_id: string }>({
     mutationType: 'generic',
     invalidateKeys: [['shop-customers']],
+    offlinePayloadTransformer: ({ id, shop_id: _shop_id, ...updates }) => ({
+      table: 'shop_customers',
+      operation: 'update',
+      id,
+      data: { ...updates, updated_at: new Date().toISOString() },
+    }),
     optimisticUpdate: ({ id, shop_id, ...updates }) => {
       const prev = queryClient.getQueryData<ShopCustomer[]>(['shop-customers', shop_id]) || [];
       const next = prev.map(c => c.id === id ? { ...c, ...updates, updated_at: new Date().toISOString() } : c);
@@ -128,6 +139,11 @@ export const useDeleteShopCustomer = () => {
   return useOfflineMutation<any, { id: string; shopId: string }>({
     mutationType: 'generic',
     invalidateKeys: [['shop-customers']],
+    offlinePayloadTransformer: ({ id }) => ({
+      table: 'shop_customers',
+      operation: 'delete',
+      id,
+    }),
     optimisticUpdate: ({ id, shopId }) => {
       const prev = queryClient.getQueryData<ShopCustomer[]>(['shop-customers', shopId]) || [];
       queryClient.setQueryData(['shop-customers', shopId], prev.filter(c => c.id !== id));
@@ -171,6 +187,11 @@ export const useAddCustomerCredit = () => {
   return useOfflineMutation<any, { customer_id: string; shop_id: string; amount: number; type: 'credit' | 'payment'; description?: string; sale_id?: string }>({
     mutationType: 'generic',
     invalidateKeys: [['customer-credits'], ['shop-customers']],
+    offlinePayloadTransformer: (credit) => ({
+      table: 'shop_customer_credits',
+      operation: 'insert',
+      data: credit,
+    }),
     optimisticUpdate: (credit) => {
       const optimistic: CustomerCredit = {
         id: `optimistic-${Date.now()}`,

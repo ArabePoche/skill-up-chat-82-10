@@ -30,8 +30,10 @@ const ShopChatInterface: React.FC = () => {
   const { data: userShops = [] } = useUserShops();
   const { data: conversations = [] } = useShopConversations();
   const { data: discoverableShops = [] } = useDiscoverShopsForChat();
+  const effectiveSenderShop = selectedSenderShop || userShops[0]?.id || '';
+
   const { data: messages = [] } = useShopMessages(
-    selectedSenderShop,
+    effectiveSenderShop,
     selectedConversation?.shop_id || ''
   );
 
@@ -46,14 +48,14 @@ const ShopChatInterface: React.FC = () => {
 
   // Marquer les messages comme lus quand on ouvre une conversation
   useEffect(() => {
-    if (selectedConversation && selectedSenderShop) {
+    if (selectedConversation && effectiveSenderShop) {
       markAsRead.mutate({
-        receiverShopId: selectedSenderShop,
+        receiverShopId: effectiveSenderShop,
         senderShopId: selectedConversation.shop_id,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedConversation?.shop_id, selectedSenderShop]);
+  }, [selectedConversation?.shop_id, effectiveSenderShop]);
 
   // Sélectionner la première boutique par défaut
   useEffect(() => {
@@ -63,11 +65,17 @@ const ShopChatInterface: React.FC = () => {
   }, [userShops, selectedSenderShop]);
 
   const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedConversation || !selectedSenderShop) return;
+    if (!messageText.trim() || !selectedConversation) return;
+
+    const senderShop = selectedSenderShop || userShops[0]?.id;
+    if (!senderShop) {
+      console.warn('Aucune boutique expéditrice disponible');
+      return;
+    }
 
     try {
       await sendMessage.mutateAsync({
-        senderShopId: selectedSenderShop,
+        senderShopId: senderShop,
         receiverShopId: selectedConversation.shop_id,
         content: messageText.trim(),
       });
@@ -237,7 +245,7 @@ const ShopChatInterface: React.FC = () => {
                   </div>
                 )}
                 {messages.map(message => {
-                  const isFromCurrentUser = message.sender_shop_id === selectedSenderShop;
+                  const isFromCurrentUser = message.sender_shop_id === effectiveSenderShop;
 
                   return (
                     <div
@@ -278,23 +286,18 @@ const ShopChatInterface: React.FC = () => {
 
             {/* Saisie message */}
             <div className="p-3 border-t">
-              {!selectedSenderShop && (
-                <p className="text-xs text-amber-600 mb-2">
-                  Sélectionnez d'abord votre boutique d'envoi en haut à gauche
-                </p>
-              )}
               <div className="flex gap-2">
                 <Input
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   placeholder="Tapez votre message..."
                   className="flex-1"
-                  disabled={!selectedSenderShop}
+                  autoComplete="off"
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!messageText.trim() || !selectedSenderShop || sendMessage.isPending}
+                  disabled={!messageText.trim() || sendMessage.isPending}
                   size="sm"
                 >
                   <Send size={16} />

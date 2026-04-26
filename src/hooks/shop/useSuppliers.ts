@@ -102,6 +102,11 @@ export const useSuppliers = (shopId?: string) => {
   const createSupplier = useOfflineMutation<any, SupplierInput>({
     mutationType: 'generic',
     invalidateKeys: [['shop-suppliers', shopId]],
+    offlinePayloadTransformer: (input) => ({
+      table: 'shop_suppliers',
+      operation: 'insert',
+      data: { shop_id: shopId, ...input },
+    }),
     optimisticUpdate: (input) => {
       if (!shopId) return null;
       const optimistic: Supplier = {
@@ -139,6 +144,12 @@ export const useSuppliers = (shopId?: string) => {
   const updateSupplier = useOfflineMutation<any, SupplierInput & { id: string }>({
     mutationType: 'generic',
     invalidateKeys: [['shop-suppliers', shopId]],
+    offlinePayloadTransformer: ({ id, ...input }) => ({
+      table: 'shop_suppliers',
+      operation: 'update',
+      id,
+      data: { ...input, updated_at: new Date().toISOString() },
+    }),
     optimisticUpdate: ({ id, ...input }) => {
       const prev = queryClient.getQueryData<Supplier[]>(['shop-suppliers', shopId]) || [];
       const next = prev.map(s => s.id === id ? { ...s, ...input, updated_at: new Date().toISOString() } : s);
@@ -163,6 +174,12 @@ export const useSuppliers = (shopId?: string) => {
   const deleteSupplier = useOfflineMutation<any, string>({
     mutationType: 'generic',
     invalidateKeys: [['shop-suppliers', shopId]],
+    offlinePayloadTransformer: (id) => ({
+      table: 'shop_suppliers',
+      operation: 'update',
+      id,
+      data: { is_active: false, updated_at: new Date().toISOString() },
+    }),
     optimisticUpdate: (id) => {
       const prev = queryClient.getQueryData<Supplier[]>(['shop-suppliers', shopId]) || [];
       queryClient.setQueryData(['shop-suppliers', shopId], prev.filter(s => s.id !== id));

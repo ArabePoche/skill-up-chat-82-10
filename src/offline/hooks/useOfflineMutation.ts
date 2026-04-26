@@ -21,6 +21,13 @@ interface UseOfflineMutationOptions<TData, TVariables, TError = Error>
   invalidateKeys?: unknown[][];
   /** Callback pour créer une version optimiste locale */
   optimisticUpdate?: (variables: TVariables) => TData;
+  /**
+   * Transforme les variables en payload pour la queue offline.
+   * Pour les mutations 'generic', le payload doit avoir la forme
+   * { table, operation, data, id? } attendue par syncGenericMutation.
+   * Si absent, les variables brutes sont sauvegardées (comportement legacy).
+   */
+  offlinePayloadTransformer?: (variables: TVariables) => object;
 }
 
 export function useOfflineMutation<TData, TVariables, TError = Error>(
@@ -31,6 +38,7 @@ export function useOfflineMutation<TData, TVariables, TError = Error>(
     mutationType, 
     invalidateKeys, 
     optimisticUpdate,
+    offlinePayloadTransformer,
     ...mutationOptions 
   } = options;
   
@@ -59,9 +67,12 @@ export function useOfflineMutation<TData, TVariables, TError = Error>(
       return result;
     } else {
       // Hors ligne : mettre en queue
+      const offlinePayload = offlinePayloadTransformer
+        ? offlinePayloadTransformer(variables)
+        : variables;
       await offlineStore.addPendingMutation({
         type: mutationType as 'message' | 'reaction' | 'progress' | 'profile',
-        payload: variables,
+        payload: offlinePayload,
       });
 
       toast.info('Modification enregistrée localement', {
