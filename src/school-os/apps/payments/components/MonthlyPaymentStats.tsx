@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BarChart3, TrendingUp, Users, DollarSign, Calendar, Building2 } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, DollarSign, Calendar, Building2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { GlobalMonthlyStats } from '../hooks/useMonthlyPaymentStats';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
