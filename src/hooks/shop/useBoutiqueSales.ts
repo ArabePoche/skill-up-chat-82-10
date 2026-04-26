@@ -177,7 +177,7 @@ export const useCreateCartSale = () => {
 
         if (saleErr) throw saleErr;
 
-        // Mettre à jour le stock sur le serveur en déduisant des lots selon FEFO
+        // Mettre à jour le stock sur le serveur en déduisant des lots selon FEFO (si lots dispo)
         // Récupérer les lots disponibles (non expirés) triés par date d'expiration
         const { data: batches, error: batchesErr } = await supabase
           .from('product_batches')
@@ -188,50 +188,56 @@ export const useCreateCartSale = () => {
 
         if (batchesErr) throw batchesErr;
 
-        if (!batches || batches.length === 0) {
-          throw new Error(`Aucun lot disponible pour le produit ${item.product.name}`);
-        }
-
         let remainingQuantity = item.quantity;
-        const updatedBatchIds: string[] = [];
+        const hasBatches = batches && batches.length > 0;
 
-        // Déduire selon FEFO (First Expired First Out)
-        for (const batch of batches) {
-          if (remainingQuantity <= 0) break;
+        if (hasBatches) {
+          // Déduire selon FEFO (First Expired First Out)
+          for (const batch of batches) {
+            if (remainingQuantity <= 0) break;
 
-          const deductQuantity = Math.min(remainingQuantity, batch.quantity);
-          const newBatchQuantity = batch.quantity - deductQuantity;
+            const deductQuantity = Math.min(remainingQuantity, batch.quantity);
+            const newBatchQuantity = batch.quantity - deductQuantity;
 
-          // Mettre à jour ou supprimer le lot
-          if (newBatchQuantity > 0) {
-            const { error: updateBatchErr } = await supabase
-              .from('product_batches')
-              .update({ quantity: newBatchQuantity })
-              .eq('id', batch.id);
-            if (updateBatchErr) throw updateBatchErr;
-            updatedBatchIds.push(batch.id);
-          } else {
-            const { error: deleteBatchErr } = await supabase
-              .from('product_batches')
-              .delete()
-              .eq('id', batch.id);
-            if (deleteBatchErr) throw deleteBatchErr;
+            if (newBatchQuantity > 0) {
+              const { error: updateBatchErr } = await supabase
+                .from('product_batches')
+                .update({ quantity: newBatchQuantity })
+                .eq('id', batch.id);
+              if (updateBatchErr) throw updateBatchErr;
+            } else {
+              const { error: deleteBatchErr } = await supabase
+                .from('product_batches')
+                .delete()
+                .eq('id', batch.id);
+              if (deleteBatchErr) throw deleteBatchErr;
+            }
+
+            remainingQuantity -= deductQuantity;
           }
-
-          remainingQuantity -= deductQuantity;
-        }
-
-        if (remainingQuantity > 0) {
-          throw new Error(`Stock insuffisant pour le produit ${item.product.name} (manque: ${remainingQuantity})`);
         }
 
         // Recalculer le stock total du produit
-        const { data: allBatches } = await supabase
-          .from('product_batches')
-          .select('quantity')
-          .eq('product_id', item.product.id);
+        // - Si le produit utilise des lots: somme des quantités restantes
+        // - Sinon: décrément direct du stock_quantity courant
+        let newStock: number;
+        if (hasBatches && remainingQuantity <= 0) {
+          const { data: allBatches } = await supabase
+            .from('product_batches')
+            .select('quantity')
+            .eq('product_id', item.product.id);
+          newStock = allBatches?.reduce((sum: number, b: any) => sum + b.quantity, 0) || 0;
+        } else {
+          // Pas de lots OU lots insuffisants: décrément direct du stock courant
+          const { data: currentProduct, error: fetchProductErr } = await supabase
+            .from('physical_shop_products')
+            .select('stock_quantity')
+            .eq('id', item.product.id)
+            .single();
+          if (fetchProductErr) throw fetchProductErr;
+          newStock = Math.max(0, (currentProduct?.stock_quantity ?? 0) - remainingQuantity);
+        }
 
-        const newStock = allBatches?.reduce((sum: number, b: any) => sum + b.quantity, 0) || 0;
         const { error: updateProductErr } = await supabase
           .from('physical_shop_products')
           .update({ stock_quantity: newStock })
