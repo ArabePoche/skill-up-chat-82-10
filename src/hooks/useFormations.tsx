@@ -6,11 +6,59 @@ import { useOfflineSync } from '@/offline/hooks/useOfflineSync';
 import { useState, useEffect } from 'react';
 import { enrichFormationsWithMetrics } from '@/utils/formationMetrics';
 
+const FORMATIONS_CACHE_KEY = 'formations-list';
+const FORMATIONS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 heures
+
 export const useFormations = () => {
-  return useQuery({
+  const { isOnline } = useOfflineSync();
+
+  // 1. Lire le cache mémoire en synchrone (disponible instantanément si warmup a été fait)
+  const memoryCached = offlineStore.getCachedQuerySync(FORMATIONS_CACHE_KEY);
+
+  // 2. État pour les données IndexedDB (chargées une seule fois au montage)
+  const [idbCache, setIdbCache] = useState<any[] | null>(null);
+  const [idbLoaded, setIdbLoaded] = useState(false);
+
+  useEffect(() => {
+    // Si le cache mémoire est déjà disponible, pas besoin de lire IndexedDB
+    if (memoryCached) {
+      setIdbLoaded(true);
+      return;
+    }
+    offlineStore.getCachedQuery(FORMATIONS_CACHE_KEY).then((cached) => {
+      if (cached) {
+        console.log('📦 Formations list loaded from IndexedDB cache');
+        setIdbCache(cached);
+      }
+    }).catch(() => {}).finally(() => setIdbLoaded(true));
+  }, []);
+
+  // Données initiales : mémoire en priorité, puis IndexedDB
+  const initialCachedData: any[] | undefined = memoryCached ?? idbCache ?? undefined;
+
+  const query = useQuery({
     queryKey: ['formations'],
+    // N'activer la requête que si le cache IndexedDB est chargé (pour éviter double affichage)
+    // ou si le cache mémoire est déjà disponible
+    enabled: !!memoryCached || idbLoaded,
+    // Afficher immédiatement les données en cache pendant le chargement réseau
+    placeholderData: initialCachedData,
+    // Considérer les données fraîches 5 min (évite un refetch inutile si on vient d'ouvrir)
+    staleTime: 1000 * 60 * 5,
+    // Toujours rafraîchir en arrière-plan si connecté
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      console.log('Fetching formations...');
+      const currentlyOnline = syncManager.getOnlineStatus();
+
+      // Hors ligne : retourner le cache sans throw
+      if (!currentlyOnline) {
+        console.log('📴 Offline — serving formations from cache');
+        if (initialCachedData) return initialCachedData;
+        return [];
+      }
+
+      console.log('🔄 Fetching formations from Supabase...');
 
       const { data, error } = await supabase
         .from('formations')
@@ -26,16 +74,34 @@ export const useFormations = () => {
 
       if (error) {
         console.error('Error fetching formations:', error);
+        // Fallback sur le cache en cas d'erreur réseau
+        if (initialCachedData) {
+          console.log('📦 Network error — returning cached formations');
+          return initialCachedData;
+        }
         throw error;
       }
 
       const formations = data || [];
       const enrichedFormations = await enrichFormationsWithMetrics(formations);
 
-      console.log('Formations fetched:', enrichedFormations);
+      // 3. Mettre à jour le cache pour la prochaine ouverture
+      offlineStore.cacheQuery(FORMATIONS_CACHE_KEY, enrichedFormations, FORMATIONS_CACHE_TTL)
+        .catch(() => {}); // Ne pas bloquer sur l'erreur de cache
+
+      console.log(`✅ Formations fetched & cached: ${enrichedFormations.length} items`);
       return enrichedFormations;
     },
   });
+
+  // Relancer si on repasse en ligne après une erreur
+  useEffect(() => {
+    if (isOnline && query.isError) {
+      query.refetch();
+    }
+  }, [isOnline, query.isError]);
+
+  return query;
 };
 
 /**
