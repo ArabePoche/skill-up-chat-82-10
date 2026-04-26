@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { enrichFormationsWithMetrics } from '@/utils/formationMetrics';
 
 const FORMATIONS_CACHE_KEY = 'formations-list';
-const FORMATIONS_CACHE_TTL = 1000 * 60 * 60 * 24; // 24 heures
+const FORMATIONS_CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // 30 jours
 
 export const useFormations = () => {
   const { isOnline } = useOfflineSync();
